@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: 0fb86086efd24b29975945bdd1317f63
+timeCreated: 1762075804
+AssetOrigin:
+  serializedVersion: 1
+  productId: 341308
+  packageName: Text Animator for Unity | UI Toolkit and Text Mesh Pro
+  packageVersion: 3.11.1
+  assetPath: Packages/com.febucci.text-animator-unity/Scripts/Runtime/Scriptables/Playbacks/PlaybacksDatabase.cs
+  uploadId: 899494

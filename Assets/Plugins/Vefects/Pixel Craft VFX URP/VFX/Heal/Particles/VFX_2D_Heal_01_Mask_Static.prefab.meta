@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b2ba008952a7c454f9c6233e4d28bb7b
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 308259
+  packageName: Pixel Craft VFX - URP
+  packageVersion: 1.0.02
+  assetPath: Assets/Vefects/Pixel Craft VFX URP/VFX/Heal/Particles/VFX_Heal_01_Mask_Static.prefab
+  uploadId: 771196

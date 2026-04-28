@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7bb83231033f41145a78c360b8174d2d
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 308259
+  packageName: Pixel Craft VFX - URP
+  packageVersion: 1.0.02
+  assetPath: Assets/Vefects/Pixel Craft VFX URP/VFX/Teleport/Particles/Loop/VFX_Teleport_01_Color_Camera_Loop_Static.prefab
+  uploadId: 771196

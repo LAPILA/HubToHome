@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 79f55809190c72d46b86ffce94ae1cd4
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 308259
+  packageName: Pixel Craft VFX - URP
+  packageVersion: 1.0.02
+  assetPath: Assets/Vefects/Pixel Craft VFX URP/VFX/Level Up/Particles/VFX_Level_Up_02_Mask_Static.prefab
+  uploadId: 771196

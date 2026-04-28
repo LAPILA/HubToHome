@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: a76840e7c2ca24a4f8e5bd3bb605e4ca
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 308259
+  packageName: Pixel Craft VFX - URP
+  packageVersion: 1.0.02
+  assetPath: Assets/Vefects/Pixel Craft VFX URP/VFX/Fireball/Particles/Loop/VFX_Fireball_Impact_01_Vertical_Billboard_Color_Loop_Static.prefab
+  uploadId: 771196

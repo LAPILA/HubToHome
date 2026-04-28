@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ff2a45e4a00ff4c4b8ef8acfe6e75f7d
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 308259
+  packageName: Pixel Craft VFX - URP
+  packageVersion: 1.0.02
+  assetPath: Assets/Vefects/Pixel Craft VFX URP/VFX/Heal/Particles/VFX_Heal_01_Color_Static.prefab
+  uploadId: 771196

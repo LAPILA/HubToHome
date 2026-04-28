@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: cb57e403b59f1d34896a3b0a0a6923f8
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 308259
+  packageName: Pixel Craft VFX - URP
+  packageVersion: 1.0.02
+  assetPath: Assets/Vefects/Pixel Craft VFX URP/VFX/Projectile Ice Impact/Particles/VFX_Projectile_Ice_Impact_01_Vertical_Billboard_Color_Static.prefab
+  uploadId: 771196

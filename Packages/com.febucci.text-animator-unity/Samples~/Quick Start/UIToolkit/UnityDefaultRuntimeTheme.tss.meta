@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: ca7fbe2632213214eb37e0479523ac09
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 12388, guid: 0000000000000000e000000000000000, type: 0}
+  disableValidation: 0
+  unsupportedSelectorAction: 0
+AssetOrigin:
+  serializedVersion: 1
+  productId: 341308
+  packageName: Text Animator for Unity | UI Toolkit and Text Mesh Pro
+  packageVersion: 3.11.1
+  assetPath: Packages/com.febucci.text-animator-unity/Samples~/Quick Start/UIToolkit/UnityDefaultRuntimeTheme.tss
+  uploadId: 899494

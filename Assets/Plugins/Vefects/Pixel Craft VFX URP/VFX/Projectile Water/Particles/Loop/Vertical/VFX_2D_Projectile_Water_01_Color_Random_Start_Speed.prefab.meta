@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b69a19c8259c7ba42b0221450bfc9ae8
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 308259
+  packageName: Pixel Craft VFX - URP
+  packageVersion: 1.0.02
+  assetPath: Assets/Vefects/Pixel Craft VFX URP/VFX/Projectile Water/Particles/Loop/Vertical/VFX_Projectile_Water_01_Color_Random_Start_Speed.prefab
+  uploadId: 771196
