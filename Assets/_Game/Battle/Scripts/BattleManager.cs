@@ -224,9 +224,7 @@ public class BattleManager : MonoBehaviour
                 foreach (var player in _playerParty)
                     player.GainEXP(enemy.Data.EXPReward);
             }
-            // Auto Save
-            var saveData = GlobalDataManager.Instance.ToSaveData();
-            SaveManager.Save(saveData, SaveManager.AutoSlotIndex);
+            // ⚠️ 세이브는 여기서 하지 않음. SavePoint 또는 메뉴에서만 저장.
         }
 
         yield return _waitShort;

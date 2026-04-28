@@ -135,7 +135,7 @@ GameObject:
   - component: {fileID: 125286586}
   - component: {fileID: 125286587}
   - component: {fileID: 125286588}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: ExitTrigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
