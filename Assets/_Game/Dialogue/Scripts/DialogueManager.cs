@@ -51,6 +51,13 @@ public class DialogueManager : MonoBehaviour
             Debug.LogError($"[DialogueManager] Dialogue file not found: {resourcePath}");
             return;
         }
+        LoadDialogueFromAsset(asset);
+    }
+
+    /// <summary>TextAsset을 직접 전달하여 대화 시퀀스를 로드합니다. (드래그&드롭 방식)</summary>
+    public void LoadDialogueFromAsset(TextAsset asset)
+    {
+        if (asset == null) return;
         try
         {
             var sequences = JsonConvert.DeserializeObject<List<DialogueSequence>>(asset.text);
@@ -59,7 +66,7 @@ public class DialogueManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[DialogueManager] JSON parse error: {e.Message}");
+            Debug.LogError($"[DialogueManager] JSON parse error in '{asset.name}': {e.Message}");
         }
     }
 

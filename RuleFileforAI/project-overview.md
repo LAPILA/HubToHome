@@ -82,12 +82,28 @@ Assets/
 
 ## 📅 개발 마일스톤
 
+> 상세 마일스톤은 [`milestone.md`](./milestone.md) 를 참조하세요.
+
 | 단계 | 내용 | 상태 |
 |------|------|------|
-| Phase 0 | 프로젝트 세팅 및 폴더 구조 정리 | ✅ 완료 |
-| Phase 1 | 코어 시스템 구현 (GlobalDataManager, SceneLoader) | ⬜ 예정 |
-| Phase 2 | 오버월드 기본 구현 (플레이어 이동, 맵) | ⬜ 예정 |
-| Phase 3 | 전투 시스템 기본 구현 | ⬜ 예정 |
-| Phase 4 | 대화/연출 시스템 구현 | ⬜ 예정 |
-| Phase 5 | UI 완성 및 통합 | ⬜ 예정 |
-| Phase 6 | 콘텐츠 제작 및 밸런싱 | ⬜ 예정 |
+| Phase 0 | 프로젝트 기반 세팅 (폴더 구조, 전체 골격 스크립트) | ✅ 완료 |
+| Phase 1 | 코어 시스템 완성 (싱글톤 씬 연동 테스트) | 🔄 진행 중 |
+| Phase 2 | 오버월드 기본 구현 (플레이어 이동, NPC 대화, 씬 전환) | ⬜ 예정 |
+| Phase 3 | 전투 시스템 기본 구현 (1회 전투 완전 루프) | ⬜ 예정 |
+| Phase 4 | 대화/연출 시스템 완성 (TextAnimator, 분기, 이벤트) | ⬜ 예정 |
+| Phase 5 | UI 완성 및 통합 (인벤토리, HUD, 세이브/로드 UI) | ⬜ 예정 |
+| Phase 6 | 콘텐츠 제작 (맵, 적, 스토리 도입부) | ⬜ 예정 |
+| Phase 7 | 밸런싱 및 폴리싱 (QA, 최적화, 빌드) | ⬜ 예정 |
+
+## 📚 관련 문서
+
+| 문서 | 설명 |
+|------|------|
+| [`codebase-reference.md`](./codebase-reference.md) | 전체 코드 구조, 용법, API 레퍼런스 |
+| [`milestone.md`](./milestone.md) | 상세 마일스톤 및 작업 체크리스트 |
+| [`battle.clinerules`](./battle.clinerules) | 전투 시스템 설계 규칙 |
+| [`characters.clinerules`](./characters.clinerules) | 캐릭터 시스템 설계 규칙 |
+| [`overworld.clinerules`](./overworld.clinerules) | 오버월드 시스템 설계 규칙 |
+| [`core.clinerules`](./core.clinerules) | 코어 시스템 설계 규칙 |
+| [`dialogue.clinerules`](./dialogue.clinerules) | 대화/연출 시스템 설계 규칙 |
+| [`design-notes.md`](./design-notes.md) | 게임 디자인 노트 및 아이디어 |

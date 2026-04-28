@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &297454362200079286
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 298048899023453022}
+  - component: {fileID: 9076644542261256925}
+  m_Layer: 0
+  m_Name: '[GameBootstrap]'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &298048899023453022
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 297454362200079286}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9076644542261256925
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 297454362200079286}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 121dfba36f7ecd54ea43d22e2a12f1c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameBootstrap
+  _globalDataManagerPrefab: {fileID: 2084414434068369932, guid: 6a7ca227a768e97499c34ee753d1d9fb, type: 3}
+  _sceneLoaderPrefab: {fileID: 3191576771060953430, guid: 78bd46d01db77fb46abfe524d79d4be1, type: 3}
+  _audioManagerPrefab: {fileID: 491675529838527693, guid: efa24e839c8e4ea4a9eb4b75f4c27cb6, type: 3}
+  _objectPoolManagerPrefab: {fileID: 4698232173639863147, guid: 5610d5d092ec8c345ad63fa4c9789abe, type: 3}
+  _dialogueManagerPrefab: {fileID: 2339700292175982952, guid: 5a67b789dbda02d43864fbdbfc7d7c40, type: 3}
+  _uiManagerPrefab: {fileID: 6268782056145064269, guid: b3c4d2a3e6293e847920120cb7786795, type: 3}

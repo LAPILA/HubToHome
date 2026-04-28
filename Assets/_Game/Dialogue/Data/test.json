@@ -1,0 +1,15 @@
+[
+  {
+    "sequenceID": "test_npc_001",
+    "lines": [
+      {
+        "id": "line_01",
+        "speaker": "테스트 NPC",
+        "text": "안녕하세요! 테스트 대화입니다.",
+        "autoAdvance": false,
+        "commands": [],
+        "choices": []
+      }
+    ]
+  }
+]

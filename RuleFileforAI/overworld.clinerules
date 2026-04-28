@@ -1,7 +1,7 @@
 # 🌍 오버월드 시스템 규칙 (Overworld System Rules)
 
 ## 🎯 오버월드 철학
-- **Deltarune/Undertale Style**: 2D Top-down 뷰를 유지하며, 모든 맵은 Unity Tilemap 시스템을 기반으로 구축한다.
+- **Deltarune/Undertale Style**: 2D Top-down 뷰를 유지하며, 모든 맵은 Unity Tilemap 시스템을 기반으로 구축한다. (가끔 귀찮거나 예시로 image때려박을수도 있으면 좋다.)
 - **Precision Interaction**: 캐릭터가 바라보는 방향(Facing Direction)을 기준으로 상호작용한다.
 - **Collider Separation**: 
   - **Body Collider**: 환경(벽, 장애물)과의 물리적 충돌을 담당 (Circular or Box 2D).

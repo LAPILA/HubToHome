@@ -81,15 +81,13 @@ public class AreaTrigger : MonoBehaviour
 
     private void HandleSceneTransition(PlayerController player)
     {
-        if (player != null)
-            player.SavePositionToGlobal();
-
+        // 스폰 정보를 먼저 GlobalDataManager에 저장 (SavePositionToGlobal보다 먼저)
         if (GlobalDataManager.Instance != null)
         {
-            GlobalDataManager.Instance.SpawnScene    = _targetScene;
-            GlobalDataManager.Instance.SpawnX        = _spawnX;
-            GlobalDataManager.Instance.SpawnY        = _spawnY;
-            GlobalDataManager.Instance.LookingDir    = _spawnDirection;
+            GlobalDataManager.Instance.SpawnScene = _targetScene;
+            GlobalDataManager.Instance.SpawnX     = _spawnX;
+            GlobalDataManager.Instance.SpawnY     = _spawnY;
+            GlobalDataManager.Instance.LookingDir = _spawnDirection;
         }
 
         // Auto Save
@@ -99,7 +97,10 @@ public class AreaTrigger : MonoBehaviour
             SaveManager.Save(saveData, SaveManager.AutoSlotIndex);
         }
 
-        SceneLoader.Instance?.LoadScene(_targetScene);
+        if (SceneLoader.Instance != null)
+        {
+            SceneLoader.Instance.LoadScene(_targetScene);
+        }
     }
 
     private void HandleBattleEncounter(PlayerController player)

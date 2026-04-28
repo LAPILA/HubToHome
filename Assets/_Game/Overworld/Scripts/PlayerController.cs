@@ -102,6 +102,12 @@ public class PlayerController : MonoBehaviour
         _menuAction.Enable();
     }
 
+    private void Start()
+    {
+        LoadPositionFromGlobal();
+        UpdateAnimator(); 
+    }
+
     private void Update()
     {
         if (State == PlayerState.Interacting || State == PlayerState.InMenu) return;
@@ -297,9 +303,11 @@ public class PlayerController : MonoBehaviour
     public void LoadPositionFromGlobal()
     {
         if (GlobalDataManager.Instance == null) return;
+
         transform.position = new Vector3(
-            GlobalDataManager.Instance.SpawnX,
-            GlobalDataManager.Instance.SpawnY, 0f);
+        GlobalDataManager.Instance.SpawnX,
+        GlobalDataManager.Instance.SpawnY, 0f);
+        
         FacingDirection = GlobalDataManager.Instance.LookingDir;
     }
 

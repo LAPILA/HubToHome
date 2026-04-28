@@ -14,7 +14,8 @@ GameObject:
   - component: {fileID: 6714858832913261779}
   - component: {fileID: 8464460841528240840}
   - component: {fileID: 8157845532445965529}
-  m_Layer: 0
+  - component: {fileID: 8926160897552926385}
+  m_Layer: 7
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -152,12 +153,12 @@ CapsuleCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 1}
-  m_Size: {x: 2, y: 2}
+  m_Offset: {x: -0.02138567, y: 1}
+  m_Size: {x: 1.1018081, y: 2}
   m_Direction: 0
 --- !u!114 &8464460841528240840
 MonoBehaviour:
@@ -202,3 +203,29 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &8926160897552926385
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3767812405821268843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 74ac3363c0b61f247b8c4d438c9445f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacter
+  MaxHP: 100
+  ATK: 10
+  DEF: 5
+  SPD: 10
+  Level: 1
+  EXP: 0
+  EXPToNextLevel: 100
+  WeaponSlot: {fileID: 0}
+  Accessory1Slot: {fileID: 0}
+  Accessory2Slot: {fileID: 0}
+  HeadSlot: {fileID: 0}
+  BodySlot: {fileID: 0}
+  ShoesSlot: {fileID: 0}
+  CharacterID: Player
