@@ -1,0 +1,50 @@
+# ⚔️ 전투 시스템 규칙 (Battle System Rules)
+
+## 🎯 전투 철학 (Limbus-like Visuals + Action-Turn Based)
+- **2.5D Spatiality**: 배경은 3D 공간(Plane/Environment)으로 구성하되, 캐릭터와 이펙트는 2D Sprite를 사용해 입체감을 준다. (Limbus Company 스타일)
+- **Dynamic Action**: 단순 선택형 턴제가 아닌, 공격/방어 시 플레이어의 입력(QTE)이 결과에 직접적인 영향을 미치는 액션 턴제를 지향한다.
+- **Engagement**: 플레이어 공격 시에는 캐릭터가 무대 중앙(Central Position)으로 이동하여 연출하며, 방어 시에는 적의 공격 타이밍에 맞춰 대응한다.
+
+## 🏗️ 전투 아키텍처
+- **BattleManager (Singleton)**: 전투의 시작부터 끝, 승패 판정 및 씬 전환을 총괄한다.
+- **BattleStateMachine**: 
+  - `Intro`: 전투 진입 연출 (필요 시)
+  - `PlayerTurn`: 플레이어 메뉴 선택 및 행동 대기
+  - `Action Phase`: 공격/스킬 실행 및 QTE 진행
+  - `EnemyTurn`: 적의 공격 및 플레이어의 대응(패링/회피/점프)
+  - `Result`: 경험치, 보상 정산 및 오버월드 복귀
+- **Positioning System**: 
+  - `DefaultPos`: 각 유닛의 기본 대기 위치.
+  - `CenterPos`: 공격 연출이 일어나는 무대 중앙 지점. (대형 적/전체 공격 시 제외)
+
+## 🕹️ 플레이어 턴 규칙 (Menu & Attack)
+- **Menu Navigation**: `WASD` 키로 [공격 / 스킬 / 아이템 / 도망] 메뉴를 선택한다. (마우스 배제)
+- **Action Execution**:
+  - **공격 (Attack)**: 선택 시 캐릭터가 적에게 이동하여 기본 공격력을 입히고 복귀한다.
+  - **스킬 (Skill)**: 스킬 사용 시 전용 QTE(타이밍 바, 연타 등)가 발생한다. 
+    - **성공(Great/Perfect)**: 높은 데미지 및 크리티컬 적용.
+    - **실패(Bad/Miss)**: 매우 낮은 데미지 적용.
+  - **아이템 (Item)**: 인벤토리 내 소모성 아이템 사용 (턴당 1회).
+  - **도망 (Run)**: 일정 확률로 전투 이탈. (보스전 및 강제 전투는 'Run' 버튼 비활성화 또는 확률 0%).
+
+## 🛡️ 적 턴 및 방어 규칙 (Defense QTE)
+- **Enemy Action**: 적이 플레이어에게 다가와 공격을 시도할 때, 플레이어와 적이 중앙 부근에서 대치한다 (겹치지 않음).
+- **Defense Inputs (Timing-based)**:
+  - **Z (패링)**: 적의 타격 직전 입력 시 데미지 무효화 및 반격(선택 사항).
+  - **C (회피)**: 적의 공격 범위에서 벗어나 데미지 회피.
+  - **Space (점프)**: 하단 공격이나 장판류 공격을 피할 때 사용.
+- **Exceptions**: 전체 공격(AoE)이나 화면을 가득 채우는 대형 적은 중앙 이동 없이 제자리에서 공격 연출을 수행한다.
+
+## 📊 데이터 구조 (ScriptableObject)
+- **EnemyData**: HP, 공격력, 방어력, 스킬 리스트(1~N개), QTE 난이도 계수, 대형 적 여부.
+- **SkillData**: 스킬 이름, 소모 자원, QTE 타입(타이밍/연타), 데미지 배율, 연출 프리팹.
+- **BattleUnit**: 전투 현장에서 실시간 상태(현재 HP, 버프/디버프)를 관리하는 컴포넌트.
+
+## ⚡ 최적화 및 연출 규칙
+- **Performance**:
+  - `Update` 내 LINQ 사용 및 반복적인 `GetComponent` 호출 금지.
+  - 모든 투사체(Projectile)와 타격 이펙트는 `ObjectPool`을 통해 관리한다.
+- **Visuals**:
+  - 캐릭터 이동 및 중앙 집중 연출은 `DOTween`을 사용하여 부드러운 곡선(Ease)을 적용한다.
+  - 3D 공간 내 2D Sprite의 `Billboard` 효과(카메라를 항상 응시) 여부를 상황에 따라 설정한다.
+  - 카메라 쉐이크(Camera Shake)를 활용해 타격감을 극대화한다.

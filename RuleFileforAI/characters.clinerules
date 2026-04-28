@@ -1,0 +1,56 @@
+# 🧑 캐릭터 시스템 규칙 (Characters System Rules)
+
+## 🎯 캐릭터 철학
+- **Distinct Identity**: 모든 플레이어 캐릭터는 고유한 성격과 배틀 스타일을 가지며, 특정 상황(아이템 사용, 장비 장착)에서 고유 대사(Dialogue Line)를 출력한다.
+- **Party-Based**: 오버월드에서는 선두 캐릭터가 이동을 주도하며, 배틀에서는 최대 3~4인의 파티가 협동하는 구조를 지향한다.
+- **Growth**: 최대 레벨은 99이며, 레벨업에 따른 스탯 성장은 `CharacterStatData`에 정의된 곡선을 따른다.
+
+## 🏗️ 캐릭터 아키텍처
+- **CharacterBase**: HP, ATK, DEF, SPD 등 공통 필드와 데미지 계산, 상태 이상 처리 로직을 포함하는 추상 클래스.
+- **PlayerCharacter**: 장비 장착(Equipment), 경험치(EXP) 획득, 레벨업 로직이 추가된 클래스.
+- **EnemyCharacter**: AI 패턴 로직과 드롭 아이템 데이터를 포함하는 클래스.
+- **Role System**: 캐릭터별 '역할군(Class)'을 별도로 두어 장착 가능한 무기 타입과 스킬 셋을 제한한다.
+
+## 📊 캐릭터 스탯 및 레벨링 규칙
+- **Core Stats**:
+  - **HP (Health)**: 생명력. 0이 되면 전투 불능(Die).
+  - **ATK (Attack)**: 공격력. 가해지는 모든 데미지의 기본 계수.
+  - **DEF (Defense)**: 방어력. 받는 데미지를 일정 비율 또는 고정치로 감소.
+  - **SPD (Speed)**: 행동 순서 결정 및 회피율에 영향.
+- **Speed Gap Logic (33원정대 스타일)**: 
+  - 대상과의 SPD 차이가 **20 이상**일 경우, 해당 턴에 1회 추가 행동권을 얻거나 보너스 턴을 가진다.
+- **Leveling**: 
+  - Max Level: 99.
+  - 성장은 ScriptableObject 기반의 `StatGrowthCurve`를 참조하여 선형 또는 곡선형으로 증가시킨다.
+
+## 🛡️ 장비 및 인벤토리 슬롯
+- **Equipment Slots (6개)**:
+  1. **무기 (Weapon)**: 공격력 및 특정 스킬 부여.
+  2. **장신구 1 (Accessory 1)**: 특수 능력치 보너스.
+  3. **장신구 2 (Accessory 2)**: 특수 능력치 보너스.
+  4. **머리 (Head)**: 방어력 및 시야/유틸리티.
+  5. **몸 (Body)**: 주요 방어력 증가.
+  6. **신발 (Shoes)**: SPD 증가 및 회피율 보충.
+- **Custom Reaction**: 특정 캐릭터가 특정 무기나 아이템을 장착/사용할 경우 전용 텍스트 연출을 발생시킨다.
+
+## 🎨 애니메이션 상태 규칙
+- **Animator Naming**: `[CharacterName]_AC` 형식을 유지한다.
+- **Common States**: 
+  - `Idle`: 대기 상태 (오버월드/전투 공용)
+  - `Walk`: 오버월드 이동 (4방향/8방향)
+  - `Attack`: 공격 연출 (전투 시 중앙 이동 후 실행)
+  - `Hurt`: 피격 시 움찔거리는 연출
+  - `Die`: 사망 시 투명화 또는 쓰러짐 연출
+  - `Parry`: 방어/패링 성공 시 특수 모션
+- **Extended**: 캐릭터 고유 스킬 사용 시 `Skill_A`, `Skill_B` 등 개별 애니메이션 상태를 추가한다.
+
+## 🚶 오버월드 행동 규칙
+- **Follower Logic**: 파티원이 있을 경우 델타룬처럼 플레이어 뒤를 일정 간격으로 따라오는 'Snake Follow' 로직을 적용한다.
+- **Interaction Context**: 특정 캐릭터가 파티에 있을 때만 활성화되는 오버월드 상호작용(특정 NPC와의 대화 등)을 지원한다.
+
+## 🔒 원본 에셋 보호 및 확장
+- **Strict Prohibition**: 외부 에셋(Store Assets)의 소스 코드는 직접 수정하지 않는다.
+- **Extension Strategy**: 
+  - `Partial Class`를 사용하여 로직을 분리한다.
+  - 필요 시 `Adapter` 패턴이나 `Wrapper` 클래스를 생성하여 프로젝트에 맞게 변형하여 사용한다.
+- **Data-Driven**: 캐릭터의 스탯이나 대사는 가급적 코드가 아닌 ScriptableObject나 외부 JSON/CSV에서 로드하도록 설계한다.

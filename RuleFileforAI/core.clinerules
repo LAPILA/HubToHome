@@ -1,0 +1,47 @@
+# ⚙️ 코어 시스템 규칙 (Core System Rules)
+
+## 🎯 코어 철학
+- **Data Integrity**: 씬 전환, 저장 및 불러오기 시 데이터 유실 및 참조 깨짐 방지를 최우선 가치로 둔다.
+- **Event-Driven State**: 언더테일/델타룬처럼 수많은 NPC 대화 및 월드 변화를 추적하기 위해 '플래그(Flag) 기반 이벤트 시스템'을 사용한다.
+- **Seamless Experience**: 림버스 컴퍼니 스타일의 자연스러운 BGM 전환과 비동기 씬 로딩으로 끊김 없는 몰입감을 제공한다.
+
+## 🏗️ GlobalDataManager & Event System
+- **Implementation**: `DontDestroyOnLoad`를 적용한 싱글톤(Singleton) 패턴을 사용하며, 데이터의 실제 저장은 `ScriptableObject` 또는 `Serializable Class`를 경유한다.
+- **Event Flag System (Undertale-style)**:
+  - `Dictionary<string, int> eventFlags`를 통해 게임 내 모든 사소한 선택과 상호작용 결과를 저장한다.
+  - NPC 대화나 오브젝트 활성화 여부는 이 플래그 값을 체크하여 결정한다.
+- **Inventory & Quest**: 
+  - 아이템 데이터는 `ItemData(SO)` 리스트로 관리하며, 퀘스트는 명시적인 로그 대신 이벤트 플래그의 조합으로 대화 내용이 변하는 방식을 취한다.
+
+## 💾 세이브/로드 시스템 (Persistence)
+- **Serialization**: `Newtonsoft.Json`을 사용하여 데이터를 JSON 형식으로 저장한다. (복잡한 데이터 구조 대응)
+- **Save Slots**: 
+  - **Manual Slots (3개)**: 언더테일 스타일의 '세이브 포인트' 오브젝트와 상호작용 시에만 저장 가능.
+  - **Auto-Save Slot (1개)**: 씬 전환(Portal 진입) 또는 특정 전투 종료 시 자동으로 덮어씌워진다.
+- **Persistence Scope**: 캐릭터 스탯, 현재 위치(씬 이름 + 좌표), 인벤토리, 위에서 정의한 모든 `eventFlags`.
+
+## 🔊 오디오 매니저 (Limbus-style Transitions)
+- **Structure**: `AudioMixer`를 사용하여 Master / BGM / SFX / Voice 채널을 분리 관리한다.
+- **BGM Phase Transition**:
+  - **Cross-fade**: 두 음원 간의 볼륨을 교차하며 부드럽게 전환.
+  - **Seamless Layering**: 림버스 컴퍼니의 보스전처럼, 같은 템포의 다른 페이즈 곡으로 전환 시 현재 재생 시간을 동기화(Sync)하여 부드럽게 덮어씌운다.
+- **Settings**: 모든 볼륨 설정은 `PlayerPrefs` 또는 세이브 파일에 저장되어 런타임에 즉시 반영되어야 한다.
+
+## 📦 오브젝트 풀링 (ObjectPoolManager)
+- **Management**: `Dictionary<string, Queue<GameObject>>` 형태의 전역 풀을 관리한다.
+- **Targets**: 전투 시 투사체, 타격 이펙트, 데미지 텍스트, 팝업 UI 등 빈번하게 생성/파괴되는 객체.
+- **Optimization**: 풀의 초기 크기는 각 프리팹 데이터에 정의하며, 런타임에 부족할 경우 점진적으로 확장하도록 설계한다.
+
+## 🌐 씬 관리 (SceneLoader)
+- **Async Loading**: `SceneManager.LoadSceneAsync`를 사용하며, 로딩 중 진행률(0~1)을 시각화할 수 있는 기능을 포함한다.
+- **Visual Transitions**:
+  - `CanvasGroup`과 `DOTween`을 이용한 Fade In/Out 연출.
+  - 전투 진입 시에는 특유의 빠른 연출(Flash)을 위한 별도 메서드 제공.
+- **Constants**: 모든 씬 이름은 `SceneName` static class 내 상수로 관리하여 오타를 방지한다.
+
+## ⚡ 공통 최적화 및 코드 원칙
+- **GC Minimization**: 
+  - `Update` 내에서 `LINQ` 사용을 엄격히 금지한다.
+  - 문자열 결합은 `StringBuilder`를 사용하거나, 자주 변하지 않는 값은 캐싱한다.
+- **Caching**: 코루틴(`yield return new WaitForSeconds`) 또는 `GetComponent` 호출은 전역 변수에 캐싱하여 재사용한다.
+- **Error Handling**: 모든 데이터 로드/세이브 프로세스에는 `try-catch` 블록을 구성하여 예외 상황에서도 게임이 멈추지 않게 한다.
