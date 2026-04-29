@@ -77,4 +77,14 @@ public class PositionManager : MonoBehaviour
         }
         return _enemyAttackPos[playerIndex].position;
     }
+
+    public Vector3 GetAttackStagingPos(CharacterBase attacker, CharacterBase target)
+{
+    Transform frontPivot = target.transform.Find("Pivots/Front");
+    
+    if (frontPivot != null) return frontPivot.position;
+
+    float direction = (attacker is PlayerCharacter) ? -1.0f : 1.0f; 
+    return target.transform.position + new Vector3(direction * 1.2f, 0, 0);
+}
 }

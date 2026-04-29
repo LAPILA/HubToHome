@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 using Unity.Cinemachine;
+using UnityEngine.InputSystem;
 using Sirenix.OdinInspector;
 
 /// <summary>
@@ -164,17 +165,56 @@ public class BattleManager : MonoBehaviour
     private IEnumerator TurnCalcRoutine()
     {
         _turnQueue.Clear();
-        List<CharacterBase> allParticipants = new List<CharacterBase>();
-        foreach (var p in _playerParty) if (p != null && p.IsAlive) allParticipants.Add(p);
-        foreach (var e in _enemies)     if (e != null && e.IsAlive) allParticipants.Add(e);
-        allParticipants.Sort((a, b) => b.SPD.CompareTo(a.SPD));
-        foreach (var chara in allParticipants) _turnQueue.Add(chara);
+
+        // 살아있는 모든 참가자 수집
+        List<CharacterBase> aliveChars = new List<CharacterBase>();
+        foreach (var p in _playerParty) if (p != null && p.IsAlive) aliveChars.Add(p);
+        foreach (var e in _enemies)     if (e != null && e.IsAlive) aliveChars.Add(e);
+
+        if (aliveChars.Count == 0)
+        {
+            yield return null;
+            AdvanceTurn();
+            yield break;
+        }
+
+        Dictionary<CharacterBase, float> simTime = new Dictionary<CharacterBase, float>();
         
+        foreach (var c in aliveChars)
+        {
+            float randomFactor = UnityEngine.Random.Range(0.95f, 1.05f);
+            simTime[c] = (1000f / Mathf.Max(1, c.SPD)) * randomFactor;
+        }
+
+        for (int i = 0; i < 8; i++)
+        {
+            CharacterBase nextActor = null;
+            float minTime = float.MaxValue;
+
+            foreach (var c in aliveChars)
+            {
+                if (simTime[c] < minTime)
+                {
+                    minTime = simTime[c];
+                    nextActor = c;
+                }
+            }
+
+            _turnQueue.Add(nextActor);
+
+            foreach (var c in aliveChars)
+            {
+                simTime[c] -= minTime;
+            }
+
+            float randomFactor = UnityEngine.Random.Range(0.95f, 1.05f);
+            simTime[nextActor] += (1000f / Mathf.Max(1, nextActor.SPD)) * randomFactor;
+        }
+
         _currentActorIndex = 0;
-        int displayCount = Mathf.Min(_turnQueue.Count, 8);
-        var display = _turnQueue.GetRange(0, displayCount);
         
-        OnTurnQueueUpdated?.Invoke(display);
+        // UI 컨트롤러로 완성된 8턴 대기열 전송
+        OnTurnQueueUpdated?.Invoke(_turnQueue);
 
         yield return _waitShort;
         AdvanceTurn();
@@ -252,7 +292,7 @@ public class BattleManager : MonoBehaviour
         ChangeState(BattleState.PlayerActionSelect);
     }
 
-    // ── 플레이어 공격 ─────────────────────────────────────────
+    // ── 플레이어 일반 공격 (이동 및 애니메이션 동기화) ──────────
     private IEnumerator ExecuteAttack(PlayerCharacter actor, int targetIndex)
     {
         ChangeState(BattleState.ActionExecute);
@@ -264,39 +304,37 @@ public class BattleManager : MonoBehaviour
 
         var target = _enemies[targetIndex];
         var pm     = PositionManager.Instance;
+        var actorCtrl = actor.GetComponent<PlayerController>();
 
-        // 근거리: 중앙으로 이동
-        if (!target.Data.IsLargeEnemy)
-        {
-            yield return actor.transform
-                .DOMove(pm.GetCenterPos(), 0.25f)
-                .SetEase(Ease.OutQuad)
-                .WaitForCompletion();
-        }
+        // 1. 돌진
+        Transform frontPivot = target.transform.Find("Pivots/Front");
+        Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(-1.2f, 0, 0);
 
-        // 애니메이션
-        actor.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerController.HashAttack);
-        yield return new WaitForSeconds(0.1f);
+        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+        yield return actor.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
 
-        // 데미지
-        int dmg = target.TakeDamage(actor.ATK);
-        _impulseSource?.GenerateImpulse(_hitImpulse);
-        OnDamageDealt?.Invoke(target, dmg, false);
-
+        // 2. 타격
+        actorCtrl?.PlayBattleAnim(PlayerController.HashAttack);
         yield return new WaitForSeconds(0.15f);
 
-        // 복귀
+        int dmg = target.TakeDamage(actor.ATK);
+        _impulseSource?.GenerateImpulse(_hitImpulse);
+        OnDamageDealt?.Invoke(target, dmg, false); 
+
+        yield return new WaitForSeconds(0.3f);
+
+        // 3. 복귀
         int idx = _playerParty.IndexOf(actor);
-        yield return actor.transform
-            .DOMove(pm.GetPlayerDefaultPos(idx), 0.25f)
-            .SetEase(Ease.InQuad)
-            .WaitForCompletion();
+        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+        yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
 
         if (CheckVictory()) { ChangeState(BattleState.BattleEnd); yield break; }
         AdvanceTurn();
     }
 
     // ── 스킬 (QTE 연동) ───────────────────────────────────────
+    // ── 스킬 (플레이어 공격 시 위력 강화 QTE) ───────────────────
     private IEnumerator ExecuteSkill(PlayerCharacter actor, int targetIndex)
     {
         ChangeState(BattleState.ActionExecute);
@@ -307,18 +345,26 @@ public class BattleManager : MonoBehaviour
         }
 
         var target = _enemies[targetIndex];
+        var pm     = PositionManager.Instance;
+        var actorCtrl = actor.GetComponent<PlayerController>();
 
-        // 스킬 QTE 시작 (UI는 OnStateChanged 이벤트로 표시)
-        bool qteResolved = false;
-        QTEManager.QTEGrade skillGrade = QTEManager.QTEGrade.Miss;
+        // 🚨 1. 스킬 QTE 시작 (오직 여기서만 게이지 바 UI가 나타남)
+        bool qteFinished = false;
+        QTEManager.QTEGrade resultGrade = QTEManager.QTEGrade.Miss;
 
-        QTEManager.Instance.OnSkillQTECompleted += OnSkillResult;
-        QTEManager.Instance.StartSkillQTE();
+        QTEManager.Instance.StartSkillQTE(1.0f); 
+        Action<QTEManager.QTEGrade> onComplete = null;
+        onComplete = (grade) => {
+            resultGrade = grade;
+            qteFinished = true;
+            QTEManager.Instance.OnSkillQTECompleted -= onComplete;
+        };
+        QTEManager.Instance.OnSkillQTECompleted += onComplete;
 
-        yield return new WaitUntil(() => qteResolved);
+        yield return new WaitUntil(() => qteFinished);
 
-        // 등급별 데미지 배율
-        float mult = skillGrade switch
+        // 🚨 2. 등급별 데미지 배율 결정
+        float mult = resultGrade switch
         {
             QTEManager.QTEGrade.Perfect => 2.0f,
             QTEManager.QTEGrade.Great   => 1.5f,
@@ -327,22 +373,32 @@ public class BattleManager : MonoBehaviour
             _                           => 0.5f,
         };
 
+        // 🚨 3. 이동 및 공격 연출 (ExecuteAttack과 동일 템포)
+        Transform frontPivot = target.transform.Find("Pivots/Front");
+        Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(-1.2f, 0, 0);
+
+        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+        yield return actor.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
+
+        actorCtrl?.PlayBattleAnim(PlayerController.HashAttack);
+        yield return new WaitForSeconds(0.15f);
+
+        // 결과 적용
         int dmg = target.TakeDamage(Mathf.RoundToInt(actor.ATK * mult));
-        bool isCrit = skillGrade == QTEManager.QTEGrade.Perfect;
+        bool isCrit = resultGrade == QTEManager.QTEGrade.Perfect;
         _impulseSource?.GenerateImpulse(isCrit ? _hitImpulse * 1.5f : _hitImpulse);
         OnDamageDealt?.Invoke(target, dmg, isCrit);
 
-        yield return _waitShort;
+        yield return new WaitForSeconds(0.3f);
+
+        // 복귀
+        int idx = _playerParty.IndexOf(actor);
+        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+        yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
 
         if (CheckVictory()) { ChangeState(BattleState.BattleEnd); yield break; }
         AdvanceTurn();
-
-        void OnSkillResult(QTEManager.QTEGrade g)
-        {
-            skillGrade  = g;
-            qteResolved = true;
-            QTEManager.Instance.OnSkillQTECompleted -= OnSkillResult;
-        }
     }
 
     // ── 아이템 (TODO) ─────────────────────────────────────────
@@ -400,118 +456,92 @@ public class BattleManager : MonoBehaviour
     }
 
     // ── 적 근거리 단일 공격 ───────────────────────────────────
+    // ── 적 근거리 단일 공격 및 실시간 방어 ──────────────────────
     private IEnumerator EnemyMeleeRoutine(EnemyCharacter enemy, PositionManager pm)
     {
         int targetIdx = GetAlivePlayerIndex();
         if (targetIdx < 0) yield break;
 
         var target = _playerParty[targetIdx];
+        var targetCtrl = target.GetComponent<PlayerController>();
 
-        // 적이 아군 앞으로 이동
-        if (!enemy.Data.IsLargeEnemy)
+        // 1. 적 다가옴 (BattleMove)
+        enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
+        Transform frontPivot = target.transform.Find("Pivots/Front");
+        Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(1.2f, 0, 0);
+        yield return enemy.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
+
+        // 2. 적 공격 시작 (선딜레이 및 입력 감지 루프)
+        float defenseWindow = 0.8f; // 적 공격 전체 판정 시간
+        float elapsed = 0f;
+        bool defensed = false;
+
+        enemy.PlayBattleAnim(EnemyCharacter.HashAttack); // 적 공격 애니메이션 1회 실행
+
+        while (elapsed < defenseWindow)
         {
-            yield return enemy.transform
-                .DOMove(pm.GetEnemyAttackPos(targetIdx), 0.25f)
-                .SetEase(Ease.OutQuad)
-                .WaitForCompletion();
+            elapsed += Time.deltaTime;
+
+            // Z(패링): 타이밍이 맞아야 함
+            if (Keyboard.current.zKey.wasPressedThisFrame)
+            {
+                targetCtrl.ExecuteParry(); // 실패해도 애니메이션은 실행됨
+                if (elapsed >= 0.3f && elapsed <= 0.6f) // 패링 유효 프레임
+                {
+                    targetCtrl.PlayParryEffect();
+                    defensed = true;
+                    break;
+                }
+            }
+            // C(회피), Space(점프): 누르는 즉시 연출 및 무적 판정
+            if (Keyboard.current.cKey.wasPressedThisFrame)
+            {
+                targetCtrl.ExecuteDodge();
+                defensed = true;
+                break;
+            }
+            if (Keyboard.current.spaceKey.wasPressedThisFrame)
+            {
+                targetCtrl.ExecuteJump();
+                defensed = true;
+                break;
+            }
+            yield return null;
         }
 
-        // 적 공격 애니메이션
-        enemy.PlayBattleAnim(Animator.StringToHash("Attack"));
-        yield return new WaitForSeconds(0.1f);
-
-        // 방어 QTE
-        float attackDelay = 1.5f;
-        bool  resolved    = false;
-        var   defInput    = DefenseInput.None;
-        var   defGrade    = QTEManager.QTEGrade.Miss;
-
-        QTEManager.Instance.StartDefenseQTE(attackDelay, enemy.Data.QTEDifficultyMultiplier,
-            (inp, grd) => { defInput = inp; defGrade = grd; resolved = true; });
-
-        yield return new WaitUntil(() => resolved);
-
-        // 결과 UI 표시
-        BattleUIController.Instance?.ShowDefenseResult(defGrade, defInput);
-
-        // 데미지 계산
-        int finalDmg = CalcDefenseDamage(enemy.ATK, defInput, defGrade);
-
-        // MP 회복
-        if (defInput == DefenseInput.Parry && defGrade == QTEManager.QTEGrade.Perfect)
-            AddMP(target, _mpOnParryPerfect);
-        else if (defGrade >= QTEManager.QTEGrade.Good)
-            AddMP(target, _mpOnDefenseSuccess);
-
-        // 데미지 적용
-        if (finalDmg > 0)
+        // 3. 결과 적용
+        if (!defensed)
         {
-            target.TakePureDamage(finalDmg);
+            // 방어 실패 시에만 데미지
+            target.TakePureDamage(enemy.ATK);
+            targetCtrl.PlayHurtEffect();
             _impulseSource?.GenerateImpulse(_hitImpulse);
-            target.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerController.HashHurt);
+            OnDamageDealt?.Invoke(target, enemy.ATK, false);
         }
         else
         {
+            // 성공 시 임펄스만 살짝 (타격감)
             _impulseSource?.GenerateImpulse(_missImpulse);
-            target.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerController.HashParry);
         }
 
-        OnDamageDealt?.Invoke(target, finalDmg, false);
+        yield return new WaitForSeconds(0.4f);
 
-        yield return _waitMedium;
-
-        // 복귀
-        if (!enemy.Data.IsLargeEnemy)
-        {
-            int eIdx = _enemies.IndexOf(enemy);
-            yield return enemy.transform
-                .DOMove(pm.GetEnemyDefaultPos(eIdx), 0.25f)
-                .SetEase(Ease.InQuad)
-                .WaitForCompletion();
-        }
-
-        yield return _waitShort;
+        // 4. 복귀
+        enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
+        yield return enemy.transform.DOMove(pm.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
+        enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
     }
 
-    // ── 적 AoE 공격 ───────────────────────────────────────────
     private IEnumerator EnemyAoERoutine(EnemyCharacter enemy, EnemyAttackType type)
     {
-        float attackDelay = 1.5f;
-        int   aliveCount  = 0;
-        foreach (var p in _playerParty) if (p.IsAlive) aliveCount++;
+        yield return new WaitForSeconds(1.0f);
 
-        // 전원 동시 QTE
-        bool[]        resolved  = new bool[aliveCount];
-        DefenseInput[] inputs   = new DefenseInput[aliveCount];
-        QTEManager.QTEGrade[] grades = new QTEManager.QTEGrade[aliveCount];
-
-        int i = 0;
         foreach (var p in _playerParty)
         {
             if (!p.IsAlive) continue;
-            int captured = i++;
-            QTEManager.Instance.StartDefenseQTE(attackDelay, enemy.Data.QTEDifficultyMultiplier,
-                (inp, grd) => { inputs[captured] = inp; grades[captured] = grd; resolved[captured] = true; });
-        }
-
-        yield return new WaitUntil(() => System.Array.TrueForAll(resolved, r => r));
-
-        // 각 플레이어에 데미지 적용
-        int pi = 0;
-        foreach (var p in _playerParty)
-        {
-            if (!p.IsAlive) continue;
-            int dmg = CalcDefenseDamage(enemy.ATK, inputs[pi], grades[pi]);
-            if (dmg > 0)
-            {
-                p.TakePureDamage(dmg);
-                OnDamageDealt?.Invoke(p, dmg, false);
-            }
-            if (inputs[pi] == DefenseInput.Parry && grades[pi] == QTEManager.QTEGrade.Perfect)
-                AddMP(p, _mpOnParryPerfect);
-            else if (grades[pi] >= QTEManager.QTEGrade.Good)
-                AddMP(p, _mpOnDefenseSuccess);
-            pi++;
+            p.TakePureDamage(enemy.ATK);
+            p.GetComponent<PlayerController>()?.PlayHurtEffect();
+            OnDamageDealt?.Invoke(p, enemy.ATK, false);
         }
 
         _impulseSource?.GenerateImpulse(_hitImpulse);

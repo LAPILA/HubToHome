@@ -94,33 +94,20 @@ public class BattleUIController : MonoBehaviour
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
     private readonly List<GameObject> _turnIcons = new List<GameObject>();
+    private readonly Dictionary<EnemyCharacter, Transform> _enemyTopPivots = new Dictionary<EnemyCharacter, Transform>();
 
     private int _selectedEnemyIndex = 0;
     private Tweener _cursorBobTween;
 
     // ── 초기화 ────────────────────────────────────────────────
     private void Start()
-{
-    // OnEnable에서 bm이 null이라서 구독에 실패했을 경우를 대비한 안전장치
-    var bm = BattleManager.Instance;
-    if (bm != null)
     {
-        // 중복 구독 방지를 위해 한번 빼고 다시 더함
-        bm.OnBattleStarted -= OnBattleStarted;
-        bm.OnBattleStarted += OnBattleStarted;
-        
-        bm.OnStateChanged -= OnStateChanged;
-        bm.OnStateChanged += OnStateChanged;
-
-        bm.OnTurnQueueUpdated -= OnTurnQueueUpdated;
-        bm.OnTurnQueueUpdated += OnTurnQueueUpdated;
-
-        bm.OnPlayerTurnStarted -= OnPlayerTurnStarted;
-        bm.OnPlayerTurnStarted += OnPlayerTurnStarted;
-        
-        Debug.Log("<color=cyan>[BattleUI] 이벤트 구독 성공 (Start)</color>");
+        var bm = BattleManager.Instance;
+        if (bm != null)
+        {
+            OnEnable();
+        }
     }
-}
     private void OnEnable()
     {
         var bm = BattleManager.Instance;
@@ -160,8 +147,17 @@ public class BattleUIController : MonoBehaviour
         {
             if (_selectedEnemyIndex < _enemies.Count && _enemies[_selectedEnemyIndex] != null)
             {
-                var worldPos = _enemies[_selectedEnemyIndex].transform.position + _cursorOffset;
-                var screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
+                var targetEnemy = _enemies[_selectedEnemyIndex];
+                
+                // 🚨 최적화: 매 프레임 찾지 않고, 미리 저장해둔 캐시에서 꺼내옵니다. O(1)의 속도!
+                _enemyTopPivots.TryGetValue(targetEnemy, out Transform topPivot);
+                
+                Vector3 worldPos = (topPivot != null) ? topPivot.position : targetEnemy.transform.position + _cursorOffset;
+                Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
+                
+                float bobOffset = Mathf.Sin(Time.time * _cursorBobSpeed * 15f) * _cursorBobHeight;
+                screenPos.y += bobOffset;
+
                 _enemyCursor.position = Vector3.Lerp(_enemyCursor.position, screenPos, Time.deltaTime * 15f);
             }
         }
@@ -183,7 +179,7 @@ public class BattleUIController : MonoBehaviour
             {
                 _isTargeting = false;
                 _enemyCursor.gameObject.SetActive(false);
-                BattleManager.Instance.CancelTargetSelection(); // 메뉴 다시 열기
+                BattleManager.Instance.CancelTargetSelection(); 
             }
         }
     }
@@ -224,6 +220,15 @@ public class BattleUIController : MonoBehaviour
         {
             if (i < party.Count) _partySlots[i].Init(party[i]);
             else                 _partySlots[i].Hide();
+        }
+
+        _enemyTopPivots.Clear();
+        foreach (var enemy in enemies)
+        {
+            if (enemy != null)
+            {
+                _enemyTopPivots[enemy] = GetPivot(enemy.transform, "Top");
+            }
         }
 
         // 커서 초기 숨김
@@ -305,9 +310,6 @@ public class BattleUIController : MonoBehaviour
         };
 
         SetTurnLabel($"{enemy.Data?.EnemyName ?? "적"} — {attackName}");
-
-        // DefenseQTEUI: 경고 + 카운트다운 바 표시
-        _defenseQTEUI?.ShowQTE(1.5f, attackName);
     }
 
     private void OnDamageDealt(CharacterBase target, int damage, bool isCrit)
@@ -353,25 +355,17 @@ public class BattleUIController : MonoBehaviour
         if (_enemyCursor == null) return;
         _selectedEnemyIndex = enemyIndex;
 
-        // 먼저 월드 좌표로 위치 설정 후 활성화 (깜빡임 방지)
         if (_enemies != null && enemyIndex < _enemies.Count && _enemies[enemyIndex] != null)
         {
-            var worldPos  = _enemies[enemyIndex].transform.position + _cursorOffset;
+            var targetEnemy = _enemies[enemyIndex];
+            Transform topPivot = GetPivot(targetEnemy.transform, "Top");
+            Vector3 worldPos = (topPivot != null) ? topPivot.position : targetEnemy.transform.position + _cursorOffset;
+            
             var screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
-            _enemyCursor.position = screenPos;
+            _enemyCursor.position = screenPos; // Lerp 시작점 갱신
         }
 
         _enemyCursor.gameObject.SetActive(true);
-
-        // bob 애니메이션: anchoredPosition 대신 localPosition Y 오프셋으로 처리
-        // (Update에서 position을 덮어쓰므로 DOAnchorPosY 대신 DOLocalMoveY 사용)
-        _cursorBobTween?.Kill();
-        float baseY = _enemyCursor.localPosition.y;
-        _cursorBobTween = _enemyCursor
-            .DOLocalMoveY(baseY + _cursorBobHeight, _cursorBobSpeed)
-            .SetLoops(-1, LoopType.Yoyo)
-            .SetEase(Ease.InOutSine)
-            .SetRelative(false);
     }
 
     // ── 스킬 QTE 표시 (BattleManager에서 호출) ────────────────
@@ -402,6 +396,17 @@ public class BattleUIController : MonoBehaviour
             _turnLabel.transform.DOKill();
             _turnLabel.transform.DOPunchScale(Vector3.one * 0.15f, 0.2f, 5, 0.5f);
         });
+    }
+
+    /// <summary>계층 구조가 얼마나 깊든 이름으로 피벗을 무조건 찾아냅니다.</summary>
+    private Transform GetPivot(Transform root, string pivotName)
+    {
+        Transform[] allChildren = root.GetComponentsInChildren<Transform>(true);
+        foreach (var child in allChildren)
+        {
+            if (child.name == pivotName) return child;
+        }
+        return null;
     }
 }
 

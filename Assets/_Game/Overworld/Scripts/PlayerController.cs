@@ -22,16 +22,20 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void SetBattleMode(bool active)
     {
+        if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+
         if (active)
         {
             State = PlayerState.InBattle;
-            if (_rb != null) _rb.linearVelocity = Vector2.zero;
-            // BattleIdle 애니메이션으로 전환
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            _rb.linearVelocity = Vector2.zero;
+            
             if (_anim != null) _anim.SetTrigger(HashBattleIdle);
         }
         else
         {
             State = PlayerState.Idle;
+            _rb.bodyType = RigidbodyType2D.Dynamic;
         }
     }
 
@@ -55,7 +59,7 @@ public class PlayerController : MonoBehaviour
         }
     }
     private SpriteRenderer _spriteRenderer;
-
+    private Vector3 _originalLocalPos;
     // ── 입력 ──────────────────────────────────────────────────
     private InputAction _moveAction;
     private InputAction _confirmAction;
@@ -119,6 +123,7 @@ public class PlayerController : MonoBehaviour
         _confirmAction.Enable();
         _cancelAction.Enable();
         _menuAction.Enable();
+        _originalLocalPos = transform.localPosition;
     }
 
     private void Start()
@@ -238,34 +243,6 @@ public class PlayerController : MonoBehaviour
 
     // ── DOTween 연출 ──────────────────────────────────────────
 
-    /// <summary>패링: 청록 플래시 + 앞으로 펀치</summary>
-    private void PlayParryEffect()
-    {
-        if (_spriteRenderer == null) return;
-        DOTween.Kill(transform);
-        DOTween.Kill(_spriteRenderer);
-
-        _spriteRenderer.DOColor(_parryFlashColor, _parryFlashDuration)
-            .SetLoops(2, LoopType.Yoyo)
-            .SetEase(Ease.Flash);
-
-        transform.DOPunchPosition(Vector3.right * 0.12f, _parryFlashDuration * 3f, 1, 0.5f);
-    }
-
-    /// <summary>피격: 빨간 플래시 + 위치 쉐이크</summary>
-    private void PlayHurtEffect()
-    {
-        if (_spriteRenderer == null) return;
-        DOTween.Kill(transform);
-        DOTween.Kill(_spriteRenderer);
-
-        _spriteRenderer.DOColor(_hurtFlashColor, _hurtFlashDuration)
-            .SetLoops(6, LoopType.Yoyo)
-            .SetEase(Ease.Linear);
-
-        transform.DOShakePosition(_hurtShakeDuration, _hurtShakeStrength, 20, 90f, false, true);
-    }
-
     /// <summary>사망: 흰 플래시 → 아래로 가라앉으며 페이드 아웃</summary>
     private void PlayDieEffect()
     {
@@ -329,7 +306,55 @@ public class PlayerController : MonoBehaviour
         
         FacingDirection = GlobalDataManager.Instance.LookingDir;
     }
+    // ── 전투 전용 액션 (DOTween) ──────────────────────────────
 
+    /// <summary>회피 (C키): 뒤로 빠르게 물러났다 돌아옴</summary>
+    public void ExecuteDodge()
+{
+    DOTween.Kill(transform);
+    transform.DOLocalMoveX(transform.localPosition.x - 1.5f, 0.15f)
+        .SetEase(Ease.OutExpo)
+        .SetLoops(2, LoopType.Yoyo);
+}
+
+    /// <summary>점프 (Space키): 애니메이션 없이 Y축 포물선</summary>
+    public void ExecuteJump()
+    {
+    DOTween.Kill(transform);
+    // 현재 위치에서 위쪽(+Y)으로 이동했다가 복귀
+    transform.DOLocalMoveY(transform.localPosition.y + 2.0f, 0.2f)
+        .SetEase(Ease.OutQuad)
+        .SetLoops(2, LoopType.Yoyo);
+    }
+
+    public void ExecuteParry()
+    {
+        PlayBattleAnim(HashParry); 
+    }
+
+    /// <summary>패링 성공 연출</summary>
+    public void PlayParryEffect()
+    {
+        if (_spriteRenderer == null) return;
+        _spriteRenderer.DOKill();
+        // 청록색 플래시
+        _spriteRenderer.DOColor(Color.cyan, 0.05f).SetLoops(2, LoopType.Yoyo);
+        // 앞으로 짧고 강하게 툭!
+        transform.DOPunchPosition(Vector3.right * 0.3f, 0.2f, 10, 1f);
+    }
+
+    /// <summary>피격 연출: 빨간색 플래시 + 움찔(Shake)</summary>
+    public void PlayHurtEffect()
+    {
+        if (_spriteRenderer == null) return;
+        _spriteRenderer.DOKill();
+        transform.DOKill();
+
+        // 빨간색으로 깜빡임
+        _spriteRenderer.DOColor(Color.red, 0.05f).SetLoops(4, LoopType.Yoyo);
+        // 움찔거리는 쉐이크 효과
+        transform.DOShakePosition(0.2f, 0.2f, 30, 90f);
+    }
     // ═══════════════════════════════════════════════════════════
     // ── Odin Inspector 애니메이션 테스트 (에디터 전용) ────────
     // ═══════════════════════════════════════════════════════════
