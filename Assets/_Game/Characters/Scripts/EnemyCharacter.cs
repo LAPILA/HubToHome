@@ -5,6 +5,14 @@ using UnityEngine;
 /// </summary>
 public class EnemyCharacter : CharacterBase
 {
+    // ── 애니메이터 해시 (PlayerController와 동일한 파라미터 이름 사용) ──
+    private static readonly int HashAttack     = Animator.StringToHash("Attack");
+    private static readonly int HashHurt       = Animator.StringToHash("Hurt");
+    private static readonly int HashDie        = Animator.StringToHash("Die");
+    private static readonly int HashBattleIdle = Animator.StringToHash("BattleIdle");
+
+    private Animator _animator;
+
     [Header("Enemy Data")]
     public EnemyData Data;
 
@@ -12,6 +20,8 @@ public class EnemyCharacter : CharacterBase
     protected override void Awake()
     {
         base.Awake();
+        _animator = GetComponent<Animator>();
+
         if (Data != null)
         {
             MaxHP     = Data.MaxHP;
@@ -20,6 +30,17 @@ public class EnemyCharacter : CharacterBase
             SPD       = Data.SPD;
             CurrentHP = MaxHP;
         }
+
+        // 전투 시작 시 BattleIdle 상태로 전환
+        if (_animator != null) _animator.SetTrigger(HashBattleIdle);
+    }
+
+    // ── 애니메이션 ────────────────────────────────────────────
+    /// <summary>적 애니메이터 트리거를 재생합니다.</summary>
+    public void PlayBattleAnim(int triggerHash)
+    {
+        if (_animator == null) return;
+        _animator.SetTrigger(triggerHash);
     }
 
     // ── AI 행동 선택 ──────────────────────────────────────────
@@ -63,8 +84,11 @@ public class EnemyCharacter : CharacterBase
 
     protected override void OnDamageTaken(int damage)
     {
-        // TODO: Hurt 애니메이션 트리거
         Debug.Log($"[EnemyCharacter] {(Data != null ? Data.EnemyName : name)} took {damage} damage. HP: {CurrentHP}/{MaxHP}");
+        if (IsAlive)
+            PlayBattleAnim(HashHurt);
+        else
+            PlayBattleAnim(HashDie);
     }
 }
 

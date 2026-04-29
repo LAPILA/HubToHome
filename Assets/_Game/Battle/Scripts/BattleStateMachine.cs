@@ -1,24 +1,23 @@
 /// <summary>
-/// 전투 상태 열거형.
-/// BattleManager가 이 상태를 기반으로 흐름을 제어합니다.
+/// 전투 상태 열거형 (battle.clinerules 기반)
 /// </summary>
 public enum BattleState
 {
-    Idle,           // 초기 대기
-    Intro,          // 전투 진입 연출
-    PlayerTurn,     // 플레이어 메뉴 선택
-    ActionPhase,    // 공격/스킬 실행 및 QTE
-    EnemyTurn,      // 적 행동 및 방어 QTE
-    Result,         // 전투 결과 (승리/패배)
+    Init,               // 초기화 (씬 로드 직후)
+    TurnCalc,           // 턴 대기열 정렬 (SPD 기반)
+    PlayerActionSelect, // 플레이어 커맨드 입력 대기
+    ActionExecute,      // 공격/스킬 연출 및 QTE
+    EnemyAction,        // 적 행동 및 방어 QTE
+    BattleEnd,          // 전투 종료 (승리/패배)
 }
 
 /// <summary>
-/// 플레이어 메뉴 선택 열거형
+/// 플레이어 커맨드 열거형 (화살표 키 전용)
 /// </summary>
 public enum PlayerMenuAction
 {
-    Attack,
-    Skill,
+    Attack, // Fight
+    Skill,  // Magic
     Item,
     Run,
 }
@@ -29,7 +28,17 @@ public enum PlayerMenuAction
 public enum DefenseInput
 {
     None,
-    Parry,   // Z키 - 패링
-    Dodge,   // C키 - 회피
-    Jump,    // Space - 점프
+    Parry,  // Z — 패링 (MP 회복 + 데미지 0)
+    Dodge,  // C — 회피
+    Jump,   // Space — 점프
+}
+
+/// <summary>
+/// 적 공격 유형 — 방어 시스템 분기에 사용
+/// </summary>
+public enum EnemyAttackType
+{
+    MeleeClose,     // 근거리 단일: 적이 EnemyAttackPos로 이동, 1x1 격자, QTE
+    RangedAoE,      // 원거리/장판: 격자 NxM 확장, 화살표 이동 회피
+    AoEAll,         // 전체 공격: 1x1 고정, 전원 동시 QTE
 }

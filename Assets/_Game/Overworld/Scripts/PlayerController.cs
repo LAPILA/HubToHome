@@ -13,8 +13,27 @@ using Sirenix.OdinInspector;
 public class PlayerController : MonoBehaviour
 {
     // ── 플레이어 상태 ─────────────────────────────────────────
-    public enum PlayerState { Idle, Moving, Interacting, InMenu }
+    public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
     public PlayerState State { get; private set; } = PlayerState.Idle;
+
+    /// <summary>
+    /// 전투 씬에서 이동/상호작용 입력을 완전히 잠급니다.
+    /// BattleManager.Start()에서 호출하세요.
+    /// </summary>
+    public void SetBattleMode(bool active)
+    {
+        if (active)
+        {
+            State = PlayerState.InBattle;
+            if (_rb != null) _rb.linearVelocity = Vector2.zero;
+            // BattleIdle 애니메이션으로 전환
+            if (_anim != null) _anim.SetTrigger(HashBattleIdle);
+        }
+        else
+        {
+            State = PlayerState.Idle;
+        }
+    }
 
     // ── 이동 설정 ─────────────────────────────────────────────
     [Header("Movement")]
@@ -122,7 +141,7 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (State == PlayerState.Interacting || State == PlayerState.InMenu)
+        if (State == PlayerState.Interacting || State == PlayerState.InMenu || State == PlayerState.InBattle)
         {
             _rb.linearVelocity = Vector2.zero;
             return;

@@ -12,6 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3eba3bde5818ed94ba397256558aaa34, type: 3}
   m_Name: DB_Slime
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
   EnemyName: Slime
   Portrait: {fileID: 1978778067983403588, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
   MaxHP: 30

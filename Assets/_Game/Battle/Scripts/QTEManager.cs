@@ -2,10 +2,16 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Sirenix.OdinInspector;
 
 /// <summary>
 /// QTE(Quick Time Event) 처리 매니저.
-/// 타이밍 바(Timing) / 연타(Mashing) 두 가지 타입을 지원합니다.
+/// 
+/// 지원 QTE 종류:
+/// 1. DefenseQTE  — 적 근거리 공격 시 Z/C/Space 타이밍 입력 (패링/회피/점프)
+/// 2. SkillQTE    — 스킬 사용 시 원형 Fill 타이밍 입력 (Perfect/Great/Bad)
+/// 
+/// 패링(Z) Perfect 성공 시 MP 회복량을 BattleManager에 이벤트로 전달합니다.
 /// </summary>
 public class QTEManager : MonoBehaviour
 {
@@ -15,23 +21,38 @@ public class QTEManager : MonoBehaviour
     public enum QTEGrade { Miss, Bad, Good, Great, Perfect }
 
     // ── 이벤트 ────────────────────────────────────────────────
-    public event Action<QTEGrade> OnQTECompleted;
+    /// <summary>스킬 QTE 완료 시 발생 (등급 전달)</summary>
+    public event Action<QTEGrade> OnSkillQTECompleted;
 
-    // ── 설정 ──────────────────────────────────────────────────
-    [Header("Timing QTE Settings")]
-    [SerializeField] private float _timingWindowPerfect = 0.08f;
-    [SerializeField] private float _timingWindowGreat   = 0.15f;
-    [SerializeField] private float _timingWindowGood    = 0.25f;
+    // ── 방어 QTE 설정 ─────────────────────────────────────────
+    [BoxGroup("Defense QTE"), LabelWidth(160)]
+    [Tooltip("Perfect 판정 구간 (0~1, 타이머 끝 기준 남은 비율)")]
+    [SerializeField, Range(0f, 0.3f)] private float _perfectWindow = 0.12f;
 
-    [Header("Mashing QTE Settings")]
-    [SerializeField] private int   _mashTargetCount     = 10;
-    [SerializeField] private float _mashTimeLimit       = 3f;
+    [BoxGroup("Defense QTE"), LabelWidth(160)]
+    [SerializeField, Range(0f, 0.4f)] private float _greatWindow   = 0.22f;
+
+    [BoxGroup("Defense QTE"), LabelWidth(160)]
+    [SerializeField, Range(0f, 0.6f)] private float _goodWindow    = 0.40f;
+
+    // ── 스킬 QTE 설정 ─────────────────────────────────────────
+    [BoxGroup("Skill QTE"), LabelWidth(160)]
+    [Tooltip("원형 Fill이 이동하는 총 시간")]
+    [SerializeField] private float _skillQTEDuration = 2f;
+
+    [BoxGroup("Skill QTE"), LabelWidth(160)]
+    [SerializeField, Range(0f, 0.15f)] private float _skillPerfectWindow = 0.08f;
+
+    [BoxGroup("Skill QTE"), LabelWidth(160)]
+    [SerializeField, Range(0f, 0.25f)] private float _skillGreatWindow   = 0.15f;
+
+    [BoxGroup("Skill QTE"), LabelWidth(160)]
+    [SerializeField, Range(0f, 0.4f)]  private float _skillGoodWindow    = 0.25f;
 
     // ── 상태 ──────────────────────────────────────────────────
     public bool IsActive { get; private set; } = false;
 
-    // 캐싱
-    private WaitForEndOfFrame _waitEOF = new WaitForEndOfFrame();
+    private readonly WaitForEndOfFrame _waitEOF = new WaitForEndOfFrame();
 
     private void Awake()
     {
@@ -39,116 +60,32 @@ public class QTEManager : MonoBehaviour
         Instance = this;
     }
 
-    // ── 타이밍 QTE 시작 ───────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════
+    // ── 방어 QTE (적 근거리 단일 공격) ───────────────────────
+    // ═══════════════════════════════════════════════════════════
+
     /// <summary>
-    /// 타이밍 바 QTE를 시작합니다.
+    /// 적 공격 타이밍에 Z/C/Space 입력을 감지합니다.
     /// </summary>
-    /// <param name="duration">바가 이동하는 총 시간</param>
-    /// <param name="difficultyMultiplier">EnemyData의 QTE 난이도 계수</param>
-    public void StartTimingQTE(float duration, float difficultyMultiplier = 1f)
+    /// <param name="attackDelay">공격까지의 대기 시간 (초)</param>
+    /// <param name="difficultyMult">EnemyData.QTEDifficultyMultiplier</param>
+    /// <param name="onResult">결과 콜백 (DefenseInput, QTEGrade)</param>
+    public void StartDefenseQTE(float attackDelay, float difficultyMult, Action<DefenseInput, QTEGrade> onResult)
     {
-        if (IsActive) return;
-        StartCoroutine(TimingQTERoutine(duration, difficultyMultiplier));
-    }
-
-    private IEnumerator TimingQTERoutine(float duration, float difficultyMultiplier)
-    {
-        IsActive = true;
-        float elapsed = 0f;
-        bool inputReceived = false;
-        QTEGrade grade = QTEGrade.Miss;
-
-        // TODO: BattleUI에 타이밍 바 표시 요청
-
-        while (elapsed < duration && !inputReceived)
+        if (IsActive)
         {
-            elapsed += Time.deltaTime;
-
-            // Z키 입력 감지
-            if (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame)
-            {
-                inputReceived = true;
-                float normalizedTime = elapsed / duration;
-                float distFromCenter = Mathf.Abs(normalizedTime - 0.5f) * 2f; // 0=중앙, 1=끝
-
-                float perfect = _timingWindowPerfect * difficultyMultiplier;
-                float great   = _timingWindowGreat   * difficultyMultiplier;
-                float good    = _timingWindowGood    * difficultyMultiplier;
-
-                if      (distFromCenter <= perfect) grade = QTEGrade.Perfect;
-                else if (distFromCenter <= great)   grade = QTEGrade.Great;
-                else if (distFromCenter <= good)    grade = QTEGrade.Good;
-                else                                grade = QTEGrade.Bad;
-            }
-
-            yield return _waitEOF;
+            Debug.LogWarning("[QTEManager] QTE already active.");
+            return;
         }
-
-        IsActive = false;
-        // TODO: BattleUI에 타이밍 바 숨김 요청
-        Debug.Log($"[QTEManager] Timing QTE Result: {grade}");
-        OnQTECompleted?.Invoke(grade);
+        StartCoroutine(DefenseQTERoutine(attackDelay, difficultyMult, onResult));
     }
 
-    // ── 연타 QTE 시작 ─────────────────────────────────────────
-    public void StartMashingQTE(float difficultyMultiplier = 1f)
-    {
-        if (IsActive) return;
-        StartCoroutine(MashingQTERoutine(difficultyMultiplier));
-    }
-
-    private IEnumerator MashingQTERoutine(float difficultyMultiplier)
+    private IEnumerator DefenseQTERoutine(float attackDelay, float difficultyMult, Action<DefenseInput, QTEGrade> onResult)
     {
         IsActive = true;
-        int targetCount = Mathf.RoundToInt(_mashTargetCount * difficultyMultiplier);
-        int mashCount   = 0;
-        float elapsed   = 0f;
-
-        // TODO: BattleUI에 연타 게이지 표시 요청
-
-        while (elapsed < _mashTimeLimit && mashCount < targetCount)
-        {
-            elapsed += Time.deltaTime;
-
-            if (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame)
-                mashCount++;
-
-            yield return _waitEOF;
-        }
-
-        IsActive = false;
-        float ratio = (float)mashCount / targetCount;
-        QTEGrade grade;
-        if      (ratio >= 1.0f) grade = QTEGrade.Perfect;
-        else if (ratio >= 0.8f) grade = QTEGrade.Great;
-        else if (ratio >= 0.5f) grade = QTEGrade.Good;
-        else if (ratio >= 0.2f) grade = QTEGrade.Bad;
-        else                    grade = QTEGrade.Miss;
-
-        // TODO: BattleUI에 연타 게이지 숨김 요청
-        Debug.Log($"[QTEManager] Mashing QTE Result: {grade} ({mashCount}/{targetCount})");
-        OnQTECompleted?.Invoke(grade);
-    }
-
-    // ── 방어 QTE (적 턴) ──────────────────────────────────────
-    /// <summary>
-    /// 적 공격 타이밍에 방어 입력을 감지합니다.
-    /// </summary>
-    /// <param name="attackDelay">적 공격까지의 대기 시간</param>
-    /// <param name="onResult">결과 콜백: (DefenseInput, QTEGrade)</param>
-    public void StartDefenseQTE(float attackDelay, Action<DefenseInput, QTEGrade> onResult)
-    {
-        StartCoroutine(DefenseQTERoutine(attackDelay, onResult));
-    }
-
-    private IEnumerator DefenseQTERoutine(float attackDelay, Action<DefenseInput, QTEGrade> onResult)
-    {
-        IsActive = true;
-        float elapsed = 0f;
-        DefenseInput input = DefenseInput.None;
-        bool inputReceived = false;
-
-        // TODO: BattleUI에 방어 타이밍 인디케이터 표시
+        float elapsed      = 0f;
+        bool  inputReceived = false;
+        var   input         = DefenseInput.None;
 
         while (elapsed < attackDelay && !inputReceived)
         {
@@ -166,19 +103,83 @@ public class QTEManager : MonoBehaviour
 
         IsActive = false;
 
-        // 타이밍 판정
-        float timeLeft = attackDelay - elapsed;
+        // 타이밍 판정: 남은 시간 비율로 계산 (difficultyMult가 클수록 구간 좁아짐)
         QTEGrade grade;
         if (!inputReceived)
+        {
             grade = QTEGrade.Miss;
-        else if (timeLeft <= 0.1f)
-            grade = QTEGrade.Perfect;
-        else if (timeLeft <= 0.2f)
-            grade = QTEGrade.Great;
+        }
         else
-            grade = QTEGrade.Good;
+        {
+            float timeLeft = (attackDelay - elapsed) / attackDelay; // 0~1
+            float pm = _perfectWindow / difficultyMult;
+            float gm = _greatWindow   / difficultyMult;
+            float gd = _goodWindow    / difficultyMult;
 
-        Debug.Log($"[QTEManager] Defense QTE: {input} / {grade}");
+            if      (timeLeft <= pm) grade = QTEGrade.Perfect;
+            else if (timeLeft <= gm) grade = QTEGrade.Great;
+            else if (timeLeft <= gd) grade = QTEGrade.Good;
+            else                     grade = QTEGrade.Bad;
+        }
+
+        Debug.Log($"[QTEManager] DefenseQTE → {input} / {grade}");
         onResult?.Invoke(input, grade);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ── 스킬 QTE (플레이어 스킬 사용 시) ─────────────────────
+    // ═══════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 원형 Fill 타이밍 QTE를 시작합니다.
+    /// BattleUIController가 UI를 표시하고, 완료 시 OnSkillQTECompleted 이벤트 발생.
+    /// </summary>
+    /// <param name="difficultyMult">EnemyData.QTEDifficultyMultiplier</param>
+    public void StartSkillQTE(float difficultyMult = 1f)
+    {
+        if (IsActive) return;
+        StartCoroutine(SkillQTERoutine(difficultyMult));
+    }
+
+    private IEnumerator SkillQTERoutine(float difficultyMult)
+    {
+        IsActive = true;
+        float elapsed      = 0f;
+        bool  inputReceived = false;
+        var   grade         = QTEGrade.Miss;
+
+        while (elapsed < _skillQTEDuration && !inputReceived)
+        {
+            elapsed += Time.deltaTime;
+
+            if (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame)
+            {
+                inputReceived = true;
+                float normalizedTime  = elapsed / _skillQTEDuration;
+                float distFromCenter  = Mathf.Abs(normalizedTime - 0.5f) * 2f; // 0=중앙, 1=끝
+
+                float pm = _skillPerfectWindow * difficultyMult;
+                float gm = _skillGreatWindow   * difficultyMult;
+                float gd = _skillGoodWindow    * difficultyMult;
+
+                if      (distFromCenter <= pm) grade = QTEGrade.Perfect;
+                else if (distFromCenter <= gm) grade = QTEGrade.Great;
+                else if (distFromCenter <= gd) grade = QTEGrade.Good;
+                else                           grade = QTEGrade.Bad;
+            }
+
+            yield return _waitEOF;
+        }
+
+        IsActive = false;
+        Debug.Log($"[QTEManager] SkillQTE → {grade}");
+        OnSkillQTECompleted?.Invoke(grade);
+    }
+
+    // ── 강제 중단 ─────────────────────────────────────────────
+    public void ForceStop()
+    {
+        StopAllCoroutines();
+        IsActive = false;
     }
 }

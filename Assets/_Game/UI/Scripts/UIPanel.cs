@@ -27,17 +27,16 @@ public class UIPanel : MonoBehaviour
     }
 
     // ── 표시 ──────────────────────────────────────────────────
-    public virtual void Show()
-    {
-        gameObject.SetActive(true);
-        _currentTween?.Kill();
-        _canvasGroup.interactable   = true;
-        _canvasGroup.blocksRaycasts = true;
-        _currentTween = _canvasGroup
-            .DOFade(1f, _showDuration)
-            .SetEase(_showEase)
-            .OnComplete(OnShowComplete);
-    }
+    public void Show()
+{
+    if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
+    
+    gameObject.SetActive(true);
+    
+    _canvasGroup.interactable = true;
+    _canvasGroup.blocksRaycasts = true;
+    _canvasGroup.DOFade(1f, _showDuration).SetEase(_showEase).OnComplete(OnShowComplete);
+}
 
     // ── 숨김 ──────────────────────────────────────────────────
     public virtual void Hide()
@@ -56,24 +55,30 @@ public class UIPanel : MonoBehaviour
     }
 
     // ── 즉시 표시/숨김 ────────────────────────────────────────
-    public virtual void ShowImmediate()
+    public void HideImmediate()
     {
-        _currentTween?.Kill();
-        gameObject.SetActive(true);
-        _canvasGroup.alpha          = 1f;
-        _canvasGroup.interactable   = true;
-        _canvasGroup.blocksRaycasts = true;
-        OnShowComplete();
+        if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
+
+        if (_canvasGroup != null) 
+        {
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.interactable = false;
+            _canvasGroup.blocksRaycasts = false;
+        }
+        gameObject.SetActive(false);
     }
 
-    public virtual void HideImmediate()
+    public void ShowImmediate()
     {
-        _currentTween?.Kill();
-        _canvasGroup.alpha          = 0f;
-        _canvasGroup.interactable   = false;
-        _canvasGroup.blocksRaycasts = false;
-        gameObject.SetActive(false);
-        OnHideComplete();
+        if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
+
+        gameObject.SetActive(true);
+        if (_canvasGroup != null) 
+        {
+            _canvasGroup.alpha = 1f;
+            _canvasGroup.interactable = true;
+            _canvasGroup.blocksRaycasts = true;
+        }
     }
 
     // ── 가상 콜백 ─────────────────────────────────────────────

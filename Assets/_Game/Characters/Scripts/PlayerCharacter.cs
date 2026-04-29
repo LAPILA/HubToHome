@@ -30,6 +30,12 @@ public class PlayerCharacter : CharacterBase
     protected override void Awake()
     {
         base.Awake();
+        
+        RecalculateStats();
+        if (CurrentHP <= 0)
+        {
+            CurrentHP = MaxHP;
+        }
     }
 
     // ── 경험치 / 레벨업 ───────────────────────────────────────
@@ -92,7 +98,10 @@ public class PlayerCharacter : CharacterBase
         DEF    = 5  + bonusDEF;
         SPD    = 10 + bonusSPD;
         MaxHP  = 100 + bonusHP;
-        CurrentHP = Mathf.Min(CurrentHP, MaxHP);
+        if (CurrentHP > MaxHP)
+        {
+            CurrentHP = MaxHP;
+        }
     }
 
     private int GetEquipBonus(System.Func<EquipmentData, int> selector)

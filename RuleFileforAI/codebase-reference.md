@@ -1,6 +1,6 @@
 # 📚 HubToHome 코드베이스 레퍼런스 (Codebase Reference)
 
-> **최종 업데이트:** 2026-04-29  
+> **최종 업데이트:** 2026-04-30  
 > 이 문서는 `Assets/_Game` 내 전체 코드의 구조, 용법, 사용법을 정리한 AI 참조 문서입니다.  
 > 새 코드 작성 전 반드시 이 문서를 확인하여 기존 시스템과 충돌하지 않도록 하세요.
 
@@ -12,7 +12,10 @@
 Assets/_Game/
 ├── Battle/
 │   ├── Data/         SkillData.cs (SO)
-│   └── Scripts/      BattleManager.cs, BattleStateMachine.cs, QTEManager.cs
+│   └── Scripts/      BattleManager.cs, BattleStateMachine.cs, QTEManager.cs,
+│                     BattleUIController.cs, BattleMenuUI.cs, DefenseQTEUI.cs,
+│                     BattleHUD.cs, PositionManager.cs,
+│                     BattleDebugController.cs  ← 디버그 전용 (#if UNITY_EDITOR)
 ├── Characters/
 │   ├── Data/         EnemyData.cs (SO), EquipmentData.cs (SO)
 │   └── Scripts/      CharacterBase.cs, PlayerCharacter.cs, EnemyCharacter.cs, StatusEffect.cs
@@ -1041,6 +1044,44 @@ GlobalDataManager.Instance?.SetFlag("key", 1);
 SceneLoader.Instance?.LoadScene(SceneName.Overworld);
 AudioManager.Instance?.PlaySFX(clip);
 ```
+
+---
+
+## 🐛 버그 수정 이력 (2026-04-30)
+
+| 파일 | 문제 | 해결 |
+|------|------|------|
+| `BattleUIController.cs` | 씬 시작 시 BattleMenu/DefenseQTEUI/ResultPanel/EnemyCursor가 활성화 상태로 보임 | `Awake()`에서 `gameObject.SetActive(false)` 직접 호출 (HideImmediate 대신) |
+| `BattleUIController.cs` | `UIPanel.HideImmediate()` 호출 시 NullReferenceException | `UIPanel.Awake()`보다 `BattleUIController.Awake()`가 먼저 실행되어 `_canvasGroup`이 null. `SetActive(false)`로 교체 |
+| `BattleUIController.cs` | EnemyCursor가 (0,0)에 잠깐 보인 후 이동 | 활성화 전에 먼저 월드→스크린 좌표 계산 후 위치 설정 |
+| `BattleUIController.cs` | EnemyCursor bob 애니메이션이 Update의 position 추적과 충돌 | `DOAnchorPosY` → `DOLocalMoveY`로 변경 |
+| `EnemyCharacter.cs` | 전투 시작 시 적이 idle 상태가 아님 | `Awake()`에서 `BattleIdle` 트리거 호출 |
+| `EnemyCharacter.cs` | 적 피격/사망 애니메이션 없음 | `OnDamageTaken()`에서 `Hurt`/`Die` 트리거 호출 |
+| `BattleManager.cs` | 적 공격 시 애니메이션 없음 | `EnemyMeleeRoutine()`에 `enemy.PlayBattleAnim(Attack)` 추가 |
+
+---
+
+## 🔧 BattleDebugController — 전투 씬 디버그 도구
+
+**파일:** `Battle/Scripts/BattleDebugController.cs`  
+**조건:** `#if UNITY_EDITOR || DEVELOPMENT_BUILD` (릴리즈 빌드에서 자동 제외)
+
+**사용법:**
+1. BattleScene에 빈 오브젝트 생성 → `BattleDebugController` 컴포넌트 추가
+2. Play 모드에서 화면 좌상단 디버그 패널 확인
+
+**단축키:**
+| 키 | 동작 |
+|----|------|
+| F1 | 디버그 패널 토글 |
+| F6 | 적 전체 HP → 1 |
+| F7 | 플레이어 전체 HP → 1 |
+| F8 | 현재 전투 상태 콘솔 덤프 |
+
+**패널 기능:**
+- 전투 상태 (CurrentState), 파티/적 HP·MP 실시간 표시
+- 씬 검증: PlayerParty/Enemies 연결 여부, 매니저 존재 여부 자동 체크
+- 적/플레이어 애니메이션 버튼 (Attack, Hurt, BattleIdle 등) 직접 트리거
 
 ---
 
