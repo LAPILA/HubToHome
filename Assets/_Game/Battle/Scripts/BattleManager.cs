@@ -2,10 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
+using Unity.Cinemachine;
 
 /// <summary>
 /// 전투 흐름을 총괄하는 싱글톤 매니저.
 /// BattleState 기반 상태 머신으로 동작합니다.
+/// 
+/// Inspector 연결 목록:
+/// - _playerParty, _enemies
+/// - _playerDefaultPositions, _enemyDefaultPositions, _centerPosition
+/// - _battleHUD, _battleMenu, _defenseQTEUI
+/// - _impulseSource (CinemachineImpulseSource)
 /// </summary>
 public class BattleManager : MonoBehaviour
 {
@@ -23,16 +30,28 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private Transform[] _enemyDefaultPositions;
     [SerializeField] private Transform   _centerPosition;
 
+    // ── UI 참조 ───────────────────────────────────────────────
+    [Header("UI")]
+    [SerializeField] private BattleHUD      _battleHUD;
+    [SerializeField] private BattleMenuUI   _battleMenu;
+    [SerializeField] private DefenseQTEUI   _defenseQTEUI;
+
+    // ── 카메라 연출 ───────────────────────────────────────────
+    [Header("Camera")]
+    [SerializeField] private CinemachineImpulseSource _impulseSource;
+    [SerializeField] private float _hitImpulseForce  = 0.15f;  // 타격 쉐이크 강도 (약하게)
+    [SerializeField] private float _missImpulseForce = 0.05f;  // 미스 쉐이크
+
     // ── 상태 ──────────────────────────────────────────────────
     public BattleState CurrentState { get; private set; } = BattleState.Idle;
 
-    // 현재 행동 중인 플레이어/적 인덱스
     private int _currentPlayerIndex = 0;
-    private int _currentEnemyIndex  = 0;
 
     // 캐싱
-    private WaitForSeconds _waitShort = new WaitForSeconds(0.5f);
+    private WaitForSeconds _waitShort  = new WaitForSeconds(0.5f);
+    private WaitForSeconds _waitMedium = new WaitForSeconds(1.0f);
 
+    // ── 초기화 ────────────────────────────────────────────────
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -41,6 +60,8 @@ public class BattleManager : MonoBehaviour
 
     private void Start()
     {
+        // HUD 초기값 설정
+        RefreshHUD();
         StartBattle();
     }
 
@@ -58,7 +79,7 @@ public class BattleManager : MonoBehaviour
         {
             case BattleState.Intro:       StartCoroutine(IntroRoutine());      break;
             case BattleState.PlayerTurn:  StartCoroutine(PlayerTurnRoutine()); break;
-            case BattleState.ActionPhase: /* QTEManager가 처리 후 콜백 */      break;
+            case BattleState.ActionPhase: /* QTE 처리 후 콜백으로 진행 */      break;
             case BattleState.EnemyTurn:   StartCoroutine(EnemyTurnRoutine());  break;
             case BattleState.Result:      StartCoroutine(ResultRoutine());     break;
         }
@@ -67,7 +88,8 @@ public class BattleManager : MonoBehaviour
     // ── Intro 연출 ────────────────────────────────────────────
     private IEnumerator IntroRoutine()
     {
-        // TODO: 전투 진입 연출 (카메라 줌, 적 등장 등)
+        _battleHUD?.ShowImmediate();
+        _battleHUD?.SetTurnLabel("전투 시작!");
         yield return _waitShort;
         ChangeState(BattleState.PlayerTurn);
     }
@@ -75,66 +97,73 @@ public class BattleManager : MonoBehaviour
     // ── 플레이어 턴 ───────────────────────────────────────────
     private IEnumerator PlayerTurnRoutine()
     {
-        // 상태 이상 틱 처리
         foreach (var player in _playerParty)
             player.ProcessEffects();
 
-        // Speed Gap: 추가 행동권 체크
-        // TODO: BattleUI에 메뉴 표시 요청
-        Debug.Log("[BattleManager] Player Turn - Waiting for menu input.");
-        yield return null;
+        RefreshHUD();
+        _battleHUD?.SetTurnLabel("플레이어 턴");
+
+        yield return null; // 1프레임 대기 후 메뉴 표시
+        _battleMenu?.Show();
     }
 
-    /// <summary>플레이어가 메뉴에서 행동을 선택했을 때 BattleUI가 호출합니다.</summary>
+    /// <summary>BattleMenuUI 버튼 클릭 시 호출됩니다.</summary>
     public void OnPlayerActionSelected(PlayerMenuAction action, int targetIndex = 0)
     {
         switch (action)
         {
-            case PlayerMenuAction.Attack:
-                StartCoroutine(ExecutePlayerAttack(targetIndex));
-                break;
-            case PlayerMenuAction.Skill:
-                // TODO: 스킬 선택 UI → QTEManager 호출
-                break;
-            case PlayerMenuAction.Item:
-                // TODO: 아이템 선택 UI
-                break;
-            case PlayerMenuAction.Run:
-                TryRun();
-                break;
+            case PlayerMenuAction.Attack: StartCoroutine(ExecutePlayerAttack(targetIndex)); break;
+            case PlayerMenuAction.Skill:  StartCoroutine(ExecutePlayerAttack(targetIndex)); break; // TODO: 스킬 분기
+            case PlayerMenuAction.Item:   StartCoroutine(PlayerTurnRoutine());              break; // TODO: 아이템 UI
+            case PlayerMenuAction.Run:    TryRun();                                         break;
         }
     }
 
-    // ── 플레이어 기본 공격 ────────────────────────────────────
+    // ── 플레이어 공격 ─────────────────────────────────────────
     private IEnumerator ExecutePlayerAttack(int targetIndex)
     {
         ChangeState(BattleState.ActionPhase);
 
+        if (targetIndex >= _enemies.Count || !_enemies[targetIndex].IsAlive)
+        {
+            ChangeState(BattleState.EnemyTurn);
+            yield break;
+        }
+
         var player = _playerParty[_currentPlayerIndex];
         var target = _enemies[targetIndex];
 
-        // 캐릭터를 중앙으로 이동 (DOTween)
+        // 중앙으로 이동
         if (!target.Data.IsLargeEnemy)
         {
             yield return player.transform
-                .DOMove(_centerPosition.position, 0.3f)
+                .DOMove(_centerPosition.position, 0.25f)
                 .SetEase(Ease.OutQuad)
                 .WaitForCompletion();
         }
+
+        // 공격 연출 (PlayerController가 있으면 애니메이션 재생)
+        var pc = player.GetComponent<PlayerController>();
+        pc?.PlayBattleAnim(PlayerController.HashAttack);
+
+        yield return new WaitForSeconds(0.1f);
 
         // 데미지 적용
         int damage = target.TakeDamage(player.ATK);
         Debug.Log($"[BattleManager] Player attacked for {damage} damage.");
 
-        // TODO: 타격 이펙트 (ObjectPool), 카메라 쉐이크
+        // 카메라 쉐이크
+        _impulseSource?.GenerateImpulse(_hitImpulseForce);
+
+        RefreshHUD();
+        yield return new WaitForSeconds(0.15f);
 
         // 원위치 복귀
         yield return player.transform
-            .DOMove(_playerDefaultPositions[_currentPlayerIndex].position, 0.3f)
+            .DOMove(_playerDefaultPositions[_currentPlayerIndex].position, 0.25f)
             .SetEase(Ease.InQuad)
             .WaitForCompletion();
 
-        // 승리 체크
         if (CheckAllEnemiesDefeated())
         {
             ChangeState(BattleState.Result);
@@ -147,11 +176,10 @@ public class BattleManager : MonoBehaviour
     // ── 도망 ──────────────────────────────────────────────────
     private void TryRun()
     {
-        // 보스전 등 강제 전투는 Run 비활성화 처리 필요
-        float runChance = 0.5f;
-        if (Random.value < runChance)
+        if (Random.value < 0.5f)
         {
             Debug.Log("[BattleManager] Player escaped!");
+            _battleHUD?.Hide();
             SceneLoader.Instance.LoadScene(SceneName.Overworld);
         }
         else
@@ -164,6 +192,8 @@ public class BattleManager : MonoBehaviour
     // ── 적 턴 ─────────────────────────────────────────────────
     private IEnumerator EnemyTurnRoutine()
     {
+        _battleHUD?.SetTurnLabel("적 턴");
+
         foreach (var enemy in _enemies)
         {
             if (!enemy.IsAlive) continue;
@@ -171,28 +201,77 @@ public class BattleManager : MonoBehaviour
             enemy.ProcessEffects();
             var action = enemy.DecideAction();
 
-            // 적이 중앙으로 이동 (대형 적 제외)
+            // 적 중앙 이동
             if (!enemy.Data.IsLargeEnemy)
             {
                 yield return enemy.transform
-                    .DOMove(_centerPosition.position, 0.3f)
+                    .DOMove(_centerPosition.position, 0.25f)
                     .SetEase(Ease.OutQuad)
                     .WaitForCompletion();
             }
 
-            // TODO: 방어 QTE 활성화 → DefenseQTEManager 호출
-            Debug.Log($"[BattleManager] Enemy {enemy.Data.EnemyName} attacks!");
+            // ── 방어 QTE ──────────────────────────────────────
+            float attackDelay = 1.5f;
+            bool qteResolved  = false;
+            QTEManager.QTEGrade defenseGrade = QTEManager.QTEGrade.Miss;
+            DefenseInput        defenseInput = DefenseInput.None;
 
-            // 임시: QTE 없이 직접 데미지
-            var target = _playerParty[0];
-            int damage = target.TakeDamage(enemy.ATK);
-            Debug.Log($"[BattleManager] Player took {damage} damage.");
+            _defenseQTEUI?.ShowQTE(attackDelay);
+
+            QTEManager.Instance?.StartDefenseQTE(attackDelay, (input, grade) =>
+            {
+                defenseInput  = input;
+                defenseGrade  = grade;
+                qteResolved   = true;
+            });
+
+            // QTE 완료 대기
+            yield return new WaitUntil(() => qteResolved);
+
+            // 결과 표시
+            _defenseQTEUI?.ShowResult(defenseGrade, defenseInput);
+
+            // 데미지 계산 (패링/회피 성공 시 감소)
+            int rawDamage = enemy.ATK;
+            int finalDamage;
+
+            switch (defenseGrade)
+            {
+                case QTEManager.QTEGrade.Perfect:
+                    // 패링 Perfect → 데미지 0 + 반격 가능 (TODO)
+                    finalDamage = defenseInput == DefenseInput.Parry ? 0 : Mathf.RoundToInt(rawDamage * 0.1f);
+                    _impulseSource?.GenerateImpulse(_missImpulseForce);
+                    break;
+                case QTEManager.QTEGrade.Great:
+                    finalDamage = Mathf.RoundToInt(rawDamage * 0.3f);
+                    _impulseSource?.GenerateImpulse(_missImpulseForce);
+                    break;
+                case QTEManager.QTEGrade.Good:
+                    finalDamage = Mathf.RoundToInt(rawDamage * 0.6f);
+                    _impulseSource?.GenerateImpulse(_hitImpulseForce * 0.5f);
+                    break;
+                default: // Bad / Miss
+                    finalDamage = _playerParty[0].TakeDamage(rawDamage);
+                    _impulseSource?.GenerateImpulse(_hitImpulseForce);
+                    var pc = _playerParty[0].GetComponent<PlayerController>();
+                    pc?.PlayBattleAnim(PlayerController.HashHurt);
+                    goto skipDamage;
+            }
+
+            // 감소된 데미지 적용
+            _playerParty[0].TakePureDamage(finalDamage);
+            skipDamage:
+
+            Debug.Log($"[BattleManager] Enemy attacked! Defense: {defenseInput}/{defenseGrade}, Damage: {finalDamage}");
+            RefreshHUD();
+
+            yield return _waitMedium;
 
             // 원위치 복귀
             if (!enemy.Data.IsLargeEnemy)
             {
                 yield return enemy.transform
-                    .DOMove(_enemyDefaultPositions[_enemies.IndexOf(enemy)].position, 0.3f)
+                    .DOMove(_enemyDefaultPositions[_enemies.IndexOf(enemy)].position, 0.25f)
                     .SetEase(Ease.InQuad)
                     .WaitForCompletion();
             }
@@ -200,7 +279,6 @@ public class BattleManager : MonoBehaviour
             yield return _waitShort;
         }
 
-        // 패배 체크
         if (CheckAllPlayersDefeated())
         {
             ChangeState(BattleState.Result);
@@ -214,21 +292,43 @@ public class BattleManager : MonoBehaviour
     private IEnumerator ResultRoutine()
     {
         bool victory = CheckAllEnemiesDefeated();
+        _battleHUD?.SetTurnLabel(victory ? "승리!" : "패배...");
         Debug.Log($"[BattleManager] Battle Result: {(victory ? "Victory" : "Defeat")}");
 
         if (victory)
         {
-            // EXP / 드롭 처리
             foreach (var enemy in _enemies)
-            {
                 foreach (var player in _playerParty)
                     player.GainEXP(enemy.Data.EXPReward);
-            }
-            // ⚠️ 세이브는 여기서 하지 않음. SavePoint 또는 메뉴에서만 저장.
+
+            // 드롭 아이템 처리
+            foreach (var enemy in _enemies)
+                foreach (var dropID in enemy.GetDrops())
+                    GlobalDataManager.Instance?.AddItem(dropID);
         }
 
+        yield return _waitMedium;
+        _battleHUD?.Hide();
         yield return _waitShort;
         SceneLoader.Instance.LoadScene(SceneName.Overworld);
+    }
+
+    // ── HUD 갱신 ──────────────────────────────────────────────
+    private void RefreshHUD()
+    {
+        if (_battleHUD == null) return;
+
+        if (_playerParty.Count > 0)
+        {
+            var p = _playerParty[0];
+            _battleHUD.SetPlayerHP(p.CurrentHP, p.MaxHP);
+        }
+
+        if (_enemies.Count > 0)
+        {
+            var e = _enemies[0];
+            _battleHUD.SetEnemyHP(e.CurrentHP, e.MaxHP);
+        }
     }
 
     // ── 유틸리티 ──────────────────────────────────────────────

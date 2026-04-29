@@ -48,13 +48,13 @@ public class DialogueNPC : InteractableBase
             sequenceID = _altDialogueSequenceID;
         }
 
-        DialogueManager.Instance.OnDialogueEnded += OnDialogueFinished;
+        DialogueManager.Instance.OnDialogueEnded.AddListener(OnDialogueFinished);
         DialogueManager.Instance.StartDialogue(sequenceID);
     }
 
     private void OnDialogueFinished()
     {
-        DialogueManager.Instance.OnDialogueEnded -= OnDialogueFinished;
+        DialogueManager.Instance.OnDialogueEnded.RemoveListener(OnDialogueFinished);
 
         // 플레이어 이동 잠금 해제
         var player = FindFirstObjectByType<PlayerController>();

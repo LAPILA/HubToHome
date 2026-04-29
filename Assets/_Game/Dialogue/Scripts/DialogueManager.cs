@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using Newtonsoft.Json;
 
 /// <summary>
@@ -12,11 +13,11 @@ public class DialogueManager : MonoBehaviour
 {
     public static DialogueManager Instance { get; private set; }
 
-    // ── 이벤트 ────────────────────────────────────────────────
-    public event Action OnDialogueStarted;
-    public event Action OnDialogueEnded;
-    public event Action<DialogueLine> OnLineStarted;
-    public event Action<List<DialogueChoice>> OnChoicesShown;
+    // ── 이벤트 (UnityEvent — AddListener/RemoveListener 호환) ─
+    public UnityEvent                          OnDialogueStarted = new UnityEvent();
+    public UnityEvent                          OnDialogueEnded   = new UnityEvent();
+    public UnityEvent<DialogueLine>            OnLineStarted     = new UnityEvent<DialogueLine>();
+    public UnityEvent<List<DialogueChoice>>    OnChoicesShown    = new UnityEvent<List<DialogueChoice>>();
 
     // ── 상태 ──────────────────────────────────────────────────
     public bool IsActive { get; private set; } = false;
