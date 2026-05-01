@@ -16,51 +16,46 @@ public class PlayerController : MonoBehaviour
     public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
     public PlayerState State { get; private set; } = PlayerState.Idle;
 
-    /// <summary>
-    /// 전투 씬에서 이동/상호작용 입력을 완전히 잠급니다.
-    /// BattleManager.Start()에서 호출하세요.
-    /// </summary>
-    public void SetBattleMode(bool active)
-    {
-        if (_rb == null) _rb = GetComponent<Rigidbody2D>();
-
-        if (active)
-        {
-            State = PlayerState.InBattle;
-            _rb.bodyType = RigidbodyType2D.Kinematic;
-            _rb.linearVelocity = Vector2.zero;
-            
-            if (_anim != null) _anim.SetTrigger(HashBattleIdle);
-        }
-        else
-        {
-            State = PlayerState.Idle;
-            _rb.bodyType = RigidbodyType2D.Dynamic;
-        }
-    }
-
     // ── 이동 설정 ─────────────────────────────────────────────
     [Header("Movement")]
     [SerializeField] private float _moveSpeed = 5f;
 
-    // ── 방향 (0=Down 1=Up 2=Left 3=Right) ────────────────────
-    public int FacingDirection { get; private set; } = 0;
+    // ── 액션 쿨타임 ───────────────────────────────────────────
+    [Header("Action Settings")]
+    [SerializeField] private float _actionCooldown = 0.4f;
+    private float _lastActionTime;
+
+    // ── VFX / DOTween 연출 설정 ───────────────────────────────
+    [Header("VFX Settings")]
+    [SerializeField] private float _parryFlashDuration = 0.08f;
+    [SerializeField] private Color _parryFlashColor    = Color.cyan;
+    [SerializeField] private float _hurtFlashDuration  = 0.05f;
+    [SerializeField] private float _hurtShakeDuration  = 0.3f;
+    [SerializeField] private float _hurtShakeStrength  = 0.15f;
+    [SerializeField] private Color _hurtFlashColor     = Color.red;
+    [SerializeField] private float _dieFlashDuration   = 0.12f;
+    [SerializeField] private Color _dieFlashColor      = Color.white;
 
     // ── 컴포넌트 캐싱 ─────────────────────────────────────────
     private Rigidbody2D    _rb;
     private Animator       _anim;
-    private Animator Animator 
+    private CharacterVFX   _vfx;
+    private SpriteRenderer _spriteRenderer;
+    private Vector3        _originalLocalPos;
+
+    private Animator Animator
     {
-        get 
+        get
         {
-            // 캐싱된 게 없으면 가져오고, 있으면 그대로 반환
             if (_anim == null) _anim = GetComponent<Animator>();
             return _anim;
         }
     }
-    private SpriteRenderer _spriteRenderer;
-    private Vector3 _originalLocalPos;
-    // ── 입력 ──────────────────────────────────────────────────
+
+    // ── 방향 (0=Down 1=Up 2=Left 3=Right) ────────────────────
+    public int FacingDirection { get; private set; } = 0;
+
+    // ── 입력 액션 ─────────────────────────────────────────────
     private InputAction _moveAction;
     private InputAction _confirmAction;
     private InputAction _cancelAction;
@@ -69,9 +64,8 @@ public class PlayerController : MonoBehaviour
     // ── 반대 방향 동시 입력 처리용 (Last-Input Priority) ─────
     private bool _keyLeft, _keyRight, _keyUp, _keyDown;
     private bool _prevLeft, _prevRight, _prevUp, _prevDown;
-    private int  _lastHorizontal = 0;
-    private int  _lastVertical   = 0;
-
+    private int  _lastHorizontal;
+    private int  _lastVertical;
     private Vector2 _moveInput;
 
     // ── Animator 파라미터 해시 ────────────────────────────────
@@ -87,23 +81,13 @@ public class PlayerController : MonoBehaviour
     public static readonly int HashDie        = Animator.StringToHash("Die");
     public static readonly int HashVictory    = Animator.StringToHash("Victory");
 
-    // ── DOTween 연출 설정 ─────────────────────────────────────
-    [Header("VFX Settings")]
-    [SerializeField] private float _parryFlashDuration = 0.08f;
-    [SerializeField] private Color _parryFlashColor    = Color.cyan;
-    [SerializeField] private float _hurtFlashDuration  = 0.05f;
-    [SerializeField] private float _hurtShakeDuration  = 0.3f;
-    [SerializeField] private float _hurtShakeStrength  = 0.15f;
-    [SerializeField] private Color _hurtFlashColor     = Color.red;
-    [SerializeField] private float _dieFlashDuration   = 0.12f;
-    [SerializeField] private Color _dieFlashColor      = Color.white;
-
     // ─────────────────────────────────────────────────────────
     private void Awake()
     {
         _rb             = GetComponent<Rigidbody2D>();
         _anim           = GetComponent<Animator>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
+        _vfx            = GetComponent<CharacterVFX>();
 
         _moveAction    = new InputAction("Move",    InputActionType.Value);
         _confirmAction = new InputAction("Confirm", InputActionType.Button);
@@ -123,13 +107,14 @@ public class PlayerController : MonoBehaviour
         _confirmAction.Enable();
         _cancelAction.Enable();
         _menuAction.Enable();
+
         _originalLocalPos = transform.localPosition;
     }
 
     private void Start()
     {
         LoadPositionFromGlobal();
-        UpdateAnimator(); 
+        UpdateAnimator();
     }
 
     private void Update()
@@ -137,11 +122,15 @@ public class PlayerController : MonoBehaviour
         if (State == PlayerState.Interacting || State == PlayerState.InMenu) return;
 
         ReadInput();
-        UpdateFacingDirection();
-        UpdateAnimator();
 
-        if (_confirmAction.WasPressedThisFrame()) TryInteract();
-        if (_menuAction.WasPressedThisFrame())    OpenMenu();
+        if(State != PlayerState.InBattle)
+        {
+            UpdateFacingDirection();
+            UpdateAnimator();
+            if (_confirmAction.WasPressedThisFrame()) TryInteract();
+            if (_menuAction.WasPressedThisFrame())    OpenMenu();
+        }
+        
     }
 
     private void FixedUpdate()
@@ -157,7 +146,6 @@ public class PlayerController : MonoBehaviour
     // ── 입력 읽기 (Last-Input Priority) ──────────────────────
     private void ReadInput()
     {
-        // Keyboard.current로 직접 읽어 Composite 간섭 없이 개별 키 상태 파악
         var kb = Keyboard.current;
         if (kb == null) return;
 
@@ -166,22 +154,22 @@ public class PlayerController : MonoBehaviour
         _keyUp    = kb.upArrowKey.isPressed    || kb.wKey.isPressed;
         _keyDown  = kb.downArrowKey.isPressed  || kb.sKey.isPressed;
 
-        // ── 수평 Last-Input Priority ──────────────────────────
+        // 수평 Last-Input Priority
         if (_keyLeft && _keyRight)
         {
-            if (!_prevLeft  && _keyLeft)  _lastHorizontal = -1;
+            if (!_prevLeft  && _keyLeft)       _lastHorizontal = -1;
             else if (!_prevRight && _keyRight) _lastHorizontal =  1;
-            // 둘 다 이전부터 눌려 있으면 유지 (멈추지 않음)
+            // 둘 다 이전부터 눌려 있으면 유지
         }
         else if (_keyLeft)  _lastHorizontal = -1;
         else if (_keyRight) _lastHorizontal =  1;
         else                _lastHorizontal =  0;
 
-        // ── 수직 Last-Input Priority ──────────────────────────
+        // 수직 Last-Input Priority
         if (_keyUp && _keyDown)
         {
-            if (!_prevUp   && _keyUp)   _lastVertical =  1;
-            else if (!_prevDown && _keyDown) _lastVertical = -1;
+            if (!_prevUp   && _keyUp)         _lastVertical =  1;
+            else if (!_prevDown && _keyDown)  _lastVertical = -1;
         }
         else if (_keyUp)   _lastVertical =  1;
         else if (_keyDown) _lastVertical = -1;
@@ -215,60 +203,30 @@ public class PlayerController : MonoBehaviour
             FacingDirection = _moveInput.y > 0 ? 1 : 0;
     }
 
+    /// <summary>캐릭터가 현재 바라보는 방향을 Vector3로 반환합니다.</summary>
+    private Vector3 GetFacingVector()
+    {
+        return FacingDirection switch
+        {
+            0 => Vector3.down,
+            1 => Vector3.up,
+            2 => Vector3.left,
+            3 => Vector3.right,
+            _ => Vector3.down
+        };
+    }
+
     // ── 애니메이터 업데이트 ───────────────────────────────────
     private void UpdateAnimator()
     {
         if (_anim == null) return;
-        
+
         if (State == PlayerState.Moving)
         {
             _anim.SetFloat(HashMoveX, _moveInput.x);
             _anim.SetFloat(HashMoveY, _moveInput.y);
         }
         _anim.SetBool(HashIsMoving, State == PlayerState.Moving);
-    }
-
-    // ── 전투 애니메이션 + DOTween 연출 ───────────────────────
-    public void PlayBattleAnim(int triggerHash)
-    {
-        if (_anim == null) return;
-        _anim.SetTrigger(triggerHash);
-
-        if      (triggerHash == HashParry)   PlayParryEffect();
-        else if (triggerHash == HashHurt)    PlayHurtEffect();
-        else if (triggerHash == HashDie)     PlayDieEffect();
-        else if (triggerHash == HashAttack)  PlayAttackEffect();
-        else if (triggerHash == HashVictory) PlayVictoryEffect();
-    }
-
-    // ── DOTween 연출 ──────────────────────────────────────────
-
-    /// <summary>사망: 흰 플래시 → 아래로 가라앉으며 페이드 아웃</summary>
-    private void PlayDieEffect()
-    {
-        if (_spriteRenderer == null) return;
-        DOTween.Kill(transform);
-        DOTween.Kill(_spriteRenderer);
-
-        Sequence seq = DOTween.Sequence();
-        seq.Append(_spriteRenderer.DOColor(_dieFlashColor, _dieFlashDuration)
-            .SetLoops(6, LoopType.Yoyo).SetEase(Ease.Linear));
-        seq.Append(transform.DOMoveY(transform.position.y - 0.3f, 0.6f).SetEase(Ease.InQuad));
-        seq.Join(_spriteRenderer.DOFade(0f, 0.6f).SetEase(Ease.InQuad));
-    }
-
-    /// <summary>공격: 앞으로 찌르기</summary>
-    private void PlayAttackEffect()
-    {
-        DOTween.Kill(transform);
-        transform.DOPunchPosition(Vector3.right * 0.2f, 0.15f, 1, 0.3f);
-    }
-
-    /// <summary>승리: 위아래 바운스</summary>
-    private void PlayVictoryEffect()
-    {
-        DOTween.Kill(transform);
-        transform.DOPunchPosition(Vector3.up * 0.25f, 0.4f, 2, 0.5f);
     }
 
     // ── 상호작용 ──────────────────────────────────────────────
@@ -287,6 +245,31 @@ public class PlayerController : MonoBehaviour
         State = isInteracting ? PlayerState.Interacting : PlayerState.Idle;
     }
 
+    public void SetFacingDirection(int dir)
+    {
+        FacingDirection = dir;
+    }
+
+    // ── 전투 모드 전환 ────────────────────────────────────────
+    /// <summary>전투 씬에서 이동/상호작용 입력을 완전히 잠급니다.</summary>
+    public void SetBattleMode(bool active)
+    {
+        if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+
+        if (active)
+        {
+            State = PlayerState.InBattle;
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            _rb.linearVelocity = Vector2.zero;
+            if (_anim != null) _anim.SetTrigger(HashBattleIdle);
+        }
+        else
+        {
+            State = PlayerState.Idle;
+            _rb.bodyType = RigidbodyType2D.Dynamic;
+        }
+    }
+
     // ── GlobalDataManager 연동 ────────────────────────────────
     public void SavePositionToGlobal()
     {
@@ -299,62 +282,127 @@ public class PlayerController : MonoBehaviour
     public void LoadPositionFromGlobal()
     {
         if (GlobalDataManager.Instance == null) return;
-
         transform.position = new Vector3(
-        GlobalDataManager.Instance.SpawnX,
-        GlobalDataManager.Instance.SpawnY, 0f);
-        
+            GlobalDataManager.Instance.SpawnX,
+            GlobalDataManager.Instance.SpawnY, 0f);
         FacingDirection = GlobalDataManager.Instance.LookingDir;
     }
-    // ── 전투 전용 액션 (DOTween) ──────────────────────────────
 
-    /// <summary>회피 (C키): 뒤로 빠르게 물러났다 돌아옴</summary>
-    public void ExecuteDodge()
-{
-    DOTween.Kill(transform);
-    transform.DOLocalMoveX(transform.localPosition.x - 1.5f, 0.15f)
-        .SetEase(Ease.OutExpo)
-        .SetLoops(2, LoopType.Yoyo);
-}
-
-    /// <summary>점프 (Space키): 애니메이션 없이 Y축 포물선</summary>
-    public void ExecuteJump()
+    // ── 액션 쿨타임 체크 ──────────────────────────────────────
+    private bool CanExecuteAction()
     {
-    DOTween.Kill(transform);
-    // 현재 위치에서 위쪽(+Y)으로 이동했다가 복귀
-    transform.DOLocalMoveY(transform.localPosition.y + 2.0f, 0.2f)
-        .SetEase(Ease.OutQuad)
-        .SetLoops(2, LoopType.Yoyo);
+        if (Time.time < _lastActionTime + _actionCooldown) return false;
+        _lastActionTime = Time.time;
+        return true;
     }
 
+    // ── 전투 액션 실행 ────────────────────────────────────────
+    /// <summary>전투 애니메이션 트리거 + 대응 이펙트 재생</summary>
+    public void PlayBattleAnim(int triggerHash)
+    {
+        if (_anim == null) return;
+        _anim.SetTrigger(triggerHash);
+
+        if      (triggerHash == HashParry)   PlayParryEffect();
+        else if (triggerHash == HashHurt)    PlayHurtEffect();
+        else if (triggerHash == HashDie)     PlayDieEffect();
+        else if (triggerHash == HashAttack)  PlayAttackEffect();
+        else if (triggerHash == HashVictory) PlayVictoryEffect();
+    }
+
+    /// <summary>일반 공격</summary>
+    public void ExecuteAttack()
+    {
+        PlayBattleAnim(HashAttack);
+    }
+
+    /// <summary>패링</summary>
     public void ExecuteParry()
     {
-        PlayBattleAnim(HashParry); 
+        if (!CanExecuteAction()) return;
+        PlayBattleAnim(HashParry);
     }
 
-    /// <summary>패링 성공 연출</summary>
+    /// <summary>회피: 바라보는 방향의 반대로 빠르게 물러났다 돌아옴</summary>
+    public void ExecuteDodge()
+    {
+        if (!CanExecuteAction()) return;
+
+        DOTween.Kill(transform);
+        Vector3 dodgeDir = -GetFacingVector();
+        _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
+
+        transform.DOMove(transform.position + dodgeDir * 1.5f, 0.15f)
+            .SetEase(Ease.OutExpo)
+            .SetLoops(2, LoopType.Yoyo);
+    }
+
+    /// <summary>점프: 무조건 위로 체공</summary>
+    public void ExecuteJump()
+    {
+        DOTween.Kill(transform);
+        _vfx?.Play(CharacterVFX.VFXAction.Jump_Dust);
+
+        transform.DOMoveY(transform.position.y + 2.0f, 0.2f)
+            .SetEase(Ease.OutQuad)
+            .SetLoops(2, LoopType.Yoyo);
+    }
+
+    // ── DOTween 이펙트 ────────────────────────────────────────
     public void PlayParryEffect()
     {
         if (_spriteRenderer == null) return;
-        _spriteRenderer.DOKill();
-        // 청록색 플래시
-        _spriteRenderer.DOColor(Color.cyan, 0.05f).SetLoops(2, LoopType.Yoyo);
-        // 앞으로 짧고 강하게 툭!
-        transform.DOPunchPosition(Vector3.right * 0.3f, 0.2f, 10, 1f);
+
+        _spriteRenderer.DOKill(true);
+        transform.DOKill(true);
+
+        _vfx?.Play(CharacterVFX.VFXAction.Parry_Success);
+
+        _spriteRenderer.DOColor(_parryFlashColor, _parryFlashDuration)
+            .SetLoops(2, LoopType.Yoyo)
+            .OnComplete(() => _spriteRenderer.color = Color.white)
+            .OnKill(()    => _spriteRenderer.color = Color.white);
+
+        transform.DOPunchPosition(GetFacingVector() * 0.3f, 0.2f, 10, 1f);
     }
 
-    /// <summary>피격 연출: 빨간색 플래시 + 움찔(Shake)</summary>
+    private void PlayAttackEffect()
+    {
+        DOTween.Kill(transform);
+        _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
+        transform.DOPunchPosition(GetFacingVector() * 0.3f, 0.15f, 1, 0.3f);
+    }
+
     public void PlayHurtEffect()
     {
         if (_spriteRenderer == null) return;
-        _spriteRenderer.DOKill();
-        transform.DOKill();
 
-        // 빨간색으로 깜빡임
-        _spriteRenderer.DOColor(Color.red, 0.05f).SetLoops(4, LoopType.Yoyo);
-        // 움찔거리는 쉐이크 효과
-        transform.DOShakePosition(0.2f, 0.2f, 30, 90f);
+        _spriteRenderer.DOKill();
+        DOTween.Kill(transform);
+
+        _spriteRenderer.DOColor(_hurtFlashColor, _hurtFlashDuration).SetLoops(4, LoopType.Yoyo);
+        transform.DOShakePosition(_hurtShakeDuration, _hurtShakeStrength, 30, 90f);
     }
+
+    public void PlayDieEffect()
+    {
+        if (_spriteRenderer == null) return;
+
+        _spriteRenderer.DOKill();
+        DOTween.Kill(transform);
+
+        Sequence seq = DOTween.Sequence();
+        seq.Append(_spriteRenderer.DOColor(_dieFlashColor, _dieFlashDuration).SetLoops(6, LoopType.Yoyo));
+        seq.Append(transform.DOMoveY(transform.position.y - 0.3f, 0.6f).SetEase(Ease.InQuad));
+        seq.Join(_spriteRenderer.DOFade(0f, 0.6f).SetEase(Ease.InQuad));
+    }
+
+    public void PlayVictoryEffect()
+    {
+        DOTween.Kill(transform);
+        transform.DOPunchPosition(Vector3.up * 0.25f, 0.4f, 2, 0.5f);
+    }
+
     // ═══════════════════════════════════════════════════════════
     // ── Odin Inspector 애니메이션 테스트 (에디터 전용) ────────
     // ═══════════════════════════════════════════════════════════
@@ -362,34 +410,32 @@ public class PlayerController : MonoBehaviour
     [Title("Animation Test (No Parameters)")]
     [InfoBox("에디터 모드 오류 방지를 위해 파라미터 대신 상태(State)를 직접 재생합니다.")]
 
-    // ✅ 이동은 제외하고 상태 확인용으로만 구성
     [BoxGroup("Overworld Look"), Button("기본 대기 (Down)", ButtonSizes.Medium)]
     private void TestIdleLook()
     {
         if (Animator == null) return;
-        // 상태 이름을 직접 호출 (컨트롤러 내의 State 이름을 적어주세요)
-        Animator.Play("Idle_Down"); 
+        Animator.Play("Idle_Down");
     }
 
-    [BoxGroup("Battle"), Button("Battle Idle", ButtonSizes.Medium)]
+    [BoxGroup("Battle"), Button("Battle Idle",  ButtonSizes.Medium)]
     private void TestBattleIdle() { PlayBattleAnim(HashBattleIdle); }
 
-    [BoxGroup("Battle"), Button("Battle Move", ButtonSizes.Medium)]
+    [BoxGroup("Battle"), Button("Battle Move",  ButtonSizes.Medium)]
     private void TestBattleMove() { PlayBattleAnim(HashBattleMove); }
 
-    [BoxGroup("Battle"), Button("Parry ✦", ButtonSizes.Medium)]
+    [BoxGroup("Battle"), Button("Parry ✦",    ButtonSizes.Medium)]
     private void TestParry()      { PlayBattleAnim(HashParry); }
 
-    [BoxGroup("Battle"), Button("Attack ✦", ButtonSizes.Medium)]
+    [BoxGroup("Battle"), Button("Attack ✦",   ButtonSizes.Medium)]
     private void TestAttack()     { PlayBattleAnim(HashAttack); }
 
-    [BoxGroup("Battle"), Button("Hurt ✦", ButtonSizes.Medium)]
+    [BoxGroup("Battle"), Button("Hurt ✦",     ButtonSizes.Medium)]
     private void TestHurt()       { PlayBattleAnim(HashHurt); }
 
-    [BoxGroup("Battle"), Button("Die ✦", ButtonSizes.Medium)]
+    [BoxGroup("Battle"), Button("Die ✦",      ButtonSizes.Medium)]
     private void TestDie()        { PlayBattleAnim(HashDie); }
 
-    [BoxGroup("Battle"), Button("Victory ✦", ButtonSizes.Medium)]
+    [BoxGroup("Battle"), Button("Victory ✦",  ButtonSizes.Medium)]
     private void TestVictory()    { PlayBattleAnim(HashVictory); }
 #endif
 }

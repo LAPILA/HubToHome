@@ -61,6 +61,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5513106445758349799}
+  - {fileID: 4632630371064151832}
   - {fileID: 7186282691556331614}
   - {fileID: 6322861581956168082}
   - {fileID: 4435733391972856838}
@@ -113,6 +114,7 @@ GameObject:
   - component: {fileID: 8464460841528240840}
   - component: {fileID: 8157845532445965529}
   - component: {fileID: 8926160897552926385}
+  - component: {fileID: 1699074167755928894}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -182,7 +184,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 1655595087
-  m_SortingLayer: 1
+  m_SortingLayer: -1
   m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: -8929314167825227757, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
@@ -328,6 +330,141 @@ MonoBehaviour:
   BodySlot: {fileID: 0}
   ShoesSlot: {fileID: 0}
   CharacterID: Player
+--- !u!114 &1699074167755928894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3767812405821268843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f17d53b52b85ac4f9814a667de6c49f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterVFX
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects:
+    - {fileID: 4748681987041982144, guid: 4b9add9c220265b408491b262eff5974, type: 3}
+    - {fileID: 4632630371064151832}
+    - {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
+    - {fileID: 6457503421304768550}
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _vfxDict
+      Entry: 7
+      Data: 0|System.Collections.Generic.Dictionary`2[[CharacterVFX+VFXAction, Assembly-CSharp],[CharacterVFX+VFXSetup,
+        Assembly-CSharp]], mscorlib
+    - Name: comparer
+      Entry: 7
+      Data: 1|System.Collections.Generic.EnumEqualityComparer`1[[CharacterVFX+VFXAction,
+        Assembly-CSharp]], mscorlib
+    - Name: 
+      Entry: 12
+      Data: 0
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 0
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 0
+    - Name: Pivot
+      Entry: 10
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 1
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 2
+    - Name: Pivot
+      Entry: 10
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 2
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 6
+      Data: 
+    - Name: Pivot
+      Entry: 10
+      Data: 3
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 3
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 6
+      Data: 
+    - Name: Pivot
+      Entry: 10
+      Data: 3
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
 --- !u!1 &4761410622005152668
 GameObject:
   m_ObjectHideFlags: 0
@@ -354,6 +491,37 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7450288802427722850}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6984161751763995838
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4632630371064151832}
+  m_Layer: 0
+  m_Name: FrontMiddle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4632630371064151832
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6984161751763995838}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

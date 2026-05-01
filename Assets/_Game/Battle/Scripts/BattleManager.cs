@@ -118,8 +118,9 @@ public class BattleManager : MonoBehaviour
             if (p != null)
             {
                 if (p.CurrentHP <= 0) p.Heal(p.MaxHP > 0 ? p.MaxHP : 100);
-                
-                p.GetComponent<PlayerController>()?.SetBattleMode(true);
+                var ctrl = p.GetComponent<PlayerController>();
+                ctrl?.SetBattleMode(true);
+                ctrl?.SetFacingDirection(3);
             }
         }
 
@@ -283,7 +284,9 @@ public class BattleManager : MonoBehaviour
         if (_pendingAction == PlayerMenuAction.Attack)
             StartCoroutine(ExecuteAttack(_pendingActor, targetIndex));
         else if (_pendingAction == PlayerMenuAction.Skill)
-            StartCoroutine(ExecuteSkill(_pendingActor, targetIndex));
+        {
+            //TODO: 스킬 제작해야함
+        }
     }
     
     /// <summary>타겟 선택 중 X키를 눌러 취소했을 때 메뉴 복구용</summary>
@@ -314,7 +317,7 @@ public class BattleManager : MonoBehaviour
         yield return actor.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
 
         // 2. 타격
-        actorCtrl?.PlayBattleAnim(PlayerController.HashAttack);
+        actorCtrl?.ExecuteAttack();
         yield return new WaitForSeconds(0.15f);
 
         int dmg = target.TakeDamage(actor.ATK);
@@ -333,9 +336,8 @@ public class BattleManager : MonoBehaviour
         AdvanceTurn();
     }
 
-    // ── 스킬 (QTE 연동) ───────────────────────────────────────
-    // ── 스킬 (플레이어 공격 시 위력 강화 QTE) ───────────────────
-    private IEnumerator ExecuteSkill(PlayerCharacter actor, int targetIndex)
+    // ── 스킬 (데이터 기반 다이내믹 연출) ─────────────────────────
+    private IEnumerator ExecuteSkill(PlayerCharacter actor, int targetIndex, SkillData skill)
     {
         ChangeState(BattleState.ActionExecute);
 
@@ -348,53 +350,85 @@ public class BattleManager : MonoBehaviour
         var pm     = PositionManager.Instance;
         var actorCtrl = actor.GetComponent<PlayerController>();
 
-        // 🚨 1. 스킬 QTE 시작 (오직 여기서만 게이지 바 UI가 나타남)
+        // 1. QTE 처리
         bool qteFinished = false;
         QTEManager.QTEGrade resultGrade = QTEManager.QTEGrade.Miss;
 
-        QTEManager.Instance.StartSkillQTE(1.0f); 
-        Action<QTEManager.QTEGrade> onComplete = null;
-        onComplete = (grade) => {
-            resultGrade = grade;
-            qteFinished = true;
-            QTEManager.Instance.OnSkillQTECompleted -= onComplete;
-        };
-        QTEManager.Instance.OnSkillQTECompleted += onComplete;
-
-        yield return new WaitUntil(() => qteFinished);
-
-        // 🚨 2. 등급별 데미지 배율 결정
-        float mult = resultGrade switch
+        if (skill.QTEType != QTEType.None)
         {
-            QTEManager.QTEGrade.Perfect => 2.0f,
-            QTEManager.QTEGrade.Great   => 1.5f,
-            QTEManager.QTEGrade.Good    => 1.2f,
-            QTEManager.QTEGrade.Bad     => 0.8f,
-            _                           => 0.5f,
-        };
+            QTEManager.Instance.StartSkillQTE(1.0f);
+            Action<QTEManager.QTEGrade> onComplete = null;
+            onComplete = (grade) => {
+                resultGrade = grade;
+                qteFinished = true;
+                QTEManager.Instance.OnSkillQTECompleted -= onComplete;
+            };
+            QTEManager.Instance.OnSkillQTECompleted += onComplete;
+            yield return new WaitUntil(() => qteFinished);
+        }
 
-        // 🚨 3. 이동 및 공격 연출 (ExecuteAttack과 동일 템포)
-        Transform frontPivot = target.transform.Find("Pivots/Front");
-        Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(-1.2f, 0, 0);
+        // QTE 결과에 따른 최종 배율
+        float finalMult = skill.DamageMultiplier * (resultGrade == QTEManager.QTEGrade.Perfect ? skill.QTESuccessMultiplier : skill.QTEFailMultiplier);
 
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-        yield return actor.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
+        // 2. 이동 (돌진형 스킬일 경우에만)
+        if (skill.CastType == SkillCastType.MeleeDash)
+        {
+            Transform frontPivot = target.transform.Find("Pivots/Front");
+            Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(-1.2f, 0, 0);
 
-        actorCtrl?.PlayBattleAnim(PlayerController.HashAttack);
-        yield return new WaitForSeconds(0.15f);
+            actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+            yield return actor.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
+        }
 
-        // 결과 적용
-        int dmg = target.TakeDamage(Mathf.RoundToInt(actor.ATK * mult));
-        bool isCrit = resultGrade == QTEManager.QTEGrade.Perfect;
-        _impulseSource?.GenerateImpulse(isCrit ? _hitImpulse * 1.5f : _hitImpulse);
-        OnDamageDealt?.Invoke(target, dmg, isCrit);
+        // 3. 공격 애니메이션 시작
+        actorCtrl?.ExecuteAttack();
 
+        // 4. VFX 및 데미지 타이밍 제어 (SkillData 기반)
+        float timer = 0f;
+        bool vfxSpawned = false;
+        bool damageDealt = false;
+        float maxDelay = Mathf.Max(skill.VFXSpawnDelay, skill.DamageDelay);
+
+        while (timer <= maxDelay)
+        {
+            timer += Time.deltaTime;
+
+            // 지정된 시간이 되면 VFX 소환 (단 1번만)
+            if (timer >= skill.VFXSpawnDelay && !vfxSpawned && skill.EffectPrefab != null)
+            {
+                Transform spawnPivot = skill.SpawnVFXOnTarget ? 
+                    target.transform.Find("Pivots/Center") ?? target.transform : 
+                    actor.transform.Find("Pivots/Front") ?? actor.transform;
+
+                ObjectPoolManager.Instance.Spawn(skill.EffectPrefab, spawnPivot.position, Quaternion.identity);
+                vfxSpawned = true;
+            }
+
+            // 지정된 시간이 되면 데미지 적용
+            if (timer >= skill.DamageDelay && !damageDealt)
+            {
+                int dmg = target.TakeDamage(Mathf.RoundToInt(actor.ATK * finalMult));
+                bool isCrit = resultGrade == QTEManager.QTEGrade.Perfect;
+                
+                _impulseSource?.GenerateImpulse(isCrit ? _hitImpulse * 1.5f : _hitImpulse);
+                OnDamageDealt?.Invoke(target, dmg, isCrit);
+                damageDealt = true;
+            }
+
+            yield return null;
+        }
+
+        // 여운 대기
         yield return new WaitForSeconds(0.3f);
 
-        // 복귀
-        int idx = _playerParty.IndexOf(actor);
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-        yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+        // 5. 복귀 (돌진형 스킬이었을 경우만)
+        if (skill.CastType == SkillCastType.MeleeDash)
+        {
+            int idx = _playerParty.IndexOf(actor);
+            actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+            yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+        }
+        
         actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
 
         if (CheckVictory()) { ChangeState(BattleState.BattleEnd); yield break; }
@@ -455,7 +489,6 @@ public class BattleManager : MonoBehaviour
         AdvanceTurn();
     }
 
-    // ── 적 근거리 단일 공격 ───────────────────────────────────
     // ── 적 근거리 단일 공격 및 실시간 방어 ──────────────────────
     private IEnumerator EnemyMeleeRoutine(EnemyCharacter enemy, PositionManager pm)
     {
@@ -488,7 +521,6 @@ public class BattleManager : MonoBehaviour
                 targetCtrl.ExecuteParry(); // 실패해도 애니메이션은 실행됨
                 if (elapsed >= 0.3f && elapsed <= 0.6f) // 패링 유효 프레임
                 {
-                    targetCtrl.PlayParryEffect();
                     defensed = true;
                     break;
                 }

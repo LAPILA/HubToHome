@@ -44,6 +44,7 @@ GameObject:
   - component: {fileID: 458867946328447204}
   - component: {fileID: 7800666874580278982}
   - component: {fileID: 8643868022141659312}
+  - component: {fileID: 202491752110947330}
   m_Layer: 0
   m_Name: Enemy_Slime
   m_TagString: Untagged
@@ -113,7 +114,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 1655595087
-  m_SortingLayer: 1
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -6064768988411908953, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
@@ -143,6 +144,9 @@ MonoBehaviour:
   DEF: 5
   SPD: 10
   Data: {fileID: 11400000, guid: 0d809955dfe6144459f4205e92356daa, type: 2}
+  _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
+  _flashDuration: 0.08
+  _shakeStrength: 0.15
 --- !u!50 &7800666874580278982
 Rigidbody2D:
   serializedVersion: 5
@@ -192,6 +196,76 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &202491752110947330
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3461299171839533844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f17d53b52b85ac4f9814a667de6c49f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterVFX
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects:
+    - {fileID: 4748681987041982144, guid: 3ff9ac3abf5e96848b6b1d3f52f12a13, type: 3}
+    - {fileID: 5668262471041838953}
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _vfxDict
+      Entry: 7
+      Data: 0|System.Collections.Generic.Dictionary`2[[CharacterVFX+VFXAction, Assembly-CSharp],[CharacterVFX+VFXSetup,
+        Assembly-CSharp]], mscorlib
+    - Name: comparer
+      Entry: 7
+      Data: 1|System.Collections.Generic.EnumEqualityComparer`1[[CharacterVFX+VFXAction,
+        Assembly-CSharp]], mscorlib
+    - Name: 
+      Entry: 12
+      Data: 0
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 0
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 0
+    - Name: Pivot
+      Entry: 10
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
 --- !u!1 &5009739426349522752
 GameObject:
   m_ObjectHideFlags: 0

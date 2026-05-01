@@ -1,27 +1,47 @@
-using System;
+using UnityEngine;
 
 /// <summary>
-/// 상태 이상 베이스 클래스. 독, 화상, 버프 등 모든 효과가 이를 상속합니다.
+/// 버프 및 디버프의 기본이 되는 추상 클래스.
 /// </summary>
-[Serializable]
 public abstract class StatusEffect
 {
-    public string EffectName  { get; protected set; }
-    public int    Duration    { get; protected set; } // 남은 턴 수
-    public bool   IsExpired   => Duration <= 0;
+    public string EffectID { get; protected set; }
+    public int DurationTurns { get; protected set; }
+    public bool IsExpired => DurationTurns <= 0;
+    
+    protected GameObject LoopVFXPrefab;
+    protected string PivotName;
 
-    protected StatusEffect(string name, int duration)
+    public StatusEffect(string id, int duration, GameObject vfxPrefab = null, string pivot = "Pivots/Bottom")
     {
-        EffectName = name;
-        Duration   = duration;
+        EffectID = id;
+        DurationTurns = duration;
+        LoopVFXPrefab = vfxPrefab;
+        PivotName = pivot;
     }
 
-    /// <summary>매 턴 호출됩니다. 효과를 적용하고 Duration을 감소시킵니다.</summary>
+    public void RefreshDuration(int turns)
+    {
+        DurationTurns = Mathf.Max(DurationTurns, turns);
+    }
+
+    /// <summary>처음 부여될 때 실행 (스탯 증가, VFX 켜기 등)</summary>
+    public virtual void OnApply(CharacterBase target)
+    {
+        if (LoopVFXPrefab != null)
+            target.AddLoopVFX(EffectID, LoopVFXPrefab, PivotName);
+    }
+
+    /// <summary>매 턴마다 실행 (지속시간 감소, 도트 데미지 등)</summary>
     public virtual void OnTick(CharacterBase target)
     {
-        ApplyEffect(target);
-        Duration--;
+        DurationTurns--;
     }
 
-    protected abstract void ApplyEffect(CharacterBase target);
+    /// <summary>해제될 때 실행 (스탯 원상복구, VFX 끄기 등)</summary>
+    public virtual void OnRemove(CharacterBase target)
+    {
+        if (LoopVFXPrefab != null)
+            target.RemoveLoopVFX(EffectID);
+    }
 }

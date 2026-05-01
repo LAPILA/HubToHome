@@ -16,8 +16,8 @@ public enum BattleState
 /// </summary>
 public enum PlayerMenuAction
 {
-    Attack, // Fight
-    Skill,  // Magic
+    Attack,
+    Skill,
     Item,
     Run,
 }
