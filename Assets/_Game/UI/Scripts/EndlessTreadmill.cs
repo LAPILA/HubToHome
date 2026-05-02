@@ -1,17 +1,15 @@
 using UnityEngine;
 using Sirenix.OdinInspector;
 
-/// <summary>
-/// 물리적 러닝머신 무한 스크롤 시스템.
-/// 게임 시작 시 2개의 복제본을 추가 생성하여 총 3개가 맞물려 돌아갑니다.
-/// Instantiate 연산이 없으므로 모바일에서도 완벽한 최적화를 보장합니다.
-/// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
 public class EndlessTreadmill : MonoBehaviour
 {
     [Title("Treadmill Settings")]
-    [Tooltip("초당 이동 속도 (마이너스면 왼쪽, 플러스면 오른쪽으로 이동)")]
     public float ScrollSpeedX = -5f;
+    
+    // [중요] 타일들을 0.05 단위로 강제로 겹쳐버립니다.
+    [Tooltip("틈새 방지를 위해 강제로 겹치는 수치 (틈이 보이면 0.05 정도로 높이세요)")]
+    public float overlapAmount = 0.05f; 
 
     private Transform[] _tiles;
     private float _spriteWidth;
@@ -21,77 +19,81 @@ public class EndlessTreadmill : MonoBehaviour
         SpriteRenderer sr = GetComponent<SpriteRenderer>();
         if (sr.sprite == null) return;
 
-        // 스프라이트의 실제 가로 길이를 구합니다. (스케일 반영)
-        _spriteWidth = sr.sprite.bounds.size.x * transform.localScale.x;
+        // 원본 스케일을 저장해둡니다.
+        Vector3 originalScale = transform.localScale;
 
-        // 본체를 포함해 총 3개의 타일 배열 생성
+        // 🚨 틈새 방지 1: 스프라이트 크기를 계산할 때 overlapAmount만큼 미리 뺍니다.
+        // 이렇게 하면 타일들이 overlapAmount만큼 안으로 파고들어 배치됩니다.
+        _spriteWidth = (sr.sprite.bounds.size.x / originalScale.x) * originalScale.x - overlapAmount;
+
         _tiles = new Transform[3];
         _tiles[0] = transform;
 
-        // 꼬리에 붙을 2개의 복제본을 '미리' 생성합니다.
+        // 🚨 틈새 방지 2: 원본 타일의 X 스케일을 미세하게 늘려서 빈틈을 가립니다.
+        // 예를 들어 스케일이 1이면 1.01로 만듭니다. (픽셀 아트가 살짝 늘어나도 티 안 남)
+        transform.localScale = new Vector3(originalScale.x * 1.01f, originalScale.y, originalScale.z);
+
         for (int i = 1; i < 3; i++)
         {
             GameObject clone = Instantiate(gameObject, transform.parent);
-            // 복제본에는 이 스크립트가 작동하지 않도록 파괴
             Destroy(clone.GetComponent<EndlessTreadmill>()); 
             clone.name = $"{gameObject.name}_Clone_{i}";
             
             _tiles[i] = clone.transform;
+            // 복제본의 스케일도 미세하게 늘린 상태 적용
+            _tiles[i].localScale = new Vector3(originalScale.x * 1.01f, originalScale.y, originalScale.z);
+            
+            // 위치 배치 (파고든 상태로 배치됨)
             _tiles[i].position = _tiles[0].position + new Vector3(_spriteWidth * i, 0, 0);
         }
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         if (_tiles == null) return;
 
-        // 1. 모든 타일 이동
         float moveStep = ScrollSpeedX * Time.deltaTime;
+        
         for (int i = 0; i < 3; i++)
         {
             _tiles[i].Translate(Vector3.right * moveStep, Space.World);
         }
 
-        // 2. 꼬리잡기 로직 (카메라 밖으로 나간 타일을 반대쪽 끝으로 텔레포트)
-        if (ScrollSpeedX < 0) // 왼쪽으로 이동 중
+        float parentX = transform.parent.position.x;
+
+        if (ScrollSpeedX < 0) 
         {
-            // 첫 번째 타일이 완전히 왼쪽으로 넘어갔다면
-            if (_tiles[0].position.x < transform.parent.position.x - _spriteWidth)
+            if (_tiles[0].position.x < parentX - _spriteWidth)
             {
                 ShiftTiles(true);
             }
         }
-        else // 오른쪽으로 이동 중
+        else 
         {
-            // 세 번째 타일이 완전히 오른쪽으로 넘어갔다면
-            if (_tiles[2].position.x > transform.parent.position.x + _spriteWidth)
+            if (_tiles[2].position.x > parentX + _spriteWidth)
             {
                 ShiftTiles(false);
             }
         }
     }
 
-    /// <summary>배열 순서를 바꾸고 위치를 재배치합니다.</summary>
     private void ShiftTiles(bool movingLeft)
     {
         if (movingLeft)
         {
-            // 맨 앞(0번)을 맨 뒤(2번)의 오른쪽으로 보냄
             Transform first = _tiles[0];
+            // 다시 배치할 때도 파고든 거리(_spriteWidth)만큼만 더합니다.
             first.position = _tiles[2].position + new Vector3(_spriteWidth, 0, 0);
 
-            // 배열 밀어내기: 1->0, 2->1, 맨앞->2
             _tiles[0] = _tiles[1];
             _tiles[1] = _tiles[2];
             _tiles[2] = first;
         }
         else
         {
-            // 맨 뒤(2번)를 맨 앞(0번)의 왼쪽으로 보냄
             Transform last = _tiles[2];
             last.position = _tiles[0].position - new Vector3(_spriteWidth, 0, 0);
 
-            // 배열 당기기: 1->2, 0->1, 맨뒤->0
             _tiles[2] = _tiles[1];
             _tiles[1] = _tiles[0];
             _tiles[0] = last;

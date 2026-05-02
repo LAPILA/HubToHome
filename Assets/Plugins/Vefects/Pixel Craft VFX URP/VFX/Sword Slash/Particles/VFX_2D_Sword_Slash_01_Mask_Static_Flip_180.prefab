@@ -9710,7 +9710,7 @@ ParticleSystemRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 796345349
-  m_SortingLayer: 5
+  m_SortingLayer: 1
   m_SortingOrder: 1
   m_MaskInteraction: 0
   m_RenderMode: 0
@@ -9753,7 +9753,7 @@ AudioSource:
   m_GameObject: {fileID: 4748681987041982144}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
+  OutputAudioMixerGroup: {fileID: -5459790232518098753, guid: 7e29a96a46a831d4f93fe5590c0fd600, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: ee8fdf6df0b237c4f9a1016200771392, type: 3}
   m_PlayOnAwake: 1

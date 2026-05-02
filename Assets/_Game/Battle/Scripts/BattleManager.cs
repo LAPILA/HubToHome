@@ -99,6 +99,7 @@ public class BattleManager : MonoBehaviour
     private System.Collections.IEnumerator DelayedStart()
     {
         yield return new WaitForSeconds(0.2f);
+
         var pm = PositionManager.Instance;
         if (pm != null)
         {
@@ -297,44 +298,77 @@ public class BattleManager : MonoBehaviour
 
     // ── 플레이어 일반 공격 (이동 및 애니메이션 동기화) ──────────
     private IEnumerator ExecuteAttack(PlayerCharacter actor, int targetIndex)
+{
+    ChangeState(BattleState.ActionExecute);
+
+    if (targetIndex >= _enemies.Count || !_enemies[targetIndex].IsAlive)
     {
-        ChangeState(BattleState.ActionExecute);
-
-        if (targetIndex >= _enemies.Count || !_enemies[targetIndex].IsAlive)
-        {
-            AdvanceTurn(); yield break;
-        }
-
-        var target = _enemies[targetIndex];
-        var pm     = PositionManager.Instance;
-        var actorCtrl = actor.GetComponent<PlayerController>();
-
-        // 1. 돌진
-        Transform frontPivot = target.transform.Find("Pivots/Front");
-        Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(-1.2f, 0, 0);
-
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-        yield return actor.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
-
-        // 2. 타격
-        actorCtrl?.ExecuteAttack();
-        yield return new WaitForSeconds(0.15f);
-
-        int dmg = target.TakeDamage(actor.ATK);
-        _impulseSource?.GenerateImpulse(_hitImpulse);
-        OnDamageDealt?.Invoke(target, dmg, false); 
-
-        yield return new WaitForSeconds(0.3f);
-
-        // 3. 복귀
-        int idx = _playerParty.IndexOf(actor);
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-        yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
-
-        if (CheckVictory()) { ChangeState(BattleState.BattleEnd); yield break; }
-        AdvanceTurn();
+        AdvanceTurn(); yield break;
     }
+
+    var target = _enemies[targetIndex];
+    var pm = PositionManager.Instance;
+    var actorCtrl = actor.GetComponent<PlayerController>();
+
+    // ── [Step 1: 기본 접근] ──
+    // 적의 앞쪽 지점으로 이동
+    Vector3 frontPos = target.transform.position + new Vector3(-1.8f, 0, 0); 
+    CameraController.Instance?.ModePlayerAction();
+    CameraController.Instance?.Zoom(4.2f, 0.3f); // 공격 집중을 위한 줌인
+
+    actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+    yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
+
+    // ── [Step 2: 예비 동작 (Anticipation)] ──
+    // 뒤로 살짝 물러나며 힘을 모으는 연출
+    Vector3 pullBackPos = frontPos + new Vector3(-0.5f, 0, 0);
+    yield return actor.transform.DOMove(pullBackPos, 0.15f).SetEase(Ease.OutBack).WaitForCompletion();
+
+    // ── [Step 3: 관통 공격 (Dash Through)] ──
+    // 적을 촥! 베면서 적 뒤로 이동
+    Vector3 behindPos = target.transform.position + new Vector3(1.8f, 0, 0);
+    Vector3 dashDir = (behindPos - pullBackPos).normalized;
+
+    // 타격 애니메이션 실행
+    actorCtrl?.ExecuteAttack(); 
+    
+    // 공격하며 적의 뒤로 순간적으로 이동 (InExpo로 아주 빠르게)
+    actor.transform.DOMove(behindPos, 0.15f).SetEase(Ease.InExpo);
+
+    // [타이밍 핵심] 적과 부딪히는 찰나에 이펙트와 카메라 연출
+    yield return new WaitForSeconds(0.08f); // 찰나의 대기
+
+    // 타격 판정 및 카메라 슬램
+    int dmg = target.TakeDamage(actor.ATK);
+    CameraController.Instance?.PlayDashThroughImpact(dashDir); // 카메라 연출
+    
+    // 히트 스탑 (중량감)
+    Time.timeScale = 0.05f;
+    DOVirtual.DelayedCall(0.1f, () => Time.timeScale = 1f).SetUpdate(true);
+
+    OnDamageDealt?.Invoke(target, dmg, false);
+    yield return new WaitForSeconds(0.3f); // 적 뒤에서 폼 잡는 시간
+
+    // ── [Step 4: 복귀] ──
+    int idx = _playerParty.IndexOf(actor);
+    actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
+    
+    // [중요] 공격 종료 시 카메라 완전 리셋
+    CameraController.Instance?.ResetCamera(0.4f);
+
+    if (CheckVictory()) { ChangeState(BattleState.BattleEnd); yield break; }
+    AdvanceTurn();
+    CameraController.Instance?.ModeBattleIdle(); // 카메라 복구
+    
+    actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
+    // 적 뒤에서 원래 자리로 돌아올 때는 위로 살짝 포물선을 그리며 복귀하면 더 멋짐
+    yield return actor.transform.DOJump(pm.GetPlayerDefaultPos(idx), 0.5f, 1, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
+    
+    actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
+
+    if (CheckVictory()) { ChangeState(BattleState.BattleEnd); yield break; }
+    AdvanceTurn();
+}
 
     // ── 스킬 (데이터 기반 다이내믹 연출) ─────────────────────────
     private IEnumerator ExecuteSkill(PlayerCharacter actor, int targetIndex, SkillData skill)
@@ -462,28 +496,30 @@ public class BattleManager : MonoBehaviour
     // ── EnemyAction ───────────────────────────────────────────
     private IEnumerator EnemyActionRoutine()
     {
-        // 현재 행동 적 찾기 (AdvanceTurn에서 이미 인덱스 증가됨)
         var enemy = GetCurrentEnemy();
         if (enemy == null) { AdvanceTurn(); yield break; }
 
-        var action     = enemy.DecideAction();
+        var action = enemy.DecideAction();
         var attackType = ResolveAttackType(enemy, action);
 
         OnEnemyActionStarted?.Invoke(enemy, attackType);
-
         var pm = PositionManager.Instance;
+
+        // 적 행동 시작 시 카메라 적군 포커스
+        CameraController.Instance?.ModeEnemyAction();
 
         switch (attackType)
         {
             case EnemyAttackType.MeleeClose:
                 yield return StartCoroutine(EnemyMeleeRoutine(enemy, pm));
                 break;
-
             case EnemyAttackType.RangedAoE:
             case EnemyAttackType.AoEAll:
                 yield return StartCoroutine(EnemyAoERoutine(enemy, attackType));
                 break;
         }
+
+        CameraController.Instance?.ResetCamera(0.5f);
 
         if (CheckDefeat()) { ChangeState(BattleState.BattleEnd); yield break; }
         AdvanceTurn();
@@ -491,78 +527,85 @@ public class BattleManager : MonoBehaviour
 
     // ── 적 근거리 단일 공격 및 실시간 방어 ──────────────────────
     private IEnumerator EnemyMeleeRoutine(EnemyCharacter enemy, PositionManager pm)
+{
+    int targetIdx = GetAlivePlayerIndex();
+    if (targetIdx < 0) yield break;
+
+    var target = _playerParty[targetIdx];
+    var targetCtrl = target.GetComponent<PlayerController>();
+
+    // 1. 접근
+    enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
+    Vector3 attackPos = target.transform.position + new Vector3(1.2f, 0, 0); 
+    yield return enemy.transform.DOMove(attackPos, 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+
+    // 2. 방어 입력 감지 (입력 잠금 장치 포함)
+    float defenseWindow = 0.8f;
+    float elapsed = 0f;
+    bool defensed = false;
+    bool inputTaken = false; // 🚨 연타 방지용 플래그
+
+    enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
+
+    while (elapsed < defenseWindow)
     {
-        int targetIdx = GetAlivePlayerIndex();
-        if (targetIdx < 0) yield break;
+        elapsed += Time.deltaTime;
 
-        var target = _playerParty[targetIdx];
-        var targetCtrl = target.GetComponent<PlayerController>();
-
-        // 1. 적 다가옴 (BattleMove)
-        enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
-        Transform frontPivot = target.transform.Find("Pivots/Front");
-        Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(1.2f, 0, 0);
-        yield return enemy.transform.DOMove(attackPos, 0.25f).SetEase(Ease.Linear).WaitForCompletion();
-
-        // 2. 적 공격 시작 (선딜레이 및 입력 감지 루프)
-        float defenseWindow = 0.8f; // 적 공격 전체 판정 시간
-        float elapsed = 0f;
-        bool defensed = false;
-
-        enemy.PlayBattleAnim(EnemyCharacter.HashAttack); // 적 공격 애니메이션 1회 실행
-
-        while (elapsed < defenseWindow)
+        // 이미 입력을 했다면 더 이상 체크 안 함 (연타 방지 핵심)
+        if (!inputTaken)
         {
-            elapsed += Time.deltaTime;
-
-            // Z(패링): 타이밍이 맞아야 함
+            // Z(패링)
             if (Keyboard.current.zKey.wasPressedThisFrame)
             {
-                targetCtrl.ExecuteParry(); // 실패해도 애니메이션은 실행됨
-                if (elapsed >= 0.3f && elapsed <= 0.6f) // 패링 유효 프레임
-                {
-                    defensed = true;
-                    break;
-                }
+                inputTaken = true; // 입력 한 번으로 제한
+                targetCtrl.ExecuteParry();
+                if (elapsed >= 0.3f && elapsed <= 0.6f) defensed = true;
+                if (defensed) break; // 패링 성공 시 즉시 루프 탈출
             }
-            // C(회피), Space(점프): 누르는 즉시 연출 및 무적 판정
-            if (Keyboard.current.cKey.wasPressedThisFrame)
+            // C(회피), Space(점프)
+            else if (Keyboard.current.cKey.wasPressedThisFrame)
             {
+                inputTaken = true;
                 targetCtrl.ExecuteDodge();
                 defensed = true;
                 break;
             }
-            if (Keyboard.current.spaceKey.wasPressedThisFrame)
+            else if (Keyboard.current.spaceKey.wasPressedThisFrame)
             {
+                inputTaken = true;
                 targetCtrl.ExecuteJump();
                 defensed = true;
                 break;
             }
-            yield return null;
         }
-
-        // 3. 결과 적용
-        if (!defensed)
-        {
-            // 방어 실패 시에만 데미지
-            target.TakePureDamage(enemy.ATK);
-            targetCtrl.PlayHurtEffect();
-            _impulseSource?.GenerateImpulse(_hitImpulse);
-            OnDamageDealt?.Invoke(target, enemy.ATK, false);
-        }
-        else
-        {
-            // 성공 시 임펄스만 살짝 (타격감)
-            _impulseSource?.GenerateImpulse(_missImpulse);
-        }
-
-        yield return new WaitForSeconds(0.4f);
-
-        // 4. 복귀
-        enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
-        yield return enemy.transform.DOMove(pm.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
-        enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+        yield return null;
     }
+
+    // 3. 결과 적용
+    if (!defensed)
+    {
+        target.TakePureDamage(enemy.ATK);
+        targetCtrl.PlayHurtEffect();
+        CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
+    }
+    else
+    {
+        // 성공 피드백 (방향 자유롭게 조절 가능)
+        CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.3f, true);
+    }
+
+    yield return new WaitForSeconds(0.4f);
+
+    // 상태 리셋
+    targetCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
+
+    // 4. 복귀
+    enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
+    yield return enemy.transform.DOMove(pm.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
+    enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+    
+    CameraController.Instance?.ResetCamera(0.5f);
+}
 
     private IEnumerator EnemyAoERoutine(EnemyCharacter enemy, EnemyAttackType type)
     {
