@@ -726,7 +726,7 @@ public int EXPReward, GoldReward;
 ```csharp
 public string ItemName, ItemID;
 public EquipmentSlot Slot;            // Weapon/Accessory1/2/Head/Body/Shoes
-public int BonusATK, BonusDEF, BonusSPD, BonusMaxHP;
+public int BonusATK, BonusDEF, BonusSPD, BonusMaxHP, BonusMaxMp;
 public string EquipReactionDialogueID; // 장착 시 트리거할 대화 ID (선택)
 ```
 

@@ -2,29 +2,11 @@ using UnityEngine;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 
-/// <summary>
-/// 방어/스킬 QTE UI.
-/// 
-/// 방어 QTE 흐름:
-///   카운트다운 바 수축 → Z(패링)/C(회피)/Space(점프) 입력 → 결과 팝업
-/// 
-/// 스킬 QTE 흐름:
-///   파란 바 수축 → Z키 타이밍 입력 → 결과 팝업
-/// 
-/// Hierarchy:
-/// DefenseQTEUI (UIPanel + CanvasGroup)
-///   ├── CountdownBar
-///   │     ├── BarBG    (Image, 배경)
-///   │     └── BarFill  (Image, fillMethod=Horizontal, fillOrigin=Right)
-///   └── ResultLabel    (TMP + TextAnimator 컴포넌트)
-/// </summary>
 public class DefenseQTEUI : UIPanel
 {
-    // ── 카운트다운 바 ─────────────────────────────────────────
     [BoxGroup("Countdown Bar"), LabelWidth(120)]
     [SerializeField] private UnityEngine.UI.Image _barFill;
 
-    // ── 결과 표시 ─────────────────────────────────────────────
     [BoxGroup("Result"), LabelWidth(120)]
     [SerializeField] private TMPro.TextMeshProUGUI _resultLabel;
 
@@ -39,20 +21,23 @@ public class DefenseQTEUI : UIPanel
     [FoldoutGroup("Result Colors")]
     [SerializeField] private Color _colorMiss    = new Color(0.55f, 0.55f, 0.55f);
 
-    // ── 내부 상태 ─────────────────────────────────────────────
+    [BoxGroup("Skill QTE Dynamic"), LabelWidth(120)]
+    [SerializeField] private RectTransform _qteRoot;
+
+    [BoxGroup("Skill QTE Dynamic"), LabelWidth(120)]
+    [SerializeField] private TMPro.TextMeshProUGUI _targetKeyLabel;
+
     private Tweener _barTween;
+    private Sequence _resultSequence;
 
     // ═══════════════════════════════════════════════════════════
     // ── 방어 QTE ──────────────────────────────────────────────
-    // ═══════════════════════════════════════════════════════════
-
-    /// <summary>방어 QTE UI 표시 (카운트다운 바 수축)</summary>
     public void ShowQTE(float attackDelay, string attackTypeName = "ATTACK")
     {
+        _resultSequence?.Kill(); 
         ShowImmediate();
 
         if (_resultLabel != null) { _resultLabel.text = ""; _resultLabel.alpha = 0f; }
-
         if (_barFill != null)
         {
             _barFill.fillAmount = 1f;
@@ -60,21 +45,18 @@ public class DefenseQTEUI : UIPanel
             _barTween?.Kill();
             _barTween = _barFill.DOFillAmount(0f, attackDelay).SetEase(Ease.Linear);
 
-            // 35% 이하 → 빨간색 경고
             DOTween.To(() => _barFill.fillAmount, _ => { }, 0f, attackDelay)
-                .OnUpdate(() =>
-                {
+                .OnUpdate(() => {
                     if (_barFill != null && _barFill.fillAmount < 0.35f)
                         _barFill.DOColor(new Color(1f, 0.2f, 0.2f), 0.1f);
                 });
         }
     }
 
-    /// <summary>방어 QTE 결과 표시 후 닫기</summary>
     public void ShowResult(QTEManager.QTEGrade grade, DefenseInput input)
     {
         _barTween?.Kill();
-
+        _resultSequence?.Kill();
         if (_resultLabel == null) { Hide(); return; }
 
         _resultLabel.text  = GetDefenseResultText(grade, input);
@@ -82,11 +64,10 @@ public class DefenseQTEUI : UIPanel
         _resultLabel.alpha = 0f;
         _resultLabel.transform.localScale = Vector3.one * 0.5f;
 
-        DOTween.Sequence()
+        _resultSequence = DOTween.Sequence()
             .Append(_resultLabel.DOFade(1f, 0.08f))
             .Join(_resultLabel.transform.DOScale(Vector3.one, 0.12f).SetEase(Ease.OutBack))
-            .AppendCallback(() =>
-                _resultLabel.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f))
+            .AppendCallback(() => _resultLabel.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f))
             .AppendInterval(0.75f)
             .Append(_resultLabel.DOFade(0f, 0.15f))
             .AppendCallback(() => Hide());
@@ -94,63 +75,74 @@ public class DefenseQTEUI : UIPanel
 
     // ═══════════════════════════════════════════════════════════
     // ── 스킬 QTE ──────────────────────────────────────────────
-    // ═══════════════════════════════════════════════════════════
-
-    /// <summary>스킬 QTE UI 표시 (파란 바 수축, Z키 타이밍)</summary>
-    public void ShowSkillQTE(float duration)
+    public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration)
     {
-        ShowImmediate();
+        _resultSequence?.Kill(); 
+        ShowImmediate(); 
+        Canvas.ForceUpdateCanvases(); // UI 렉 보정용
 
+        if (_qteRoot != null)
+        {
+            Canvas canvas = GetComponentInParent<Canvas>();
+            Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            
+            if (cam != null)
+            {
+                RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                    (RectTransform)_qteRoot.parent, screenPos, cam, out Vector3 worldPos);
+                _qteRoot.position = worldPos;
+            }
+            else
+            {
+                _qteRoot.position = screenPos; 
+            }
+        }
+
+        if (_targetKeyLabel != null) _targetKeyLabel.text = targetKey;
         if (_resultLabel != null) { _resultLabel.text = ""; _resultLabel.alpha = 0f; }
 
         if (_barFill != null)
         {
             _barFill.fillAmount = 1f;
-            _barFill.color      = new Color(0.3f, 0.8f, 1f); // 파란색
+            _barFill.color      = new Color(0.2f, 0.8f, 1f); 
             _barTween?.Kill();
-            _barTween = _barFill.DOFillAmount(0f, duration).SetEase(Ease.Linear);
+            
+            // duration이 0이면(Pre-warm) 트윈을 아예 건너뜀
+            if (duration > 0f) 
+                _barTween = _barFill.DOFillAmount(0f, duration).SetEase(Ease.Linear);
         }
     }
 
-    /// <summary>스킬 QTE 결과 표시 후 닫기</summary>
-    public void ShowSkillResult(QTEManager.QTEGrade grade)
+    public void ShowSkillResult(bool isHit)
     {
         _barTween?.Kill();
-
+        _resultSequence?.Kill();
         if (_resultLabel == null) { Hide(); return; }
 
-        _resultLabel.text  = GetSkillResultText(grade);
-        _resultLabel.color = GetResultColor(grade);
+        _resultLabel.text  = isHit ? "<bounce>HIT!</bounce>" : "<shake>MISS</shake>";
+        _resultLabel.color = isHit ? new Color(0.2f, 1f, 0.4f) : new Color(1f, 0.3f, 0.3f);
         _resultLabel.alpha = 0f;
         _resultLabel.transform.localScale = Vector3.one * 0.5f;
 
-        DOTween.Sequence()
+        _resultSequence = DOTween.Sequence()
             .Append(_resultLabel.DOFade(1f, 0.08f))
             .Join(_resultLabel.transform.DOScale(Vector3.one, 0.12f).SetEase(Ease.OutBack))
-            .AppendCallback(() =>
-                _resultLabel.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f))
-            .AppendInterval(0.6f)
-            .Append(_resultLabel.DOFade(0f, 0.12f))
-            .AppendCallback(() => Hide());
+            .AppendCallback(() => _resultLabel.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f))
+            .AppendInterval(0.35f) 
+            .Append(_resultLabel.DOFade(0f, 0.12f)); 
+            // 🚨 화면이 중간에 꺼지는 증상을 막기 위해 Hide() 하지 않음!
     }
 
-    // ── 정리 ──────────────────────────────────────────────────
     protected override void OnHideComplete()
     {
         _barTween?.Kill();
+        _resultSequence?.Kill();
         if (_barFill != null) { _barFill.fillAmount = 1f; _barFill.color = Color.white; }
     }
 
-    // ── 유틸리티 ──────────────────────────────────────────────
     private string GetDefenseResultText(QTEManager.QTEGrade grade, DefenseInput input)
     {
-        string inputName = input switch
-        {
-            DefenseInput.Parry => "패링",
-            DefenseInput.Dodge => "회피",
-            DefenseInput.Jump  => "점프",
-            _                  => "",
-        };
+        string inputName = input switch { DefenseInput.Parry => "패링", DefenseInput.Dodge => "회피", DefenseInput.Jump => "점프", _ => "" };
         return grade switch
         {
             QTEManager.QTEGrade.Perfect => $"<shake a=0.3>PERFECT!</shake> {inputName}",
@@ -161,27 +153,12 @@ public class DefenseQTEUI : UIPanel
         };
     }
 
-    private string GetSkillResultText(QTEManager.QTEGrade grade)
-    {
-        return grade switch
-        {
-            QTEManager.QTEGrade.Perfect => "<shake a=0.3>PERFECT!</shake>",
-            QTEManager.QTEGrade.Great   => "<wave a=0.2>GREAT!</wave>",
-            QTEManager.QTEGrade.Good    => "GOOD",
-            QTEManager.QTEGrade.Bad     => "BAD",
-            _                           => "MISS",
-        };
-    }
-
     private Color GetResultColor(QTEManager.QTEGrade grade)
     {
         return grade switch
         {
-            QTEManager.QTEGrade.Perfect => _colorPerfect,
-            QTEManager.QTEGrade.Great   => _colorGreat,
-            QTEManager.QTEGrade.Good    => _colorGood,
-            QTEManager.QTEGrade.Bad     => _colorBad,
-            _                           => _colorMiss,
+            QTEManager.QTEGrade.Perfect => _colorPerfect, QTEManager.QTEGrade.Great => _colorGreat,
+            QTEManager.QTEGrade.Good => _colorGood, QTEManager.QTEGrade.Bad => _colorBad, _ => _colorMiss,
         };
     }
 }

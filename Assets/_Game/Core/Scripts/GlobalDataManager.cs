@@ -34,6 +34,9 @@ public class GlobalDataManager : MonoBehaviour
     public int   PlayerHP    { get; set; } = 100;
     public int   PlayerMaxHP { get; set; } = 100;
 
+    public int   PlayerMP    { get; set; } = 100;
+    public int   PlayerMaxMP { get; set; } = 100;
+
     // 씬 전환용 임시 위치 데이터
     public string SpawnScene     { get; set; } = SceneName.Overworld;
     public float  SpawnX         { get; set; } = 0f;
@@ -47,6 +50,8 @@ public class GlobalDataManager : MonoBehaviour
         _inventoryItemIDs.Clear();
         PlayerHP    = 100;
         PlayerMaxHP = 100;
+        PlayerMP = 100;
+        PlayerMaxMP = 100;
     }
 
     // ── 이벤트 플래그 API ─────────────────────────────────────
@@ -102,6 +107,8 @@ public class GlobalDataManager : MonoBehaviour
         LookingDir   = data.lookingDirection;
         PlayerHP     = data.playerHP;
         PlayerMaxHP  = data.playerMaxHP;
+        PlayerMP     = data.playerMP;
+        PlayerMaxMP  = data.playerMaxMP;
 
         _inventoryItemIDs.Clear();
         _inventoryItemIDs.AddRange(data.inventoryItemIDs);

@@ -32,6 +32,7 @@ public class EquipmentData : ScriptableObject
     public int BonusDEF    = 0;
     public int BonusSPD    = 0;
     public int BonusMaxHP  = 0;
+    public int BonusMaxMP = 0;
 
     [Header("Special Reaction")]
     [Tooltip("특정 캐릭터가 이 장비를 장착할 때 트리거할 대화 ID")]

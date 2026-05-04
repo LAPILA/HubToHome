@@ -330,6 +330,8 @@ MonoBehaviour:
   HeadSlot: {fileID: 0}
   BodySlot: {fileID: 0}
   ShoesSlot: {fileID: 0}
+  Skills:
+  - {fileID: 11400000, guid: ae31297861161004fb3601e94c107ba3, type: 2}
   CharacterID: Player
 --- !u!114 &1699074167755928894
 MonoBehaviour:

@@ -18,6 +18,8 @@ public class SaveData
     // ── 캐릭터 스탯 ──────────────────────────────────────────
     public int    playerHP          = 100;
     public int    playerMaxHP       = 100;
+    public int    playerMP          = 100;
+    public int    playerMaxMP       = 100;
 
     // ── 인벤토리 ─────────────────────────────────────────────
     public List<string> inventoryItemIDs = new List<string>();

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18de9e20d427627418d7201e43ca5d52, type: 3}
+  m_Name: Potatao
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  ItemID: item_003
+  ItemName: "\uAC10\uC790\uD280\uAE40"
+  Icon: {fileID: 0}
+  Description: "\uBC14\uC0AD\uBC14\uC0AD\uD558\uACE0 \uC721\uC999\uC774 \uD758\uB7EC
+    \uB9E4\uC6B0 \uD589\uBCF5\uD574\uC9C0\uB294 \uAE30\uB2E4\uB780 \uAC10\uC790\uD280\uAE40.
+    \uC804\uCCB4 HP 100% \uD68C\uBCF5"
+  Type: 0
+  TargetType: 0
+  IsAoE: 0
+  ActionType: 1
+  TargetStat: 1
+  CalcType: 1
+  EffectValue: 100
+  StatusEffect: 0
+  StatusDurationTurns: 0
+  IsStackable: 1
+  MaxStackSize: 99

@@ -19,7 +19,7 @@ public class EnemyData : SerializedScriptableObject
     // ── 스탯 ──────────────────────────────────────────────────
     [BoxGroup("Base Stats"), LabelWidth(60)]
     [HorizontalGroup("Base Stats/Row1")]
-    public int MaxHP = 50;
+    public int MaxHP = 100;
 
     [HorizontalGroup("Base Stats/Row1"), LabelWidth(30)]
     public int ATK = 8;

@@ -86,11 +86,9 @@ public class BattleUIController : MonoBehaviour
     [FoldoutGroup("Tween Settings"), LabelWidth(120)]
     [SerializeField] private Ease  _hpTweenEase     = Ease.OutQuad;
 
-    [FoldoutGroup("HP Warning"), LabelWidth(140)]
-    [SerializeField, Range(0f, 0.5f)] private float _dangerHPRatio = 0.3f;
-
     // ── 내부 상태 ─────────────────────────────────────────────
     private bool _isTargeting = false;
+    private bool _isAllyTargeting = false;
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
     private readonly List<GameObject> _turnIcons = new List<GameObject>();
@@ -141,72 +139,77 @@ public class BattleUIController : MonoBehaviour
     }
 
     private void Update()
+{
+    // 1. 커서 좌표 부드럽게 추적 (기존 로직 보강)
+    if (_enemyCursor != null && _enemyCursor.gameObject.activeSelf)
     {
-        // 1. 커서 좌표 부드럽게 추적
-        if (_enemyCursor != null && _enemyCursor.gameObject.activeSelf && _enemies != null)
+        Transform targetTf = null;
+        if (_isAllyTargeting)
         {
+            // 아군 타겟팅: 파티 슬롯 위치 추적 (Portrait 또는 슬롯 Root)
+            if (_selectedEnemyIndex < _partySlots.Length) targetTf = _partySlots[_selectedEnemyIndex].Root.transform;
+        }
+        else
+        {
+            // 적군 타겟팅
             if (_selectedEnemyIndex < _enemies.Count && _enemies[_selectedEnemyIndex] != null)
             {
                 var targetEnemy = _enemies[_selectedEnemyIndex];
-                
-                _enemyTopPivots.TryGetValue(targetEnemy, out Transform topPivot);
-                Vector3 worldPos = (topPivot != null) ? topPivot.position : targetEnemy.transform.position + _cursorOffset;
-
-                Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
-
-                float bobOffset = Mathf.Sin(Time.time * _cursorBobSpeed * 15f) * _cursorBobHeight;
-                screenPos.y += bobOffset;
-                RectTransformUtility.ScreenPointToWorldPointInRectangle(
-                    (RectTransform)_enemyCursor.parent, 
-                    screenPos,
-                    _worldCamera, 
-                    out Vector3 uiWorldPos
-                );
-
-                // 4. 적용
-                _enemyCursor.position = Vector3.Lerp(_enemyCursor.position, uiWorldPos, Time.deltaTime * 15f);
+                _enemyTopPivots.TryGetValue(targetEnemy, out targetTf);
+                if (targetTf == null) targetTf = targetEnemy.transform;
             }
         }
 
-        // 2. 타겟 선택 모드일 때 키보드 입력 감지
-        if (_isTargeting && Keyboard.current != null)
+        if (targetTf != null)
         {
-            if (Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.aKey.wasPressedThisFrame)
-                NavigateEnemy(-1);
-            else if (Keyboard.current.rightArrowKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame)
-                NavigateEnemy(1);
-            else if (Keyboard.current.zKey.wasPressedThisFrame)
-            {
-                _isTargeting = false;
-                _enemyCursor.gameObject.SetActive(false);
-                BattleManager.Instance.ConfirmTargetAndExecute(_selectedEnemyIndex);
-            }
-            else if (Keyboard.current.xKey.wasPressedThisFrame)
-            {
-                _isTargeting = false;
-                _enemyCursor.gameObject.SetActive(false);
-                BattleManager.Instance.CancelTargetSelection(); 
-            }
+            Vector3 worldPos = targetTf.position + (_isAllyTargeting ? Vector3.zero : _cursorOffset);
+            Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
+
+            float bobOffset = Mathf.Sin(Time.time * _cursorBobSpeed * 15f) * _cursorBobHeight;
+            screenPos.y += bobOffset;
+
+            RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                (RectTransform)_enemyCursor.parent, screenPos, _worldCamera, out Vector3 uiWorldPos);
+
+            _enemyCursor.position = Vector3.Lerp(_enemyCursor.position, uiWorldPos, Time.deltaTime * 15f);
         }
     }
 
-    private void NavigateEnemy(int dir)
+    // 2. 타겟 선택 모드 (난타 방지 및 아군/적군 분기)
+    if (_isTargeting && Keyboard.current != null)
     {
-        if (_enemies == null || _enemies.Count == 0) return;
-
-        int startIdx = _selectedEnemyIndex;
-        int maxLoop = _enemies.Count;
+        // 방향키 이동
+        if (Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.aKey.wasPressedThisFrame)
+            NavigateTarget(-1);
+        else if (Keyboard.current.rightArrowKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame)
+            NavigateTarget(1);
         
-        for (int i = 0; i < maxLoop; i++)
+        // Z키: 확정
+        else if (Keyboard.current.zKey.wasPressedThisFrame)
         {
-            _selectedEnemyIndex = (_selectedEnemyIndex + dir + _enemies.Count) % _enemies.Count;
-            if (_enemies[_selectedEnemyIndex] != null && _enemies[_selectedEnemyIndex].IsAlive)
-            {
-                ShowEnemyCursor(_selectedEnemyIndex);
-                break;
-            }
+            // 🚨 난타 방지: 명령을 전달하자마자 타겟팅 상태를 즉시 해제
+            _isTargeting = false;
+            _enemyCursor.gameObject.SetActive(false);
+            BattleManager.Instance.ConfirmTargetAndExecute(_selectedEnemyIndex);
+        }
+        // X키: 취소
+        else if (Keyboard.current.xKey.wasPressedThisFrame)
+        {
+            _isTargeting = false;
+            _enemyCursor.gameObject.SetActive(false);
+            BattleManager.Instance.CancelTargetSelection(); 
         }
     }
+}
+
+    private void NavigateTarget(int dir)
+{
+    int max = _isAllyTargeting ? _party.Count : _enemies.Count;
+    _selectedEnemyIndex = (_selectedEnemyIndex + dir + max) % max;
+    
+    // 생존 여부 체크 (적군일 때만)
+    if (!_isAllyTargeting && !_enemies[_selectedEnemyIndex].IsAlive) NavigateTarget(dir);
+}
 
     private int GetFirstAliveEnemyIndex()
     {
@@ -224,7 +227,7 @@ public class BattleUIController : MonoBehaviour
 
         for (int i = 0; i < _partySlots.Length; i++)
         {
-            if (i < party.Count) _partySlots[i].Init(party[i]);
+            if (i < party.Count) _partySlots[i].Init(party[i],party[i].MaxHP,party[i].MaxMP);
             else                 _partySlots[i].Hide();
         }
 
@@ -324,7 +327,7 @@ public class BattleUIController : MonoBehaviour
         {
             int idx = _party?.IndexOf(pc) ?? -1;
             if (idx >= 0 && idx < _partySlots.Length)
-                _partySlots[idx].RefreshHP(pc.CurrentHP, pc.MaxHP, _dangerHPRatio, _hpTweenDuration, _hpTweenEase);
+                _partySlots[idx].RefreshHP(pc.CurrentHP, pc.MaxHP, _hpTweenDuration, _hpTweenEase);
         }
     }
 
@@ -332,7 +335,9 @@ public class BattleUIController : MonoBehaviour
     {
         int idx = _party?.IndexOf(player) ?? -1;
         if (idx >= 0 && idx < _partySlots.Length)
-            _partySlots[idx].RefreshMP(newMP, _hpTweenDuration, _hpTweenEase);
+        {
+            _partySlots[idx].RefreshMP(newMP, player.MaxMP, _hpTweenDuration, _hpTweenEase);
+        }
     }
 
     private void OnBattleEnded(bool victory)
@@ -350,11 +355,25 @@ public class BattleUIController : MonoBehaviour
     }
 
     private void OnTargetSelectionStarted(PlayerMenuAction action)
+{
+    _isTargeting = true;
+    _isAllyTargeting = false; // 기본값은 적군
+
+    var bm = BattleManager.Instance;
+    
+    // 아이템/스킬 데이터 확인해서 아군 타겟팅인지 판별
+    if (action == PlayerMenuAction.Item && bm.CurrentPendingItem != null)
     {
-        _isTargeting = true;
-        _selectedEnemyIndex = GetFirstAliveEnemyIndex();
-        ShowEnemyCursor(_selectedEnemyIndex);
+        if (bm.CurrentPendingItem.TargetType == TargetAreaType.AllyOnly) _isAllyTargeting = true;
     }
+    else if (action == PlayerMenuAction.Skill && bm.CurrentPendingSkill != null)
+    {
+        if (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly) _isAllyTargeting = true;
+    }
+
+    _selectedEnemyIndex = _isAllyTargeting ? 0 : GetFirstAliveEnemyIndex();
+    _enemyCursor.gameObject.SetActive(true);
+}
     // ── 적 커서 ───────────────────────────────────────────────
     private void ShowEnemyCursor(int enemyIndex)
     {
@@ -382,20 +401,25 @@ public class BattleUIController : MonoBehaviour
         _enemyCursor.gameObject.SetActive(true);
     }
 
-    // ── 스킬 QTE 표시 (BattleManager에서 호출) ────────────────
-    public void ShowSkillQTE(float duration)
+    // ── 스킬 QTE 표시  ────────────────
+    public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration)
     {
-        _defenseQTEUI?.ShowSkillQTE(duration);
+        _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     }
 
-    public void ShowSkillQTEResult(QTEManager.QTEGrade grade)
+    public void ShowSkillQTEResult(bool isHit)
     {
-        _defenseQTEUI?.ShowSkillResult(grade);
+        _defenseQTEUI?.ShowSkillResult(isHit);
     }
 
     public void ShowDefenseResult(QTEManager.QTEGrade grade, DefenseInput input)
     {
         _defenseQTEUI?.ShowResult(grade, input);
+    }
+
+    public void HideSkillQTE()
+    {
+        _defenseQTEUI?.Hide();
     }
 
     // ── 유틸리티 ──────────────────────────────────────────────
@@ -431,22 +455,27 @@ public class BattleUIController : MonoBehaviour
 [System.Serializable]
 public class PartySlotUI
 {
-    [HorizontalGroup("Row"),  LabelWidth(60)] public Image                  Portrait;
-    [HorizontalGroup("Row"),  LabelWidth(60)] public TMPro.TextMeshProUGUI  NameText;
-    [HorizontalGroup("Row2"), LabelWidth(60)] public Image                  HPFill;
-    [HorizontalGroup("Row2"), LabelWidth(60)] public TMPro.TextMeshProUGUI  HPText;
-    [HorizontalGroup("Row3"), LabelWidth(60)] public Image                  MPFill;
-    [HorizontalGroup("Row3"), LabelWidth(60)] public GameObject             Root;
+    [HorizontalGroup("Row"),  LabelWidth(60)] public Image                 Portrait;
+    [HorizontalGroup("Row"),  LabelWidth(60)] public TMPro.TextMeshProUGUI NameText;
+    
+    [HorizontalGroup("Row2"), LabelWidth(60)] public Image                 HPFill;
+    [HorizontalGroup("Row2"), LabelWidth(60)] public TMPro.TextMeshProUGUI HPText;
+    
+    [HorizontalGroup("Row3"), LabelWidth(60)] public Image                 MPFill;
+    [HorizontalGroup("Row3"), LabelWidth(60)] public TMPro.TextMeshProUGUI MPText;
+    
+    [HorizontalGroup("Row4"), LabelWidth(60)] public GameObject            Root;
 
     private static readonly Color _dangerColor = new Color(1f, 0.25f, 0.25f);
     private static readonly Color _normalColor = Color.white;
 
-    public void Init(PlayerCharacter player)
+    public void Init(PlayerCharacter player, float dangerHP, float dangerMP)
     {
         Root?.SetActive(true);
         if (NameText != null) NameText.text = player.CharacterID;
-        RefreshHP(player.CurrentHP, player.MaxHP, 0.3f, 0f, Ease.Linear);
-        RefreshMP(0, 0f, Ease.Linear);
+
+        RefreshHP(player.CurrentHP, player.MaxHP, 0f, Ease.Linear);
+        RefreshMP(player.CurrentMP, player.MaxMP, 0f, Ease.Linear);
     }
 
     public void Hide() => Root?.SetActive(false);
@@ -458,7 +487,7 @@ public class PartySlotUI
         Portrait.DOColor(active ? Color.yellow : Color.white, 0.15f);
     }
 
-    public void RefreshHP(int current, int max, float dangerRatio, float duration, Ease ease)
+    public void RefreshHP(int current, int max, float duration, Ease ease)
     {
         float ratio = max > 0 ? (float)current / max : 0f;
         HPFill?.DOFillAmount(ratio, duration).SetEase(ease);
@@ -467,15 +496,24 @@ public class PartySlotUI
         {
             int prev = ParseInt(HPText.text);
             DOTween.To(() => prev, x => HPText.text = $"{x}/{max}", current, duration).SetEase(ease);
-            bool isDanger = ratio <= dangerRatio;
+            
             HPText.DOKill();
-            HPText.DOColor(isDanger ? _dangerColor : _normalColor, 0.2f);
         }
     }
 
-    public void RefreshMP(int mp, float duration, Ease ease)
-        => MPFill?.DOFillAmount(mp / 100f, duration).SetEase(ease);
+    public void RefreshMP(int current, int max, float duration, Ease ease)
+    {
+        float ratio = max > 0 ? (float)current / max : 0f;
+        MPFill?.DOFillAmount(ratio, duration).SetEase(ease);
 
+        if (MPText != null)
+        {
+            int prev = ParseInt(MPText.text);
+            DOTween.To(() => prev, x => MPText.text = $"{x}/{max}", current, duration).SetEase(ease);
+            
+            MPText.DOKill();
+        }
+    }
     private static int ParseInt(string text)
     {
         if (string.IsNullOrEmpty(text)) return 0;
