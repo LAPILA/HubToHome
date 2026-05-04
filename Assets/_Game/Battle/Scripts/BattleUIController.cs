@@ -149,16 +149,22 @@ public class BattleUIController : MonoBehaviour
             {
                 var targetEnemy = _enemies[_selectedEnemyIndex];
                 
-                // 🚨 최적화: 매 프레임 찾지 않고, 미리 저장해둔 캐시에서 꺼내옵니다. O(1)의 속도!
                 _enemyTopPivots.TryGetValue(targetEnemy, out Transform topPivot);
-                
                 Vector3 worldPos = (topPivot != null) ? topPivot.position : targetEnemy.transform.position + _cursorOffset;
-                Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
-                
+
+                Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
+
                 float bobOffset = Mathf.Sin(Time.time * _cursorBobSpeed * 15f) * _cursorBobHeight;
                 screenPos.y += bobOffset;
+                RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                    (RectTransform)_enemyCursor.parent, 
+                    screenPos,
+                    _worldCamera, 
+                    out Vector3 uiWorldPos
+                );
 
-                _enemyCursor.position = Vector3.Lerp(_enemyCursor.position, screenPos, Time.deltaTime * 15f);
+                // 4. 적용
+                _enemyCursor.position = Vector3.Lerp(_enemyCursor.position, uiWorldPos, Time.deltaTime * 15f);
             }
         }
 
@@ -248,14 +254,14 @@ public class BattleUIController : MonoBehaviour
                 break;
 
             case BattleState.PlayerActionSelect:
-                // 🚨 메뉴가 확실히 뜨도록 강제 처리
                 if (_battleMenuUI != null)
                 {
-                    _battleMenuUI.gameObject.SetActive(true); // 우선 오브젝트를 깨움
-                    _battleMenuUI.Show(); // 등장 애니메이션 실행
+                    _battleMenuUI.gameObject.SetActive(true);
+                    _battleMenuUI.Show();
                     Debug.Log("<color=green>[BattleUI] 배틀 메뉴 Show() 호출됨</color>");
                 }
-                ShowEnemyCursor(0);
+                
+                _enemyCursor?.gameObject.SetActive(false); 
                 break;
 
             case BattleState.ActionExecute:
@@ -361,8 +367,16 @@ public class BattleUIController : MonoBehaviour
             Transform topPivot = GetPivot(targetEnemy.transform, "Top");
             Vector3 worldPos = (topPivot != null) ? topPivot.position : targetEnemy.transform.position + _cursorOffset;
             
-            var screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
-            _enemyCursor.position = screenPos; // Lerp 시작점 갱신
+            Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
+            
+            RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                (RectTransform)_enemyCursor.parent, 
+                screenPos, 
+                _worldCamera, 
+                out Vector3 uiWorldPos
+            );
+
+            _enemyCursor.position = uiWorldPos; 
         }
 
         _enemyCursor.gameObject.SetActive(true);
