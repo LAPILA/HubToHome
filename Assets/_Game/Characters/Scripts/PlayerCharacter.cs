@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 플레이어 캐릭터 클래스. 
-/// CharacterBase를 상속하며 레벨링, 장비, 스킬 시스템을 관리합니다.
-/// </summary>
 public class PlayerCharacter : CharacterBase
 {
     [Header("Level & EXP")]
@@ -27,34 +23,41 @@ public class PlayerCharacter : CharacterBase
     [Header("Identity")]
     public string CharacterID = "Player";
 
-    // ── 초기화 ────────────────────────────────────────────────
     protected override void Awake()
     {
         base.Awake();
         RecalculateStats();
+        // 🚨 Base 스탯 확정 후 현재 체력/마나 채우기
         CurrentHP = MaxHP;
         CurrentMP = MaxMP;
     }
 
-    // ── 스탯 재계산 로직 ───────────────────────────────────────────
+    // ── 스탯 아키텍처 (안전 보장) ───────────────────────────────────────────
     public void RecalculateStats()
     {
-        // 장비 보너스 합산
-        int bonusATK = GetEquipBonus(e => e?.BonusATK ?? 0);
-        int bonusDEF = GetEquipBonus(e => e?.BonusDEF ?? 0);
-        int bonusSPD = GetEquipBonus(e => e?.BonusSPD ?? 0);
-        int bonusHP  = GetEquipBonus(e => e?.BonusMaxHP ?? 0);
-        int bonusMP  = GetEquipBonus(e => e?.BonusMaxMP ?? 0);
+        // 1. 장비 보너스 산출
+        int bATK = GetEquipBonus(e => e?.BonusATK ?? 0);
+        int bDEF = GetEquipBonus(e => e?.BonusDEF ?? 0);
+        int bSPD = GetEquipBonus(e => e?.BonusSPD ?? 0);
+        int bHP  = GetEquipBonus(e => e?.BonusMaxHP ?? 0);
+        int bMP  = GetEquipBonus(e => e?.BonusMaxMP ?? 0);
 
-        // 기본값(Base) + 보너스 적용
-        // TODO: 나중에 Level별 StatGrowthCurve SO를 참조하도록 확장 가능
-        ATK   = 10 + bonusATK;
-        DEF   = 5  + bonusDEF;
-        SPD   = 10 + bonusSPD;
-        MaxHP = 100 + bonusHP;
-        MaxMP = 100 + bonusMP;
+        // 2. 기본값 + 장비 합산
+        ATK   = 10 + bATK;
+        DEF   = 5  + bDEF;
+        SPD   = 10 + bSPD;
+        MaxHP = 100 + bHP;
+        MaxMP = 100 + bMP;
 
-        // 현재 수치가 최대치를 넘지 않도록 보정
+        // 🚨 3. 덮어쓰기 방어: 현재 걸려있는 디버프/버프가 있다면 그만큼 다시 보정해줍니다.
+        // (빙결이나 가속 등은 Apply 될 때 스탯을 조작하므로, 재계산 시 보정값을 다시 적용해줘야 무결성이 유지됩니다.)
+        foreach (var effect in _activeEffects)
+        {
+            if (effect is FreezeEffect freeze) SPD -= (10 * freeze.Stacks);
+            if (effect is SpeedUpEffect speed) SPD += (50 * speed.Stacks);
+        }
+
+        // 4. 오버플로우 방지
         CurrentHP = Mathf.Clamp(CurrentHP, 0, MaxHP);
         CurrentMP = Mathf.Clamp(CurrentMP, 0, MaxMP);
     }
@@ -69,7 +72,6 @@ public class PlayerCharacter : CharacterBase
                selector(ShoesSlot);
     }
 
-    // ── 장비 시스템 ─────────────────────────────────────────────
     public void Equip(EquipmentData equipment)
     {
         if (equipment == null) return;
@@ -84,15 +86,12 @@ public class PlayerCharacter : CharacterBase
             case EquipmentSlot.Shoes:      ShoesSlot      = equipment; break;
         }
 
-        RecalculateStats();
+        RecalculateStats(); // 장비 착용 시 스탯 재계산
 
         if (!string.IsNullOrEmpty(equipment.EquipReactionDialogueID))
-        {
-            Debug.Log($"[Equip] {CharacterID} 반응: {equipment.EquipReactionDialogueID}");
-        }
+            Debug.Log($"[Equip] {CharacterID}: {equipment.EquipReactionDialogueID}");
     }
 
-    // ── 레벨업 시스템 ─────────────────────────────────────────────
     public void GainEXP(int amount)
     {
         if (Level >= MaxLevel) return;
@@ -109,25 +108,20 @@ public class PlayerCharacter : CharacterBase
     {
         Level++;
         EXPToNextLevel = Mathf.RoundToInt(EXPToNextLevel * 1.2f);
-        RecalculateStats(); // 레벨업 시 스탯 갱신
+        RecalculateStats();
         
-        // 레벨업 시 HP/MP 전 회복 (전형적인 RPG 룰)
         CurrentHP = MaxHP;
         CurrentMP = MaxMP;
-        
-        Debug.Log($"[LevelUp] {CharacterID} 레벨 {Level} 달성!");
     }
 
-    // ── 전투 이벤트 핸들러 ──────────────────────────────────────────
     protected override void OnDamageTaken(int damage)
     {
-        base.OnDamageTaken(damage);
-        Debug.Log($"[Player] {CharacterID} 피격: {damage} 데미지 (잔여 HP: {CurrentHP})");
+        base.OnDamageTaken(damage); // CharacterBase의 로직 수행
+        // 플레이어 전용 추가 로직 (화면 흔들림 등)
     }
 
     protected override void OnDie()
     {
-        Debug.Log($"[Player] {CharacterID} 사망.");
-        // BattleManager.Instance.OnPlayerDefeated(this);
+        Debug.Log($"<color=red>[Player] {CharacterID} 사망.</color>");
     }
 }

@@ -4,6 +4,10 @@ using UnityEngine.InputSystem;
 using DG.Tweening;
 using TMPro;
 
+/// <summary>
+/// 서브 메뉴 UI 컨트롤러.
+/// 애니메이션 상태 잠금(Lock) 및 콜백 메모리 릭 방지를 적용했습니다.
+/// </summary>
 public class BattleSubMenu : MonoBehaviour
 {
     [Header("UI References")]
@@ -33,64 +37,98 @@ public class BattleSubMenu : MonoBehaviour
     private readonly List<OptionRowUI> _spawnedRows = new List<OptionRowUI>(); 
     
     private int _currentIndex = 0;
-    private int _topVisibleRow = 0; // 스크롤 상단 위치 추적용
+    private int _topVisibleRow = 0; 
     
     private System.Action<IMenuEntry> _onConfirmCallback;
     private System.Action _onCancelCallback;
 
     public bool IsActive { get; private set; }
+    private bool _isAnimating = false; // 🚨 애니메이션 도중 입력 씹힘 방지용 Lock
 
     private void Awake()
     {
         if (_rectTransform == null) _rectTransform = GetComponent<RectTransform>();
-        
-        // 초기에는 아래에 숨겨둠 (오브젝트를 끄지 않음)
         _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _hideY);
     }
 
     private void Update()
     {
-        if (!IsActive) return;
+        // 🚨 비활성화 상태이거나 애니메이션 이동 중이면 입력 무시
+        if (!IsActive || _isAnimating || Keyboard.current == null) return;
 
-        // 2D 그리드 이동
-        if (Keyboard.current.upArrowKey.wasPressedThisFrame) ChangeIndex(-2);        
-        else if (Keyboard.current.downArrowKey.wasPressedThisFrame) ChangeIndex(2);  
-        else if (Keyboard.current.leftArrowKey.wasPressedThisFrame) ChangeIndex(-1); 
-        else if (Keyboard.current.rightArrowKey.wasPressedThisFrame) ChangeIndex(1); 
+        var kb = Keyboard.current;
 
-        if (Keyboard.current.zKey.wasPressedThisFrame) ConfirmSelection();
-        else if (Keyboard.current.xKey.wasPressedThisFrame) Close();
+        if (kb.upArrowKey.wasPressedThisFrame) ChangeIndex(-2);        
+        else if (kb.downArrowKey.wasPressedThisFrame) ChangeIndex(2);  
+        else if (kb.leftArrowKey.wasPressedThisFrame) ChangeIndex(-1); 
+        else if (kb.rightArrowKey.wasPressedThisFrame) ChangeIndex(1); 
+
+        if (kb.zKey.wasPressedThisFrame) ConfirmSelection();
+        else if (kb.xKey.wasPressedThisFrame) Close();
     }
 
     public void Open(string title, List<IMenuEntry> entries, System.Action<IMenuEntry> onConfirm, System.Action onCancel)
     {
+        if (_isAnimating) return;
+
         _entries.Clear();
         if (entries != null) _entries.AddRange(entries);
 
         _currentIndex = 0;
-        _topVisibleRow = 0; // 스크롤 초기화
+        _topVisibleRow = 0; 
+        
         _onConfirmCallback = onConfirm;
         _onCancelCallback = onCancel;
+        
         IsActive = true;
 
         if (_titleText != null) _titleText.text = title;
         
         SpawnAndRefreshRows();
         
-        // 스크롤 맨 위로 즉시 리셋
         _container.anchoredPosition = new Vector2(_container.anchoredPosition.x, 0);
-        
         PlaySlideIn();
     }
 
     public void Close()
     {
-        if (!IsActive) return;
+        if (!IsActive || _isAnimating) return;
         IsActive = false;
-        _onCancelCallback?.Invoke();
+        
+        // 🚨 콜백을 호출하고 캐시를 비워 메모리 릭 방지
+        var tempCancel = _onCancelCallback;
+        ClearCallbacks();
+        tempCancel?.Invoke();
+        
         PlaySlideOut(null); 
     }
 
+    private void ConfirmSelection()
+    {
+        if (_entries.Count == 0 || _isAnimating) return;
+        
+        var selected = _entries[_currentIndex];
+        IsActive = false;
+        _isAnimating = true; // 확정 연출 중 다중 클릭 방지
+        
+        _spawnedRows[_currentIndex].transform.DOPunchScale(Vector3.one * 0.2f, 0.15f).OnComplete(() => {
+            
+            var tempConfirm = _onConfirmCallback;
+            ClearCallbacks();
+            tempConfirm?.Invoke(selected);
+            
+            PlaySlideOut(null);
+        });
+    }
+
+    private void ClearCallbacks()
+    {
+        // 🚨 클로저(Closure)로 묶인 참조를 끊어 GC(가비지 컬렉터)가 회수하게 함
+        _onConfirmCallback = null;
+        _onCancelCallback = null;
+    }
+
+    // (SpawnAndRefreshRows, ChangeIndex, AutoScroll, UpdateDescription은 기존 로직 유지)
     private void SpawnAndRefreshRows()
     {
         int needed = _entries.Count;
@@ -107,12 +145,8 @@ public class BattleSubMenu : MonoBehaviour
                 bool isSelected = (i == _currentIndex);
                 _spawnedRows[i].SetEntry(_entries[i], isSelected, _selectedColor, _normalColor, _selectedScale);
             }
-            else
-            {
-                _spawnedRows[i].SetEmpty();
-            }
+            else _spawnedRows[i].SetEmpty();
         }
-
         UpdateDescription();
     }
 
@@ -137,31 +171,12 @@ public class BattleSubMenu : MonoBehaviour
     private void AutoScroll()
     {
         int currentRow = _currentIndex / 2;
-
-        if (currentRow < _topVisibleRow)
-        {
-            _topVisibleRow = currentRow;
-        }
-        else if (currentRow >= _topVisibleRow + _visibleRows)
-        {
-            _topVisibleRow = currentRow - _visibleRows + 1;
-        }
+        if (currentRow < _topVisibleRow) _topVisibleRow = currentRow;
+        else if (currentRow >= _topVisibleRow + _visibleRows) _topVisibleRow = currentRow - _visibleRows + 1;
 
         float targetY = _topVisibleRow * _rowHeight;
         _container.DOKill();
         _container.DOAnchorPosY(targetY, 0.15f).SetEase(Ease.OutQuad);
-    }
-
-    private void ConfirmSelection()
-    {
-        if (_entries.Count == 0) return;
-        var selected = _entries[_currentIndex];
-        
-        _spawnedRows[_currentIndex].transform.DOPunchScale(Vector3.one * 0.2f, 0.15f).OnComplete(() => {
-            IsActive = false;
-            _onConfirmCallback?.Invoke(selected);
-            PlaySlideOut(null);
-        });
     }
 
     private void UpdateDescription()
@@ -170,17 +185,20 @@ public class BattleSubMenu : MonoBehaviour
             _descriptionText.text = _entries[_currentIndex].Description;
     }
 
-    // ── 애니메이션 (SetActive 완전 제거) ──
+    // ── 애니메이션 제어 ──
     private void PlaySlideIn()
     {
+        _isAnimating = true;
         _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_showY, _slideDuration).SetEase(Ease.OutCubic);
+        _rectTransform.DOAnchorPosY(_showY, _slideDuration).SetEase(Ease.OutCubic).OnComplete(() => _isAnimating = false);
     }
 
     private void PlaySlideOut(System.Action onComplete)
     {
+        _isAnimating = true;
         _rectTransform.DOKill();
         _rectTransform.DOAnchorPosY(_hideY, _slideDuration).SetEase(Ease.InCubic).OnComplete(() => {
+            _isAnimating = false;
             onComplete?.Invoke();
         });
     }

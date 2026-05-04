@@ -5,22 +5,24 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Sirenix.OdinInspector;
 
+/// <summary>
+/// 전투 QTE 매니저.
+/// 글로벌 이벤트 대신 콜백(Command Pattern)을 사용하여 결합도를 낮췄습니다.
+/// </summary>
 public class QTEManager : MonoBehaviour
 {
     public static QTEManager Instance { get; private set; }
 
     public enum QTEGrade { Miss, Bad, Good, Great, Perfect }
-    public event Action<int, int> OnSequenceQTECompleted;
+    
+    // 🚨 글로벌 이벤트 제거 완료. (구독/해제 과정에서의 버그 원천 차단)
+    // public event Action<int, int> OnSequenceQTECompleted;
 
-    [BoxGroup("Defense QTE"), LabelWidth(160)]
-    [SerializeField, Range(0f, 0.3f)] private float _perfectWindow = 0.12f;
-    [BoxGroup("Defense QTE"), LabelWidth(160)]
-    [SerializeField, Range(0f, 0.4f)] private float _greatWindow   = 0.22f;
-    [BoxGroup("Defense QTE"), LabelWidth(160)]
-    [SerializeField, Range(0f, 0.6f)] private float _goodWindow    = 0.40f;
+    [BoxGroup("Defense QTE"), LabelWidth(160)] [SerializeField, Range(0f, 0.3f)] private float _perfectWindow = 0.12f;
+    [BoxGroup("Defense QTE"), LabelWidth(160)] [SerializeField, Range(0f, 0.4f)] private float _greatWindow   = 0.22f;
+    [BoxGroup("Defense QTE"), LabelWidth(160)] [SerializeField, Range(0f, 0.6f)] private float _goodWindow    = 0.40f;
 
     public bool IsActive { get; private set; } = false;
-    private readonly WaitForEndOfFrame _waitEOF = new WaitForEndOfFrame();
 
     private void Awake()
     {
@@ -47,17 +49,22 @@ public class QTEManager : MonoBehaviour
         while (elapsed < attackDelay && !inputReceived)
         {
             elapsed += Time.deltaTime;
+            
             if (Keyboard.current != null)
             {
-                if      (Keyboard.current.zKey.wasPressedThisFrame)     { input = DefenseInput.Parry; inputReceived = true; }
-                else if (Keyboard.current.cKey.wasPressedThisFrame)     { input = DefenseInput.Dodge; inputReceived = true; }
-                else if (Keyboard.current.spaceKey.wasPressedThisFrame) { input = DefenseInput.Jump;  inputReceived = true; }
+                var kb = Keyboard.current;
+                if      (kb.zKey.wasPressedThisFrame)     { input = DefenseInput.Parry; inputReceived = true; }
+                else if (kb.cKey.wasPressedThisFrame)     { input = DefenseInput.Dodge; inputReceived = true; }
+                else if (kb.spaceKey.wasPressedThisFrame) { input = DefenseInput.Jump;  inputReceived = true; }
             }
-            yield return _waitEOF;
+            
+            // 🚨 WaitForEndOfFrame을 yield return null로 변경하여 프레임 간 입력 손실(Drop) 방지
+            yield return null; 
         }
 
         IsActive = false;
         QTEGrade grade = QTEGrade.Miss;
+        
         if (inputReceived)
         {
             float timeLeft = (attackDelay - elapsed) / attackDelay; 
@@ -70,29 +77,31 @@ public class QTEManager : MonoBehaviour
             else if (timeLeft <= gd) grade = QTEGrade.Good;
             else                     grade = QTEGrade.Bad;
         }
+        
         onResult?.Invoke(input, grade);
     }
 
     // ═══════════════════════════════════════════════════════════
-    // ── 스킬 QTE (시퀀스 데이터 기반) ──────────────────────────
+    // ── 스킬 QTE (콜백 패턴 도입) ─────────────────────────────
     // ═══════════════════════════════════════════════════════════
-    public void StartSequenceQTE(List<SkillQTENode> nodes, float timeLimit)
+    
+    // 🚨 파라미터로 Action<int, int> onComplete를 직접 받습니다.
+    public void StartSequenceQTE(List<SkillQTENode> nodes, float timeLimit, Action<int, int> onComplete)
     {
         if (IsActive || nodes == null || nodes.Count == 0) return;
-        StartCoroutine(SequenceQTERoutine(nodes, timeLimit));
+        StartCoroutine(SequenceQTERoutine(nodes, timeLimit, onComplete));
     }
 
-    private IEnumerator SequenceQTERoutine(List<SkillQTENode> nodes, float timeLimit)
+    private IEnumerator SequenceQTERoutine(List<SkillQTENode> nodes, float timeLimit, Action<int, int> onComplete)
     {
         IsActive = true;
         int successCount = 0;
         float gracePeriod = 0.08f; 
         float totalInputAllowedTime = timeLimit + gracePeriod;
 
-        // 🚨 [핵심 방어 1] UI 캔버스 콜드 스타트 렉 흡수 (Pre-warm)
-        // 화면 밖(-9999)에 안 보이게 UI를 0.1초 켰다가 꺼서 초기 로딩 렉을 미리 빼버립니다.
+        // UI 캔버스 콜드 스타트 렉 흡수
         BattleUIController.Instance.ShowSkillQTE(new Vector2(-9999, -9999), "", 0f);
-        yield return new WaitForSeconds(0.15f); // 렉이 발생하고 진정될 때까지 대기
+        yield return new WaitForSeconds(0.15f); 
 
         foreach (var node in nodes)
         {
@@ -108,24 +117,31 @@ public class QTEManager : MonoBehaviour
             while (elapsed < totalInputAllowedTime && !isAnswered)
             {
                 float dt = Time.deltaTime;
-                // 🚨 [핵심 방어 2] 렉 스파이크 차단
-                // 프레임이 심하게 떨어져도 타이머가 폭주해서 훅 지나가는 것을 막아줍니다.
-                if (dt > 0.1f) dt = 0.016f; 
-                
+                if (dt > 0.1f) dt = 0.016f; // 렉 스파이크 차단
                 elapsed += dt;
 
                 if (Keyboard.current != null)
                 {
-                    if (Keyboard.current.zKey.wasPressedThisFrame || 
-                        Keyboard.current.xKey.wasPressedThisFrame || 
-                        Keyboard.current.cKey.wasPressedThisFrame)
+                    var kb = Keyboard.current;
+                    // 🚨 키 입력을 캐싱하여 한 프레임 내 중복 검사로 인한 평가 오류 해결
+                    bool zPressed = kb.zKey.wasPressedThisFrame;
+                    bool xPressed = kb.xKey.wasPressedThisFrame;
+                    bool cPressed = kb.cKey.wasPressedThisFrame;
+
+                    if (zPressed || xPressed || cPressed)
                     {
                         isAnswered = true;
-                        if (IsCorrectKeyPressed(node.TargetKey)) { isHit = true; successCount++; }
-                        else { isHit = false; }
+                        
+                        // 타겟 키 매칭 로직 간소화 및 정확도 향상
+                        string keyLower = node.TargetKey.ToLower();
+                        isHit = (keyLower == "z" && zPressed) || 
+                                (keyLower == "x" && xPressed) || 
+                                (keyLower == "c" && cPressed);
+                                
+                        if (isHit) successCount++;
                     }
                 }
-                yield return _waitEOF;
+                yield return null; // 🚨 안전한 프레임 대기
             }
 
             BattleUIController.Instance.ShowSkillQTEResult(isHit);
@@ -134,15 +150,9 @@ public class QTEManager : MonoBehaviour
 
         BattleUIController.Instance.HideSkillQTE();
         IsActive = false;
-        OnSequenceQTECompleted?.Invoke(successCount, nodes.Count);
-    }
-
-    private bool IsCorrectKeyPressed(string targetKeyStr)
-    {
-        if (targetKeyStr.Equals("Z", StringComparison.OrdinalIgnoreCase)) return Keyboard.current.zKey.wasPressedThisFrame;
-        if (targetKeyStr.Equals("X", StringComparison.OrdinalIgnoreCase)) return Keyboard.current.xKey.wasPressedThisFrame;
-        if (targetKeyStr.Equals("C", StringComparison.OrdinalIgnoreCase)) return Keyboard.current.cKey.wasPressedThisFrame;
-        return false;
+        
+        // 🚨 실행이 끝난 후 직접 콜백 호출
+        onComplete?.Invoke(successCount, nodes.Count);
     }
 
     public void ForceStop()

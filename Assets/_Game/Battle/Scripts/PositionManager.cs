@@ -2,29 +2,17 @@ using UnityEngine;
 using Sirenix.OdinInspector;
 
 /// <summary>
-/// 전투 씬의 모든 포지션 Transform을 관리합니다.
-/// 
-/// Inspector 연결:
-/// - PlayerDefaultPos[0~3]  : 아군 기본 위치 (좌측, 최대 4명)
-/// - EnemyDefaultPos[0~7]   : 적 기본 위치 (우측, 최대 8마리)
-/// - CenterPos              : 근거리 교전 무대 중앙
-/// - EnemyAttackPos[0~3]    : 적이 아군 공격 시 다가오는 아군 바로 앞 위치
+/// 전투 씬의 위치(Transform)를 제공하는 Service Locator / Registry 클래스.
 /// </summary>
 public class PositionManager : MonoBehaviour
 {
     public static PositionManager Instance { get; private set; }
 
-    [BoxGroup("Player Positions"), LabelText("아군 기본 위치 (최대 3)")]
-    [SerializeField] private Transform[] _playerDefaultPos = new Transform[3];
-
-    [BoxGroup("Enemy Positions"), LabelText("적 기본 위치 (최대 3)")]
-    [SerializeField] private Transform[] _enemyDefaultPos = new Transform[3];
-
-    [BoxGroup("Key Positions"), LabelText("교전 중앙")]
-    [SerializeField] private Transform _centerPos;
-
-    [BoxGroup("Key Positions"), LabelText("적 공격 도달 위치 (아군 앞, 최대 3)")]
-    [SerializeField] private Transform[] _enemyAttackPos = new Transform[3];
+    // 🚨 배열 크기를 고정하지 않아, 나중에 파티원이나 적이 4~5명으로 늘어나도 에러가 나지 않습니다.
+    [BoxGroup("Player Positions")] [SerializeField] private Transform[] _playerDefaultPos;
+    [BoxGroup("Enemy Positions")]  [SerializeField] private Transform[] _enemyDefaultPos;
+    [BoxGroup("Key Positions")]    [SerializeField] private Transform _centerPos;
+    [BoxGroup("Key Positions")]    [SerializeField] private Transform[] _enemyAttackPos;
 
     private void Awake()
     {
@@ -32,59 +20,39 @@ public class PositionManager : MonoBehaviour
         Instance = this;
     }
 
-    // ── 접근자 ────────────────────────────────────────────────
-
-    /// <summary>아군 index의 기본 위치를 반환합니다.</summary>
-    public Vector3 GetPlayerDefaultPos(int index)
+    // ── 안전한 배열 접근 헬퍼 ──
+    private Vector3 GetSafePosition(Transform[] array, int index, string arrayName)
     {
-        if (index < 0 || index >= _playerDefaultPos.Length || _playerDefaultPos[index] == null)
+        if (array == null || index < 0 || index >= array.Length || array[index] == null)
         {
-            Debug.LogWarning($"[PositionManager] PlayerDefaultPos[{index}] is not set.");
+            Debug.LogWarning($"[PositionManager] {arrayName}[{index}] is missing! Returning Vector3.zero.");
             return Vector3.zero;
         }
-        return _playerDefaultPos[index].position;
+        return array[index].position;
     }
 
-    /// <summary>적 index의 기본 위치를 반환합니다.</summary>
-    public Vector3 GetEnemyDefaultPos(int index)
-    {
-        if (index < 0 || index >= _enemyDefaultPos.Length || _enemyDefaultPos[index] == null)
-        {
-            Debug.LogWarning($"[PositionManager] EnemyDefaultPos[{index}] is not set.");
-            return Vector3.zero;
-        }
-        return _enemyDefaultPos[index].position;
-    }
-
-    /// <summary>교전 중앙 위치를 반환합니다.</summary>
-    public Vector3 GetCenterPos()
-    {
-        if (_centerPos == null)
-        {
-            Debug.LogWarning("[PositionManager] CenterPos is not set.");
-            return Vector3.zero;
-        }
-        return _centerPos.position;
-    }
-
-    /// <summary>적이 아군 index를 공격할 때 도달하는 위치를 반환합니다.</summary>
+    public Vector3 GetPlayerDefaultPos(int index) => GetSafePosition(_playerDefaultPos, index, "PlayerDefaultPos");
+    public Vector3 GetEnemyDefaultPos(int index)  => GetSafePosition(_enemyDefaultPos, index, "EnemyDefaultPos");
+    public Vector3 GetCenterPos()                 => _centerPos != null ? _centerPos.position : Vector3.zero;
+    
     public Vector3 GetEnemyAttackPos(int playerIndex)
     {
-        if (playerIndex < 0 || playerIndex >= _enemyAttackPos.Length || _enemyAttackPos[playerIndex] == null)
-        {
-            Debug.LogWarning($"[PositionManager] EnemyAttackPos[{playerIndex}] is not set.");
+        // AttackPos가 없으면 기본 플레이어 위치라도 반환하여 멈춤 방지
+        if (_enemyAttackPos == null || playerIndex < 0 || playerIndex >= _enemyAttackPos.Length || _enemyAttackPos[playerIndex] == null)
             return GetPlayerDefaultPos(playerIndex);
-        }
+            
         return _enemyAttackPos[playerIndex].position;
     }
 
     public Vector3 GetAttackStagingPos(CharacterBase attacker, CharacterBase target)
-{
-    Transform frontPivot = target.transform.Find("Pivots/Front");
-    
-    if (frontPivot != null) return frontPivot.position;
+    {
+        if (target == null) return Vector3.zero;
 
-    float direction = (attacker is PlayerCharacter) ? -1.0f : 1.0f; 
-    return target.transform.position + new Vector3(direction * 1.2f, 0, 0);
-}
+        Transform frontPivot = target.transform.Find("Pivots/Front");
+        if (frontPivot != null) return frontPivot.position;
+
+        // 피벗이 없을 경우 수학적 계산으로 땜빵 (안전 장치)
+        float direction = (attacker is PlayerCharacter) ? -1.0f : 1.0f; 
+        return target.transform.position + new Vector3(direction * 1.2f, 0, 0);
+    }
 }

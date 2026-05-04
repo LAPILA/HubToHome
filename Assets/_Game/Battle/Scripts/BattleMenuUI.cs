@@ -16,7 +16,6 @@ public class BattleMenuUI : UIPanel
     [SerializeField] private BattleSubMenu _subMenu;
 
     [Header("Menu Slide Animation")]
-    [Tooltip("서브메뉴가 열릴 때 메인 메뉴가 딸려 올라갈 Y 높이량")]
     [SerializeField] private float _menuSlideOffsetY = 150f; 
     [SerializeField] private float _menuSlideDuration = 0.25f;
 
@@ -34,7 +33,6 @@ public class BattleMenuUI : UIPanel
     private bool _inputEnabled = false;
     private Button[] _buttons;
 
-    // 메인 메뉴의 트랜스폼과 초기 Y 위치 저장
     private RectTransform _rectTransform;
     private float _baseMenuY;
 
@@ -99,15 +97,13 @@ public class BattleMenuUI : UIPanel
         var sourceSkills = (_currentActor != null && _currentActor.Skills?.Count > 0) ? _currentActor.Skills : _exampleSkills;
         
         foreach (var s in sourceSkills) 
-    {
-        if (s != null) 
         {
-            if (_currentActor.CurrentMP >= s.MPCost)
-                entries.Add(new SkillMenuEntry(s));
-            else
-                Debug.Log($"{s.SkillName}은 MP가 부족합니다!"); 
+            if (s != null) 
+            {
+                if (_currentActor.CurrentMP >= s.MPCost) entries.Add(new SkillMenuEntry(s));
+                else Debug.Log($"{s.SkillName}은 MP가 부족합니다!"); 
+            }
         }
-    }
 
         if (entries.Count == 0) return;
 
@@ -128,42 +124,23 @@ public class BattleMenuUI : UIPanel
         _subMenu.Open("ITEM", entries, OnItemSelected, OnSubMenuCancelled);
     }
 
+    // 🚨 딜레이 호출(DOVirtual)을 없애고 즉시 명령을 하달하도록 수정
     private void OnSkillSelected(IMenuEntry entry)
     {
         SlideMenuDown();
-        
-        DOVirtual.DelayedCall(_menuSlideDuration, () => {
-            Hide();
-            
-            if (entry is SkillMenuEntry skillEntry)
-            {
-                BattleManager.Instance.OnSubMenuActionSelected(
-                    _currentActor, 
-                    PlayerMenuAction.Skill, 
-                    skillEntry.Data, 
-                    null
-                );
-            }
-        });
+        if (entry is SkillMenuEntry skillEntry)
+        {
+            BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Skill, skillEntry.Data, null);
+        }
     }
 
     private void OnItemSelected(IMenuEntry entry)
     {
         SlideMenuDown();
-        
-        DOVirtual.DelayedCall(_menuSlideDuration, () => {
-            Hide();
-            
-            if (entry is ItemMenuEntry itemEntry)
-            {
-                BattleManager.Instance.OnSubMenuActionSelected(
-                    _currentActor, 
-                    PlayerMenuAction.Item, 
-                    null, 
-                    itemEntry.Data
-                );
-            }
-        });
+        if (entry is ItemMenuEntry itemEntry)
+        {
+            BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Item, null, itemEntry.Data);
+        }
     }
 
     private void OnSubMenuCancelled()
@@ -178,12 +155,10 @@ public class BattleMenuUI : UIPanel
     private void ExecuteDirectAction(int index)
     {
         _buttons[index]?.transform.DOPunchScale(Vector3.one * 0.35f, 0.25f, 8, 0.5f).OnComplete(() => {
-            Hide();
             BattleManager.Instance.OnPlayerActionSelected(_currentActor, (PlayerMenuAction)index);
         });
     }
 
-    // ── 연동 슬라이드 연출 ──────────────────────────────────
     private void SlideMenuUp()
     {
         _rectTransform.DOKill();
@@ -196,7 +171,6 @@ public class BattleMenuUI : UIPanel
         _rectTransform.DOAnchorPosY(_baseMenuY, _menuSlideDuration).SetEase(Ease.InCubic);
     }
 
-    // ── 버튼 강조 연출 ───────────────────────────────────────
     private void HighlightButton(int index)
     {
         for (int i = 0; i < _buttons.Length; i++)

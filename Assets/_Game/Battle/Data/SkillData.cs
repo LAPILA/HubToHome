@@ -16,40 +16,40 @@ public struct SkillQTENode
 [CreateAssetMenu(fileName = "NewSkill", menuName = "HubToHome/SkillData")]
 public class SkillData : ScriptableObject
 {
-    [Header("Identity")]
-    public string SkillName = "Skill";
-    public string SkillID   = "skill_001";
+    [BoxGroup("Identity"), HideLabel, PreviewField(50)]
     public Sprite Icon;
-    [TextArea] public string Description = "";
-
-    [Header("Cost & Damage")]
-    public int MPCost = 10;
-    public float DamageMultiplier = 1.5f;
-
-    [Header("Target & Effect (New)")]
-    public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
-    public bool IsAoE = false;
     
-    [Tooltip("스킬이 데미지를 줄지, 상태이상을 걸지, 힐을 할지 결정")]
-    public EffectActionType ActionType = EffectActionType.Damage;
+    [BoxGroup("Identity")] public string SkillName = "Skill";
+    [BoxGroup("Identity")] public string SkillID   = "skill_001";
+    [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
+
+    [BoxGroup("Cost & Power")] public int MPCost = 10;
+    [BoxGroup("Cost & Power")] public float DamageMultiplier = 1.5f;
+
+    [BoxGroup("Target & Effect")] public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
+    [BoxGroup("Target & Effect")] public bool IsAoE = false;
+    
+    [BoxGroup("Target & Effect")] public EffectActionType ActionType = EffectActionType.Damage;
+    
+    // 상태이상 스킬일 때만 표시되도록 인스펙터 최적화 (Odin)
+    [BoxGroup("Target & Effect"), ShowIf("ActionType", EffectActionType.ApplyStatus)] 
     public StatusEffectType StatusEffect = StatusEffectType.None;
+    
+    [BoxGroup("Target & Effect"), ShowIf("ActionType", EffectActionType.ApplyStatus)] 
     public int StatusDurationTurns = 0;
 
-    [Header("QTE ")]
-    public QTEType QTEType = QTEType.Sequence;
-    public float QTETimeLimit = 1.0f;
-    public float QTESuccessMultiplier = 1.5f;
-    public float QTEFailMultiplier    = 0.5f;
+    [BoxGroup("QTE Settings")] public QTEType QTEType = QTEType.Sequence;
+    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)] public float QTETimeLimit = 1.0f;
+    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)] public float QTESuccessMultiplier = 1.5f;
+    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)] public float QTEFailMultiplier    = 0.5f;
 
+    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<SkillQTENode> QTENodes = new List<SkillQTENode>();
 
-    [Header("Animation & Timing")]
-    public SkillCastType CastType = SkillCastType.MeleeDash;
-    public float VFXSpawnDelay = 0.2f;
-    public float DamageDelay = 0.25f;
-
-    [Header("Visual")]
-    public GameObject EffectPrefab;
-    public bool SpawnVFXOnTarget = true;
+    [BoxGroup("Animation & Visual")] public SkillCastType CastType = SkillCastType.MeleeDash;
+    [BoxGroup("Animation & Visual")] public float VFXSpawnDelay = 0.2f;
+    [BoxGroup("Animation & Visual")] public float DamageDelay = 0.25f;
+    [BoxGroup("Animation & Visual")] public GameObject EffectPrefab;
+    [BoxGroup("Animation & Visual")] public bool SpawnVFXOnTarget = true;
 }

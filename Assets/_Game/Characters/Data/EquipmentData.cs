@@ -1,40 +1,33 @@
 using UnityEngine;
+using Sirenix.OdinInspector;
 
-/// <summary>장비 슬롯 종류</summary>
 public enum EquipmentSlot
 {
-    Weapon,
-    Accessory1,
-    Accessory2,
-    Head,
-    Body,
-    Shoes,
+    Weapon, Accessory1, Accessory2, Head, Body, Shoes,
 }
 
-/// <summary>
-/// 장비 아이템 데이터 ScriptableObject.
-/// 에디터에서 Create > HubToHome > EquipmentData 로 생성하세요.
-/// </summary>
 [CreateAssetMenu(fileName = "NewEquipment", menuName = "HubToHome/EquipmentData")]
 public class EquipmentData : ScriptableObject
 {
-    [Header("Identity")]
-    public string         ItemName    = "Equipment";
-    public string         ItemID      = "equip_001";
-    public Sprite         Icon;
-    [TextArea] public string Description = "";
+    [BoxGroup("Identity"), HideLabel, PreviewField(50)]
+    public Sprite Icon;
 
-    [Header("Slot")]
-    public EquipmentSlot  Slot;
+    [BoxGroup("Identity")] public string ItemName = "Equipment";
+    [BoxGroup("Identity")] public string ItemID   = "equip_001";
+    [BoxGroup("Identity")] public EquipmentSlot Slot;
+    [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
 
-    [Header("Stat Bonuses")]
-    public int BonusATK    = 0;
-    public int BonusDEF    = 0;
-    public int BonusSPD    = 0;
-    public int BonusMaxHP  = 0;
-    public int BonusMaxMP = 0;
+    // 스탯을 가로로 배치하여 보기 좋게 만듦
+    [BoxGroup("Stat Bonuses")] 
+    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxHP = 0;
+    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxMP = 0;
+    
+    [BoxGroup("Stat Bonuses")] 
+    [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusATK   = 0;
+    [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusDEF   = 0;
+    [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusSPD   = 0;
 
-    [Header("Special Reaction")]
+    [BoxGroup("Special Reaction")]
     [Tooltip("특정 캐릭터가 이 장비를 장착할 때 트리거할 대화 ID")]
     public string EquipReactionDialogueID = "";
 }
