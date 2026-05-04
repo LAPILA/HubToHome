@@ -1,6 +1,6 @@
 # 📚 HubToHome 코드베이스 레퍼런스 (Codebase Reference)
 
-> **최종 업데이트:** 2026-04-30  
+> **최종 업데이트:** 2026-05-02  
 > 이 문서는 `Assets/_Game` 내 전체 코드의 구조, 용법, 사용법을 정리한 AI 참조 문서입니다.  
 > 새 코드 작성 전 반드시 이 문서를 확인하여 기존 시스템과 충돌하지 않도록 하세요.
 
@@ -10,35 +10,50 @@
 
 ```
 Assets/_Game/
+├── Audio/                Zenta.wav, Zenta_part1.wav, Zenta_part2.wav
 ├── Battle/
-│   ├── Data/         SkillData.cs (SO)
-│   └── Scripts/      BattleManager.cs, BattleStateMachine.cs, QTEManager.cs,
-│                     BattleUIController.cs, BattleMenuUI.cs, DefenseQTEUI.cs,
-│                     BattleHUD.cs, PositionManager.cs,
-│                     BattleDebugController.cs  ← 디버그 전용 (#if UNITY_EDITOR)
+│   ├── Data/             SkillData.cs (SO)
+│   └── Scripts/          BattleManager.cs, BattleStateMachine.cs, QTEManager.cs,
+│                         BattleUIController.cs, BattleMenuUI.cs, DefenseQTEUI.cs,
+│                         PositionManager.cs,
+│                         BattleDebugController.cs  ← 디버그 전용 (#if UNITY_EDITOR)
 ├── Characters/
-│   ├── Data/         EnemyData.cs (SO), EquipmentData.cs (SO)
-│   └── Scripts/      CharacterBase.cs, PlayerCharacter.cs, EnemyCharacter.cs, StatusEffect.cs
+│   ├── Data/             EnemyData.cs (SO), EquipmentData.cs (SO)
+│   │   └── Enemy/        EnemyData SO 에셋 저장 폴더
+│   └── Scripts/          CharacterBase.cs, PlayerCharacter.cs, EnemyCharacter.cs, StatusEffect.cs
 ├── Core/
 │   └── Scripts/
-│       ├── Audio/    AudioManager.cs
-│       ├── Events/   EventFlags.cs
-│       ├── Pool/     ObjectPoolManager.cs
-│       ├── Save/     SaveData.cs, SaveManager.cs
-│       ├── Scene/    SceneLoader.cs
+│       ├── Audio/        AudioManager.cs
+│       ├── Events/       EventFlags.cs
+│       ├── Pool/         ObjectPoolManager.cs
+│       ├── Save/         SaveData.cs, SaveManager.cs
+│       ├── Scene/        SceneLoader.cs
 │       ├── GameBootstrap.cs
 │       ├── GlobalDataManager.cs
 │       └── SceneName.cs
+├── Debug/                CameraTestMovement.cs, PerformanceMonitor.cs
 ├── Dialogue/
-│   └── Scripts/      DialogueData.cs, DialogueManager.cs, DialogueEventBridge.cs, DialogueNPC.cs
+│   └── Scripts/          DialogueData.cs, DialogueManager.cs, DialogueEventBridge.cs,
+│                         DialogueNPC.cs, DialogueController.cs
 ├── Items/
-│   └── Data/         ItemData.cs (SO)
+│   └── Data/             ItemData.cs (SO)
 ├── Overworld/
-│   └── Scripts/      PlayerController.cs, InteractionSystem.cs, InteractableBase.cs,
-│                     IInteractable.cs, AreaTrigger.cs
+│   └── Scripts/          PlayerController.cs, InteractionSystem.cs, InteractableBase.cs,
+│                         IInteractable.cs, AreaTrigger.cs, SavePoint.cs
+├── Scenes/               BattleScene.unity, Bootstrap.unity, OverworldScene.unity
+├── TitleImage/           배경 이미지, 타이틀 에셋
 └── UI/
-    └── Scripts/      UIManager.cs, UIPanel.cs
+    └── Scripts/          UIManager.cs, UIPanel.cs,
+                          BackgroundManager.cs, ParallaxLayer.cs, EndlessTreadmill.cs
+
+Assets/TextMesh Pro/Examples & Extras/Scripts/
+└── CameraController.cs   ← 전투 카메라 연출 (싱글톤, 이 경로에 있음!)
+
+Assets/_Recovery/         0.unity, 0 (1).unity  ← 임시 씬 파일 (삭제 가능)
 ```
+
+> ⚠️ **주의:** `CameraController.cs`는 `TextMesh Pro/Examples & Extras/Scripts/` 경로에 있습니다.  
+> 이는 임시 배치이며, 추후 `_Game/Battle/Scripts/`로 이동 예정입니다.
 
 ---
 
@@ -58,9 +73,6 @@ Assets/_Game/
 // Inspector에서 각 싱글톤 프리팹을 슬롯에 연결하면 자동 초기화됨
 // 코드에서 직접 호출할 필요 없음
 ```
-
-**핵심 메서드:**
-- `InitializeSingletons()` — 내부 호출. 각 싱글톤이 이미 존재하면 중복 생성 방지
 
 ---
 
@@ -126,19 +138,10 @@ SceneName.Battle     // "BattleScene"
 
 **사용법:**
 ```csharp
-// 일반 씬 전환 (Fade In/Out, 기본 0.5초)
 SceneLoader.Instance.LoadScene(SceneName.Overworld);
 SceneLoader.Instance.LoadScene(SceneName.Overworld, fadeDuration: 1f);
-
-// 전투 진입 (빠른 Flash 전환)
 SceneLoader.Instance.LoadBattleScene(SceneName.Battle);
 ```
-
-**전환 흐름:**
-1. `FadeOut` (CanvasGroup alpha 0→1)
-2. `LoadSceneAsync` (allowSceneActivation = false로 대기)
-3. 로딩 완료 후 씬 활성화
-4. `FadeIn` (alpha 1→0)
 
 ---
 
@@ -153,10 +156,9 @@ SceneLoader.Instance.LoadBattleScene(SceneName.Battle);
 
 **BGM 재생:**
 ```csharp
-AudioManager.Instance.PlayBGM(clip);                    // 즉시 재생
-AudioManager.Instance.CrossFadeBGM(clip, duration: 1f); // 크로스페이드 전환
-AudioManager.Instance.SeamlessTransitionBGM(nextClip);  // 림버스 스타일 무결절 전환
-                                                         // (같은 템포 곡, 재생 위치 동기화)
+AudioManager.Instance.PlayBGM(clip);
+AudioManager.Instance.CrossFadeBGM(clip, duration: 1f);
+AudioManager.Instance.SeamlessTransitionBGM(nextClip);  // 무결절 전환 (같은 템포)
 ```
 
 **SFX / Voice:**
@@ -174,31 +176,18 @@ AudioManager.Instance.SetVoiceVolume(1f);
 
 **대화 중 BGM 덕킹:**
 ```csharp
-AudioManager.Instance.DuckBGM(targetVolume: 0.3f, duration: 0.3f);   // 볼륨 낮추기
-AudioManager.Instance.RestoreBGM(targetVolume: 1f, duration: 0.3f);  // 복원
+AudioManager.Instance.DuckBGM(targetVolume: 0.3f, duration: 0.3f);
+AudioManager.Instance.RestoreBGM(targetVolume: 1f, duration: 0.3f);
 ```
-> `DialogueManager`가 대화 시작/종료 시 자동으로 호출합니다.
 
 ---
 
 ### `ObjectPoolManager` — 오브젝트 풀 (싱글톤)
 **파일:** `Core/Scripts/Pool/ObjectPoolManager.cs`
 
-| 항목 | 내용 |
-|------|------|
-| 패턴 | Singleton + DontDestroyOnLoad |
-| 구조 | `Dictionary<string, Queue<GameObject>>` |
-| 대상 | 투사체, 타격 이펙트, 데미지 텍스트 등 빈번 생성/파괴 객체 |
-
-**사용법:**
 ```csharp
-// 풀 등록 (초기화 시 한 번)
 ObjectPoolManager.Instance.RegisterPool(effectPrefab, initialSize: 10);
-
-// 꺼내기 (없으면 자동 확장)
 GameObject obj = ObjectPoolManager.Instance.Spawn(effectPrefab, position, rotation);
-
-// 반납 (Destroy 대신 사용)
 ObjectPoolManager.Instance.Despawn(obj);
 ```
 > ⚠️ `Instantiate` / `Destroy` 대신 반드시 `Spawn` / `Despawn`을 사용하세요.
@@ -213,21 +202,10 @@ ObjectPoolManager.Instance.Despawn(obj);
 | 패턴 | Static Utility |
 | 직렬화 | Newtonsoft.Json (JSON) |
 | 슬롯 | Manual 0~2 (3개) + Auto 3 (1개) |
-| 저장 경로 | `Application.persistentDataPath/save_slot_{index}.json` |
 
-**사용법:**
 ```csharp
-// 저장
-SaveData data = GlobalDataManager.Instance.ToSaveData();
-SaveManager.Save(data, slotIndex: 0);           // Manual Slot 0
-SaveManager.Save(data, SaveManager.AutoSlotIndex); // Auto Save
-
-// 불러오기
+SaveManager.Save(data, slotIndex: 0);
 SaveData loaded = SaveManager.Load(slotIndex: 0);
-if (loaded != null)
-    GlobalDataManager.Instance.FromSaveData(loaded);
-
-// 삭제 / 존재 확인
 SaveManager.Delete(slotIndex: 1);
 bool exists = SaveManager.Exists(slotIndex: 0);
 ```
@@ -240,14 +218,14 @@ bool exists = SaveManager.Exists(slotIndex: 0);
 ```csharp
 public class SaveData
 {
-    public string currentScene;          // 현재 씬 이름
-    public float  playerX, playerY;      // 플레이어 좌표
-    public int    lookingDirection;      // 방향 (0~3)
-    public int    playerHP, playerMaxHP; // HP
-    public List<string> inventoryItemIDs;           // 인벤토리 아이템 ID 목록
-    public Dictionary<string, int> eventFlags;      // 이벤트 플래그
-    public string saveTime;              // 저장 시각 (자동 기록)
-    public int    playtimeSeconds;       // 플레이 시간
+    public string currentScene;
+    public float  playerX, playerY;
+    public int    lookingDirection;
+    public int    playerHP, playerMaxHP;
+    public List<string> inventoryItemIDs;
+    public Dictionary<string, int> eventFlags;
+    public string saveTime;
+    public int    playtimeSeconds;
 }
 ```
 
@@ -258,11 +236,49 @@ public class SaveData
 
 ```csharp
 // 새 플래그 추가 시 이 파일에 상수로 등록하세요
-// 예시:
-// public const string MetFirstNPC  = "met_first_npc";
-// public const string BossDefeated = "boss_defeated";
-
 GlobalDataManager.Instance.SetFlag(EventFlags.BossDefeated, 1);
+```
+
+---
+
+## 🎥 CAMERA 시스템
+
+### `CameraController` — 전투 카메라 연출 (싱글톤)
+**파일:** `TextMesh Pro/Examples & Extras/Scripts/CameraController.cs`  
+> ⚠️ 임시 경로. 추후 `Battle/Scripts/`로 이동 예정.
+
+| 항목 | 내용 |
+|------|------|
+| 패턴 | Singleton (씬 내 한정) |
+| 의존성 | CinemachineCamera, CinemachineTargetGroup, CinemachineImpulseSource, DOTween |
+
+**카메라 모드 전환:**
+```csharp
+CameraController.Instance.ModeBattleIdle();    // 아군/적 균등 포커스 (1:1)
+CameraController.Instance.ModePlayerAction();  // 아군 포커스 (1.5:0.5)
+CameraController.Instance.ModeEnemyAction();   // 적 포커스 (0.5:1.5)
+```
+
+**타격 연출:**
+```csharp
+CameraController.Instance.PlayHitImpact(intensity: 1f);
+CameraController.Instance.PlayHeavySlam(Vector3.left, intensity: 1.0f, lockHorizontal: true);
+CameraController.Instance.PlayDashThroughImpact(dashDir);  // 관통 공격 연출
+```
+
+**줌 / 리셋:**
+```csharp
+CameraController.Instance.Zoom(size: 4.2f, duration: 0.3f);
+CameraController.Instance.ResetCamera(duration: 0.5f);  // 줌/Dutch/위치 전부 복구
+```
+
+**Inspector 설정:**
+```
+_vCam              : CinemachineCamera
+_targetGroup       : CinemachineTargetGroup (targets[0]=Player, targets[1]=Enemy)
+_impulseSource     : CinemachineImpulseSource
+_defaultLensSize   : 5.5f
+_battleZoomSize    : 4.8f
 ```
 
 ---
@@ -275,12 +291,12 @@ GlobalDataManager.Instance.SetFlag(EventFlags.BossDefeated, 1);
 ```csharp
 public enum BattleState
 {
-    Idle,           // 초기 대기
-    Intro,          // 전투 진입 연출
-    PlayerTurn,     // 플레이어 메뉴 선택
-    ActionPhase,    // 공격/스킬 실행 및 QTE
-    EnemyTurn,      // 적 행동 및 방어 QTE
-    Result,         // 전투 결과 (승리/패배)
+    Init,               // 초기화 (씬 로드 직후)
+    TurnCalc,           // 턴 대기열 정렬 (SPD 기반 시뮬레이션)
+    PlayerActionSelect, // 플레이어 커맨드 입력 대기
+    ActionExecute,      // 공격/스킬 연출 및 QTE
+    EnemyAction,        // 적 행동 및 방어 QTE
+    BattleEnd,          // 전투 종료 (승리/패배)
 }
 
 public enum PlayerMenuAction { Attack, Skill, Item, Run }
@@ -288,9 +304,16 @@ public enum PlayerMenuAction { Attack, Skill, Item, Run }
 public enum DefenseInput
 {
     None,
-    Parry,   // Z키 - 패링
-    Dodge,   // C키 - 회피
-    Jump,    // Space - 점프
+    Parry,   // Z키 — 패링 (MP 회복 + 데미지 0)
+    Dodge,   // C키 — 회피
+    Jump,    // Space — 점프
+}
+
+public enum EnemyAttackType
+{
+    MeleeClose,   // 근거리 단일: 적이 이동 후 공격
+    RangedAoE,    // 원거리/장판
+    AoEAll,       // 전체 공격
 }
 ```
 
@@ -302,38 +325,163 @@ public enum DefenseInput
 | 항목 | 내용 |
 |------|------|
 | 패턴 | Singleton (씬 내 한정) |
-| 의존성 | DOTween, PlayerCharacter, EnemyCharacter, SceneLoader, GlobalDataManager, SaveManager |
+| 의존성 | DOTween, CinemachineImpulseSource, CameraController, PositionManager, QTEManager |
 
 **전투 흐름:**
 ```
-StartBattle()
-  → ChangeState(Intro)   → IntroRoutine()
-  → ChangeState(PlayerTurn) → PlayerTurnRoutine()
-      → OnPlayerActionSelected() 호출 대기
-  → ChangeState(ActionPhase) → ExecutePlayerAttack() 또는 QTE
-  → ChangeState(EnemyTurn)  → EnemyTurnRoutine()
-  → ChangeState(Result)     → ResultRoutine()
-      → EXP 지급, AutoSave, 오버월드 복귀
+DelayedStart() (0.2초 대기)
+  → 포지션 배치 (PositionManager)
+  → 플레이어 BattleMode 활성화
+  → OnBattleStarted 이벤트
+  → ChangeState(Init)
+    → TurnCalc (SPD 기반 8턴 시뮬레이션)
+      → AdvanceTurn()
+        → PlayerCharacter → PlayerActionSelect
+        → EnemyCharacter  → EnemyAction
+```
+
+**이벤트 (BattleUIController가 구독):**
+```csharp
+bm.OnBattleStarted      // (List<PlayerCharacter>, List<EnemyCharacter>)
+bm.OnStateChanged       // (BattleState)
+bm.OnTurnQueueUpdated   // (List<CharacterBase>) — 8턴 대기열
+bm.OnPlayerTurnStarted  // (PlayerCharacter)
+bm.OnEnemyActionStarted // (EnemyCharacter, EnemyAttackType)
+bm.OnDamageDealt        // (CharacterBase target, int damage, bool isCrit)
+bm.OnMPChanged          // (PlayerCharacter, int newMP)
+bm.OnBattleEnded        // (bool victory)
+bm.OnTargetSelectionStarted // (PlayerMenuAction) — 타겟 선택 모드 진입
 ```
 
 **외부에서 호출하는 메서드:**
 ```csharp
-// BattleUI가 플레이어 메뉴 선택 후 호출
-BattleManager.Instance.OnPlayerActionSelected(PlayerMenuAction.Attack, targetIndex: 0);
-BattleManager.Instance.OnPlayerActionSelected(PlayerMenuAction.Skill);
-BattleManager.Instance.OnPlayerActionSelected(PlayerMenuAction.Item);
-BattleManager.Instance.OnPlayerActionSelected(PlayerMenuAction.Run);
+// BattleMenuUI → 커맨드 선택 후 호출
+BattleManager.Instance.OnPlayerActionSelected(actor, PlayerMenuAction.Attack);
+
+// BattleUIController → 타겟 확정 후 호출
+BattleManager.Instance.ConfirmTargetAndExecute(targetIndex);
+
+// BattleUIController → 타겟 선택 취소 시 호출
+BattleManager.Instance.CancelTargetSelection();
 
 // 상태 확인
 BattleState state = BattleManager.Instance.CurrentState;
+int mp = BattleManager.Instance.GetMP(player);
+IReadOnlyList<PlayerCharacter> party = BattleManager.Instance.PlayerParty;
+IReadOnlyList<EnemyCharacter>  enemies = BattleManager.Instance.Enemies;
+```
+
+**플레이어 공격 연출 흐름 (ExecuteAttack):**
+```
+1. 적 앞으로 이동 (DOMove, 0.2s)
+2. 예비 동작 — 뒤로 살짝 물러남 (0.15s)
+3. 관통 공격 — 적 뒤로 순간 이동 (0.15s, InExpo)
+   → 0.08s 후 타격 판정 + CameraController.PlayDashThroughImpact()
+   → 히트 스탑 (timeScale 0.05, 0.1s)
+4. 복귀 — DOJump로 포물선 복귀 (0.3s)
+```
+
+**적 공격 연출 흐름 (EnemyMeleeRoutine):**
+```
+1. 적 접근 (DOMove, 0.25s)
+2. 방어 입력 감지 루프 (0.8s 윈도우)
+   → Z(패링): elapsed 0.3~0.6s 구간이면 성공
+   → C(회피): 즉시 성공
+   → Space(점프): 즉시 성공
+   → 연타 방지: inputTaken 플래그로 1회만 허용
+3. 결과 적용
+   → 방어 실패: TakePureDamage + PlayHurtEffect + PlayHeavySlam
+   → 방어 성공: PlayHeavySlam (반대 방향)
+4. 복귀 (DOMove, 0.3s)
 ```
 
 **Inspector 설정:**
-- `_playerParty` — `List<PlayerCharacter>` 전투 참가 플레이어
-- `_enemies` — `List<EnemyCharacter>` 전투 참가 적
-- `_playerDefaultPositions` — 플레이어 기본 위치 Transform 배열
-- `_enemyDefaultPositions` — 적 기본 위치 Transform 배열
-- `_centerPosition` — 공격 연출 중앙 위치
+```
+_playerParty          : List<PlayerCharacter>
+_enemies              : List<EnemyCharacter>
+_impulseSource        : CinemachineImpulseSource
+_hitImpulse           : 0.15f
+_missImpulse          : 0.05f
+_mpPerTurn            : 5
+_mpOnParryPerfect     : 20
+_mpOnDefenseSuccess   : 10
+```
+
+---
+
+### `BattleUIController` — 전투 UI View (싱글톤)
+**파일:** `Battle/Scripts/BattleUIController.cs`
+
+| 항목 | 내용 |
+|------|------|
+| 패턴 | Singleton (씬 내 한정) |
+| 역할 | BattleManager 이벤트 구독 → UI 갱신 (MVP View) |
+
+**Awake 초기화:**
+```csharp
+// UIPanel.Awake()보다 먼저 실행될 수 있으므로 HideImmediate() 대신 SetActive(false) 사용
+if (_battleMenuUI != null) _battleMenuUI.HideImmediate();  // UIPanel.Awake 이후엔 OK
+if (_defenseQTEUI != null) _defenseQTEUI.HideImmediate();
+if (_resultPanel  != null) _resultPanel.HideImmediate();
+if (_enemyCursor  != null) _enemyCursor.gameObject.SetActive(false);
+```
+
+**타겟 선택 흐름:**
+```
+OnTargetSelectionStarted 이벤트 수신
+  → _isTargeting = true
+  → ShowEnemyCursor(첫 번째 살아있는 적)
+  → Update에서 ←/→ 키로 NavigateEnemy()
+  → Z키: ConfirmTargetAndExecute(index)
+  → X키: CancelTargetSelection() → 메뉴 복구
+```
+
+**EnemyCursor 위치 추적:**
+```csharp
+// Update에서 매 프레임 월드→스크린 좌표 변환 + Lerp 추적
+// 적 계층에 "Top" 이름의 Transform이 있으면 그 위치 사용 (없으면 _cursorOffset 적용)
+// _enemyTopPivots 딕셔너리에 캐싱 (O(1) 접근)
+```
+
+**Inspector 설정:**
+```
+_turnQueueContainer  : Transform (TurnQueuePanel)
+_turnIconPrefab      : GameObject
+_partySlots          : PartySlotUI[4]
+_turnLabel           : TextMeshProUGUI
+_enemyCursor         : RectTransform
+_worldCamera         : Camera
+_cursorOffset        : (0, 0.6, 0)
+_battleMenuUI        : BattleMenuUI
+_defenseQTEUI        : DefenseQTEUI
+_resultPanel         : UIPanel
+_resultLabel         : TextMeshProUGUI
+```
+
+---
+
+### `BattleMenuUI` — 커맨드 메뉴 (UIPanel 상속)
+**파일:** `Battle/Scripts/BattleMenuUI.cs`
+
+- 4개 버튼: Attack / Skill / Item / Run (← → 키 탐색, Z키 확정)
+- 선택 시 DOPunchScale + 색상 강조 (노란색)
+- `SetActor(player)` → 현재 행동 캐릭터 설정
+- `Confirm(index)` → `BattleManager.OnPlayerActionSelected()` 호출
+
+---
+
+### `DefenseQTEUI` — 방어/스킬 QTE UI (UIPanel 상속)
+**파일:** `Battle/Scripts/DefenseQTEUI.cs`
+
+```csharp
+// 방어 QTE: 카운트다운 바 수축 (흰색 → 빨간색 경고)
+defenseQTEUI.ShowQTE(attackDelay: 1.5f, attackTypeName: "ATTACK");
+defenseQTEUI.ShowResult(grade, input);  // 결과 팝업 후 자동 Hide
+
+// 스킬 QTE: 파란 바 수축
+defenseQTEUI.ShowSkillQTE(duration: 2f);
+defenseQTEUI.ShowSkillResult(grade);
+```
 
 ---
 
@@ -346,42 +494,50 @@ BattleState state = BattleManager.Instance.CurrentState;
 | QTE 등급 | `Miss < Bad < Good < Great < Perfect` |
 | 입력 | Unity New Input System (`Keyboard.current`) |
 
-**타이밍 QTE (스킬 사용 시):**
-```csharp
-// duration: 바 이동 총 시간, difficultyMultiplier: EnemyData.QTEDifficultyMultiplier
-QTEManager.Instance.StartTimingQTE(duration: 2f, difficultyMultiplier: 1f);
+> ⚠️ **현재 BattleManager는 QTEManager를 직접 사용하지 않습니다.**  
+> 방어 입력은 `EnemyMeleeRoutine()` 내부에서 직접 `Keyboard.current`로 처리합니다.  
+> QTEManager는 스킬 QTE(`StartSkillQTE`)에만 사용됩니다.
 
-// 결과 수신
-QTEManager.Instance.OnQTECompleted += (grade) => {
-    // grade: QTEManager.QTEGrade (Miss/Bad/Good/Great/Perfect)
-};
+**스킬 QTE:**
+```csharp
+QTEManager.Instance.StartSkillQTE(difficultyMult: 1f);
+QTEManager.Instance.OnSkillQTECompleted += (grade) => { ... };
 ```
 
-**연타 QTE:**
+**방어 QTE (레거시, 현재 미사용):**
 ```csharp
-QTEManager.Instance.StartMashingQTE(difficultyMultiplier: 1f);
-QTEManager.Instance.OnQTECompleted += (grade) => { ... };
-```
-
-**방어 QTE (적 턴):**
-```csharp
-QTEManager.Instance.StartDefenseQTE(
-    attackDelay: 1.5f,
-    onResult: (DefenseInput input, QTEManager.QTEGrade grade) => {
-        // input: Parry(Z) / Dodge(C) / Jump(Space) / None
-        // grade: 타이밍 판정
-    }
-);
+QTEManager.Instance.StartDefenseQTE(attackDelay, difficultyMult, (input, grade) => { ... });
 ```
 
 **타이밍 판정 기준 (Inspector 조정 가능):**
-| 등급 | 기본 거리 (중앙 기준) |
-|------|----------------------|
-| Perfect | ≤ 0.08 |
-| Great | ≤ 0.15 |
-| Good | ≤ 0.25 |
+| 등급 | 기본 구간 |
+|------|----------|
+| Perfect | ≤ 0.12 (남은 시간 비율) |
+| Great | ≤ 0.22 |
+| Good | ≤ 0.40 |
 | Bad | 그 외 |
 | Miss | 시간 초과 |
+
+---
+
+### `PositionManager` — 전투 포지션 관리 (싱글톤)
+**파일:** `Battle/Scripts/PositionManager.cs`
+
+```csharp
+PositionManager.Instance.GetPlayerDefaultPos(index);   // 아군 기본 위치
+PositionManager.Instance.GetEnemyDefaultPos(index);    // 적 기본 위치
+PositionManager.Instance.GetCenterPos();               // 교전 중앙
+PositionManager.Instance.GetEnemyAttackPos(playerIdx); // 적이 아군 공격 시 도달 위치
+PositionManager.Instance.GetAttackStagingPos(attacker, target); // Pivots/Front 기반 위치
+```
+
+**Inspector 설정:**
+```
+_playerDefaultPos[0~2]  : 아군 기본 위치 Transform
+_enemyDefaultPos[0~2]   : 적 기본 위치 Transform
+_centerPos              : 교전 중앙 Transform
+_enemyAttackPos[0~2]    : 적 공격 도달 위치 Transform
+```
 
 ---
 
@@ -390,6 +546,9 @@ QTEManager.Instance.StartDefenseQTE(
 **생성:** `Create > HubToHome > SkillData`
 
 ```csharp
+public enum QTEType { None, Timing, Mashing }
+public enum SkillCastType { MeleeDash, RangedStatic }
+
 public class SkillData : ScriptableObject
 {
     public string SkillName, SkillID;
@@ -400,7 +559,11 @@ public class SkillData : ScriptableObject
     public QTEType QTEType;               // None / Timing / Mashing
     public float  QTESuccessMultiplier;   // QTE 성공 시 추가 배율
     public float  QTEFailMultiplier;      // QTE 실패 시 배율
+    public SkillCastType CastType;        // MeleeDash(돌진) / RangedStatic(제자리)
+    public float  VFXSpawnDelay;          // 시전 후 VFX 생성까지 딜레이
+    public float  DamageDelay;            // 시전 후 데미지 적용까지 딜레이
     public GameObject EffectPrefab;       // ObjectPool 사용 이펙트 프리팹
+    public bool   SpawnVFXOnTarget;       // true=적에게, false=내 앞에서 터짐
 }
 ```
 
@@ -425,8 +588,8 @@ public bool IsAlive => CurrentHP > 0;
 
 **데미지 / 회복:**
 ```csharp
-int actual = character.TakeDamage(rawDamage);      // DEF 감소 후 적용
-int pure   = character.TakePureDamage(damage);     // DEF 무시 (독, 화상)
+int actual = character.TakeDamage(rawDamage);      // DEF 감소 후 적용 (최소 1)
+int pure   = character.TakePureDamage(damage);     // DEF 무시 (독, 화상, 방어 실패)
 character.Heal(amount);
 ```
 
@@ -437,10 +600,15 @@ character.RemoveEffect(effect);
 character.ProcessEffects();   // 턴 시작 시 BattleManager가 호출
 ```
 
+**루핑 VFX (버프/디버프 이펙트):**
+```csharp
+character.AddLoopVFX("poison", vfxPrefab, "Pivots/Bottom");  // 캐릭터에 붙어다님
+character.RemoveLoopVFX("poison");
+```
+
 **Speed Gap Logic:**
 ```csharp
-// SPD 차이 20 이상이면 추가 행동권
-bool hasAdvantage = player.HasSpeedAdvantageOver(enemy);
+bool hasAdvantage = player.HasSpeedAdvantageOver(enemy);  // SPD 차이 20 이상
 ```
 
 **오버라이드 포인트:**
@@ -462,14 +630,13 @@ player.GainEXP(amount);   // 자동 레벨업 처리 (Max Level: 99)
 
 **장비 장착 (6슬롯):**
 ```csharp
-player.Equip(equipmentData);   // 슬롯 자동 판별 후 장착 + 스탯 재계산
+player.Equip(equipmentData);   // 슬롯 자동 판별 후 장착 + RecalculateStats()
 // 슬롯: Weapon, Accessory1, Accessory2, Head, Body, Shoes
 ```
 
-**위치 저장/복원 (씬 전환 시):**
-```csharp
-player.SavePositionToGlobal();    // GlobalDataManager에 현재 위치 저장
-player.LoadPositionFromGlobal();  // GlobalDataManager에서 위치 복원
+**기본 스탯 (장비 없을 때):**
+```
+ATK=10, DEF=5, SPD=10, MaxHP=100
 ```
 
 **캐릭터 ID:**
@@ -482,22 +649,32 @@ player.CharacterID = "Player";   // 대사 트리거, 장비 반응 대사에 �
 ### `EnemyCharacter` — 적 캐릭터
 **파일:** `Characters/Scripts/EnemyCharacter.cs`
 
+**애니메이터 해시 (public static):**
 ```csharp
-// EnemyData SO를 Inspector에서 연결
-public EnemyData Data;
+EnemyCharacter.HashAttack     // "Attack"
+EnemyCharacter.HashHurt       // "Hurt"
+EnemyCharacter.HashDie        // "Die"
+EnemyCharacter.HashBattleIdle // "BattleIdle"
+EnemyCharacter.HashBattleMove // "BattleMove"
+```
 
-// AI 행동 결정 (BattleManager.EnemyTurnRoutine에서 호출)
-EnemyAction action = enemy.DecideAction();
-// 반환값: BasicAttack / UseSkill / EnragedAttack / Defend
-
-// 드롭 아이템 ID 목록
-string[] drops = enemy.GetDrops();
+**주요 메서드:**
+```csharp
+enemy.PlayBattleAnim(EnemyCharacter.HashAttack);  // 파라미터 존재 여부 확인 후 트리거
+enemy.DoMoveToTarget(targetPos, duration);         // 이동 + BattleMove 애니메이션
+enemy.DoReturnToStart(startPos, duration);         // 복귀 + BattleIdle 애니메이션
+EnemyAction action = enemy.DecideAction();         // AI 행동 결정
+string[] drops = enemy.GetDrops();                 // 드롭 아이템 ID 목록
 ```
 
 **AI 패턴 로직:**
 - HP 50% 이하 + `HasEnragedPattern = true` → `EnragedAttack`
 - `SkillList`가 있고 `Random.value < SkillUseChance` → `UseSkill`
 - 그 외 → `BasicAttack`
+
+**피격/사망 연출 (DOTween):**
+- 피격: 빨간 플래시 + DOShakePosition
+- 사망: DOFade(0, 0.8s) + 0.2s 딜레이
 
 ---
 
@@ -510,14 +687,14 @@ public class PoisonEffect : StatusEffect
 {
     public PoisonEffect(int duration) : base("Poison", duration) { }
 
-    protected override void ApplyEffect(CharacterBase target)
+    public override void OnTick(CharacterBase target)
     {
-        target.TakePureDamage(5);   // 매 턴 5 순수 데미지
+        base.OnTick(target);  // DurationTurns-- 처리
+        target.TakePureDamage(5);
     }
 }
 
-// 적용
-character.AddEffect(new PoisonEffect(3));   // 3턴 지속
+character.AddEffect(new PoisonEffect(3));
 // ProcessEffects() 호출 시 자동 틱 처리 및 만료 시 자동 제거
 ```
 
@@ -529,6 +706,7 @@ character.AddEffect(new PoisonEffect(3));   // 3턴 지속
 
 ```csharp
 public string EnemyName;
+public Sprite Portrait;
 public int MaxHP, ATK, DEF, SPD;
 public float SkillUseChance;          // 0~1 스킬 사용 확률
 public bool  HasEnragedPattern;       // HP 50% 이하 강화 패턴 여부
@@ -554,164 +732,83 @@ public string EquipReactionDialogueID; // 장착 시 트리거할 대화 ID (선
 
 ---
 
-## 🟢 DIALOGUE 시스템
+## 🔴 OVERWORLD 시스템
 
-### `DialogueData` — 대화 데이터 구조 (JSON 직렬화)
-**파일:** `Dialogue/Scripts/DialogueData.cs`
-
-```csharp
-// 대화 한 줄
-public class DialogueLine
-{
-    public string id;           // 고유 식별자
-    public string speaker;      // 화자 이름
-    public string portrait;     // 초상화 스프라이트 키 (null이면 이름만)
-    public string text;         // 내용 (TextAnimator 태그 포함 가능)
-    public float  speed;        // 타이핑 속도 배율 (기본 1f)
-    public bool   autoAdvance;  // true면 자동 진행
-    public float  autoDelay;    // autoAdvance 대기 시간 (기본 1.5초)
-    public List<string> commands;           // 특수 명령 (예: "[bgm:boss_theme]")
-    public List<DialogueChoice> choices;    // 선택지
-}
-
-// 선택지
-public class DialogueChoice
-{
-    public string text;             // 선택지 텍스트
-    public string nextDialogueID;   // 선택 시 이동할 다음 대화 ID
-    public string eventID;          // 선택 시 실행할 이벤트 (예: "SET_FLAG:met_npc:1")
-}
-
-// 대화 묶음
-public class DialogueSequence
-{
-    public string sequenceID;
-    public List<DialogueLine> lines;
-}
-```
-
-**JSON 파일 예시:**
-```json
-[
-  {
-    "sequenceID": "npc_intro_001",
-    "lines": [
-      {
-        "id": "line_01",
-        "speaker": "마을 주민",
-        "portrait": "villager_normal",
-        "text": "안녕하세요! <shake>조심하세요!</shake>",
-        "speed": 1.0,
-        "autoAdvance": false,
-        "commands": [],
-        "choices": []
-      },
-      {
-        "id": "line_02",
-        "speaker": "마을 주민",
-        "text": "어떻게 하시겠어요?",
-        "choices": [
-          { "text": "도와드릴게요", "nextDialogueID": "npc_help", "eventID": "SET_FLAG:helped_villager:1" },
-          { "text": "그냥 지나갈게요", "nextDialogueID": "", "eventID": "" }
-        ]
-      }
-    ]
-  }
-]
-```
-
----
-
-### `DialogueManager` — 대화 총괄 (싱글톤)
-**파일:** `Dialogue/Scripts/DialogueManager.cs`
+### `PlayerController` — 오버월드 플레이어 컨트롤러
+**파일:** `Overworld/Scripts/PlayerController.cs`
 
 | 항목 | 내용 |
 |------|------|
-| 패턴 | Singleton + DontDestroyOnLoad |
-| 의존성 | AudioManager (BGM 덕킹), DialogueEventBridge |
+| 의존성 | Rigidbody2D, Animator, SpriteRenderer, CharacterVFX, DOTween |
+| 입력 | Unity New Input System |
+| 이동 방식 | 즉각 반응 (가속/감속 없음), Last-Input Priority |
 
-**JSON 로드:**
+**플레이어 상태:**
 ```csharp
-// Resources 폴더 기준 경로 (확장자 제외)
-DialogueManager.Instance.LoadDialogueFile("Dialogues/town_npcs");
+public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
+PlayerState state = player.State;
 ```
 
-**대화 시작/제어:**
+**키 바인딩:**
+| 키 | 동작 |
+|----|------|
+| 방향키 / WASD | 이동 |
+| Z | 확인 / 상호작용 |
+| X | 취소 |
+| C | 메뉴 열기 |
+
+**방향 값:**
 ```csharp
-DialogueManager.Instance.StartDialogue("npc_intro_001");
-
-// 타이핑 완료 알림 (DialogueController가 호출)
-DialogueManager.Instance.CompleteTyping();
-
-// 다음 줄 진행 (플레이어 확인 버튼 입력 시)
-DialogueManager.Instance.AdvanceLine();
-
-// 선택지 선택 (ChoiceHandler가 호출)
-DialogueManager.Instance.OnChoiceSelected(choice);
+int dir = player.FacingDirection;  // 0=Down, 1=Up, 2=Left, 3=Right
+player.SetFacingDirection(3);      // 강제 방향 설정
 ```
 
-**이벤트 구독:**
+**전투 모드 전환:**
 ```csharp
-DialogueManager.Instance.OnDialogueStarted += () => { /* 대화창 열기 */ };
-DialogueManager.Instance.OnDialogueEnded   += () => { /* 대화창 닫기 */ };
-DialogueManager.Instance.OnLineStarted     += (line) => { /* 타이핑 시작 */ };
-DialogueManager.Instance.OnChoicesShown    += (choices) => { /* 선택지 UI 표시 */ };
+player.SetBattleMode(true);   // InBattle 상태, Kinematic, BattleIdle 트리거
+player.SetBattleMode(false);  // Idle 상태, Dynamic
 ```
 
-**상태 확인:**
+**전투 애니메이션 + DOTween 연출:**
 ```csharp
-bool active = DialogueManager.Instance.IsActive;
+player.PlayBattleAnim(PlayerController.HashParry);    // 패링: 청록 플래시 + 펀치
+player.PlayBattleAnim(PlayerController.HashAttack);   // 공격: 앞으로 찌르기
+player.PlayBattleAnim(PlayerController.HashHurt);     // 피격: 빨간 플래시 + 쉐이크
+player.PlayBattleAnim(PlayerController.HashDie);      // 사망: 흰 플래시 + 페이드아웃
+player.PlayBattleAnim(PlayerController.HashVictory);  // 승리: 위아래 바운스
+
+// 직접 액션 실행 (쿨타임 체크 포함)
+player.ExecuteAttack();   // Attack 트리거
+player.ExecuteParry();    // Parry 트리거 (0.4s 쿨타임)
+player.ExecuteDodge();    // 바라보는 반대 방향으로 1.5 이동 (0.4s 쿨타임)
+player.ExecuteJump();     // 위로 2.0 이동 (쿨타임 없음)
+
+// 이펙트만 재생 (애니메이션 없이)
+player.PlayParryEffect();
+player.PlayHurtEffect();
+player.PlayDieEffect();
+player.PlayVictoryEffect();
 ```
 
-**인라인 명령어 (commands 필드):**
-| 명령어 | 동작 |
-|--------|------|
-| `[bgm:boss_theme]` | BGM 전환 |
-| `[shake]` | 카메라 쉐이크 |
-| `[flash]` | 화면 플래시 |
-| 그 외 | `DialogueEventBridge.Execute()` 로 전달 |
-
----
-
-### `DialogueEventBridge` — 대화 이벤트 실행기 (정적 클래스)
-**파일:** `Dialogue/Scripts/DialogueEventBridge.cs`
-
+**Animator 파라미터 해시 (public static):**
 ```csharp
-// 직접 호출 또는 DialogueManager가 자동 호출
-DialogueEventBridge.Execute("GIVE_ITEM:item_potion");
-DialogueEventBridge.Execute("START_BATTLE:enemy_group_01");
-DialogueEventBridge.Execute("SET_FLAG:boss_defeated:1");
-DialogueEventBridge.Execute("LOAD_SCENE:OverworldScene");
+PlayerController.HashBattleIdle  // trigger
+PlayerController.HashBattleMove  // trigger
+PlayerController.HashParry       // trigger
+PlayerController.HashAttack      // trigger
+PlayerController.HashHurt        // trigger
+PlayerController.HashDie         // trigger
+PlayerController.HashVictory     // trigger
+// private: HashMoveX, HashMoveY, HashIsMoving
 ```
 
-**지원 명령:**
-| 명령 형식 | 동작 |
-|-----------|------|
-| `GIVE_ITEM:[ItemID]` | GlobalDataManager에 아이템 추가 |
-| `START_BATTLE:[EnemyGroupID]` | 전투 씬으로 Flash 전환 |
-| `SET_FLAG:[FlagName]:[Value]` | 이벤트 플래그 설정 |
-| `LOAD_SCENE:[SceneName]` | 씬 전환 |
-
----
-
-### `DialogueNPC` — 대화 NPC 컴포넌트
-**파일:** `Dialogue/Scripts/DialogueNPC.cs`
-
+**위치 저장/복원:**
 ```csharp
-// InteractableBase 상속 → Z키 입력 시 자동 호출
-// Inspector 설정:
-[SerializeField] private string _dialogueSequenceID = "npc_intro_001";
-
-// 조건부 대화 (플래그 값에 따라 다른 대화)
-[SerializeField] private string _altDialogueSequenceID = "npc_after_event";
-[SerializeField] private string _altFlagKey   = "boss_defeated";
-[SerializeField] private int    _altFlagValue = 1;
-// → boss_defeated >= 1 이면 altDialogue 출력
+player.SavePositionToGlobal();    // 씬 전환 전 호출
+player.LoadPositionFromGlobal();  // 씬 로드 후 Start()에서 자동 호출
 ```
 
 ---
-
-## 🔴 OVERWORLD 시스템
 
 ### `IInteractable` — 상호작용 인터페이스
 **파일:** `Overworld/Scripts/IInteractable.cs`
@@ -719,8 +816,8 @@ DialogueEventBridge.Execute("LOAD_SCENE:OverworldScene");
 ```csharp
 public interface IInteractable
 {
-    void Interact(PlayerController player);   // Z키 입력 시 호출
-    bool CanInteract(PlayerController player); // 상호작용 가능 여부
+    void Interact(PlayerController player);
+    bool CanInteract(PlayerController player);
 }
 ```
 
@@ -730,27 +827,14 @@ public interface IInteractable
 **파일:** `Overworld/Scripts/InteractableBase.cs`
 
 ```csharp
-// NPC, 아이템 박스, 세이브 포인트 등이 상속
-public abstract class InteractableBase : MonoBehaviour, IInteractable
-{
-    // Inspector 설정: 특정 플래그 조건 충족 시에만 상호작용 허용
-    [SerializeField] protected string _requiredFlagKey   = "";  // 비워두면 항상 활성화
-    [SerializeField] protected int    _requiredFlagValue = 1;
+// 조건부 활성화 (플래그 기반)
+[SerializeField] protected string _requiredFlagKey   = "";  // 비워두면 항상 활성화
+[SerializeField] protected int    _requiredFlagValue = 1;
 
-    public abstract void Interact(PlayerController player);
-}
-```
-
-**새 상호작용 오브젝트 만들기:**
-```csharp
-public class SavePoint : InteractableBase
+// 새 상호작용 오브젝트 만들기
+public class MyInteractable : InteractableBase
 {
-    public override void Interact(PlayerController player)
-    {
-        var data = GlobalDataManager.Instance.ToSaveData();
-        SaveManager.Save(data, slotIndex: 0);
-        // 저장 연출 등
-    }
+    public override void Interact(PlayerController player) { ... }
 }
 ```
 
@@ -765,80 +849,7 @@ public class SavePoint : InteractableBase
 | 감지 방향 | 플레이어 `FacingDirection` 기준 전면 |
 
 ```csharp
-// PlayerController가 Z키 입력 시 자동 호출
-InteractionSystem.Instance.TryInteract(player);
-
-// Inspector 설정
-_boxSize     = (0.8f, 0.8f)   // 감지 박스 크기
-_boxDistance = 0.6f            // 플레이어로부터 거리
-_interactLayer                 // 감지할 레이어 마스크
-```
-
----
-
-### `PlayerController` — 오버월드 플레이어 컨트롤러
-**파일:** `Overworld/Scripts/PlayerController.cs`
-
-| 항목 | 내용 |
-|------|------|
-| 의존성 | Rigidbody2D, Animator, SpriteRenderer, DOTween, Odin Inspector |
-| 입력 | Unity New Input System |
-| 이동 방식 | 즉각 반응 (가속/감속 없음), Last-Input Priority |
-
-**플레이어 상태:**
-```csharp
-public enum PlayerState { Idle, Moving, Interacting, InMenu }
-PlayerState state = player.State;
-```
-
-**키 바인딩:**
-| 키 | 동작 |
-|----|------|
-| 방향키 / WASD | 이동 |
-| Z | 확인 / 상호작용 |
-| X | 취소 |
-| C | 메뉴 열기 |
-
-**방향 값:**
-```csharp
-int dir = player.FacingDirection;
-// 0=Down, 1=Up, 2=Left, 3=Right
-```
-
-**상호작용 잠금 (대화 중):**
-```csharp
-player.SetInteracting(true);   // 이동 잠금
-player.SetInteracting(false);  // 이동 해제
-```
-
-**위치 저장/복원:**
-```csharp
-player.SavePositionToGlobal();    // 씬 전환 전 호출
-player.LoadPositionFromGlobal();  // 씬 로드 후 호출
-```
-
-**전투 애니메이션 + DOTween 연출:**
-```csharp
-// Animator 트리거 + DOTween 이펙트 동시 실행
-player.PlayBattleAnim(PlayerController.HashParry);    // 패링: 청록 플래시 + 펀치
-player.PlayBattleAnim(PlayerController.HashAttack);   // 공격: 앞으로 찌르기
-player.PlayBattleAnim(PlayerController.HashHurt);     // 피격: 빨간 플래시 + 쉐이크
-player.PlayBattleAnim(PlayerController.HashDie);      // 사망: 흰 플래시 + 페이드아웃
-player.PlayBattleAnim(PlayerController.HashVictory);  // 승리: 위아래 바운스
-```
-
-**Animator 파라미터 해시 (캐싱됨):**
-```csharp
-PlayerController.HashMoveX      // float
-PlayerController.HashMoveY      // float
-PlayerController.HashIsMoving   // bool
-PlayerController.HashBattleIdle // trigger
-PlayerController.HashBattleMove // trigger
-PlayerController.HashParry      // trigger
-PlayerController.HashAttack     // trigger
-PlayerController.HashHurt       // trigger
-PlayerController.HashDie        // trigger
-PlayerController.HashVictory    // trigger
+InteractionSystem.Instance.TryInteract(player);  // PlayerController가 Z키 입력 시 자동 호출
 ```
 
 ---
@@ -847,37 +858,109 @@ PlayerController.HashVictory    // trigger
 **파일:** `Overworld/Scripts/AreaTrigger.cs`
 
 ```csharp
-public enum TriggerType
-{
-    SceneTransition,    // 씬 전환
-    AutoEvent,          // 자동 이벤트 (대화 등)
-    BattleEncounter,    // 전투 진입
-}
+public enum TriggerType { SceneTransition, AutoEvent, BattleEncounter }
 ```
 
 **Inspector 설정:**
 ```
 TriggerType: SceneTransition
-  → _targetScene: "OverworldScene"
-  → _spawnX, _spawnY: 스폰 좌표
-  → _spawnDirection: 0~3
+  → _targetScene, _spawnX, _spawnY, _spawnDirection
 
 TriggerType: AutoEvent
-  → _dialogueID: "event_intro_001"
+  → _dialogueID
 
 TriggerType: BattleEncounter
-  → _enemyGroupID: "enemy_group_forest_01"
+  → _enemyGroupID
 
 조건 (선택):
-  → _requiredFlagKey: "boss_defeated"
-  → _requiredFlagValue: 1
+  → _requiredFlagKey, _requiredFlagValue
 ```
 
-**씬 전환 시 자동 처리:**
-1. `player.SavePositionToGlobal()` 호출
-2. `GlobalDataManager`에 스폰 정보 저장
-3. `AutoSave` 실행
-4. `SceneLoader.LoadScene()` 호출
+---
+
+### `SavePoint` — 세이브 포인트
+**파일:** `Overworld/Scripts/SavePoint.cs`
+
+```csharp
+// SaveMode.QuickSave: 즉시 _quickSaveSlot에 저장
+// SaveMode.SlotSelect: TODO (Phase 5)
+// 저장 완료 시 글로우 스프라이트 노란 플래시 피드백
+```
+
+---
+
+## 🟢 DIALOGUE 시스템
+
+### `DialogueData` — 대화 데이터 구조 (JSON 직렬화)
+**파일:** `Dialogue/Scripts/DialogueData.cs`
+
+```csharp
+public class DialogueLine
+{
+    public string id;
+    public string speaker;
+    public string portrait;     // 초상화 스프라이트 키
+    public string text;         // TextAnimator 태그 포함 가능
+    public float  speed;        // 타이핑 속도 배율 (기본 1f)
+    public bool   autoAdvance;
+    public float  autoDelay;    // 기본 1.5초
+    public List<string> commands;
+    public List<DialogueChoice> choices;
+}
+
+public class DialogueChoice
+{
+    public string text;
+    public string nextDialogueID;
+    public string eventID;      // "SET_FLAG:met_npc:1" 형식
+}
+```
+
+---
+
+### `DialogueManager` — 대화 총괄 (싱글톤)
+**파일:** `Dialogue/Scripts/DialogueManager.cs`
+
+```csharp
+DialogueManager.Instance.LoadDialogueFile("Dialogues/town_npcs");
+DialogueManager.Instance.StartDialogue("npc_intro_001");
+DialogueManager.Instance.CompleteTyping();
+DialogueManager.Instance.AdvanceLine();
+DialogueManager.Instance.OnChoiceSelected(choice);
+
+// 이벤트
+DialogueManager.Instance.OnDialogueStarted += () => { };
+DialogueManager.Instance.OnDialogueEnded   += () => { };
+DialogueManager.Instance.OnLineStarted     += (line) => { };
+DialogueManager.Instance.OnChoicesShown    += (choices) => { };
+
+bool active = DialogueManager.Instance.IsActive;
+```
+
+---
+
+### `DialogueEventBridge` — 대화 이벤트 실행기 (정적 클래스)
+**파일:** `Dialogue/Scripts/DialogueEventBridge.cs`
+
+| 명령 형식 | 동작 |
+|-----------|------|
+| `GIVE_ITEM:[ItemID]` | GlobalDataManager에 아이템 추가 |
+| `START_BATTLE:[EnemyGroupID]` | 전투 씬으로 Flash 전환 |
+| `SET_FLAG:[FlagName]:[Value]` | 이벤트 플래그 설정 |
+| `LOAD_SCENE:[SceneName]` | 씬 전환 |
+
+---
+
+### `DialogueNPC` — 대화 NPC 컴포넌트
+**파일:** `Dialogue/Scripts/DialogueNPC.cs`
+
+```csharp
+[SerializeField] private string _dialogueSequenceID = "npc_intro_001";
+[SerializeField] private string _altDialogueSequenceID = "npc_after_event";
+[SerializeField] private string _altFlagKey   = "boss_defeated";
+[SerializeField] private int    _altFlagValue = 1;
+// → boss_defeated >= 1 이면 altDialogue 출력
+```
 
 ---
 
@@ -888,61 +971,43 @@ TriggerType: BattleEncounter
 
 | 항목 | 내용 |
 |------|------|
-| 의존성 | CanvasGroup (필수), DOTween |
+| 의존성 | CanvasGroup (필수, RequireComponent), DOTween |
 | 초기 상태 | alpha=0, interactable=false, SetActive(false) |
 
 ```csharp
-// 새 패널 만들기
-public class MyPanel : UIPanel
-{
-    protected override void OnShowComplete() { /* 표시 완료 후 처리 */ }
-    protected override void OnHideComplete() { /* 숨김 완료 후 처리 */ }
-}
-
-// 사용
 panel.Show();           // DOTween 페이드인
 panel.Hide();           // DOTween 페이드아웃
 panel.ShowImmediate();  // 즉시 표시
-panel.HideImmediate();  // 즉시 숨김
+panel.HideImmediate();  // 즉시 숨김 (⚠️ Awake 이전 호출 시 NullRef 발생 가능)
 bool visible = panel.IsVisible;
 ```
 
-**Inspector 설정:**
-```
-_showDuration: 0.2f   (등장 시간)
-_hideDuration: 0.15f  (퇴장 시간)
-_showEase: OutQuad
-_hideEase: InQuad
-```
+> ⚠️ **주의:** `HideImmediate()`는 `_canvasGroup`이 초기화된 이후에만 호출 가능합니다.  
+> 다른 컴포넌트의 `Awake()`에서 호출 시 실행 순서 문제로 NullReferenceException 발생 가능.  
+> 이 경우 `gameObject.SetActive(false)`를 직접 사용하세요.
 
 ---
 
 ### `UIManager` — UI 패널 관리 (싱글톤)
 **파일:** `UI/Scripts/UIManager.cs`
 
-| 항목 | 내용 |
-|------|------|
-| 패턴 | Singleton + DontDestroyOnLoad |
-| 구조 | Stack 기반 패널 관리 |
-
-**패널 열기/닫기:**
 ```csharp
-UIManager.Instance.OpenPanel(panel);      // 임의 패널 열기
-UIManager.Instance.CloseTopPanel();       // 최상단 패널 닫기
-UIManager.Instance.ClosePanel(panel);     // 특정 패널 닫기
-UIManager.Instance.CloseAllPanels();      // 모든 패널 닫기
-
-// 편의 메서드
-UIManager.Instance.OpenDialogue();
-UIManager.Instance.CloseDialogue();
-UIManager.Instance.OpenInventory();
-UIManager.Instance.CloseInventory();
-UIManager.Instance.OpenBattleHUD();
-UIManager.Instance.CloseBattleHUD();
-UIManager.Instance.OpenPause();
-UIManager.Instance.ClosePause();
-
+UIManager.Instance.OpenPanel(panel);
+UIManager.Instance.CloseTopPanel();
+UIManager.Instance.ClosePanel(panel);
+UIManager.Instance.CloseAllPanels();
 bool anyOpen = UIManager.Instance.IsAnyPanelOpen;
+```
+
+---
+
+### `BackgroundManager` — 배경 패럴랙스 관리
+**파일:** `UI/Scripts/BackgroundManager.cs`
+
+```csharp
+// 하위 ParallaxLayer 컴포넌트들을 자동 수집
+// LateUpdate에서 카메라 이동량을 각 레이어에 전달
+// Inspector: _mainCamera (없으면 Camera.main 자동 사용)
 ```
 
 ---
@@ -962,10 +1027,10 @@ public class ItemData : ScriptableObject
     public Sprite   Icon;
     public string   Description;
     public ItemType Type;
-    public int      HealAmount;          // Consumable: HP 회복량
-    public EquipmentData EquipmentRef;   // Equipment 타입일 때 참조
+    public int      HealAmount;
+    public EquipmentData EquipmentRef;
     public bool     IsStackable;
-    public int      MaxStackSize;        // 기본 99
+    public int      MaxStackSize;  // 기본 99
 }
 ```
 
@@ -980,17 +1045,46 @@ AreaTrigger(BattleEncounter)
   → GlobalDataManager에 적 그룹 ID 저장 (TODO)
   → SceneLoader.LoadBattleScene(SceneName.Battle)
     → BattleScene 로드
-      → BattleManager.Start() → StartBattle()
+      → BattleManager.DelayedStart() (0.2s 대기)
+        → PositionManager로 캐릭터 배치
+        → PlayerController.SetBattleMode(true)
+        → OnBattleStarted 이벤트
+        → ChangeState(Init) → TurnCalc → ...
 ```
 
 ### 전투 → 오버월드 복귀
 ```
-BattleManager.ResultRoutine()
+BattleManager.BattleEndRoutine()
   → EXP 지급 (player.GainEXP)
-  → GlobalDataManager.ToSaveData() → SaveManager.Save(AutoSlot)
+  → 드롭 아이템 GlobalDataManager.AddItem()
   → SceneLoader.LoadScene(SceneName.Overworld)
     → OverworldScene 로드
       → PlayerController.LoadPositionFromGlobal()
+```
+
+### 플레이어 공격 흐름
+```
+BattleMenuUI.Confirm(0) [Attack]
+  → BattleManager.OnPlayerActionSelected(actor, Attack)
+    → OnTargetSelectionStarted 이벤트
+      → BattleUIController: _isTargeting=true, ShowEnemyCursor()
+        → Z키 입력
+          → BattleManager.ConfirmTargetAndExecute(index)
+            → ExecuteAttack(actor, targetIndex)
+              → 이동 → 예비동작 → 관통공격 → 복귀
+```
+
+### 적 공격 흐름
+```
+BattleManager.EnemyActionRoutine()
+  → CameraController.ModeEnemyAction()
+  → EnemyMeleeRoutine(enemy, pm)
+    → 적 접근 (DOMove)
+    → 방어 입력 감지 루프 (0.8s)
+      → Z/C/Space 입력 → 방어 성공/실패
+    → 결과 적용 (TakePureDamage or 방어 성공 피드백)
+    → 적 복귀
+  → CameraController.ResetCamera()
 ```
 
 ### 대화 → 이벤트 실행
@@ -999,9 +1093,8 @@ DialogueNPC.Interact()
   → player.SetInteracting(true)
   → DialogueManager.StartDialogue(sequenceID)
     → AudioManager.DuckBGM()
-    → OnLineStarted 이벤트 → DialogueController 타이핑
-    → 선택지 선택 → DialogueEventBridge.Execute(eventID)
-      → GIVE_ITEM / START_BATTLE / SET_FLAG / LOAD_SCENE
+    → OnLineStarted → DialogueController 타이핑
+    → 선택지 → DialogueEventBridge.Execute(eventID)
   → OnDialogueEnded → player.SetInteracting(false)
   → AudioManager.RestoreBGM()
 ```
@@ -1009,6 +1102,7 @@ DialogueNPC.Interact()
 ### 세이브/로드 흐름
 ```
 저장:
+  player.SavePositionToGlobal()
   GlobalDataManager.ToSaveData()
   → SaveManager.Save(data, slotIndex)
 
@@ -1036,6 +1130,7 @@ DialogueNPC.Interact()
 - 새 씬 추가 시 `SceneName.cs`에 상수로 등록
 - 모든 데이터 로드/세이브에 `try-catch` 적용
 - 시각적 연출은 DOTween 사용 (직접 lerp 코드 지양)
+- 적 계층 구조에 `Pivots/Top`, `Pivots/Front`, `Pivots/Center`, `Pivots/Bottom` Transform 배치 권장
 
 ### 싱글톤 접근 패턴
 ```csharp
@@ -1043,18 +1138,31 @@ DialogueNPC.Interact()
 GlobalDataManager.Instance?.SetFlag("key", 1);
 SceneLoader.Instance?.LoadScene(SceneName.Overworld);
 AudioManager.Instance?.PlaySFX(clip);
+CameraController.Instance?.ResetCamera(0.5f);
+```
+
+### UIPanel 사용 시 주의
+```csharp
+// ❌ 다른 컴포넌트의 Awake()에서 호출 금지 (실행 순서 문제)
+panel.HideImmediate();
+
+// ✅ 대신 직접 SetActive 사용
+panel.gameObject.SetActive(false);
+
+// ✅ Start() 또는 OnEnable()에서는 안전하게 사용 가능
+panel.HideImmediate();
 ```
 
 ---
 
-## 🐛 버그 수정 이력 (2026-04-30)
+## 🐛 버그 수정 이력
 
+### 2026-04-30
 | 파일 | 문제 | 해결 |
 |------|------|------|
-| `BattleUIController.cs` | 씬 시작 시 BattleMenu/DefenseQTEUI/ResultPanel/EnemyCursor가 활성화 상태로 보임 | `Awake()`에서 `gameObject.SetActive(false)` 직접 호출 (HideImmediate 대신) |
-| `BattleUIController.cs` | `UIPanel.HideImmediate()` 호출 시 NullReferenceException | `UIPanel.Awake()`보다 `BattleUIController.Awake()`가 먼저 실행되어 `_canvasGroup`이 null. `SetActive(false)`로 교체 |
+| `BattleUIController.cs` | 씬 시작 시 BattleMenu/DefenseQTEUI/ResultPanel/EnemyCursor가 활성화 상태로 보임 | `Awake()`에서 `HideImmediate()` 대신 `gameObject.SetActive(false)` 직접 호출 |
+| `BattleUIController.cs` | `UIPanel.HideImmediate()` 호출 시 NullReferenceException | `UIPanel.Awake()`보다 먼저 실행되어 `_canvasGroup`이 null. `SetActive(false)`로 교체 |
 | `BattleUIController.cs` | EnemyCursor가 (0,0)에 잠깐 보인 후 이동 | 활성화 전에 먼저 월드→스크린 좌표 계산 후 위치 설정 |
-| `BattleUIController.cs` | EnemyCursor bob 애니메이션이 Update의 position 추적과 충돌 | `DOAnchorPosY` → `DOLocalMoveY`로 변경 |
 | `EnemyCharacter.cs` | 전투 시작 시 적이 idle 상태가 아님 | `Awake()`에서 `BattleIdle` 트리거 호출 |
 | `EnemyCharacter.cs` | 적 피격/사망 애니메이션 없음 | `OnDamageTaken()`에서 `Hurt`/`Die` 트리거 호출 |
 | `BattleManager.cs` | 적 공격 시 애니메이션 없음 | `EnemyMeleeRoutine()`에 `enemy.PlayBattleAnim(Attack)` 추가 |
@@ -1085,23 +1193,19 @@ AudioManager.Instance?.PlaySFX(clip);
 
 ---
 
-## 📌 TODO / 미구현 항목 (코드 내 TODO 주석 기준)
+## 📌 TODO / 미구현 항목
 
 | 위치 | 내용 |
 |------|------|
-| `BattleManager` | BattleUI에 메뉴 표시 요청 연동 |
-| `BattleManager` | 스킬 선택 UI → QTEManager 호출 연동 |
+| `BattleManager` | 스킬 선택 UI → QTEManager 호출 연동 (ConfirmTargetAndExecute에 TODO 있음) |
 | `BattleManager` | 아이템 선택 UI 연동 |
-| `BattleManager` | 타격 이펙트 ObjectPool 연동 |
-| `BattleManager` | 카메라 쉐이크 연동 |
-| `BattleManager` | 방어 QTE (DefenseQTEManager) 연동 |
 | `BattleManager` | GlobalDataManager에 적 그룹 ID 저장 |
-| `QTEManager` | BattleUI 타이밍 바 표시/숨김 연동 |
-| `QTEManager` | BattleUI 연타 게이지 표시/숨김 연동 |
-| `QTEManager` | BattleUI 방어 타이밍 인디케이터 연동 |
 | `PlayerCharacter` | StatGrowthCurve SO 기반 스탯 성장 |
-| `EnemyCharacter` | BattleManager에 사망 통보 및 드롭 처리 |
+| `PlayerCharacter` | OnDie() → BattleManager에 통보 |
+| `EnemyCharacter` | OnDie() → BattleManager에 사망 통보 및 드롭 처리 |
 | `DialogueManager` | BGM 명령 실제 AudioManager 연동 |
 | `DialogueManager` | 카메라 쉐이크/플래시 명령 연동 |
 | `AreaTrigger` | GlobalDataManager에 적 그룹 ID 저장 |
 | `PlayerController` | 메뉴 열기 UI 연동 |
+| `SavePoint` | SlotSelect 모드 UI 연동 (Phase 5) |
+| `CameraController` | `TextMesh Pro/` 경로에서 `Battle/Scripts/`로 이동 |
