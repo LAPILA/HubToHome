@@ -318,6 +318,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacter
   MaxHP: 100
+  MaxMP: 100
   ATK: 10
   DEF: 5
   SPD: 10
@@ -330,8 +331,7 @@ MonoBehaviour:
   HeadSlot: {fileID: 0}
   BodySlot: {fileID: 0}
   ShoesSlot: {fileID: 0}
-  Skills:
-  - {fileID: 11400000, guid: ae31297861161004fb3601e94c107ba3, type: 2}
+  Skills: []
   CharacterID: Player
 --- !u!114 &1699074167755928894
 MonoBehaviour:
@@ -352,7 +352,7 @@ MonoBehaviour:
     - {fileID: 4748681987041982144, guid: 4b9add9c220265b408491b262eff5974, type: 3}
     - {fileID: 4632630371064151832}
     - {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
-    - {fileID: 6457503421304768550}
+    - {fileID: 6322861581956168082}
     SerializedBytesString: 
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
@@ -377,82 +377,61 @@ MonoBehaviour:
       Data: 
     - Name: 
       Entry: 12
+      Data: 3
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 0
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 0
+    - Name: Pivot
+      Entry: 10
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 1
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 2
+    - Name: Pivot
+      Entry: 10
+      Data: 1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
       Data: 4
-    - Name: 
-      Entry: 7
-      Data: 
-    - Name: $k
-      Entry: 3
-      Data: 0
-    - Name: $v
-      Entry: 7
-      Data: CharacterVFX+VFXSetup, Assembly-CSharp
-    - Name: Prefab
-      Entry: 10
-      Data: 0
-    - Name: Pivot
-      Entry: 10
-      Data: 1
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 
-    - Name: $k
-      Entry: 3
-      Data: 1
     - Name: $v
       Entry: 7
       Data: CharacterVFX+VFXSetup, Assembly-CSharp
     - Name: Prefab
       Entry: 10
       Data: 2
-    - Name: Pivot
-      Entry: 10
-      Data: 1
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 
-    - Name: $k
-      Entry: 3
-      Data: 2
-    - Name: $v
-      Entry: 7
-      Data: CharacterVFX+VFXSetup, Assembly-CSharp
-    - Name: Prefab
-      Entry: 6
-      Data: 
-    - Name: Pivot
-      Entry: 10
-      Data: 3
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 
-    - Name: $k
-      Entry: 3
-      Data: 3
-    - Name: $v
-      Entry: 7
-      Data: CharacterVFX+VFXSetup, Assembly-CSharp
-    - Name: Prefab
-      Entry: 6
-      Data: 
     - Name: Pivot
       Entry: 10
       Data: 3

@@ -3,10 +3,6 @@ using Sirenix.OdinInspector;
 using System.Collections.Generic;
 using Sirenix.Serialization;
 
-/// <summary>
-/// 캐릭터 전용 VFX를 관리하는 컴포넌트.
-/// Odin Inspector를 활용해 딕셔너리 형태로 이펙트를 매핑합니다.
-/// </summary>
 public class CharacterVFX : SerializedMonoBehaviour
 {
     public enum VFXAction
@@ -14,13 +10,13 @@ public class CharacterVFX : SerializedMonoBehaviour
         Attack_Normal,
         Parry_Success,
         Dodge_Dust,
-        Jump_Dust
+        Jump_Dust,
+        Hit_Effect // 🚨 피격 이펙트 추가!
     }
 
     [System.Serializable]
     public struct VFXSetup
     {
-        // 🚨 [Required]를 추가하여 기획자/개발자가 프리팹 넣는 것을 깜빡하면 에디터에 빨간 경고를 띄워줍니다.
         [AssetsOnly, Required("VFX 프리팹을 할당해야 합니다!")]
         public GameObject Prefab;
 
@@ -35,18 +31,15 @@ public class CharacterVFX : SerializedMonoBehaviour
         { VFXAction.Attack_Normal, new VFXSetup() },
         { VFXAction.Parry_Success, new VFXSetup() },
         { VFXAction.Dodge_Dust,    new VFXSetup() },
-        { VFXAction.Jump_Dust,     new VFXSetup() }
+        { VFXAction.Jump_Dust,     new VFXSetup() },
+        { VFXAction.Hit_Effect,    new VFXSetup() }
     };
 
-    /// <summary>
-    /// 지정된 액션의 이펙트를 재생합니다.
-    /// </summary>
     public void Play(VFXAction action)
     {
-        // 1. 방어 코드: 딕셔너리에 없거나 프리팹이 비어있는 경우 (로그를 하나로 압축해 최적화)
         if (!_vfxDict.TryGetValue(action, out VFXSetup setup) || setup.Prefab == null)
         {
-            Debug.LogWarning($"<color=orange>[VFX 에러]</color> {gameObject.name}의 '{action}' 이펙트가 설정되지 않았습니다!");
+            // 이펙트가 없을 땐 조용히 무시하거나 필요한 경우에만 로그를 띄웁니다.
             return;
         }
 
@@ -59,7 +52,7 @@ public class CharacterVFX : SerializedMonoBehaviour
         else
         {
             GameObject vfx = Instantiate(setup.Prefab, spawnPivot.position, spawnPivot.rotation);
-            Destroy(vfx, 2f);
+            Destroy(vfx, 2f); // 프리팹 자체 삭제 기능이 없을 때를 대비한 2초 뒤 안전 파괴
         }
     }
 }

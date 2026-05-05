@@ -50,6 +50,7 @@ public class ObjectPoolManager : MonoBehaviour
 
     // ── 꺼내기 (Spawn) ────────────────────────────────────────
     /// <summary>풀에서 오브젝트를 꺼내 활성화합니다.</summary>
+    /// <summary>풀에서 오브젝트를 꺼내 활성화합니다.</summary>
     public GameObject Spawn(GameObject prefab, Vector3 position, Quaternion rotation)
     {
         string key = prefab.name;
@@ -57,20 +58,31 @@ public class ObjectPoolManager : MonoBehaviour
         if (!_pools.ContainsKey(key))
             RegisterPool(prefab);
 
-        GameObject obj;
-        if (_pools[key].Count > 0)
+        GameObject obj = null;
+
+        // 🚨 핵심 방어 로직: 큐 안에 있는 멀쩡한(Destroy되지 않은) 객체를 찾을 때까지 꺼냅니다.
+        while (_pools[key].Count > 0)
         {
             obj = _pools[key].Dequeue();
-        }
-        else
-        {
-            // 풀 소진 시 점진적 확장
-            obj = CreateNew(_prefabRegistry[key]);
-            Debug.LogWarning($"[ObjectPool] Pool '{key}' expanded.");
+            
+            if (obj != null) 
+            {
+                break; // 멀쩡한 객체를 찾았으니 루프 탈출!
+            }
+            // null이라면 누군가 Destroy한 것이므로 무시하고 다음 것을 꺼냅니다.
         }
 
+        // 큐가 비었거나, 남아있던 객체들이 전부 Destroy되어서 obj가 여전히 null인 경우 새로 만듭니다.
+        if (obj == null)
+        {
+            obj = CreateNew(_prefabRegistry[key]);
+            Debug.LogWarning($"<color=orange>[ObjectPool]</color> Pool '{key}' expanded. (기존 객체 부족 또는 파괴됨)");
+        }
+
+        // 위치 적용 및 활성화
         obj.transform.SetPositionAndRotation(position, rotation);
         obj.SetActive(true);
+        
         return obj;
     }
 

@@ -28,6 +28,15 @@ public abstract class CharacterBase : MonoBehaviour
         CurrentHP = MaxHP;
         CurrentMP = MaxMP;
     }
+    // ── 피벗(Pivot) 관리 ──────────────────────────────────────────
+    /// <summary>
+    /// 하이라키의 "Pivots/이름" 경로에서 오브젝트를 찾습니다. 
+    /// </summary>
+    public Transform GetPivot(string pivotName)
+    {
+        Transform pivot = transform.Find($"Pivots/{pivotName}");
+        return pivot != null ? pivot : transform;
+    }
 
     // ── 데미지 및 회복 (캡슐화) ──────────────────────────────────────────
     public virtual int TakeDamage(int rawDamage)

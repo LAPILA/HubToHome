@@ -13,43 +13,24 @@ public struct SkillQTENode
     public string TargetKey;
 }
 
-[CreateAssetMenu(fileName = "NewSkill", menuName = "HubToHome/SkillData")]
+[CreateAssetMenu(fileName = "NewSequenceSkill", menuName = "HubToHome/SkillData_Sequence")]
 public class SkillData : ScriptableObject
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(50)]
     public Sprite Icon;
     
-    [BoxGroup("Identity")] public string SkillName = "Skill";
-    [BoxGroup("Identity")] public string SkillID   = "skill_001";
+    [BoxGroup("Identity")] public string SkillName = "New Skill";
+    [BoxGroup("Identity")] public string SkillID   = "skill_000";
     [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
 
-    [BoxGroup("Cost & Power")] public int MPCost = 10;
-    [BoxGroup("Cost & Power")] public float DamageMultiplier = 1.5f;
-
-    [BoxGroup("Target & Effect")] public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
-    [BoxGroup("Target & Effect")] public bool IsAoE = false;
+    [BoxGroup("Cost")] public int MPCost = 10;
     
-    [BoxGroup("Target & Effect")] public EffectActionType ActionType = EffectActionType.Damage;
-    
-    // 상태이상 스킬일 때만 표시되도록 인스펙터 최적화 (Odin)
-    [BoxGroup("Target & Effect"), ShowIf("ActionType", EffectActionType.ApplyStatus)] 
-    public StatusEffectType StatusEffect = StatusEffectType.None;
-    
-    [BoxGroup("Target & Effect"), ShowIf("ActionType", EffectActionType.ApplyStatus)] 
-    public int StatusDurationTurns = 0;
+    [BoxGroup("Target")] public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
+    [BoxGroup("Target")] public bool IsAoE = false;
 
-    [BoxGroup("QTE Settings")] public QTEType QTEType = QTEType.Sequence;
-    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)] public float QTETimeLimit = 1.0f;
-    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)] public float QTESuccessMultiplier = 1.5f;
-    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)] public float QTEFailMultiplier    = 0.5f;
-
-    [BoxGroup("QTE Settings"), ShowIf("QTEType", QTEType.Sequence)]
-    [ListDrawerSettings(ShowIndexLabels = true)]
-    public List<SkillQTENode> QTENodes = new List<SkillQTENode>();
-
-    [BoxGroup("Animation & Visual")] public SkillCastType CastType = SkillCastType.MeleeDash;
-    [BoxGroup("Animation & Visual")] public float VFXSpawnDelay = 0.2f;
-    [BoxGroup("Animation & Visual")] public float DamageDelay = 0.25f;
-    [BoxGroup("Animation & Visual")] public GameObject EffectPrefab;
-    [BoxGroup("Animation & Visual")] public bool SpawnVFXOnTarget = true;
+    // 🚨 다형성 직렬화 리스트: 인스펙터에서 아래의 ActionBlock들을 마음대로 조립하게 해줍니다.
+    [Title("스킬 타임라인 (시퀀스)")]
+    [SerializeReference] 
+    [ListDrawerSettings(ShowIndexLabels = true, ListElementLabelName = "BlockName")]
+    public List<SkillActionBlock> ActionTimeline = new List<SkillActionBlock>();
 }

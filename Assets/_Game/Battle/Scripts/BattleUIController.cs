@@ -19,7 +19,7 @@ public class BattleUIController : MonoBehaviour
     [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private PartySlotUI[] _partySlots = new PartySlotUI[4];
     [BoxGroup("Labels"), LabelWidth(120)] [SerializeField] private TMPro.TextMeshProUGUI _turnLabel;
     
-    [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private RectTransform _targetCursor; // 범용 타겟 커서로 이름 변경
+    [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private RectTransform _targetCursor; 
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private Camera _worldCamera;
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private Vector3 _cursorOffset = new Vector3(0f, 0.8f, 0f);
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private float _cursorBobHeight = 15f;
@@ -50,18 +50,18 @@ public class BattleUIController : MonoBehaviour
         _battleMenuUI?.HideImmediate(); 
         _defenseQTEUI?.HideImmediate();
         _resultPanel?.HideImmediate();
-        _targetCursor?.gameObject.SetActive(false);
+        if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
     }
 
+    // 🚨 OnEnable 대신 Start에서 구독하여 BattleManager.Awake가 끝났음을 보장합니다.
     private void Start()
     {
-        if (BattleManager.Instance != null) OnEnable();
-    }
-
-    private void OnEnable()
-    {
         var bm = BattleManager.Instance;
-        if (bm == null) return;
+        if (bm == null) 
+        {
+            Debug.LogWarning("[BattleUIController] BattleManager.Instance가 없습니다!");
+            return;
+        }
 
         bm.OnBattleStarted          += HandleBattleStarted;
         bm.OnStateChanged           += HandleStateChanged;
@@ -74,7 +74,8 @@ public class BattleUIController : MonoBehaviour
         bm.OnTargetSelectionStarted += HandleTargetSelectionStarted;
     }
 
-    private void OnDisable()
+    // 🚨 OnDisable 대신 OnDestroy에서 구독 해제 (안전성 확보)
+    private void OnDestroy()
     {
         var bm = BattleManager.Instance;
         if (bm == null) return;
@@ -97,26 +98,22 @@ public class BattleUIController : MonoBehaviour
         HandleTargetingInput();
     }
 
-    // ── [5. 타겟팅 시스템 (단일 책임 분리)] ───────────────────────────────────
+    // ── [5. 타겟팅 시스템] ───────────────────────────────────
     private void HandleTargetingInput()
     {
         if (!_isTargetingMode || Keyboard.current == null) return;
 
         var kb = Keyboard.current;
 
-        // 타겟 변경
         if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame)
             NavigateTarget(-1);
         else if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame)
             NavigateTarget(1);
-        
-        // 행동 확정 (Z키)
         else if (kb.zKey.wasPressedThisFrame)
         {
             ExitTargetingMode();
             BattleManager.Instance.ConfirmTargetAndExecute(_selectedTargetIndex);
         }
-        // 행동 취소 (X키)
         else if (kb.xKey.wasPressedThisFrame)
         {
             ExitTargetingMode();
@@ -129,14 +126,14 @@ public class BattleUIController : MonoBehaviour
         int maxTargets = _isAllyTargeting ? _party.Count : _enemies.Count;
         if (maxTargets == 0) return;
 
-        int loopCount = 0; // 무한루프 방지
+        int loopCount = 0; 
         do
         {
             _selectedTargetIndex = (_selectedTargetIndex + direction + maxTargets) % maxTargets;
             loopCount++;
             
             bool isAlive = _isAllyTargeting ? _party[_selectedTargetIndex].IsAlive : _enemies[_selectedTargetIndex].IsAlive;
-            if (isAlive) break; // 살아있는 타겟을 찾으면 정지
+            if (isAlive) break; 
             
         } while (loopCount < maxTargets);
     }
@@ -145,7 +142,6 @@ public class BattleUIController : MonoBehaviour
     {
         if (_targetCursor == null || !_targetCursor.gameObject.activeSelf) return;
 
-        // 1. 월드 타겟 찾기 (안전한 방어 코드 적용)
         Transform targetTf = null;
         if (_isAllyTargeting)
         {
@@ -162,13 +158,11 @@ public class BattleUIController : MonoBehaviour
             }
         }
 
-        // 2. 좌표 변환 및 UI 적용
         if (targetTf != null)
         {
             Vector3 worldPos = targetTf.position + _cursorOffset;
             Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
 
-            // 화면 공간에서의 위아래 바운싱 연출
             screenPos.y += Mathf.Sin(Time.time * _cursorBobSpeed * 15f) * _cursorBobHeight;
 
             RectTransformUtility.ScreenPointToWorldPointInRectangle(
@@ -181,7 +175,7 @@ public class BattleUIController : MonoBehaviour
     private void ExitTargetingMode()
     {
         _isTargetingMode = false;
-        _targetCursor?.gameObject.SetActive(false);
+        if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
     }
 
     private int GetFirstAliveTargetIndex()
@@ -203,14 +197,12 @@ public class BattleUIController : MonoBehaviour
         _party   = party;
         _enemies = enemies;
 
-        // 파티 슬롯 초기화
         for (int i = 0; i < _partySlots.Length; i++)
         {
             if (i < party.Count) _partySlots[i].Init(party[i]);
             else                 _partySlots[i].Hide();
         }
 
-        // 적 피벗 캐싱 (매 프레임 GetComponentsInChildren 호출 방지용 최적화)
         _enemyTopPivots.Clear();
         foreach (var enemy in enemies)
         {
@@ -229,7 +221,12 @@ public class BattleUIController : MonoBehaviour
                 break;
 
             case BattleState.PlayerActionSelect:
-                _battleMenuUI?.Show();
+                // 🚨 핵심 해결책: Show를 호출하기 전에 GameObject 자체를 무조건 활성화시킵니다!
+                if (_battleMenuUI != null)
+                {
+                    _battleMenuUI.gameObject.SetActive(true);
+                    _battleMenuUI.Show();
+                }
                 break;
 
             case BattleState.ActionExecute:
@@ -245,7 +242,6 @@ public class BattleUIController : MonoBehaviour
         _isTargetingMode = true;
         _isAllyTargeting = false; 
 
-        // 액션 타입에 따라 아군/적군 분기
         var bm = BattleManager.Instance;
         if (action == PlayerMenuAction.Item && bm.CurrentPendingItem != null)
             _isAllyTargeting = (bm.CurrentPendingItem.TargetType == TargetAreaType.AllyOnly);
@@ -253,7 +249,7 @@ public class BattleUIController : MonoBehaviour
             _isAllyTargeting = (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly);
 
         _selectedTargetIndex = GetFirstAliveTargetIndex();
-        _targetCursor?.gameObject.SetActive(true);
+        if (_targetCursor != null) _targetCursor.gameObject.SetActive(true);
     }
 
     private void HandleDamageDealt(CharacterBase target, int damage, bool isCrit)
@@ -326,7 +322,7 @@ public class BattleUIController : MonoBehaviour
         }
     }
 
-    // ── QTE 연동 (기존 코드 유지) ──
+    // ── QTE 연동 ──
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
     public void ShowDefenseResult(QTEManager.QTEGrade grade, DefenseInput input) => _defenseQTEUI?.ShowResult(grade, input);
@@ -355,7 +351,7 @@ public class BattleUIController : MonoBehaviour
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ── 파티 슬롯 UI 컴포넌트 (데이터 독립성 확보)
+// ── 파티 슬롯 UI 컴포넌트
 // ═══════════════════════════════════════════════════════════════
 [System.Serializable]
 public class PartySlotUI
@@ -393,7 +389,7 @@ public class PartySlotUI
 
         if (HPText != null)
         {
-            HPText.DOKill(); // 🚨 트윈 찌꺼기로 인한 버그 방지
+            HPText.DOKill(); 
             int prev = ParseInt(HPText.text);
             DOTween.To(() => prev, x => HPText.text = $"{x}/{max}", current, duration).SetEase(ease).SetTarget(HPText);
         }
@@ -406,7 +402,7 @@ public class PartySlotUI
 
         if (MPText != null)
         {
-            MPText.DOKill(); // 🚨 트윈 찌꺼기 방지
+            MPText.DOKill(); 
             int prev = ParseInt(MPText.text);
             DOTween.To(() => prev, x => MPText.text = $"{x}/{max}", current, duration).SetEase(ease).SetTarget(MPText);
         }

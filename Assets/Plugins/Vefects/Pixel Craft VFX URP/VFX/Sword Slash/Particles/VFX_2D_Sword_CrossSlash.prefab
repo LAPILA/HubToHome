@@ -9800,7 +9800,7 @@ GameObject:
   - component: {fileID: 4794655212493717476}
   - component: {fileID: 2607184467005568375}
   - component: {fileID: -8759425826186554283}
-  - component: {fileID: 704782501043512624}
+  - component: {fileID: -416259235295313969}
   m_Layer: 0
   m_Name: VFX_2D_Sword_CrossSlash
   m_TagString: Untagged
@@ -9835,7 +9835,7 @@ ParticleSystem:
   serializedVersion: 8
   lengthInSec: 1
   simulationSpeed: 1
-  stopAction: 2
+  stopAction: 0
   cullingMode: 0
   ringBufferMode: 0
   ringBufferLoopRange: {x: 0, y: 1}
@@ -14737,7 +14737,7 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &704782501043512624
+--- !u!114 &-416259235295313969
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

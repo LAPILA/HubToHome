@@ -12,6 +12,7 @@ public class EnemyCharacter : CharacterBase
 
     private Animator _animator;
     private SpriteRenderer _spriteRenderer;
+    private CharacterVFX _vfx; // 🚨 VFX 매니저 캐싱
     private Vector3 _originalLocalPos;
 
     [Header("Enemy Data")]
@@ -24,9 +25,10 @@ public class EnemyCharacter : CharacterBase
 
     protected override void Awake()
     {
-        base.Awake(); // 기본 컬렉션 등 초기화
+        base.Awake();
         _animator = GetComponent<Animator>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
+        _vfx = GetComponent<CharacterVFX>(); // 🚨 컴포넌트 가져오기
         _originalLocalPos = transform.localPosition;
 
         if (Data != null)
@@ -35,7 +37,7 @@ public class EnemyCharacter : CharacterBase
             ATK   = Data.ATK;
             DEF   = Data.DEF;
             SPD   = Data.SPD;
-            CurrentHP = MaxHP; // 데이터로 덮어쓰기
+            CurrentHP = MaxHP; 
             CurrentMP = MaxMP;
         }
 
@@ -60,7 +62,7 @@ public class EnemyCharacter : CharacterBase
 
     protected override void OnDamageTaken(int damage)
     {
-        // 1. 빨간색 플래시 (스프라이트 전용으로 DOKill을 제한하여 위치 트윈과 간섭 방지)
+        // 1. 빨간색 플래시
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
@@ -70,8 +72,11 @@ public class EnemyCharacter : CharacterBase
         }
 
         // 2. 물리적 흔들림
-        transform.DOKill(false); // 🚨 false를 주어 진행 중인 이동(Move)이 완전히 끊기지 않게 방어
+        transform.DOKill(false); 
         transform.DOShakePosition(0.2f, _shakeStrength, 30, 90f);
+
+        // 🚨 3. 피격 이펙트 (Hit_Effect) 재생
+        _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
         if (IsAlive) PlayBattleAnim(HashHurt);
         else         OnDie();
@@ -84,7 +89,7 @@ public class EnemyCharacter : CharacterBase
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOFade(0f, 0.8f).SetDelay(0.2f).OnComplete(() => {
-                gameObject.SetActive(false); // 메모리 절약을 위해 끄기
+                gameObject.SetActive(false); 
             });
         }
     }
@@ -101,6 +106,12 @@ public class EnemyCharacter : CharacterBase
         PlayBattleAnim(HashBattleMove);
         transform.DOMove(startPos, duration).SetEase(Ease.InQuad)
             .OnComplete(() => PlayBattleAnim(HashBattleIdle));
+    }
+
+    // 🚨 적 공격 이펙트 재생 함수 추가
+    public void ExecuteAttack()
+    {
+        _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
     }
 
     // ── AI 행동 및 데이터 ──
@@ -120,17 +131,10 @@ public class EnemyCharacter : CharacterBase
         return EnemyAction.BasicAttack;
     }
 
-    // 🚨 이전의 string[] 에러를 리스트로 대응
     public IReadOnlyList<string> GetDrops()
     {
         return Data?.DropItemIDs ?? (IReadOnlyList<string>)System.Array.Empty<string>();
     }
 }
 
-public enum EnemyAction
-{
-    BasicAttack,
-    UseSkill,
-    EnragedAttack,
-    Defend,
-}
+public enum EnemyAction { BasicAttack, UseSkill, EnragedAttack, Defend }

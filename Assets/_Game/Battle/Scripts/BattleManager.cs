@@ -129,8 +129,12 @@ public class BattleManager : MonoBehaviour
         _pendingActor = actor;
         _pendingAction = action;
 
-        if (action == PlayerMenuAction.Attack) OnTargetSelectionStarted?.Invoke(action);
-        else if (action == PlayerMenuAction.Run) {}//TODO: TryRun();
+        if (action == PlayerMenuAction.Attack || action == PlayerMenuAction.Skill)
+        {
+            actor.PlayBattleAnim(Animator.StringToHash("BattleReady"));
+            OnTargetSelectionStarted?.Invoke(action);
+        }
+        else if (action == PlayerMenuAction.Run) {}//TryRun();
     }
 
     public void OnSubMenuActionSelected(PlayerCharacter actor, PlayerMenuAction action, SkillData skill, ItemData item)
@@ -145,7 +149,11 @@ public class BattleManager : MonoBehaviour
         else       OnTargetSelectionStarted?.Invoke(action);
     }
 
-    public void CancelTargetSelection() => ChangeState(BattleState.PlayerActionSelect);
+    public void CancelTargetSelection() 
+    {
+        _pendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+        ChangeState(BattleState.PlayerActionSelect);
+    }
 
     public void ConfirmTargetAndExecute(int targetIndex)
     {
@@ -180,134 +188,109 @@ public class BattleManager : MonoBehaviour
         else AdvanceTurn();
     }
 
-    // ── 코루틴 (원래 있던 화려한 연출 포함) ──────────────────────────
     private IEnumerator ExecuteAttack(PlayerCharacter actor, int targetIndex)
     {
-        if (targetIndex >= _enemies.Count || !_enemies[targetIndex].IsAlive) { EndAction(); yield break; }
-        var target = _enemies[targetIndex];
-        var pm = PositionManager.Instance;
-        var actorCtrl = actor.GetComponent<PlayerController>();
+    if (targetIndex >= _enemies.Count || !_enemies[targetIndex].IsAlive) { EndAction(); yield break; }
+    
+    var target = _enemies[targetIndex];
+    var pm = PositionManager.Instance;
 
-        Vector3 frontPos = target.transform.position + new Vector3(-1.8f, 0, 0); 
-        CameraController.Instance?.ModePlayerAction();
-        CameraController.Instance?.Zoom(4.2f, 0.3f); 
+    CameraController.Instance?.ModePlayerAction();
+    CameraController.Instance?.ZoomOnTransform(actor.transform, 4.2f, 0.3f); 
 
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-        yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
+    // ── 2. 적 앞으로 대쉬 ──
+    Vector3 frontPos = target.transform.position + new Vector3(-1.8f, 0, 0); 
+    
+    actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+    yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
 
-        Vector3 pullBackPos = frontPos + new Vector3(-0.5f, 0, 0);
-        yield return actor.transform.DOMove(pullBackPos, 0.15f).SetEase(Ease.OutBack).WaitForCompletion();
+    // ── 3. 살짝 뒤로 당기기 (공격 전조 모션) ──
+    Vector3 pullBackPos = frontPos + new Vector3(-0.5f, 0, 0);
+    yield return actor.transform.DOMove(pullBackPos, 0.15f).SetEase(Ease.OutBack).WaitForCompletion();
 
-        Vector3 behindPos = target.transform.position + new Vector3(1.8f, 0, 0);
-        Vector3 dashDir = (behindPos - pullBackPos).normalized;
+    // ── 4. 적을 관통하며 공격 ──
+    Vector3 behindPos = target.transform.position + new Vector3(1.8f, 0, 0);
+    Vector3 dashDir = (behindPos - pullBackPos).normalized;
 
-        actorCtrl?.ExecuteAttack(); 
-        actor.transform.DOMove(behindPos, 0.15f).SetEase(Ease.InExpo);
+    // 공격 애니메이션 및 VFX 트리거 (필요 시 _vfx.Play를 직접 호출)
+    actor.PlayBattleAnim(PlayerCharacter.HashAttack); 
+    
+    actor.transform.DOMove(behindPos, 0.15f).SetEase(Ease.InExpo);
 
-        yield return new WaitForSeconds(0.08f); 
+    yield return new WaitForSeconds(0.08f); // 타격점 대기
 
-        int dmg = target.TakeDamage(actor.ATK);
-        CameraController.Instance?.PlayDashThroughImpact(dashDir); 
-        
-        Time.timeScale = 0.05f; // 힛스탑
-        DOVirtual.DelayedCall(0.1f, () => Time.timeScale = 1f).SetUpdate(true);
+    // ── 5. 데미지 처리 및 카메라 타격 연출 ──
+    int dmg = target.TakeDamage(actor.ATK);
+    CameraController.Instance?.PlayDashThroughImpact(1.0f);
 
-        OnDamageDealt?.Invoke(target, dmg, false);
-        yield return new WaitForSeconds(0.3f); 
+    OnDamageDealt?.Invoke(target, dmg, false);
+    yield return new WaitForSeconds(0.3f); 
 
-        int idx = _playerParty.IndexOf(actor);
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-        yield return actor.transform.DOJump(pm.GetPlayerDefaultPos(idx), 0.5f, 1, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
+    int idx = _playerParty.IndexOf(actor);
+    actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+    yield return actor.transform.DOJump(pm.GetPlayerDefaultPos(idx), 0.5f, 1, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
+    
+    actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+    CameraController.Instance?.ResetCamera(0.4f);
 
-        EndAction(); // 🚨 무조건 단일 출구로 나감
+    EndAction();
     }
 
+    public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect)
+    {
+        OnDamageDealt?.Invoke(target, damage, isPerfect);
+    }
+    
     private IEnumerator ExecuteSkill(PlayerCharacter actor, int targetIndex, SkillData skill)
     {
-        // MP 차감 먼저
         actor.ConsumeMP(skill.MPCost);
         OnMPChanged?.Invoke(actor, actor.CurrentMP);
 
-        if (targetIndex >= _enemies.Count || !_enemies[targetIndex].IsAlive) { EndAction(); yield break; }
-        var target = _enemies[targetIndex];
-        var pm = PositionManager.Instance;
-        var actorCtrl = actor.GetComponent<PlayerController>();
-
-        yield return new WaitForSeconds(0.1f);
-
-        Vector3 centerPos = new Vector3(-3f, actor.transform.position.y, 0); 
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-        yield return actor.transform.DOMove(centerPos, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
-
-        bool qteFinished = false;
-        int qteSuccesses = 0;
-        int qteTotal = skill.QTENodes.Count;
-
-        if (skill.QTEType == QTEType.Sequence && qteTotal > 0)
+        List<CharacterBase> targets = new List<CharacterBase>();
+        if (skill.IsAoE)
         {
-QTEManager.Instance.StartSequenceQTE(skill.QTENodes, skill.QTETimeLimit, (successCount, totalCount) => {
-    qteSuccesses = successCount; 
-    qteFinished = true;
-});
-yield return new WaitUntil(() => qteFinished);
-            yield return new WaitForSeconds(0.3f);
+            if (skill.TargetType == TargetAreaType.AllyOnly) targets.AddRange(_playerParty.FindAll(p => p.IsAlive));
+            else targets.AddRange(_enemies.FindAll(e => e.IsAlive));
+        }
+        else
+        {
+            if (skill.TargetType == TargetAreaType.AllyOnly) targets.Add(_playerParty[targetIndex]);
+            else targets.Add(_enemies[targetIndex]);
         }
 
-        float finalMult = skill.DamageMultiplier;
-        if (qteTotal > 0) finalMult *= Mathf.Lerp(skill.QTEFailMultiplier, skill.QTESuccessMultiplier, (float)qteSuccesses / qteTotal);
+        if (targets.Count == 0) { EndAction(); yield break; }
 
-        if (skill.CastType == SkillCastType.MeleeDash)
+        CameraController.Instance?.ModePlayerAction();
+        CameraController.Instance?.ZoomOnTransform(actor.transform, 4.0f, 0.3f); 
+
+        Vector3 originalPos = PositionManager.Instance.GetPlayerDefaultPos(_playerParty.IndexOf(actor));
+
+        SkillContext context = new SkillContext()
         {
-            Transform frontPivot = target.transform.Find("Pivots/Front");
-            Vector3 attackPos = (frontPivot != null) ? frontPivot.position : target.transform.position + new Vector3(-1.2f, 0, 0);
-            CameraController.Instance?.SetFocusWeight(0.5f, 1.5f, 0.2f);
-            actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-            yield return actor.transform.DOMove(attackPos, 0.2f).SetEase(Ease.InExpo).WaitForCompletion();
-        }
+            Actor = actor,
+            Targets = targets,
+            CurrentDamageMultiplier = 1.0f,
+            IsPerfectQTE = false
+        };
 
-        actorCtrl?.ExecuteAttack();
-
-        float timer = 0f;
-        bool vfxSpawned = false, damageDealt = false;
-        float maxDelay = Mathf.Max(skill.VFXSpawnDelay, skill.DamageDelay);
-
-        while (timer <= maxDelay)
+        if (skill.ActionTimeline != null)
         {
-            timer += Time.deltaTime;
-            if (timer >= skill.VFXSpawnDelay && !vfxSpawned && skill.EffectPrefab != null)
+            foreach (var block in skill.ActionTimeline)
             {
-                Transform spawnPivot = skill.SpawnVFXOnTarget ? 
-                    (target.transform.Find("Pivots/Center") ?? target.transform) : 
-                    (actor.transform.Find("Pivots/Front") ?? actor.transform);
-                GameObject vfx = Instantiate(skill.EffectPrefab, spawnPivot.position, Quaternion.identity);
-                Destroy(vfx, 2f);
-                vfxSpawned = true;
+                yield return StartCoroutine(block.Execute(context)); 
             }
-            if (timer >= skill.DamageDelay && !damageDealt)
-            {
-                int dmg = target.TakeDamage(Mathf.RoundToInt(actor.ATK * finalMult));
-                bool isPerfect = (qteTotal > 0 && qteSuccesses == qteTotal); 
-                if (isPerfect) CameraController.Instance?.PlayDashThroughImpact(Vector3.right);
-                else           CameraController.Instance?.PlayHeavySlam(Vector3.right, 1.2f, true);
-                OnDamageDealt?.Invoke(target, dmg, isPerfect);
-                damageDealt = true;
-            }
-            yield return null;
         }
 
-        yield return new WaitForSeconds(0.4f);
-
-        if (skill.CastType == SkillCastType.MeleeDash)
+        if (Vector3.Distance(actor.transform.position, originalPos) > 0.1f)
         {
-            int idx = _playerParty.IndexOf(actor);
-            actorCtrl?.PlayBattleAnim(PlayerController.HashBattleMove);
-            yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
+            actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+            yield return actor.transform.DOMove(originalPos, 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
         }
+
+        actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+        CameraController.Instance?.ResetCamera(0.4f); 
         
-        actorCtrl?.PlayBattleAnim(PlayerController.HashBattleIdle);
-        EndAction(); // 🚨
+        EndAction();
     }
 
     private IEnumerator ExecuteItem(PlayerCharacter actor, int targetIndex, ItemData item)
