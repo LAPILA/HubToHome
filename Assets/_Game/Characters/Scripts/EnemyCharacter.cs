@@ -12,7 +12,7 @@ public class EnemyCharacter : CharacterBase
 
     private Animator _animator;
     private SpriteRenderer _spriteRenderer;
-    private CharacterVFX _vfx; // 🚨 VFX 매니저 캐싱
+    private CharacterVFX _vfx; 
     private Vector3 _originalLocalPos;
 
     [Header("Enemy Data")]
@@ -23,33 +23,45 @@ public class EnemyCharacter : CharacterBase
     [SerializeField] private float _flashDuration = 0.08f;
     [SerializeField] private float _shakeStrength = 0.15f;
 
+    // 델타룬 시스템: 자비(Mercy) 가능 상태 퍼센테이지
+    public float MercyPercentage { get; private set; } = 0f;
+
     protected override void Awake()
     {
-        base.Awake();
+        base.Awake(); 
         _animator = GetComponent<Animator>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
-        _vfx = GetComponent<CharacterVFX>(); // 🚨 컴포넌트 가져오기
+        _vfx = GetComponent<CharacterVFX>(); 
         _originalLocalPos = transform.localPosition;
+        PlayBattleAnim(HashBattleIdle);
+    }
 
+    public void Setup(EnemyData data)
+    {
+        Data = data;
         if (Data != null)
         {
-            MaxHP = Data.MaxHP;
-            ATK   = Data.ATK;
-            DEF   = Data.DEF;
-            SPD   = Data.SPD;
+            BaseMaxHP = Data.MaxHP;
+            BaseATK   = Data.ATK;
+            BaseDEF   = Data.DEF;
+            BaseSPD   = Data.SPD;
+            
             CurrentHP = MaxHP; 
             CurrentMP = MaxMP;
+            MercyPercentage = 0f;
         }
+    }
 
-        PlayBattleAnim(HashBattleIdle);
+    public void AddMercy(float amount)
+    {
+        MercyPercentage = Mathf.Clamp01(MercyPercentage + amount);
+        if (MercyPercentage >= 1f) Debug.Log($"{Data.EnemyName}은(는) 이제 자비(Spare)를 베풀 수 있다!");
     }
 
     public void PlayBattleAnim(int triggerHash)
     {
         if (_animator != null && HasParameter(triggerHash))
-        {
             _animator.SetTrigger(triggerHash);
-        }
     }
 
     private bool HasParameter(int paramHash)
@@ -62,7 +74,6 @@ public class EnemyCharacter : CharacterBase
 
     protected override void OnDamageTaken(int damage)
     {
-        // 1. 빨간색 플래시
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
@@ -71,11 +82,9 @@ public class EnemyCharacter : CharacterBase
                 .OnComplete(() => _spriteRenderer.color = Color.white);
         }
 
-        // 2. 물리적 흔들림
         transform.DOKill(false); 
         transform.DOShakePosition(0.2f, _shakeStrength, 30, 90f);
 
-        // 🚨 3. 피격 이펙트 (Hit_Effect) 재생
         _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
         if (IsAlive) PlayBattleAnim(HashHurt);
@@ -85,7 +94,6 @@ public class EnemyCharacter : CharacterBase
     protected override void OnDie()
     {
         PlayBattleAnim(HashDie);
-        
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOFade(0f, 0.8f).SetDelay(0.2f).OnComplete(() => {
@@ -94,27 +102,6 @@ public class EnemyCharacter : CharacterBase
         }
     }
 
-    // ── 전투 액션 연출 ──
-    public void DoMoveToTarget(Vector3 targetPos, float duration)
-    {
-        PlayBattleAnim(HashBattleMove);
-        transform.DOMove(targetPos, duration).SetEase(Ease.OutQuart);
-    }
-
-    public void DoReturnToStart(Vector3 startPos, float duration)
-    {
-        PlayBattleAnim(HashBattleMove);
-        transform.DOMove(startPos, duration).SetEase(Ease.InQuad)
-            .OnComplete(() => PlayBattleAnim(HashBattleIdle));
-    }
-
-    // 🚨 적 공격 이펙트 재생 함수 추가
-    public void ExecuteAttack()
-    {
-        _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
-    }
-
-    // ── AI 행동 및 데이터 ──
     public EnemyAction DecideAction()
     {
         if (Data == null) return EnemyAction.BasicAttack;
@@ -129,11 +116,6 @@ public class EnemyCharacter : CharacterBase
         }
 
         return EnemyAction.BasicAttack;
-    }
-
-    public IReadOnlyList<string> GetDrops()
-    {
-        return Data?.DropItemIDs ?? (IReadOnlyList<string>)System.Array.Empty<string>();
     }
 }
 

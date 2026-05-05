@@ -50,3 +50,4 @@ MonoBehaviour:
   _objectPoolManagerPrefab: {fileID: 4698232173639863147, guid: 5610d5d092ec8c345ad63fa4c9789abe, type: 3}
   _dialogueManagerPrefab: {fileID: 2339700292175982952, guid: 5a67b789dbda02d43864fbdbfc7d7c40, type: 3}
   _uiManagerPrefab: {fileID: 6268782056145064269, guid: b3c4d2a3e6293e847920120cb7786795, type: 3}
+  _gameStateManagerPrefab: {fileID: 5532187574972855940, guid: 1cce65e2c87b7e848985ca389c7babf9, type: 3}

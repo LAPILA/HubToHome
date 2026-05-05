@@ -1,12 +1,12 @@
+using System;
 using UnityEngine;
 
 /// <summary>
 /// 게임 시작 시 가장 먼저 실행되는 부트스트랩 오브젝트.
-/// GlobalDataManager, SceneLoader, AudioManager, ObjectPoolManager,
-/// DialogueManager, UIManager 등 DontDestroyOnLoad 싱글톤들을 초기화합니다.
-/// 
-/// 사용법: 빈 씬(Bootstrap Scene) 또는 TitleScene의 첫 번째 오브젝트로 배치하세요.
+/// GlobalDataManager, SceneLoader, AudioManager, ObjectPoolManager 등 DontDestroyOnLoad 싱글톤들을 초기화합니다.
+/// [DefaultExecutionOrder(-100)] 속성으로 인해 다른 어떤 스크립트보다 먼저 Awake가 실행됩니다.
 /// </summary>
+[DefaultExecutionOrder(-100)]
 public class GameBootstrap : MonoBehaviour
 {
     [Header("Core Prefabs (DontDestroyOnLoad)")]
@@ -16,6 +16,7 @@ public class GameBootstrap : MonoBehaviour
     [SerializeField] private GameObject _objectPoolManagerPrefab;
     [SerializeField] private GameObject _dialogueManagerPrefab;
     [SerializeField] private GameObject _uiManagerPrefab;
+    [SerializeField] private GameObject _gameStateManagerPrefab;
 
     private void Awake()
     {
@@ -30,18 +31,23 @@ public class GameBootstrap : MonoBehaviour
         SpawnIfNotExists<ObjectPoolManager>(_objectPoolManagerPrefab);
         SpawnIfNotExists<DialogueManager>(_dialogueManagerPrefab);
         SpawnIfNotExists<UIManager>(_uiManagerPrefab);
-
-        Debug.Log("[GameBootstrap] All core systems initialized.");
+        SpawnIfNotExists<GameStateManager>(_gameStateManagerPrefab);
+        Debug.Log("<color=#00FFFF>[GameBootstrap] 모든 코어 시스템 초기화 완료!</color>");
     }
 
     private void SpawnIfNotExists<T>(GameObject prefab) where T : MonoBehaviour
     {
+        // 씬에 이미 해당 타입의 싱글톤이 존재하면 패스
         if (FindFirstObjectByType<T>() != null) return;
+        
         if (prefab == null)
         {
-            Debug.LogWarning($"[GameBootstrap] Prefab for {typeof(T).Name} is not assigned.");
+            Debug.LogWarning($"[GameBootstrap] {typeof(T).Name} 프리팹이 할당되지 않았습니다.");
             return;
         }
-        Instantiate(prefab);
+        
+        // 프리팹 생성 후 (Clone) 이름 제거
+        var obj = Instantiate(prefab);
+        obj.name = prefab.name; 
     }
 }

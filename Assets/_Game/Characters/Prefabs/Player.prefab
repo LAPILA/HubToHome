@@ -111,8 +111,8 @@ GameObject:
   - component: {fileID: 2941868075199750439}
   - component: {fileID: 7830336691509602356}
   - component: {fileID: 6714858832913261779}
-  - component: {fileID: 8464460841528240840}
   - component: {fileID: 8157845532445965529}
+  - component: {fileID: 8464460841528240840}
   - component: {fileID: 8926160897552926385}
   - component: {fileID: 1699074167755928894}
   m_Layer: 7
@@ -261,28 +261,6 @@ CapsuleCollider2D:
   m_Offset: {x: -0.02138567, y: 0.5}
   m_Size: {x: 1.1018081, y: 1.1018081}
   m_Direction: 0
---- !u!114 &8464460841528240840
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3767812405821268843}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1d60b01205bdd4046bafa86fd166a86e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
-  _moveSpeed: 8
-  _actionCooldown: 0.4
-  _parryFlashDuration: 0.08
-  _parryFlashColor: {r: 0, g: 1, b: 1, a: 1}
-  _hurtFlashDuration: 0.05
-  _hurtShakeDuration: 0.3
-  _hurtShakeStrength: 0.15
-  _hurtFlashColor: {r: 1, g: 0, b: 0, a: 1}
-  _dieFlashDuration: 0.12
-  _dieFlashColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!95 &8157845532445965529
 Animator:
   serializedVersion: 7
@@ -305,6 +283,28 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &8464460841528240840
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3767812405821268843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d60b01205bdd4046bafa86fd166a86e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerController
+  _moveSpeed: 8
+  _actionCooldown: 0.4
+  _parryFlashDuration: 0.08
+  _parryFlashColor: {r: 0, g: 1, b: 1, a: 1}
+  _hurtFlashDuration: 0.05
+  _hurtShakeDuration: 0.3
+  _hurtShakeStrength: 0.15
+  _hurtFlashColor: {r: 1, g: 0, b: 0, a: 1}
+  _dieFlashDuration: 0.12
+  _dieFlashColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &8926160897552926385
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -317,11 +317,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74ac3363c0b61f247b8c4d438c9445f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacter
-  MaxHP: 100
-  MaxMP: 100
-  ATK: 10
-  DEF: 5
-  SPD: 10
+  BaseMaxHP: 100
+  BaseMaxMP: 100
+  BaseATK: 10
+  BaseDEF: 5
+  BaseSPD: 10
+  CharacterID: Player
   Level: 1
   EXP: 0
   EXPToNextLevel: 100
@@ -331,8 +332,10 @@ MonoBehaviour:
   HeadSlot: {fileID: 0}
   BodySlot: {fileID: 0}
   ShoesSlot: {fileID: 0}
-  Skills: []
-  CharacterID: Player
+  Skills:
+  - {fileID: 11400000, guid: a6266718f8bf9094698650cb43978de1, type: 2}
+  - {fileID: 11400000, guid: b3261d09b33d084429857ad2e5dfc63b, type: 2}
+  - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
 --- !u!114 &1699074167755928894
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -393,6 +396,9 @@ MonoBehaviour:
     - Name: Pivot
       Entry: 10
       Data: 1
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
     - Name: 
       Entry: 8
       Data: 
@@ -414,6 +420,9 @@ MonoBehaviour:
     - Name: Pivot
       Entry: 10
       Data: 1
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
     - Name: 
       Entry: 8
       Data: 
@@ -435,6 +444,9 @@ MonoBehaviour:
     - Name: Pivot
       Entry: 10
       Data: 3
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
     - Name: 
       Entry: 8
       Data: 

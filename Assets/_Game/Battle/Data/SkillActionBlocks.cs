@@ -67,8 +67,9 @@ public class Action_Move : SkillActionBlock
                 case MoveDest.TargetTop:   targetPos = mainTarget.GetPivot("Top").position; break;
             }
         }
-        else if (Destination == MoveDest.Center) targetPos = pm.GetCenterPos();
-        else if (Destination == MoveDest.OriginalPos) targetPos = pm.GetPlayerDefaultPos(BattleManager.Instance._playerParty.IndexOf(context.Actor as PlayerCharacter));
+        else if (Destination == MoveDest.Center && pm != null) targetPos = pm.GetCenterPos();
+        else if (Destination == MoveDest.OriginalPos && pm != null) 
+            targetPos = pm.GetPlayerDefaultPos(BattleManager.Instance._playerParty.IndexOf(context.Actor as PlayerCharacter));
 
         context.Actor.PlayBattleAnim(PlayerCharacter.HashBattleMove); 
         yield return context.Actor.transform.DOMove(targetPos, Duration).SetEase(MoveEase).WaitForCompletion();
@@ -117,12 +118,42 @@ public class Action_Damage : SkillActionBlock
         context.CurrentDamageMultiplier = 1.0f; 
         context.IsPerfectQTE = false;
         
-        yield return null;
+        yield break;
+    }
+}
+
+// 🚨 [새로 추가됨] 상태이상 부여 액션 (수면 마법 등)
+[System.Serializable]
+[TypeInfoBox("지정된 대상에게 상태이상을 부여합니다.")]
+public class Action_ApplyStatus : SkillActionBlock
+{
+    [LabelText("부여할 상태이상 ID")] public string StatusID = "Sleep";
+    [LabelText("지속 턴 수")] public int DurationTurns = 2;
+
+    public override IEnumerator Execute(SkillContext context)
+    {
+        foreach (var target in context.Targets)
+        {
+            if (!target.IsAlive) continue;
+
+            StatusEffect eff = StatusID switch { 
+                "Burn" => new BurnEffect(DurationTurns), 
+                "Poison" => new PoisonEffect(DurationTurns), 
+                "Freeze" => new FreezeEffect(DurationTurns), 
+                "Bind" => new BindEffect(DurationTurns), 
+                "Stun" => new StunEffect(DurationTurns),
+                "Berserk" => new BerserkEffect(DurationTurns),
+                _ => null 
+            };
+            
+            if (eff != null) target.AddEffect(eff);
+        }
+        yield break;
     }
 }
 
 [System.Serializable]
-[TypeInfoBox("QTE를 실행하고 성공 여부에 따라 다음 데미지 배율을 결정합니다.")]
+[TypeInfoBox("QTE를 실행하고 성공 여부에 따라 다음 데미지/회복 배율을 결정합니다.")]
 public class Action_QTE : SkillActionBlock
 {
     public float TimeLimit = 1.0f;
@@ -155,7 +186,7 @@ public class Action_QTE : SkillActionBlock
 }
 
 [System.Serializable]
-[TypeInfoBox("이펙트(VFX)를 재생합니다. 파티클 자체의 Destroy 로직을 따릅니다.")]
+[TypeInfoBox("이펙트(VFX)를 재생합니다. ObjectPoolManager를 지원합니다.")]
 public class Action_VFX : SkillActionBlock
 {
     public enum VfxPivot { ActorCenter, ActorFront, TargetCenter, TargetBottom, TargetTop }
@@ -170,7 +201,6 @@ public class Action_VFX : SkillActionBlock
         Vector3 spawnPos = context.Actor.transform.position;
         var target = context.MainTarget;
 
-        // 🚨 이펙트도 마찬가지로 Pivot 기준으로 소환!
         switch (Pivot)
         {
             case VfxPivot.ActorCenter:  spawnPos = context.Actor.GetPivot("Center").position; break;
@@ -180,15 +210,24 @@ public class Action_VFX : SkillActionBlock
             case VfxPivot.TargetTop:    if (target != null) spawnPos = target.GetPivot("Top").position; break;
         }
 
-        Object.Instantiate(VfxPrefab, spawnPos, context.Actor.transform.rotation);
-        yield return null; 
+        // 🚨 GameObject.Instantiate 에러 수정 및 ObjectPool 적용
+        if (ObjectPoolManager.Instance != null)
+        {
+            ObjectPoolManager.Instance.Spawn(VfxPrefab, spawnPos, context.Actor.transform.rotation);
+        }
+        else
+        {
+            GameObject.Instantiate(VfxPrefab, spawnPos, context.Actor.transform.rotation);
+        }
+        yield break; 
     }
 }
+
 // ═══════════════════════════════════════════════════════════════
-// ── 3. 원거리 투사체 블록 (Pivot 참조) ──
+// ── 3. 원거리 투사체 블록 ──
 // ═══════════════════════════════════════════════════════════════
 [System.Serializable]
-[TypeInfoBox("내 위치에서 타겟을 향해 투사체를 날립니다. 도착하면 데미지를 입힙니다.")]
+[TypeInfoBox("내 위치에서 타겟을 향해 투사체를 날립니다.")]
 public class Action_Projectile : SkillActionBlock
 {
     [AssetsOnly, Required] public GameObject ProjectilePrefab;
@@ -200,16 +239,28 @@ public class Action_Projectile : SkillActionBlock
     {
         if (ProjectilePrefab == null || context.MainTarget == null) yield break;
 
-        // 🚨 투사체도 캐릭터의 배꼽(Center)에서 발사되어 적의 배꼽(Center)에 꽂히도록 수정!
         Vector3 startPos = context.Actor.GetPivot("Center").position;
         Vector3 endPos = context.MainTarget.GetPivot("Center").position;
 
-        GameObject proj = Object.Instantiate(ProjectilePrefab, startPos, Quaternion.identity);
+        // 🚨 풀링 시스템 호환 및 에러 수정
+        GameObject proj;
+        if (ObjectPoolManager.Instance != null)
+            proj = ObjectPoolManager.Instance.Spawn(ProjectilePrefab, startPos, Quaternion.identity);
+        else
+            proj = GameObject.Instantiate(ProjectilePrefab, startPos, Quaternion.identity);
         
         yield return proj.transform.DOMove(endPos, FlightDuration).SetEase(Ease.Linear).WaitForCompletion();
-        Object.Destroy(proj); 
+        
+        if (ObjectPoolManager.Instance != null)
+            ObjectPoolManager.Instance.Despawn(proj);
+        else
+            GameObject.Destroy(proj); 
 
-        if (ImpactVFXPrefab != null) Object.Instantiate(ImpactVFXPrefab, endPos, Quaternion.identity);
+        if (ImpactVFXPrefab != null)
+        {
+            if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.Spawn(ImpactVFXPrefab, endPos, Quaternion.identity);
+            else GameObject.Instantiate(ImpactVFXPrefab, endPos, Quaternion.identity);
+        }
         
         int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
         context.MainTarget.TakeDamage(dmg);
@@ -218,8 +269,9 @@ public class Action_Projectile : SkillActionBlock
         context.CurrentDamageMultiplier = 1.0f; 
     }
 }
+
 // ═══════════════════════════════════════════════════════════════
-// ── 4. 연쇄 다중 공격 (Pivot 참조) ──
+// ── 4. 연쇄 다중 공격 (수정됨) ──
 // ═══════════════════════════════════════════════════════════════
 [System.Serializable]
 [TypeInfoBox("광역기(AoE) 스킬일 경우, 모든 타겟을 순서대로 돌아가며 타격합니다.")]
@@ -237,7 +289,8 @@ public class Action_SequentialMelee : SkillActionBlock
         List<CharacterBase> shuffledTargets = new List<CharacterBase>(context.Targets);
         for (int i = 0; i < shuffledTargets.Count; i++) {
             CharacterBase temp = shuffledTargets[i];
-            int randomIndex = Random.Range(i, shuffledTargets.Count);
+            // 🚨 UnityEngine.Random 명시적 선언으로 에러 방지
+            int randomIndex = UnityEngine.Random.Range(i, shuffledTargets.Count); 
             shuffledTargets[i] = shuffledTargets[randomIndex];
             shuffledTargets[randomIndex] = temp;
         }
@@ -246,15 +299,17 @@ public class Action_SequentialMelee : SkillActionBlock
         {
             if (!target.IsAlive) continue;
 
-            // 🚨 각 타겟의 완벽한 '정면(Front)' 좌표로 돌진!
             Vector3 targetPos = target.GetPivot("Front").position;
             yield return context.Actor.transform.DOMove(targetPos, DashSpeed).SetEase(Ease.OutExpo).WaitForCompletion();
 
             context.Actor.PlayBattleAnim(Animator.StringToHash(AttackAnimTrigger));
             yield return new WaitForSeconds(0.1f); 
 
-            // 🚨 타격 이펙트는 적의 Center에서 발생
-            if (HitVfxPrefab != null) Object.Instantiate(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
+            if (HitVfxPrefab != null)
+            {
+                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.Spawn(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
+                else GameObject.Instantiate(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
+            }
             
             int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
             target.TakeDamage(dmg);

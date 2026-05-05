@@ -1,50 +1,92 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+
+public enum StatType { MaxHP, MaxMP, ATK, DEF, SPD }
+// ── 속성 정의 ──
+public enum DamageElement { Physical, Fire, Ice, Electric, Dark, Light, True }
 
 /// <summary>
 /// 모든 캐릭터의 최상위 베이스 클래스.
-/// 전투 스탯, 데미지 처리, 상태이상(StatusEffect)을 독립적으로 관리합니다.
+/// 동적 스탯 계산 구조와 방어(Defend) 상태를 지원합니다.
 /// </summary>
 public abstract class CharacterBase : MonoBehaviour
 {
-    [Header("Base Stats")]
-    public int MaxHP = 100;
-    public int MaxMP = 100;
-    public int ATK = 10;
-    public int DEF = 5;
-    public int SPD = 10;
+    [Header("Base Stats (순수 능력치)")]
+    public int BaseMaxHP = 100;
+    public int BaseMaxMP = 100;
+    public int BaseATK = 10;
+    public int BaseDEF = 5;
+    public int BaseSPD = 10;
+    
+    // ── 🚨 동적 스탯 프로퍼티 (기본값 + 장비 + 상태이상) ──
+    public int MaxHP => Mathf.Max(1, BaseMaxHP + GetExtraStat(StatType.MaxHP));
+    public int MaxMP => Mathf.Max(0, BaseMaxMP + GetExtraStat(StatType.MaxMP));
+    public int ATK   => Mathf.Max(0, BaseATK + GetExtraStat(StatType.ATK));
+    public int DEF   => Mathf.Max(0, BaseDEF + GetExtraStat(StatType.DEF));
+    public int SPD   => Mathf.Max(0, BaseSPD + GetExtraStat(StatType.SPD));
 
-    // 프로퍼티를 통한 안전한 데이터 접근
+    // 런타임 상태
     public int CurrentHP { get; protected set; }
     public int CurrentMP { get; protected set; }
-    public bool IsBound { get; set; } = false;
     public bool IsAlive => CurrentHP > 0;
+    public bool IsBound { get; set; } = false;   // 속박 (회피/점프/도망 불가, 패링만 가능)
+    public bool IsStunned { get; set; } = false; // 기절 (턴 스킵, 행동 아예 불가)
+    public bool IsBerserk { get; set; } = false; // 광폭화 (아군 피아식별 불가)
+
+    // ── 액션 이벤트 (출혈 등 특정 행동 시 발동하는 효과용) ──
+    public event System.Action OnActionExecuted; 
+    public void NotifyActionExecuted()
+    {
+        OnActionExecuted?.Invoke();
+    }
+
+    // ── 상태 제약 체크 도구 ──
+    public bool CanDodgeOrJump() => !IsBound && !IsStunned;
+    public bool CanTakeTurn() => IsAlive && !IsStunned;
+    // 델타룬 스타일 방어 (턴 시작 시 해제됨)
+    public bool IsDefending { get; set; } = false; 
+
+    // UI 갱신용 이벤트
+    public event Action<CharacterBase, int, int> OnHPChanged;
+    public event Action<CharacterBase, int, int> OnMPChanged;
 
     protected readonly List<StatusEffect> _activeEffects = new List<StatusEffect>();
     private readonly Dictionary<string, GameObject> _activeLoopVFX = new Dictionary<string, GameObject>();
 
     protected virtual void Awake()
     {
-        CurrentHP = MaxHP;
-        CurrentMP = MaxMP;
+        CurrentHP = BaseMaxHP;
+        CurrentMP = BaseMaxMP;
     }
-    // ── 피벗(Pivot) 관리 ──────────────────────────────────────────
-    /// <summary>
-    /// 하이라키의 "Pivots/이름" 경로에서 오브젝트를 찾습니다. 
-    /// </summary>
+
+    // ── 스탯 합산 ──────────────────────────────────────────────
+    /// <summary>하위 클래스(Player)에서 장비 스탯 등을 더할 수 있도록 virtual 처리</summary>
+    protected virtual int GetExtraStat(StatType type)
+    {
+        // 상태이상(버프/디버프) 합산
+        return _activeEffects.Sum(e => e.GetStatModifier(type));
+    }
+
     public Transform GetPivot(string pivotName)
     {
         Transform pivot = transform.Find($"Pivots/{pivotName}");
         return pivot != null ? pivot : transform;
     }
 
-    // ── 데미지 및 회복 (캡슐화) ──────────────────────────────────────────
+    // ── 데미지 및 회복 ──────────────────────────────────────────
     public virtual int TakeDamage(int rawDamage)
     {
         if (!IsAlive) return 0;
 
         int actualDamage = Mathf.Max(1, rawDamage - DEF);
+        
+        // 🚨 방어 중이면 데미지 절반으로 감소 (델타룬 시스템)
+        if (IsDefending) actualDamage = Mathf.Max(1, actualDamage / 2);
+
         CurrentHP = Mathf.Clamp(CurrentHP - actualDamage, 0, MaxHP);
+        OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
         
         OnDamageTaken(actualDamage);
         if (CurrentHP == 0) OnDie();
@@ -55,19 +97,34 @@ public abstract class CharacterBase : MonoBehaviour
     public virtual int TakePureDamage(int damage)
     {
         if (!IsAlive) return 0;
-
+        // 고정 데미지는 DEF와 방어를 무시함
         CurrentHP = Mathf.Clamp(CurrentHP - damage, 0, MaxHP);
-        OnDamageTaken(damage);
+        OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
         
+        OnDamageTaken(damage);
         if (CurrentHP == 0) OnDie();
         return damage;
     }
 
-    public virtual void HealHP(int amount) => CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount);
-    public virtual void HealMP(int amount) => CurrentMP = Mathf.Min(MaxMP, CurrentMP + amount);
-    public virtual void ConsumeMP(int amount) => CurrentMP = Mathf.Max(0, CurrentMP - amount);
+    public virtual void HealHP(int amount) 
+    {
+        CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount);
+        OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
+    }
 
-    // ── 상태 이상(Status) 관리 ────────────────────────────────────────
+    public virtual void HealMP(int amount) 
+    {
+        CurrentMP = Mathf.Min(MaxMP, CurrentMP + amount);
+        OnMPChanged?.Invoke(this, CurrentMP, MaxMP);
+    }
+
+    public virtual void ConsumeMP(int amount) 
+    {
+        CurrentMP = Mathf.Max(0, CurrentMP - amount);
+        OnMPChanged?.Invoke(this, CurrentMP, MaxMP);
+    }
+
+    // ── 상태 이상(Status) 관리 ──────────────────────────────────
     public void AddEffect(StatusEffect effect)
     {
         if (!IsAlive) return;
@@ -80,19 +137,15 @@ public abstract class CharacterBase : MonoBehaviour
         }
 
         _activeEffects.Add(effect);
-        
-        // 🚨 OnApply는 최초 적용 시 대상(Target)을 기억해야 하므로 'this'를 넘깁니다.
         effect.OnApply(this); 
     }
 
     public void RemoveEffect(StatusEffect effect)
     {
-        if (_activeEffects.Remove(effect))
-        {
-            // 🚨 수정됨: StatusEffect가 이미 대상을 알고 있으므로 인자 없이 스스로 해제합니다.
-            effect.OnRemove(); 
-        }
+        if (_activeEffects.Remove(effect)) effect.OnRemove(); 
     }
+
+    public bool HasEffect(string effectID) => _activeEffects.Any(e => e.EffectID == effectID);
 
     public void ProcessEffects()
     {
@@ -100,28 +153,23 @@ public abstract class CharacterBase : MonoBehaviour
 
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {
-            // 🚨 수정됨: 스스로 틱(Tick)을 처리합니다.
             _activeEffects[i].OnTick(); 
-            
             if (_activeEffects[i].IsExpired)
             {
-                // 🚨 수정됨: 스스로 해제 로직을 수행합니다.
                 _activeEffects[i].OnRemove(); 
                 _activeEffects.RemoveAt(i);
             }
         }
     }
 
-    // ── VFX 관리 ──────────────────────────────────────────
-    public void AddLoopVFX(string buffId, GameObject vfxPrefab, string pivotName = "Pivots/Bottom")
+    // ── VFX 및 이벤트 ──────────────────────────────────────────
+    public void AddLoopVFX(string buffId, GameObject vfxPrefab, string pivotName = "Bottom")
     {
         if (_activeLoopVFX.ContainsKey(buffId) || vfxPrefab == null) return;
-
-        Transform pivot = transform.Find(pivotName) ?? transform;
+        Transform pivot = GetPivot(pivotName);
         GameObject vfx = ObjectPoolManager.Instance.Spawn(vfxPrefab, pivot.position, Quaternion.identity);
         vfx.transform.SetParent(pivot); 
         vfx.transform.localPosition = Vector3.zero;
-        
         _activeLoopVFX[buffId] = vfx;
     }
 
@@ -135,8 +183,6 @@ public abstract class CharacterBase : MonoBehaviour
         }
     }
 
-    // ── 추상/가상 이벤트 ──────────────────────────────────────
     protected virtual void OnDamageTaken(int damage) { }
     protected abstract void OnDie();
-    public bool HasSpeedAdvantageOver(CharacterBase other) => (SPD - other.SPD) >= 20;
 }

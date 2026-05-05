@@ -7,7 +7,8 @@ using Sirenix.OdinInspector;
 
 /// <summary>
 /// 전투 UI 총괄 View 컨트롤러 (Mediator 패턴 적용).
-/// BattleManager의 이벤트를 구독(Observer)하여 하위 UI 컴포넌트들을 제어합니다.
+/// Text Animator와의 충돌을 막기 위해 텍스트 DOTween 연출을 최소화하고, 
+/// 불필요한 문자열 파싱(Parsing) 가비지를 제거하여 성능을 최적화했습니다.
 /// </summary>
 public class BattleUIController : MonoBehaviour
 {
@@ -17,11 +18,13 @@ public class BattleUIController : MonoBehaviour
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private Transform _turnQueueContainer;
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private GameObject _turnIconPrefab;
     [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private PartySlotUI[] _partySlots = new PartySlotUI[4];
+    
+    // 🚨 Text Animator 컴포넌트가 붙어있다고 가정합니다.
     [BoxGroup("Labels"), LabelWidth(120)] [SerializeField] private TMPro.TextMeshProUGUI _turnLabel;
     
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private RectTransform _targetCursor; 
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private Camera _worldCamera;
-    [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private Vector3 _cursorOffset = new Vector3(0f, 0.8f, 0f);
+    [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private Vector3 _cursorOffset = new Vector3(0f, 0.1f, 0f);
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private float _cursorBobHeight = 15f;
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private float _cursorBobSpeed  = 0.5f;
 
@@ -53,7 +56,6 @@ public class BattleUIController : MonoBehaviour
         if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
     }
 
-    // 🚨 OnEnable 대신 Start에서 구독하여 BattleManager.Awake가 끝났음을 보장합니다.
     private void Start()
     {
         var bm = BattleManager.Instance;
@@ -74,7 +76,6 @@ public class BattleUIController : MonoBehaviour
         bm.OnTargetSelectionStarted += HandleTargetSelectionStarted;
     }
 
-    // 🚨 OnDisable 대신 OnDestroy에서 구독 해제 (안전성 확보)
     private void OnDestroy()
     {
         var bm = BattleManager.Instance;
@@ -91,7 +92,7 @@ public class BattleUIController : MonoBehaviour
         bm.OnTargetSelectionStarted -= HandleTargetSelectionStarted;
     }
 
-    // ── [4. 매 프레임 업데이트 (입력 및 커서 추적)] ──────────────────────────────
+    // ── [4. 매 프레임 업데이트] ──────────────────────────────
     private void Update()
     {
         UpdateCursorPosition();
@@ -139,39 +140,54 @@ public class BattleUIController : MonoBehaviour
     }
 
     private void UpdateCursorPosition()
+{
+    if (_targetCursor == null || !_targetCursor.gameObject.activeSelf) return;
+
+    Transform targetTf = null;
+    CharacterBase targetChar = null;
+
+    if (_isAllyTargeting)
     {
-        if (_targetCursor == null || !_targetCursor.gameObject.activeSelf) return;
-
-        Transform targetTf = null;
-        if (_isAllyTargeting)
-        {
-            if (_party != null && _selectedTargetIndex < _party.Count && _party[_selectedTargetIndex] != null)
-                targetTf = _party[_selectedTargetIndex].transform; 
-        }
-        else
-        {
-            if (_enemies != null && _selectedTargetIndex < _enemies.Count && _enemies[_selectedTargetIndex] != null)
-            {
-                var enemy = _enemies[_selectedTargetIndex];
-                _enemyTopPivots.TryGetValue(enemy, out targetTf);
-                if (targetTf == null) targetTf = enemy.transform;
-            }
-        }
-
-        if (targetTf != null)
-        {
-            Vector3 worldPos = targetTf.position + _cursorOffset;
-            Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(_worldCamera, worldPos);
-
-            screenPos.y += Mathf.Sin(Time.time * _cursorBobSpeed * 15f) * _cursorBobHeight;
-
-            RectTransformUtility.ScreenPointToWorldPointInRectangle(
-                (RectTransform)_targetCursor.parent, screenPos, _worldCamera, out Vector3 uiWorldPos);
-
-            _targetCursor.position = Vector3.Lerp(_targetCursor.position, uiWorldPos, Time.deltaTime * 15f);
-        }
+        if (_party != null && _selectedTargetIndex < _party.Count)
+            targetChar = _party[_selectedTargetIndex];
+    }
+    else
+    {
+        if (_enemies != null && _selectedTargetIndex < _enemies.Count)
+            targetChar = _enemies[_selectedTargetIndex];
     }
 
+    if (targetChar != null)
+    {
+        // 1. 순수한 월드 기준 위치 확정 (오프셋만 포함)
+        if (!_isAllyTargeting && _enemyTopPivots.TryGetValue(targetChar as EnemyCharacter, out Transform savedPivot))
+            targetTf = savedPivot;
+        else
+            targetTf = targetChar.GetPivot("Top") ?? targetChar.transform;
+
+        Vector3 targetWorldPos = targetTf.position + _cursorOffset;
+
+        // 2. 월드 좌표를 스크린 좌표로 변환
+        Vector2 screenPoint = _worldCamera.WorldToScreenPoint(targetWorldPos);
+        
+        // 3. 스크린 좌표를 UI 로컬 좌표로 변환
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            (RectTransform)_targetCursor.parent, 
+            screenPoint, 
+            _worldCamera, // Overlay 모드라면 null로 설정해야 할 수도 있습니다.
+            out Vector2 localPoint);
+
+        // 🚨 [핵심 수정] UI 로컬 좌표(Pixel 단위)에서 위아래 흔들기 연산 진행
+        // 이제 _cursorBobHeight가 15라면 실제 UI 상에서 15픽셀만큼 움직입니다.
+        float bobbingY = Mathf.Sin(Time.time * _cursorBobSpeed * 10f) * _cursorBobHeight;
+        
+        // 4. 최종 좌표 적용 (픽셀 퍼펙트를 위해 반올림)
+        _targetCursor.localPosition = new Vector2(
+            Mathf.Round(localPoint.x), 
+            Mathf.Round(localPoint.y + bobbingY)
+        );
+    }
+}
     private void ExitTargetingMode()
     {
         _isTargetingMode = false;
@@ -179,17 +195,18 @@ public class BattleUIController : MonoBehaviour
     }
 
     private int GetFirstAliveTargetIndex()
+{
+    if (_isAllyTargeting)
     {
-        if (_isAllyTargeting)
-        {
-            for (int i = 0; i < _party.Count; i++) if (_party[i] != null && _party[i].IsAlive) return i;
-        }
-        else
-        {
-            for (int i = 0; i < _enemies.Count; i++) if (_enemies[i] != null && _enemies[i].IsAlive) return i;
-        }
-        return 0;
+        // 아군 리스트에서 생존자 찾기
+        return _party.FindIndex(p => p != null && p.IsAlive);
     }
+    else
+    {
+        // 적군 리스트에서 생존자 찾기
+        return _enemies.FindIndex(e => e != null && e.IsAlive);
+    }
+}
 
     // ── [6. UI 업데이트 로직 (View Rendering)] ───────────────────────────────
     private void HandleBattleStarted(List<PlayerCharacter> party, List<EnemyCharacter> enemies)
@@ -215,13 +232,12 @@ public class BattleUIController : MonoBehaviour
         switch (state)
         {
             case BattleState.Init:
-                SetTurnLabel("전투 시작!");
+                SetTurnLabel("<wave>전투 시작!</wave>"); // Text Animator 태그 적용
                 ExitTargetingMode();
                 _battleMenuUI?.HideImmediate();
                 break;
 
             case BattleState.PlayerActionSelect:
-                // 🚨 핵심 해결책: Show를 호출하기 전에 GameObject 자체를 무조건 활성화시킵니다!
                 if (_battleMenuUI != null)
                 {
                     _battleMenuUI.gameObject.SetActive(true);
@@ -238,19 +254,34 @@ public class BattleUIController : MonoBehaviour
     }
 
     private void HandleTargetSelectionStarted(PlayerMenuAction action)
+{
+    _isTargetingMode = true;
+    
+    // 1. 초기화: 기본은 무조건 적군 타겟팅
+    _isAllyTargeting = false; 
+
+    var bm = BattleManager.Instance;
+
+    // 2. 액션 타입에 따른 타겟 진영 결정
+    if (action == PlayerMenuAction.Item && bm.CurrentPendingItem != null)
     {
-        _isTargetingMode = true;
-        _isAllyTargeting = false; 
-
-        var bm = BattleManager.Instance;
-        if (action == PlayerMenuAction.Item && bm.CurrentPendingItem != null)
-            _isAllyTargeting = (bm.CurrentPendingItem.TargetType == TargetAreaType.AllyOnly);
-        else if (action == PlayerMenuAction.Skill && bm.CurrentPendingSkill != null)
-            _isAllyTargeting = (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly);
-
-        _selectedTargetIndex = GetFirstAliveTargetIndex();
-        if (_targetCursor != null) _targetCursor.gameObject.SetActive(true);
+        _isAllyTargeting = (bm.CurrentPendingItem.TargetType == TargetAreaType.AllyOnly);
     }
+    else if ((action == PlayerMenuAction.Skill || action == PlayerMenuAction.Act) && bm.CurrentPendingSkill != null)
+    {
+        _isAllyTargeting = (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly);
+    }
+    // 일반 Attack은 위 if문에 걸리지 않으므로 기본값 false(적군)를 유지함
+
+    // 3. 진영에 맞는 첫 번째 살아있는 대상 인덱스 가져오기
+    _selectedTargetIndex = GetFirstAliveTargetIndex();
+    
+    if (_targetCursor != null)
+    {
+        _targetCursor.gameObject.SetActive(true);
+        UpdateCursorPosition(); 
+    }
+}
 
     private void HandleDamageDealt(CharacterBase target, int damage, bool isCrit)
     {
@@ -317,29 +348,25 @@ public class BattleUIController : MonoBehaviour
 
         if (_resultPanel != null)
         {
+            // Text Animator 전용 태그 사용
             if (_resultLabel != null) _resultLabel.text = victory ? "<wave>승리!</wave>" : "<shake>패배...</shake>";
             _resultPanel.Show();
         }
     }
 
-    // ── QTE 연동 ──
+    // ── QTE 연동 (패링 팝업 제거됨) ──
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
-    public void ShowDefenseResult(QTEManager.QTEGrade grade, DefenseInput input) => _defenseQTEUI?.ShowResult(grade, input);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();
 
     // ── 유틸리티 ──
     private void SetTurnLabel(string text)
     {
         if (_turnLabel == null) return;
-        _turnLabel.DOKill();
-        _turnLabel.DOFade(0f, 0.08f).OnComplete(() =>
-        {
-            _turnLabel.text = text;
-            _turnLabel.DOFade(1f, 0.12f);
-            _turnLabel.transform.DOKill();
-            _turnLabel.transform.DOPunchScale(Vector3.one * 0.15f, 0.2f, 5, 0.5f);
-        });
+        
+        // 🚨 Text Animator를 사용하므로 DOTween의 PunchScale이나 복잡한 Fade를 제거합니다.
+        // 텍스트만 갱신해주면 Text Animator가 알아서 등장 애니메이션을 재생합니다.
+        _turnLabel.text = text;
     }
 
     private Transform GetPivot(Transform root, string pivotName)
@@ -351,7 +378,7 @@ public class BattleUIController : MonoBehaviour
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ── 파티 슬롯 UI 컴포넌트
+// ── 파티 슬롯 UI 컴포넌트 (문자열 파싱 가비지 최적화)
 // ═══════════════════════════════════════════════════════════════
 [System.Serializable]
 public class PartySlotUI
@@ -364,10 +391,18 @@ public class PartySlotUI
     [HorizontalGroup("Row3"), LabelWidth(60)] public TMPro.TextMeshProUGUI MPText;
     [HorizontalGroup("Row4"), LabelWidth(60)] public GameObject            Root;
 
+    // 🚨 문자열 Split을 막기 위해 현재 표시 중인 값을 숫자로 캐싱합니다.
+    private int _displayHP;
+    private int _displayMP;
+
     public void Init(PlayerCharacter player)
     {
         Root?.SetActive(true);
         if (NameText != null) NameText.text = player.CharacterID;
+
+        // 초기화 시 표시값 캐싱
+        _displayHP = player.CurrentHP;
+        _displayMP = player.CurrentMP;
 
         RefreshHP(player.CurrentHP, player.MaxHP, 0f, Ease.Linear);
         RefreshMP(player.CurrentMP, player.MaxMP, 0f, Ease.Linear);
@@ -389,9 +424,13 @@ public class PartySlotUI
 
         if (HPText != null)
         {
-            HPText.DOKill(); 
-            int prev = ParseInt(HPText.text);
-            DOTween.To(() => prev, x => HPText.text = $"{x}/{max}", current, duration).SetEase(ease).SetTarget(HPText);
+            DOTween.Kill(HPText); 
+            // 가비지 없는 숫자 트위닝
+            DOTween.To(() => _displayHP, x => 
+            {
+                _displayHP = x;
+                HPText.text = $"{_displayHP}/{max}";
+            }, current, duration).SetEase(ease).SetTarget(HPText);
         }
     }
 
@@ -402,16 +441,13 @@ public class PartySlotUI
 
         if (MPText != null)
         {
-            MPText.DOKill(); 
-            int prev = ParseInt(MPText.text);
-            DOTween.To(() => prev, x => MPText.text = $"{x}/{max}", current, duration).SetEase(ease).SetTarget(MPText);
+            DOTween.Kill(MPText); 
+            // 가비지 없는 숫자 트위닝
+            DOTween.To(() => _displayMP, x => 
+            {
+                _displayMP = x;
+                MPText.text = $"{_displayMP}/{max}";
+            }, current, duration).SetEase(ease).SetTarget(MPText);
         }
-    }
-
-    private static int ParseInt(string text)
-    {
-        if (string.IsNullOrEmpty(text)) return 0;
-        var parts = text.Split('/');
-        return int.TryParse(parts[0].Trim(), out int v) ? v : 0;
     }
 }

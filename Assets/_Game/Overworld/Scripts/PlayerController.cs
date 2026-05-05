@@ -7,6 +7,7 @@ using Sirenix.OdinInspector;
 /// 오버월드 플레이어 이동 및 입력 처리 컨트롤러.
 /// 픽셀 게임 스타일: 즉각 반응 이동 (가속/감속 없음).
 /// 반대 방향 동시 입력 시 마지막으로 누른 방향 우선 처리.
+/// GameStateManager를 통해 이벤트/대화 중 이동을 완벽하게 통제합니다.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Animator))]
@@ -114,32 +115,50 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         LoadPositionFromGlobal();
-        UpdateAnimator();
+        UpdateAnimator(false);
     }
 
     private void Update()
     {
-        if (State == PlayerState.Interacting || State == PlayerState.InMenu) return;
+        // 🚨 1차 방어: 대화 중이거나 UI가 열려있을 때 입력을 완전 차단
+        if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove)
+        {
+            _moveInput = Vector2.zero;
+            UpdateAnimator(false);
+            return;
+        }
+
+        // 🚨 2차 방어: 전투 중일 때 이동 차단 (AreaTrigger를 통한 심리스 전투 시)
+        if (State == PlayerState.InBattle) return;
 
         ReadInput();
+        UpdateFacingDirection();
+        UpdateAnimator(_moveInput.sqrMagnitude > 0.01f);
 
-        if(State != PlayerState.InBattle)
-        {
-            UpdateFacingDirection();
-            UpdateAnimator();
-            if (_confirmAction.WasPressedThisFrame()) TryInteract();
-            if (_menuAction.WasPressedThisFrame())    OpenMenu();
-        }
-        
+        // 상호작용 (캐싱된 타겟을 InteractionSystem을 통해 즉시 실행)
+        if (_confirmAction.WasPressedThisFrame()) 
+            InteractionSystem.Instance?.TryInteract(this);
+
+        // 일시정지 메뉴 호출
+        if (_menuAction.WasPressedThisFrame())    
+            UIManager.Instance?.OpenPanel("Pause"); 
     }
 
     private void FixedUpdate()
     {
-        if (State == PlayerState.Interacting || State == PlayerState.InMenu || State == PlayerState.InBattle)
+        // 상태 잠금 시 물리 이동 즉시 정지 (미끄러짐 방지)
+        if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove)
         {
             _rb.linearVelocity = Vector2.zero;
             return;
         }
+
+        if (State == PlayerState.InBattle)
+        {
+            _rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
         ApplyMovement();
     }
 
@@ -159,7 +178,6 @@ public class PlayerController : MonoBehaviour
         {
             if (!_prevLeft  && _keyLeft)       _lastHorizontal = -1;
             else if (!_prevRight && _keyRight) _lastHorizontal =  1;
-            // 둘 다 이전부터 눌려 있으면 유지
         }
         else if (_keyLeft)  _lastHorizontal = -1;
         else if (_keyRight) _lastHorizontal =  1;
@@ -217,32 +235,16 @@ public class PlayerController : MonoBehaviour
     }
 
     // ── 애니메이터 업데이트 ───────────────────────────────────
-    private void UpdateAnimator()
+    private void UpdateAnimator(bool isMoving)
     {
         if (_anim == null) return;
 
-        if (State == PlayerState.Moving)
+        if (isMoving)
         {
             _anim.SetFloat(HashMoveX, _moveInput.x);
             _anim.SetFloat(HashMoveY, _moveInput.y);
         }
-        _anim.SetBool(HashIsMoving, State == PlayerState.Moving);
-    }
-
-    // ── 상호작용 ──────────────────────────────────────────────
-    private void TryInteract()
-    {
-        InteractionSystem.Instance?.TryInteract(this);
-    }
-
-    private void OpenMenu()
-    {
-        Debug.Log("[PlayerController] Menu opened.");
-    }
-
-    public void SetInteracting(bool isInteracting)
-    {
-        State = isInteracting ? PlayerState.Interacting : PlayerState.Idle;
+        _anim.SetBool(HashIsMoving, isMoving);
     }
 
     public void SetFacingDirection(int dir)
@@ -310,20 +312,17 @@ public class PlayerController : MonoBehaviour
         else if (triggerHash == HashVictory) PlayVictoryEffect();
     }
 
-    /// <summary>일반 공격</summary>
     public void ExecuteAttack()
     {
         PlayBattleAnim(HashAttack);
     }
 
-    /// <summary>패링</summary>
     public void ExecuteParry()
     {
         if (!CanExecuteAction()) return;
         PlayBattleAnim(HashParry);
     }
 
-    /// <summary>회피: 바라보는 방향의 반대로 빠르게 물러났다 돌아옴</summary>
     public void ExecuteDodge()
     {
         if (!CanExecuteAction()) return;
@@ -337,7 +336,6 @@ public class PlayerController : MonoBehaviour
             .SetLoops(2, LoopType.Yoyo);
     }
 
-    /// <summary>점프: 무조건 위로 체공</summary>
     public void ExecuteJump()
     {
         DOTween.Kill(transform);

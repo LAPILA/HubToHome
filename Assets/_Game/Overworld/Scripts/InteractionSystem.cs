@@ -1,26 +1,23 @@
 using UnityEngine;
 
 /// <summary>
-/// 플레이어 전면의 IInteractable 오브젝트를 감지하는 독립 컴포넌트.
-/// OverlapBox를 사용하여 플레이어가 바라보는 방향 앞을 탐색합니다.
+/// [최적화됨] 매 프레임 플레이어 전면을 탐색하여 상호작용 대상을 캐싱합니다.
+/// 메모리 할당(GC)이 없는 NonAlloc 물리 캐스트를 사용합니다.
 /// </summary>
 public class InteractionSystem : MonoBehaviour
 {
     public static InteractionSystem Instance { get; private set; }
 
-    [Header("Detection")]
+    [Header("Detection Settings")]
     [SerializeField] private Vector2 _boxSize      = new Vector2(0.8f, 0.8f);
     [SerializeField] private float   _boxDistance  = 0.6f;
     [SerializeField] private LayerMask _interactLayer;
 
-    // 방향 벡터 캐싱 (0=Down 1=Up 2=Left 3=Right)
-    private static readonly Vector2[] _directionVectors =
-    {
-        Vector2.down,
-        Vector2.up,
-        Vector2.left,
-        Vector2.right,
-    };
+    private IInteractable _currentTarget; // 현재 바라보고 있는 대상
+    private readonly Collider2D[] _hitResults = new Collider2D[1]; // NonAlloc 전용 캐시 배열
+
+    // 방향 벡터 매핑 (0=Down 1=Up 2=Left 3=Right)
+    private static readonly Vector2[] _directionVectors = { Vector2.down, Vector2.up, Vector2.left, Vector2.right };
 
     private void Awake()
     {
@@ -28,29 +25,66 @@ public class InteractionSystem : MonoBehaviour
         Instance = this;
     }
 
-    /// <summary>
-    /// 플레이어 전면의 IInteractable을 탐색하고 Interact()를 호출합니다.
-    /// PlayerController.TryInteract()에서 호출됩니다.
-    /// </summary>
-    public void TryInteract(PlayerController player)
+    private void Update()
     {
-        Vector2 dir    = _directionVectors[player.FacingDirection];
-        Vector2 origin = (Vector2)player.transform.position + dir * _boxDistance;
+        if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) 
+        {
+            ClearTarget();
+            return;
+        }
 
-        Collider2D hit = Physics2D.OverlapBox(origin, _boxSize, 0f, _interactLayer);
-        if (hit == null) return;
-
-        var interactable = hit.GetComponent<IInteractable>();
-        if (interactable == null) return;
-
-        if (interactable.CanInteract(player))
-            interactable.Interact(player);
+        DetectInteractable();
     }
 
-    // ── 디버그 시각화 ─────────────────────────────────────────
+    private void DetectInteractable()
+    {
+        var player = FindFirstObjectByType<PlayerController>(); // (실제로는 PlayerController에서 참조를 넘겨주는게 더 좋음)
+        if (player == null) return;
+
+        Vector2 dir = _directionVectors[player.FacingDirection];
+        Vector2 origin = (Vector2)player.transform.position + dir * _boxDistance;
+
+        // 🚨 최적화: 메모리 할당 없이 1개만 찾음
+        int hitCount = Physics2D.OverlapBoxNonAlloc(origin, _boxSize, 0f, _hitResults, _interactLayer);
+
+        if (hitCount > 0)
+        {
+            var interactable = _hitResults[0].GetComponent<IInteractable>();
+            if (interactable != null && interactable.CanInteract(player))
+            {
+                if (_currentTarget != interactable)
+                {
+                    _currentTarget?.ShowHighlight(false);
+                    _currentTarget = interactable;
+                    _currentTarget.ShowHighlight(true); // 하이라이트 켜기
+                }
+                return;
+            }
+        }
+
+        ClearTarget();
+    }
+
+    private void ClearTarget()
+    {
+        if (_currentTarget != null)
+        {
+            _currentTarget.ShowHighlight(false);
+            _currentTarget = null;
+        }
+    }
+
+    /// <summary>플레이어가 Z키를 누르면 호출 (탐색 로직 없이 캐싱된 타겟 즉시 실행)</summary>
+    public void TryInteract(PlayerController player)
+    {
+        if (_currentTarget != null && _currentTarget.CanInteract(player))
+        {
+            _currentTarget.Interact(player);
+        }
+    }
+
     private void OnDrawGizmosSelected()
     {
-        // 에디터에서 감지 범위 시각화 (Down 방향 기준)
         Gizmos.color = Color.yellow;
         Vector2 origin = (Vector2)transform.position + Vector2.down * _boxDistance;
         Gizmos.DrawWireCube(origin, _boxSize);

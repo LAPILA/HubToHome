@@ -28,9 +28,9 @@ public class SkillData : ScriptableObject
     [BoxGroup("Target")] public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
     [BoxGroup("Target")] public bool IsAoE = false;
 
-    // 🚨 다형성 직렬화 리스트: 인스펙터에서 아래의 ActionBlock들을 마음대로 조립하게 해줍니다.
+    // 🚨 Odin 최적화: [HideReferenceObjectPicker]를 추가하여 인스펙터 뷰를 더 직관적으로 만듦
     [Title("스킬 타임라인 (시퀀스)")]
-    [SerializeReference] 
+    [SerializeReference, HideReferenceObjectPicker] 
     [ListDrawerSettings(ShowIndexLabels = true, ListElementLabelName = "BlockName")]
     public List<SkillActionBlock> ActionTimeline = new List<SkillActionBlock>();
 }

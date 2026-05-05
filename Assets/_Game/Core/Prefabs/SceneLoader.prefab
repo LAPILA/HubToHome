@@ -236,3 +236,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneLoader
   _fadeCanvas: {fileID: 658510355511987099}
+  _fadeImage: {fileID: 5552489216923416030}

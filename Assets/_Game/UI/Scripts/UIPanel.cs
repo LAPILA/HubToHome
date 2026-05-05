@@ -27,16 +27,21 @@ public class UIPanel : MonoBehaviour
     }
 
     // ── 표시 ──────────────────────────────────────────────────
-    public void Show()
-{
-    if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
-    
-    gameObject.SetActive(true);
-    
-    _canvasGroup.interactable = true;
-    _canvasGroup.blocksRaycasts = true;
-    _canvasGroup.DOFade(1f, _showDuration).SetEase(_showEase).OnComplete(OnShowComplete);
-}
+    public virtual void Show()
+    {
+        if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
+        
+        _currentTween?.Kill(); // 🚨 핵심: 기존에 진행 중이던 트윈을 죽여서 꼬임 방지
+        
+        gameObject.SetActive(true);
+        _canvasGroup.interactable = true;
+        _canvasGroup.blocksRaycasts = true;
+        
+        _currentTween = _canvasGroup.DOFade(1f, _showDuration)
+            .SetEase(_showEase)
+            .SetUpdate(true) // 타임스케일이 0일 때도 UI 애니메이션은 작동하도록 보장
+            .OnComplete(OnShowComplete);
+    }
 
     // ── 숨김 ──────────────────────────────────────────────────
     public virtual void Hide()
@@ -44,9 +49,10 @@ public class UIPanel : MonoBehaviour
         _currentTween?.Kill();
         _canvasGroup.interactable   = false;
         _canvasGroup.blocksRaycasts = false;
-        _currentTween = _canvasGroup
-            .DOFade(0f, _hideDuration)
+        
+        _currentTween = _canvasGroup.DOFade(0f, _hideDuration)
             .SetEase(_hideEase)
+            .SetUpdate(true)
             .OnComplete(() =>
             {
                 gameObject.SetActive(false);
@@ -57,31 +63,26 @@ public class UIPanel : MonoBehaviour
     // ── 즉시 표시/숨김 ────────────────────────────────────────
     public void HideImmediate()
     {
+        _currentTween?.Kill();
         if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
 
-        if (_canvasGroup != null) 
-        {
-            _canvasGroup.alpha = 0f;
-            _canvasGroup.interactable = false;
-            _canvasGroup.blocksRaycasts = false;
-        }
+        _canvasGroup.alpha = 0f;
+        _canvasGroup.interactable = false;
+        _canvasGroup.blocksRaycasts = false;
         gameObject.SetActive(false);
     }
 
     public void ShowImmediate()
     {
+        _currentTween?.Kill();
         if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
 
         gameObject.SetActive(true);
-        if (_canvasGroup != null) 
-        {
-            _canvasGroup.alpha = 1f;
-            _canvasGroup.interactable = true;
-            _canvasGroup.blocksRaycasts = true;
-        }
+        _canvasGroup.alpha = 1f;
+        _canvasGroup.interactable = true;
+        _canvasGroup.blocksRaycasts = true;
     }
 
-    // ── 가상 콜백 ─────────────────────────────────────────────
     protected virtual void OnShowComplete() { }
     protected virtual void OnHideComplete() { }
 

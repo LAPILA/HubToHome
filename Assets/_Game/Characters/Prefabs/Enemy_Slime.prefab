@@ -139,11 +139,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6decced32cae3cf41a9820b7fc1cbfdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyCharacter
-  MaxHP: 100
-  MaxMP: 100
-  ATK: 10
-  DEF: 5
-  SPD: 10
+  BaseMaxHP: 100
+  BaseMaxMP: 100
+  BaseATK: 10
+  BaseDEF: 5
+  BaseSPD: 10
   Data: {fileID: 11400000, guid: 0d809955dfe6144459f4205e92356daa, type: 2}
   _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   _flashDuration: 0.08
@@ -257,6 +257,9 @@ MonoBehaviour:
     - Name: Pivot
       Entry: 10
       Data: 1
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
     - Name: 
       Entry: 8
       Data: 
@@ -278,6 +281,9 @@ MonoBehaviour:
     - Name: Pivot
       Entry: 10
       Data: 3
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
     - Name: 
       Entry: 8
       Data: 

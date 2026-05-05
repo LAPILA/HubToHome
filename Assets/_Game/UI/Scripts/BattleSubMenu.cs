@@ -6,7 +6,7 @@ using TMPro;
 
 /// <summary>
 /// 서브 메뉴 UI 컨트롤러.
-/// 애니메이션 상태 잠금(Lock) 및 콜백 메모리 릭 방지를 적용했습니다.
+/// JRPG 스타일의 상하 스크롤 그리드 및 콜백 메모리 릭 방지를 적용했습니다.
 /// </summary>
 public class BattleSubMenu : MonoBehaviour
 {
@@ -43,7 +43,7 @@ public class BattleSubMenu : MonoBehaviour
     private System.Action _onCancelCallback;
 
     public bool IsActive { get; private set; }
-    private bool _isAnimating = false; // 🚨 애니메이션 도중 입력 씹힘 방지용 Lock
+    private bool _isAnimating = false;
 
     private void Awake()
     {
@@ -53,15 +53,15 @@ public class BattleSubMenu : MonoBehaviour
 
     private void Update()
     {
-        // 🚨 비활성화 상태이거나 애니메이션 이동 중이면 입력 무시
         if (!IsActive || _isAnimating || Keyboard.current == null) return;
 
         var kb = Keyboard.current;
 
-        if (kb.upArrowKey.wasPressedThisFrame) ChangeIndex(-2);        
-        else if (kb.downArrowKey.wasPressedThisFrame) ChangeIndex(2);  
-        else if (kb.leftArrowKey.wasPressedThisFrame) ChangeIndex(-1); 
-        else if (kb.rightArrowKey.wasPressedThisFrame) ChangeIndex(1); 
+        // 상하좌우 그리드 이동
+        if (kb.upArrowKey.wasPressedThisFrame || kb.wKey.wasPressedThisFrame) ChangeIndex(-2);        
+        else if (kb.downArrowKey.wasPressedThisFrame || kb.sKey.wasPressedThisFrame) ChangeIndex(2);  
+        else if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame) ChangeIndex(-1); 
+        else if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame) ChangeIndex(1); 
 
         if (kb.zKey.wasPressedThisFrame) ConfirmSelection();
         else if (kb.xKey.wasPressedThisFrame) Close();
@@ -95,7 +95,6 @@ public class BattleSubMenu : MonoBehaviour
         if (!IsActive || _isAnimating) return;
         IsActive = false;
         
-        // 🚨 콜백을 호출하고 캐시를 비워 메모리 릭 방지
         var tempCancel = _onCancelCallback;
         ClearCallbacks();
         tempCancel?.Invoke();
@@ -109,26 +108,22 @@ public class BattleSubMenu : MonoBehaviour
         
         var selected = _entries[_currentIndex];
         IsActive = false;
-        _isAnimating = true; // 확정 연출 중 다중 클릭 방지
+        _isAnimating = true; 
         
         _spawnedRows[_currentIndex].transform.DOPunchScale(Vector3.one * 0.2f, 0.15f).OnComplete(() => {
-            
             var tempConfirm = _onConfirmCallback;
             ClearCallbacks();
             tempConfirm?.Invoke(selected);
-            
             PlaySlideOut(null);
         });
     }
 
     private void ClearCallbacks()
     {
-        // 🚨 클로저(Closure)로 묶인 참조를 끊어 GC(가비지 컬렉터)가 회수하게 함
         _onConfirmCallback = null;
         _onCancelCallback = null;
     }
 
-    // (SpawnAndRefreshRows, ChangeIndex, AutoScroll, UpdateDescription은 기존 로직 유지)
     private void SpawnAndRefreshRows()
     {
         int needed = _entries.Count;
@@ -157,6 +152,7 @@ public class BattleSubMenu : MonoBehaviour
         int prevIndex = _currentIndex;
         int targetIndex = _currentIndex + offset;
 
+        // 🚨 클램핑 방식: 배열 범위를 넘어가면 무시 (좌우/상하 리스트 꼬임 방지)
         if (targetIndex < 0 || targetIndex >= _entries.Count) return;
 
         _currentIndex = targetIndex;
@@ -170,6 +166,7 @@ public class BattleSubMenu : MonoBehaviour
 
     private void AutoScroll()
     {
+        // 2열 그리드 기준 스크롤 수학 계산
         int currentRow = _currentIndex / 2;
         if (currentRow < _topVisibleRow) _topVisibleRow = currentRow;
         else if (currentRow >= _topVisibleRow + _visibleRows) _topVisibleRow = currentRow - _visibleRows + 1;
@@ -185,7 +182,6 @@ public class BattleSubMenu : MonoBehaviour
             _descriptionText.text = _entries[_currentIndex].Description;
     }
 
-    // ── 애니메이션 제어 ──
     private void PlaySlideIn()
     {
         _isAnimating = true;

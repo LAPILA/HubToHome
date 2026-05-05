@@ -1,104 +1,94 @@
 using UnityEngine;
 using DG.Tweening;
 
-/// <summary>
-/// 세이브 포인트 오브젝트.
-/// InteractableBase를 상속하며 Z키 입력 시 세이브 슬롯 선택 UI를 열거나
-/// 즉시 지정 슬롯에 저장합니다.
-/// 
-/// 사용법:
-/// - 씬에 빈 GameObject 생성 → SavePoint 컴포넌트 추가
-/// - Layer = Interactable
-/// - Collider2D 추가 (Is Trigger 불필요, InteractionSystem이 OverlapBox로 감지)
-/// 
-/// 세이브 방식:
-/// - SaveMode = QuickSave  → 즉시 _quickSaveSlot에 저장
-/// - SaveMode = SlotSelect → UIManager를 통해 슬롯 선택 UI 열기 (Phase 5에서 구현)
-/// </summary>
 public class SavePoint : InteractableBase
 {
-    public enum SaveMode
-    {
-        QuickSave,   // 즉시 지정 슬롯에 저장
-        SlotSelect,  // 슬롯 선택 UI 열기 (Phase 5)
-    }
+    public enum SaveMode { QuickSave, SlotSelect }
 
-    [Header("Save Point Settings")]
-    [SerializeField] private SaveMode _saveMode    = SaveMode.QuickSave;
-    [SerializeField] private int      _quickSaveSlot = 0; // 0~2: Manual Slot
+    [Header("Save Settings")]
+    [SerializeField] private SaveMode _saveMode = SaveMode.QuickSave;
+    [SerializeField] private int _quickSaveSlot = 0;
+    [SerializeField] private bool _autoSaveOnPass = false;
+    [SerializeField] private int  _autoSaveSlot = 99; 
+    
+    private bool _hasAutoSavedThisVisit = false;
 
     [Header("Visual Feedback")]
     [SerializeField] private SpriteRenderer _glowSprite;
-    [SerializeField] private Color          _idleColor  = new Color(0.4f, 0.8f, 1f, 0.6f);
-    [SerializeField] private Color          _savedColor = new Color(1f, 1f, 0.4f, 1f);
-    [SerializeField] private float          _pulseSpeed = 1.5f;
+    [SerializeField] private Color _idleColor  = new Color(0.4f, 0.8f, 1f, 0.6f);
+    [SerializeField] private Color _highlightColor = new Color(0.8f, 1f, 1f, 1f); // 🚨 바라볼 때 색상
+    [SerializeField] private Color _savedColor = new Color(1f, 1f, 0.4f, 1f);
+    [SerializeField] private float _pulseSpeed = 1.5f;
+
+    private Tween _pulseTween;
 
     private void Start()
     {
         if (_glowSprite != null)
         {
             _glowSprite.color = _idleColor;
-            // 대기 중 펄스 애니메이션
-            _glowSprite.DOFade(0.2f, _pulseSpeed)
-                .SetLoops(-1, LoopType.Yoyo)
-                .SetEase(Ease.InOutSine);
+            StartPulse();
+        }
+    }
+
+    private void StartPulse()
+    {
+        _pulseTween?.Kill();
+        _pulseTween = _glowSprite.DOFade(0.2f, _pulseSpeed).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine).SetId(this);
+    }
+
+    private void OnDestroy() { DOTween.Kill(this); }
+
+    // ── 체크포인트 (스쳐 지나갈 때) ──
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (_autoSaveOnPass && !_hasAutoSavedThisVisit && collision.CompareTag("Player"))
+        {
+            var player = collision.GetComponent<PlayerController>();
+            if (player != null)
+            {
+                DoSave(_autoSaveSlot, player);
+                _hasAutoSavedThisVisit = true;
+            }
+        }
+    }
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (_autoSaveOnPass && collision.CompareTag("Player")) _hasAutoSavedThisVisit = false;
+    }
+
+    // ── 상호작용 피드백 (바라볼 때) ──
+    public override void ShowHighlight(bool show)
+    {
+        base.ShowHighlight(show);
+        if (_glowSprite == null) return;
+        
+        _glowSprite.DOKill();
+        if (show) 
+            _glowSprite.DOColor(_highlightColor, 0.2f);
+        else 
+        {
+            _glowSprite.DOColor(_idleColor, 0.2f).OnComplete(StartPulse);
         }
     }
 
     public override void Interact(PlayerController player)
     {
-        switch (_saveMode)
-        {
-            case SaveMode.QuickSave:
-                DoSave(_quickSaveSlot, player);
-                break;
-
-            case SaveMode.SlotSelect:
-                // TODO: Phase 5 — UIManager.Instance.OpenSaveSlotPanel(OnSlotSelected);
-                Debug.Log("[SavePoint] Slot Select UI is not implemented yet (Phase 5).");
-                // 임시: 슬롯 0에 저장
-                DoSave(0, player);
-                break;
-        }
+        DoSave(_quickSaveSlot, player);
     }
 
     private void DoSave(int slotIndex, PlayerController player)
     {
-        if (GlobalDataManager.Instance == null)
+        if (GlobalDataManager.Instance == null) return;
+
+        player?.SavePositionToGlobal();
+        SaveManager.Save(GlobalDataManager.Instance.ToSaveData(), slotIndex);
+
+        if (_glowSprite != null)
         {
-            Debug.LogError("[SavePoint] GlobalDataManager is null!");
-            return;
+            _glowSprite.DOKill();
+            _glowSprite.DOColor(_savedColor, 0.15f).SetLoops(4, LoopType.Yoyo).SetEase(Ease.Flash)
+                .SetId(this).OnComplete(() => { _glowSprite.color = _idleColor; StartPulse(); });
         }
-
-        // 현재 플레이어 위치를 GlobalDataManager에 반영
-        if (player != null)
-            player.SavePositionToGlobal();
-
-        // 저장
-        var saveData = GlobalDataManager.Instance.ToSaveData();
-        SaveManager.Save(saveData, slotIndex);
-
-        Debug.Log($"[SavePoint] Saved to slot {slotIndex}.");
-
-        // 저장 완료 시각 피드백
-        PlaySavedEffect();
-    }
-
-    private void PlaySavedEffect()
-    {
-        if (_glowSprite == null) return;
-
-        DOTween.Kill(_glowSprite);
-        _glowSprite.DOColor(_savedColor, 0.15f)
-            .SetLoops(4, LoopType.Yoyo)
-            .SetEase(Ease.Flash)
-            .OnComplete(() =>
-            {
-                _glowSprite.color = _idleColor;
-                // 펄스 재시작
-                _glowSprite.DOFade(0.2f, _pulseSpeed)
-                    .SetLoops(-1, LoopType.Yoyo)
-                    .SetEase(Ease.InOutSine);
-            });
     }
 }

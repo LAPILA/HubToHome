@@ -9,17 +9,18 @@ public class OptionRowUI : MonoBehaviour
     public Image IconImage;
     public TextMeshProUGUI NameText;
 
-    private Vector3 _baseScale = Vector3.one;
+    private Vector3 _baseScale = Vector3.zero;
 
-    // 🚨 수동 Init 대신 유니티의 Awake를 사용하여 스케일을 한 번만 안전하게 캐싱합니다.
     private void Awake()
     {
         _baseScale = transform.localScale;
+        if (_baseScale == Vector3.zero) _baseScale = Vector3.one;
     }
 
-    /// <summary>데이터를 받아 UI를 갱신하고, 선택 여부에 따라 색상과 크기를 조절합니다.</summary>
     public void SetEntry(IMenuEntry entry, bool selected, Color selColor, Color normalColor, float selScale)
     {
+        if (_baseScale == Vector3.zero) _baseScale = Vector3.one;
+
         gameObject.SetActive(true);
 
         if (IconImage != null)

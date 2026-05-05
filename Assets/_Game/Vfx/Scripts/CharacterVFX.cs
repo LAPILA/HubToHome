@@ -11,7 +11,7 @@ public class CharacterVFX : SerializedMonoBehaviour
         Parry_Success,
         Dodge_Dust,
         Jump_Dust,
-        Hit_Effect // 🚨 피격 이펙트 추가!
+        Hit_Effect
     }
 
     [System.Serializable]
@@ -22,6 +22,10 @@ public class CharacterVFX : SerializedMonoBehaviour
 
         [Tooltip("비워두면 캐릭터의 기본 위치(Transform)에서 재생됩니다.")]
         public Transform Pivot;
+
+        // 🚨 추가됨: 이펙트가 캐릭터를 따라다녀야 하는지 여부
+        [Tooltip("체크하면 VFX가 캐릭터(Pivot)를 따라다닙니다. (예: 지속되는 버프 오라)")]
+        public bool AttachToPivot; 
     }
 
     [Title("캐릭터 전용 VFX 설정")]
@@ -38,21 +42,25 @@ public class CharacterVFX : SerializedMonoBehaviour
     public void Play(VFXAction action)
     {
         if (!_vfxDict.TryGetValue(action, out VFXSetup setup) || setup.Prefab == null)
-        {
-            // 이펙트가 없을 땐 조용히 무시하거나 필요한 경우에만 로그를 띄웁니다.
             return;
-        }
 
         Transform spawnPivot = setup.Pivot != null ? setup.Pivot : transform;
 
+        GameObject vfx;
         if (ObjectPoolManager.Instance != null)
         {
-            ObjectPoolManager.Instance.Spawn(setup.Prefab, spawnPivot.position, spawnPivot.rotation);
+            vfx = ObjectPoolManager.Instance.Spawn(setup.Prefab, spawnPivot.position, spawnPivot.rotation);
         }
         else
         {
-            GameObject vfx = Instantiate(setup.Prefab, spawnPivot.position, spawnPivot.rotation);
-            Destroy(vfx, 2f); // 프리팹 자체 삭제 기능이 없을 때를 대비한 2초 뒤 안전 파괴
+            vfx = Instantiate(setup.Prefab, spawnPivot.position, spawnPivot.rotation);
+            Destroy(vfx, 5f); // 넉넉하게 5초 뒤 파괴
+        }
+
+        // 🚨 이펙트가 캐릭터를 따라다니게 만들고 싶을 때 부모(Parent)로 종속시킵니다.
+        if (setup.AttachToPivot && vfx != null)
+        {
+            vfx.transform.SetParent(spawnPivot);
         }
     }
 }
