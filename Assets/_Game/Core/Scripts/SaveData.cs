@@ -4,14 +4,16 @@ using System.Collections.Generic;
 [Serializable]
 public class CharacterSaveData
 {
-    public string CharacterID = "Hero";
+    [UnityEngine.Header("Identity")]
+    public string CharacterID = "Player";
     public int Level = 1;
     public int EXP = 0;
     
+    [UnityEngine.Header("Stats")]
     public int HP = 100;
     public int MaxHP = 100;
-    public int MP = 50;
-    public int MaxMP = 50;
+    public int MP = 100;
+    public int MaxMP = 100;
 
     public int ATK = 10;
     public int DEF = 5;
@@ -33,7 +35,6 @@ public class SaveData
     public List<CharacterSaveData> PartyData = new List<CharacterSaveData>();
 
     // ── 3. 소지품 및 플래그 ──
-    // 🚨 핵심: 리스트가 아니라 Dictionary로 수량까지 저장합니다.
     public Dictionary<string, int> InventoryDict = new Dictionary<string, int>();
     public Dictionary<string, int> eventFlags = new Dictionary<string, int>();
 

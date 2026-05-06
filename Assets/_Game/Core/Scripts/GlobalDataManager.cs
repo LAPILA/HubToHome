@@ -9,71 +9,99 @@ public class GlobalDataManager : MonoBehaviour
 {
     public static GlobalDataManager Instance { get; private set; }
 
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-        InitializeDefaults();
-    }
-
-    // ── 런타임 데이터 ─────────────────────────────────────────
+    #region [ Runtime Data ]
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
+    
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
-    // 🚨 핵심: 파티 시스템 (Deltarune 스타일 대응)
+    
+    // 🚨 델타룬 스타일 다중 파티 시스템 
     public List<CharacterSaveData> Party { get; private set; } = new List<CharacterSaveData>();
+    #endregion
 
-    // 씬 전환용 임시 위치 데이터
+    #region [ Position & Scene Data ]
     public string LastOverworldScene;
     public string SpawnScene { get; set; } = "OverworldScene";
     public float  SpawnX     { get; set; } = 0f;
     public float  SpawnY     { get; set; } = 0f;
     public int    LookingDir { get; set; } = 0; 
+    #endregion
+
+    #region [ Initialization ]
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        
+        InitializeDefaults();
+    }
 
     private void InitializeDefaults()
     {
         _eventFlags.Clear();
         _inventoryDict.Clear();
-        Party.Clear();
-        
-        // 새 게임 시작 시 기본 주인공 파티에 추가
-        Party.Add(new CharacterSaveData { CharacterID = "Hero" });
+        Party.Clear(); // 🚨 기존의 더미 데이터 추가 로직 삭제! (이제 씬의 인스펙터 값을 신뢰합니다)
     }
 
-    // ── 이벤트 플래그 API ───────────────────────
+    /// <summary>
+    /// 게임 시작 시 글로벌 데이터가 비어있다면, 씬에 배치된 플레이어의 인스펙터 값을 기준으로 파티를 셋업합니다.
+    /// </summary>
+    public void InitializePartyFromScene(PlayerCharacter scenePlayer)
+    {
+        if (scenePlayer == null) return;
+
+        int startMaxHP = scenePlayer.BaseMaxHP > 0 ? scenePlayer.BaseMaxHP : 100;
+        int startMaxMP = scenePlayer.BaseMaxMP > 0 ? scenePlayer.BaseMaxMP : 50;
+        int startATK   = scenePlayer.BaseATK > 0 ? scenePlayer.BaseATK : 10;
+        int startSPD   = scenePlayer.BaseSPD > 0 ? scenePlayer.BaseSPD : 10;
+
+        var newData = new CharacterSaveData()
+        {
+            CharacterID = scenePlayer.CharacterID,
+            Level       = scenePlayer.Level,
+            EXP         = scenePlayer.EXP,
+            MaxHP       = startMaxHP,
+            HP          = startMaxHP,
+            MaxMP       = startMaxMP,
+            MP          = startMaxMP,
+            ATK         = startATK,
+            DEF         = scenePlayer.BaseDEF,
+            SPD         = startSPD
+        };
+
+        Party.Add(newData);
+        Debug.Log($"<color=yellow>[GlobalData] 씬 데이터로 파티원 초기화 완료: {newData.CharacterID} (HP:{newData.HP}, MP:{newData.MP})</color>");
+    }
+    #endregion
+
+    #region [ Event Flags API ]
     public void SetFlag(string key, int value) => _eventFlags[key] = value;
     public int GetFlag(string key, int defaultValue = 0) => _eventFlags.TryGetValue(key, out int val) ? val : defaultValue;
+    #endregion
 
-    // ── 인벤토리 API (수량 기반) ───────────────────────
+    #region [ Inventory API ]
     public void AddItem(string itemID, int amount = 1)
     {
-        if (_inventoryDict.ContainsKey(itemID))
-            _inventoryDict[itemID] += amount;
-        else
-            _inventoryDict[itemID] = amount;
+        if (_inventoryDict.ContainsKey(itemID)) _inventoryDict[itemID] += amount;
+        else _inventoryDict[itemID] = amount;
     }
 
     public bool RemoveItem(string itemID, int amount = 1)
     {
-        if (!_inventoryDict.ContainsKey(itemID) || _inventoryDict[itemID] < amount)
-            return false; // 수량이 부족하거나 없음
+        if (!_inventoryDict.ContainsKey(itemID) || _inventoryDict[itemID] < amount) return false;
 
         _inventoryDict[itemID] -= amount;
-        if (_inventoryDict[itemID] <= 0)
-            _inventoryDict.Remove(itemID); // 0개가 되면 목록에서 삭제
+        if (_inventoryDict[itemID] <= 0) _inventoryDict.Remove(itemID); 
 
         return true;
     }
 
-    public int GetItemCount(string itemID)
-    {
-        return _inventoryDict.TryGetValue(itemID, out int count) ? count : 0;
-    }
-
+    public int GetItemCount(string itemID) => _inventoryDict.TryGetValue(itemID, out int count) ? count : 0;
     public IReadOnlyDictionary<string, int> GetInventory() => _inventoryDict;
+    #endregion
 
-    // ── 세이브/로드 연동 ──────────────────────────────────────
+    #region [ Save & Load ]
     public SaveData ToSaveData()
     {
         var data = new SaveData
@@ -81,35 +109,30 @@ public class GlobalDataManager : MonoBehaviour
             currentScene     = SpawnScene,
             playerX          = SpawnX,
             playerY          = SpawnY,
-            lookingDirection = LookingDir
+            lookingDirection = LookingDir,
+            
+            // 안전한 깊은 복사(Deep Copy)
+            InventoryDict = new Dictionary<string, int>(_inventoryDict),
+            eventFlags    = new Dictionary<string, int>(_eventFlags),
+            PartyData     = new List<CharacterSaveData>(Party)
         };
-        
-        // 1. 인벤토리 및 플래그 복사 (안전한 Dictionary 복사 방식)
-        data.InventoryDict = new Dictionary<string, int>(_inventoryDict);
-        data.eventFlags = new Dictionary<string, int>(_eventFlags);
-
-        // 2. 파티 멤버 데이터 복사
-        data.PartyData = new List<CharacterSaveData>(Party);
-
         return data;
     }
 
     public void FromSaveData(SaveData data)
     {
-        // 1. 위치 정보 복원
         SpawnScene   = data.currentScene;
         SpawnX       = data.playerX;
         SpawnY       = data.playerY;
         LookingDir   = data.lookingDirection;
 
-        // 2. 인벤토리 및 플래그 복원
         _inventoryDict.Clear();
         foreach (var kv in data.InventoryDict) _inventoryDict[kv.Key] = kv.Value;
 
         _eventFlags.Clear();
         foreach (var kv in data.eventFlags) _eventFlags[kv.Key] = kv.Value;
 
-        // 3. 파티 멤버 복원
         Party = new List<CharacterSaveData>(data.PartyData);
     }
+    #endregion
 }

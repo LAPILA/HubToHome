@@ -6,8 +6,7 @@ using UnityEngine.InputSystem;
 using Sirenix.OdinInspector;
 
 /// <summary>
-/// 전투 QTE 매니저.
-/// 글로벌 이벤트 대신 콜백(Command Pattern)을 사용하여 결합도를 낮췄습니다.
+/// 전투 QTE 매니저 (Singleton & Command Pattern).
 /// </summary>
 public class QTEManager : MonoBehaviour
 {
@@ -15,9 +14,16 @@ public class QTEManager : MonoBehaviour
 
     public enum QTEGrade { Miss, Bad, Good, Great, Perfect }
 
-    [BoxGroup("Defense QTE"), LabelWidth(160)] [SerializeField, Range(0f, 0.3f)] private float _perfectWindow = 0.12f;
-    [BoxGroup("Defense QTE"), LabelWidth(160)] [SerializeField, Range(0f, 0.4f)] private float _greatWindow   = 0.22f;
-    [BoxGroup("Defense QTE"), LabelWidth(160)] [SerializeField, Range(0f, 0.6f)] private float _goodWindow    = 0.40f;
+    #region [ QTE Settings ]
+    [BoxGroup("Defense QTE Windows"), LabelWidth(160)] 
+    [SerializeField, Range(0f, 0.3f)] private float _perfectWindow = 0.12f;
+    
+    [BoxGroup("Defense QTE Windows"), LabelWidth(160)] 
+    [SerializeField, Range(0f, 0.4f)] private float _greatWindow   = 0.22f;
+    
+    [BoxGroup("Defense QTE Windows"), LabelWidth(160)] 
+    [SerializeField, Range(0f, 0.6f)] private float _goodWindow    = 0.40f;
+    #endregion
 
     public bool IsActive { get; private set; } = false;
 
@@ -27,9 +33,7 @@ public class QTEManager : MonoBehaviour
         Instance = this;
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // ── 방어 QTE ──────────────────────────────────────────────
-    // ═══════════════════════════════════════════════════════════
+    #region [ Defense QTE (방어) ]
     public void StartDefenseQTE(float attackDelay, float difficultyMult, Action<DefenseInput, QTEGrade> onResult)
     {
         if (IsActive) return;
@@ -39,36 +43,37 @@ public class QTEManager : MonoBehaviour
     private IEnumerator DefenseQTERoutine(float attackDelay, float difficultyMult, Action<DefenseInput, QTEGrade> onResult)
     {
         IsActive = true;
-    float elapsed = 0f;
-    bool inputReceived = false;
-    var input = DefenseInput.None;
+        float elapsed = 0f;
+        bool inputReceived = false;
+        var input = DefenseInput.None;
 
-    while (elapsed < attackDelay && !inputReceived)
-{
-    elapsed += Time.deltaTime;
-    
-    if (Keyboard.current != null)
-    {
-        var kb = Keyboard.current;
-        
-        if (kb.zKey.wasPressedThisFrame) 
-        { 
-            input = DefenseInput.Parry; 
-            inputReceived = true; 
+        while (elapsed < attackDelay && !inputReceived)
+        {
+            elapsed += Time.deltaTime;
+            
+            if (Keyboard.current != null)
+            {
+                var kb = Keyboard.current;
+                
+                // 단일 프레임 동시입력 방지를 위해 if-else 구조 명확화
+                if (kb.zKey.wasPressedThisFrame) 
+                { 
+                    input = DefenseInput.Parry; 
+                    inputReceived = true; 
+                }
+                else if (kb.xKey.wasPressedThisFrame) 
+                { 
+                    input = DefenseInput.Dodge; 
+                    inputReceived = true; 
+                }
+                else if (kb.cKey.wasPressedThisFrame) 
+                { 
+                    input = DefenseInput.Jump;  
+                    inputReceived = true; 
+                }
+            }
+            yield return null; 
         }
-        else if (kb.xKey.wasPressedThisFrame) 
-        { 
-            input = DefenseInput.Dodge; 
-            inputReceived = true; 
-        }
-        else if (kb.cKey.wasPressedThisFrame) 
-        { 
-            input = DefenseInput.Jump;  
-            inputReceived = true; 
-        }
-    }
-    yield return null; 
-}
 
         IsActive = false;
         QTEGrade grade = QTEGrade.Miss;
@@ -88,11 +93,9 @@ public class QTEManager : MonoBehaviour
         
         onResult?.Invoke(input, grade);
     }
+    #endregion
 
-    // ═══════════════════════════════════════════════════════════
-    // ── 스킬 QTE (콜백 패턴 도입) ─────────────────────────────
-    // ═══════════════════════════════════════════════════════════
-    
+    #region [ Sequence QTE (스킬 공격) ]
     public void StartSequenceQTE(List<SkillQTENode> nodes, float timeLimit, Action<int, int> onComplete)
     {
         if (IsActive || nodes == null || nodes.Count == 0) return;
@@ -100,60 +103,66 @@ public class QTEManager : MonoBehaviour
     }
 
     private IEnumerator SequenceQTERoutine(List<SkillQTENode> nodes, float timeLimit, Action<int, int> onComplete)
-{
-    IsActive = true;
-    int successCount = 0;
-
-    // 1. [UI 예열] 투명한 상태로 시스템을 미리 한 번 깨웁니다.
-    // 좌표는 zero를 보내도 위 DefenseQTEUI 로직에서 알아서 -9999로 보냅니다.
-    BattleUIController.Instance.ShowSkillQTE(Vector2.zero, "", 0f); 
-    
-    // 레이아웃 엔진이 한 프레임 쉴 시간을 줌
-    yield return null; 
-    yield return new WaitForEndOfFrame(); 
-
-    foreach (var node in nodes)
     {
-        // 2. 실제 노드 좌표 전달
-        Vector2 relativePos = new Vector2(node.PosX, node.PosY);
-        BattleUIController.Instance.ShowSkillQTE(relativePos, node.TargetKey, timeLimit);
+        IsActive = true;
+        int successCount = 0;
 
-        float elapsed = 0f;
-        bool isAnswered = false;
-        bool isHit = false;
+        Canvas.ForceUpdateCanvases();
 
-        // UI가 그려질 시간을 줌
+        // 1. [UI 예열]
+        BattleUIController.Instance.ShowSkillQTE(Vector2.zero, "", 0f); 
+        
+        yield return null; 
         yield return null; 
 
-        while (elapsed < timeLimit && !isAnswered)
+        foreach (var node in nodes)
         {
-            elapsed += Time.deltaTime;
-            if (Keyboard.current != null)
-            {
-                var kb = Keyboard.current;
-                bool z = kb.zKey.wasPressedThisFrame;
-                bool x = kb.xKey.wasPressedThisFrame;
-                bool c = kb.cKey.wasPressedThisFrame;
+            // 2. 실제 노드 좌표 전달
+            Vector2 relativePos = new Vector2(node.PosX, node.PosY);
+            BattleUIController.Instance.ShowSkillQTE(relativePos, node.TargetKey, timeLimit);
 
-                if (z || x || c)
+            float elapsed = 0f;
+            bool isAnswered = false;
+            bool isHit = false;
+
+            yield return null; // UI 렌더링 대기
+
+            while (elapsed < timeLimit && !isAnswered)
+            {
+                elapsed += Time.deltaTime;
+                
+                if (Keyboard.current != null)
                 {
-                    isAnswered = true;
-                    string keyLower = node.TargetKey.ToLower();
-                    isHit = (keyLower == "z" && z) || (keyLower == "x" && x) || (keyLower == "c" && c);
-                    if (isHit) successCount++;
+                    var kb = Keyboard.current;
+                    bool z = kb.zKey.wasPressedThisFrame;
+                    bool x = kb.xKey.wasPressedThisFrame;
+                    bool c = kb.cKey.wasPressedThisFrame;
+
+                    if (z || x || c)
+                    {
+                        isAnswered = true;
+                        
+                        // 문자열 할당을 피하기 위해 Equals(OrdinalIgnoreCase) 사용 권장되지만,
+                        // 단순 알파벳이므로 ToLower() 유지하되 명확히 처리
+                        string keyLower = node.TargetKey.ToLower();
+                        isHit = (keyLower == "z" && z) || (keyLower == "x" && x) || (keyLower == "c" && c);
+                        
+                        if (isHit) successCount++;
+                    }
                 }
+                yield return null;
             }
-            yield return null;
+
+            BattleUIController.Instance.ShowSkillQTEResult(isHit);
+            yield return new WaitForSeconds(0.35f); 
         }
 
-        BattleUIController.Instance.ShowSkillQTEResult(isHit);
-        yield return new WaitForSeconds(0.35f); 
+        BattleUIController.Instance.HideSkillQTE();
+        IsActive = false;
+        onComplete?.Invoke(successCount, nodes.Count);
     }
+    #endregion
 
-    BattleUIController.Instance.HideSkillQTE();
-    IsActive = false;
-    onComplete?.Invoke(successCount, nodes.Count);
-}
     public void ForceStop()
     {
         StopAllCoroutines();

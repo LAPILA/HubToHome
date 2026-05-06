@@ -2181,13 +2181,14 @@ MonoBehaviour:
   _turnLabel: {fileID: 295421682}
   _targetCursor: {fileID: 1921005857}
   _worldCamera: {fileID: 515946166}
-  _cursorOffset: {x: 0, y: 0.6, z: 0}
-  _cursorBobHeight: 8
-  _cursorBobSpeed: 0.5
   _battleMenuUI: {fileID: 920389565}
   _defenseQTEUI: {fileID: 771660140}
   _resultPanel: {fileID: 1275069911}
   _resultLabel: {fileID: 1779585494}
+  _cursorOffset: {x: 0, y: 0.6, z: 0}
+  _cursorBobHeight: 8
+  _cursorBobSpeed: 0.5
+  _cursorBobFrequency: 10
   _barTweenDuration: 0.4
 --- !u!1001 &798006633
 PrefabInstance:
@@ -3314,9 +3315,14 @@ MonoBehaviour:
   _hitImpulse: 0.15
   _mpPerTurn: 5
   _mpOnParryPerfect: 20
+  _maxTurnQueueSize: 8
   _isDedicatedBattleScene: 0
+  _fallbackSceneName: LobbyScene
   _battleUICanvas: {fileID: 28471407}
   _enemyBasePrefab: {fileID: 3461299171839533844, guid: 15fa88e0bc5908e448f5be65a1a40fa4, type: 3}
+  _playerBasePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
+  _meleeAttackOffset: {x: -1.8, y: 0, z: 0}
+  _meleePullbackOffset: {x: -0.5, y: 0, z: 0}
 --- !u!4 &1178407546
 Transform:
   m_ObjectHideFlags: 0
