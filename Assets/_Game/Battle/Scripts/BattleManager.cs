@@ -164,11 +164,11 @@ public class BattleManager : MonoBehaviour
     private IEnumerator SeamlessIntroRoutine(PlayerController playerCtrl)
     {
         var pm = PositionManager.Instance;
-        if (pm != null && CameraController.Instance != null)
-        {
-            //TODO CameraController.Instance.SetTarget(pm.GetCenterPos()); 
-            CameraController.Instance.ResetCamera(0.5f); // 줌 아웃 등 초기화
-        }
+        if (pm != null && pm.CenterTransform != null)
+    {
+        CameraController.Instance?.SetTarget(pm.CenterTransform);
+        Debug.Log("<color=yellow>[카메라] 타겟을 CenterPos로 변경했습니다.</color>");
+    }
 
         if (pm != null && playerCtrl != null)
         {

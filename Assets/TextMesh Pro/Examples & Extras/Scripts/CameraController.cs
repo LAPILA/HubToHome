@@ -4,8 +4,9 @@ using DG.Tweening;
 using Sirenix.OdinInspector;
 
 /// <summary>
-/// 전투 카메라 컨트롤러.
-/// TargetGroup 대신 단일 Tracker 오브젝트를 부드럽게 이동시키며 줌인/아웃을 제어합니다.
+/// 전투 카메라 컨트롤러 (시네머신 네이티브 최적화 버전).
+/// 지터링 방지를 위해 위치 이동은 Cinemachine의 Follow 타겟팅을 사용하며,
+/// DOTween은 렌즈 줌(Zoom)과 이펙트 연출에만 사용합니다.
 /// </summary>
 public class CameraController : MonoBehaviour
 {
@@ -15,17 +16,15 @@ public class CameraController : MonoBehaviour
     [SerializeField, Tooltip("시네마친 가상 카메라")] 
     private CinemachineCamera _vCam;
     
-    [SerializeField, Tooltip("카메라 흔들림 소스")] 
+    [SerializeField, Tooltip("카메라 흔들림 소스 (Impulse)")] 
     private CinemachineImpulseSource _impulseSource;
     
-    [SerializeField, Tooltip("카메라가 따라다닐 투명한 추적자(빈 게임오브젝트)")] 
-    private Transform _cameraTracker; 
+    [SerializeField, Tooltip("전장 중앙을 나타내는 기본 타겟 오브젝트")] 
+    private Transform _centerTarget; 
 
     [Title("⚙️ 기본 설정")]
     [SerializeField] private float _defaultLensSize = 5.5f;
     [SerializeField] private float _battleZoomSize = 4.0f;
-    
-    private Vector3 _centerPosition; // 무대 중앙 (기본 위치)
 
     private void Awake()
     {
@@ -36,49 +35,59 @@ public class CameraController : MonoBehaviour
 
     private void Start()
     {
-        // 씬 시작 시 트래커의 초기 위치를 중앙으로 기억합니다.
-        if (_cameraTracker != null) _centerPosition = _cameraTracker.position;
+        // 시작 시 카메라의 기본 타겟을 Center로 고정
+        if (_centerTarget != null && _vCam != null)
+        {
+            _vCam.Follow = _centerTarget;
+        }
     }
 
-    // ─── [1. 림버스 스타일: 포커스 및 줌 제어] ───
+    // ─── [1. 시네머신 네이티브 포커스 및 줌 제어] ───
 
     /// <summary>
-    /// 아군 스킬 사용 시: 특정 캐릭터에게 부드럽게 이동하며 줌 인합니다.
+    /// 타겟을 변경합니다. 위치 이동은 시네머신 자체의 Damping이 부드럽게 처리합니다.
+    /// </summary>
+    public void SetTarget(Transform newTarget)
+    {
+        if (_vCam == null || newTarget == null) return;
+        
+        // 🚨 DOTween 이동을 삭제하고, 시네머신의 추적 대상을 직접 갈아끼움 (지터링 완벽 해결)
+        _vCam.Follow = newTarget;
+    }
+
+    /// <summary>
+    /// 아군 스킬 사용 시: 특정 캐릭터를 타겟으로 잡고 줌 인합니다.
     /// </summary>
     public void ZoomOnTransform(Transform target, float targetZoom, float duration = 0.3f)
     {
-        if (_cameraTracker == null || target == null) return;
+        if (_vCam == null || target == null) return;
 
-        DOTween.Kill("CameraMove");
+        SetTarget(target);
+
         DOTween.Kill("CameraZoom");
-
-        // 🚨 핵심 해결 1: SetUpdate(UpdateType.Late)를 추가하여 시네머신과 갱신 타이밍을 완벽히 맞춥니다.
-        _cameraTracker.DOMove(target.position, duration)
-            .SetEase(Ease.OutCubic)
-            .SetUpdate(UpdateType.Late) 
-            .SetId("CameraMove");
-        
         DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, targetZoom, duration)
             .SetEase(Ease.OutCubic)
             .SetUpdate(UpdateType.Late) 
             .SetId("CameraZoom");
     }
 
+    /// <summary>
+    /// 적 공격 시 / 턴 대기 시: 중앙으로 타겟을 복귀하고 줌 아웃하여 시야를 확보합니다.
+    /// </summary>
+    [Button("🔄 카메라 완전 리셋")]
     public void ResetCamera(float duration = 0.4f)
     {
-        if (_cameraTracker == null) return;
+        if (_vCam == null) return;
 
-        DOTween.Kill("CameraMove");
+        // 중앙으로 타겟 복귀
+        if (_centerTarget != null) SetTarget(_centerTarget);
+
         DOTween.Kill("CameraZoom");
         DOTween.Kill("HitStop");
 
-        // 🚨 핵심 해결 2: 여기도 SetUpdate(UpdateType.Late) 적용
-        _cameraTracker.DOMove(_centerPosition, duration)
-            .SetEase(Ease.InOutQuad)
-            .SetUpdate(UpdateType.Late) 
-            .SetId("CameraMove");
-
+        // 줌 및 화면 비틀기 복구 (LateUpdate 동기화)
         DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, _defaultLensSize, duration)
+            .SetEase(Ease.InOutQuad)
             .SetUpdate(UpdateType.Late)
             .SetId("CameraZoom");
             
@@ -88,46 +97,39 @@ public class CameraController : MonoBehaviour
         Time.timeScale = 1f; 
     }
 
-    public void ModePlayerAction() => ZoomOnTransform(_cameraTracker, _battleZoomSize, 0.3f);
-    public void ModeEnemyAction() => ResetCamera(0.3f); // 적 턴에는 무조건 시야 확보!
+    public void ModePlayerAction(Transform playerTarget = null) 
+    {
+        // 타겟이 없으면 중앙을 줌인, 있으면 플레이어를 줌인
+        ZoomOnTransform(playerTarget != null ? playerTarget : _centerTarget, _battleZoomSize, 0.3f);
+    }
+    
+    public void ModeEnemyAction() => ResetCamera(0.3f); 
 
 
     // ─── [2. 타격 연출 (Slam & Impact)] ───
 
-    /// <summary>
-    /// 상황에 따라 방향과 강도를 조절할 수 있는 범용 타격감 기능
-    /// </summary>
-    /// <param name="direction">흔들릴 방향</param>
-    /// <param name="intensity">강도 (적 공격 시에는 이 값을 낮게 전달)</param>
-    /// <param name="lockHorizontal">Y축 무시 여부</param>
     public void PlayHeavySlam(Vector3 direction, float intensity = 1.0f, bool lockHorizontal = true)
     {
         Vector3 finalDir = lockHorizontal ? new Vector3(direction.x, 0, 0).normalized : new Vector3(direction.x, direction.y, 0).normalized;
         if (finalDir == Vector3.zero) finalDir = Vector3.right;
 
-        // 1. Cinemachine Impulse를 통한 화면 지진 효과
         if (_impulseSource != null)
             _impulseSource.GenerateImpulse(finalDir * intensity);
 
-        // 2. 화면 비틀기 (Dutch) - 큰 타격에만 살짝 적용
         _vCam.Lens.Dutch = 3f * (finalDir.x > 0 ? 1 : -1) * intensity;
-        DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, 0.3f);
+        DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, 0.3f).SetUpdate(UpdateType.Late);
 
-        // 3. 힛스탑 (역경직)
         StopFrame(0.05f * intensity);
     }
 
-    /// <summary>
-    /// 플레이어의 돌진/관통 스킬 시 사용되는 특수 카메라 연출 (화면이 순간적으로 뒤로 확 당겨짐)
-    /// </summary>
     public void PlayDashThroughImpact(float intensity = 1.0f)
     {
         float currentZoom = _vCam.Lens.OrthographicSize;
         
-        // 순간적으로 줌 아웃 되었다가 다시 원래 줌으로 돌아옴 (고속 이동 느낌)
         DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, currentZoom + 0.8f, 0.1f)
                .SetEase(Ease.OutQuad)
-               .OnComplete(() => ZoomOnTransform(_cameraTracker, currentZoom, 0.2f));
+               .SetUpdate(UpdateType.Late)
+               .OnComplete(() => ZoomOnTransform(_vCam.Follow, currentZoom, 0.2f)); // 현재 타겟 유지
 
         if (_impulseSource != null)
             _impulseSource.GenerateImpulse(Vector3.right * intensity);
@@ -135,13 +137,12 @@ public class CameraController : MonoBehaviour
         StopFrame(0.06f);
     }
 
-
     // ─── [3. 유틸리티] ───
 
     private void StopFrame(float duration)
     {
         DOTween.Kill("HitStop");
-        Time.timeScale = 0.01f; // 거의 정지 상태
+        Time.timeScale = 0.01f;
         DOVirtual.DelayedCall(duration, () => Time.timeScale = 1f).SetUpdate(true).SetId("HitStop");
     }
 }
