@@ -5,7 +5,7 @@ using Sirenix.OdinInspector;
 [RequireComponent(typeof(Collider2D))]
 public class AreaTrigger : MonoBehaviour
 {
-    public enum TriggerType { SceneTransition, AutoEvent, BattleEncounter,SceneBattleEncounter }
+    public enum TriggerType { SceneTransition, AutoEvent, BattleEncounter, SceneBattleEncounter }
 
     [BoxGroup("Core Settings")]
     public TriggerType Type = TriggerType.SceneTransition;
@@ -25,9 +25,10 @@ public class AreaTrigger : MonoBehaviour
     [BoxGroup("Scene Transition"), ShowIf("Type", TriggerType.SceneTransition)]
     public int SpawnDirection = 0;
 
-    // ── 이벤트 ──
+    // ── 🚨 이벤트 (String ID에서 Scriptable Object로 변경) ──
     [BoxGroup("Auto Event"), ShowIf("Type", TriggerType.AutoEvent)]
-    public string DialogueID = "";
+    [Tooltip("실행할 대화 데이터(Scriptable Object)를 끌어다 넣으세요.")]
+    public DialogueData DialogueAsset;
 
     // ── 전투 ──
     [BoxGroup("Battle Encounter"), ShowIf("Type", TriggerType.BattleEncounter)]
@@ -42,7 +43,6 @@ public class AreaTrigger : MonoBehaviour
 
     private void Start()
     {
-        // 🚨 이전에 이미 발동된 일회성 트리거라면 시작하자마자 스스로 파괴
         if (TriggerOnlyOnce && !string.IsNullOrEmpty(UniqueTriggerID))
         {
             if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.GetFlag(UniqueTriggerID) == 1)
@@ -62,7 +62,6 @@ public class AreaTrigger : MonoBehaviour
 
     private void ExecuteTrigger(PlayerController player)
     {
-        // 1. 일회성 플래그 저장
         if (TriggerOnlyOnce && !string.IsNullOrEmpty(UniqueTriggerID))
             GlobalDataManager.Instance?.SetFlag(UniqueTriggerID, 1);
 
@@ -77,7 +76,16 @@ public class AreaTrigger : MonoBehaviour
                 break;
 
             case TriggerType.AutoEvent:
-                DialogueManager.Instance?.StartDialogue(DialogueID, () => _isProcessing = false);
+                // 🚨 수정된 부분: DialogueData를 그대로 매니저에 넘김
+                if (DialogueAsset != null)
+                {
+                    DialogueManager.Instance?.StartDialogue(DialogueAsset, () => _isProcessing = false);
+                }
+                else
+                {
+                    Debug.LogWarning("[AreaTrigger] DialogueAsset이 비어있습니다!");
+                    _isProcessing = false;
+                }
                 break;
 
             case TriggerType.BattleEncounter:
@@ -98,8 +106,6 @@ public class AreaTrigger : MonoBehaviour
         if (BattleManager.Instance != null)
         {
             BattleManager.Instance.StartSeamlessBattle(EncounterEnemies, player); 
-            
-            // 임시 파괴 로직 (BattleManager 연동 전)
             if (DestroyOnVictory) Destroy(gameObject);
         }
     }

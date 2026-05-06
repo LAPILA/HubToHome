@@ -1,65 +1,109 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-/// <summary>
-/// 대화 시스템 싱글톤 매니저. (추후 확장을 위한 뼈대)
-/// 텍스트 타이핑 연출, 초상화 변경, 대화 중 플레이어 락(Lock) 기능을 담당합니다.
-/// </summary>
 public class DialogueManager : MonoBehaviour
 {
     public static DialogueManager Instance { get; private set; }
 
-    private bool _isPlayingDialogue = false;
+    [SerializeField] private DialogueUI _dialogueUI; 
 
-    private void Awake()
+    private DialogueData _currentDialogue;
+    private int _currentNodeIndex;
+    private bool _isPlaying = false;
+    private Action _onCompleteCallback;
+
+    private void Awake() { Instance = this; }
+
+    public void StartDialogue(DialogueData data, Action onComplete = null)
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
+        if (_isPlaying || data == null || data.Nodes.Count == 0) return;
+
+        _isPlaying = true;
+        _currentDialogue = data;
+        _currentNodeIndex = 0;
+        _onCompleteCallback = onComplete;
+
+        GameStateManager.Instance?.ChangeState(GameState.Dialogue); // 플레이어 이동 잠금
+        _dialogueUI.OpenPanel();
+        
+        PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
     }
 
-    /// <summary>
-    /// 대화를 시작합니다. (델타룬식 연출의 시작점)
-    /// </summary>
-    /// <param name="dialogueID">대화 데이터 ID (추후 Json이나 ScriptableObject와 연결)</param>
-    /// <param name="onComplete">대화가 끝난 후 실행될 콜백</param>
-    public void StartDialogue(string dialogueID, Action onComplete = null)
+    private void Update()
     {
-        if (_isPlayingDialogue) return;
+        if (!_isPlaying) return;
+        if (Keyboard.current == null) return;
 
-        _isPlayingDialogue = true;
-        
-        // 1. 매크로 상태를 Dialogue로 변경하여 플레이어 이동 잠금
-        GameStateManager.Instance?.ChangeState(GameState.Dialogue);
-        
-        // 2. UI 패널 열기
-        UIManager.Instance.OpenPanel("Dialogue"); // UIManager 딕셔너리에 등록된 이름 사용
+        // 🚨 Z키, 스페이스바, 엔터키 중 하나를 누르면 진행되도록 확장
+        bool isConfirmPressed = Keyboard.current.zKey.wasPressedThisFrame || 
+                                Keyboard.current.spaceKey.wasPressedThisFrame || 
+                                Keyboard.current.enterKey.wasPressedThisFrame;
 
-        // 3. TODO: 실제 대화 진행 코루틴 시작 (Typewriter 이펙트, 사운드 등)
-        Debug.Log($"[DialogueManager] 대화 시작: {dialogueID}");
-        
-        // 테스트용 임시 종료 처리 (2초 후 대화 종료)
-        StartCoroutine(TempDialogueRoutine(onComplete));
+        if (isConfirmPressed)
+        {
+            if (_dialogueUI.IsTyping)
+            {
+                _dialogueUI.SkipTyping(); // 타이핑 중이면 즉시 출력
+            }
+            else if (!_dialogueUI.IsWaitingForChoice)
+            {
+                NextNode(); // 타이핑이 끝나고 선택지 대기중이 아니면 다음 노드로
+            }
+        }
     }
 
-    private IEnumerator TempDialogueRoutine(Action onComplete)
+    private void PlayNode(DialogueNode node)
     {
-        // TODO: 실제로는 Z키를 눌러 다음 대화로 넘어가는 로직이 들어갑니다.
-        yield return new WaitForSeconds(2.0f);
-        EndDialogue(onComplete);
+        if (!string.IsNullOrEmpty(node.EventTriggerID))
+            EventManager.Trigger(node.EventTriggerID);
+
+        string finalText = string.IsNullOrEmpty(node.LocalizationKey) ? node.DefaultText : node.DefaultText; // 추후 번역 시스템 연결
+
+        _dialogueUI.DisplayNode(node.Speaker, node.Emotion, finalText);
+
+        if (node.IsChoiceNode && node.Choices.Count > 0)
+        {
+            _dialogueUI.ShowChoices(node.Choices, OnChoiceSelected);
+        }
     }
 
-    public void EndDialogue(Action onComplete = null)
+    private void NextNode()
     {
-        _isPlayingDialogue = false;
-        
-        // UI 닫고
-        UIManager.Instance.CloseTopPanel();
+        _currentNodeIndex++;
+        if (_currentNodeIndex < _currentDialogue.Nodes.Count)
+        {
+            PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
+        }
+        else
+        {
+            EndDialogue();
+        }
+    }
 
-        // 이동 가능 상태로 복귀
-        GameStateManager.Instance?.ChangeState(GameState.Exploration);
+    private void OnChoiceSelected(ChoiceData choice)
+    {
+        if (!string.IsNullOrEmpty(choice.SetFlagOnSelect))
+            GameFlagManager.Instance?.SetFlag(choice.SetFlagOnSelect);
+
+        if (choice.NextDialogue != null)
+        {
+            StartDialogue(choice.NextDialogue, _onCompleteCallback);
+        }
+        else
+        {
+            EndDialogue();
+        }
+    }
+
+    public void EndDialogue()
+    {
+        _isPlaying = false;
+        _dialogueUI.ClosePanel();
+        GameStateManager.Instance?.ChangeState(GameState.Exploration); 
         
-        onComplete?.Invoke();
+        _onCompleteCallback?.Invoke();
+        _onCompleteCallback = null;
     }
 }

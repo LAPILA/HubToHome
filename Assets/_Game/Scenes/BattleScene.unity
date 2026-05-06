@@ -427,7 +427,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   _vCam: {fileID: 154725405}
   _impulseSource: {fileID: 726577403}
-  _cameraTracker: {fileID: 1685862761}
+  _centerTarget: {fileID: 1685862761}
   _defaultLensSize: 5
   _battleZoomSize: 4.5
 --- !u!114 &154725405
@@ -3156,7 +3156,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5371930866753018300, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5371930866753018300, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_AnchorMin.x
@@ -3164,7 +3164,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5371930866753018300, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5371930866753018300, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_SizeDelta.x
@@ -3216,11 +3216,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5371930866753018300, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5371930866753018300, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: -50
       objectReference: {fileID: 0}
     - target: {fileID: 5371930866753018300, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -3237,6 +3237,10 @@ PrefabInstance:
     - target: {fileID: 9028600936578171629, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
       propertyPath: m_Name
       value: PartySlot_Prefab
+      objectReference: {fileID: 0}
+    - target: {fileID: 9028600936578171629, guid: 708150842bb9a8545a866b89e95128c5, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -3775,50 +3779,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0.000061035156, y: -300}
   m_SizeDelta: {x: 688, y: 214}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &1299730403
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1299730405}
-  - component: {fileID: 1299730406}
-  m_Layer: 0
-  m_Name: debug
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1299730405
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1299730403}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.0625, y: 5, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1299730406
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1299730403}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee1045c94711e264eb1286c25f676211, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PerformanceMonitor
 --- !u!1 &1300898006
 GameObject:
   m_ObjectHideFlags: 0
@@ -3884,11 +3844,8 @@ MonoBehaviour:
   _normalColor: {r: 1, g: 1, b: 1, a: 1}
   _disabledColor: {r: 0.4, g: 0.4, b: 0.4, a: 1}
   _bouncePunch: 0.22
-  _exampleActs:
-  - {fileID: 11400000, guid: a6266718f8bf9094698650cb43978de1, type: 2}
-  _exampleItems:
-  - {fileID: 11400000, guid: 2f4c71c1c4b5f094ca2fd352fb13155d, type: 2}
-  - {fileID: 11400000, guid: 2f4c71c1c4b5f094ca2fd352fb13155d, type: 2}
+  _exampleActs: []
+  _exampleItems: []
 --- !u!225 &1300898009
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -5898,6 +5855,5 @@ SceneRoots:
   - {fileID: 437845288}
   - {fileID: 1021919157}
   - {fileID: 1146548262}
-  - {fileID: 1299730405}
   - {fileID: 933773930}
   - {fileID: 1413503401}

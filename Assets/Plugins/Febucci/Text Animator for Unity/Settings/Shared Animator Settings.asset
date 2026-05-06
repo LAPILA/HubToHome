@@ -16,7 +16,8 @@ MonoBehaviour:
     isResettingTimeOnNewText: 1
     defaultEffectsMode: 0
     timeScale: 0
-    defaultBehaviorTags: []
+    defaultBehaviorTags:
+    - 
     defaultAppearanceTags:
     - incr
     defaultDisappearanceTags: []
