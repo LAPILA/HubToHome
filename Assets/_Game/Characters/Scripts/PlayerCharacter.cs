@@ -13,16 +13,13 @@ public class PlayerCharacter : CharacterBase
     public static readonly int HashDie         = Animator.StringToHash("Die");
     #endregion
 
-    #region [ Identity & Progression ]
     [Header("Identity & Progression")]
     public string CharacterID = "Player";
     public int Level = 1;
     public int EXP = 0;
     public int EXPToNextLevel = 100;
     public const int MaxLevel = 99;
-    #endregion
 
-    #region [ Equipment Slots & Skills ]
     [Header("Equipment Slots")]
     public EquipmentData WeaponSlot;
     public EquipmentData Accessory1Slot;
@@ -32,16 +29,11 @@ public class PlayerCharacter : CharacterBase
     public EquipmentData ShoesSlot;
 
     public List<SkillData> Skills = new List<SkillData>();
-    #endregion
 
-    #region [ Internal State ]
-    // 내가 누군지 기억하는 글로벌 데이터 참조 (전투 종료 시 저장용)
     private CharacterSaveData _mySaveDataRef;
-
     private Animator _animator;
     private CharacterVFX _vfx;
     private SpriteRenderer _spriteRenderer;
-    #endregion
 
     protected override void Awake()
     {
@@ -56,11 +48,9 @@ public class PlayerCharacter : CharacterBase
         if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.Party.Count == 0)
         {
             GlobalDataManager.Instance.InitializePartyFromScene(this);
-            Debug.Log($"<color=cyan>[PlayerCharacter] {CharacterID}가 최초 글로벌 데이터에 스스로를 등록했습니다!</color>");
         }
     }
 
-    #region [ Animation Controller ]
     public void PlayBattleAnim(int triggerHash)
     {
         if (_animator != null && HasParameter(triggerHash))
@@ -74,43 +64,39 @@ public class PlayerCharacter : CharacterBase
             if (param.nameHash == paramHash) return true;
         return false;
     }
-    #endregion
 
-    #region [ Stats & Equipment ]
-    // ── 🚨 장비 스탯 안전 합산 (버그 원천 차단) ──
-    protected override int GetExtraStat(StatType type)
+    // ── 🚨 장비 스탯 적용 (Flat 고정값) ──
+    protected override int GetFlatStatBonus(StatType type)
     {
-        int equipBonus = type switch
+        return type switch
         {
-            StatType.ATK   => GetEquipBonus(e => e?.BonusATK ?? 0),
-            StatType.DEF   => GetEquipBonus(e => e?.BonusDEF ?? 0),
-            StatType.SPD   => GetEquipBonus(e => e?.BonusSPD ?? 0),
-            StatType.MaxHP => GetEquipBonus(e => e?.BonusMaxHP ?? 0),
-            StatType.MaxMP => GetEquipBonus(e => e?.BonusMaxMP ?? 0),
+            StatType.ATK   => GetEquipSum(e => e?.BonusATK ?? 0),
+            StatType.DEF   => GetEquipSum(e => e?.BonusDEF ?? 0),
+            StatType.SPD   => GetEquipSum(e => e?.BonusSPD ?? 0),
+            StatType.MaxHP => GetEquipSum(e => e?.BonusMaxHP ?? 0),
+            StatType.MaxMP => GetEquipSum(e => e?.BonusMaxMP ?? 0),
             _ => 0
         };
-        
-        // 장비 보너스 + 상태이상 보너스(base)
-        return equipBonus + base.GetExtraStat(type);
     }
 
-    private int GetEquipBonus(System.Func<EquipmentData, int> selector)
+    // ── 🚨 장비 스탯 적용 (Percent 비율 증가값 - 훗날 대비) ──
+    // 추후 EquipmentData에 BonusPercentATK 같은 값이 생기면 여기에 연결하시면 됩니다.
+    protected override float GetPercentStatBonus(StatType type)
+    {
+        return 0f; 
+    }
+
+    // Null 조건부 연산자(?.) 덕분에 장비 슬롯이 비어있어도 안전하게 0을 반환합니다.
+    private int GetEquipSum(System.Func<EquipmentData, int> selector)
     {
         return selector(WeaponSlot) + selector(Accessory1Slot) + selector(Accessory2Slot) +
                selector(HeadSlot) + selector(BodySlot) + selector(ShoesSlot);
     }
-    #endregion
 
-    #region [ Global Data Sync (SSOT) ]
-    /// <summary>전투 시작 시 할당받은 파티원 데이터를 로드합니다.</summary>
+    // ── 글로벌 동기화 ──
     public void LoadDataFromGlobal(CharacterSaveData saveData)
     {
-        if (saveData == null) 
-        {
-            Debug.LogWarning($"<color=orange>[{gameObject.name}] 세이브 데이터가 없습니다. 인스펙터 스탯을 기준으로 진행합니다.</color>");
-            return;
-        }
-
+        if (saveData == null) return;
         _mySaveDataRef = saveData;
 
         CharacterID = saveData.CharacterID;
@@ -124,7 +110,6 @@ public class PlayerCharacter : CharacterBase
 
         if (CurrentHP <= 0) 
         {
-            Debug.LogWarning($"<color=red>[{CharacterID}] 체력이 0인 상태로 로드되었습니다. 강제 부활(HP 1) 처리합니다.</color>");
             CurrentHP = 1;
             saveData.HP = 1;
         }
@@ -134,12 +119,10 @@ public class PlayerCharacter : CharacterBase
         BaseSPD     = saveData.SPD;
     }
 
-    /// <summary>전투 종료/맵 이동 시 현재 HP/MP를 내 글로벌 데이터에 덮어씁니다.</summary>
     public void SaveDataToGlobal()
     {
         if (_mySaveDataRef == null) 
         {
-            // 참조가 없다면 씬에서 바로 시작한 경우이므로 GlobalManager에 나를 강제로 등록함
             if (GlobalDataManager.Instance != null)
                 GlobalDataManager.Instance.InitializePartyFromScene(this);
             return;
@@ -150,11 +133,13 @@ public class PlayerCharacter : CharacterBase
         _mySaveDataRef.Level = Level;
         _mySaveDataRef.EXP   = EXP;
     }
-    #endregion
 
-    #region [ Battle Visuals & Feedback ]
+    // ── 피격 & 연출 ──
     protected override void OnDamageTaken(int damage)
     {
+        // 무적이면 이펙트/모션 완전 스킵
+        if (IsInvincible) return; 
+
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
@@ -176,7 +161,11 @@ public class PlayerCharacter : CharacterBase
     protected override void OnDie()
     {
         PlayBattleAnim(HashDie);
-        Debug.Log($"<color=red>[Player] {CharacterID} 쓰러짐!</color>");
     }
-    #endregion
+
+    // PlayerController에서 회피/점프 시 호출 (무적 판정)
+    public void SetEvasive(bool state)
+    {
+        IsInvincible = state; 
+    }
 }

@@ -13,7 +13,6 @@ public class EnemyCharacter : CharacterBase
     private Animator _animator;
     private SpriteRenderer _spriteRenderer;
     private CharacterVFX _vfx; 
-    private Vector3 _originalLocalPos;
 
     [Header("Enemy Data")]
     public EnemyData Data;
@@ -23,7 +22,6 @@ public class EnemyCharacter : CharacterBase
     [SerializeField] private float _flashDuration = 0.08f;
     [SerializeField] private float _shakeStrength = 0.15f;
 
-    // 델타룬 시스템: 자비(Mercy) 가능 상태 퍼센테이지
     public float MercyPercentage { get; private set; } = 0f;
 
     protected override void Awake()
@@ -32,7 +30,6 @@ public class EnemyCharacter : CharacterBase
         _animator = GetComponent<Animator>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _vfx = GetComponent<CharacterVFX>(); 
-        _originalLocalPos = transform.localPosition;
         PlayBattleAnim(HashBattleIdle);
     }
 
@@ -55,7 +52,6 @@ public class EnemyCharacter : CharacterBase
     public void AddMercy(float amount)
     {
         MercyPercentage = Mathf.Clamp01(MercyPercentage + amount);
-        if (MercyPercentage >= 1f) Debug.Log($"{Data.EnemyName}은(는) 이제 자비(Spare)를 베풀 수 있다!");
     }
 
     public void PlayBattleAnim(int triggerHash)
@@ -116,6 +112,28 @@ public class EnemyCharacter : CharacterBase
         }
 
         return EnemyAction.BasicAttack;
+    }
+
+    // ── 🚨 LINQ 제거 및 최적화된 속성 상성 체크 ──
+    public override float GetElementAffinity(DamageElement element)
+    {
+        float baseAffinity = 1.0f;
+
+        if (Data != null)
+        {
+            if (Data.EnemyName == "얼음 골렘" && element == DamageElement.Fire)
+                baseAffinity = 1.5f; 
+            else if (Data.EnemyName == "얼음 골렘" && element == DamageElement.Ice)
+                baseAffinity = 0.5f; 
+        }
+
+        float effectModifier = 0f;
+        for (int i = 0; i < _activeEffects.Count; i++)
+        {
+            effectModifier += _activeEffects[i].GetElementResistanceModifier(element);
+        }
+        
+        return Mathf.Max(0f, baseAffinity + effectModifier);
     }
 }
 

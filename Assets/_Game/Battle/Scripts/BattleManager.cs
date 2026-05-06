@@ -164,6 +164,12 @@ public class BattleManager : MonoBehaviour
     private IEnumerator SeamlessIntroRoutine(PlayerController playerCtrl)
     {
         var pm = PositionManager.Instance;
+        if (pm != null && CameraController.Instance != null)
+        {
+            //TODO CameraController.Instance.SetTarget(pm.GetCenterPos()); 
+            CameraController.Instance.ResetCamera(0.5f); // 줌 아웃 등 초기화
+        }
+
         if (pm != null && playerCtrl != null)
         {
             Vector3 battlePos = pm.GetPlayerDefaultPos(0);
@@ -345,10 +351,17 @@ public class BattleManager : MonoBehaviour
         CurrentPendingSkill = null;
         CurrentPendingItem = null;
 
-        if (action == PlayerMenuAction.Attack || action == PlayerMenuAction.Skill || action == PlayerMenuAction.Act)
+        if (action != PlayerMenuAction.Run)
         {
             actor.PlayBattleAnim(PlayerCharacter.HashBattleReady);
+        }
+
+        if (action == PlayerMenuAction.Attack || action == PlayerMenuAction.Act)
+        {
             OnTargetSelectionStarted?.Invoke(action);
+        }
+        else if (action == PlayerMenuAction.Skill || action == PlayerMenuAction.Item)
+        {
         }
         else if (action == PlayerMenuAction.Run) 
         {
@@ -365,9 +378,14 @@ public class BattleManager : MonoBehaviour
 
         bool isAoE = (skill != null && skill.IsAoE) || (item != null && item.IsAoE);
         
-        // 광역기일 경우 타겟팅 과정 생략
         if (isAoE) ConfirmTargetAndExecute(-1); 
         else       OnTargetSelectionStarted?.Invoke(action);
+    }
+
+    public void CancelActionSelection() 
+    {
+        _pendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+        ChangeState(BattleState.PlayerActionSelect);
     }
 
     public void CancelTargetSelection() 
@@ -378,7 +396,7 @@ public class BattleManager : MonoBehaviour
 
     public void ConfirmTargetAndExecute(int targetIndex)
     {
-        if (CurrentState == BattleState.ActionExecute) return; // 연속 클릭 방지
+        if (CurrentState == BattleState.ActionExecute) return;
         ChangeState(BattleState.ActionExecute);
 
         if (_pendingAction == PlayerMenuAction.Attack)
@@ -585,40 +603,54 @@ public class BattleManager : MonoBehaviour
                 QTEManager.Instance.StartDefenseQTE(0.8f, 1.0f, (input, grade) => { finalInput = input; finalGrade = grade; qteFinished = true; });
                 yield return new WaitUntil(() => qteFinished);
 
-                // 데미지 및 연출 판정 로직 최적화
+                // 🚨 데미지 및 UI 연출 판정
                 if (finalGrade == QTEManager.QTEGrade.Miss)
                 {
-                    target.TakePureDamage(enemy.ATK); 
+                    int dmg = target.TakePureDamage(enemy.ATK); 
                     targetCtrl?.PlayHurtEffect();
                     CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
+                    
+                    // 🚨 핵심 해결: UI에게 데미지 달았다고 방송! (이게 빠져서 체력바가 안 깎였음)
+                    OnDamageDealt?.Invoke(target, dmg, false);
                 }
                 else
                 {
-                    // 성공 애니메이션 실행
-                    if (finalInput == DefenseInput.Parry) 
-                    { 
+                    int reducedDmg = 0;
+
+                    // 성공 애니메이션 실행 (회피/점프 성공 시 무조건 데미지 0)
+                    if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
+                    {
+                        reducedDmg = 0; 
+                        if (finalInput == DefenseInput.Dodge) targetCtrl?.ExecuteDodge();
+                        else targetCtrl?.ExecuteJump();
+                    }
+                    else // 패링
+                    {
                         targetCtrl?.ExecuteParry(); 
                         if (finalGrade == QTEManager.QTEGrade.Perfect) 
                         { 
+                            reducedDmg = 0;
                             target.HealMP(_mpOnParryPerfect); 
                             OnMPChanged?.Invoke(target, target.CurrentMP); 
-                        } 
+                        }
+                        else
+                        {
+                            reducedDmg = finalGrade switch { 
+                                QTEManager.QTEGrade.Great => Mathf.RoundToInt(enemy.ATK * 0.15f), 
+                                QTEManager.QTEGrade.Good  => Mathf.RoundToInt(enemy.ATK * 0.40f), 
+                                QTEManager.QTEGrade.Bad   => Mathf.RoundToInt(enemy.ATK * 0.70f), 
+                                _ => enemy.ATK 
+                            };
+                        }
                     }
-                    else if (finalInput == DefenseInput.Dodge) targetCtrl?.ExecuteDodge();
-                    else if (finalInput == DefenseInput.Jump)  targetCtrl?.ExecuteJump();
-
-                    // 퍼펙트 시 무조건 0 데미지
-                    int reducedDmg = finalGrade == QTEManager.QTEGrade.Perfect ? 0 : finalGrade switch { 
-                        QTEManager.QTEGrade.Great => Mathf.RoundToInt(enemy.ATK * 0.15f), 
-                        QTEManager.QTEGrade.Good  => Mathf.RoundToInt(enemy.ATK * 0.40f), 
-                        QTEManager.QTEGrade.Bad   => Mathf.RoundToInt(enemy.ATK * 0.70f), 
-                        _ => enemy.ATK 
-                    };
 
                     if (reducedDmg > 0) 
                     {
-                        target.TakePureDamage(reducedDmg);
+                        int actualDmg = target.TakePureDamage(reducedDmg);
                         CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.3f, true);
+                        
+                        // 🚨 핵심 해결: 패링을 못 쳐서 깎인 데미지도 체력바 갱신 방송!
+                        OnDamageDealt?.Invoke(target, actualDmg, false);
                     }
                 }
 
@@ -637,9 +669,10 @@ public class BattleManager : MonoBehaviour
             foreach (var p in _playerParty) 
             { 
                 if (!p.IsAlive) continue; 
-                p.TakePureDamage(enemy.ATK); 
+                int dmg = p.TakePureDamage(enemy.ATK); 
                 p.GetComponent<PlayerController>()?.PlayHurtEffect(); 
-                OnDamageDealt?.Invoke(p, enemy.ATK, false); 
+                
+                OnDamageDealt?.Invoke(p, dmg, false); 
             }
             _impulseSource?.GenerateImpulse(_hitImpulse);
             yield return _waitMedium;

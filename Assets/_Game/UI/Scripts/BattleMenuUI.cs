@@ -1,34 +1,46 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using DG.Tweening;
+using Sirenix.OdinInspector;
 
+/// <summary>
+/// 플레이어 턴에 표시되는 주 메뉴(Attack, Act, Item, Run)를 제어합니다.
+/// 서브메뉴(스킬/아이템 목록) 등장 시 체력창(Party Status)과 함께 부드럽게 슬라이드됩니다.
+/// </summary>
 public class BattleMenuUI : UIPanel 
 {
-    [Header("Buttons (ATTACK / ACT / ITEM / RUN)")]
-    [SerializeField] private Button _attackBtn;
-    [SerializeField] private Button _actBtn; // 기획에 맞춰 이름 변경
-    [SerializeField] private Button _itemBtn;
-    [SerializeField] private Button _runBtn;
+    #region [ UI Components ]
+    [BoxGroup("Buttons"), LabelWidth(100)] [SerializeField] private Button _attackBtn;
+    [BoxGroup("Buttons"), LabelWidth(100)] [SerializeField] private Button _actBtn; 
+    [BoxGroup("Buttons"), LabelWidth(100)] [SerializeField] private Button _itemBtn;
+    [BoxGroup("Buttons"), LabelWidth(100)] [SerializeField] private Button _runBtn;
 
-    [Header("Sub Menu")]
-    [SerializeField] private BattleSubMenu _subMenu;
+    [BoxGroup("Sub Menu"), LabelWidth(100)] [SerializeField] private BattleSubMenu _subMenu;
+    #endregion
 
-    [Header("Menu Slide Animation")]
+    #region [ Animation & Style Settings ]
+    [FoldoutGroup("Slide Animation"), LabelWidth(140)] 
     [SerializeField] private float _menuSlideOffsetY = 150f; 
+    [FoldoutGroup("Slide Animation"), LabelWidth(140)] 
     [SerializeField] private float _menuSlideDuration = 0.25f;
 
-    [Header("Style")]
-    [SerializeField] private Color _selectedColor = new Color(1f, 0.95f, 0.3f);
-    [SerializeField] private Color _normalColor = Color.white;
-    [SerializeField] private Color _disabledColor = new Color(0.4f, 0.4f, 0.4f, 1f); // 🚨 회색조 비활성화 색상
-    [SerializeField] private float _bouncePunch = 0.22f;
+    [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private Color _selectedColor = new Color(1f, 0.95f, 0.3f);
+    [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private Color _normalColor = Color.white;
+    [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private Color _disabledColor = new Color(0.4f, 0.4f, 0.4f, 1f); 
+    [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private float _bouncePunch = 0.22f;
+    #endregion
 
-    [Header("Example Data")]
+    #region [ Example / Default Data ]
+    [FoldoutGroup("Fallback Data"), LabelWidth(140)] 
     [SerializeField] private List<SkillData> _exampleActs = new List<SkillData>();
+    [FoldoutGroup("Fallback Data"), LabelWidth(140)] 
     [SerializeField] private List<ItemData> _exampleItems = new List<ItemData>();
+    #endregion
 
+    #region [ Internal State ]
     private int _selectedIndex = 0;
     private PlayerCharacter _currentActor;
     private bool _inputEnabled = false;
@@ -38,14 +50,15 @@ public class BattleMenuUI : UIPanel
 
     private RectTransform _rectTransform;
     private float _baseMenuY;
+    #endregion
 
+    #region [ Initialization ]
     protected override void Awake()
     {
         base.Awake();
         _rectTransform = GetComponent<RectTransform>();
         _baseMenuY = _rectTransform.anchoredPosition.y;
 
-        // 버튼과 실제 액션 열거형을 1:1 매핑
         _buttons = new[] { _attackBtn, _actBtn, _itemBtn, _runBtn };
         _mappedActions = new[] { 
             PlayerMenuAction.Attack, 
@@ -54,7 +67,7 @@ public class BattleMenuUI : UIPanel
             PlayerMenuAction.Run 
         };
 
-        // 클릭 이벤트 연동 (키보드 조작과 동일한 효과)
+        // 마우스/터치 클릭 이벤트 연동
         for (int i = 0; i < _buttons.Length; i++)
         {
             int index = i;
@@ -62,20 +75,29 @@ public class BattleMenuUI : UIPanel
                 _buttons[i].onClick.AddListener(() => Confirm(index));
         }
     }
+    #endregion
 
+    #region [ Lifecycle & State ]
     protected override void OnShowComplete()
     {
         _inputEnabled = true;
         
-        // 메뉴가 열릴 때 무조건 첫 번째 활성화된 버튼으로 커서를 맞춤
-        _selectedIndex = 0;
-        if (!_buttons[_selectedIndex].interactable) Navigate(1); 
-        else HighlightButton(_selectedIndex);
+        if (_buttons != null && _buttons.Length > 0)
+        {
+            if (!_buttons[_selectedIndex].interactable) Navigate(1); 
+            else HighlightButton(_selectedIndex);
+        }
     }
 
-    public void SetActor(PlayerCharacter actor) => _currentActor = actor;
+    public void SetActor(PlayerCharacter actor)
+    {
+        if (_currentActor != actor)
+        {
+            _selectedIndex = 0;
+        }
+        _currentActor = actor;
+    }
 
-    // ── 🚨 보스전 도망 불가 처리 (BattleManager에서 호출) ──
     public void SetRunEnabled(bool isEnabled)
     {
         if (_runBtn != null)
@@ -84,7 +106,9 @@ public class BattleMenuUI : UIPanel
             _runBtn.GetComponent<Image>().color = isEnabled ? _normalColor : _disabledColor;
         }
     }
+    #endregion
 
+    #region [ Input & Navigation ]
     private void Update()
     {
         if (!_inputEnabled || !IsVisible) return;
@@ -103,39 +127,48 @@ public class BattleMenuUI : UIPanel
 
     private void Navigate(int dir)
     {
-    if (_buttons == null || _buttons.Length == 0) return;
+        if (_buttons == null || _buttons.Length == 0) return;
 
-    int max = _buttons.Length;
-    int loopCount = 0;
+        int max = _buttons.Length;
+        int loopCount = 0;
 
-    do
-    {
-        _selectedIndex = (_selectedIndex + dir + max) % max;
-        loopCount++;
-        
-        if (_buttons[_selectedIndex] == null) continue;
+        do
+        {
+            _selectedIndex = (_selectedIndex + dir + max) % max;
+            loopCount++;
+            
+            if (_buttons[_selectedIndex] == null) continue;
 
-    } while (!_buttons[_selectedIndex].interactable && loopCount < max);
+        } while (!_buttons[_selectedIndex].interactable && loopCount < max);
 
-    HighlightButton(_selectedIndex);
+        HighlightButton(_selectedIndex);
     }
 
     private void Confirm(int index)
     {
-        if (!_buttons[index].interactable) return; // 클릭 방어
+        if (!_buttons[index].interactable) return; 
 
         var action = _mappedActions[index]; 
 
-        // ACT(스킬)와 ITEM은 서브 메뉴 오픈, 나머지는 즉시 실행
-        if (action == PlayerMenuAction.Act) OpenActSubMenu();
-        else if (action == PlayerMenuAction.Item) OpenItemSubMenu();
+        // 🚨 즉각 반응: 도망(Run)을 제외한 모든 액션 클릭 시 즉시 BattleReady 애니메이션 재생
+        if (action != PlayerMenuAction.Run)
+        {
+            _currentActor?.PlayBattleAnim(PlayerCharacter.HashBattleReady);
+        }
+
+        if (action == PlayerMenuAction.Act) 
+            OpenActSubMenu();
+        else if (action == PlayerMenuAction.Item) 
+            OpenItemSubMenu();
         else 
         {
             _inputEnabled = false;
             ExecuteDirectAction(index, action);
         }
     }
+    #endregion
 
+    #region [ Sub Menu Controls ]
     private void OpenActSubMenu()
     {
         var entries = new List<IMenuEntry>();
@@ -150,20 +183,20 @@ public class BattleMenuUI : UIPanel
 
         _inputEnabled = false; 
         SlideMenuUp();
-        _subMenu.Open("ACT", entries, OnActSelected, OnSubMenuCancelled);
+        _subMenu?.Open("ACT", entries, OnActSelected, OnSubMenuCancelled);
     }
 
     private void OpenItemSubMenu()
     {
         var entries = new List<IMenuEntry>();
-        // 실제 인벤토리와 연동할 땐 GlobalDataManager.Instance.GetInventory() 기반으로 루프
+        // 추후 GlobalDataManager.Instance.GetInventory() 연동
         foreach (var i in _exampleItems) if (i != null) entries.Add(new ItemMenuEntry(i, 1));
 
         if (entries.Count == 0) return;
 
         _inputEnabled = false; 
         SlideMenuUp();
-        _subMenu.Open("ITEM", entries, OnItemSelected, OnSubMenuCancelled);
+        _subMenu?.Open("ITEM", entries, OnItemSelected, OnSubMenuCancelled);
     }
 
     private void OnActSelected(IMenuEntry entry)
@@ -183,7 +216,9 @@ public class BattleMenuUI : UIPanel
     private void OnSubMenuCancelled()
     {
         SlideMenuDown();
-        // DOTween 딜레이 없이 시퀀스로 정확하게 입력 활성화 타이밍 통제
+        
+        BattleManager.Instance.CancelActionSelection();
+
         DOVirtual.DelayedCall(_menuSlideDuration, () => {
             _inputEnabled = true;
             HighlightButton(_selectedIndex);
@@ -192,21 +227,29 @@ public class BattleMenuUI : UIPanel
 
     private void ExecuteDirectAction(int index, PlayerMenuAction action)
     {
-        _buttons[index]?.transform.DOPunchScale(Vector3.one * 0.35f, 0.25f, 8, 0.5f).OnComplete(() => {
+        if (_buttons[index] == null) return;
+        _buttons[index].transform.DOKill(true);
+        _buttons[index].transform.localScale = Vector3.one;
+
+        _buttons[index].transform.DOPunchScale(Vector3.one * 0.35f, 0.25f, 8, 0.5f).OnComplete(() => {
             BattleManager.Instance.OnPlayerActionSelected(_currentActor, action);
         });
     }
+    #endregion
 
+    #region [ UI Animations (Slide & Sync) ]
     private void SlideMenuUp()
     {
         _rectTransform.DOKill();
         _rectTransform.DOAnchorPosY(_baseMenuY + _menuSlideOffsetY, _menuSlideDuration).SetEase(Ease.OutCubic);
+        BattleUIController.Instance?.MovePartyPanelUp(_menuSlideOffsetY, _menuSlideDuration);
     }
 
     private void SlideMenuDown()
     {
         _rectTransform.DOKill();
         _rectTransform.DOAnchorPosY(_baseMenuY, _menuSlideDuration).SetEase(Ease.InCubic);
+        BattleUIController.Instance?.ResetPartyPanelPosition(_menuSlideDuration);
     }
 
     private void HighlightButton(int index)
@@ -217,13 +260,14 @@ public class BattleMenuUI : UIPanel
             
             var img = _buttons[i].GetComponent<Image>();
             img.DOKill();
-            _buttons[i].transform.DOKill();
+            
+            // 🚨 핵심 방어코드: 트윈 강제 종료 및 스케일 초기화
+            _buttons[i].transform.DOKill(true); 
+            _buttons[i].transform.localScale = Vector3.one; 
 
             if (!_buttons[i].interactable)
             {
-                // 비활성화된 버튼은 항상 회색 유지
                 img.color = _disabledColor;
-                _buttons[i].transform.localScale = Vector3.one;
             }
             else if (i == index)
             {
@@ -233,8 +277,10 @@ public class BattleMenuUI : UIPanel
             else
             {
                 img.DOColor(_normalColor, 0.1f);
-                _buttons[i].transform.DOScale(Vector3.one, 0.1f);
             }
         }
     }
+
+    
+    #endregion
 }

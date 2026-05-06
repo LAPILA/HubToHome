@@ -17,6 +17,9 @@ public class BattleUIController : MonoBehaviour
     #region [ UI Components ]
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private Transform _turnQueueContainer;
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private GameObject _turnIconPrefab;
+    
+    // 🚨 체력창 패널 본체를 제어하기 위한 변수 추가
+    [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private RectTransform _partyStatusPanel;
     [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private PartySlotUI[] _partySlots;
     
     [BoxGroup("Labels"), LabelWidth(120)] [SerializeField] private TMPro.TextMeshProUGUI _turnLabel;
@@ -44,6 +47,9 @@ public class BattleUIController : MonoBehaviour
     private bool _isTargetingMode = false;
     private bool _isAllyTargeting = false;
     private int _selectedTargetIndex = 0;
+    
+    // 🚨 체력창의 기본 Y좌표를 기억해둘 변수
+    private float _defaultPartyPanelY;
 
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
@@ -56,11 +62,19 @@ public class BattleUIController : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
-        // UI 초기화
         _battleMenuUI?.HideImmediate(); 
         _defenseQTEUI?.HideImmediate();
         _resultPanel?.HideImmediate();
         if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
+
+        if (_partyStatusPanel != null)
+            _defaultPartyPanelY = _partyStatusPanel.anchoredPosition.y;
+
+        if (_partySlots != null)
+        {
+            foreach (var slot in _partySlots)
+                slot.Hide();
+        }
     }
 
     private void Start()
@@ -89,7 +103,7 @@ public class BattleUIController : MonoBehaviour
         var bm = BattleManager.Instance;
         if (bm == null) return;
 
-        // Observer 해제 (메모리 누수 방지)
+        // Observer 해제
         bm.OnBattleStarted          -= HandleBattleStarted;
         bm.OnStateChanged           -= HandleStateChanged;
         bm.OnTurnQueueUpdated       -= HandleTurnQueueUpdated;
@@ -105,6 +119,24 @@ public class BattleUIController : MonoBehaviour
     {
         UpdateCursorPosition();
         HandleTargetingInput();
+    }
+    #endregion
+
+    #region [ Party Panel Sync Controls (신규 추가) ]
+    /// <summary>서브메뉴가 열릴 때 체력창도 같이 위로 올려줍니다.</summary>
+    public void MovePartyPanelUp(float offset = 150f, float duration = 0.3f)
+    {
+        if (_partyStatusPanel == null) return;
+        _partyStatusPanel.DOKill();
+        _partyStatusPanel.DOAnchorPosY(_defaultPartyPanelY + offset, duration).SetEase(Ease.OutCubic);
+    }
+
+    /// <summary>서브메뉴가 닫히거나 적 턴이 올 때 원래 자리로 내려줍니다.</summary>
+    public void ResetPartyPanelPosition(float duration = 0.3f)
+    {
+        if (_partyStatusPanel == null) return;
+        _partyStatusPanel.DOKill();
+        _partyStatusPanel.DOAnchorPosY(_defaultPartyPanelY, duration).SetEase(Ease.InCubic);
     }
     #endregion
 
@@ -127,7 +159,7 @@ public class BattleUIController : MonoBehaviour
         else if (kb.xKey.wasPressedThisFrame)
         {
             ExitTargetingMode();
-            BattleManager.Instance.CancelTargetSelection(); 
+            BattleManager.Instance.CancelActionSelection(); // 타겟팅 취소 시 
         }
     }
 
@@ -159,14 +191,12 @@ public class BattleUIController : MonoBehaviour
 
         if (targetChar != null)
         {
-            // 피벗 확정
             if (!_isAllyTargeting && _enemyTopPivots.TryGetValue(targetChar as EnemyCharacter, out Transform savedPivot)) {
                 targetTf = savedPivot;
             } else {
                 targetTf = targetChar.GetPivot("Top") ?? targetChar.transform;
             }
 
-            // 월드 -> 스크린 -> UI 로컬 좌표 변환 (Pixel Perfect)
             Vector3 targetWorldPos = targetTf.position + _cursorOffset;
             Vector2 screenPoint = _worldCamera.WorldToScreenPoint(targetWorldPos);
             RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)_targetCursor.parent, screenPoint, _worldCamera, out Vector2 localPoint);
@@ -195,11 +225,16 @@ public class BattleUIController : MonoBehaviour
     {
         _party   = party;
         _enemies = enemies;
-
         for (int i = 0; i < _partySlots.Length; i++)
         {
-            if (i < party.Count) _partySlots[i].Init(party[i]);
-            else                 _partySlots[i].Hide();
+            if (i < party.Count && party[i] != null) 
+            {
+                _partySlots[i].Init(party[i]);
+            }
+            else 
+            {
+                _partySlots[i].Hide();
+            }
         }
 
         _enemyTopPivots.Clear();
@@ -217,6 +252,7 @@ public class BattleUIController : MonoBehaviour
                 SetTurnLabel("<wave>전투 시작!</wave>"); 
                 ExitTargetingMode();
                 _battleMenuUI?.HideImmediate();
+                ResetPartyPanelPosition(0f); // 🚨 초기화 시 즉시 원래 자리로
                 break;
 
             case BattleState.PlayerActionSelect:
@@ -231,6 +267,7 @@ public class BattleUIController : MonoBehaviour
             case BattleState.EnemyAction:
                 _battleMenuUI?.Hide();
                 ExitTargetingMode();
+                ResetPartyPanelPosition(); // 🚨 적 턴이거나 공격 실행 시 체력창 원상복구!
                 break;
         }
     }
@@ -316,14 +353,13 @@ public class BattleUIController : MonoBehaviour
 
     private void HandleBattleEnded(bool victory)
     {
-        // 🚨 1. 이벤트가 정상적으로 도착했는지 확인
         Debug.Log($"<color=yellow>[BattleUIController] 전투 종료 이벤트 수신! 승리 여부: {victory}</color>");
         
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
         _battleMenuUI?.HideImmediate();
+        ResetPartyPanelPosition(); // 🚨 전투 끝나면 얌전히 제자리로
 
-        // 🚨 2. 인스펙터 할당 여부 체크
         if (_resultPanel != null && _resultLabel != null)
         {
             Debug.Log("<color=green>[BattleUIController] 결과창 UI가 정상 할당되어 렌더링을 시작합니다.</color>");
@@ -332,7 +368,6 @@ public class BattleUIController : MonoBehaviour
         }
         else
         {
-            // 🚨 3. 할당되지 않았다면 에러 뿜기
             Debug.LogError("<color=red>[BattleUIController] 치명적 오류: ResultPanel 또는 ResultLabel이 인스펙터에 할당되지 않았습니다! 배틀 씬의 인스펙터를 확인하세요.</color>");
         }
     }
@@ -393,12 +428,35 @@ public class PartySlotUI
         if (Portrait == null) return;
         Portrait.DOKill();
         Portrait.DOColor(active ? Color.yellow : Color.white, 0.15f);
+        
+        if (active && Root != null) 
+            Root.transform.DOPunchPosition(new Vector3(0, 5f, 0), 0.2f, 5, 1f);
     }
 
     public void RefreshHP(int current, int max, float duration, Ease ease)
     {
         float ratio = max > 0 ? (float)current / max : 0f;
-        if (HPFill != null) HPFill.DOFillAmount(ratio, duration).SetEase(ease);
+        
+        if (HPFill != null) 
+        {
+            HPFill.DOKill();
+            HPFill.DOFillAmount(ratio, duration).SetEase(ease);
+        }
+
+        if (Root != null && duration > 0f)
+        {
+            Root.transform.DOKill(true);
+            if (current < _displayHP) 
+            {
+                Root.transform.DOPunchPosition(new Vector3(10f, 0, 0), 0.3f, 15, 1f);
+                if (HPFill != null) HPFill.DOColor(Color.red, 0.1f).SetLoops(2, LoopType.Yoyo).OnComplete(() => HPFill.color = Color.white);
+            }
+            else if (current > _displayHP)
+            {
+                Root.transform.DOPunchScale(new Vector3(0.05f, 0.05f, 0f), 0.3f, 5, 1f);
+                if (HPFill != null) HPFill.DOColor(Color.green, 0.1f).SetLoops(2, LoopType.Yoyo).OnComplete(() => HPFill.color = Color.white);
+            }
+        }
 
         if (HPText != null)
         {
@@ -414,7 +472,21 @@ public class PartySlotUI
     public void RefreshMP(int current, int max, float duration, Ease ease)
     {
         float ratio = max > 0 ? (float)current / max : 0f;
-        if (MPFill != null) MPFill.DOFillAmount(ratio, duration).SetEase(ease);
+        
+        if (MPFill != null) 
+        {
+            MPFill.DOKill();
+            MPFill.DOFillAmount(ratio, duration).SetEase(ease);
+        }
+
+        if (Root != null && duration > 0f)
+        {
+            Root.transform.DOKill(true);
+            if (current < _displayMP)
+                Root.transform.DOPunchScale(new Vector3(0.03f, 0.03f, 0f), 0.2f, 5, 1f);
+            else if (current > _displayMP)
+                Root.transform.DOPunchPosition(new Vector3(0, 5f, 0), 0.2f, 5, 1f);
+        }
 
         if (MPText != null)
         {

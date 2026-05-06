@@ -1,16 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public enum StatType { MaxHP, MaxMP, ATK, DEF, SPD }
-// ── 속성 정의 ──
 public enum DamageElement { Physical, Fire, Ice, Electric, Dark, Light, True }
 
-/// <summary>
-/// 모든 캐릭터의 최상위 베이스 클래스.
-/// 동적 스탯 계산 구조와 방어(Defend) 상태를 지원합니다.
-/// </summary>
 public abstract class CharacterBase : MonoBehaviour
 {
     [Header("Base Stats (순수 능력치)")]
@@ -20,35 +14,25 @@ public abstract class CharacterBase : MonoBehaviour
     public int BaseDEF = 5;
     public int BaseSPD = 10;
     
-    // ── 🚨 동적 스탯 프로퍼티 (기본값 + 장비 + 상태이상) ──
-    public int MaxHP => Mathf.Max(1, BaseMaxHP + GetExtraStat(StatType.MaxHP));
-    public int MaxMP => Mathf.Max(0, BaseMaxMP + GetExtraStat(StatType.MaxMP));
-    public int ATK   => Mathf.Max(0, BaseATK + GetExtraStat(StatType.ATK));
-    public int DEF   => Mathf.Max(0, BaseDEF + GetExtraStat(StatType.DEF));
-    public int SPD   => Mathf.Max(0, BaseSPD + GetExtraStat(StatType.SPD));
+    // ── 🚨 1단계: 최종 스탯 계산 ──
+    public int MaxHP => GetCalculatedStat(StatType.MaxHP, BaseMaxHP);
+    public int MaxMP => GetCalculatedStat(StatType.MaxMP, BaseMaxMP);
+    public int ATK   => GetCalculatedStat(StatType.ATK, BaseATK);
+    public int DEF   => GetCalculatedStat(StatType.DEF, BaseDEF);
+    public int SPD   => GetCalculatedStat(StatType.SPD, BaseSPD);
 
-    // 런타임 상태
     public int CurrentHP { get; protected set; }
     public int CurrentMP { get; protected set; }
     public bool IsAlive => CurrentHP > 0;
-    public bool IsBound { get; set; } = false;   // 속박 (회피/점프/도망 불가, 패링만 가능)
-    public bool IsStunned { get; set; } = false; // 기절 (턴 스킵, 행동 아예 불가)
-    public bool IsBerserk { get; set; } = false; // 광폭화 (아군 피아식별 불가)
-
-    // ── 액션 이벤트 (출혈 등 특정 행동 시 발동하는 효과용) ──
-    public event System.Action OnActionExecuted; 
-    public void NotifyActionExecuted()
-    {
-        OnActionExecuted?.Invoke();
-    }
-
-    // ── 상태 제약 체크 도구 ──
-    public bool CanDodgeOrJump() => !IsBound && !IsStunned;
-    public bool CanTakeTurn() => IsAlive && !IsStunned;
-    // 델타룬 스타일 방어 (턴 시작 시 해제됨)
+    
+    [Header("Runtime Status")]
+    public bool IsBound { get; set; } = false;   
+    public bool IsStunned { get; set; } = false; 
+    public bool IsBerserk { get; set; } = false; 
     public bool IsDefending { get; set; } = false; 
+    public bool IsInvincible { get; set; } = false; 
 
-    // UI 갱신용 이벤트
+    public event Action OnActionExecuted; 
     public event Action<CharacterBase, int, int> OnHPChanged;
     public event Action<CharacterBase, int, int> OnMPChanged;
 
@@ -61,13 +45,9 @@ public abstract class CharacterBase : MonoBehaviour
         CurrentMP = BaseMaxMP;
     }
 
-    // ── 스탯 합산 ──────────────────────────────────────────────
-    /// <summary>하위 클래스(Player)에서 장비 스탯 등을 더할 수 있도록 virtual 처리</summary>
-    protected virtual int GetExtraStat(StatType type)
-    {
-        // 상태이상(버프/디버프) 합산
-        return _activeEffects.Sum(e => e.GetStatModifier(type));
-    }
+    public void NotifyActionExecuted() => OnActionExecuted?.Invoke();
+    public bool CanDodgeOrJump() => !IsBound && !IsStunned;
+    public bool CanTakeTurn() => IsAlive && !IsStunned;
 
     public Transform GetPivot(string pivotName)
     {
@@ -75,82 +55,137 @@ public abstract class CharacterBase : MonoBehaviour
         return pivot != null ? pivot : transform;
     }
 
-    // ── 데미지 및 회복 ──────────────────────────────────────────
-    public virtual int TakeDamage(int rawDamage)
+    // ── 1. 스탯 계산 (LINQ 제거, for문 최적화) ──────────────────────────────
+    private int GetCalculatedStat(StatType type, int baseValue)
+    {
+        int flatBonus = GetFlatStatBonus(type);
+        float percentBonus = GetPercentStatBonus(type);
+
+        for (int i = 0; i < _activeEffects.Count; i++)
+        {
+            flatBonus += _activeEffects[i].GetFlatModifier(type);
+            percentBonus += _activeEffects[i].GetPercentModifier(type);
+        }
+
+        float finalValue = (baseValue + flatBonus) * (1f + percentBonus);
+        return Mathf.Max(type == StatType.MaxMP ? 0 : 1, Mathf.RoundToInt(finalValue));
+    }
+
+    protected virtual int GetFlatStatBonus(StatType type) => 0;
+    protected virtual float GetPercentStatBonus(StatType type) => 0f;
+
+    // ── 3. 속성 상성 및 4. 최종 데미지 배율 가져오기 (LINQ 제거) ────────────
+    public virtual float GetElementAffinity(DamageElement element)
+    {
+        float modifier = 0f;
+        for (int i = 0; i < _activeEffects.Count; i++)
+            modifier += _activeEffects[i].GetElementResistanceModifier(element);
+            
+        return Mathf.Max(0f, 1.0f + modifier); 
+    }
+
+    public float GetIncomingDamageMultiplier()
+    {
+        float modifier = 0f;
+        for (int i = 0; i < _activeEffects.Count; i++)
+            modifier += _activeEffects[i].GetIncomingDamageModifier();
+            
+        return Mathf.Max(0f, 1.0f + modifier);
+    }
+
+    public float GetOutgoingDamageMultiplier()
+    {
+        float modifier = 0f;
+        for (int i = 0; i < _activeEffects.Count; i++)
+            modifier += _activeEffects[i].GetOutgoingDamageModifier();
+            
+        return Mathf.Max(0f, 1.0f + modifier);
+    }
+
+    // ── 🚨 궁극의 4단계 데미지 파이프라인 ──────────────────────────────────
+    public virtual int TakeDamage(int rawDamage, DamageElement element = DamageElement.Physical, CharacterBase attacker = null)
     {
         if (!IsAlive) return 0;
+        if (IsInvincible) 
+        {
+            Debug.Log($"<color=cyan>[무적/회피]</color> {gameObject.name} 데미지 무시!");
+            return 0; 
+        }
 
-        int actualDamage = Mathf.Max(1, rawDamage - DEF);
-        
-        // 🚨 방어 중이면 데미지 절반으로 감소 (델타룬 시스템)
-        if (IsDefending) actualDamage = Mathf.Max(1, actualDamage / 2);
+        float outgoingMult = attacker != null ? attacker.GetOutgoingDamageMultiplier() : 1.0f;
+        float step1Damage = rawDamage * outgoingMult;
 
-        CurrentHP = Mathf.Clamp(CurrentHP - actualDamage, 0, MaxHP);
+        float defMultiplier = 100f / (100f + Mathf.Max(0, DEF)); 
+        float step2Damage = step1Damage * defMultiplier;
+
+        float elementMult = GetElementAffinity(element);
+        float step3Damage = step2Damage * elementMult;
+
+        float incomingMult = GetIncomingDamageMultiplier();
+        float step4Damage = step3Damage * incomingMult;
+
+        if (IsDefending) step4Damage *= 0.5f;
+
+        int finalDamage = Mathf.Max(1, Mathf.RoundToInt(step4Damage));
+
+        CurrentHP = Mathf.Clamp(CurrentHP - finalDamage, 0, MaxHP);
         OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
         
-        OnDamageTaken(actualDamage);
+        string elemLog = elementMult > 1f ? "<color=red>약점!</color>" : (elementMult < 1f ? "<color=grey>저항</color>" : "");
+        Debug.Log($"[Damage] 원본:{rawDamage} -> 방어감소:{step2Damage:F1} -> 속성({elemLog}):{step3Damage:F1} -> <b>최종: {finalDamage}</b>");
+
+        OnDamageTaken(finalDamage);
         if (CurrentHP == 0) OnDie();
         
-        return actualDamage;
+        return finalDamage;
     }
 
     public virtual int TakePureDamage(int damage)
     {
-        if (!IsAlive) return 0;
-        // 고정 데미지는 DEF와 방어를 무시함
+        if (!IsAlive || IsInvincible) return 0;
         CurrentHP = Mathf.Clamp(CurrentHP - damage, 0, MaxHP);
         OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
-        
         OnDamageTaken(damage);
         if (CurrentHP == 0) OnDie();
         return damage;
     }
 
-    public virtual void HealHP(int amount) 
-    {
-        CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount);
-        OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
-    }
+    // ── 회복, 상태이상 관리 ──
+    public virtual void HealHP(int amount) { CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount); OnHPChanged?.Invoke(this, CurrentHP, MaxHP); }
+    public virtual void HealMP(int amount) { CurrentMP = Mathf.Min(MaxMP, CurrentMP + amount); OnMPChanged?.Invoke(this, CurrentMP, MaxMP); }
+    public virtual void ConsumeMP(int amount) { CurrentMP = Mathf.Max(0, CurrentMP - amount); OnMPChanged?.Invoke(this, CurrentMP, MaxMP); }
 
-    public virtual void HealMP(int amount) 
-    {
-        CurrentMP = Mathf.Min(MaxMP, CurrentMP + amount);
-        OnMPChanged?.Invoke(this, CurrentMP, MaxMP);
-    }
-
-    public virtual void ConsumeMP(int amount) 
-    {
-        CurrentMP = Mathf.Max(0, CurrentMP - amount);
-        OnMPChanged?.Invoke(this, CurrentMP, MaxMP);
-    }
-
-    // ── 상태 이상(Status) 관리 ──────────────────────────────────
     public void AddEffect(StatusEffect effect)
     {
         if (!IsAlive) return;
-
-        var existingEffect = _activeEffects.Find(e => e.EffectID == effect.EffectID);
-        if (existingEffect != null)
+        
+        // Any(), Find() 대신 for문 사용
+        for (int i = 0; i < _activeEffects.Count; i++)
         {
-            existingEffect.AddStack(effect.DurationTurns); 
-            return;
+            if (_activeEffects[i].EffectID == effect.EffectID)
+            {
+                _activeEffects[i].AddStack(effect.DurationTurns);
+                return;
+            }
         }
-
+        
         _activeEffects.Add(effect);
         effect.OnApply(this); 
     }
 
-    public void RemoveEffect(StatusEffect effect)
+    public void RemoveEffect(StatusEffect effect) { if (_activeEffects.Remove(effect)) effect.OnRemove(); }
+    
+    // LINQ Any 제거
+    public bool HasEffect(string effectID) 
     {
-        if (_activeEffects.Remove(effect)) effect.OnRemove(); 
+        for (int i = 0; i < _activeEffects.Count; i++)
+            if (_activeEffects[i].EffectID == effectID) return true;
+        return false;
     }
-
-    public bool HasEffect(string effectID) => _activeEffects.Any(e => e.EffectID == effectID);
-
+    
     public void ProcessEffects()
     {
         if (!IsAlive) return;
-
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {
             _activeEffects[i].OnTick(); 
@@ -162,7 +197,6 @@ public abstract class CharacterBase : MonoBehaviour
         }
     }
 
-    // ── VFX 및 이벤트 ──────────────────────────────────────────
     public void AddLoopVFX(string buffId, GameObject vfxPrefab, string pivotName = "Bottom")
     {
         if (_activeLoopVFX.ContainsKey(buffId) || vfxPrefab == null) return;

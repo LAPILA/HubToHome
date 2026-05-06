@@ -327,25 +327,36 @@ public class PlayerController : MonoBehaviour
     {
         if (!CanExecuteAction()) return;
 
+        var pChar = GetComponent<PlayerCharacter>();
+        pChar?.SetEvasive(true); 
+
         DOTween.Kill(transform);
         Vector3 dodgeDir = -GetFacingVector();
         _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
 
         transform.DOMove(transform.position + dodgeDir * 1.5f, 0.15f)
             .SetEase(Ease.OutExpo)
-            .SetLoops(2, LoopType.Yoyo);
+            .SetLoops(2, LoopType.Yoyo)
+            .OnComplete(() => pChar?.SetEvasive(false)) // 🚨 애니메이션이 정상 종료되면 무적 해제
+            .OnKill(() => pChar?.SetEvasive(false));    // 🚨 중간에 덮어써져서 죽어도 무적 해제
     }
 
     public void ExecuteJump()
     {
+        if (!CanExecuteAction()) return;
+
+        var pChar = GetComponent<PlayerCharacter>();
+        pChar?.SetEvasive(true); 
+
         DOTween.Kill(transform);
         _vfx?.Play(CharacterVFX.VFXAction.Jump_Dust);
 
         transform.DOMoveY(transform.position.y + 2.0f, 0.2f)
             .SetEase(Ease.OutQuad)
-            .SetLoops(2, LoopType.Yoyo);
+            .SetLoops(2, LoopType.Yoyo)
+            .OnComplete(() => pChar?.SetEvasive(false)) // 🚨 정상 종료
+            .OnKill(() => pChar?.SetEvasive(false));    // 🚨 비정상 종료 시 무적 강제 해제
     }
-
     // ── DOTween 이펙트 ────────────────────────────────────────
     public void PlayParryEffect()
     {

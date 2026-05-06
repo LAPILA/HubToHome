@@ -52,19 +52,18 @@ public class CameraController : MonoBehaviour
         DOTween.Kill("CameraMove");
         DOTween.Kill("CameraZoom");
 
-        // 트래커를 타겟 위치로 부드럽게 이동
-        _cameraTracker.DOMove(target.position, duration).SetEase(Ease.OutCubic).SetId("CameraMove");
+        // 🚨 핵심 해결 1: SetUpdate(UpdateType.Late)를 추가하여 시네머신과 갱신 타이밍을 완벽히 맞춥니다.
+        _cameraTracker.DOMove(target.position, duration)
+            .SetEase(Ease.OutCubic)
+            .SetUpdate(UpdateType.Late) 
+            .SetId("CameraMove");
         
-        // 렌즈 줌인
         DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, targetZoom, duration)
             .SetEase(Ease.OutCubic)
+            .SetUpdate(UpdateType.Late) 
             .SetId("CameraZoom");
     }
 
-    /// <summary>
-    /// 적 공격 시 / 턴 대기 시: 중앙으로 복귀하고 줌 아웃하여 시야를 확보합니다. (QTE 대비)
-    /// </summary>
-    [Button("🔄 카메라 완전 리셋")]
     public void ResetCamera(float duration = 0.4f)
     {
         if (_cameraTracker == null) return;
@@ -73,14 +72,20 @@ public class CameraController : MonoBehaviour
         DOTween.Kill("CameraZoom");
         DOTween.Kill("HitStop");
 
-        // 트래커를 중앙으로 복귀
-        _cameraTracker.DOMove(_centerPosition, duration).SetEase(Ease.InOutQuad).SetId("CameraMove");
+        // 🚨 핵심 해결 2: 여기도 SetUpdate(UpdateType.Late) 적용
+        _cameraTracker.DOMove(_centerPosition, duration)
+            .SetEase(Ease.InOutQuad)
+            .SetUpdate(UpdateType.Late) 
+            .SetId("CameraMove");
 
-        // 줌 및 화면 비틀기 복구
-        DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, _defaultLensSize, duration).SetId("CameraZoom");
-        DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, duration);
+        DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, _defaultLensSize, duration)
+            .SetUpdate(UpdateType.Late)
+            .SetId("CameraZoom");
+            
+        DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, duration)
+            .SetUpdate(UpdateType.Late);
 
-        Time.timeScale = 1f; // 혹시 멈춰있는 시간 복구
+        Time.timeScale = 1f; 
     }
 
     public void ModePlayerAction() => ZoomOnTransform(_cameraTracker, _battleZoomSize, 0.3f);
