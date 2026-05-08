@@ -45,7 +45,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff3ccdb61a4cca343b669910abfddb9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DialogueManager
-  _dialogueUI: {fileID: 3675069216865015921}
+  _overworldPanel: {fileID: 3675069216865015921}
+  _cinematicPanel: {fileID: 3530719157885178279}
 --- !u!1001 &3760311007695708655
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -54,13 +55,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 850763524044948060}
     m_Modifications:
+    - target: {fileID: 1581434083376303245, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: _canvasGroup
+      value: 
+      objectReference: {fileID: 5713810413877116031}
     - target: {fileID: 7582505938803683177, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
       propertyPath: m_Name
       value: DialogueCanvas
       objectReference: {fileID: 0}
     - target: {fileID: 7582505938803683177, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8256518344660411132, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
       propertyPath: m_Pivot.x
@@ -143,10 +148,22 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 9001717889917975201, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+--- !u!114 &3530719157885178279 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 347037404816224328, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+  m_PrefabInstance: {fileID: 3760311007695708655}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0055ba3ee34c424d80e122cbfd58871, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueUI
 --- !u!114 &3675069216865015921 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 517695203701160350, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
@@ -161,5 +178,10 @@ MonoBehaviour:
 --- !u!224 &5096462072796627731 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 8256518344660411132, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+  m_PrefabInstance: {fileID: 3760311007695708655}
+  m_PrefabAsset: {fileID: 0}
+--- !u!225 &5713810413877116031 stripped
+CanvasGroup:
+  m_CorrespondingSourceObject: {fileID: 8891450075690245520, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
   m_PrefabInstance: {fileID: 3760311007695708655}
   m_PrefabAsset: {fileID: 0}

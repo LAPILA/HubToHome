@@ -10,6 +10,9 @@ public class GlobalDataManager : MonoBehaviour
     public static GlobalDataManager Instance { get; private set; }
 
     #region [ Runtime Data ]
+    // 🚨 인트로에서 설정한 플레이어의 이름이 저장되는 곳!
+    public string PlayerName { get; set; } = "Hero"; 
+
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
     
@@ -41,7 +44,7 @@ public class GlobalDataManager : MonoBehaviour
     {
         _eventFlags.Clear();
         _inventoryDict.Clear();
-        Party.Clear(); // 🚨 기존의 더미 데이터 추가 로직 삭제! (이제 씬의 인스펙터 값을 신뢰합니다)
+        Party.Clear(); // 기존 더미 데이터 추가 로직 삭제
     }
 
     /// <summary>
@@ -59,6 +62,8 @@ public class GlobalDataManager : MonoBehaviour
         var newData = new CharacterSaveData()
         {
             CharacterID = scenePlayer.CharacterID,
+            // 🚨 캐릭터 이름(ID)을 입력받은 플레이어 이름으로 덮어쓸 수도 있습니다!
+            // CharacterID = string.IsNullOrEmpty(PlayerName) ? scenePlayer.CharacterID : PlayerName,
             Level       = scenePlayer.Level,
             EXP         = scenePlayer.EXP,
             MaxHP       = startMaxHP,
@@ -71,7 +76,7 @@ public class GlobalDataManager : MonoBehaviour
         };
 
         Party.Add(newData);
-        Debug.Log($"<color=yellow>[GlobalData] 씬 데이터로 파티원 초기화 완료: {newData.CharacterID} (HP:{newData.HP}, MP:{newData.MP})</color>");
+        Debug.Log($"<color=yellow>[GlobalData] 파티원 초기화 완료: {newData.CharacterID} (이름: {PlayerName})</color>");
     }
     #endregion
 
@@ -106,6 +111,7 @@ public class GlobalDataManager : MonoBehaviour
     {
         var data = new SaveData
         {
+            playerName       = PlayerName, // 🚨 세이브 데이터에 이름 추가!
             currentScene     = SpawnScene,
             playerX          = SpawnX,
             playerY          = SpawnY,
@@ -121,6 +127,7 @@ public class GlobalDataManager : MonoBehaviour
 
     public void FromSaveData(SaveData data)
     {
+        PlayerName   = data.playerName; // 🚨 이름 불러오기!
         SpawnScene   = data.currentScene;
         SpawnX       = data.playerX;
         SpawnY       = data.playerY;

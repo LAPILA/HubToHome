@@ -6,6 +6,8 @@ using DG.Tweening;
 public class DialogueUI : MonoBehaviour
 {
     [SerializeField] private CanvasGroup _canvasGroup;
+    
+    [Header("선택적 컴포넌트 (시네마틱에선 비워두세요)")]
     [SerializeField] private Image _portraitImage;
     [SerializeField] private TextMeshProUGUI _speakerNameText;
     
@@ -35,11 +37,16 @@ public class DialogueUI : MonoBehaviour
         IsTyping = true;
         _currentSpeaker = speaker; 
 
-        if (speaker != null)
+        // 🚨 이름 텍스트가 연결되어 있을 때만 처리 (시네마틱은 무시됨)
+        if (_speakerNameText != null) 
         {
-            _speakerNameText.text = speaker.DisplayName;
+            _speakerNameText.text = speaker != null ? speaker.DisplayName : "";
+        }
             
-            Sprite portrait = speaker.GetPortrait(emotion);
+        // 🚨 초상화 이미지가 연결되어 있을 때만 처리
+        if (_portraitImage != null)
+        {
+            Sprite portrait = speaker?.GetPortrait(emotion);
             if (portrait != null && emotion != EmotionType.None)
             {
                 _portraitImage.sprite = portrait;
@@ -49,11 +56,6 @@ public class DialogueUI : MonoBehaviour
             {
                 _portraitImage.gameObject.SetActive(false);
             }
-        }
-        else
-        {
-            _speakerNameText.text = "";
-            _portraitImage.gameObject.SetActive(false);
         }
 
         if (_typewriterComponent != null)
@@ -65,28 +67,17 @@ public class DialogueUI : MonoBehaviour
     public void SkipTyping()
     {
         if (_typewriterComponent != null)
-        {
             _typewriterComponent.SendMessage("SkipTypewriter", SendMessageOptions.DontRequireReceiver);
-        }
     }
 
-    public void OnTypingCompleted()
-    {
-        IsTyping = false; 
-    }
+    public void OnTypingCompleted() { IsTyping = false; }
 
-    // 🚨 뚜루루 사운드 실제 재생 로직 추가
     public void PlayVoiceBlip(char c)
     {
         if (_currentSpeaker == null || _currentSpeaker.VoiceBlipSound == null) return;
-        
-        if (!char.IsWhiteSpace(c))
+        if (!char.IsWhiteSpace(c) && Camera.main != null)
         {
-            // 메인 카메라 위치에서 임시로 사운드를 재생합니다. (오디오 매니저 불필요)
-            if (Camera.main != null)
-            {
-                AudioSource.PlayClipAtPoint(_currentSpeaker.VoiceBlipSound, Camera.main.transform.position, 0.6f);
-            }
+            AudioSource.PlayClipAtPoint(_currentSpeaker.VoiceBlipSound, Camera.main.transform.position, 0.6f);
         }
     }
 
@@ -98,40 +89,16 @@ public class DialogueUI : MonoBehaviour
 
     private System.Collections.IEnumerator TempChoiceRoutine(System.Collections.Generic.List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
     {
-        Debug.Log("=======================");
-        Debug.Log("🤔 [선택지 등장!] Z, X, C 키를 눌러 선택하세요:");
-        for (int i = 0; i < choices.Count; i++)
-        {
-            string keyName = (i == 0) ? "Z" : (i == 1) ? "X" : "C";
-            Debug.Log($"[{keyName}키] {choices[i].ChoiceText}");
-        }
-        Debug.Log("=======================");
-
+        // ... (기존과 동일한 Z/X/C 키 선택지 로직) ...
         yield return new WaitForSeconds(0.1f);
-
         while (IsWaitingForChoice)
         {
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null) { yield return null; continue; }
 
-            if (choices.Count > 0 && kb.zKey.wasPressedThisFrame)
-            {
-                IsWaitingForChoice = false;
-                onSelected?.Invoke(choices[0]);
-                yield break;
-            }
-            if (choices.Count > 1 && kb.xKey.wasPressedThisFrame)
-            {
-                IsWaitingForChoice = false;
-                onSelected?.Invoke(choices[1]);
-                yield break;
-            }
-            if (choices.Count > 2 && kb.cKey.wasPressedThisFrame)
-            {
-                IsWaitingForChoice = false;
-                onSelected?.Invoke(choices[2]);
-                yield break;
-            }
+            if (choices.Count > 0 && kb.zKey.wasPressedThisFrame) { IsWaitingForChoice = false; onSelected?.Invoke(choices[0]); yield break; }
+            if (choices.Count > 1 && kb.xKey.wasPressedThisFrame) { IsWaitingForChoice = false; onSelected?.Invoke(choices[1]); yield break; }
+            if (choices.Count > 2 && kb.cKey.wasPressedThisFrame) { IsWaitingForChoice = false; onSelected?.Invoke(choices[2]); yield break; }
             yield return null;
         }
     }

@@ -1,10 +1,13 @@
 using UnityEngine;
 using Sirenix.OdinInspector;
 using System.Collections.Generic;
-
-[CreateAssetMenu(fileName = "NewDialogue", menuName = "Dialogue/Dialogue Data")]
+public enum DialogueStyle { Overworld, Cinematic }[CreateAssetMenu(fileName = "NewDialogue", menuName = "Dialogue/Dialogue Data")]
 public class DialogueData : ScriptableObject
 {
+    [BoxGroup("기본 설정")]
+    [Tooltip("이 대화를 띄울 패널의 스타일을 결정합니다.")]
+    public DialogueStyle Style = DialogueStyle.Overworld;
+
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<DialogueNode> Nodes = new List<DialogueNode>();
 }

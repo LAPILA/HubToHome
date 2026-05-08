@@ -41,4 +41,5 @@ public class SaveData
     // ── 4. 메타 데이터 ──
     public string saveTime = "";
     public int    playtimeSeconds = 0;
+    public string playerName;
 }
