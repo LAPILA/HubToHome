@@ -17,6 +17,8 @@ public class GameBootstrap : MonoBehaviour
     [SerializeField] private GameObject _dialogueManagerPrefab;
     [SerializeField] private GameObject _uiManagerPrefab;
     [SerializeField] private GameObject _gameStateManagerPrefab;
+    
+    [SerializeField] private GameObject _gameFlagManagerPrefab;
 
     private void Awake()
     {
@@ -32,12 +34,13 @@ public class GameBootstrap : MonoBehaviour
         SpawnIfNotExists<DialogueManager>(_dialogueManagerPrefab);
         SpawnIfNotExists<UIManager>(_uiManagerPrefab);
         SpawnIfNotExists<GameStateManager>(_gameStateManagerPrefab);
+        SpawnIfNotExists<GameFlagManager>(_gameFlagManagerPrefab);
+        
         Debug.Log("<color=#00FFFF>[GameBootstrap] 모든 코어 시스템 초기화 완료!</color>");
     }
 
     private void SpawnIfNotExists<T>(GameObject prefab) where T : MonoBehaviour
     {
-        // 씬에 이미 해당 타입의 싱글톤이 존재하면 패스
         if (FindFirstObjectByType<T>() != null) return;
         
         if (prefab == null)
@@ -46,8 +49,10 @@ public class GameBootstrap : MonoBehaviour
             return;
         }
         
-        // 프리팹 생성 후 (Clone) 이름 제거
         var obj = Instantiate(prefab);
         obj.name = prefab.name; 
+        
+        obj.transform.SetParent(null);
+        DontDestroyOnLoad(obj);
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -14,7 +13,15 @@ public class DialogueManager : MonoBehaviour
     private bool _isPlaying = false;
     private Action _onCompleteCallback;
 
-    private void Awake() { Instance = this; }
+    private void Awake() 
+    { 
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this; 
+        
+        // GameBootstrap에서 생성하더라도, 혹시 모를 씬 전환 시 파괴 방지
+        transform.SetParent(null);
+        DontDestroyOnLoad(gameObject);
+    }
 
     public void StartDialogue(DialogueData data, Action onComplete = null)
     {
@@ -36,9 +43,7 @@ public class DialogueManager : MonoBehaviour
         if (!_isPlaying) return;
         if (Keyboard.current == null) return;
 
-        // 🚨 Z키, 스페이스바, 엔터키 중 하나를 누르면 진행되도록 확장
-        bool isConfirmPressed = Keyboard.current.zKey.wasPressedThisFrame || 
-                                Keyboard.current.spaceKey.wasPressedThisFrame || 
+        bool isConfirmPressed = Keyboard.current.zKey.wasPressedThisFrame ||
                                 Keyboard.current.enterKey.wasPressedThisFrame;
 
         if (isConfirmPressed)
@@ -85,7 +90,7 @@ public class DialogueManager : MonoBehaviour
     private void OnChoiceSelected(ChoiceData choice)
     {
         if (!string.IsNullOrEmpty(choice.SetFlagOnSelect))
-            GameFlagManager.Instance?.SetFlag(choice.SetFlagOnSelect);
+            GameFlagManager.Instance?.SetFlag(choice.SetFlagOnSelect, 1);
 
         if (choice.NextDialogue != null)
         {
