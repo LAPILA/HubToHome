@@ -1,45 +1,21 @@
-# 💬 대화/연출 시스템 규칙 (Dialogue & Presentation Rules)
+# Dialogue 규칙
 
-## 🎯 대화 철학
-- **Text as Voice**: 텍스트는 단순한 글자가 아니라 캐릭터의 목소리다. 캐릭터의 감정에 따라 타이핑 속도, 폰트 크기, 흔들림 효과를 적극적으로 변화시킨다. (Undertale/Deltarune 스타일)
-- **Visual Context**: 일반 NPC는 텍스트만 출력하지만, 중요 NPC(주요 인물)는 대화창 옆에 초상화(Portrait)를 표시하여 몰입감을 높인다.
-- **Consequence**: 대화 중 선택지는 단순한 답변을 넘어, 아이템 획득, 전투 진입, 월드 플래그 변경 등 게임 전체에 영향을 미친다.
+## 현재 구조
+- 대화 데이터는 JSON이 아니라 `DialogueData` ScriptableObject 기반이다.
+- `DialogueData`는 `DialogueStyle`과 `List<DialogueNode>`를 가진다.
+- `DialogueNode`는 `SpeakerData`, `EmotionType`, `LocalizationKey`, `DefaultText`, `EventTriggerID`, 선택지 정보를 가진다.
+- 출력은 `DialogueManager` + `DialogueUI`가 담당한다.
 
-## 🏗️ 대화 아키텍처
-- **DialogueManager (Singleton)**: JSON 데이터를 로드하고, 대화창 UI 제어 및 타이핑 프로세스를 총괄한다.
-- **DialogueController**: Febucci `TextAnimator`와 연동하여 글자별 효과 및 오디오 비프음(Beep)을 실행한다.
-- **DialogueEventBridge**: 대화 도중 또는 종료 시 특정 코드(함수)를 실행하는 가교 역할. (예: `StartBattle()`, `GiveItem()`)
-- **ChoiceHandler**: 분기 선택지 UI를 생성하고 플레이어의 입력을 처리한다.
+## 흐름
+- `DialogueManager.StartDialogue(DialogueData, onComplete)`로 시작한다.
+- 대화 중 `GameStateManager`는 `Dialogue` 상태가 된다.
+- Confirm 입력은 Z/Space/Enter.
+- 타이핑 중 Confirm은 스킵, 완료 후 Confirm은 다음 노드로 진행한다.
+- 종료 시 `GameState.Exploration`으로 복귀한다.
 
-## 📝 대화 데이터 구조 (JSON & Localization)
-- **JSON Format**: 확장성과 번역(i18n)을 위해 모든 대화 데이터는 JSON으로 관리한다.
-  - `id`: 대화 고유 식별자
-  - `speaker`: 화자 이름 (시스템상 이름)
-  - `portrait`: 초상화 스프라이트 키 (null일 경우 이름만 표시)
-  - `text`: 대화 내용 (TextAnimator 태그 포함 가능)
-  - `speed`: 타이핑 속도 배율
-  - `commands`: 대화 중 실행할 특수 명령 (예: `[shake]`, `[bgm:boss_theme]`)
-  - `choices`: 선택지 배열 (선택 시 이동할 다음 대화 ID 및 실행될 Event ID 포함)
-- **Localization**: 모든 `text` 필드는 로컬라이제이션 키로 대체 가능하도록 설계하며, 언어 설정에 따라 해당 JSON 파일을 교체 로드한다.
-
-## 🎭 연출 및 태그 규칙
-- **Febucci TextAnimator 활용**:
-  - `<shake>`: 캐릭터가 당황하거나 화날 때.
-  - `<rainbow>`: 특별한 아이템이나 중요한 언급 시.
-  - `<speed=0.5>`: 진지하거나 느릿한 말투.
-- **Auto-Advance**: 명령줄에 `auto:true`가 포함된 경우, 플레이어 클릭 없이 설정된 대기 시간 후 자동으로 다음 대화로 넘어간다.
-- **Screen Effects**: 대화 중 `CameraShake`, `Flash`, `SpriteFade` 명령을 통해 시각적 긴장감을 부여한다.
-
-## 🔊 대화 중 오디오
-- **Character Beeps**: 캐릭터별로 고유한 피치(Pitch)와 음색을 가진 '타이핑 사운드'를 할당한다. (Sans, Papyrus 스타일)
-- **BGM Control**: 대화 진입 시 BGM 볼륨을 낮추거나(Ducking), 특정 대화 시점에서 곡을 전환(Limbus-style transition)하는 기능을 지원한다.
-
-## 🔗 시스템 연동 및 분기
-- **Global Flag Check**: 특정 대화나 선택지가 나타나기 전, `GlobalDataManager`의 플래그를 확인하여 조건부 대화를 출력한다.
-- **Action Trigger**:
-  - `GIVE_ITEM:[ItemID]`: 대화 종료 후 아이템 지급.
-  - `START_BATTLE:[EnemyGroupID]`: 대화 종료 후 즉시 전투 씬 전환.
-  - `SET_FLAG:[FlagName]:[Value]`: 플레이어의 선택을 세계관에 기록.
-
-## ✅ 테스트 및 검증
-- 연출 코드가 포함된 대화 작성 후, 반드시 Cline은 사용자에게 "특정 연출(흔들림, 사운드 등)이 의도대로 작동하는지" 확인을 요청해야 한다.
+## 주의점
+- `EventTriggerID == "RequestName"`이면 이름 입력 UI를 연다.
+- 플레이어 이름은 `GlobalDataManager.PlayerName`에 저장된다.
+- 텍스트 내 이름 치환은 `{0}` 포맷을 사용한다.
+- 선택지 호출은 현재 `DialogueManager`에서 주석 처리되어 있으므로, 선택지 작업 시 복구가 필요하다.
+- `DialogueUI`는 Febucci Typewriter와 캐릭터별 보이스 블립을 사용한다.
