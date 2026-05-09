@@ -35,9 +35,10 @@ public class AudioManager : MonoBehaviour
 
     public void PlayBGM(AudioClip clip, float volume = 1f)
     {
-        if (_activeBGM.clip == clip && _activeBGM.isPlaying) return; // 이미 재생 중이면 무시
+        if (clip == null) return;
+        if (_activeBGM.clip == clip && _activeBGM.isPlaying) return; // 이미 같은 곡이면 무시
 
-        _activeBGM.DOKill(); // 기존 트윈 강제 종료
+        _activeBGM.DOKill(); 
         _activeBGM.clip   = clip;
         _activeBGM.volume = volume;
         _activeBGM.loop   = true;
@@ -46,7 +47,8 @@ public class AudioManager : MonoBehaviour
 
     public void CrossFadeBGM(AudioClip clip, float duration = 1f)
     {
-        if (_activeBGM.clip == clip) return;
+        if (clip == null || _activeBGM.clip == clip) return; // 🚨 이미 같은 곡이 재생 중이면 부드럽게 무시!
+        
         StartCoroutine(CrossFadeRoutine(clip, duration));
     }
 
@@ -62,7 +64,6 @@ public class AudioManager : MonoBehaviour
 
         while (elapsed < duration)
         {
-            // Time.unscaledDeltaTime을 사용하여 일시정지 중에도 BGM 전환 가능하게 처리
             elapsed += Time.unscaledDeltaTime; 
             float t = elapsed / duration;
             
@@ -77,6 +78,8 @@ public class AudioManager : MonoBehaviour
 
     public void SeamlessTransitionBGM(AudioClip nextPhaseClip)
     {
+        if (nextPhaseClip == null || _activeBGM.clip == null) return;
+        
         double syncTime = _activeBGM.timeSamples / (double)_activeBGM.clip.frequency;
 
         _inactiveBGM.clip        = nextPhaseClip;
@@ -101,8 +104,13 @@ public class AudioManager : MonoBehaviour
         _activeBGM.DOFade(targetVolume, duration).SetUpdate(true);
     }
 
-    public void PlaySFX(AudioClip clip, float volume = 1f) => _sfxSource.PlayOneShot(clip, volume);
-    public void PlayVoice(AudioClip clip, float volume = 1f) => _voiceSource.PlayOneShot(clip, volume);
+    public void PlaySFX(AudioClip clip, float volume = 1f) { if (clip != null) _sfxSource.PlayOneShot(clip, volume); }
+    public void PlayVoice(AudioClip clip, float volume = 1f)
+{
+    if (clip == null) return;
+    _voiceSource.pitch = Random.Range(0.95f, 1.05f); 
+    _voiceSource.PlayOneShot(clip, volume);
+}
 
     public void SetBGMVolume(float normalized) => SetMixerVolume(MixerBGM, normalized);
     public void SetSFXVolume(float normalized) => SetMixerVolume(MixerSFX, normalized);

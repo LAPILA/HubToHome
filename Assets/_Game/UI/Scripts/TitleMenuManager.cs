@@ -16,9 +16,12 @@ public class TitleMenuManager : MonoBehaviour
     [Header("씬 이동 세팅")]
     [SerializeField] private string _newGameSceneName = "01_IntroScene";
 
+    [Header("오디오 세팅")]
+    [SerializeField] private AudioClip _titleBGM;
+    [SerializeField] private AudioClip _moveSFX;
+    [SerializeField] private AudioClip _confirmSFX;
+
     private GameObject _lastSelected;
-    
-    // 🚨 전역 EventSystem을 끄는 대신, 타이틀 자체 입력을 막는 락(Lock) 변수
     private bool _isLocked = false;
 
     private void Awake()
@@ -36,6 +39,11 @@ public class TitleMenuManager : MonoBehaviour
 
     private void Start()
     {
+        if (_titleBGM != null)
+        {
+            AudioManager.Instance?.CrossFadeBGM(_titleBGM, 1.0f);
+        }
+
         if (_firstSelectButton != null)
         {
             _firstSelectButton.Select();
@@ -45,7 +53,6 @@ public class TitleMenuManager : MonoBehaviour
 
     private void Update()
     {
-        // 🚨 선택 연출이 재생 중이거나 씬이 넘어가는 중이면 모든 입력 무시
         if (_isLocked || EventSystem.current == null) return;
 
         if (EventSystem.current.currentSelectedGameObject == null && _lastSelected != null)
@@ -54,7 +61,11 @@ public class TitleMenuManager : MonoBehaviour
         }
         else if (EventSystem.current.currentSelectedGameObject != null)
         {
-            _lastSelected = EventSystem.current.currentSelectedGameObject;
+            if (_lastSelected != EventSystem.current.currentSelectedGameObject)
+            {
+                AudioManager.Instance?.PlaySFX(_moveSFX);
+                _lastSelected = EventSystem.current.currentSelectedGameObject;
+            }
         }
 
         if (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame)
@@ -74,7 +85,6 @@ public class TitleMenuManager : MonoBehaviour
     public void OnClickNewGame(TextMeshProUGUI buttonText)
     {
         ExecuteWithBlink(buttonText, () => {
-            Debug.Log("새 게임 시작!");
             SceneLoader.Instance?.LoadScene(_newGameSceneName);
         });
     }
@@ -82,15 +92,13 @@ public class TitleMenuManager : MonoBehaviour
     public void OnClickContinue(TextMeshProUGUI buttonText)
     {
         ExecuteWithBlink(buttonText, () => {
-            Debug.Log("게임 불러오기!");
-            _isLocked = false; // 씬 전환이 안 일어나는 임시 버튼은 다시 락 해제
+            _isLocked = false; 
         });
     }
 
     public void OnClickSettings(TextMeshProUGUI buttonText)
     {
         ExecuteWithBlink(buttonText, () => {
-            Debug.Log("설정 패널 열기!");
             _isLocked = false; 
         });
     }
@@ -98,7 +106,6 @@ public class TitleMenuManager : MonoBehaviour
     public void OnClickQuit(TextMeshProUGUI buttonText)
     {
         ExecuteWithBlink(buttonText, () => {
-            Debug.Log("게임 종료!");
             Application.Quit();
             #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
@@ -108,8 +115,8 @@ public class TitleMenuManager : MonoBehaviour
 
     private void ExecuteWithBlink(TextMeshProUGUI textTarget, System.Action onCompleteAction)
     {
-        // 🚨 EventSystem.current.enabled = false; <- 삭제!!
-        _isLocked = true; // 타이틀 매니저의 Update 입력을 차단
+        _isLocked = true; 
+        AudioManager.Instance?.PlaySFX(_confirmSFX);
 
         if (textTarget != null)
         {

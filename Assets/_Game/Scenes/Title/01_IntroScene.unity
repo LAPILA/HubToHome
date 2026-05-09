@@ -219,7 +219,6 @@ GameObject:
   - component: {fileID: 123179393}
   - component: {fileID: 123179392}
   - component: {fileID: 123179391}
-  - component: {fileID: 123179390}
   m_Layer: 0
   m_Name: PPC
   m_TagString: MainCamera
@@ -242,14 +241,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 45048977}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!81 &123179390
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 123179388}
-  m_Enabled: 1
 --- !u!114 &123179391
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,95 +1,120 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
+using Febucci.UI.Examples;
+using Febucci.TextAnimatorCore.Typing;
 
 public class DialogueUI : MonoBehaviour
 {
     [SerializeField] private CanvasGroup _canvasGroup;
     
-    [Header("선택적 컴포넌트 (시네마틱에선 비워두세요)")]
+    [Header("Text Animator & Sound")]
+    [SerializeField] private TypewriterCore _typewriter; 
+    [SerializeField] private TAnimSoundWriter _soundWriter; 
+
+    [Header("UI 참조")]
     [SerializeField] private Image _portraitImage;
     [SerializeField] private TextMeshProUGUI _speakerNameText;
-    
-    [Header("Text Animator")]
-    [SerializeField] private MonoBehaviour _typewriterComponent;
-    
-    public bool IsWaitingForChoice { get; private set; } = false;
-    public bool IsTyping { get; private set; } = false;
+    [SerializeField] private TextMeshProUGUI _dialogueText; 
 
-    private SpeakerData _currentSpeaker; 
+    [Header("기본 오디오 설정")]
+    [SerializeField] private AudioClip _defaultVoiceBlip;
+    [SerializeField] private float _defaultPitch = 1f;
+
+    public bool IsTyping { get; private set; } = false;
+    public bool IsWaitingForChoice { get; private set; } = false;
+
+    private void Awake()
+    {   
+        if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
+    }
 
     public void OpenPanel()
     {
         gameObject.SetActive(true);
-        _canvasGroup.alpha = 0f;
-        _canvasGroup.DOFade(1f, 0.2f);
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.DOKill();
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.DOFade(1f, 0.2f).SetUpdate(true);
+        }
     }
 
     public void ClosePanel()
     {
-        _canvasGroup.DOFade(0f, 0.2f).OnComplete(() => gameObject.SetActive(false));
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.DOFade(0f, 0.2f).OnComplete(() => gameObject.SetActive(false));
+        }
+        else gameObject.SetActive(false);
     }
 
     public void DisplayNode(SpeakerData speaker, EmotionType emotion, string text)
     {
-        IsWaitingForChoice = false;
         IsTyping = true;
-        _currentSpeaker = speaker; 
+        IsWaitingForChoice = false;
 
-        // 🚨 이름 텍스트가 연결되어 있을 때만 처리 (시네마틱은 무시됨)
+        // 1. 이름 및 초상화 세팅
         if (_speakerNameText != null) 
-        {
-            _speakerNameText.text = speaker != null ? speaker.DisplayName : "";
-        }
-            
-        // 🚨 초상화 이미지가 연결되어 있을 때만 처리
+            _speakerNameText.text = (speaker != null) ? speaker.DisplayName : "???";
+
         if (_portraitImage != null)
         {
-            Sprite portrait = speaker?.GetPortrait(emotion);
-            if (portrait != null && emotion != EmotionType.None)
+            if (speaker != null)
             {
-                _portraitImage.sprite = portrait;
-                _portraitImage.gameObject.SetActive(true);
+                Sprite spr = speaker.GetPortrait(emotion);
+                _portraitImage.sprite = spr;
+                _portraitImage.gameObject.SetActive(spr != null);
             }
-            else
+            else _portraitImage.gameObject.SetActive(false);
+        }
+
+        // 2. 🚨 사운드 교체 (ShowText 호출 전에 수행)
+        if (_soundWriter != null)
+        {
+            AudioClip voice = (speaker != null && speaker.VoiceBlipSound != null) ? speaker.VoiceBlipSound : _defaultVoiceBlip;
+            _soundWriter.sounds = new AudioClip[] { voice };
+            if (_soundWriter.source != null)
             {
-                _portraitImage.gameObject.SetActive(false);
+                _soundWriter.source.pitch = (speaker != null) ? speaker.VoicePitch : _defaultPitch;
             }
         }
 
-        if (_typewriterComponent != null)
+        // 3. 🚨 텍스트 출력
+        if (_typewriter != null)
         {
-            _typewriterComponent.SendMessage("ShowText", text, SendMessageOptions.DontRequireReceiver);
+            _typewriter.ShowText(text);
+        }
+        else if (_dialogueText != null)
+        {
+            _dialogueText.text = text;
+            IsTyping = false;
         }
     }
 
     public void SkipTyping()
     {
-        if (_typewriterComponent != null)
-            _typewriterComponent.SendMessage("SkipTypewriter", SendMessageOptions.DontRequireReceiver);
-    }
-
-    public void OnTypingCompleted() { IsTyping = false; }
-
-    public void PlayVoiceBlip(char c)
-    {
-        if (_currentSpeaker == null || _currentSpeaker.VoiceBlipSound == null) return;
-        if (!char.IsWhiteSpace(c) && Camera.main != null)
+        if (IsTyping && _typewriter != null)
         {
-            AudioSource.PlayClipAtPoint(_currentSpeaker.VoiceBlipSound, Camera.main.transform.position, 0.6f);
+            _typewriter.SkipTypewriter();
+            IsTyping = false; // 즉시 다음 노드로 넘어갈 수 있게 함
         }
     }
 
-    public void ShowChoices(System.Collections.Generic.List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
+    // 🚨 외부(Text Animator)에서 호출할 수 있는 이벤트 함수 (기존 세팅 유지용)
+    public void OnTypingCompleted() { IsTyping = false; }
+
+    public void ShowChoices(List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
     {
         IsWaitingForChoice = true;
         StartCoroutine(TempChoiceRoutine(choices, onSelected));
     }
 
-    private System.Collections.IEnumerator TempChoiceRoutine(System.Collections.Generic.List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
+    private IEnumerator TempChoiceRoutine(List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
     {
-        // ... (기존과 동일한 Z/X/C 키 선택지 로직) ...
         yield return new WaitForSeconds(0.1f);
         while (IsWaitingForChoice)
         {
@@ -102,4 +127,5 @@ public class DialogueUI : MonoBehaviour
             yield return null;
         }
     }
+    
 }

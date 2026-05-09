@@ -958,6 +958,9 @@ MonoBehaviour:
   _firstSelectButton: {fileID: 1812428436}
   _btnContinue: {fileID: 305896311}
   _newGameSceneName: 01_IntroScene
+  _titleBGM: {fileID: 0}
+  _moveSFX: {fileID: 8300000, guid: 0a45a726cc88a40498016a49d4d30f7a, type: 3}
+  _confirmSFX: {fileID: 8300000, guid: cbf6130492351bb4fa5a895237386a37, type: 3}
 --- !u!1 &654772962
 GameObject:
   m_ObjectHideFlags: 0
@@ -1396,7 +1399,6 @@ GameObject:
   - component: {fileID: 1177524351}
   - component: {fileID: 1177524350}
   - component: {fileID: 1177524349}
-  - component: {fileID: 1177524348}
   m_Layer: 0
   m_Name: PPC
   m_TagString: MainCamera
@@ -1419,14 +1421,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 158459462}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!81 &1177524348
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1177524346}
-  m_Enabled: 1
 --- !u!114 &1177524349
 MonoBehaviour:
   m_ObjectHideFlags: 0

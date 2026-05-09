@@ -31,7 +31,7 @@ public class EnemyData : SerializedScriptableObject
     [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int DEF = 3;
     [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int SPD = 8;
 
-    // ── 🚨 추가됨: 델타룬식 행동(ACT) 시스템 ──
+    // ── 🚨 추가됨: 행동(ACT) 시스템 ──
     [BoxGroup("Deltarune Mercy System")]
     [InfoBox("이 적에게 취할 수 있는 '행동' 리스트입니다. 자비(Mercy)가 1.0(100%)이 되면 Spare가 가능해집니다.")]
     [ListDrawerSettings(ShowIndexLabels = true)]

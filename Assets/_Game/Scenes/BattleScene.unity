@@ -1766,7 +1766,6 @@ GameObject:
   - component: {fileID: 538805795}
   - component: {fileID: 538805794}
   - component: {fileID: 538805793}
-  - component: {fileID: 538805797}
   m_Layer: 0
   m_Name: PPC
   m_TagString: MainCamera
@@ -1940,14 +1939,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &538805797
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 538805791}
-  m_Enabled: 1
 --- !u!1 &550462379
 GameObject:
   m_ObjectHideFlags: 0

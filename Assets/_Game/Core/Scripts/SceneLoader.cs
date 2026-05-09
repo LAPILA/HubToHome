@@ -31,7 +31,7 @@ public class SceneLoader : MonoBehaviour
 
     public void LoadBattleScene(string sceneName)
     {
-        // 델타룬 스타일: 전투 진입 시 하얗게 번쩍임!
+        // 스타일: 전투 진입 시 하얗게 번쩍임!
         StartCoroutine(FadeAndLoad(sceneName, 0.1f, Color.white, isFlash: true));
     }
 

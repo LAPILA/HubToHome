@@ -11,14 +11,14 @@ public class GlobalDataManager : MonoBehaviour
 
     #region [ Runtime Data ]
     // 🚨 인트로에서 설정한 플레이어의 이름이 저장되는 곳!
-    public string PlayerName { get; set; } = "Hero"; 
+    public string PlayerName { get; set; } = "Rapley"; 
 
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
     
-    // 🚨 델타룬 스타일 다중 파티 시스템 
+    // 🚨 다중 파티 시스템 
     public List<CharacterSaveData> Party { get; private set; } = new List<CharacterSaveData>();
     #endregion
 

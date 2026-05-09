@@ -6,11 +6,19 @@ using System.Collections.Generic;
 public class SpeakerData : ScriptableObject
 {
     [BoxGroup("기본 정보")] public string SpeakerID;
-    [BoxGroup("기본 정보")] public string DisplayName; // "로컬라이제이션 키"를 넣어도 됨
+    public string DisplayName;
     
-    [BoxGroup("텍스트 사운드")] 
-    [Tooltip("텍스트가 타이핑될 때 출력될 뚜루루루 사운드")]
-    public AudioClip VoiceBlipSound; 
+    [Header("Audio Settings")]
+    public AudioClip[] VoiceSounds;
+    [Range(0.5f, 1.5f)] public float MinPitch = 0.95f;
+    [Range(0.5f, 1.5f)] public float MaxPitch = 1.05f;
+    
+    [Header("오디오")]
+    [Tooltip("이 캐릭터가 말할 때 날 소리 (비워두면 기본 소리 재생)")]
+    public AudioClip VoiceBlipSound;
+
+    [Tooltip("소리 높낮이 조절")]
+    public float VoicePitch = 1.0f;
 
     [BoxGroup("초상화 (표정별)")]
     [DictionaryDrawerSettings(KeyLabel = "표정 (Emotion)", ValueLabel = "이미지")]

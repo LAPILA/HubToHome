@@ -13,12 +13,12 @@ public enum BattleState
 }
 
 /// <summary>
-/// 플레이어 메인 커맨드 (델타룬 UI 매핑용)
+/// 플레이어 메인 커맨드 (UI 매핑용)
 /// </summary>
 public enum PlayerMenuAction
 {
     Attack,
-    Act,     // 🚨 [추가됨] 델타룬의 핵심! (적에게 말걸기, 자비 베풀기 등)
+    Act,     // 🚨 [추가됨] (적에게 말걸기 등)
     Skill,   // 마법/특수기 (TP/MP 소모)
     Item,
     Defend,  // 🚨 [추가됨] 방어 (받는 피해 절반 감소 + TP 회복)
@@ -44,5 +44,5 @@ public enum EnemyAttackType
     MeleeClose,     // 근거리 단일 (적이 코앞까지 와서 공격, 타이밍 가드 필요)
     RangedAoE,      // 원거리/장판 (위치 지정 공격, 방향키로 범위 밖으로 피해야 함)
     AoEAll,         // 전체 공격 (회피 불가, 패링이나 방어만 가능)
-    BulletHell      // 🚨 [추가됨] 델타룬/언더테일식 네모 박스 안에서 탄막 피하기 미니게임 페이즈
+    BulletHell  
 }

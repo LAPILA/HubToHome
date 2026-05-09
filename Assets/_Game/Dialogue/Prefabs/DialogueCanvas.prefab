@@ -442,9 +442,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DialogueUI
   _canvasGroup: {fileID: 7947173928697179042}
+  _soundWriter: {fileID: 8514503251752690276}
   _portraitImage: {fileID: 0}
   _speakerNameText: {fileID: 0}
-  _typewriterComponent: {fileID: 1611557340164344866}
+  _dialogueText: {fileID: 1611557340164344866}
+  _defaultVoiceBlip: {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}
+  _defaultPitch: 1
 --- !u!1 &4667468174439544898
 GameObject:
   m_ObjectHideFlags: 0
@@ -595,6 +598,7 @@ GameObject:
   - component: {fileID: 1611557340164344866}
   - component: {fileID: 4668929848213701413}
   - component: {fileID: 5073860237215295411}
+  - component: {fileID: 8514503251752690276}
   m_Layer: 5
   m_Name: DialogueText
   m_TagString: Untagged
@@ -810,6 +814,24 @@ MonoBehaviour:
   animationLoop: 0
   databaseEffects: {fileID: 11400000, guid: 97da1bdf566b589458494ef757ccb8bb, type: 2}
   styleSheet: {fileID: 11400000, guid: ba192cc0c25e54f2faf6411514bfe0b7, type: 2}
+--- !u!114 &8514503251752690276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4782054655992209813}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d68c28ce7b16334a80fe39389408715, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Febucci.TextAnimator.TypewriterSounds.Runtime::Febucci.UI.Examples.TAnimSoundWriter
+  source: {fileID: 5718568954720967980}
+  minSoundDelay: 0.09
+  interruptPreviousSound: 1
+  randomSequence: 1
+  sounds:
+  - {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}
 --- !u!1 &5466818170889436708
 GameObject:
   m_ObjectHideFlags: 0
@@ -1212,9 +1234,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DialogueUI
   _canvasGroup: {fileID: 8891450075690245520}
+  _soundWriter: {fileID: 1108945610417301615}
   _portraitImage: {fileID: 7680536851154568938}
   _speakerNameText: {fileID: 6308702454413105283}
-  _typewriterComponent: {fileID: 6834743147808217499}
+  _dialogueText: {fileID: 6834743147808217499}
+  _defaultVoiceBlip: {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}
+  _defaultPitch: 1
 --- !u!1 &7582505938803683177
 GameObject:
   m_ObjectHideFlags: 0
@@ -1227,6 +1252,7 @@ GameObject:
   - component: {fileID: 4376838518629126696}
   - component: {fileID: 3184220686571562415}
   - component: {fileID: 3232409430675486561}
+  - component: {fileID: 5718568954720967980}
   m_Layer: 5
   m_Name: DialogueCanvas
   m_TagString: Untagged
@@ -1319,6 +1345,103 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 247
+--- !u!82 &5718568954720967980
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7582505938803683177}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: -5459790232518098753, guid: 7e29a96a46a831d4f93fe5590c0fd600, type: 2}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &8757311659199524407
 GameObject:
   m_ObjectHideFlags: 0
@@ -1384,6 +1507,7 @@ GameObject:
   - component: {fileID: 6834743147808217499}
   - component: {fileID: 6407109161996391538}
   - component: {fileID: 323176604711403243}
+  - component: {fileID: 1108945610417301615}
   m_Layer: 5
   m_Name: DialogueText
   m_TagString: Untagged
@@ -1599,3 +1723,21 @@ MonoBehaviour:
   animationLoop: 0
   databaseEffects: {fileID: 11400000, guid: 97da1bdf566b589458494ef757ccb8bb, type: 2}
   styleSheet: {fileID: 11400000, guid: ba192cc0c25e54f2faf6411514bfe0b7, type: 2}
+--- !u!114 &1108945610417301615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9103392865196062853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d68c28ce7b16334a80fe39389408715, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Febucci.TextAnimator.TypewriterSounds.Runtime::Febucci.UI.Examples.TAnimSoundWriter
+  source: {fileID: 5718568954720967980}
+  minSoundDelay: 0.09
+  interruptPreviousSound: 1
+  randomSequence: 1
+  sounds:
+  - {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}

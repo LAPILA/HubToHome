@@ -9,11 +9,13 @@ public class DialogueManager : MonoBehaviour
     [Header("UI 패널 참조")]
     [SerializeField] private DialogueUI _overworldPanel; 
     [SerializeField] private DialogueUI _cinematicPanel; 
+    [SerializeField] private NameInputUI _nameInputUI; // 🚨 인스펙터에서 꼭 연결
 
-    private DialogueUI _activeUI; // 현재 활성화된 패널
+    private DialogueUI _activeUI; 
     private DialogueData _currentDialogue;
     private int _currentNodeIndex;
     private bool _isPlaying = false;
+    private bool _isNaming = false;
     private Action _onCompleteCallback;
 
     private void Awake() 
@@ -33,8 +35,9 @@ public class DialogueManager : MonoBehaviour
         _currentNodeIndex = 0;
         _onCompleteCallback = onComplete;
 
-        // 🚨 데이터의 스타일(오버월드/시네마틱)에 따라 사용할 패널 결정
         _activeUI = (data.Style == DialogueStyle.Cinematic) ? _cinematicPanel : _overworldPanel;
+
+        if (_activeUI == null) { _isPlaying = false; return; }
 
         GameStateManager.Instance?.ChangeState(GameState.Dialogue); 
         _activeUI.OpenPanel();
@@ -44,7 +47,8 @@ public class DialogueManager : MonoBehaviour
 
     private void Update()
     {
-        if (!_isPlaying || _activeUI == null || Keyboard.current == null) return;
+        // 🚨 이름 입력 중이거나 재생 중이 아니면 무시
+        if (!_isPlaying || _isNaming || _activeUI == null || Keyboard.current == null) return;
 
         bool isConfirmPressed = Keyboard.current.zKey.wasPressedThisFrame || 
                                 Keyboard.current.spaceKey.wasPressedThisFrame || 
@@ -56,23 +60,54 @@ public class DialogueManager : MonoBehaviour
             else if (!_activeUI.IsWaitingForChoice) NextNode(); 
         }
     }
+
     private void PlayNode(DialogueNode node)
     {
+        if (node == null) return;
+
+        // 🚨 1. 이름 입력 이벤트 체크
+        if (node.EventTriggerID == "RequestName")
+        {
+            StartNamingProcess();
+            return;
+        }
+
         if (!string.IsNullOrEmpty(node.EventTriggerID)) EventManager.Trigger(node.EventTriggerID);
 
-        // 🚨 핵심: LocalizationKey가 있으면 엑셀에서 가져오고, 없으면 인스펙터의 DefaultText를 사용
-        string rawText = LocalizationManager.Instance.GetText(node.LocalizationKey, node.DefaultText);
+        string rawText = (LocalizationManager.Instance != null) ? LocalizationManager.Instance.GetText(node.LocalizationKey, node.DefaultText) : node.DefaultText;
+        string playerName = (GlobalDataManager.Instance != null) ? GlobalDataManager.Instance.PlayerName : "Rapley";
         
-        // 🚨 이름 치환: {0}이 포함된 텍스트라면 플레이어 이름으로 바꿔줌
-        string finalText = string.Format(rawText, GlobalDataManager.Instance?.PlayerName ?? "Hero");
+        string finalText = rawText;
+        try { finalText = string.Format(rawText, playerName); } catch { finalText = rawText; }
 
         _activeUI.DisplayNode(node.Speaker, node.Emotion, finalText);
 
-        if (node.IsChoiceNode && node.Choices.Count > 0)
+        if (node.IsChoiceNode && node.Choices != null && node.Choices.Count > 0)
         {
-            _activeUI.ShowChoices(node.Choices, OnChoiceSelected);
+            //_activeUI.ShowChoices(node.Choices, OnChoiceSelected);
         }
     }
+
+    private void StartNamingProcess()
+    {
+        if (_nameInputUI == null)
+        {
+            Debug.LogError("NameInputUI가 매니저에 없습니다!");
+            NextNode();
+            return;
+        }
+
+        _isNaming = true;
+        _activeUI.ClosePanel();
+
+        _nameInputUI.Open((newName) => {
+            if (GlobalDataManager.Instance != null) GlobalDataManager.Instance.PlayerName = newName;
+            _isNaming = false;
+            _activeUI.OpenPanel();
+            NextNode(); // 이름 입력 후 다음 대사로
+        });
+    }
+
     private void NextNode()
     {
         _currentNodeIndex++;
@@ -80,23 +115,15 @@ public class DialogueManager : MonoBehaviour
         else EndDialogue();
     }
 
-    private void OnChoiceSelected(ChoiceData choice)
-    {
-        if (!string.IsNullOrEmpty(choice.SetFlagOnSelect)) GameFlagManager.Instance?.SetFlag(choice.SetFlagOnSelect);
-
-        if (choice.NextDialogue != null) StartDialogue(choice.NextDialogue, _onCompleteCallback);
-        else EndDialogue();
-    }
-
     public void EndDialogue()
     {
         _isPlaying = false;
-        if (_activeUI != null) _activeUI.ClosePanel(); // 사용했던 패널 닫기
+        if (_activeUI != null) _activeUI.ClosePanel(); 
         
         GameStateManager.Instance?.ChangeState(GameState.Exploration); 
         
-        _onCompleteCallback?.Invoke();
+        var cb = _onCompleteCallback;
         _onCompleteCallback = null;
-        _activeUI = null;
+        cb?.Invoke(); // 🚨 인트로 매니저의 OnNameConfirmed 등이 여기서 실행됨
     }
 }

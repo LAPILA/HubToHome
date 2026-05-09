@@ -1,4 +1,4 @@
 ﻿Key,KR,EN,JP,CN
-Intro_001,...들리는가?,...Can you hear me?,…聞こえるか？,…你听得见吗？
-Intro_002,네 이름은 <color=#FF0000>「{0}」이군.,Your name is <color=#FF0000>'{0}'.,君の名は<color=#FF0000>「{0}」だな。,你的名字是<color=#FF0000>“{0}”啊。
+Intro_001,<fade><wave>...들리는가?</wave></fade>\n<size=80%><color=#888888>정신을 차려라.</color></size>,...Can you hear me?,…聞こえるか？,…你听得见吗？
+Intro_002,<shake>네 이름은</shake> <color=#FF5555><b>「{0}」</b></color>이군.\n<rainb>운명이 움직이기 시작했다.</rainb>,Your name is <color=#FF0000>'{0}'.,君の名は<color=#FF0000>「{0}」だな。,你的名字是<color=#FF0000>“{0}”啊。
 Choice_Yes,예,Yes,はい,是
