@@ -56,12 +56,15 @@ public class DialogueManager : MonoBehaviour
             else if (!_activeUI.IsWaitingForChoice) NextNode(); 
         }
     }
-
     private void PlayNode(DialogueNode node)
     {
         if (!string.IsNullOrEmpty(node.EventTriggerID)) EventManager.Trigger(node.EventTriggerID);
 
-        string finalText = string.IsNullOrEmpty(node.LocalizationKey) ? node.DefaultText : node.DefaultText; 
+        // 🚨 핵심: LocalizationKey가 있으면 엑셀에서 가져오고, 없으면 인스펙터의 DefaultText를 사용
+        string rawText = LocalizationManager.Instance.GetText(node.LocalizationKey, node.DefaultText);
+        
+        // 🚨 이름 치환: {0}이 포함된 텍스트라면 플레이어 이름으로 바꿔줌
+        string finalText = string.Format(rawText, GlobalDataManager.Instance?.PlayerName ?? "Hero");
 
         _activeUI.DisplayNode(node.Speaker, node.Emotion, finalText);
 
@@ -70,7 +73,6 @@ public class DialogueManager : MonoBehaviour
             _activeUI.ShowChoices(node.Choices, OnChoiceSelected);
         }
     }
-
     private void NextNode()
     {
         _currentNodeIndex++;

@@ -13,16 +13,22 @@ public class InteractionSystem : MonoBehaviour
     [SerializeField] private float   _boxDistance  = 0.6f;
     [SerializeField] private LayerMask _interactLayer;
 
-    private IInteractable _currentTarget; // 현재 바라보고 있는 대상
-    private readonly Collider2D[] _hitResults = new Collider2D[1]; // NonAlloc 전용 캐시 배열
+    private IInteractable _currentTarget; 
+    private readonly Collider2D[] _hitResults = new Collider2D[1]; 
+    
+    private ContactFilter2D _contactFilter;
 
-    // 방향 벡터 매핑 (0=Down 1=Up 2=Left 3=Right)
     private static readonly Vector2[] _directionVectors = { Vector2.down, Vector2.up, Vector2.left, Vector2.right };
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+
+        _contactFilter = new ContactFilter2D();
+        _contactFilter.useLayerMask = true;
+        _contactFilter.layerMask = _interactLayer;
+        _contactFilter.useTriggers = true; // 트리거 콜라이더도 감지하도록 설정
     }
 
     private void Update()
@@ -38,14 +44,13 @@ public class InteractionSystem : MonoBehaviour
 
     private void DetectInteractable()
     {
-        var player = FindFirstObjectByType<PlayerController>(); // (실제로는 PlayerController에서 참조를 넘겨주는게 더 좋음)
+        var player = FindFirstObjectByType<PlayerController>(); 
         if (player == null) return;
 
         Vector2 dir = _directionVectors[player.FacingDirection];
         Vector2 origin = (Vector2)player.transform.position + dir * _boxDistance;
 
-        // 🚨 최적화: 메모리 할당 없이 1개만 찾음
-        int hitCount = Physics2D.OverlapBoxNonAlloc(origin, _boxSize, 0f, _hitResults, _interactLayer);
+        int hitCount = Physics2D.OverlapBox(origin, _boxSize, 0f, _contactFilter, _hitResults);
 
         if (hitCount > 0)
         {

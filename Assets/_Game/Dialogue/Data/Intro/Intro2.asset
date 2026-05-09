@@ -16,7 +16,7 @@ MonoBehaviour:
   Nodes:
   - Speaker: {fileID: 0}
     Emotion: 0
-    LocalizationKey: 
+    LocalizationKey: Intro_002
     DefaultText: "\uC5B4\uCA4C\uAD6C \uC800\uCA4C\uAD6C... \uB108\uC758 \uC774\uB984\uC740?"
     EventTriggerID: 
     IsChoiceNode: 0

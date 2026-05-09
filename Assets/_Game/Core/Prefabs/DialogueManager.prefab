@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 850763524044948060}
   - component: {fileID: 350515374738598818}
+  - component: {fileID: 8294368602951851403}
   m_Layer: 0
   m_Name: DialogueManager
   m_TagString: Untagged
@@ -47,6 +48,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueManager
   _overworldPanel: {fileID: 3675069216865015921}
   _cinematicPanel: {fileID: 3530719157885178279}
+--- !u!114 &8294368602951851403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2339700292175982952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f34146df927ede84db34489247cb45f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizationManager
 --- !u!1001 &3760311007695708655
 PrefabInstance:
   m_ObjectHideFlags: 0

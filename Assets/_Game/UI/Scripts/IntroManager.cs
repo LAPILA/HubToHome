@@ -37,6 +37,17 @@ public class IntroManager : MonoBehaviour
         });
     }
 
+    private void Update()
+    {
+        var kb = UnityEngine.InputSystem.Keyboard.current;
+        if (kb == null) return;
+
+        // 숫자키 1,2,3,4를 누르면 언어가 즉시 바뀝니다!
+        if (kb.digit1Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.KR);
+        if (kb.digit2Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.EN);
+        if (kb.digit3Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.JP);
+        if (kb.digit4Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.CN);
+    }
     private void OnNameConfirmed(string playerName)
     {
         Debug.Log($"입력된 이름: {playerName}");
