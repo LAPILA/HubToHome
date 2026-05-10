@@ -43,3 +43,19 @@ public class ItemMenuEntry : IMenuEntry
         Count = count;
     }
 }
+
+public class EmptyMenuEntry : IMenuEntry
+{
+    private readonly string _displayName;
+    private readonly string _description;
+
+    public string DisplayName => _displayName;
+    public string Description => _description;
+    public Sprite Icon => null;
+
+    public EmptyMenuEntry(string displayName, string description)
+    {
+        _displayName = displayName;
+        _description = description;
+    }
+}

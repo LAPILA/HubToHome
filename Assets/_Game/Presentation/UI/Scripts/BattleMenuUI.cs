@@ -175,7 +175,8 @@ public class BattleMenuUI : UIPanel
             if (act != null) entries.Add(new SkillMenuEntry(act));
         }
 
-        if (entries.Count == 0) return;
+        if (entries.Count == 0)
+            entries.Add(new EmptyMenuEntry("NO ACT", "등록된 ACT/스킬이 없습니다."));
 
         _inputEnabled = false; 
         SlideMenuUp();
@@ -188,7 +189,8 @@ public class BattleMenuUI : UIPanel
         // 추후 GlobalDataManager.Instance.GetInventory() 연동
         foreach (var i in _exampleItems) if (i != null) entries.Add(new ItemMenuEntry(i, 1));
 
-        if (entries.Count == 0) return;
+        if (entries.Count == 0)
+            entries.Add(new EmptyMenuEntry("NO ITEM", "사용 가능한 아이템이 없습니다."));
 
         _inputEnabled = false; 
         SlideMenuUp();
@@ -198,6 +200,14 @@ public class BattleMenuUI : UIPanel
     private void OnActSelected(IMenuEntry entry)
     {
         SlideMenuDown();
+        if (entry is EmptyMenuEntry)
+        {
+            DOVirtual.DelayedCall(_menuSlideDuration, () => {
+                _inputEnabled = true;
+                HighlightButton(_selectedIndex);
+            });
+            return;
+        }
         if (entry is SkillMenuEntry skillEntry)
             BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Act, skillEntry.Data, null);
     }
@@ -205,6 +215,14 @@ public class BattleMenuUI : UIPanel
     private void OnItemSelected(IMenuEntry entry)
     {
         SlideMenuDown();
+        if (entry is EmptyMenuEntry)
+        {
+            DOVirtual.DelayedCall(_menuSlideDuration, () => {
+                _inputEnabled = true;
+                HighlightButton(_selectedIndex);
+            });
+            return;
+        }
         if (entry is ItemMenuEntry itemEntry)
             BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Item, null, itemEntry.Data);
     }

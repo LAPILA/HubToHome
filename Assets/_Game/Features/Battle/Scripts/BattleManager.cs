@@ -50,6 +50,8 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private bool _isDedicatedBattleScene = false;
     [Tooltip("전투 종료 후 돌아갈 씬이 없을 경우 이동할 기본 씬")]
     [SerializeField] private string _fallbackSceneName = "LobbyScene";
+    [SerializeField] private float _postRunEnemyDisableDuration = 3f;
+    [SerializeField] private float _postRunEnemyAlpha = 0.5f;
     
     [SerializeField] private GameObject _battleUICanvas;
     [SerializeField] private GameObject _enemyBasePrefab;
@@ -116,6 +118,9 @@ public class BattleManager : MonoBehaviour
     {
         Debug.Log("<color=cyan>[BattleManager] 심리스 전투 연출 시작!</color>");
 
+        if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.PendingBattleBGM != null)
+            AudioManager.Instance?.CrossFadeBGM(GlobalDataManager.Instance.PendingBattleBGM, 0.8f);
+
         if (_battleUICanvas != null) _battleUICanvas.SetActive(true);
 
         _playerParty.Clear();
@@ -152,7 +157,12 @@ public class BattleManager : MonoBehaviour
                 
                 if (enemyChar != null)
                 {
+                    var overworldEnemy = enemyObj.GetComponent<OverworldEnemy>();
+                    if (overworldEnemy != null) overworldEnemy.DisableForBattleInstance();
                     enemyChar.Setup(encounterEnemies[i]);
+                    enemyChar.SetBattleMode(true);
+                    enemyChar.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+                    StartCoroutine(enemyChar.ForceEnterBattleIdleRoutine());
                     _enemies.Add(enemyChar);
                 }
             }
@@ -200,6 +210,9 @@ public class BattleManager : MonoBehaviour
 
         var global = GlobalDataManager.Instance;
         var pm = PositionManager.Instance;
+
+        if (global != null && global.PendingBattleBGM != null)
+            AudioManager.Instance?.CrossFadeBGM(global.PendingBattleBGM, 0.8f);
 
         var existingPlayers = FindObjectsByType<PlayerCharacter>(FindObjectsSortMode.None);
         foreach (var p in existingPlayers)
@@ -262,7 +275,12 @@ public class BattleManager : MonoBehaviour
                     GameObject enemyObj = Instantiate(_enemyBasePrefab, spawnPos, Quaternion.identity);
                     if (enemyObj.TryGetComponent(out EnemyCharacter enemyChar))
                     {
+                        var overworldEnemy = enemyObj.GetComponent<OverworldEnemy>();
+                        if (overworldEnemy != null) overworldEnemy.DisableForBattleInstance();
                         enemyChar.Setup(global.PendingEnemies[i]);
+                        enemyChar.SetBattleMode(true);
+                        enemyChar.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+                        StartCoroutine(enemyChar.ForceEnterBattleIdleRoutine());
                         _enemies.Add(enemyChar);
                     }
                 }
@@ -689,19 +707,47 @@ public class BattleManager : MonoBehaviour
     private IEnumerator RunRoutine()
     {
         Debug.Log("무사히 도망쳤다!");
+        CommitOverworldEncounterResult(false);
         yield return StartCoroutine(BattleOutroRoutine(false));
     }
 
     private IEnumerator BattleEndRoutine()
     {
+        CommitOverworldEncounterResult(CheckVictory());
         yield return _waitMedium;
         yield return StartCoroutine(BattleOutroRoutine(CheckVictory()));
+    }
+
+    private void CommitOverworldEncounterResult(bool isVictory)
+    {
+        var global = GlobalDataManager.Instance;
+        if (global == null) return;
+
+        string enemyId = global.CurrentEncounterEnemyId;
+        if (!string.IsNullOrWhiteSpace(enemyId))
+        {
+            string sceneName = global.LastOverworldScene;
+
+            if (isVictory)
+            {
+                if (global.CurrentEncounterDefeatsOnVictory)
+                    global.MarkOverworldEnemyDefeated(enemyId, sceneName);
+                else
+                    global.ClearOverworldEnemyCooldown(enemyId);
+            }
+            else
+            {
+                global.MarkOverworldEnemyEscaped(enemyId, sceneName, _postRunEnemyDisableDuration, _postRunEnemyAlpha);
+            }
+        }
     }
 
     private IEnumerator BattleOutroRoutine(bool isVictory)
     {
         Time.timeScale = 1.0f; // 슬로우 모션 방지
         OnBattleEnded?.Invoke(isVictory);
+
+        
         
         // UI 결과창이 충분히 렌더링될 수 있도록 Realtime 사용
         yield return new WaitForSecondsRealtime(2.5f); 
@@ -714,6 +760,7 @@ public class BattleManager : MonoBehaviour
         if (_isDedicatedBattleScene)
         {
             string returnScene = GlobalDataManager.Instance.LastOverworldScene;
+            GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
             SceneLoader.Instance?.LoadScene(!string.IsNullOrEmpty(returnScene) ? returnScene : _fallbackSceneName);
         }
         else
@@ -733,6 +780,7 @@ public class BattleManager : MonoBehaviour
                         anim.Rebind();      // 모든 상태 강제 초기화
                         anim.Update(0f);    // 즉시 반영
                     }
+
                 }
             }
 
@@ -743,6 +791,7 @@ public class BattleManager : MonoBehaviour
             _enemies.Clear();
             
             CameraController.Instance?.ResetCamera();
+            GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
             Debug.Log("[BattleManager] 심리스 전투 종료! 오버월드 Idle 복귀 완료.");
         }
     }

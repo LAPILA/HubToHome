@@ -958,7 +958,7 @@ MonoBehaviour:
   _firstSelectButton: {fileID: 1812428436}
   _btnContinue: {fileID: 305896311}
   _newGameSceneName: 01_IntroScene
-  _titleBGM: {fileID: 0}
+  _titleBGM: {fileID: 8300000, guid: 71e70314c58e28a43a4afa2fa3c4e100, type: 3}
   _moveSFX: {fileID: 8300000, guid: 0a45a726cc88a40498016a49d4d30f7a, type: 3}
   _confirmSFX: {fileID: 8300000, guid: cbf6130492351bb4fa5a895237386a37, type: 3}
   _configPanel: {fileID: 0}
@@ -1549,15 +1549,15 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0.125
+    x: 0.16666667
     y: 0
-    width: 0.75
+    width: 0.6666667
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 4.821429
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2

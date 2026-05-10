@@ -23,6 +23,10 @@ public class EnemyData : SerializedScriptableObject
     
     [BoxGroup("Identity")] public string EnemyName = "Enemy";
 
+    [BoxGroup("Audio")]
+    [Tooltip("이 적과 전투 시작 시 우선 재생할 전투 BGM입니다. 비워두면 맵 기본 전투 BGM을 사용합니다.")]
+    public AudioClip BattleBGM;
+
     [BoxGroup("Base Stats")] 
     [HorizontalGroup("Base Stats/R1", LabelWidth = 40)] public int MaxHP = 100;
     [HorizontalGroup("Base Stats/R1", LabelWidth = 40)] public int ATK = 8;

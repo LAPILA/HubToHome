@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using DG.Tweening;
 using Sirenix.OdinInspector;
@@ -41,6 +42,7 @@ public class PlayerController : MonoBehaviour
     private Animator       _anim;
     private CharacterVFX   _vfx;
     private SpriteRenderer _spriteRenderer;
+    private Collider2D[] _colliders;
     private Vector3        _originalLocalPos;
 
     private Animator Animator
@@ -82,6 +84,7 @@ public class PlayerController : MonoBehaviour
         _anim           = GetComponent<Animator>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _vfx            = GetComponent<CharacterVFX>();
+        _colliders      = GetComponents<Collider2D>();
 
         _originalLocalPos = transform.localPosition;
     }
@@ -90,6 +93,7 @@ public class PlayerController : MonoBehaviour
     {
         LoadPositionFromGlobal();
         UpdateAnimator(false);
+
     }
 
     private void Update()

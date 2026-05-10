@@ -368,15 +368,15 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0.125
+    x: 0.16666667
     y: 0
-    width: 0.75
+    width: 0.6666667
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 4.821429
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -574,6 +574,7 @@ GameObject:
   m_Component:
   - component: {fileID: 887417517}
   - component: {fileID: 887417518}
+  - component: {fileID: 887417519}
   m_Layer: 0
   m_Name: IntroManger
   m_TagString: Untagged
@@ -611,6 +612,20 @@ MonoBehaviour:
   _introPart1: {fileID: 11400000, guid: c00f1c328ca6ce74b84c7cc8a35dcd62, type: 2}
   _introPart2: {fileID: 11400000, guid: 2e8596f369924694d8ff917622f1924e, type: 2}
   _nextSceneName: OverworldScene
+--- !u!114 &887417519
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 887417516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c92989d3a40b9d94da998f07a07185de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MapSettings
+  _mapBGM: {fileID: 0}
+  _cameraBounds: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

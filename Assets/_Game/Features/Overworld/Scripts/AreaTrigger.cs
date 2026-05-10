@@ -36,6 +36,13 @@ public class AreaTrigger : MonoBehaviour
     [BoxGroup("Battle Encounter"), ShowIf("Type", TriggerType.BattleEncounter)]
     [Tooltip("승리 시 이 트리거(오버월드 적 오브젝트)를 파괴합니다.")]
     public bool DestroyOnVictory = true;
+    [BoxGroup("Battle Encounter")]
+    [Tooltip("적 조우 시 공통으로 재생할 SFX입니다.")]
+    public AudioClip EncounterSFX;
+    [BoxGroup("Battle Encounter")]
+    public float EncounterDelay = 0.08f;
+    [BoxGroup("Battle Encounter")]
+    public float BattleFadeDuration = 0.08f;
 
     private bool _isProcessing = false;
 
@@ -92,10 +99,13 @@ public class AreaTrigger : MonoBehaviour
                 HandleBattle(player);
                 break;
             case TriggerType.SceneBattleEncounter:
+                player.SetBattleMode(true);
+                AudioManager.Instance?.PlaySFX(EncounterSFX);
                 GlobalDataManager.Instance.LastOverworldScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                 GlobalDataManager.Instance.PendingEnemies = new List<EnemyData>(EncounterEnemies);
+                GlobalDataManager.Instance.PendingBattleBGM = ResolveBattleBGM(EncounterEnemies);
                 player.SavePositionToGlobal();
-                SceneLoader.Instance?.LoadScene("BattleScene"); 
+                StartCoroutine(LoadBattleSceneAfterDelay());
                 break;
         }
     }
@@ -103,10 +113,33 @@ public class AreaTrigger : MonoBehaviour
     private void HandleBattle(PlayerController player)
     {
         player.SetBattleMode(true);
+        AudioManager.Instance?.PlaySFX(EncounterSFX);
         if (BattleManager.Instance != null)
         {
+            GlobalDataManager.Instance.PendingBattleBGM = ResolveBattleBGM(EncounterEnemies);
             BattleManager.Instance.StartSeamlessBattle(EncounterEnemies, player); 
             if (DestroyOnVictory) Destroy(gameObject);
         }
+    }
+
+    private System.Collections.IEnumerator LoadBattleSceneAfterDelay()
+    {
+        if (EncounterDelay > 0f)
+            yield return new WaitForSecondsRealtime(EncounterDelay);
+        SceneLoader.Instance?.LoadScene("BattleScene", BattleFadeDuration);
+    }
+
+    private static AudioClip ResolveBattleBGM(List<EnemyData> enemies)
+    {
+        if (enemies != null)
+        {
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemies[i] != null && enemies[i].BattleBGM != null)
+                    return enemies[i].BattleBGM;
+            }
+        }
+
+        return MapSettings.CurrentDefaultBattleBGM;
     }
 }

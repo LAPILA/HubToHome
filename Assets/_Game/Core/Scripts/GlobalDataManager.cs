@@ -1,6 +1,16 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
+public class OverworldEnemyRuntimeState
+{
+    public string EnemyId;
+    public string SceneName;
+    public bool IsDefeated;
+    public float CooldownUntilUnscaledTime;
+    public float CooldownAlpha = 0.5f;
+}
+
 /// <summary>
 /// 씬 전환 시에도 데이터를 유지하는 전역 싱글톤 매니저.
 /// 세이브 데이터(SSOT)의 런타임 저장소 역할을 합니다.
@@ -15,8 +25,12 @@ public class GlobalDataManager : MonoBehaviour
 
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
+    private readonly Dictionary<string, OverworldEnemyRuntimeState> _overworldEnemyStates = new Dictionary<string, OverworldEnemyRuntimeState>();
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
+    public AudioClip PendingBattleBGM { get; set; }
+    public string CurrentEncounterEnemyId { get; private set; }
+    public bool CurrentEncounterDefeatsOnVictory { get; private set; }
     
     // 🚨 다중 파티 시스템 
     public List<CharacterSaveData> Party { get; private set; } = new List<CharacterSaveData>();
@@ -104,6 +118,90 @@ public class GlobalDataManager : MonoBehaviour
 
     public int GetItemCount(string itemID) => _inventoryDict.TryGetValue(itemID, out int count) ? count : 0;
     public IReadOnlyDictionary<string, int> GetInventory() => _inventoryDict;
+    #endregion
+
+    #region [ Overworld Enemy Runtime State ]
+    public void BeginOverworldEnemyEncounter(string enemyId, string sceneName, bool defeatsOnVictory)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId)) return;
+
+        CurrentEncounterEnemyId = enemyId;
+        CurrentEncounterDefeatsOnVictory = defeatsOnVictory;
+
+        var state = GetOrCreateOverworldEnemyState(enemyId, sceneName);
+        state.SceneName = sceneName;
+    }
+
+    public void EndOverworldEnemyEncounterContext()
+    {
+        CurrentEncounterEnemyId = null;
+        CurrentEncounterDefeatsOnVictory = false;
+    }
+
+    public OverworldEnemyRuntimeState GetOrCreateOverworldEnemyState(string enemyId, string sceneName = null)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId)) return null;
+
+        if (!_overworldEnemyStates.TryGetValue(enemyId, out var state) || state == null)
+        {
+            state = new OverworldEnemyRuntimeState
+            {
+                EnemyId = enemyId,
+                SceneName = sceneName ?? string.Empty,
+                CooldownAlpha = 0.5f
+            };
+            _overworldEnemyStates[enemyId] = state;
+        }
+
+        if (!string.IsNullOrWhiteSpace(sceneName))
+            state.SceneName = sceneName;
+
+        return state;
+    }
+
+    public bool TryGetOverworldEnemyState(string enemyId, out OverworldEnemyRuntimeState state)
+    {
+        if (string.IsNullOrWhiteSpace(enemyId))
+        {
+            state = null;
+            return false;
+        }
+
+        return _overworldEnemyStates.TryGetValue(enemyId, out state) && state != null;
+    }
+
+    public void MarkOverworldEnemyEscaped(string enemyId, string sceneName, float cooldownDuration, float cooldownAlpha)
+    {
+        var state = GetOrCreateOverworldEnemyState(enemyId, sceneName);
+        if (state == null) return;
+
+        state.SceneName = sceneName;
+        state.IsDefeated = false;
+        state.CooldownUntilUnscaledTime = Time.unscaledTime + Mathf.Max(0f, cooldownDuration);
+        state.CooldownAlpha = Mathf.Clamp01(cooldownAlpha);
+    }
+
+    public void MarkOverworldEnemyDefeated(string enemyId, string sceneName)
+    {
+        var state = GetOrCreateOverworldEnemyState(enemyId, sceneName);
+        if (state == null) return;
+
+        state.SceneName = sceneName;
+        state.IsDefeated = true;
+        state.CooldownUntilUnscaledTime = 0f;
+    }
+
+    public void ClearOverworldEnemyCooldown(string enemyId)
+    {
+        if (!TryGetOverworldEnemyState(enemyId, out var state)) return;
+        state.CooldownUntilUnscaledTime = 0f;
+    }
+
+    public float GetOverworldEnemyCooldownRemaining(string enemyId)
+    {
+        if (!TryGetOverworldEnemyState(enemyId, out var state)) return 0f;
+        return Mathf.Max(0f, state.CooldownUntilUnscaledTime - Time.unscaledTime);
+    }
     #endregion
 
     #region [ Save & Load ]

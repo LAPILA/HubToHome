@@ -48,9 +48,47 @@ public class AudioManager : MonoBehaviour
 
     public void CrossFadeBGM(AudioClip clip, float duration = 1f)
     {
-        if (clip == null || _activeBGM.clip == clip) return; // 🚨 이미 같은 곡이 재생 중이면 부드럽게 무시!
+        if (clip == null) return;
+
+        if (_activeBGM.clip == clip && _activeBGM.isPlaying)
+        {
+            _activeBGM.DOKill();
+            _activeBGM.volume = 1f;
+            return;
+        }
         
         StartCoroutine(CrossFadeRoutine(clip, duration));
+    }
+
+    public void RestartBGM(AudioClip clip, float fadeInDuration = 0.08f)
+    {
+        if (clip == null || _activeBGM == null) return;
+
+        _activeBGM.DOKill();
+        _inactiveBGM.DOKill();
+        StopAllCoroutines();
+
+        _activeBGM.Stop();
+        _activeBGM.clip = clip;
+        _activeBGM.loop = true;
+        _activeBGM.volume = 0f;
+        _activeBGM.Play();
+        _activeBGM.DOFade(1f, Mathf.Max(0.01f, fadeInDuration)).SetUpdate(true);
+    }
+
+    public void FadeOutBGM(float duration = 1f)
+    {
+        if (_activeBGM == null || !_activeBGM.isPlaying) return;
+
+        _activeBGM.DOKill();
+        _activeBGM.DOFade(0f, Mathf.Max(0.01f, duration))
+            .SetUpdate(true)
+            .OnComplete(() =>
+            {
+                _activeBGM.Stop();
+                _activeBGM.clip = null;
+                _activeBGM.volume = 1f;
+            });
     }
 
     private IEnumerator CrossFadeRoutine(AudioClip clip, float duration)
