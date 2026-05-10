@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.InputSystem;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 
@@ -143,20 +142,18 @@ public class BattleUIController : MonoBehaviour
     #region [ Targeting System ]
     private void HandleTargetingInput()
     {
-        if (!_isTargetingMode || Keyboard.current == null) return;
+        if (!_isTargetingMode) return;
 
-        var kb = Keyboard.current;
-
-        if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame)
+        if (GameInput.BattleLeftPressed)
             NavigateTarget(-1);
-        else if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame)
+        else if (GameInput.BattleRightPressed)
             NavigateTarget(1);
-        else if (kb.zKey.wasPressedThisFrame)
+        else if (GameInput.BattleConfirmPressed)
         {
             ExitTargetingMode();
             BattleManager.Instance.ConfirmTargetAndExecute(_selectedTargetIndex);
         }
-        else if (kb.xKey.wasPressedThisFrame)
+        else if (GameInput.BattleCancelPressed)
         {
             ExitTargetingMode();
             BattleManager.Instance.CancelActionSelection(); // 타겟팅 취소 시 

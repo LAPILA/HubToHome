@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class DialogueManager : MonoBehaviour
 {
@@ -48,11 +47,9 @@ public class DialogueManager : MonoBehaviour
     private void Update()
     {
         // 🚨 이름 입력 중이거나 재생 중이 아니면 무시
-        if (!_isPlaying || _isNaming || _activeUI == null || Keyboard.current == null) return;
+        if (!_isPlaying || _isNaming || _activeUI == null) return;
 
-        bool isConfirmPressed = Keyboard.current.zKey.wasPressedThisFrame || 
-                                Keyboard.current.spaceKey.wasPressedThisFrame || 
-                                Keyboard.current.enterKey.wasPressedThisFrame;
+        bool isConfirmPressed = GameInput.DialogueAdvancePressed;
 
         if (isConfirmPressed)
         {

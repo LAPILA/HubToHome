@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.InputSystem;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 
@@ -113,15 +112,12 @@ public class BattleMenuUI : UIPanel
     {
         if (!_inputEnabled || !IsVisible) return;
         if (_subMenu != null && _subMenu.IsActive) return;
-        if (Keyboard.current == null) return;
 
-        var kb = Keyboard.current;
-
-        if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame)
+        if (GameInput.BattleLeftPressed)
             Navigate(-1);
-        else if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame)
+        else if (GameInput.BattleRightPressed)
             Navigate(1);
-        else if (kb.zKey.wasPressedThisFrame)
+        else if (GameInput.BattleConfirmPressed)
             Confirm(_selectedIndex);
     }
 

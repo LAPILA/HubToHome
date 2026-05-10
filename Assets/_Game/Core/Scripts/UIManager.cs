@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// UI 패널 열기/닫기를 총괄하는 싱글톤 매니저.
@@ -34,9 +33,9 @@ public class UIManager : MonoBehaviour
     private void Update()
     {
         // 최상단 패널 자동 닫기 (ESC 또는 X키)
-        if (IsAnyPanelOpen && Keyboard.current != null)
+        if (IsAnyPanelOpen)
         {
-            if (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.xKey.wasPressedThisFrame)
+            if (GameInput.UICancelPressed)
             {
                 CloseTopPanel();
             }

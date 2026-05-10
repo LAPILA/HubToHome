@@ -89,6 +89,7 @@ public class LocalizationManager : MonoBehaviour
     public void ChangeLanguage(LanguageType newLang)
     {
         CurrentLanguage = newLang;
+        PlayerPrefs.SetInt("Config.Language", (int)newLang);
         Debug.Log($"언어 변경: {newLang}");
     }
 }

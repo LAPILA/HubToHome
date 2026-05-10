@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using DG.Tweening;
 using TMPro;
 
@@ -21,11 +20,16 @@ public class TitleMenuManager : MonoBehaviour
     [SerializeField] private AudioClip _moveSFX;
     [SerializeField] private AudioClip _confirmSFX;
 
+    [Header("Config")]
+    [SerializeField] private ConfigPanelUI _configPanel;
+
     private GameObject _lastSelected;
     private bool _isLocked = false;
 
     private void Awake()
     {
+        GameConfigManager.EnsureInstance();
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
@@ -39,6 +43,8 @@ public class TitleMenuManager : MonoBehaviour
 
     private void Start()
     {
+        EnsureConfigPanel();
+
         if (_titleBGM != null)
         {
             AudioManager.Instance?.CrossFadeBGM(_titleBGM, 1.0f);
@@ -54,6 +60,7 @@ public class TitleMenuManager : MonoBehaviour
     private void Update()
     {
         if (_isLocked || EventSystem.current == null) return;
+        if (_configPanel != null && _configPanel.IsVisible) return;
 
         if (EventSystem.current.currentSelectedGameObject == null && _lastSelected != null)
         {
@@ -68,7 +75,7 @@ public class TitleMenuManager : MonoBehaviour
             }
         }
 
-        if (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame)
+        if (GameInput.UISubmitPressed)
         {
             GameObject currentSelected = EventSystem.current.currentSelectedGameObject;
             if (currentSelected != null)
@@ -99,8 +106,27 @@ public class TitleMenuManager : MonoBehaviour
     public void OnClickSettings(TextMeshProUGUI buttonText)
     {
         ExecuteWithBlink(buttonText, () => {
-            _isLocked = false; 
+            OpenConfig();
         });
+    }
+
+    private void OpenConfig()
+    {
+        _isLocked = false;
+        EnsureConfigPanel();
+
+        if (_configPanel == null) return;
+
+        if (UIManager.Instance != null) UIManager.Instance.OpenPanel(_configPanel);
+        else _configPanel.Show();
+    }
+
+    private void EnsureConfigPanel()
+    {
+        if (_configPanel != null) return;
+
+        _configPanel = FindObjectOfType<ConfigPanelUI>(true);
+        if (_configPanel == null) _configPanel = ConfigPanelUI.CreateRuntime();
     }
 
     public void OnClickQuit(TextMeshProUGUI buttonText)

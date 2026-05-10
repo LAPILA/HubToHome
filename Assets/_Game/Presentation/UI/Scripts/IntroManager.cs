@@ -39,14 +39,10 @@ public class IntroManager : MonoBehaviour
 
     private void Update()
     {
-        var kb = UnityEngine.InputSystem.Keyboard.current;
-        if (kb == null) return;
-
-        // 숫자키 1,2,3,4를 누르면 언어가 즉시 바뀝니다!
-        if (kb.digit1Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.KR);
-        if (kb.digit2Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.EN);
-        if (kb.digit3Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.JP);
-        if (kb.digit4Key.wasPressedThisFrame) LocalizationManager.Instance.ChangeLanguage(LanguageType.CN);
+        if (GameInput.LanguageKRPressed) GameConfigManager.EnsureInstance().SetLanguage(LanguageType.KR);
+        if (GameInput.LanguageENPressed) GameConfigManager.EnsureInstance().SetLanguage(LanguageType.EN);
+        if (GameInput.LanguageJPPressed) GameConfigManager.EnsureInstance().SetLanguage(LanguageType.JP);
+        if (GameInput.LanguageCNPressed) GameConfigManager.EnsureInstance().SetLanguage(LanguageType.CN);
     }
     private void OnNameConfirmed(string playerName)
     {

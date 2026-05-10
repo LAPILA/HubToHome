@@ -22,6 +22,7 @@ public class AudioManager : MonoBehaviour
     private const string MixerBGM   = "BGMVolume";
     private const string MixerSFX   = "SFXVolume";
     private const string MixerVoice = "VoiceVolume";
+    private const string MixerMaster = "MasterVolume";
 
     private void Awake()
     {
@@ -112,12 +113,15 @@ public class AudioManager : MonoBehaviour
     _voiceSource.PlayOneShot(clip, volume);
 }
 
+    public void SetMasterVolume(float normalized) => SetMixerVolume(MixerMaster, normalized);
     public void SetBGMVolume(float normalized) => SetMixerVolume(MixerBGM, normalized);
     public void SetSFXVolume(float normalized) => SetMixerVolume(MixerSFX, normalized);
     public void SetVoiceVolume(float normalized) => SetMixerVolume(MixerVoice, normalized);
 
     private void SetMixerVolume(string param, float normalized)
     {
+        if (_mixer == null) return;
+
         float db = normalized > 0.0001f ? Mathf.Log10(normalized) * 20f : -80f;
         _mixer.SetFloat(param, db);
     }

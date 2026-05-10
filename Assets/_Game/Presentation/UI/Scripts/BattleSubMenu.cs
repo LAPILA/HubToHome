@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using DG.Tweening;
 using TMPro;
 
@@ -53,18 +52,16 @@ public class BattleSubMenu : MonoBehaviour
 
     private void Update()
     {
-        if (!IsActive || _isAnimating || Keyboard.current == null) return;
-
-        var kb = Keyboard.current;
+        if (!IsActive || _isAnimating) return;
 
         // 상하좌우 그리드 이동
-        if (kb.upArrowKey.wasPressedThisFrame || kb.wKey.wasPressedThisFrame) ChangeIndex(-2);        
-        else if (kb.downArrowKey.wasPressedThisFrame || kb.sKey.wasPressedThisFrame) ChangeIndex(2);  
-        else if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame) ChangeIndex(-1); 
-        else if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame) ChangeIndex(1); 
+        if (GameInput.BattleUpPressed) ChangeIndex(-2);
+        else if (GameInput.BattleDownPressed) ChangeIndex(2);
+        else if (GameInput.BattleLeftPressed) ChangeIndex(-1);
+        else if (GameInput.BattleRightPressed) ChangeIndex(1);
 
-        if (kb.zKey.wasPressedThisFrame) ConfirmSelection();
-        else if (kb.xKey.wasPressedThisFrame) Close();
+        if (GameInput.BattleConfirmPressed) ConfirmSelection();
+        else if (GameInput.BattleCancelPressed) Close();
     }
 
     public void Open(string title, List<IMenuEntry> entries, System.Action<IMenuEntry> onConfirm, System.Action onCancel)

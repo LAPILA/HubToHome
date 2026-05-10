@@ -1,6 +1,5 @@
 using UnityEngine;
 using TMPro;
-using UnityEngine.InputSystem;
 using UnityEngine.EventSystems; // 🚨 EventSystem 처리를 위해 필수
 using DG.Tweening;
 using System;
@@ -8,6 +7,9 @@ using System.Collections;
 
 public class NameInputUI : MonoBehaviour
 {
+    private const int MinNameLength = 2;
+    private const int MaxNameLength = 10;
+
     [Header("UI 참조")]
     [SerializeField] private TMP_InputField _inputField;
     [SerializeField] private TextMeshProUGUI _guideText;
@@ -24,6 +26,7 @@ public class NameInputUI : MonoBehaviour
     private void Awake()
     {
         if (_canvasGroup != null) _canvasGroup.alpha = 0;
+        if (_inputField != null) _inputField.characterLimit = MaxNameLength;
     }
 
     public void Open(Action<string> onComplete)
@@ -32,7 +35,11 @@ public class NameInputUI : MonoBehaviour
         _isOpen = true;
         gameObject.SetActive(true);
 
-        if (_inputField != null) _inputField.text = ""; // 이전 입력 초기화
+        if (_inputField != null)
+        {
+            _inputField.characterLimit = MaxNameLength;
+            _inputField.text = ""; // 이전 입력 초기화
+        }
         if (_canvasGroup != null) _canvasGroup.DOFade(1f, 0.5f);
         
         UpdateLanguage(0);
@@ -66,7 +73,7 @@ public class NameInputUI : MonoBehaviour
 
     private void Update()
     {
-        if (!_isOpen || Keyboard.current == null) return;
+        if (!_isOpen) return;
 
         // 🚨 지속적인 포커스 유지: 만약 포커스가 날아가면 강제로 다시 잡음
         if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != _inputField.gameObject)
@@ -74,21 +81,39 @@ public class NameInputUI : MonoBehaviour
             EventSystem.current.SetSelectedGameObject(_inputField.gameObject);
         }
 
-        // 언어 변경 (Tab 키)
-        if (Keyboard.current.tabKey.wasPressedThisFrame)
-        {
-            _currentLangIndex = (_currentLangIndex + 1) % _guides.Length;
-            UpdateLanguage(_currentLangIndex);
-        }
+        HandleLanguageShortcut();
 
         // 이름 결정 (Enter 키)
-        if (Keyboard.current.enterKey.wasPressedThisFrame)
+        if (GameInput.DialogueAdvancePressed)
         {
-            if (_inputField != null && !string.IsNullOrEmpty(_inputField.text))
+            if (IsValidNameLength())
             {
                 ConfirmName();
             }
         }
+    }
+
+    private bool IsValidNameLength()
+    {
+        if (_inputField == null) return false;
+
+        string trimmedName = _inputField.text.Trim();
+        return trimmedName.Length >= MinNameLength && trimmedName.Length <= MaxNameLength;
+    }
+
+    private void HandleLanguageShortcut()
+    {
+        if (GameInput.LanguageKRPressed) SetLanguage(LanguageType.KR, 0);
+        else if (GameInput.LanguageENPressed) SetLanguage(LanguageType.EN, 1);
+        else if (GameInput.LanguageJPPressed) SetLanguage(LanguageType.JP, 2);
+        else if (GameInput.LanguageCNPressed) SetLanguage(LanguageType.CN, 3);
+    }
+
+    private void SetLanguage(LanguageType language, int guideIndex)
+    {
+        _currentLangIndex = Mathf.Clamp(guideIndex, 0, _guides.Length - 1);
+        GameConfigManager.EnsureInstance().SetLanguage(language);
+        UpdateLanguage(_currentLangIndex);
     }
 
     private void UpdateLanguage(int index)
@@ -102,14 +127,17 @@ public class NameInputUI : MonoBehaviour
 
     private void ConfirmName()
     {
+        if (!IsValidNameLength()) return;
+
         _isOpen = false;
+        string confirmedName = _inputField.text.Trim();
         
         if (_inputField != null) _inputField.DeactivateInputField();
         
         if (_canvasGroup != null)
         {
             _canvasGroup.DOFade(0f, 1f).OnComplete(() => {
-                _onNamingComplete?.Invoke(_inputField.text);
+                _onNamingComplete?.Invoke(confirmedName);
                 gameObject.SetActive(false);
             });
         }

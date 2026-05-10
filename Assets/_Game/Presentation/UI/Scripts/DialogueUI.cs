@@ -118,12 +118,9 @@ public class DialogueUI : MonoBehaviour
         yield return new WaitForSeconds(0.1f);
         while (IsWaitingForChoice)
         {
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb == null) { yield return null; continue; }
-
-            if (choices.Count > 0 && kb.zKey.wasPressedThisFrame) { IsWaitingForChoice = false; onSelected?.Invoke(choices[0]); yield break; }
-            if (choices.Count > 1 && kb.xKey.wasPressedThisFrame) { IsWaitingForChoice = false; onSelected?.Invoke(choices[1]); yield break; }
-            if (choices.Count > 2 && kb.cKey.wasPressedThisFrame) { IsWaitingForChoice = false; onSelected?.Invoke(choices[2]); yield break; }
+            if (choices.Count > 0 && GameInput.Choice1Pressed) { IsWaitingForChoice = false; onSelected?.Invoke(choices[0]); yield break; }
+            if (choices.Count > 1 && GameInput.Choice2Pressed) { IsWaitingForChoice = false; onSelected?.Invoke(choices[1]); yield break; }
+            if (choices.Count > 2 && GameInput.Choice3Pressed) { IsWaitingForChoice = false; onSelected?.Invoke(choices[2]); yield break; }
             yield return null;
         }
     }

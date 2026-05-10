@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 
@@ -56,12 +55,6 @@ public class PlayerController : MonoBehaviour
     // ── 방향 (0=Down 1=Up 2=Left 3=Right) ────────────────────
     public int FacingDirection { get; private set; } = 0;
 
-    // ── 입력 액션 ─────────────────────────────────────────────
-    private InputAction _moveAction;
-    private InputAction _confirmAction;
-    private InputAction _cancelAction;
-    private InputAction _menuAction;
-
     // ── 반대 방향 동시 입력 처리용 (Last-Input Priority) ─────
     private bool _keyLeft, _keyRight, _keyUp, _keyDown;
     private bool _prevLeft, _prevRight, _prevUp, _prevDown;
@@ -90,25 +83,6 @@ public class PlayerController : MonoBehaviour
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _vfx            = GetComponent<CharacterVFX>();
 
-        _moveAction    = new InputAction("Move",    InputActionType.Value);
-        _confirmAction = new InputAction("Confirm", InputActionType.Button);
-        _cancelAction  = new InputAction("Cancel",  InputActionType.Button);
-        _menuAction    = new InputAction("Menu",    InputActionType.Button);
-
-        _moveAction.AddCompositeBinding("2DVector")
-            .With("Up",    "<Keyboard>/upArrow").With("Up",    "<Keyboard>/w")
-            .With("Down",  "<Keyboard>/downArrow").With("Down",  "<Keyboard>/s")
-            .With("Left",  "<Keyboard>/leftArrow").With("Left",  "<Keyboard>/a")
-            .With("Right", "<Keyboard>/rightArrow").With("Right", "<Keyboard>/d");
-        _confirmAction.AddBinding("<Keyboard>/z");
-        _cancelAction.AddBinding("<Keyboard>/x");
-        _menuAction.AddBinding("<Keyboard>/c");
-
-        _moveAction.Enable();
-        _confirmAction.Enable();
-        _cancelAction.Enable();
-        _menuAction.Enable();
-
         _originalLocalPos = transform.localPosition;
     }
 
@@ -136,11 +110,11 @@ public class PlayerController : MonoBehaviour
         UpdateAnimator(_moveInput.sqrMagnitude > 0.01f);
 
         // 상호작용 (캐싱된 타겟을 InteractionSystem을 통해 즉시 실행)
-        if (_confirmAction.WasPressedThisFrame()) 
+        if (GameInput.ConfirmPressed)
             InteractionSystem.Instance?.TryInteract(this);
 
         // 일시정지 메뉴 호출
-        if (_menuAction.WasPressedThisFrame())    
+        if (GameInput.MenuPressed)
             UIManager.Instance?.OpenPanel("Pause"); 
     }
 
@@ -165,13 +139,10 @@ public class PlayerController : MonoBehaviour
     // ── 입력 읽기 (Last-Input Priority) ──────────────────────
     private void ReadInput()
     {
-        var kb = Keyboard.current;
-        if (kb == null) return;
-
-        _keyLeft  = kb.leftArrowKey.isPressed  || kb.aKey.isPressed;
-        _keyRight = kb.rightArrowKey.isPressed || kb.dKey.isPressed;
-        _keyUp    = kb.upArrowKey.isPressed    || kb.wKey.isPressed;
-        _keyDown  = kb.downArrowKey.isPressed  || kb.sKey.isPressed;
+        _keyLeft  = GameInput.MoveLeftHeld;
+        _keyRight = GameInput.MoveRightHeld;
+        _keyUp    = GameInput.MoveUpHeld;
+        _keyDown  = GameInput.MoveDownHeld;
 
         // 수평 Last-Input Priority
         if (_keyLeft && _keyRight)

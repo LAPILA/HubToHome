@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Sirenix.OdinInspector;
 
 /// <summary>
@@ -51,26 +50,20 @@ public class QTEManager : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             
-            if (Keyboard.current != null)
+            if (GameInput.QTEZPressed)
             {
-                var kb = Keyboard.current;
-                
-                // 단일 프레임 동시입력 방지를 위해 if-else 구조 명확화
-                if (kb.zKey.wasPressedThisFrame) 
-                { 
-                    input = DefenseInput.Parry; 
-                    inputReceived = true; 
-                }
-                else if (kb.xKey.wasPressedThisFrame) 
-                { 
-                    input = DefenseInput.Dodge; 
-                    inputReceived = true; 
-                }
-                else if (kb.cKey.wasPressedThisFrame) 
-                { 
-                    input = DefenseInput.Jump;  
-                    inputReceived = true; 
-                }
+                input = DefenseInput.Parry;
+                inputReceived = true;
+            }
+            else if (GameInput.QTEXPressed)
+            {
+                input = DefenseInput.Dodge;
+                inputReceived = true;
+            }
+            else if (GameInput.QTECPressed)
+            {
+                input = DefenseInput.Jump;
+                inputReceived = true;
             }
             yield return null; 
         }
@@ -131,24 +124,16 @@ public class QTEManager : MonoBehaviour
             {
                 elapsed += Time.deltaTime;
                 
-                if (Keyboard.current != null)
-                {
-                    var kb = Keyboard.current;
-                    bool z = kb.zKey.wasPressedThisFrame;
-                    bool x = kb.xKey.wasPressedThisFrame;
-                    bool c = kb.cKey.wasPressedThisFrame;
+                bool z = GameInput.QTEZPressed;
+                bool x = GameInput.QTEXPressed;
+                bool c = GameInput.QTECPressed;
 
-                    if (z || x || c)
-                    {
-                        isAnswered = true;
-                        
-                        // 문자열 할당을 피하기 위해 Equals(OrdinalIgnoreCase) 사용 권장되지만,
-                        // 단순 알파벳이므로 ToLower() 유지하되 명확히 처리
-                        string keyLower = node.TargetKey.ToLower();
-                        isHit = (keyLower == "z" && z) || (keyLower == "x" && x) || (keyLower == "c" && c);
-                        
-                        if (isHit) successCount++;
-                    }
+                if (z || x || c)
+                {
+                    isAnswered = true;
+                    string keyLower = node.TargetKey.ToLower();
+                    isHit = (keyLower == "z" && z) || (keyLower == "x" && x) || (keyLower == "c" && c);
+                    if (isHit) successCount++;
                 }
                 yield return null;
             }
