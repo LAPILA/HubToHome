@@ -1,309 +1,469 @@
 using System;
-using System.Text;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using DG.Tweening;
 using UnityEngine.UI;
 
-/// <summary>
-/// 키보드 전용 공용 설정 창.
-/// ↑/↓: 항목 이동, Z: 선택/토글/키 변경 시작, ←/→: 값 조절, X: 뒤로가기.
-/// </summary>
 public class ConfigPanelUI : UIPanel
 {
-    private enum ConfigRow
-    {
-        MasterVolume,
-        BgmVolume,
-        SfxVolume,
-        Controls,
-        Fullscreen,
-        Language,
-        ResetDefault,
-        BackToTitle,
-        Back
-    }
+    private enum Focus { Category, RowList, KeyCapture }
+    private enum Category { Audio, Gameplay, Controls, System }
+    private enum RowType { MasterVolume, BgmVolume, SfxVolume, Language, Fullscreen, ResetDefault, Key_Up, Key_Down, Key_Left, Key_Right, Key_Confirm, Key_Cancel, Key_Run, Key_Menu, ControlsResetDefault }
 
-    [Header("Config UI")]
+    [Serializable] private class CategoryLabel { public Category category; public TextMeshProUGUI text; }
+    private class SpawnedRow { public RowType type; public GameObject go; public TextMeshProUGUI name; public TextMeshProUGUI value; }
+
+    [Header("UI")]
     [SerializeField] private TextMeshProUGUI _titleText;
-    [SerializeField] private TextMeshProUGUI _bodyText;
-    [SerializeField] private TextMeshProUGUI _helpText;
+    [SerializeField] private List<CategoryLabel> _categories = new List<CategoryLabel>();
+    [SerializeField] private Transform _detailRoot;
+    [SerializeField] private GameObject _rowPrefab;
+    [SerializeField] private ScrollRect _scrollRect;
 
-    [Header("Scene")]
+    [Header("Config")]
     [SerializeField] private string _titleSceneName = "00_TitleScene";
 
-    private ConfigRow _selectedRow = ConfigRow.MasterVolume;
-    private ConfigurableAction _selectedControl = ConfigurableAction.Up;
-    private bool _isEditingControls;
-    private bool _isWaitingForKey;
+    [Header("Visual")]
+    [SerializeField] private Color _normalColor = Color.white;
+    [SerializeField] private Color _selectedColor = new Color(1f, 0.92f, 0.2f, 1f);
+    [SerializeField] private Vector3 _normalScale = Vector3.one;
+    [SerializeField] private Vector3 _selectedScale = new Vector3(1.08f, 1.08f, 1f);
+    [SerializeField] private float _punch = 0.08f;
+    [SerializeField] private float _punchDuration = 0.12f;
+
+    private readonly List<SpawnedRow> _rows = new List<SpawnedRow>();
+    private Focus _focus = Focus.Category;
+    private Category _selectedCategory = Category.Audio;
+    private int _rowIndex;
     private bool _skipOneFrame;
+    private readonly Dictionary<TextMeshProUGUI, bool> _lastSelectedState = new Dictionary<TextMeshProUGUI, bool>();
+    private readonly Dictionary<TextMeshProUGUI, float> _baseFontSize = new Dictionary<TextMeshProUGUI, float>();
+    private RectTransform _runtimeAutoContent;
 
-    private GameConfigManager Config => GameConfigManager.EnsureInstance();
-
-    protected override void Awake()
-    {
-        base.Awake();
-        EnsureRuntimeLayout();
-    }
+    private GameConfigManager Config { get { return GameConfigManager.EnsureInstance(); } }
 
     public override void Show()
     {
         base.Show();
-        _selectedRow = ConfigRow.MasterVolume;
-        _isEditingControls = false;
-        _isWaitingForKey = false;
+        GameInput.SetConfigModalActive(true);
+        Time.timeScale = 0f;
+        GameStateManager.Instance?.ChangeState(GameState.Paused);
+
+        _focus = Focus.Category;
+        _selectedCategory = Category.Audio;
+        _rowIndex = 0;
+        _skipOneFrame = true;
+
+        RebuildRows();
+        EnsureScrollBinding();
         Refresh();
     }
+
+    public override void Hide()
+    {
+        KillAllTweens();
+        ClearRows();
+        base.Hide();
+        GameInput.SetConfigModalActive(false);
+        Time.timeScale = 1f;
+        if (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused)
+            GameStateManager.Instance.ChangeState(GameState.Exploration);
+    }
+
+    private void OnDisable() { KillAllTweens(); }
+    private void OnDestroy() { KillAllTweens(); ClearRows(); }
 
     private void Update()
     {
         if (!IsVisible) return;
+        if (_skipOneFrame) { _skipOneFrame = false; return; }
 
-        if (_skipOneFrame)
-        {
-            _skipOneFrame = false;
-            return;
-        }
+        if (_focus == Focus.KeyCapture) { CaptureKey(); return; }
 
-        if (_isWaitingForKey)
-        {
-            TryCaptureKey();
-            return;
-        }
-
-        if (GameInput.ConfigUpPressed) MoveSelection(-1);
-        if (GameInput.ConfigDownPressed) MoveSelection(1);
-        if (GameInput.ConfigLeftPressed) AdjustSelected(-1);
-        if (GameInput.ConfigRightPressed) AdjustSelected(1);
-        if (GameInput.ConfigSubmitPressed) ConfirmSelected();
+        if (GameInput.ConfigUpPressed) Move(-1);
+        if (GameInput.ConfigDownPressed) Move(1);
+        if (GameInput.ConfigLeftPressed) Adjust(-1);
+        if (GameInput.ConfigRightPressed) Adjust(1);
+        if (GameInput.ConfigSubmitPressed) Submit();
         if (GameInput.ConfigBackPressed) Back();
     }
 
-    private void MoveSelection(int direction)
+    private void Move(int dir)
     {
-        if (_isEditingControls)
+        if (_focus == Focus.Category)
         {
-            int nextAction = Mathf.Clamp((int)_selectedControl + direction, 0, Enum.GetValues(typeof(ConfigurableAction)).Length - 1);
-            _selectedControl = (ConfigurableAction)nextAction;
+            int count = Enum.GetValues(typeof(Category)).Length;
+            _selectedCategory = (Category)(((int)_selectedCategory + dir + count) % count);
+            _rowIndex = 0;
+            RebuildRows();
         }
         else
         {
-            int rowCount = Enum.GetValues(typeof(ConfigRow)).Length;
-            _selectedRow = (ConfigRow)(((int)_selectedRow + direction + rowCount) % rowCount);
+            if (_rows.Count == 0) return;
+            _rowIndex = (_rowIndex + dir + _rows.Count) % _rows.Count;
         }
-
         Refresh();
     }
 
-    private void AdjustSelected(int direction)
+    private void Submit()
     {
-        const float step = 0.05f;
-
-        switch (_selectedRow)
+        if (_focus == Focus.Category)
         {
-            case ConfigRow.MasterVolume:
-                Config.SetMasterVolume(Config.MasterVolume + step * direction);
-                break;
-            case ConfigRow.BgmVolume:
-                Config.SetBgmVolume(Config.BgmVolume + step * direction);
-                break;
-            case ConfigRow.SfxVolume:
-                Config.SetSfxVolume(Config.SfxVolume + step * direction);
-                break;
-            case ConfigRow.Fullscreen:
-                Config.SetFullscreen(!Config.IsFullscreen);
-                break;
-            case ConfigRow.Language:
-                CycleLanguage(direction);
-                break;
+            _focus = Focus.RowList;
+            if (_selectedCategory == Category.Controls) _rowIndex = 0;
+            Refresh();
+            return;
         }
 
-        Refresh();
-    }
+        if (_rows.Count == 0) return;
+        RowType t = _rows[_rowIndex].type;
 
-    private void ConfirmSelected()
-    {
-        if (_isEditingControls)
+        if (IsKeyRow(t))
         {
-            _isWaitingForKey = true;
+            _focus = Focus.KeyCapture;
             _skipOneFrame = true;
             Refresh();
             return;
         }
 
-        switch (_selectedRow)
+        switch (t)
         {
-            case ConfigRow.Controls:
-                _isEditingControls = true;
-                _selectedControl = ConfigurableAction.Up;
-                break;
-            case ConfigRow.Fullscreen:
-                Config.SetFullscreen(!Config.IsFullscreen);
-                break;
-            case ConfigRow.Language:
-                CycleLanguage(1);
-                break;
-            case ConfigRow.ResetDefault:
-                Config.ResetDefaults();
-                break;
-            case ConfigRow.BackToTitle:
-                SceneLoader.Instance?.LoadScene(_titleSceneName);
-                break;
-            case ConfigRow.Back:
-                Back();
-                break;
+            case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
+            case RowType.Language: CycleLanguage(1); break;
+            case RowType.ResetDefault: Config.ResetDefaults(); break;
+            case RowType.ControlsResetDefault: Config.ResetDefaults(); break;
         }
+        Refresh();
+    }
 
+    private void Adjust(int dir)
+    {
+        if (_focus != Focus.RowList || _rows.Count == 0) return;
+        RowType t = _rows[_rowIndex].type;
+        const float step = 0.05f;
+        switch (t)
+        {
+            case RowType.MasterVolume: Config.SetMasterVolume(Config.MasterVolume + step * dir); break;
+            case RowType.BgmVolume: Config.SetBgmVolume(Config.BgmVolume + step * dir); break;
+            case RowType.SfxVolume: Config.SetSfxVolume(Config.SfxVolume + step * dir); break;
+            case RowType.Language: CycleLanguage(dir); break;
+            case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
+        }
         Refresh();
     }
 
     private void Back()
     {
-        if (_isWaitingForKey)
-        {
-            _isWaitingForKey = false;
-            Refresh();
-            return;
-        }
-
-        if (_isEditingControls)
-        {
-            _isEditingControls = false;
-            Refresh();
-            return;
-        }
-
+        if (_focus == Focus.KeyCapture) { _focus = Focus.RowList; Refresh(); return; }
+        if (_focus == Focus.RowList) { _focus = Focus.Category; Refresh(); return; }
         UIManager.Instance?.CloseTopPanel();
         if (UIManager.Instance == null) Hide();
     }
 
-    private void TryCaptureKey()
+    private void CaptureKey()
     {
         if (!GameInput.TryReadPressedKey(out Key key)) return;
-        if (key == Key.Escape || key == Key.None) return;
-        if (IsForbiddenDefaultKey(key)) return;
+        if (key == Key.None || key == Key.Escape) return;
+        if (key == Key.W || key == Key.A || key == Key.S || key == Key.D) return;
 
-        Config.SetKey(_selectedControl, key);
-        _isWaitingForKey = false;
+        ConfigurableAction action = RowToAction(_rows[_rowIndex].type);
+
+        foreach (ConfigurableAction a in Enum.GetValues(typeof(ConfigurableAction)))
+        {
+            if (a == action) continue;
+            if (Config.GetKey(a) == key) return;
+        }
+
+        Config.SetKey(action, key);
+        _focus = Focus.RowList;
         Refresh();
     }
 
-    private static bool IsForbiddenDefaultKey(Key key)
+    private void RebuildRows()
     {
-        return key == Key.W || key == Key.A || key == Key.S || key == Key.D;
+        ClearRows();
+        EnsureScrollBinding();
+        Transform spawnRoot = GetResolvedSpawnRoot();
+        if (spawnRoot == null || _rowPrefab == null)
+        {
+            Debug.LogWarning("[ConfigPanelUI] detailRoot/rowPrefab missing", this);
+            return;
+        }
+
+        List<RowType> defs = GetRowsForCategory(_selectedCategory);
+        for (int i = 0; i < defs.Count; i++)
+        {
+            GameObject go = Instantiate(_rowPrefab, spawnRoot);
+            go.name = "Row_" + defs[i];
+            TextMeshProUGUI[] tmps = go.GetComponentsInChildren<TextMeshProUGUI>(true);
+            if (tmps.Length == 0)
+            {
+                Debug.LogWarning("[ConfigPanelUI] rowPrefab needs at least one TMP child", this);
+                Destroy(go);
+                continue;
+            }
+
+            SpawnedRow row = new SpawnedRow();
+            row.type = defs[i];
+            row.go = go;
+            row.name = tmps[0];
+            row.value = tmps.Length > 1 ? tmps[1] : null;
+            _rows.Add(row);
+        }
+
+        if (_rowIndex >= _rows.Count) _rowIndex = Mathf.Max(0, _rows.Count - 1);
+        EnsureScrollBinding();
     }
 
-    private void CycleLanguage(int direction)
+    private Transform GetResolvedSpawnRoot()
     {
-        int count = Enum.GetValues(typeof(LanguageType)).Length;
-        int next = ((int)Config.Language + direction + count) % count;
-        Config.SetLanguage((LanguageType)next);
+        if (_scrollRect == null) return _detailRoot;
+        EnsureScrollBinding();
+        return _scrollRect.content != null ? _scrollRect.content : _detailRoot as RectTransform;
+    }
+
+    private void EnsureScrollBinding()
+    {
+        if (_scrollRect == null || _detailRoot == null) return;
+
+        RectTransform content = _detailRoot as RectTransform;
+        if (content == null) return;
+
+        // ScrollRect만 붙이고 세팅 안 한 경우를 위해 자동 Content 컨테이너 생성
+        if ((_scrollRect.content == null || _scrollRect.content == _scrollRect.transform as RectTransform) && _runtimeAutoContent == null)
+        {
+            var go = new GameObject("__AutoScrollContent", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            _runtimeAutoContent = go.GetComponent<RectTransform>();
+            _runtimeAutoContent.SetParent(content, false);
+            _runtimeAutoContent.anchorMin = new Vector2(0f, 1f);
+            _runtimeAutoContent.anchorMax = new Vector2(1f, 1f);
+            _runtimeAutoContent.pivot = new Vector2(0.5f, 1f);
+            _runtimeAutoContent.offsetMin = new Vector2(0f, 0f);
+            _runtimeAutoContent.offsetMax = new Vector2(0f, 0f);
+
+            var vlg = _runtimeAutoContent.GetComponent<VerticalLayoutGroup>();
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+
+            var fitter = _runtimeAutoContent.GetComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        if (_runtimeAutoContent != null)
+            content = _runtimeAutoContent;
+
+        if (_scrollRect.content != content)
+            _scrollRect.content = content;
+
+        // 잘못된 연결 자동 보정: viewport/content가 같은 오브젝트면 스크롤 계산이 깨짐
+        if (_scrollRect.viewport == null || _scrollRect.viewport == content)
+        {
+            RectTransform parentRect = content.parent as RectTransform;
+            if (parentRect != null && parentRect != content)
+                _scrollRect.viewport = parentRect;
+        }
+    }
+
+    private void ClearRows()
+    {
+        for (int i = 0; i < _rows.Count; i++)
+        {
+            if (_rows[i] != null && _rows[i].go != null) Destroy(_rows[i].go);
+        }
+        _rows.Clear();
+        _lastSelectedState.Clear();
+        _baseFontSize.Clear();
     }
 
     private void Refresh()
     {
         if (_titleText != null) _titleText.text = "CONFIG";
-        if (_helpText != null)
+
+        for (int i = 0; i < _categories.Count; i++)
         {
-            _helpText.text = _isWaitingForKey
-                ? "Press any key. X: cancel"
-                : "↑↓ Move   ←→ Change   Z Select   X Back";
+            var c = _categories[i];
+            if (c == null || c.text == null) continue;
+            ApplyVisual(c.text, c.category == _selectedCategory);
         }
 
-        if (_bodyText == null) return;
-
-        var builder = new StringBuilder();
-
-        if (_isEditingControls)
+        for (int i = 0; i < _rows.Count; i++)
         {
-            builder.AppendLine("<b>CONTROLS</b>");
-            foreach (ConfigurableAction action in Enum.GetValues(typeof(ConfigurableAction)))
-            {
-                string cursor = action == _selectedControl ? ">" : " ";
-                string wait = _isWaitingForKey && action == _selectedControl ? "  ..." : string.Empty;
-                builder.AppendLine($"{cursor} {action,-8} : {Config.GetKey(action)}{wait}");
-            }
-            builder.AppendLine();
-            builder.AppendLine("Z: change key / X: back");
-        }
-        else
-        {
-            AppendRow(builder, ConfigRow.MasterVolume, $"Master Volume  {ToPercent(Config.MasterVolume)}");
-            AppendRow(builder, ConfigRow.BgmVolume, $"BGM Volume     {ToPercent(Config.BgmVolume)}");
-            AppendRow(builder, ConfigRow.SfxVolume, $"SFX Volume     {ToPercent(Config.SfxVolume)}");
-            AppendRow(builder, ConfigRow.Controls, "Controls       >");
-            AppendRow(builder, ConfigRow.Fullscreen, $"Fullscreen     {(Config.IsFullscreen ? "ON" : "OFF")}");
-            AppendRow(builder, ConfigRow.Language, $"Language       {Config.Language}");
-            AppendRow(builder, ConfigRow.ResetDefault, "Reset Default");
-            AppendRow(builder, ConfigRow.BackToTitle, "Back To Title");
-            AppendRow(builder, ConfigRow.Back, "Back");
+            SpawnedRow r = _rows[i];
+            SetRowText(r);
+            bool selected = _focus != Focus.Category && i == _rowIndex;
+            ApplyVisual(r.name, selected);
+            if (r.value != null) ApplyVisual(r.value, selected);
         }
 
-        _bodyText.text = builder.ToString();
+        EnsureSelectedRowVisible();
     }
 
-    private void AppendRow(StringBuilder builder, ConfigRow row, string label)
+    private void EnsureSelectedRowVisible()
     {
-        builder.AppendLine($"{(row == _selectedRow ? ">" : " ")} {label}");
+        if (_scrollRect == null || _rows.Count <= 1) return;
+        if (_focus == Focus.Category) return;
+
+        Canvas.ForceUpdateCanvases();
+        RectTransform content = _scrollRect.content;
+        RectTransform viewport = _scrollRect.viewport;
+        if (content == null || viewport == null) return;
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+
+        if (_rowIndex < 0 || _rowIndex >= _rows.Count) return;
+        SpawnedRow selected = _rows[_rowIndex];
+        if (selected == null || selected.go == null) return;
+
+        RectTransform row = selected.go.transform as RectTransform;
+        if (row == null) return;
+
+        float contentH = content.rect.height;
+        float viewportH = viewport.rect.height;
+        if (contentH <= viewportH + 0.01f) return;
+
+        // row 중심점을 content 상단 기준 y로 변환
+        Vector3 worldCenter = row.TransformPoint(row.rect.center);
+        Vector3 localInContent = content.InverseTransformPoint(worldCenter);
+        float centerFromTop = -localInContent.y + (contentH * 0.5f);
+
+        float targetTop = centerFromTop - (viewportH * 0.5f);
+        float maxTop = Mathf.Max(0f, contentH - viewportH);
+        targetTop = Mathf.Clamp(targetTop, 0f, maxTop);
+
+        float normalized = 1f - (targetTop / maxTop);
+        _scrollRect.verticalNormalizedPosition = Mathf.Clamp01(normalized);
     }
 
-    private static string ToPercent(float value) => $"{Mathf.RoundToInt(value * 100f)}%";
-
-    private void EnsureRuntimeLayout()
+    private void SetRowText(SpawnedRow r)
     {
-        if (_bodyText != null) return;
-
-        var rect = GetComponent<RectTransform>();
-        if (rect == null) rect = gameObject.AddComponent<RectTransform>();
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-
-        Image bg = GetComponent<Image>();
-        if (bg == null) bg = gameObject.AddComponent<Image>();
-        bg.color = new Color(0f, 0f, 0f, 0.85f);
-
-        _titleText = CreateText("Title", "CONFIG", 44, TextAlignmentOptions.Center, new Vector2(0.5f, 0.85f), new Vector2(760f, 80f));
-        _bodyText = CreateText("Body", string.Empty, 28, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 0.48f), new Vector2(760f, 420f));
-        _helpText = CreateText("Help", string.Empty, 20, TextAlignmentOptions.Center, new Vector2(0.5f, 0.12f), new Vector2(900f, 60f));
-    }
-
-    private TextMeshProUGUI CreateText(string name, string text, int fontSize, TextAlignmentOptions alignment, Vector2 anchor, Vector2 size)
-    {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.transform.SetParent(transform, false);
-
-        var rect = go.GetComponent<RectTransform>();
-        rect.anchorMin = anchor;
-        rect.anchorMax = anchor;
-        rect.sizeDelta = size;
-        rect.anchoredPosition = Vector2.zero;
-
-        var tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.text = text;
-        tmp.fontSize = fontSize;
-        tmp.color = Color.white;
-        tmp.alignment = alignment;
-        return tmp;
-    }
-
-    public static ConfigPanelUI CreateRuntime(Canvas parentCanvas = null)
-    {
-        if (parentCanvas == null) parentCanvas = FindObjectOfType<Canvas>();
-
-        if (parentCanvas == null)
+        switch (r.type)
         {
-            var canvasObject = new GameObject("ConfigCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            parentCanvas = canvasObject.GetComponent<Canvas>();
-            parentCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            DontDestroyOnLoad(canvasObject);
+            case RowType.MasterVolume: SetRow(r, "Master Volume", ToPercent(Config.MasterVolume)); break;
+            case RowType.BgmVolume: SetRow(r, "BGM Volume", ToPercent(Config.BgmVolume)); break;
+            case RowType.SfxVolume: SetRow(r, "SFX Volume", ToPercent(Config.SfxVolume)); break;
+            case RowType.Language: SetRow(r, "Language", Config.Language.ToString()); break;
+            case RowType.Fullscreen: SetRow(r, "Fullscreen", Config.IsFullscreen ? "ON" : "OFF"); break;
+            case RowType.ResetDefault: SetRow(r, "Reset Default", ""); break;
+            case RowType.Key_Up: SetKeyRow(r, ConfigurableAction.Up); break;
+            case RowType.Key_Down: SetKeyRow(r, ConfigurableAction.Down); break;
+            case RowType.Key_Left: SetKeyRow(r, ConfigurableAction.Left); break;
+            case RowType.Key_Right: SetKeyRow(r, ConfigurableAction.Right); break;
+            case RowType.Key_Confirm: SetKeyRow(r, ConfigurableAction.Confirm); break;
+            case RowType.Key_Cancel: SetKeyRow(r, ConfigurableAction.Cancel); break;
+            case RowType.Key_Run: SetKeyRow(r, ConfigurableAction.Run); break;
+            case RowType.Key_Menu: SetKeyRow(r, ConfigurableAction.Menu); break;
+            case RowType.ControlsResetDefault: SetRow(r, "Reset Controls", ""); break;
         }
-
-        var panelObject = new GameObject("ConfigPanel", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
-        panelObject.transform.SetParent(parentCanvas.transform, false);
-        var panel = panelObject.AddComponent<ConfigPanelUI>();
-        return panel;
     }
+
+    private void SetKeyRow(SpawnedRow r, ConfigurableAction action)
+    {
+        string wait = (_focus == Focus.KeyCapture && _rows[_rowIndex] == r) ? " ..." : "";
+        SetRow(r, ActionLabel(action), Config.GetKey(action).ToString() + wait);
+    }
+
+    private static string ActionLabel(ConfigurableAction action)
+    {
+        switch (action)
+        {
+            case ConfigurableAction.Up: return "Move Up";
+            case ConfigurableAction.Down: return "Move Down";
+            case ConfigurableAction.Left: return "Move Left";
+            case ConfigurableAction.Right: return "Move Right";
+            case ConfigurableAction.Confirm: return "Confirm";
+            case ConfigurableAction.Cancel: return "Cancel";
+            case ConfigurableAction.Run: return "Run";
+            case ConfigurableAction.Menu: return "Menu";
+            default: return action.ToString();
+        }
+    }
+
+    private static void SetRow(SpawnedRow r, string name, string value)
+    {
+        if (r.name != null) r.name.text = name;
+        if (r.value != null) r.value.text = value;
+    }
+
+    private void ApplyVisual(TextMeshProUGUI text, bool selected)
+    {
+        if (text == null) return;
+
+        if (!_baseFontSize.ContainsKey(text))
+            _baseFontSize[text] = text.fontSize;
+
+        text.color = selected ? _selectedColor : _normalColor;
+        text.fontSize = _baseFontSize[text];
+        text.fontStyle = FontStyles.Normal;
+
+        RectTransform rt = text.rectTransform;
+        if (rt == null) return;
+
+        Vector3 targetScale = selected ? _selectedScale : _normalScale;
+
+        bool wasSelected;
+        if (!_lastSelectedState.TryGetValue(text, out wasSelected)) wasSelected = !selected;
+
+        rt.DOKill();
+        rt.localScale = targetScale;
+
+        // 선택 상태가 바뀔 때만 펀치(매 프레임 리프레시로 애니메이션 상쇄 방지)
+        if (selected && !wasSelected)
+            rt.DOPunchScale(Vector3.one * _punch, _punchDuration, 4, 0.4f);
+
+        _lastSelectedState[text] = selected;
+    }
+
+    private void KillAllTweens()
+    {
+        for (int i = 0; i < _categories.Count; i++) _categories[i]?.text?.rectTransform?.DOKill();
+        for (int i = 0; i < _rows.Count; i++)
+        {
+            _rows[i]?.name?.rectTransform?.DOKill();
+            _rows[i]?.value?.rectTransform?.DOKill();
+        }
+    }
+
+    private void CycleLanguage(int dir)
+    {
+        int count = Enum.GetValues(typeof(LanguageType)).Length;
+        int next = ((int)Config.Language + dir + count) % count;
+        Config.SetLanguage((LanguageType)next);
+    }
+
+    private static bool IsKeyRow(RowType t)
+    {
+        return t == RowType.Key_Up || t == RowType.Key_Down || t == RowType.Key_Left || t == RowType.Key_Right
+            || t == RowType.Key_Confirm || t == RowType.Key_Cancel || t == RowType.Key_Run || t == RowType.Key_Menu;
+    }
+
+    private static ConfigurableAction RowToAction(RowType t)
+    {
+        switch (t)
+        {
+            case RowType.Key_Up: return ConfigurableAction.Up;
+            case RowType.Key_Down: return ConfigurableAction.Down;
+            case RowType.Key_Left: return ConfigurableAction.Left;
+            case RowType.Key_Right: return ConfigurableAction.Right;
+            case RowType.Key_Confirm: return ConfigurableAction.Confirm;
+            case RowType.Key_Cancel: return ConfigurableAction.Cancel;
+            case RowType.Key_Run: return ConfigurableAction.Run;
+            case RowType.Key_Menu: return ConfigurableAction.Menu;
+            default: return ConfigurableAction.Up;
+        }
+    }
+
+    private static List<RowType> GetRowsForCategory(Category c)
+    {
+        if (c == Category.Audio) return new List<RowType> { RowType.MasterVolume, RowType.BgmVolume, RowType.SfxVolume };
+        if (c == Category.Gameplay) return new List<RowType> { RowType.Language };
+        if (c == Category.Controls) return new List<RowType> { RowType.Key_Up, RowType.Key_Down, RowType.Key_Left, RowType.Key_Right, RowType.Key_Confirm, RowType.Key_Cancel, RowType.Key_Run, RowType.Key_Menu, RowType.ControlsResetDefault };
+        return new List<RowType> { RowType.Fullscreen, RowType.ResetDefault };
+    }
+
+    private static string ToPercent(float v) { return Mathf.RoundToInt(v * 100f) + "%"; }
 }

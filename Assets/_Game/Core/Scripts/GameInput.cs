@@ -11,6 +11,7 @@ using System.IO;
 public static class GameInput
 {
     private const float AxisThreshold = 0.5f;
+    private static bool _configModalActive;
 
     private static InputActionAsset _asset;
     private static InputActionMap _player;
@@ -137,49 +138,91 @@ public static class GameInput
     public static bool MoveUpHeld    { get { UpdateCache(); return IsUp(_currPlayerMove); } }
     public static bool MoveDownHeld  { get { UpdateCache(); return IsDown(_currPlayerMove); } }
 
-    public static bool ConfirmPressed { get { EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }
-    public static bool CancelPressed  { get { EnsureInitialized(); return _playerCancel.WasPressedThisFrame() || _uiCancel.WasPressedThisFrame(); } }
-    public static bool MenuPressed    { get { EnsureInitialized(); return _playerMenu.WasPressedThisFrame() || _uiMenu.WasPressedThisFrame(); } }
-    public static bool RunHeld        { get { EnsureInitialized(); return _playerRun.IsPressed(); } }
+    public static bool ConfirmPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }
+    public static bool CancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _playerCancel.WasPressedThisFrame() || _uiCancel.WasPressedThisFrame(); } }
+    public static bool MenuPressed    { get { if (_configModalActive) return false; EnsureInitialized(); return _playerMenu.WasPressedThisFrame() || _uiMenu.WasPressedThisFrame(); } }
+    public static bool RunHeld        { get { if (_configModalActive) return false; EnsureInitialized(); return _playerRun.IsPressed(); } }
 
     public static bool UIUpPressed    { get { UpdateCache(); return PressedUp(_prevUINavigate, _currUINavigate); } }
     public static bool UIDownPressed  { get { UpdateCache(); return PressedDown(_prevUINavigate, _currUINavigate); } }
     public static bool UILeftPressed  { get { UpdateCache(); return PressedLeft(_prevUINavigate, _currUINavigate); } }
     public static bool UIRightPressed { get { UpdateCache(); return PressedRight(_prevUINavigate, _currUINavigate); } }
-    public static bool UISubmitPressed { get { EnsureInitialized(); return _uiSubmit.WasPressedThisFrame(); } }
-    public static bool UICancelPressed { get { EnsureInitialized(); return _uiCancel.WasPressedThisFrame(); } }
-    public static bool UIMenuPressed   { get { EnsureInitialized(); return _uiMenu.WasPressedThisFrame(); } }
+    public static bool UISubmitPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _uiSubmit.WasPressedThisFrame(); } }
+    public static bool UICancelPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _uiCancel.WasPressedThisFrame(); } }
+    public static bool UIMenuPressed   { get { if (_configModalActive) return false; EnsureInitialized(); return _uiMenu.WasPressedThisFrame(); } }
 
     public static bool BattleUpPressed    { get { UpdateCache(); return PressedUp(_prevBattleNavigate, _currBattleNavigate); } }
     public static bool BattleDownPressed  { get { UpdateCache(); return PressedDown(_prevBattleNavigate, _currBattleNavigate); } }
     public static bool BattleLeftPressed  { get { UpdateCache(); return PressedLeft(_prevBattleNavigate, _currBattleNavigate); } }
     public static bool BattleRightPressed { get { UpdateCache(); return PressedRight(_prevBattleNavigate, _currBattleNavigate); } }
-    public static bool BattleConfirmPressed { get { EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
-    public static bool BattleCancelPressed  { get { EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
-    public static bool QTEZPressed { get { EnsureInitialized(); return _qteZ.WasPressedThisFrame(); } }
-    public static bool QTEXPressed { get { EnsureInitialized(); return _qteX.WasPressedThisFrame(); } }
-    public static bool QTECPressed { get { EnsureInitialized(); return _qteC.WasPressedThisFrame(); } }
+    public static bool BattleConfirmPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
+    public static bool BattleCancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
+    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.WasPressedThisFrame(); } }
+    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteX.WasPressedThisFrame(); } }
+    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteC.WasPressedThisFrame(); } }
 
-    public static bool DialogueAdvancePressed { get { EnsureInitialized(); return _dialogueAdvance.WasPressedThisFrame(); } }
-    public static bool Choice1Pressed { get { EnsureInitialized(); return _choice1.WasPressedThisFrame(); } }
-    public static bool Choice2Pressed { get { EnsureInitialized(); return _choice2.WasPressedThisFrame(); } }
-    public static bool Choice3Pressed { get { EnsureInitialized(); return _choice3.WasPressedThisFrame(); } }
-    public static bool LanguageKRPressed { get { EnsureInitialized(); return _langKR.WasPressedThisFrame(); } }
-    public static bool LanguageENPressed { get { EnsureInitialized(); return _langEN.WasPressedThisFrame(); } }
-    public static bool LanguageJPPressed { get { EnsureInitialized(); return _langJP.WasPressedThisFrame(); } }
-    public static bool LanguageCNPressed { get { EnsureInitialized(); return _langCN.WasPressedThisFrame(); } }
+    public static bool DialogueAdvancePressed { get { if (_configModalActive) return false; EnsureInitialized(); return _dialogueAdvance.WasPressedThisFrame(); } }
+    public static bool Choice1Pressed { get { if (_configModalActive) return false; EnsureInitialized(); return _choice1.WasPressedThisFrame(); } }
+    public static bool Choice2Pressed { get { if (_configModalActive) return false; EnsureInitialized(); return _choice2.WasPressedThisFrame(); } }
+    public static bool Choice3Pressed { get { if (_configModalActive) return false; EnsureInitialized(); return _choice3.WasPressedThisFrame(); } }
+    public static bool LanguageKRPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _langKR.WasPressedThisFrame(); } }
+    public static bool LanguageENPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _langEN.WasPressedThisFrame(); } }
+    public static bool LanguageJPPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _langJP.WasPressedThisFrame(); } }
+    public static bool LanguageCNPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _langCN.WasPressedThisFrame(); } }
 
     public static bool ConfigUpPressed    { get { UpdateCache(); return PressedUp(_prevConfigNavigate, _currConfigNavigate); } }
     public static bool ConfigDownPressed  { get { UpdateCache(); return PressedDown(_prevConfigNavigate, _currConfigNavigate); } }
-    public static bool ConfigLeftPressed  { get { UpdateCache(); return PressedLeft(_prevConfigAdjust, _currConfigAdjust); } }
-    public static bool ConfigRightPressed { get { UpdateCache(); return PressedRight(_prevConfigAdjust, _currConfigAdjust); } }
-    public static bool ConfigSubmitPressed { get { EnsureInitialized(); return _configSubmit.WasPressedThisFrame(); } }
+    public static bool ConfigLeftPressed
+    {
+        get
+        {
+            UpdateCache();
+            // Config/Adjust 바인딩이 비어있거나 누락된 프리팹에서도
+            // 방향키(=Navigate x축)로 좌/우 조절이 항상 동작하도록 fallback 처리
+            return PressedLeft(_prevConfigAdjust, _currConfigAdjust)
+                   || PressedLeft(_prevConfigNavigate, _currConfigNavigate);
+        }
+    }
+
+    public static bool ConfigRightPressed
+    {
+        get
+        {
+            UpdateCache();
+            return PressedRight(_prevConfigAdjust, _currConfigAdjust)
+                   || PressedRight(_prevConfigNavigate, _currConfigNavigate);
+        }
+    }
+
+    public static bool ConfigSubmitPressed
+    {
+        get
+        {
+            EnsureInitialized();
+            bool actionPressed = _configSubmit.WasPressedThisFrame();
+
+            // 액션맵 바인딩 이상/포커스 이슈 시에도 Z/Enter를 보조 입력으로 허용
+            var keyboard = Keyboard.current;
+            bool fallbackPressed = keyboard != null
+                                   && ((keyboard.zKey != null && keyboard.zKey.wasPressedThisFrame)
+                                       || (keyboard.enterKey != null && keyboard.enterKey.wasPressedThisFrame)
+                                       || (keyboard.numpadEnterKey != null && keyboard.numpadEnterKey.wasPressedThisFrame));
+
+            return actionPressed || fallbackPressed;
+        }
+    }
     public static bool ConfigBackPressed { get { EnsureInitialized(); return _configBack.WasPressedThisFrame(); } }
     public static bool ConfigResetDefaultsPressed { get { EnsureInitialized(); return _configReset.WasPressedThisFrame(); } }
+
+    public static void SetConfigModalActive(bool active)
+    {
+        _configModalActive = active;
+    }
 
     public static bool TryReadPressedKey(out Key key)
     {
         key = Key.None;
+        if (!_configModalActive) return false;
         var keyboard = Keyboard.current;
         if (keyboard == null) return false;
 
@@ -220,6 +263,13 @@ public static class GameInput
         _currBattleNavigate = _battleNavigate.ReadValue<Vector2>();
         _currConfigNavigate = _configNavigate.ReadValue<Vector2>();
         _currConfigAdjust = _configAdjust.ReadValue<Vector2>();
+
+        if (_configModalActive)
+        {
+            _currPlayerMove = Vector2.zero;
+            _currUINavigate = Vector2.zero;
+            _currBattleNavigate = Vector2.zero;
+        }
     }
 
     private static bool IsLeft(Vector2 value) => value.x < -AxisThreshold;

@@ -113,9 +113,9 @@ public class PlayerController : MonoBehaviour
         if (GameInput.ConfirmPressed)
             InteractionSystem.Instance?.TryInteract(this);
 
-        // 일시정지 메뉴 호출
+        // 오버월드 옵션(Config) 호출
         if (GameInput.MenuPressed)
-            UIManager.Instance?.OpenPanel("Pause"); 
+            OptionsPanelService.Open();
     }
 
     private void FixedUpdate()

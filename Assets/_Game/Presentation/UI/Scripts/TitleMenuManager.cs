@@ -113,20 +113,12 @@ public class TitleMenuManager : MonoBehaviour
     private void OpenConfig()
     {
         _isLocked = false;
-        EnsureConfigPanel();
-
-        if (_configPanel == null) return;
-
-        if (UIManager.Instance != null) UIManager.Instance.OpenPanel(_configPanel);
-        else _configPanel.Show();
+        OptionsPanelService.Open();
     }
 
     private void EnsureConfigPanel()
     {
-        if (_configPanel != null) return;
-
-        _configPanel = FindObjectOfType<ConfigPanelUI>(true);
-        if (_configPanel == null) _configPanel = ConfigPanelUI.CreateRuntime();
+        _configPanel = OptionsPanelService.EnsurePanel();
     }
 
     public void OnClickQuit(TextMeshProUGUI buttonText)

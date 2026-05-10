@@ -10,6 +10,7 @@ public enum ConfigurableAction
     Right,
     Confirm,
     Cancel,
+    Run,
     Menu
 }
 
@@ -162,6 +163,7 @@ public class GameConfigManager : MonoBehaviour
             ConfigurableAction.Right => Key.RightArrow,
             ConfigurableAction.Confirm => Key.Z,
             ConfigurableAction.Cancel => Key.X,
+            ConfigurableAction.Run => Key.LeftShift,
             ConfigurableAction.Menu => Key.C,
             _ => Key.None
         };
@@ -177,6 +179,7 @@ public class GameConfigManager : MonoBehaviour
             ConfigurableAction.Right => GameInput.MoveRightHeld,
             ConfigurableAction.Confirm => GameInput.ConfirmPressed,
             ConfigurableAction.Cancel => GameInput.CancelPressed,
+            ConfigurableAction.Run => GameInput.RunHeld,
             ConfigurableAction.Menu => GameInput.MenuPressed,
             _ => false
         };
@@ -192,6 +195,7 @@ public class GameConfigManager : MonoBehaviour
             ConfigurableAction.Right => GameInput.MoveRightHeld,
             ConfigurableAction.Confirm => GameInput.ConfirmPressed,
             ConfigurableAction.Cancel => GameInput.CancelPressed,
+            ConfigurableAction.Run => GameInput.RunHeld,
             ConfigurableAction.Menu => GameInput.MenuPressed,
             _ => false
         };

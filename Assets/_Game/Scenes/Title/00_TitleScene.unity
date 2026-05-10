@@ -961,6 +961,7 @@ MonoBehaviour:
   _titleBGM: {fileID: 0}
   _moveSFX: {fileID: 8300000, guid: 0a45a726cc88a40498016a49d4d30f7a, type: 3}
   _confirmSFX: {fileID: 8300000, guid: cbf6130492351bb4fa5a895237386a37, type: 3}
+  _configPanel: {fileID: 0}
 --- !u!1 &654772962
 GameObject:
   m_ObjectHideFlags: 0
