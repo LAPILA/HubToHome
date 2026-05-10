@@ -62,6 +62,24 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private Vector3 _meleeAttackOffset = new Vector3(-1.8f, 0, 0);
     [Tooltip("근접 공격 직전 뒤로 살짝 당기는 연출 오프셋")]
     [SerializeField] private Vector3 _meleePullbackOffset = new Vector3(-0.5f, 0, 0);
+
+    [Header("Enemy Action Timing")]
+    [Tooltip("적이 공격 애니메이션을 시작한 뒤 실제 방어 QTE 판정이 유지되는 시간")]
+    [SerializeField] private float _enemyDefenseQTEWindow = 0.8f;
+    [Tooltip("적 공격 애니메이션을 한 번만 보여주고 BattleIdle로 되돌리기까지의 시간")]
+    [SerializeField] private float _enemyAttackVisualDuration = 0.18f;
+    [Tooltip("ZEV의 CrossCut 점프 회피 스킬 판정 시간")]
+    [SerializeField] private float _zevCrossCutQTEWindow = 0.95f;
+    [Tooltip("ZEV의 CrossCut 공격 연출이 한 번 보여지는 시간")]
+    [SerializeField] private float _zevCrossCutVisualDuration = 0.28f;
+    [Tooltip("플레이어 기본공격이 실제 데미지를 적용하기까지의 시간")]
+    [SerializeField] private float _playerAttackHitDelay = 0.03f;
+    [Tooltip("플레이어 기본공격 히트 후 복귀 시작까지의 시간")]
+    [SerializeField] private float _playerAttackRecoverDelay = 0.14f;
+    [Tooltip("적 공격 판정 후 적이 복귀를 시작하기까지의 시간")]
+    [SerializeField] private float _enemyPostHitDelay = 0.18f;
+    [Tooltip("광역 공격의 판정 전 준비 시간")]
+    [SerializeField] private float _enemyAoEWindup = 0.35f;
     #endregion
 
     #region [ Internal State ]
@@ -149,10 +167,11 @@ public class BattleManager : MonoBehaviour
         
         for (int i = 0; i < encounterEnemies.Count; i++)
         {
-            if (pm != null && _enemyBasePrefab != null)
+            GameObject enemyPrefab = ResolveEnemyBattlePrefab(encounterEnemies[i]);
+            if (pm != null && enemyPrefab != null)
             {
                 Vector3 spawnPos = pm.GetEnemyDefaultPos(i);
-                GameObject enemyObj = Instantiate(_enemyBasePrefab, spawnPos, Quaternion.identity);
+                GameObject enemyObj = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
                 EnemyCharacter enemyChar = enemyObj.GetComponent<EnemyCharacter>();
                 
                 if (enemyChar != null)
@@ -165,6 +184,14 @@ public class BattleManager : MonoBehaviour
                     StartCoroutine(enemyChar.ForceEnterBattleIdleRoutine());
                     _enemies.Add(enemyChar);
                 }
+                else
+                {
+                    Debug.LogError($"[BattleManager] 전투 프리팹 '{enemyPrefab.name}' 에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
+                }
+            }
+            else
+            {
+                Debug.LogError($"[BattleManager] 전투 적 프리팹을 찾지 못했습니다. EnemyData={encounterEnemies[i]?.EnemyName}");
             }
         }
 
@@ -270,9 +297,10 @@ public class BattleManager : MonoBehaviour
             for (int i = 0; i < global.PendingEnemies.Count; i++)
             {
                 Vector3 spawnPos = pm != null ? pm.GetEnemyDefaultPos(i) : new Vector3(6f, -1f, 0f);
-                if (_enemyBasePrefab != null)
+                GameObject enemyPrefab = ResolveEnemyBattlePrefab(global.PendingEnemies[i]);
+                if (enemyPrefab != null)
                 {
-                    GameObject enemyObj = Instantiate(_enemyBasePrefab, spawnPos, Quaternion.identity);
+                    GameObject enemyObj = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
                     if (enemyObj.TryGetComponent(out EnemyCharacter enemyChar))
                     {
                         var overworldEnemy = enemyObj.GetComponent<OverworldEnemy>();
@@ -283,6 +311,14 @@ public class BattleManager : MonoBehaviour
                         StartCoroutine(enemyChar.ForceEnterBattleIdleRoutine());
                         _enemies.Add(enemyChar);
                     }
+                    else
+                    {
+                        Debug.LogError($"[BattleManager] 전투 프리팹 '{enemyPrefab.name}' 에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"[BattleManager] 전투 적 프리팹을 찾지 못했습니다. EnemyData={global.PendingEnemies[i]?.EnemyName}");
                 }
             }
             global.PendingEnemies.Clear();
@@ -299,6 +335,24 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
         ChangeState(BattleState.TurnCalc);
     }
+
+    private GameObject ResolveEnemyBattlePrefab(EnemyData enemyData)
+    {
+        if (enemyData != null && enemyData.BattlePrefab != null)
+            return enemyData.BattlePrefab;
+
+        return _enemyBasePrefab;
+    }
+
+    private bool IsZevEnemy(EnemyCharacter enemy)
+    {
+        return enemy != null && enemy.IsEnemyNamed("ZEV");
+    }
+
+    private int ResolveEnemyReturnMoveHash(EnemyCharacter enemy)
+    {
+        return IsZevEnemy(enemy) ? EnemyCharacter.HashBattleMoveBack : EnemyCharacter.HashBattleMove;
+    }
     #endregion
 
     #region [ Turn Management ]
@@ -306,6 +360,13 @@ public class BattleManager : MonoBehaviour
     {
         yield return null;
         _turnQueue.Clear();
+
+        if (_enemies == null || _enemies.Count == 0)
+        {
+            Debug.LogError("[BattleManager] 전투 시작 시 적 리스트가 비어 있습니다. BattlePrefab 또는 EnemyCharacter 설정을 확인해주세요.");
+            yield break;
+        }
+
         List<CharacterBase> aliveChars = new List<CharacterBase>();
         
         foreach (var p in _playerParty) if (p != null && p.IsAlive) aliveChars.Add(p);
@@ -374,7 +435,7 @@ public class BattleManager : MonoBehaviour
             actor.PlayBattleAnim(PlayerCharacter.HashBattleReady);
         }
 
-        if (action == PlayerMenuAction.Attack || action == PlayerMenuAction.Act)
+        if (action == PlayerMenuAction.Attack)
         {
             OnTargetSelectionStarted?.Invoke(action);
         }
@@ -419,7 +480,7 @@ public class BattleManager : MonoBehaviour
 
         if (_pendingAction == PlayerMenuAction.Attack)
             StartCoroutine(ExecuteAttack(_pendingActor, targetIndex));
-        else if ((_pendingAction == PlayerMenuAction.Skill || _pendingAction == PlayerMenuAction.Act) && CurrentPendingSkill != null)
+        else if (_pendingAction == PlayerMenuAction.Skill && CurrentPendingSkill != null)
         {
             if (_pendingActor.CurrentMP >= CurrentPendingSkill.MPCost)
                 StartCoroutine(ExecuteSkill(_pendingActor, targetIndex, CurrentPendingSkill));
@@ -471,13 +532,13 @@ public class BattleManager : MonoBehaviour
         actor.PlayBattleAnim(PlayerCharacter.HashAttack); 
         actor.transform.DOMove(behindPos, 0.15f).SetEase(Ease.InExpo);
 
-        yield return new WaitForSeconds(0.08f);
+        yield return new WaitForSeconds(_playerAttackHitDelay);
 
         int dmg = target.TakeDamage(actor.ATK);
         CameraController.Instance?.PlayDashThroughImpact(1.0f);
         OnDamageDealt?.Invoke(target, dmg, false);
         
-        yield return new WaitForSeconds(0.3f); 
+        yield return new WaitForSeconds(_playerAttackRecoverDelay); 
 
         // 제자리 복귀
         int idx = _playerParty.IndexOf(actor);
@@ -596,12 +657,18 @@ public class BattleManager : MonoBehaviour
         if (enemy == null) { EndAction(); yield break; }
 
         var action = enemy.DecideAction();
-        var attackType = action switch { EnemyAction.UseSkill => EnemyAttackType.RangedAoE, EnemyAction.EnragedAttack => EnemyAttackType.AoEAll, _ => EnemyAttackType.MeleeClose };
+        var attackType = action switch
+        {
+            EnemyAction.UseSkill when IsZevEnemy(enemy) => EnemyAttackType.JumpOnly,
+            EnemyAction.UseSkill => EnemyAttackType.RangedAoE,
+            EnemyAction.EnragedAttack => EnemyAttackType.AoEAll,
+            _ => EnemyAttackType.MeleeClose
+        };
 
         OnEnemyActionStarted?.Invoke(enemy, attackType);
         CameraController.Instance?.ModeEnemyAction();
 
-        if (attackType == EnemyAttackType.MeleeClose)
+        if (attackType == EnemyAttackType.MeleeClose || attackType == EnemyAttackType.JumpOnly)
         {
             // 첫 번째 살아있는 플레이어 타겟팅
             int targetIdx = _playerParty.FindIndex(p => p.IsAlive);
@@ -609,18 +676,39 @@ public class BattleManager : MonoBehaviour
             {
                 var target = _playerParty[targetIdx];
                 var targetCtrl = target.GetComponent<PlayerController>();
+                bool isJumpOnlySkill = attackType == EnemyAttackType.JumpOnly;
+                float defenseQteWindow = isJumpOnlySkill ? _zevCrossCutQTEWindow : _enemyDefenseQTEWindow;
+                float attackVisualDuration = isJumpOnlySkill ? _zevCrossCutVisualDuration : _enemyAttackVisualDuration;
+                bool shouldAdvanceToTarget = enemy.Data == null || !enemy.Data.IsLargeEnemy;
 
-                enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
-                yield return enemy.transform.DOMove(target.transform.position + new Vector3(1.2f, 0, 0), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
-                enemy.PlayBasicAttackEffect();
-                enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
-                
+                if (shouldAdvanceToTarget)
+                {
+                    enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
+                    yield return enemy.transform.DOMove(target.transform.position + new Vector3(1.2f, 0, 0), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+                }
+                else
+                {
+                    enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+                }
+
+                if (isJumpOnlySkill)
+                {
+                    enemy.PlaySkillAnim("CrossCut", EnemyCharacter.HashSkill);
+                }
+                else
+                {
+                    enemy.PlayBasicAttackEffect();
+                    enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
+                }
+
                 bool qteFinished = false;
                 DefenseInput finalInput = DefenseInput.None;
                 QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
 
-                // QTE 대기
-                QTEManager.Instance.StartDefenseQTE(0.8f, 1.0f, (input, grade) => { finalInput = input; finalGrade = grade; qteFinished = true; });
+                // 공격 애니메이션은 한 번만 재생하고, QTE 판정은 별도로 유지합니다.
+                QTEManager.Instance.StartDefenseQTE(defenseQteWindow, 1.0f, (input, grade) => { finalInput = input; finalGrade = grade; qteFinished = true; });
+                yield return new WaitForSeconds(attackVisualDuration);
+                enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
                 yield return new WaitUntil(() => qteFinished);
 
                 // 🚨 데미지 및 UI 연출 판정
@@ -637,8 +725,21 @@ public class BattleManager : MonoBehaviour
                 {
                     int reducedDmg = 0;
 
-                    // 성공 애니메이션 실행 (회피/점프 성공 시 무조건 데미지 0)
-                    if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
+                    if (isJumpOnlySkill)
+                    {
+                        if (finalInput == DefenseInput.Jump)
+                        {
+                            reducedDmg = 0;
+                            targetCtrl?.ExecuteJump();
+                        }
+                        else
+                        {
+                            reducedDmg = enemy.ATK;
+                            if (finalInput == DefenseInput.Dodge) targetCtrl?.ExecuteDodge();
+                            else if (finalInput == DefenseInput.Parry) targetCtrl?.ExecuteParry();
+                        }
+                    }
+                    else if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
                     {
                         reducedDmg = 0; 
                         if (finalInput == DefenseInput.Dodge) targetCtrl?.ExecuteDodge();
@@ -674,18 +775,21 @@ public class BattleManager : MonoBehaviour
                     }
                 }
 
-                yield return new WaitForSeconds(0.4f);
+                yield return new WaitForSeconds(_enemyPostHitDelay);
                 targetCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
                 
                 // 적군 제자리 복귀
-                enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
-                yield return enemy.transform.DOMove(PositionManager.Instance.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
+                if (shouldAdvanceToTarget)
+                {
+                    enemy.PlayBattleAnim(ResolveEnemyReturnMoveHash(enemy));
+                    yield return enemy.transform.DOMove(PositionManager.Instance.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
+                }
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
             }
         }
         else // 광역기 처리
         {
-            yield return new WaitForSeconds(1.0f);
+            yield return new WaitForSeconds(_enemyAoEWindup);
             foreach (var p in _playerParty) 
             { 
                 if (!p.IsAlive) continue; 
@@ -695,7 +799,7 @@ public class BattleManager : MonoBehaviour
                 OnDamageDealt?.Invoke(p, dmg, false); 
             }
             _impulseSource?.GenerateImpulse(_hitImpulse);
-            yield return _waitMedium;
+            yield return new WaitForSeconds(_enemyPostHitDelay);
         }
 
         EndAction(); 
@@ -703,7 +807,7 @@ public class BattleManager : MonoBehaviour
     #endregion
 
     #region [ Outro & Scene Transitions ]
-    private bool CheckVictory() => _enemies.TrueForAll(e => !e.IsAlive);
+    private bool CheckVictory() => _enemies != null && _enemies.Count > 0 && _enemies.TrueForAll(e => e == null || !e.IsAlive);
     private bool CheckDefeat()  => _playerParty.TrueForAll(p => !p.IsAlive);
 
     private IEnumerator RunRoutine()

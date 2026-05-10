@@ -2,19 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
 
-[System.Serializable]
-public struct EnemyActCommand
-{
-    [HorizontalGroup("Act", 0.3f), HideLabel] 
-    public string ActName; // 예: "말 걸기", "위협하기", "안아주기"
-
-    [HorizontalGroup("Act", 0.2f), LabelText("Mercy증가")] 
-    public float MercyAmount; // 이 행동을 했을 때 오르는 자비 수치 (0.0 ~ 1.0)
-
-    [HorizontalGroup("Act", 0.5f), LabelText("대화 ID")] 
-    public string ActDialogueID; // DialogueManager에서 호출할 대화 분기 ID
-}
-
 [CreateAssetMenu(fileName = "NewEnemyData", menuName = "HubToHome/EnemyData")]
 public class EnemyData : SerializedScriptableObject 
 {
@@ -27,6 +14,11 @@ public class EnemyData : SerializedScriptableObject
     [Tooltip("이 적과 전투 시작 시 우선 재생할 전투 BGM입니다. 비워두면 맵 기본 전투 BGM을 사용합니다.")]
     public AudioClip BattleBGM;
 
+    [BoxGroup("Battle Presentation")]
+    [Required, AssetsOnly]
+    [Tooltip("BattleScene 또는 심리스 전투에서 실제로 생성할 전투용 적 프리팹입니다. 비워두면 BattleManager의 기본 Enemy Base Prefab을 사용합니다.")]
+    public GameObject BattlePrefab;
+
     [BoxGroup("Base Stats")] 
     [HorizontalGroup("Base Stats/R1", LabelWidth = 40)] public int MaxHP = 100;
     [HorizontalGroup("Base Stats/R1", LabelWidth = 40)] public int ATK = 8;
@@ -34,12 +26,6 @@ public class EnemyData : SerializedScriptableObject
     [BoxGroup("Base Stats")] 
     [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int DEF = 3;
     [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int SPD = 8;
-
-    // ── 🚨 추가됨: 행동(ACT) 시스템 ──
-    [BoxGroup("Deltarune Mercy System")]
-    [InfoBox("이 적에게 취할 수 있는 '행동' 리스트입니다. 자비(Mercy)가 1.0(100%)이 되면 Spare가 가능해집니다.")]
-    [ListDrawerSettings(ShowIndexLabels = true)]
-    public List<EnemyActCommand> ActCommands = new List<EnemyActCommand>();
 
     [BoxGroup("AI & Pattern")]
     [Range(0f, 1f)] public float SkillUseChance = 0.3f;
@@ -49,6 +35,7 @@ public class EnemyData : SerializedScriptableObject
     public bool IsLargeEnemy = false;
 
     [BoxGroup("Combat Logic")]
+    [InfoBox("적 스킬 패턴을 사용하려면 SkillList에 1개 이상 넣고 SkillUseChance를 조절하세요.")]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<SkillData> SkillList = new List<SkillData>();
 

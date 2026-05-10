@@ -34,7 +34,7 @@ public class BattleMenuUI : UIPanel
 
     #region [ Example / Default Data ]
     [FoldoutGroup("Fallback Data"), LabelWidth(140)] 
-    [SerializeField] private List<SkillData> _exampleActs = new List<SkillData>();
+    [SerializeField] private List<SkillData> _exampleSkills = new List<SkillData>();
     [FoldoutGroup("Fallback Data"), LabelWidth(140)] 
     [SerializeField] private List<ItemData> _exampleItems = new List<ItemData>();
     #endregion
@@ -61,7 +61,7 @@ public class BattleMenuUI : UIPanel
         _buttons = new[] { _attackBtn, _actBtn, _itemBtn, _runBtn };
         _mappedActions = new[] { 
             PlayerMenuAction.Attack, 
-            PlayerMenuAction.Act, 
+            PlayerMenuAction.Skill, 
             PlayerMenuAction.Item, 
             PlayerMenuAction.Run 
         };
@@ -152,8 +152,8 @@ public class BattleMenuUI : UIPanel
             _currentActor?.PlayBattleAnim(PlayerCharacter.HashBattleReady);
         }
 
-        if (action == PlayerMenuAction.Act) 
-            OpenActSubMenu();
+        if (action == PlayerMenuAction.Skill) 
+            OpenSkillSubMenu();
         else if (action == PlayerMenuAction.Item) 
             OpenItemSubMenu();
         else 
@@ -165,22 +165,22 @@ public class BattleMenuUI : UIPanel
     #endregion
 
     #region [ Sub Menu Controls ]
-    private void OpenActSubMenu()
+    private void OpenSkillSubMenu()
     {
         var entries = new List<IMenuEntry>();
-        var sourceActs = (_currentActor != null && _currentActor.Skills?.Count > 0) ? _currentActor.Skills : _exampleActs;
+        var sourceSkills = (_currentActor != null && _currentActor.Skills?.Count > 0) ? _currentActor.Skills : _exampleSkills;
         
-        foreach (var act in sourceActs) 
+        foreach (var skill in sourceSkills) 
         {
-            if (act != null) entries.Add(new SkillMenuEntry(act));
+            if (skill != null) entries.Add(new SkillMenuEntry(skill));
         }
 
         if (entries.Count == 0)
-            entries.Add(new EmptyMenuEntry("NO ACT", "등록된 ACT/스킬이 없습니다."));
+            entries.Add(new EmptyMenuEntry("NO SKILL", "등록된 스킬이 없습니다."));
 
         _inputEnabled = false; 
         SlideMenuUp();
-        _subMenu?.Open("ACT", entries, OnActSelected, OnSubMenuCancelled);
+        _subMenu?.Open("SKILL", entries, OnSkillSelected, OnSubMenuCancelled);
     }
 
     private void OpenItemSubMenu()
@@ -197,7 +197,7 @@ public class BattleMenuUI : UIPanel
         _subMenu?.Open("ITEM", entries, OnItemSelected, OnSubMenuCancelled);
     }
 
-    private void OnActSelected(IMenuEntry entry)
+    private void OnSkillSelected(IMenuEntry entry)
     {
         SlideMenuDown();
         if (entry is EmptyMenuEntry)
@@ -209,7 +209,7 @@ public class BattleMenuUI : UIPanel
             return;
         }
         if (entry is SkillMenuEntry skillEntry)
-            BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Act, skillEntry.Data, null);
+            BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Skill, skillEntry.Data, null);
     }
 
     private void OnItemSelected(IMenuEntry entry)

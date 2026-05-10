@@ -44,5 +44,6 @@ public enum EnemyAttackType
     MeleeClose,     // 근거리 단일 (적이 코앞까지 와서 공격, 타이밍 가드 필요)
     RangedAoE,      // 원거리/장판 (위치 지정 공격, 방향키로 범위 밖으로 피해야 함)
     AoEAll,         // 전체 공격 (회피 불가, 패링이나 방어만 가능)
-    BulletHell  
+    BulletHell,
+    JumpOnly
 }

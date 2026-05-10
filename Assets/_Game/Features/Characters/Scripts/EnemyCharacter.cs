@@ -13,7 +13,9 @@ public class EnemyCharacter : CharacterBase
     public static readonly int HashDie        = Animator.StringToHash("Die");
     public static readonly int HashBattleIdle = Animator.StringToHash("BattleIdle");
     public static readonly int HashBattleMove = Animator.StringToHash("BattleMove");
+    public static readonly int HashBattleMoveBack = Animator.StringToHash("BattleMoveBack");
     public static readonly int HashSkill      = Animator.StringToHash("Skill");
+    public static readonly int HashCrossCut   = Animator.StringToHash("CrossCut");
 
     private Animator _animator;
     private SpriteRenderer _spriteRenderer;
@@ -29,8 +31,6 @@ public class EnemyCharacter : CharacterBase
     [SerializeField] private Color _hurtFlashColor = new Color(1f, 0.3f, 0.3f);
     [SerializeField] private float _flashDuration = 0.08f;
     [SerializeField] private float _shakeStrength = 0.15f;
-
-    public float MercyPercentage { get; private set; } = 0f;
 
     private void OnDisable()
     {
@@ -106,20 +106,14 @@ public class EnemyCharacter : CharacterBase
             
             CurrentHP = MaxHP; 
             CurrentMP = MaxMP;
-            MercyPercentage = 0f;
         }
-    }
-
-    public void AddMercy(float amount)
-    {
-        MercyPercentage = Mathf.Clamp01(MercyPercentage + amount);
     }
 
     public void PlayBattleAnim(int triggerHash)
     {
         if (_animator == null || !HasParameter(triggerHash)) return;
 
-        if (triggerHash == HashBattleIdle || triggerHash == HashBattleMove || triggerHash == HashAttack || triggerHash == HashSkill)
+        if (triggerHash == HashBattleIdle || triggerHash == HashBattleMove || triggerHash == HashBattleMoveBack || triggerHash == HashAttack || triggerHash == HashSkill)
             _isBattleMode = true;
 
         if (_isBattleMode)
@@ -130,6 +124,26 @@ public class EnemyCharacter : CharacterBase
     {
         if (_isBattleMode)
             _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
+    }
+
+    public void PlaySkillAnim(string triggerName, int fallbackTriggerHash)
+    {
+        if (_animator == null) return;
+
+        int preferredHash = Animator.StringToHash(triggerName);
+        if (HasParameter(preferredHash))
+        {
+            _isBattleMode = true;
+            _animator.SetTrigger(preferredHash);
+            return;
+        }
+
+        PlayBattleAnim(fallbackTriggerHash);
+    }
+
+    public bool IsEnemyNamed(string enemyName)
+    {
+        return Data != null && string.Equals(Data.EnemyName, enemyName, System.StringComparison.OrdinalIgnoreCase);
     }
 
     private void ResetTriggerIfExists(int triggerHash)

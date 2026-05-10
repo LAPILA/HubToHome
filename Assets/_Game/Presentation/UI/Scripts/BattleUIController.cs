@@ -278,7 +278,7 @@ public class BattleUIController : MonoBehaviour
 
         if (action == PlayerMenuAction.Item && bm.CurrentPendingItem != null)
             _isAllyTargeting = (bm.CurrentPendingItem.TargetType == TargetAreaType.AllyOnly);
-        else if ((action == PlayerMenuAction.Skill || action == PlayerMenuAction.Act) && bm.CurrentPendingSkill != null)
+        else if (action == PlayerMenuAction.Skill && bm.CurrentPendingSkill != null)
             _isAllyTargeting = (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly);
 
         _selectedTargetIndex = GetFirstAliveTargetIndex();
@@ -342,6 +342,7 @@ public class BattleUIController : MonoBehaviour
         {
             EnemyAttackType.MeleeClose => "ATTACK",
             EnemyAttackType.RangedAoE  => "RANGED",
+            EnemyAttackType.JumpOnly   => "JUMP",
             EnemyAttackType.AoEAll     => "ALL OUT",
             _                          => "ATTACK",
         };

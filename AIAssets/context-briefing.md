@@ -2,51 +2,52 @@
 
 ## 현재 단계 요약
 
-- 초반 플레이 루프는 이미 보입니다. `타이틀 -> 인트로 -> 이름 입력 -> 다음 씬` 경로와 `오버월드 이동 -> 상호작용 -> 전투 진입` 경로가 둘 다 존재합니다.
-- 오늘 기준으로 가장 큰 가치는 "새 기능을 넓히기"보다 "이미 열어놓은 시스템을 닫기"에 있습니다.
-- 특히 현재 작업 트리의 중심이 설정 시스템이므로, 여기서 맥락 전환 없이 마감하는 것이 1인 개발 효율이 가장 좋습니다.
+- 프로젝트는 이제 "타이틀/인트로 프로토타입" 단계를 지나 `설정 시스템`, `오버월드 적 조우`, `대화-전투 연결`까지 붙은 첫 번째 플레이어블 수직 슬라이스에 들어와 있습니다.
+- 다음 효율은 새 시스템을 더 벌리기보다, 이미 붙은 루프에서 끊긴 지점과 불안정한 지점을 닫는 데서 나옵니다.
+- 우선순위 기준은 `사용자 체감 버그 -> 끊긴 플레이 루프 -> 확장 전 리팩터링` 순서가 가장 낫습니다.
 
 ## 오늘 가장 먼저 할 일 3가지
 
-### 1. 설정 시스템 통합 마감
+### 1. `Continue`를 실제 저장 복구 흐름으로 연결
 
-- 이유: 지금 열려 있는 변경 파일 대부분이 설정/입력 계층이라 문맥 전환 비용이 가장 적습니다.
-- 우선 수정할 파일:
-  - `Assets/_Game/Core/Scripts/GameConfigManager.cs`
-  - `Assets/_Game/Presentation/UI/Scripts/ConfigPanelUI.cs`
-  - `Assets/_Game/Presentation/UI/Scripts/TitleMenuManager.cs`
-  - `Assets/_Game/Core/Scripts/UIManager.cs`
-  - `Assets/_Game/Core/Scripts/AudioManager.cs`
-- 작업 가이드:
-  - `ConfigPanelUI` 내부 이동/확정/취소도 `ConfigurableAction`을 따르도록 맞춥니다.
-  - Voice 볼륨을 설정 항목에 포함할지 결정하고, 포함한다면 `GameConfigManager` 저장 키와 UI 행을 같이 추가합니다.
-  - 패널 문자열을 `LocalizationManager`에서 읽게 바꿔서 설정 화면도 다국어 체인에 편입시킵니다.
-
-### 2. 타이틀 `Continue`를 실제 로드 흐름으로 연결
-
-- 이유: 지금 상태의 `Continue`는 UX상 가장 눈에 띄는 빈 버튼입니다.
-- 우선 수정할 파일:
+- 이유: 지금 빌드에서 가장 눈에 띄는 끊김은 타이틀 `Continue`가 실질적으로 비어 있다는 점입니다.
+- 먼저 볼 파일:
   - `Assets/_Game/Presentation/UI/Scripts/TitleMenuManager.cs`
   - `Assets/_Game/Core/Scripts/SaveManager.cs`
   - `Assets/_Game/Core/Scripts/SaveData.cs`
-  - 필요 시 `Assets/_Game/Core/Scripts/GlobalDataManager.cs`
+  - `Assets/_Game/Core/Scripts/GlobalDataManager.cs`
 - 작업 가이드:
-  - `PlayerPrefs.HasKey("SaveFileExists")` 검사로 끝내지 말고, 실제 저장 슬롯 존재 여부와 복구 경로를 연결합니다.
-  - `Continue` 클릭 시 마지막 저장 슬롯 로드 -> `GlobalDataManager` 복원 -> 적절한 씬 이동 순서로 닫습니다.
-  - 아직 저장 설계가 미완성이라면 버튼을 남겨두기보다 비활성/툴팁 처리하는 편이 더 안전합니다.
+  - 버튼 노출 조건을 `PlayerPrefs.HasKey("SaveFileExists")`만 보지 말고 실제 저장 슬롯 존재 여부로 바꿉니다.
+  - `Continue` 클릭 시 마지막 저장 슬롯 로드 -> `GlobalDataManager` 복원 -> 저장된 씬 로드 순서로 닫습니다.
+  - 저장 구조가 아직 덜 닫혔다면 최소한 "로드 불가 시 버튼 숨김/비활성" 정책부터 명확히 고정합니다.
 
-### 3. 대사 선택지 분기 다시 활성화
+### 2. 오버월드 적 조우/도주 후 상태를 플레이테스트 기준으로 안정화
 
-- 이유: 스토리 확장과 이벤트 브랜칭이 현재 구조에서 가장 큰 생산성 레버리지입니다.
-- 우선 수정할 파일:
-  - `Assets/_Game/Features/Dialogue/Scripts/DialogueManager.cs`
-  - `Assets/_Game/Presentation/UI/Scripts/DialogueUI.cs`
-  - `Assets/_Game/Features/Dialogue/Scripts/DialogueData.cs`
+- 이유: 오늘 추가된 조우 시스템은 볼륨이 크고, 여기서 남는 버그는 게임 진행 전체를 흔듭니다.
+- 먼저 볼 파일:
+  - `Assets/_Game/Features/Overworld/Scripts/OverworldEnemy.cs`
+  - `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
+  - `Assets/_Game/Core/Scripts/GlobalDataManager.cs`
+  - 필요 시 `Assets/_Game/Features/Overworld/Scripts/PlayerController.cs`
 - 작업 가이드:
-  - `DialogueManager`의 주석 처리된 `_activeUI.ShowChoices(...)` 경로를 다시 살립니다.
-  - `ChoiceData`에서 다음 노드 이동, 플래그 설정, 자동 진행 차단이 어디까지 책임인지 먼저 정리합니다.
-  - 현재 `DialogueUI`는 임시로 `Z/X/C`에 고정돼 있으므로, 이 입력 방식도 설정 시스템과 나중에 합칠 수 있게 분리해 두는 편이 좋습니다.
+  - 도주 후 재조우 대기, collider 비활성, 깜빡임 알파, 복귀 타이밍이 실제 플레이에서 맞는지 먼저 체크합니다.
+  - 전투 승리/도주/패배 각각에서 `CurrentEncounterEnemyId`와 cooldown state가 어떻게 남는지 로그를 찍어 확인합니다.
+  - 안정화 전까지는 기능 확장보다 상태 전이 표를 먼저 고정하는 편이 낫습니다.
+
+### 3. 설정 시스템 마감
+
+- 이유: 관련 파일이 이미 많이 열려 있고, 지금 닫아두면 이후 UI/대사/전투 입력 작업이 편해집니다.
+- 먼저 볼 파일:
+  - `Assets/_Game/Core/Scripts/GameConfigManager.cs`
+  - `Assets/_Game/Core/Scripts/GameInput.cs`
+  - `Assets/_Game/Presentation/UI/Scripts/ConfigPanelUI.cs`
+  - `Assets/_Game/Core/Scripts/AudioManager.cs`
+  - `Assets/_Game/Core/Scripts/LocalizationManager.cs`
+- 작업 가이드:
+  - 설정 패널의 fallback 문구를 줄이고 `LocalizationTable.csv`로 옮깁니다.
+  - Voice 볼륨이 정말 필요한지 결정한 뒤, 필요하면 저장 키와 UI 행을 같이 추가합니다.
+  - `ConfigPanelUI`와 일반 UI 입력의 예외 경로를 정리해, "설정 모달일 때만 따로 돌아가는 입력"을 최소화합니다.
 
 ## 다음 후보
 
-- 위 3개가 끝나면 `InventoryManager`의 `StatusFactory` TODO를 처리해 아이템/상태이상 구조를 데이터 주도형으로 바꾸는 것이 다음 순서입니다.
+- 위 3개가 정리되면 `InventoryManager`의 상태이상 TODO를 `StatusFactory` 또는 레지스트리 형태로 통합하는 것이 다음 리팩터링 포인트입니다.
