@@ -162,6 +162,17 @@ public class GameConfigManager : MonoBehaviour
     {
         PlayerPrefs.SetString(KeyPrefix + action, key.ToString());
         PlayerPrefs.Save();
+        GameInput.RefreshKeyBindings();
+    }
+
+    public void ResetControlsDefaults()
+    {
+        foreach (ConfigurableAction action in Enum.GetValues(typeof(ConfigurableAction)))
+        {
+            PlayerPrefs.DeleteKey(KeyPrefix + action);
+        }
+        PlayerPrefs.Save();
+        GameInput.RefreshKeyBindings();
     }
 
     public void ResetDefaults()
@@ -184,6 +195,7 @@ public class GameConfigManager : MonoBehaviour
 
         ApplyAll();
         Save();
+        GameInput.RefreshKeyBindings();
     }
 
     public static Key GetDefaultKey(ConfigurableAction action)

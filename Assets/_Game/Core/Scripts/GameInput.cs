@@ -117,6 +117,8 @@ public static class GameInput
         _configBack = _config.FindAction("Back", true);
         _configReset = _config.FindAction("ResetDefaults", true);
 
+        ApplySavedKeyBindings();
+
         _player.Enable();
         _ui.Enable();
         _battle.Enable();
@@ -244,6 +246,101 @@ public static class GameInput
         _prevConfigNavigate = _currConfigNavigate = Vector2.zero;
         _prevConfigAdjust = _currConfigAdjust = Vector2.zero;
         _cachedFrame = -1;
+    }
+
+    public static void RefreshKeyBindings()
+    {
+        EnsureInitialized();
+        ApplySavedKeyBindings();
+        ResetCachedState();
+    }
+
+    private static void ApplySavedKeyBindings()
+    {
+        if (_asset == null) return;
+        var config = GameConfigManager.EnsureInstance();
+
+        ApplyMoveBindings(_playerMove, config.GetKey(ConfigurableAction.Up), config.GetKey(ConfigurableAction.Down), config.GetKey(ConfigurableAction.Left), config.GetKey(ConfigurableAction.Right));
+        ApplyMoveBindings(_uiNavigate, config.GetKey(ConfigurableAction.Up), config.GetKey(ConfigurableAction.Down), config.GetKey(ConfigurableAction.Left), config.GetKey(ConfigurableAction.Right));
+        ApplyMoveBindings(_battleNavigate, config.GetKey(ConfigurableAction.Up), config.GetKey(ConfigurableAction.Down), config.GetKey(ConfigurableAction.Left), config.GetKey(ConfigurableAction.Right));
+        ApplyMoveBindings(_configNavigate, config.GetKey(ConfigurableAction.Up), config.GetKey(ConfigurableAction.Down), config.GetKey(ConfigurableAction.Left), config.GetKey(ConfigurableAction.Right));
+
+        ApplyButtonBinding(_playerConfirm, config.GetKey(ConfigurableAction.Confirm));
+        ApplyButtonBinding(_uiSubmit, config.GetKey(ConfigurableAction.Confirm));
+        ApplyButtonBinding(_battleConfirm, config.GetKey(ConfigurableAction.Confirm));
+        ApplyButtonBinding(_dialogueAdvance, config.GetKey(ConfigurableAction.Confirm));
+        ApplyButtonBinding(_choice1, config.GetKey(ConfigurableAction.Confirm));
+        ApplyButtonBinding(_qteZ, config.GetKey(ConfigurableAction.Confirm));
+        ApplyButtonBinding(_configSubmit, config.GetKey(ConfigurableAction.Confirm));
+
+        ApplyButtonBinding(_playerCancel, config.GetKey(ConfigurableAction.Cancel));
+        ApplyButtonBinding(_uiCancel, config.GetKey(ConfigurableAction.Cancel));
+        ApplyButtonBinding(_battleCancel, config.GetKey(ConfigurableAction.Cancel));
+        ApplyButtonBinding(_choice2, config.GetKey(ConfigurableAction.Cancel));
+        ApplyButtonBinding(_qteX, config.GetKey(ConfigurableAction.Cancel));
+        ApplyButtonBinding(_configBack, config.GetKey(ConfigurableAction.Cancel));
+
+        ApplyButtonBinding(_playerMenu, config.GetKey(ConfigurableAction.Menu));
+        ApplyButtonBinding(_uiMenu, config.GetKey(ConfigurableAction.Menu));
+        ApplyButtonBinding(_choice3, config.GetKey(ConfigurableAction.Menu));
+        ApplyButtonBinding(_qteC, config.GetKey(ConfigurableAction.Menu));
+
+        ApplyButtonBinding(_playerRun, config.GetKey(ConfigurableAction.Run));
+    }
+
+    private static void ApplyMoveBindings(InputAction action, Key up, Key down, Key left, Key right)
+    {
+        if (action == null) return;
+        ApplyCompositePartBinding(action, "up", up);
+        ApplyCompositePartBinding(action, "down", down);
+        ApplyCompositePartBinding(action, "left", left);
+        ApplyCompositePartBinding(action, "right", right);
+    }
+
+    private static void ApplyCompositePartBinding(InputAction action, string partName, Key key)
+    {
+        string path = ToKeyboardPath(key);
+        for (int i = 0; i < action.bindings.Count; i++)
+        {
+            InputBinding binding = action.bindings[i];
+            if (!binding.isPartOfComposite) continue;
+            if (!string.Equals(binding.name, partName, System.StringComparison.OrdinalIgnoreCase)) continue;
+            action.ApplyBindingOverride(i, path);
+        }
+    }
+
+    private static void ApplyButtonBinding(InputAction action, Key key)
+    {
+        if (action == null) return;
+        string path = ToKeyboardPath(key);
+        bool appliedPrimary = false;
+        for (int i = 0; i < action.bindings.Count; i++)
+        {
+            InputBinding binding = action.bindings[i];
+            if (binding.isComposite || binding.isPartOfComposite) continue;
+            if (!binding.path.StartsWith("<Keyboard>/") && !binding.effectivePath.StartsWith("<Keyboard>/")) continue;
+
+            if (!appliedPrimary)
+            {
+                action.ApplyBindingOverride(i, path);
+                appliedPrimary = true;
+            }
+            else
+            {
+                action.ApplyBindingOverride(i, new InputBinding { overridePath = "" });
+            }
+        }
+    }
+
+    private static string ToKeyboardPath(Key key)
+    {
+        var keyboard = Keyboard.current;
+        if (keyboard != null)
+        {
+            KeyControl control = keyboard[key];
+            if (control != null && !string.IsNullOrEmpty(control.path)) return control.path;
+        }
+        return "<Keyboard>/" + key.ToString().ToLowerInvariant();
     }
 
     private static void UpdateCache()

@@ -163,7 +163,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
             case RowType.Language: CycleLanguage(1); break;
             case RowType.ResetDefault: Config.ResetDefaults(); break;
-            case RowType.ControlsResetDefault: Config.ResetDefaults(); break;
+            case RowType.ControlsResetDefault: Config.ResetControlsDefaults(); break;
         }
         AudioManager.Instance?.PlaySFX(_selectSfx);
         Refresh();
@@ -204,8 +204,6 @@ public class ConfigPanelUI : UIPanel
     {
         if (!GameInput.TryReadPressedKey(out Key key)) return;
         if (key == Key.None || key == Key.Escape) return;
-        if (key == Key.W || key == Key.A || key == Key.S || key == Key.D) return;
-
         ConfigurableAction action = RowToAction(_rows[_rowIndex].type);
 
         foreach (ConfigurableAction a in Enum.GetValues(typeof(ConfigurableAction)))
