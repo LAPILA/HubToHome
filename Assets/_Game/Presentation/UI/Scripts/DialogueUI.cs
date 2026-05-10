@@ -5,14 +5,14 @@ using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
 using Febucci.UI.Examples;
-using Febucci.TextAnimatorCore.Typing;
+using Febucci.TextAnimatorForUnity;
 
 public class DialogueUI : MonoBehaviour
 {
     [SerializeField] private CanvasGroup _canvasGroup;
     
     [Header("Text Animator & Sound")]
-    [SerializeField] private TypewriterCore _typewriter; 
+    [SerializeField] private TypewriterComponent _typewriter; 
     [SerializeField] private TAnimSoundWriter _soundWriter; 
 
     [Header("UI 참조")]
@@ -26,15 +26,25 @@ public class DialogueUI : MonoBehaviour
 
     public bool IsTyping { get; private set; } = false;
     public bool IsWaitingForChoice { get; private set; } = false;
+    private Coroutine _applySpeedRoutine;
 
     private void Awake()
     {   
+        if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
         if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
+    }
+
+    private void Update()
+    {
+        // Typewriter Timings/DB가 매 프레임 속도를 덮어쓰는 경우를 강제로 상쇄
+        if (IsTyping && _typewriter != null)
+            ApplyConfiguredTextSpeed();
     }
 
     public void OpenPanel()
     {
         gameObject.SetActive(true);
+        ApplyConfiguredTextSpeed();
         if (_canvasGroup != null)
         {
             _canvasGroup.DOKill();
@@ -56,6 +66,7 @@ public class DialogueUI : MonoBehaviour
     {
         IsTyping = true;
         IsWaitingForChoice = false;
+        ApplyConfiguredTextSpeed();
 
         // 1. 이름 및 초상화 세팅
         if (_speakerNameText != null) 
@@ -87,12 +98,30 @@ public class DialogueUI : MonoBehaviour
         if (_typewriter != null)
         {
             _typewriter.ShowText(text);
+            if (_applySpeedRoutine != null) StopCoroutine(_applySpeedRoutine);
+            _applySpeedRoutine = StartCoroutine(CoReapplyTypewriterSpeed());
         }
         else if (_dialogueText != null)
         {
             _dialogueText.text = text;
             IsTyping = false;
         }
+    }
+
+    private void ApplyConfiguredTextSpeed()
+    {
+        if (_typewriter == null) return;
+
+        float speed = GameConfigManager.EnsureInstance().TextSpeed;
+        _typewriter.SetTypewriterSpeed(Mathf.Max(0.05f, speed));
+    }
+
+    private IEnumerator CoReapplyTypewriterSpeed()
+    {
+        yield return null;
+        ApplyConfiguredTextSpeed();
+        yield return null;
+        ApplyConfiguredTextSpeed();
     }
 
     public void SkipTyping()

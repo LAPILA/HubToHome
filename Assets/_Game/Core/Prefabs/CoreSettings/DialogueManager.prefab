@@ -101,6 +101,14 @@ PrefabInstance:
       propertyPath: _canvasGroup
       value: 
       objectReference: {fileID: 5713810413877116031}
+    - target: {fileID: 4668929848213701413, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: timingsScriptableBase
+      value: 
+      objectReference: {fileID: 11400000, guid: f9029dd0173d57a45ab78e2ad79be0b8, type: 2}
+    - target: {fileID: 6407109161996391538, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: timingsScriptableBase
+      value: 
+      objectReference: {fileID: 11400000, guid: f9029dd0173d57a45ab78e2ad79be0b8, type: 2}
     - target: {fileID: 7582505938803683177, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
       propertyPath: m_Name
       value: DialogueCanvas
