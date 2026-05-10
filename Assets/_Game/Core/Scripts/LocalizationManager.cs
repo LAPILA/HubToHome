@@ -8,6 +8,7 @@ public enum LanguageType { KR, EN, JP, CN }
 public class LocalizationManager : MonoBehaviour
 {
     public static LocalizationManager Instance { get; private set; }
+    public static event Action<LanguageType> LanguageChanged;
 
     public LanguageType CurrentLanguage { get; private set; } = LanguageType.KR;
     private Dictionary<string, Dictionary<LanguageType, string>> _localizedText;
@@ -88,8 +89,18 @@ public class LocalizationManager : MonoBehaviour
 
     public void ChangeLanguage(LanguageType newLang)
     {
+        if (CurrentLanguage == newLang)
+        {
+            PlayerPrefs.SetInt("Config.Language", (int)newLang);
+            PlayerPrefs.Save();
+            LanguageChanged?.Invoke(newLang);
+            return;
+        }
+
         CurrentLanguage = newLang;
         PlayerPrefs.SetInt("Config.Language", (int)newLang);
+        PlayerPrefs.Save();
+        LanguageChanged?.Invoke(newLang);
         Debug.Log($"언어 변경: {newLang}");
     }
 }

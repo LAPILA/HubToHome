@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -10,7 +11,7 @@ public class ConfigPanelUI : UIPanel
 {
     private enum Focus { Category, RowList, KeyCapture }
     private enum Category { Audio, Gameplay, Controls, System }
-    private enum RowType { MasterVolume, BgmVolume, SfxVolume, Language, Fullscreen, ResetDefault, Key_Up, Key_Down, Key_Left, Key_Right, Key_Confirm, Key_Cancel, Key_Run, Key_Menu, ControlsResetDefault }
+    private enum RowType { MasterVolume, BgmVolume, SfxVolume, Language, TextSpeed, AutoAdvance, ScreenShake, Fullscreen, VSync, TargetFps, ResetDefault, Key_Up, Key_Down, Key_Left, Key_Right, Key_Confirm, Key_Cancel, Key_Run, Key_Menu, ControlsResetDefault }
 
     [Serializable] private class CategoryLabel { public Category category; public TextMeshProUGUI text; }
     private class SpawnedRow { public RowType type; public GameObject go; public TextMeshProUGUI name; public TextMeshProUGUI value; }
@@ -21,9 +22,14 @@ public class ConfigPanelUI : UIPanel
     [SerializeField] private Transform _detailRoot;
     [SerializeField] private GameObject _rowPrefab;
     [SerializeField] private ScrollRect _scrollRect;
+    [SerializeField] private TextMeshProUGUI _gameplayPreviewText;
 
     [Header("Config")]
     [SerializeField] private string _titleSceneName = "00_TitleScene";
+
+    [Header("Audio SFX")]
+    [SerializeField] private AudioClip _moveSfx;
+    [SerializeField] private AudioClip _selectSfx;
 
     [Header("Visual")]
     [SerializeField] private Color _normalColor = Color.white;
@@ -41,6 +47,7 @@ public class ConfigPanelUI : UIPanel
     private readonly Dictionary<TextMeshProUGUI, bool> _lastSelectedState = new Dictionary<TextMeshProUGUI, bool>();
     private readonly Dictionary<TextMeshProUGUI, float> _baseFontSize = new Dictionary<TextMeshProUGUI, float>();
     private RectTransform _runtimeAutoContent;
+    private Coroutine _textPreviewRoutine;
 
     private GameConfigManager Config { get { return GameConfigManager.EnsureInstance(); } }
 
@@ -72,8 +79,24 @@ public class ConfigPanelUI : UIPanel
             GameStateManager.Instance.ChangeState(GameState.Exploration);
     }
 
-    private void OnDisable() { KillAllTweens(); }
+    private void OnDisable() { KillAllTweens(); OnDisableLanguageHook(); }
     private void OnDestroy() { KillAllTweens(); ClearRows(); }
+
+    private void OnEnable()
+    {
+        LocalizationManager.LanguageChanged += HandleLanguageChanged;
+    }
+
+    private void OnDisableLanguageHook()
+    {
+        LocalizationManager.LanguageChanged -= HandleLanguageChanged;
+    }
+
+    private void HandleLanguageChanged(LanguageType _)
+    {
+        if (!IsVisible) return;
+        Refresh();
+    }
 
     private void Update()
     {
@@ -104,7 +127,10 @@ public class ConfigPanelUI : UIPanel
             if (_rows.Count == 0) return;
             _rowIndex = (_rowIndex + dir + _rows.Count) % _rows.Count;
         }
+        AudioManager.Instance?.PlaySFX(_moveSfx);
         Refresh();
+        if (_selectedCategory == Category.Gameplay && _focus == Focus.RowList && _rows.Count > 0)
+            TriggerGameplayRowPreview(_rows[_rowIndex].type);
     }
 
     private void Submit()
@@ -113,7 +139,10 @@ public class ConfigPanelUI : UIPanel
         {
             _focus = Focus.RowList;
             if (_selectedCategory == Category.Controls) _rowIndex = 0;
+            AudioManager.Instance?.PlaySFX(_selectSfx);
             Refresh();
+            if (_selectedCategory == Category.Gameplay && _rows.Count > 0)
+                TriggerGameplayRowPreview(_rows[_rowIndex].type);
             return;
         }
 
@@ -124,6 +153,7 @@ public class ConfigPanelUI : UIPanel
         {
             _focus = Focus.KeyCapture;
             _skipOneFrame = true;
+            AudioManager.Instance?.PlaySFX(_selectSfx);
             Refresh();
             return;
         }
@@ -135,6 +165,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.ResetDefault: Config.ResetDefaults(); break;
             case RowType.ControlsResetDefault: Config.ResetDefaults(); break;
         }
+        AudioManager.Instance?.PlaySFX(_selectSfx);
         Refresh();
     }
 
@@ -149,9 +180,16 @@ public class ConfigPanelUI : UIPanel
             case RowType.BgmVolume: Config.SetBgmVolume(Config.BgmVolume + step * dir); break;
             case RowType.SfxVolume: Config.SetSfxVolume(Config.SfxVolume + step * dir); break;
             case RowType.Language: CycleLanguage(dir); break;
+            case RowType.TextSpeed: Config.SetTextSpeed(Config.TextSpeed + dir * 0.1f); break;
+            case RowType.AutoAdvance: Config.SetAutoAdvance(!Config.AutoAdvance); break;
+            case RowType.ScreenShake: Config.SetScreenShake(Config.ScreenShake + dir * 0.1f); break;
             case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
+            case RowType.VSync: Config.SetVSync(!Config.UseVSync); break;
+            case RowType.TargetFps: Config.SetTargetFps(Config.TargetFps + dir * 30); break;
         }
+        AudioManager.Instance?.PlaySFX(_moveSfx);
         Refresh();
+        TriggerGameplayRowPreview(t);
     }
 
     private void Back()
@@ -283,6 +321,7 @@ public class ConfigPanelUI : UIPanel
     private void Refresh()
     {
         if (_titleText != null) _titleText.text = "CONFIG";
+        RefreshGameplayPreview();
 
         for (int i = 0; i < _categories.Count; i++)
         {
@@ -301,6 +340,94 @@ public class ConfigPanelUI : UIPanel
         }
 
         EnsureSelectedRowVisible();
+    }
+
+    private void RefreshGameplayPreview()
+    {
+        var preview = _gameplayPreviewText;
+        if (preview == null) return;
+        bool isGameplay = _selectedCategory == Category.Gameplay;
+        preview.gameObject.SetActive(isGameplay);
+        if (!isGameplay) return;
+
+        string sample = L("config.preview.sample", "예시 테스트입니다! 확인해주세요!");
+        if (_rows.Count > 0 && _rowIndex >= 0 && _rowIndex < _rows.Count)
+        {
+            RowType current = _rows[_rowIndex].type;
+            if (current == RowType.TextSpeed)
+            {
+                preview.text = sample;
+                PlayTextSpeedPreview();
+                return;
+            }
+
+            if (current == RowType.ScreenShake)
+            {
+                preview.text = sample;
+                PlayScreenShakeTextPreview();
+                return;
+            }
+        }
+
+        preview.text = sample;
+        preview.DOKill();
+        preview.rectTransform.DOKill();
+        preview.maxVisibleCharacters = int.MaxValue;
+        preview.rectTransform.localPosition = Vector3.zero;
+    }
+
+    private void TriggerGameplayRowPreview(RowType rowType)
+    {
+        if (_selectedCategory != Category.Gameplay) return;
+        if (rowType == RowType.TextSpeed) PlayTextSpeedPreview();
+        else if (rowType == RowType.ScreenShake) PlayScreenShakeTextPreview();
+    }
+
+    private void PlayTextSpeedPreview()
+    {
+        var preview = _gameplayPreviewText;
+        if (preview == null) return;
+        preview.DOKill();
+        preview.rectTransform.DOKill();
+        preview.rectTransform.localPosition = Vector3.zero;
+        preview.maxVisibleCharacters = int.MaxValue;
+
+        if (_textPreviewRoutine != null) StopCoroutine(_textPreviewRoutine);
+        _textPreviewRoutine = StartCoroutine(CoTypePreview(preview));
+    }
+
+    private IEnumerator CoTypePreview(TextMeshProUGUI preview)
+    {
+        string full = L("config.preview.sample", "예시 테스트입니다! 확인해주세요!");
+        preview.text = string.Empty;
+
+        float cps = Mathf.Lerp(8f, 40f, (Config.TextSpeed - 0.5f) / 1.5f);
+        float delay = 1f / Mathf.Max(1f, cps);
+
+        for (int i = 1; i <= full.Length; i++)
+        {
+            preview.text = full.Substring(0, i);
+            yield return new WaitForSecondsRealtime(delay);
+        }
+
+        _textPreviewRoutine = null;
+    }
+
+    private void PlayScreenShakeTextPreview()
+    {
+        var preview = _gameplayPreviewText;
+        if (preview == null) return;
+        preview.DOKill();
+        preview.rectTransform.DOKill();
+        if (_textPreviewRoutine != null) StopCoroutine(_textPreviewRoutine);
+
+        int percent = Mathf.RoundToInt(Config.ScreenShake * 100f);
+        string sample = L("config.preview.sample", "예시 테스트입니다! 확인해주세요!");
+        preview.text = sample + "\nSHAKE: " + percent + "%";
+        preview.maxVisibleCharacters = int.MaxValue;
+        preview.color = _selectedColor;
+        preview.DOColor(_normalColor, 0.2f);
+        preview.rectTransform.localPosition = Vector3.zero;
     }
 
     private void EnsureSelectedRowVisible()
@@ -343,12 +470,17 @@ public class ConfigPanelUI : UIPanel
     {
         switch (r.type)
         {
-            case RowType.MasterVolume: SetRow(r, "Master Volume", ToPercent(Config.MasterVolume)); break;
-            case RowType.BgmVolume: SetRow(r, "BGM Volume", ToPercent(Config.BgmVolume)); break;
-            case RowType.SfxVolume: SetRow(r, "SFX Volume", ToPercent(Config.SfxVolume)); break;
-            case RowType.Language: SetRow(r, "Language", Config.Language.ToString()); break;
-            case RowType.Fullscreen: SetRow(r, "Fullscreen", Config.IsFullscreen ? "ON" : "OFF"); break;
-            case RowType.ResetDefault: SetRow(r, "Reset Default", ""); break;
+            case RowType.MasterVolume: SetRow(r, L("config.master", "Master Volume"), ToPercent(Config.MasterVolume)); break;
+            case RowType.BgmVolume: SetRow(r, L("config.bgm", "BGM Volume"), ToPercent(Config.BgmVolume)); break;
+            case RowType.SfxVolume: SetRow(r, L("config.sfx", "SFX Volume"), ToPercent(Config.SfxVolume)); break;
+            case RowType.Language: SetRow(r, L("config.language", "Language"), Config.Language.ToString()); break;
+            case RowType.TextSpeed: SetRow(r, L("config.text_speed", "Text Speed"), string.Format("{0:0.0}x", Config.TextSpeed)); break;
+            case RowType.AutoAdvance: SetRow(r, L("config.auto_advance", "Auto Advance"), Config.AutoAdvance ? L("common.on", "ON") : L("common.off", "OFF")); break;
+            case RowType.ScreenShake: SetRow(r, L("config.screen_shake", "Screen Shake"), ToPercent(Config.ScreenShake)); break;
+            case RowType.Fullscreen: SetRow(r, L("config.fullscreen", "Fullscreen"), Config.IsFullscreen ? L("common.on", "ON") : L("common.off", "OFF")); break;
+            case RowType.VSync: SetRow(r, L("config.vsync", "VSync"), Config.UseVSync ? L("common.on", "ON") : L("common.off", "OFF")); break;
+            case RowType.TargetFps: SetRow(r, L("config.target_fps", "Target FPS"), Config.TargetFps.ToString()); break;
+            case RowType.ResetDefault: SetRow(r, L("config.reset_default", "Reset Default"), ""); break;
             case RowType.Key_Up: SetKeyRow(r, ConfigurableAction.Up); break;
             case RowType.Key_Down: SetKeyRow(r, ConfigurableAction.Down); break;
             case RowType.Key_Left: SetKeyRow(r, ConfigurableAction.Left); break;
@@ -357,7 +489,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.Key_Cancel: SetKeyRow(r, ConfigurableAction.Cancel); break;
             case RowType.Key_Run: SetKeyRow(r, ConfigurableAction.Run); break;
             case RowType.Key_Menu: SetKeyRow(r, ConfigurableAction.Menu); break;
-            case RowType.ControlsResetDefault: SetRow(r, "Reset Controls", ""); break;
+            case RowType.ControlsResetDefault: SetRow(r, L("config.reset_controls", "Reset Controls"), ""); break;
         }
     }
 
@@ -371,16 +503,63 @@ public class ConfigPanelUI : UIPanel
     {
         switch (action)
         {
-            case ConfigurableAction.Up: return "Move Up";
-            case ConfigurableAction.Down: return "Move Down";
-            case ConfigurableAction.Left: return "Move Left";
-            case ConfigurableAction.Right: return "Move Right";
-            case ConfigurableAction.Confirm: return "Confirm";
-            case ConfigurableAction.Cancel: return "Cancel";
-            case ConfigurableAction.Run: return "Run";
-            case ConfigurableAction.Menu: return "Menu";
+            case ConfigurableAction.Up: return LStatic("config.key.up", "Move Up");
+            case ConfigurableAction.Down: return LStatic("config.key.down", "Move Down");
+            case ConfigurableAction.Left: return LStatic("config.key.left", "Move Left");
+            case ConfigurableAction.Right: return LStatic("config.key.right", "Move Right");
+            case ConfigurableAction.Confirm: return LStatic("config.key.confirm", "Confirm");
+            case ConfigurableAction.Cancel: return LStatic("config.key.cancel", "Cancel");
+            case ConfigurableAction.Run: return LStatic("config.key.run", "Run");
+            case ConfigurableAction.Menu: return LStatic("config.key.menu", "Menu");
             default: return action.ToString();
         }
+    }
+
+    private string L(string key, string fallback)
+    {
+        if (LocalizationManager.Instance != null)
+        {
+            string text = LocalizationManager.Instance.GetText(key, fallback);
+            if (!string.IsNullOrEmpty(text) && text != fallback) return text;
+        }
+        return LocalFallback(key, fallback);
+    }
+
+    private static string LStatic(string key, string fallback)
+    {
+        if (LocalizationManager.Instance != null)
+        {
+            string text = LocalizationManager.Instance.GetText(key, fallback);
+            if (!string.IsNullOrEmpty(text) && text != fallback) return text;
+        }
+        LanguageType lang = GameConfigManager.EnsureInstance().Language;
+        return LocalFallbackStatic(key, fallback, lang);
+    }
+
+    private string LocalFallback(string key, string fallback)
+    {
+        return LocalFallbackStatic(key, fallback, Config.Language);
+    }
+
+    private static string LocalFallbackStatic(string key, string fallback, LanguageType lang)
+    {
+        if (lang == LanguageType.KR)
+        {
+            switch (key)
+            {
+                case "config.language": return "언어";
+                case "config.text_speed": return "텍스트 속도";
+                case "config.auto_advance": return "자동 진행";
+                case "config.screen_shake": return "화면 흔들림";
+                case "config.fullscreen": return "전체화면";
+                case "config.vsync": return "수직동기화";
+                case "config.target_fps": return "목표 FPS";
+                case "config.reset_controls": return "조작키 초기화";
+                case "common.on": return "켜짐";
+                case "common.off": return "꺼짐";
+            }
+        }
+        return fallback;
     }
 
     private static void SetRow(SpawnedRow r, string name, string value)
@@ -460,9 +639,9 @@ public class ConfigPanelUI : UIPanel
     private static List<RowType> GetRowsForCategory(Category c)
     {
         if (c == Category.Audio) return new List<RowType> { RowType.MasterVolume, RowType.BgmVolume, RowType.SfxVolume };
-        if (c == Category.Gameplay) return new List<RowType> { RowType.Language };
+        if (c == Category.Gameplay) return new List<RowType> { RowType.Language, RowType.TextSpeed, RowType.AutoAdvance, RowType.ScreenShake };
         if (c == Category.Controls) return new List<RowType> { RowType.Key_Up, RowType.Key_Down, RowType.Key_Left, RowType.Key_Right, RowType.Key_Confirm, RowType.Key_Cancel, RowType.Key_Run, RowType.Key_Menu, RowType.ControlsResetDefault };
-        return new List<RowType> { RowType.Fullscreen, RowType.ResetDefault };
+        return new List<RowType> { RowType.Fullscreen, RowType.VSync, RowType.TargetFps, RowType.ResetDefault };
     }
 
     private static string ToPercent(float v) { return Mathf.RoundToInt(v * 100f) + "%"; }

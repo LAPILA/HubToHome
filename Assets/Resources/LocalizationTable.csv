@@ -2,3 +2,26 @@
 Intro_001,<fade><wave>...들리는가?</wave></fade>\n<size=80%><color=#888888>정신을 차려라.</color></size>,...Can you hear me?,…聞こえるか？,…你听得见吗？
 Intro_002,<shake>네 이름은</shake> <color=#FF5555><b>「{0}」</b></color>이군.\n<rainb>운명이 움직이기 시작했다.</rainb>,Your name is <color=#FF0000>'{0}'.,君の名は<color=#FF0000>「{0}」だな。,你的名字是<color=#FF0000>“{0}”啊。
 Choice_Yes,예,Yes,はい,是
+config.master,마스터 볼륨,Master Volume,マスターボリューム,主音量
+config.bgm,BGM 볼륨,BGM Volume,BGM音量,BGM音量
+config.sfx,SFX 볼륨,SFX Volume,SFX音量,SFX音量
+config.language,언어,Language,言語,语言
+config.text_speed,텍스트 속도,Text Speed,テキスト速度,文本速度
+config.auto_advance,자동 진행,Auto Advance,自動送り,自动播放
+config.screen_shake,화면 흔들림,Screen Shake,画面揺れ,屏幕震动
+config.fullscreen,전체화면,Fullscreen,フルスクリーン,全屏
+config.vsync,수직동기화,VSync,垂直同期,垂直同步
+config.target_fps,목표 FPS,Target FPS,目標FPS,目标FPS
+config.reset_default,기본값 초기화,Reset Default,デフォルトに戻す,恢复默认
+config.reset_controls,조작키 초기화,Reset Controls,操作キー初期化,重置按键
+config.key.up,위로 이동,Move Up,上へ移動,向上移动
+config.key.down,아래로 이동,Move Down,下へ移動,向下移动
+config.key.left,왼쪽 이동,Move Left,左へ移動,向左移动
+config.key.right,오른쪽 이동,Move Right,右へ移動,向右移动
+config.key.confirm,확인,Confirm,決定,确认
+config.key.cancel,취소,Cancel,キャンセル,取消
+config.key.run,달리기,Run,ダッシュ,奔跑
+config.key.menu,메뉴,Menu,メニュー,菜单
+config.preview.sample,예시 테스트입니다! 확인해주세요!,This is a sample preview. Please check!,サンプル表示です。ご確認ください！,这是示例预览文本，请确认！
+common.on,켜짐,ON,オン,开
+common.off,꺼짐,OFF,オフ,关
