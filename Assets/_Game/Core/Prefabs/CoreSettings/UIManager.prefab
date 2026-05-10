@@ -751,7 +751,7 @@ Canvas:
   m_GameObject: {fileID: 4268751536678498039}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
+  m_RenderMode: 1
   m_Camera: {fileID: 0}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
@@ -847,7 +847,6 @@ MonoBehaviour:
   _rowPrefab: {fileID: 3162793373981644699, guid: 666fce06fbc3ce34183c34237083cf24, type: 3}
   _scrollRect: {fileID: 2624971277501836802}
   _gameplayPreviewText: {fileID: 7462619761040225717}
-  _exText: {fileID: 7462619761040225717}
   _titleSceneName: 00_TitleScene
   _moveSfx: {fileID: 8300000, guid: 0a45a726cc88a40498016a49d4d30f7a, type: 3}
   _selectSfx: {fileID: 8300000, guid: cbf6130492351bb4fa5a895237386a37, type: 3}

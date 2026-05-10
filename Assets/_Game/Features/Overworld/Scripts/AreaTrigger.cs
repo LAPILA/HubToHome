@@ -99,34 +99,31 @@ public class AreaTrigger : MonoBehaviour
                 HandleBattle(player);
                 break;
             case TriggerType.SceneBattleEncounter:
-                player.SetBattleMode(true);
                 AudioManager.Instance?.PlaySFX(EncounterSFX);
-                GlobalDataManager.Instance.LastOverworldScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                GlobalDataManager.Instance.PendingEnemies = new List<EnemyData>(EncounterEnemies);
-                GlobalDataManager.Instance.PendingBattleBGM = ResolveBattleBGM(EncounterEnemies);
-                player.SavePositionToGlobal();
-                StartCoroutine(LoadBattleSceneAfterDelay());
+                StartCoroutine(LoadBattleSceneAfterDelay(player));
                 break;
         }
     }
 
     private void HandleBattle(PlayerController player)
     {
-        player.SetBattleMode(true);
         AudioManager.Instance?.PlaySFX(EncounterSFX);
-        if (BattleManager.Instance != null)
-        {
-            GlobalDataManager.Instance.PendingBattleBGM = ResolveBattleBGM(EncounterEnemies);
-            BattleManager.Instance.StartSeamlessBattle(EncounterEnemies, player); 
-            if (DestroyOnVictory) Destroy(gameObject);
-        }
+        bool started = BattleEncounterService.StartEncounter(player, EncounterEnemies, ResolveBattleBGM(EncounterEnemies));
+        if (started && DestroyOnVictory) Destroy(gameObject);
     }
 
-    private System.Collections.IEnumerator LoadBattleSceneAfterDelay()
+    private System.Collections.IEnumerator LoadBattleSceneAfterDelay(PlayerController player)
     {
         if (EncounterDelay > 0f)
             yield return new WaitForSecondsRealtime(EncounterDelay);
-        SceneLoader.Instance?.LoadScene("BattleScene", BattleFadeDuration);
+
+        BattleEncounterService.StartEncounter(
+            player,
+            EncounterEnemies,
+            ResolveBattleBGM(EncounterEnemies),
+            true,
+            "BattleScene",
+            BattleFadeDuration);
     }
 
     private static AudioClip ResolveBattleBGM(List<EnemyData> enemies)

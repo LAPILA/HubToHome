@@ -211,14 +211,16 @@ public class Action_VFX : SkillActionBlock
         }
 
         // 🚨 GameObject.Instantiate 에러 수정 및 ObjectPool 적용
+        GameObject spawnedVfx;
         if (ObjectPoolManager.Instance != null)
         {
-            ObjectPoolManager.Instance.Spawn(VfxPrefab, spawnPos, context.Actor.transform.rotation);
+            spawnedVfx = ObjectPoolManager.Instance.Spawn(VfxPrefab, spawnPos, context.Actor.transform.rotation);
         }
         else
         {
-            GameObject.Instantiate(VfxPrefab, spawnPos, context.Actor.transform.rotation);
+            spawnedVfx = GameObject.Instantiate(VfxPrefab, spawnPos, context.Actor.transform.rotation);
         }
+        CharacterVFX.ApplyRuntimeAudioNormalization(spawnedVfx);
         yield break; 
     }
 }
@@ -248,6 +250,7 @@ public class Action_Projectile : SkillActionBlock
             proj = ObjectPoolManager.Instance.Spawn(ProjectilePrefab, startPos, Quaternion.identity);
         else
             proj = GameObject.Instantiate(ProjectilePrefab, startPos, Quaternion.identity);
+        CharacterVFX.ApplyRuntimeAudioNormalization(proj);
         
         yield return proj.transform.DOMove(endPos, FlightDuration).SetEase(Ease.Linear).WaitForCompletion();
         
@@ -258,8 +261,10 @@ public class Action_Projectile : SkillActionBlock
 
         if (ImpactVFXPrefab != null)
         {
-            if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.Spawn(ImpactVFXPrefab, endPos, Quaternion.identity);
-            else GameObject.Instantiate(ImpactVFXPrefab, endPos, Quaternion.identity);
+            GameObject impactVfx;
+            if (ObjectPoolManager.Instance != null) impactVfx = ObjectPoolManager.Instance.Spawn(ImpactVFXPrefab, endPos, Quaternion.identity);
+            else impactVfx = GameObject.Instantiate(ImpactVFXPrefab, endPos, Quaternion.identity);
+            CharacterVFX.ApplyRuntimeAudioNormalization(impactVfx);
         }
         
         int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
@@ -307,8 +312,10 @@ public class Action_SequentialMelee : SkillActionBlock
 
             if (HitVfxPrefab != null)
             {
-                if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.Spawn(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
-                else GameObject.Instantiate(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
+                GameObject hitVfx;
+                if (ObjectPoolManager.Instance != null) hitVfx = ObjectPoolManager.Instance.Spawn(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
+                else hitVfx = GameObject.Instantiate(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
+                CharacterVFX.ApplyRuntimeAudioNormalization(hitVfx);
             }
             
             int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);

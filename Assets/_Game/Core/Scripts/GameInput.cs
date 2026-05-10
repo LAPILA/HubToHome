@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
-using System.IO;
 
 /// <summary>
 /// 프로젝트 전체 입력 Facade.
@@ -13,6 +12,7 @@ public static class GameInput
     private const float AxisThreshold = 0.5f;
     private static bool _configModalActive;
 
+    private static InputSystem_Actions _generatedActions;
     private static InputActionAsset _asset;
     private static InputActionMap _player;
     private static InputActionMap _ui;
@@ -69,14 +69,14 @@ public static class GameInput
     {
         if (_asset != null) return;
 
-        string fullPath = Path.Combine(Application.dataPath, "Keyboard", "InputSystem_Actions.inputactions");
-        if (!File.Exists(fullPath))
+        _generatedActions = new InputSystem_Actions();
+        _asset = _generatedActions.asset;
+
+        if (_asset == null)
         {
-            Debug.LogError($"[GameInput] Input actions file not found: {fullPath}");
+            Debug.LogError("[GameInput] Failed to create InputSystem_Actions asset.");
             return;
         }
-
-        _asset = InputActionAsset.FromJson(File.ReadAllText(fullPath));
 
         _player = _asset.FindActionMap("Player", true);
         _ui = _asset.FindActionMap("UI", true);

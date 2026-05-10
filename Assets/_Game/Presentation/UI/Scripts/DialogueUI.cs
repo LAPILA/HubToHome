@@ -9,6 +9,8 @@ using Febucci.TextAnimatorForUnity;
 
 public class DialogueUI : MonoBehaviour
 {
+    private static readonly Color ChoiceSelectedColor = new Color(1f, 0.95f, 0.3f);
+
     [SerializeField] private CanvasGroup _canvasGroup;
     
     [Header("Text Animator & Sound")]
@@ -19,6 +21,8 @@ public class DialogueUI : MonoBehaviour
     [SerializeField] private Image _portraitImage;
     [SerializeField] private TextMeshProUGUI _speakerNameText;
     [SerializeField] private TextMeshProUGUI _dialogueText; 
+    [SerializeField] private RectTransform _choiceRoot;
+    [SerializeField] private TextMeshProUGUI _choiceTemplate;
 
     [Header("기본 오디오 설정")]
     [SerializeField] private AudioClip _defaultVoiceBlip;
@@ -27,15 +31,26 @@ public class DialogueUI : MonoBehaviour
     public bool IsTyping { get; private set; } = false;
     public bool IsWaitingForChoice { get; private set; } = false;
     private Coroutine _applySpeedRoutine;
+    private readonly List<TextMeshProUGUI> _choiceLabels = new List<TextMeshProUGUI>();
+    private List<ChoiceData> _activeChoices;
+    private System.Action<ChoiceData> _onChoiceSelected;
+    private int _selectedChoiceIndex;
 
     private void Awake()
     {   
         if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
         if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
+        PrepareChoiceUI();
     }
 
     private void Update()
     {
+        if (IsWaitingForChoice)
+        {
+            HandleChoiceInput();
+            return;
+        }
+
         // Typewriter Timings/DB가 매 프레임 속도를 덮어쓰는 경우를 강제로 상쇄
         if (IsTyping && _typewriter != null)
             ApplyConfiguredTextSpeed();
@@ -55,6 +70,7 @@ public class DialogueUI : MonoBehaviour
 
     public void ClosePanel()
     {
+        HideChoices();
         if (_canvasGroup != null)
         {
             _canvasGroup.DOFade(0f, 0.2f).OnComplete(() => gameObject.SetActive(false));
@@ -138,20 +154,117 @@ public class DialogueUI : MonoBehaviour
 
     public void ShowChoices(List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
     {
+        PrepareChoiceUI();
+        if (_choiceRoot == null || _choiceTemplate == null || choices == null || choices.Count == 0)
+        {
+            onSelected?.Invoke(null);
+            return;
+        }
+
         IsWaitingForChoice = true;
-        StartCoroutine(TempChoiceRoutine(choices, onSelected));
+        _activeChoices = choices;
+        _onChoiceSelected = onSelected;
+        _selectedChoiceIndex = 0;
+
+        RebuildChoiceLabels();
+        RefreshChoiceVisuals();
+        _choiceRoot.gameObject.SetActive(true);
     }
 
-    private IEnumerator TempChoiceRoutine(List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
+    private void PrepareChoiceUI()
     {
-        yield return new WaitForSeconds(0.1f);
-        while (IsWaitingForChoice)
+        if (_choiceRoot == null || _choiceTemplate == null) return;
+
+        _choiceRoot.anchorMin = new Vector2(0.5f, 0f);
+        _choiceRoot.anchorMax = new Vector2(0.5f, 0f);
+        _choiceRoot.pivot = new Vector2(0.5f, 0f);
+        _choiceRoot.anchoredPosition = new Vector2(0f, 120f);
+        _choiceRoot.sizeDelta = new Vector2(900f, 220f);
+
+        var rootImage = _choiceRoot.GetComponent<Image>();
+        if (rootImage != null)
         {
-            if (choices.Count > 0 && GameInput.Choice1Pressed) { IsWaitingForChoice = false; onSelected?.Invoke(choices[0]); yield break; }
-            if (choices.Count > 1 && GameInput.Choice2Pressed) { IsWaitingForChoice = false; onSelected?.Invoke(choices[1]); yield break; }
-            if (choices.Count > 2 && GameInput.Choice3Pressed) { IsWaitingForChoice = false; onSelected?.Invoke(choices[2]); yield break; }
-            yield return null;
+            rootImage.enabled = false;
+            rootImage.raycastTarget = false;
         }
+
+        _choiceRoot.gameObject.SetActive(false);
+        _choiceTemplate.gameObject.SetActive(false);
+    }
+
+    private void RebuildChoiceLabels()
+    {
+        for (int i = 0; i < _choiceLabels.Count; i++)
+        {
+            if (_choiceLabels[i] != null)
+                Destroy(_choiceLabels[i].gameObject);
+        }
+        _choiceLabels.Clear();
+
+        for (int i = 0; i < _activeChoices.Count; i++)
+        {
+            TextMeshProUGUI label = Instantiate(_choiceTemplate, _choiceRoot);
+            label.gameObject.SetActive(true);
+            _choiceLabels.Add(label);
+        }
+    }
+
+    private void RefreshChoiceVisuals()
+    {
+        if (_activeChoices == null) return;
+
+        for (int i = 0; i < _choiceLabels.Count && i < _activeChoices.Count; i++)
+        {
+            bool selected = i == _selectedChoiceIndex;
+            _choiceLabels[i].text = (selected ? "▶ " : "   ") + _activeChoices[i].ChoiceText;
+            _choiceLabels[i].color = selected ? ChoiceSelectedColor : Color.white;
+        }
+    }
+
+    private void HandleChoiceInput()
+    {
+        if (_activeChoices == null || _activeChoices.Count == 0) return;
+
+        if (GameInput.UIUpPressed)
+        {
+            _selectedChoiceIndex = (_selectedChoiceIndex - 1 + _activeChoices.Count) % _activeChoices.Count;
+            RefreshChoiceVisuals();
+        }
+        else if (GameInput.UIDownPressed)
+        {
+            _selectedChoiceIndex = (_selectedChoiceIndex + 1) % _activeChoices.Count;
+            RefreshChoiceVisuals();
+        }
+
+        if (GameInput.DialogueAdvancePressed || GameInput.ConfirmPressed)
+        {
+            CommitChoice(_selectedChoiceIndex);
+            return;
+        }
+
+        if (GameInput.Choice1Pressed && _activeChoices.Count > 0) CommitChoice(0);
+        else if (GameInput.Choice2Pressed && _activeChoices.Count > 1) CommitChoice(1);
+        else if (GameInput.Choice3Pressed && _activeChoices.Count > 2) CommitChoice(2);
+    }
+
+    private void CommitChoice(int index)
+    {
+        if (_activeChoices == null || index < 0 || index >= _activeChoices.Count) return;
+
+        ChoiceData selected = _activeChoices[index];
+        System.Action<ChoiceData> callback = _onChoiceSelected;
+        HideChoices();
+        callback?.Invoke(selected);
+    }
+
+    private void HideChoices()
+    {
+        IsWaitingForChoice = false;
+        _activeChoices = null;
+        _onChoiceSelected = null;
+
+        if (_choiceRoot != null)
+            _choiceRoot.gameObject.SetActive(false);
     }
     
 }

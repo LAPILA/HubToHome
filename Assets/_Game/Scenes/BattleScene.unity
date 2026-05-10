@@ -1226,6 +1226,8 @@ MonoBehaviour:
   _maxTurnQueueSize: 8
   _isDedicatedBattleScene: 1
   _fallbackSceneName: LobbyScene
+  _postRunEnemyDisableDuration: 3
+  _postRunEnemyAlpha: 0.5
   _battleUICanvas: {fileID: 1413503397}
   _enemyBasePrefab: {fileID: 3461299171839533844, guid: 15fa88e0bc5908e448f5be65a1a40fa4, type: 3}
   _playerBasePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
@@ -1766,6 +1768,7 @@ GameObject:
   - component: {fileID: 538805795}
   - component: {fileID: 538805794}
   - component: {fileID: 538805793}
+  - component: {fileID: 538805797}
   m_Layer: 0
   m_Name: PPC
   m_TagString: MainCamera
@@ -1939,6 +1942,14 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
+--- !u!81 &538805797
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 538805791}
+  m_Enabled: 1
 --- !u!1 &550462379
 GameObject:
   m_ObjectHideFlags: 0

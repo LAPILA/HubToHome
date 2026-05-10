@@ -126,6 +126,12 @@ public class EnemyCharacter : CharacterBase
             _animator.SetTrigger(triggerHash);
     }
 
+    public void PlayBasicAttackEffect()
+    {
+        if (_isBattleMode)
+            _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
+    }
+
     private void ResetTriggerIfExists(int triggerHash)
     {
         if (_animator != null && HasParameter(triggerHash))

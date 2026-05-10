@@ -23,6 +23,7 @@ public class GameConfigManager : MonoBehaviour
     public static GameConfigManager Instance { get; private set; }
 
     public const float DefaultVolume = 0.8f;
+    public const float BgmOutputCompensation = 0.2f;
 
     private const string MasterVolumeKey = "Config.MasterVolume";
     private const string BgmVolumeKey = "Config.BGMVolume";
@@ -105,29 +106,27 @@ public class GameConfigManager : MonoBehaviour
 
     public void ApplyAudio()
     {
-        AudioManager.Instance?.SetMasterVolume(MasterVolume);
-        AudioManager.Instance?.SetBGMVolume(BgmVolume);
-        AudioManager.Instance?.SetSFXVolume(SfxVolume);
+        AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
     }
 
     public void SetMasterVolume(float value)
     {
         MasterVolume = Mathf.Clamp01(value);
-        AudioManager.Instance?.SetMasterVolume(MasterVolume);
+        AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
         Save();
     }
 
     public void SetBgmVolume(float value)
     {
         BgmVolume = Mathf.Clamp01(value);
-        AudioManager.Instance?.SetBGMVolume(BgmVolume);
+        AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
         Save();
     }
 
     public void SetSfxVolume(float value)
     {
         SfxVolume = Mathf.Clamp01(value);
-        AudioManager.Instance?.SetSFXVolume(SfxVolume);
+        AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
         Save();
     }
 

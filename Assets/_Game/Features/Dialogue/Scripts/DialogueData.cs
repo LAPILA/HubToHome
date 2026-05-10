@@ -1,7 +1,10 @@
 using UnityEngine;
 using Sirenix.OdinInspector;
 using System.Collections.Generic;
-public enum DialogueStyle { Overworld, Cinematic }[CreateAssetMenu(fileName = "NewDialogue", menuName = "Dialogue/Dialogue Data")]
+
+public enum DialogueStyle { Overworld, Cinematic }
+
+[CreateAssetMenu(fileName = "NewDialogue", menuName = "Dialogue/Dialogue Data")]
 public class DialogueData : ScriptableObject
 {
     [BoxGroup("기본 설정")]
@@ -48,4 +51,7 @@ public class ChoiceData
     public DialogueData NextDialogue;
     [Tooltip("선택 시 저장될 게임 진행 플래그 (예: Killed_Boss)")]
     public string SetFlagOnSelect; 
+
+    [Tooltip("선택 시 즉시 전투를 시작합니다.")]
+    public bool StartBattleEncounter;
 }

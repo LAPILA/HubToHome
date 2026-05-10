@@ -467,6 +467,7 @@ public class BattleManager : MonoBehaviour
         // 타겟의 반대편으로 지나가는 연출 (X축 대칭)
         Vector3 behindPos = target.transform.position + new Vector3(-_meleeAttackOffset.x, 0, 0);
         
+        actor.PlayBasicAttackEffect();
         actor.PlayBattleAnim(PlayerCharacter.HashAttack); 
         actor.transform.DOMove(behindPos, 0.15f).SetEase(Ease.InExpo);
 
@@ -611,6 +612,7 @@ public class BattleManager : MonoBehaviour
 
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
                 yield return enemy.transform.DOMove(target.transform.position + new Vector3(1.2f, 0, 0), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+                enemy.PlayBasicAttackEffect();
                 enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
                 
                 bool qteFinished = false;

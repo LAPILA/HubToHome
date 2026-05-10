@@ -101,6 +101,10 @@ PrefabInstance:
       propertyPath: _canvasGroup
       value: 
       objectReference: {fileID: 5713810413877116031}
+    - target: {fileID: 4390369160051076443, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4668929848213701413, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
       propertyPath: timingsScriptableBase
       value: 

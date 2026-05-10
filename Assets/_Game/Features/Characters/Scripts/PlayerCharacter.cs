@@ -57,6 +57,11 @@ public class PlayerCharacter : CharacterBase
             _animator.SetTrigger(triggerHash);
     }
 
+    public void PlayBasicAttackEffect()
+    {
+        _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
+    }
+
     private bool HasParameter(int paramHash)
     {
         if (_animator == null) return false;

@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class DialogueManager : MonoBehaviour
@@ -16,6 +18,7 @@ public class DialogueManager : MonoBehaviour
     private bool _isPlaying = false;
     private bool _isNaming = false;
     private Action _onCompleteCallback;
+    private DialogueEncounterContext _encounterContext;
 
     private void Awake() 
     { 
@@ -25,7 +28,7 @@ public class DialogueManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    public void StartDialogue(DialogueData data, Action onComplete = null)
+    public void StartDialogue(DialogueData data, Action onComplete = null, DialogueEncounterContext encounterContext = null)
     {
         if (_isPlaying || data == null || data.Nodes.Count == 0) return;
 
@@ -33,6 +36,7 @@ public class DialogueManager : MonoBehaviour
         _currentDialogue = data;
         _currentNodeIndex = 0;
         _onCompleteCallback = onComplete;
+        _encounterContext = encounterContext;
 
         _activeUI = (data.Style == DialogueStyle.Cinematic) ? _cinematicPanel : _overworldPanel;
 
@@ -81,8 +85,75 @@ public class DialogueManager : MonoBehaviour
 
         if (node.IsChoiceNode && node.Choices != null && node.Choices.Count > 0)
         {
-            //_activeUI.ShowChoices(node.Choices, OnChoiceSelected);
+            _activeUI.ShowChoices(node.Choices, OnChoiceSelected);
         }
+    }
+
+    private void OnChoiceSelected(ChoiceData choice)
+    {
+        if (choice == null)
+        {
+            EndDialogue();
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(choice.SetFlagOnSelect))
+            GlobalDataManager.Instance?.SetFlag(choice.SetFlagOnSelect, 1);
+
+        if (choice.StartBattleEncounter)
+        {
+            StartCoroutine(CoStartBattleFromChoice(choice));
+            return;
+        }
+
+        if (choice.NextDialogue != null)
+        {
+            _currentDialogue = choice.NextDialogue;
+            _currentNodeIndex = 0;
+            PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
+            return;
+        }
+
+        EndDialogue();
+    }
+
+    private IEnumerator CoStartBattleFromChoice(ChoiceData choice)
+    {
+        PlayerController player = FindFirstObjectByType<PlayerController>();
+        DialogueEncounterContext encounterContext = _encounterContext;
+        EndDialogue();
+        yield return null;
+
+        if (player == null)
+        {
+            Debug.LogWarning("[DialogueManager] PlayerController를 찾지 못해 대화 선택 전투를 시작할 수 없습니다.");
+            yield break;
+        }
+
+        List<EnemyData> enemies = encounterContext != null && encounterContext.EncounterEnemies != null
+            ? new List<EnemyData>(encounterContext.EncounterEnemies)
+            : new List<EnemyData>();
+
+        AudioClip battleBgm = encounterContext != null ? encounterContext.OverrideBattleBGM : null;
+        bool useDedicatedBattleScene = encounterContext != null && encounterContext.UseDedicatedBattleScene;
+        string battleSceneName = encounterContext != null && !string.IsNullOrWhiteSpace(encounterContext.BattleSceneName)
+            ? encounterContext.BattleSceneName
+            : "BattleScene";
+        float battleFadeDuration = encounterContext != null && encounterContext.BattleSceneFadeDuration > 0f
+            ? encounterContext.BattleSceneFadeDuration
+            : 0.08f;
+        string encounterId = encounterContext != null ? encounterContext.EncounterIdOverride : null;
+        bool defeatsOnVictory = encounterContext != null && encounterContext.DefeatEnemyOnVictory;
+
+        BattleEncounterService.StartEncounter(
+            player,
+            enemies,
+            battleBgm,
+            useDedicatedBattleScene,
+            battleSceneName,
+            battleFadeDuration,
+            encounterId,
+            defeatsOnVictory);
     }
 
     private void StartNamingProcess()
@@ -116,6 +187,7 @@ public class DialogueManager : MonoBehaviour
     {
         _isPlaying = false;
         if (_activeUI != null) _activeUI.ClosePanel(); 
+        _encounterContext = null;
         
         GameStateManager.Instance?.ChangeState(GameState.Exploration); 
         

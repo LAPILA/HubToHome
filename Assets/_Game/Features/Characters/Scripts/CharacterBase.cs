@@ -202,6 +202,7 @@ public abstract class CharacterBase : MonoBehaviour
         if (_activeLoopVFX.ContainsKey(buffId) || vfxPrefab == null) return;
         Transform pivot = GetPivot(pivotName);
         GameObject vfx = ObjectPoolManager.Instance.Spawn(vfxPrefab, pivot.position, Quaternion.identity);
+        CharacterVFX.ApplyRuntimeAudioNormalization(vfx);
         vfx.transform.SetParent(pivot); 
         vfx.transform.localPosition = Vector3.zero;
         _activeLoopVFX[buffId] = vfx;

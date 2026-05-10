@@ -219,6 +219,7 @@ GameObject:
   - component: {fileID: 123179393}
   - component: {fileID: 123179392}
   - component: {fileID: 123179391}
+  - component: {fileID: 123179395}
   m_Layer: 0
   m_Name: PPC
   m_TagString: MainCamera
@@ -392,6 +393,14 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
+--- !u!81 &123179395
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 123179388}
+  m_Enabled: 1
 --- !u!1 &672597503
 GameObject:
   m_ObjectHideFlags: 0
@@ -625,6 +634,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapSettings
   _mapBGM: {fileID: 0}
+  _defaultBattleBGM: {fileID: 0}
+  _bgmFadeDuration: 1.5
   _cameraBounds: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

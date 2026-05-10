@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Sirenix.OdinInspector;
 
 /// <summary>
 /// 델타룬식 오버월드 적 컨트롤러.
@@ -30,6 +31,7 @@ public class OverworldEnemy : MonoBehaviour
     }
 
     [Header("Encounter")]
+    [InfoBox("대화형 NPC로 쓸 오브젝트에는 OverworldEnemy 대신 DialogueBattleNPC를 사용하세요. 같은 오브젝트에 둘을 같이 두면 접촉 전투가 먼저 발동할 수 있습니다.")]
     [SerializeField] private EncounterMode _mode = EncounterMode.PatrolContactBattle;
     [Tooltip("추가 동반 적이 필요할 때만 넣습니다. 첫 번째 적 데이터는 반드시 같은 오브젝트의 EnemyCharacter.Data를 사용합니다.")]
     [SerializeField] private List<EnemyData> _additionalEncounterEnemies = new List<EnemyData>();
@@ -86,6 +88,9 @@ public class OverworldEnemy : MonoBehaviour
 
     private void Awake()
     {
+        if (GetComponent<DialogueBattleNPC>() != null)
+            _mode = EncounterMode.Disabled;
+
         _sceneName = SceneManager.GetActiveScene().name;
         _rb = GetComponent<Rigidbody2D>();
         _collider = GetComponent<Collider2D>();
@@ -222,18 +227,17 @@ public class OverworldEnemy : MonoBehaviour
         if (_encounterDelay > 0f)
             yield return new WaitForSecondsRealtime(_encounterDelay);
 
-        var global = GlobalDataManager.Instance;
-        if (global != null)
-        {
-            global.LastOverworldScene = SceneManager.GetActiveScene().name;
-            global.PendingEnemies = new List<EnemyData>(resolvedEnemies);
-            global.PendingBattleBGM = ResolveBattleBGM(resolvedEnemies);
-            global.BeginOverworldEnemyEncounter(_enemyId, _sceneName, DefeatsOnVictory);
-        }
+        BattleEncounterService.StartEncounter(
+            player,
+            resolvedEnemies,
+            ResolveBattleBGM(resolvedEnemies),
+            true,
+            _battleSceneName,
+            _battleFadeDuration,
+            _enemyId,
+            DefeatsOnVictory);
 
-        player.SavePositionToGlobal();
         if (_destroyAfterTouch) Destroy(gameObject);
-        SceneLoader.Instance?.LoadScene(_battleSceneName, _battleFadeDuration);
     }
 
     private void UpdateMoveAnimation(Vector2 velocity)

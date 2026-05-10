@@ -5,6 +5,10 @@ using Sirenix.Serialization;
 
 public class CharacterVFX : SerializedMonoBehaviour
 {
+    [Header("Runtime Audio Normalization")]
+    [SerializeField, Min(0.01f)] private float _embeddedSfxVolumeMultiplier = 0.675f;
+    [SerializeField] private bool _forceEmbeddedSfxTo2D = true;
+
     public enum VFXAction
     {
         Attack_Normal,
@@ -61,6 +65,31 @@ public class CharacterVFX : SerializedMonoBehaviour
         if (setup.AttachToPivot && vfx != null)
         {
             vfx.transform.SetParent(spawnPivot);
+        }
+
+        ApplyRuntimeAudioNormalization(vfx, _embeddedSfxVolumeMultiplier, _forceEmbeddedSfxTo2D);
+    }
+
+    public static void ApplyRuntimeAudioNormalization(GameObject vfx, float volumeMultiplier = 0.675f, bool forceTo2D = true)
+    {
+        if (vfx == null) return;
+
+        AudioSource[] audioSources = vfx.GetComponentsInChildren<AudioSource>(true);
+        if (audioSources == null || audioSources.Length == 0) return;
+
+        for (int i = 0; i < audioSources.Length; i++)
+        {
+            AudioSource source = audioSources[i];
+            if (source == null) continue;
+
+            source.volume *= volumeMultiplier;
+
+            if (forceTo2D)
+            {
+                source.spatialBlend = 0f;
+                source.spread = 0f;
+                source.dopplerLevel = 0f;
+            }
         }
     }
 }

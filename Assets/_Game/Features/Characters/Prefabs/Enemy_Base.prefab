@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6237503534775638317}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Center
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -40,7 +40,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4752172248346308761}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Top
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -71,7 +71,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7956502023596653724}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Pivots
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -115,9 +115,10 @@ GameObject:
   - component: {fileID: 202491752110947330}
   - component: {fileID: 458867946328447204}
   - component: {fileID: 6998936918429272537}
-  m_Layer: 0
+  - component: {fileID: 8575338402871891709}
+  m_Layer: 6
   m_Name: Enemy_Base
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -390,6 +391,8 @@ MonoBehaviour:
     - Name: 
       Entry: 8
       Data: 
+  _embeddedSfxVolumeMultiplier: 0.675
+  _forceEmbeddedSfxTo2D: 1
 --- !u!114 &458867946328447204
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -408,6 +411,7 @@ MonoBehaviour:
   BaseDEF: 5
   BaseSPD: 10
   Data: {fileID: 11400000, guid: 0d809955dfe6144459f4205e92356daa, type: 2}
+  _isBattleMode: 1
   _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   _flashDuration: 0.08
   _shakeStrength: 0.15
@@ -424,13 +428,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OverworldEnemy
   _mode: 0
-  _encounterEnemies: []
+  _additionalEncounterEnemies: []
   _overrideBattleBGM: {fileID: 8300000, guid: cb1d33b06c9c049488335f81b890d6c5, type: 3}
   _encounterSFX: {fileID: 8300000, guid: 6ad1ec81ab1a6774989652d8b79cdbc2, type: 3}
   _encounterDelay: 0.08
   _battleFadeDuration: 0.08
   _battleSceneName: BattleScene
   _destroyAfterTouch: 1
+  _postEscapeDisableDuration: 3
+  _postEscapeAlpha: 0.5
+  _enemyId: 
+  _victoryHandling: 1
   _waypoints: []
   _moveSpeed: 2
   _arriveDistance: 0.05
@@ -441,6 +449,30 @@ MonoBehaviour:
   _moveXParam: MoveX
   _moveYParam: MoveY
   _isMovingParam: IsMoving
+  _battleIdleParam: BattleIdle
+--- !u!114 &8575338402871891709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3461299171839533844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6508b36edf2873949b9ed6ab7979dff7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueBattleNPC
+  _useRequiredFlagCondition: 0
+  _requiredFlagKey: 
+  _requiredFlagValue: 1
+  _highlightIndicator: {fileID: 0}
+  _dialogue: {fileID: 11400000, guid: c281fbbf347fdeb44a7a1089d48567e2, type: 2}
+  _fallbackEncounterEnemies:
+  - {fileID: 11400000, guid: 0d809955dfe6144459f4205e92356daa, type: 2}
+  _fallbackBattleBgm: {fileID: 8300000, guid: cb1d33b06c9c049488335f81b890d6c5, type: 3}
+  _useDedicatedBattleScene: 0
+  _battleSceneName: BattleScene
+  _battleSceneFadeDuration: 0.08
 --- !u!1 &5941587637502663154
 GameObject:
   m_ObjectHideFlags: 0
@@ -450,7 +482,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3333557269878203269}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Bottom
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -481,7 +513,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5345764709267303979}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Front
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -512,7 +544,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4345567643222054144}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Back
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -543,7 +575,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4069463084316311823}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: FrontMiddle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
