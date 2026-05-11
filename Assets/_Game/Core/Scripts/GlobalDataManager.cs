@@ -68,13 +68,17 @@ public class GlobalDataManager : MonoBehaviour
     {
         if (scenePlayer == null) return;
 
-        int startMaxHP = scenePlayer.BaseMaxHP > 0 ? scenePlayer.BaseMaxHP : 100;
-        int startMaxMP = scenePlayer.BaseMaxMP > 0 ? scenePlayer.BaseMaxMP : 50;
-        int startATK   = scenePlayer.BaseATK > 0 ? scenePlayer.BaseATK : 10;
-        int startSPD   = scenePlayer.BaseSPD > 0 ? scenePlayer.BaseSPD : 10;
+        CharacterData characterData = scenePlayer.CharacterData;
+
+        int startMaxHP = characterData != null ? characterData.BaseMaxHP : (scenePlayer.BaseMaxHP > 0 ? scenePlayer.BaseMaxHP : 100);
+        int startMaxMP = characterData != null ? characterData.BaseMaxMP : (scenePlayer.BaseMaxMP > 0 ? scenePlayer.BaseMaxMP : 50);
+        int startATK   = characterData != null ? characterData.BaseATK : (scenePlayer.BaseATK > 0 ? scenePlayer.BaseATK : 10);
+        int startDEF   = characterData != null ? characterData.BaseDEF : scenePlayer.BaseDEF;
+        int startSPD   = characterData != null ? characterData.BaseSPD : (scenePlayer.BaseSPD > 0 ? scenePlayer.BaseSPD : 10);
 
         var newData = new CharacterSaveData()
         {
+            CharacterDataID = characterData != null ? characterData.CharacterID : string.Empty,
             CharacterID = scenePlayer.CharacterID,
             // 🚨 캐릭터 이름(ID)을 입력받은 플레이어 이름으로 덮어쓸 수도 있습니다!
             // CharacterID = string.IsNullOrEmpty(PlayerName) ? scenePlayer.CharacterID : PlayerName,
@@ -85,7 +89,7 @@ public class GlobalDataManager : MonoBehaviour
             MaxMP       = startMaxMP,
             MP          = startMaxMP,
             ATK         = startATK,
-            DEF         = scenePlayer.BaseDEF,
+            DEF         = startDEF,
             SPD         = startSPD
         };
 

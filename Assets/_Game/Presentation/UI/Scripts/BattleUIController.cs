@@ -315,12 +315,27 @@ public class BattleUIController : MonoBehaviour
         {
             if (actor == null) continue;
             var go = Instantiate(_turnIconPrefab, _turnQueueContainer);
-            
-            if (go.TryGetComponent(out UnityEngine.UI.Image img)) 
-                img.color = actor is PlayerCharacter ? Color.cyan : Color.red;
+
+            UnityEngine.UI.Image img = go.GetComponentInChildren<UnityEngine.UI.Image>(true);
+            if (img != null)
+            {
+                Sprite portrait = GetTurnOrderPortrait(actor);
+                if (portrait != null)
+                {
+                    img.sprite = portrait;
+                    img.color = Color.white;
+                    img.preserveAspect = true;
+                    img.enabled = true;
+                }
+                else
+                {
+                    img.color = actor is PlayerCharacter ? Color.cyan : Color.red;
+                    img.enabled = true;
+                }
+            }
                 
             if (go.GetComponentInChildren<TMPro.TextMeshProUGUI>() is var txt && txt != null) 
-                txt.text = actor is PlayerCharacter p ? p.CharacterID : "Enemy";
+                txt.text = GetActorDisplayName(actor);
 
             go.transform.localScale = Vector3.zero;
             go.transform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack);
@@ -329,7 +344,7 @@ public class BattleUIController : MonoBehaviour
 
     private void HandlePlayerTurnStarted(PlayerCharacter player)
     {
-        SetTurnLabel($"{player.CharacterID} 턴");
+        SetTurnLabel($"{player.DisplayName} 턴");
         _battleMenuUI?.SetActor(player);
 
         for (int i = 0; i < _partySlots.Length; i++)
@@ -390,6 +405,36 @@ public class BattleUIController : MonoBehaviour
         foreach (var child in allChildren) if (child.name == pivotName) return child;
         return null;
     }
+
+    private Sprite GetBattlePortrait(CharacterBase actor)
+    {
+        return actor switch
+        {
+            PlayerCharacter player => player.BattlePortrait,
+            EnemyCharacter enemy => enemy.BattlePortrait,
+            _ => actor != null ? actor.GetComponent<SpriteRenderer>()?.sprite : null
+        };
+    }
+
+    private Sprite GetTurnOrderPortrait(CharacterBase actor)
+    {
+        return actor switch
+        {
+            PlayerCharacter player => player.TurnOrderPortrait,
+            EnemyCharacter enemy => enemy.TurnOrderPortrait,
+            _ => GetBattlePortrait(actor)
+        };
+    }
+
+    private string GetActorDisplayName(CharacterBase actor)
+    {
+        return actor switch
+        {
+            PlayerCharacter player => player.DisplayName,
+            EnemyCharacter enemy => enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.EnemyName) ? enemy.Data.EnemyName : "Enemy",
+            _ => actor != null ? actor.name : "Unknown"
+        };
+    }
     #endregion
 }
 
@@ -413,7 +458,14 @@ public class PartySlotUI
     public void Init(PlayerCharacter player)
     {
         Root?.SetActive(true);
-        if (NameText != null) NameText.text = player.CharacterID;
+        if (NameText != null) NameText.text = player.DisplayName;
+        if (Portrait != null)
+        {
+            Portrait.sprite = player.BattlePortrait;
+            Portrait.enabled = Portrait.sprite != null;
+            Portrait.preserveAspect = true;
+            Portrait.color = Color.white;
+        }
 
         _displayHP = player.CurrentHP;
         _displayMP = player.CurrentMP;

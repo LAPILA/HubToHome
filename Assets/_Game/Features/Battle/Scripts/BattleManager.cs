@@ -44,6 +44,8 @@ public class BattleManager : MonoBehaviour
     public int _mpOnParryPerfect = 20; 
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("우측 상단에 표시될 턴 대기열 아이콘의 최대 개수")]
     [SerializeField] private int _maxTurnQueueSize = 8;
+    [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("실제로 UI에 노출할 턴 대기열 아이콘 수")]
+    [SerializeField] private int _visibleTurnQueueSize = 4;
 
     [Header("Seamless & Scene Settings")]
     [Tooltip("체크 시 전용 배틀 씬으로 동작하며, Start()에서 자동으로 전투 셋업을 시작합니다.")]
@@ -96,6 +98,42 @@ public class BattleManager : MonoBehaviour
     private PlayerCharacter _pendingActor;
     private PlayerMenuAction _pendingAction;
     #endregion
+
+    private List<CharacterBase> GetVisiblePredictedTurnQueue()
+    {
+        List<CharacterBase> visible = new List<CharacterBase>();
+
+        if (_turnQueue.Count == 0) return visible;
+
+        for (int i = _currentActorIndex; i < _turnQueue.Count && visible.Count < _visibleTurnQueueSize; i++)
+        {
+            CharacterBase actor = _turnQueue[i];
+            if (actor != null && actor.IsAlive)
+                visible.Add(actor);
+        }
+
+        if (visible.Count >= _visibleTurnQueueSize)
+            return visible;
+
+        List<CharacterBase> aliveActors = new List<CharacterBase>();
+        foreach (var p in _playerParty) if (p != null && p.IsAlive) aliveActors.Add(p);
+        foreach (var e in _enemies) if (e != null && e.IsAlive) aliveActors.Add(e);
+
+        aliveActors.Sort((a, b) => b.SPD.CompareTo(a.SPD));
+        int refillIndex = 0;
+        while (visible.Count < _visibleTurnQueueSize && aliveActors.Count > 0)
+        {
+            visible.Add(aliveActors[refillIndex % aliveActors.Count]);
+            refillIndex++;
+        }
+
+        return visible;
+    }
+
+    private void BroadcastVisibleTurnQueue()
+    {
+        OnTurnQueueUpdated?.Invoke(GetVisiblePredictedTurnQueue());
+    }
 
     #region [ Initialization ]
     private void Awake()
@@ -436,8 +474,9 @@ public class BattleManager : MonoBehaviour
         foreach (var block in skill.ActionTimeline)
         {
             context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-            if (context.Targets.Count == 0) break;
+            if (context.Targets.Count == 0 || context.StopTimelineExecution) break;
             yield return StartCoroutine(block.Execute(context));
+            if (context.StopTimelineExecution) break;
         }
 
         if (Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
@@ -482,7 +521,7 @@ public class BattleManager : MonoBehaviour
         }
 
         _currentActorIndex = 0;
-        OnTurnQueueUpdated?.Invoke(_turnQueue);
+        BroadcastVisibleTurnQueue();
         yield return _waitShort;
         
         AdvanceTurn();
@@ -494,11 +533,11 @@ public class BattleManager : MonoBehaviour
         if (_currentActorIndex >= _turnQueue.Count) { ChangeState(BattleState.TurnCalc); return; }
 
         var actor = _turnQueue[_currentActorIndex++];
-        if (actor == null || !actor.IsAlive) { AdvanceTurn(); return; }
+        if (actor == null || !actor.IsAlive) { BroadcastVisibleTurnQueue(); AdvanceTurn(); return; }
 
         // 상태이상 틱 데미지 처리
         actor.ProcessEffects();
-        if (!actor.IsAlive) { AdvanceTurn(); return; }
+        if (!actor.IsAlive) { BroadcastVisibleTurnQueue(); AdvanceTurn(); return; }
 
         // 액터 진영에 따른 턴 분기
         if (actor is PlayerCharacter player)
@@ -596,6 +635,8 @@ public class BattleManager : MonoBehaviour
         CurrentPendingSkill = null;
         CurrentPendingItem = null;
         CameraController.Instance?.ResetCamera(0.4f);
+
+        BroadcastVisibleTurnQueue();
 
         if (CheckVictory() || CheckDefeat()) ChangeState(BattleState.BattleEnd);
         else AdvanceTurn();

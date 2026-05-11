@@ -17,6 +17,7 @@ public class SkillContext
     
     public float CurrentDamageMultiplier = 1.0f;
     public bool IsPerfectQTE = false;
+    public bool StopTimelineExecution = false;
 
     public CharacterBase MainTarget => Targets != null && Targets.Count > 0 ? Targets[0] : null;
 }
@@ -315,6 +316,8 @@ public class Action_DefenseWindow : SkillActionBlock
 
         if (DelayAfter > 0f)
             yield return new WaitForSeconds(DelayAfter);
+
+        context.StopTimelineExecution = true;
     }
 
     private bool IsMatch(DefenseInput input)

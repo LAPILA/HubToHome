@@ -7,6 +7,8 @@ public class EnemyData : SerializedScriptableObject
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(60, ObjectFieldAlignment.Left)]
     public Sprite Portrait;
+    [BoxGroup("Identity"), PreviewField(60, ObjectFieldAlignment.Left)]
+    public Sprite TurnOrderPortrait;
     
     [BoxGroup("Identity")] public string EnemyName = "Enemy";
 

@@ -21,6 +21,13 @@ public class EnemyCharacter : CharacterBase
     private SpriteRenderer _spriteRenderer;
     private CharacterVFX _vfx; 
 
+    public Sprite BattlePortrait => Data != null && Data.Portrait != null
+        ? Data.Portrait
+        : (_spriteRenderer != null ? _spriteRenderer.sprite : null);
+    public Sprite TurnOrderPortrait => Data != null && Data.TurnOrderPortrait != null
+        ? Data.TurnOrderPortrait
+        : BattlePortrait;
+
     [Header("Enemy Data")]
     public EnemyData Data;
 

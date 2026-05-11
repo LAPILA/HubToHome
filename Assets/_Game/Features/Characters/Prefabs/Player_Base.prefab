@@ -323,7 +323,8 @@ MonoBehaviour:
   BaseATK: 10
   BaseDEF: 5
   BaseSPD: 10
-  CharacterID: Player
+  _characterData: {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
+  _fallbackCharacterID: Player
   Level: 1
   EXP: 0
   EXPToNextLevel: 100

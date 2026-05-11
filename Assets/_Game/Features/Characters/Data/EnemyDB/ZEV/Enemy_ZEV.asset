@@ -114,9 +114,11 @@ MonoBehaviour:
       Entry: 8
       Data: 
   Portrait: {fileID: -1836045043667062598, guid: 15dc65011aaff66449cc1e211e8e065d, type: 3}
+  TurnOrderPortrait: {fileID: -1836045043667062598, guid: 15dc65011aaff66449cc1e211e8e065d, type: 3}
   EnemyName: ZEV
   BattleBGM: {fileID: 0}
   BattlePrefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
+  ReturnMoveTrigger: BattleMove
   MaxHP: 5000
   ATK: 20
   DEF: 25

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 public class CharacterSaveData
 {
     [UnityEngine.Header("Identity")]
+    public string CharacterDataID = "";
     public string CharacterID = "Player";
     public int Level = 1;
     public int EXP = 0;

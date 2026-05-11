@@ -14,7 +14,9 @@ public class PlayerCharacter : CharacterBase
     #endregion
 
     [Header("Identity & Progression")]
-    public string CharacterID = "Player";
+    [SerializeField] private CharacterData _characterData;
+    [SerializeField] private string _fallbackCharacterID = "Player";
+    public string CharacterID { get; private set; } = "Player";
     public int Level = 1;
     public int EXP = 0;
     public int EXPToNextLevel = 100;
@@ -35,12 +37,24 @@ public class PlayerCharacter : CharacterBase
     private CharacterVFX _vfx;
     private SpriteRenderer _spriteRenderer;
 
+    public CharacterData CharacterData => _characterData;
+    public string DisplayName => _characterData != null
+        ? _characterData.ResolveDisplayName(GlobalDataManager.Instance != null ? GlobalDataManager.Instance.PlayerName : null)
+        : CharacterID;
+    public Sprite BattlePortrait => _characterData != null && _characterData.Portrait != null
+        ? _characterData.Portrait
+        : (_spriteRenderer != null ? _spriteRenderer.sprite : null);
+    public Sprite TurnOrderPortrait => _characterData != null && _characterData.TurnOrderPortrait != null
+        ? _characterData.TurnOrderPortrait
+        : BattlePortrait;
+
     protected override void Awake()
     {
         base.Awake();
         _animator = GetComponent<Animator>();
         _vfx = GetComponent<CharacterVFX>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
+        ApplyCharacterData();
     }
 
     private void Start()
@@ -98,13 +112,45 @@ public class PlayerCharacter : CharacterBase
                selector(HeadSlot) + selector(BodySlot) + selector(ShoesSlot);
     }
 
+    public void SetCharacterData(CharacterData data)
+    {
+        _characterData = data;
+        ApplyCharacterData();
+    }
+
+    private void ApplyCharacterData()
+    {
+        CharacterID = _characterData != null && !string.IsNullOrWhiteSpace(_characterData.CharacterID)
+            ? _characterData.CharacterID
+            : _fallbackCharacterID;
+
+        if (_characterData == null) return;
+
+        BaseMaxHP = _characterData.BaseMaxHP;
+        BaseMaxMP = _characterData.BaseMaxMP;
+        BaseATK = _characterData.BaseATK;
+        BaseDEF = _characterData.BaseDEF;
+        BaseSPD = _characterData.BaseSPD;
+
+        if (_characterData.DefaultSkills != null && _characterData.DefaultSkills.Count > 0)
+            Skills = new List<SkillData>(_characterData.DefaultSkills);
+    }
+
     // ── 글로벌 동기화 ──
     public void LoadDataFromGlobal(CharacterSaveData saveData)
     {
         if (saveData == null) return;
         _mySaveDataRef = saveData;
 
-        CharacterID = saveData.CharacterID;
+        if (!string.IsNullOrWhiteSpace(saveData.CharacterDataID))
+        {
+            CharacterData resolvedData = CharacterDatabase.FindById(saveData.CharacterDataID);
+            if (resolvedData != null)
+                _characterData = resolvedData;
+        }
+
+        ApplyCharacterData();
+
         Level       = saveData.Level;
         EXP         = saveData.EXP;
         
@@ -133,6 +179,8 @@ public class PlayerCharacter : CharacterBase
             return;
         }
         
+        _mySaveDataRef.CharacterDataID = _characterData != null ? _characterData.CharacterID : string.Empty;
+        _mySaveDataRef.CharacterID = DisplayName;
         _mySaveDataRef.HP    = CurrentHP;
         _mySaveDataRef.MP    = CurrentMP;
         _mySaveDataRef.Level = Level;
