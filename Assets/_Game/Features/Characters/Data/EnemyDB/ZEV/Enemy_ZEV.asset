@@ -121,7 +121,7 @@ MonoBehaviour:
   ATK: 20
   DEF: 25
   SPD: 8
-  SkillUseChance: 0.733
+  SkillUseChance: 0.529
   HasEnragedPattern: 1
   IsLargeEnemy: 0
   SkillList:

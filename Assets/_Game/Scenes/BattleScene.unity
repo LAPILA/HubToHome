@@ -428,8 +428,8 @@ MonoBehaviour:
   _vCam: {fileID: 154725405}
   _impulseSource: {fileID: 726577403}
   _centerTarget: {fileID: 1685862761}
-  _defaultLensSize: 5
-  _battleZoomSize: 4.5
+  _defaultLensSize: 10
+  _battleZoomSize: 9
 --- !u!114 &154725405
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -455,7 +455,7 @@ MonoBehaviour:
     CustomLookAtTarget: 0
   Lens:
     FieldOfView: 60
-    OrthographicSize: 5
+    OrthographicSize: 10
     NearClipPlane: 0.3
     FarClipPlane: 1000
     Dutch: 0
@@ -551,7 +551,7 @@ Transform:
   m_GameObject: {fileID: 160110114}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 4.25, y: 1.45, z: 0}
+  m_LocalPosition: {x: 7.25, y: 1.45, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -582,7 +582,7 @@ Transform:
   m_GameObject: {fileID: 171796558}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -2.75, y: 0.050000012, z: 0}
+  m_LocalPosition: {x: -5.75, y: 0.050000012, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1233,6 +1233,13 @@ MonoBehaviour:
   _playerBasePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
   _meleeAttackOffset: {x: -1.8, y: 0, z: 0}
   _meleePullbackOffset: {x: -0.5, y: 0, z: 0}
+  _enemyDefenseQTEWindow: 0.8
+  _enemyAttackVisualDuration: 0.18
+  _playerAttackHitDelay: 0.03
+  _playerAttackRecoverDelay: 0.14
+  _enemyPostHitDelay: 0.18
+  _enemyAoEWindup: 0.35
+  _enemyCenterAdvanceDuration: 0.18
 --- !u!114 &437845292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1568,7 +1575,7 @@ Transform:
   m_GameObject: {fileID: 481321745}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.75, y: 0.050000012, z: 0}
+  m_LocalPosition: {x: 5.75, y: 0.050000012, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1926,7 +1933,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 4.821429
+  orthographic size: 9.642858
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -2915,7 +2922,7 @@ Transform:
   m_GameObject: {fileID: 851744400}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -4.25, y: -1.45, z: 0}
+  m_LocalPosition: {x: -7.25, y: -1.45, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3846,7 +3853,7 @@ MonoBehaviour:
   _normalColor: {r: 1, g: 1, b: 1, a: 1}
   _disabledColor: {r: 0.4, g: 0.4, b: 0.4, a: 1}
   _bouncePunch: 0.22
-  _exampleActs: []
+  _exampleSkills: []
   _exampleItems: []
 --- !u!225 &1300898009
 CanvasGroup:
@@ -4227,7 +4234,7 @@ Transform:
   m_GameObject: {fileID: 1360074630}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 4.25, y: -1.45, z: 0}
+  m_LocalPosition: {x: 7.25, y: -1.45, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5843,7 +5850,7 @@ Transform:
   m_GameObject: {fileID: 2072647590}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -3.75, y: 1.45, z: 0}
+  m_LocalPosition: {x: -6.75, y: 1.45, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

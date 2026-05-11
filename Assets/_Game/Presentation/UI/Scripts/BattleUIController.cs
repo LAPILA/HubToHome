@@ -342,7 +342,10 @@ public class BattleUIController : MonoBehaviour
         {
             EnemyAttackType.MeleeClose => "ATTACK",
             EnemyAttackType.RangedAoE  => "RANGED",
+            EnemyAttackType.ParryOnly  => "PARRY",
+            EnemyAttackType.DodgeOnly  => "DODGE",
             EnemyAttackType.JumpOnly   => "JUMP",
+            EnemyAttackType.DodgeOrJump=> "EVADE",
             EnemyAttackType.AoEAll     => "ALL OUT",
             _                          => "ATTACK",
         };

@@ -44,6 +44,7 @@ public class PlayerController : MonoBehaviour
     private SpriteRenderer _spriteRenderer;
     private Collider2D[] _colliders;
     private Vector3        _originalLocalPos;
+    private bool _defenseReactionLocked;
 
     private Animator Animator
     {
@@ -294,13 +295,16 @@ public class PlayerController : MonoBehaviour
 
     public void ExecuteParry()
     {
-        if (!CanExecuteAction()) return;
+        if (_defenseReactionLocked || !CanExecuteAction()) return;
+        _defenseReactionLocked = true;
         PlayBattleAnim(HashParry);
+        DOVirtual.DelayedCall(0.22f, () => _defenseReactionLocked = false).SetUpdate(true);
     }
 
     public void ExecuteDodge()
     {
-        if (!CanExecuteAction()) return;
+        if (_defenseReactionLocked || !CanExecuteAction()) return;
+        _defenseReactionLocked = true;
 
         var pChar = GetComponent<PlayerCharacter>();
         pChar?.SetEvasive(true); 
@@ -312,13 +316,14 @@ public class PlayerController : MonoBehaviour
         _rb.DOMove(transform.position + dodgeDir * 1.5f, 0.15f)
             .SetEase(Ease.OutExpo)
             .SetLoops(2, LoopType.Yoyo)
-            .OnComplete(() => pChar?.SetEvasive(false)) 
-            .OnKill(() => pChar?.SetEvasive(false));    
+            .OnComplete(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; }) 
+            .OnKill(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; });    
     }
 
     public void ExecuteJump()
     {
-        if (!CanExecuteAction()) return;
+        if (_defenseReactionLocked || !CanExecuteAction()) return;
+        _defenseReactionLocked = true;
 
         var pChar = GetComponent<PlayerCharacter>();
         pChar?.SetEvasive(true); 
@@ -329,8 +334,8 @@ public class PlayerController : MonoBehaviour
         _rb.DOMoveY(transform.position.y + 2.0f, 0.2f)
             .SetEase(Ease.OutQuad)
             .SetLoops(2, LoopType.Yoyo)
-            .OnComplete(() => pChar?.SetEvasive(false)) 
-            .OnKill(() => pChar?.SetEvasive(false));    
+            .OnComplete(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; }) 
+            .OnKill(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; });    
     }
     // ── DOTween 이펙트 ────────────────────────────────────────
     public void PlayParryEffect()

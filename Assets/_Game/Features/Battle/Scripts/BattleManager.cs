@@ -68,10 +68,6 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private float _enemyDefenseQTEWindow = 0.8f;
     [Tooltip("적 공격 애니메이션을 한 번만 보여주고 BattleIdle로 되돌리기까지의 시간")]
     [SerializeField] private float _enemyAttackVisualDuration = 0.18f;
-    [Tooltip("ZEV의 CrossCut 점프 회피 스킬 판정 시간")]
-    [SerializeField] private float _zevCrossCutQTEWindow = 0.95f;
-    [Tooltip("ZEV의 CrossCut 공격 연출이 한 번 보여지는 시간")]
-    [SerializeField] private float _zevCrossCutVisualDuration = 0.28f;
     [Tooltip("플레이어 기본공격이 실제 데미지를 적용하기까지의 시간")]
     [SerializeField] private float _playerAttackHitDelay = 0.03f;
     [Tooltip("플레이어 기본공격 히트 후 복귀 시작까지의 시간")]
@@ -80,6 +76,8 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private float _enemyPostHitDelay = 0.18f;
     [Tooltip("광역 공격의 판정 전 준비 시간")]
     [SerializeField] private float _enemyAoEWindup = 0.35f;
+    [Tooltip("적 단일공격이 시작되기 전에 화면 중앙으로 이동하는 시간")]
+    [SerializeField] private float _enemyCenterAdvanceDuration = 0.18f;
     #endregion
 
     #region [ Internal State ]
@@ -344,14 +342,111 @@ public class BattleManager : MonoBehaviour
         return _enemyBasePrefab;
     }
 
-    private bool IsZevEnemy(EnemyCharacter enemy)
+    private bool EnemyHasSequenceSkill(EnemyCharacter enemy)
     {
-        return enemy != null && enemy.IsEnemyNamed("ZEV");
+        return enemy != null && enemy.Data != null && enemy.Data.SkillList != null && enemy.Data.SkillList.Count > 0;
+    }
+
+    private SkillData GetEnemySequenceSkill(EnemyCharacter enemy)
+    {
+        if (!EnemyHasSequenceSkill(enemy)) return null;
+        return enemy.Data.SkillList[0];
     }
 
     private int ResolveEnemyReturnMoveHash(EnemyCharacter enemy)
     {
-        return IsZevEnemy(enemy) ? EnemyCharacter.HashBattleMoveBack : EnemyCharacter.HashBattleMove;
+        if (enemy != null && enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.ReturnMoveTrigger))
+            return Animator.StringToHash(enemy.Data.ReturnMoveTrigger);
+
+        return EnemyCharacter.HashBattleMove;
+    }
+
+    private EnemyAttackType ResolveEnemySkillAttackType(SkillData skill)
+    {
+        if (skill == null) return EnemyAttackType.MeleeClose;
+
+        Action_DefenseWindow defenseWindow = null;
+        if (skill.ActionTimeline != null)
+        {
+            for (int i = 0; i < skill.ActionTimeline.Count; i++)
+            {
+                defenseWindow = skill.ActionTimeline[i] as Action_DefenseWindow;
+                if (defenseWindow != null) break;
+            }
+        }
+
+        if (defenseWindow != null)
+        {
+            return defenseWindow.Requirement switch
+            {
+                DefenseRequirement.ParryOnly => EnemyAttackType.ParryOnly,
+                DefenseRequirement.DodgeOnly => EnemyAttackType.DodgeOnly,
+                DefenseRequirement.JumpOnly => EnemyAttackType.JumpOnly,
+                DefenseRequirement.DodgeOrJump => EnemyAttackType.DodgeOrJump,
+                _ => EnemyAttackType.MeleeClose
+            };
+        }
+
+        return skill.IsAoE || skill.TargetType == TargetAreaType.AoEAll ? EnemyAttackType.AoEAll : EnemyAttackType.MeleeClose;
+    }
+
+    private IEnumerator MoveEnemyToCenterIfNeeded(EnemyCharacter enemy)
+    {
+        if (enemy == null || enemy.Data == null) yield break;
+        if (enemy.Data.IsLargeEnemy) yield break;
+
+        Vector3 centerPos = PositionManager.Instance != null ? PositionManager.Instance.GetCenterPos() : enemy.transform.position;
+        enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
+        yield return enemy.transform.DOMove(centerPos, _enemyCenterAdvanceDuration).SetEase(Ease.OutQuad).WaitForCompletion();
+        enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+    }
+
+    private IEnumerator ExecuteEnemySequenceSkill(EnemyCharacter enemy, SkillData skill)
+    {
+        if (enemy == null || skill == null || skill.ActionTimeline == null || skill.ActionTimeline.Count == 0)
+            yield break;
+
+        Vector3 originalPos = enemy.transform.position;
+        int enemyIndex = _enemies.IndexOf(enemy);
+        Vector3 defaultPos = enemyIndex >= 0 && PositionManager.Instance != null
+            ? PositionManager.Instance.GetEnemyDefaultPos(enemyIndex)
+            : originalPos;
+
+        List<CharacterBase> targets = new List<CharacterBase>();
+        if (skill.IsAoE || skill.TargetType == TargetAreaType.AoEAll)
+        {
+            targets.AddRange(_playerParty.FindAll(p => p != null && p.IsAlive));
+        }
+        else
+        {
+            int targetIdx = _playerParty.FindIndex(p => p != null && p.IsAlive);
+            if (targetIdx >= 0) targets.Add(_playerParty[targetIdx]);
+        }
+
+        if (targets.Count == 0) yield break;
+
+        SkillContext context = new SkillContext
+        {
+            Actor = enemy,
+            Targets = targets,
+            CurrentDamageMultiplier = 1.0f,
+            IsPerfectQTE = false
+        };
+
+        foreach (var block in skill.ActionTimeline)
+        {
+            context.Targets.RemoveAll(t => t == null || !t.IsAlive);
+            if (context.Targets.Count == 0) break;
+            yield return StartCoroutine(block.Execute(context));
+        }
+
+        if (Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
+        {
+            enemy.PlayBattleAnim(ResolveEnemyReturnMoveHash(enemy));
+            yield return enemy.transform.DOMove(defaultPos, 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+        }
+
+        enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
     }
     #endregion
 
@@ -657,10 +752,10 @@ public class BattleManager : MonoBehaviour
         if (enemy == null) { EndAction(); yield break; }
 
         var action = enemy.DecideAction();
+        SkillData enemySkill = action == EnemyAction.UseSkill ? GetEnemySequenceSkill(enemy) : null;
         var attackType = action switch
         {
-            EnemyAction.UseSkill when IsZevEnemy(enemy) => EnemyAttackType.JumpOnly,
-            EnemyAction.UseSkill => EnemyAttackType.RangedAoE,
+            EnemyAction.UseSkill when enemySkill != null => ResolveEnemySkillAttackType(enemySkill),
             EnemyAction.EnragedAttack => EnemyAttackType.AoEAll,
             _ => EnemyAttackType.MeleeClose
         };
@@ -668,7 +763,11 @@ public class BattleManager : MonoBehaviour
         OnEnemyActionStarted?.Invoke(enemy, attackType);
         CameraController.Instance?.ModeEnemyAction();
 
-        if (attackType == EnemyAttackType.MeleeClose || attackType == EnemyAttackType.JumpOnly)
+        if (action == EnemyAction.UseSkill && enemySkill != null)
+        {
+            yield return StartCoroutine(ExecuteEnemySequenceSkill(enemy, enemySkill));
+        }
+        else if (attackType == EnemyAttackType.MeleeClose)
         {
             // 첫 번째 살아있는 플레이어 타겟팅
             int targetIdx = _playerParty.FindIndex(p => p.IsAlive);
@@ -676,38 +775,20 @@ public class BattleManager : MonoBehaviour
             {
                 var target = _playerParty[targetIdx];
                 var targetCtrl = target.GetComponent<PlayerController>();
-                bool isJumpOnlySkill = attackType == EnemyAttackType.JumpOnly;
-                float defenseQteWindow = isJumpOnlySkill ? _zevCrossCutQTEWindow : _enemyDefenseQTEWindow;
-                float attackVisualDuration = isJumpOnlySkill ? _zevCrossCutVisualDuration : _enemyAttackVisualDuration;
-                bool shouldAdvanceToTarget = enemy.Data == null || !enemy.Data.IsLargeEnemy;
+                bool movedToCenter = enemy.Data == null || !enemy.Data.IsLargeEnemy;
 
-                if (shouldAdvanceToTarget)
-                {
-                    enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
-                    yield return enemy.transform.DOMove(target.transform.position + new Vector3(1.2f, 0, 0), 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
-                }
-                else
-                {
-                    enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
-                }
+                yield return StartCoroutine(MoveEnemyToCenterIfNeeded(enemy));
 
-                if (isJumpOnlySkill)
-                {
-                    enemy.PlaySkillAnim("CrossCut", EnemyCharacter.HashSkill);
-                }
-                else
-                {
-                    enemy.PlayBasicAttackEffect();
-                    enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
-                }
+                enemy.PlayBasicAttackEffect();
+                enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
 
                 bool qteFinished = false;
                 DefenseInput finalInput = DefenseInput.None;
                 QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
 
                 // 공격 애니메이션은 한 번만 재생하고, QTE 판정은 별도로 유지합니다.
-                QTEManager.Instance.StartDefenseQTE(defenseQteWindow, 1.0f, (input, grade) => { finalInput = input; finalGrade = grade; qteFinished = true; });
-                yield return new WaitForSeconds(attackVisualDuration);
+                QTEManager.Instance.StartDefenseQTE(_enemyDefenseQTEWindow, 1.0f, (input, grade) => { finalInput = input; finalGrade = grade; qteFinished = true; });
+                yield return new WaitForSeconds(_enemyAttackVisualDuration);
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
                 yield return new WaitUntil(() => qteFinished);
 
@@ -725,21 +806,7 @@ public class BattleManager : MonoBehaviour
                 {
                     int reducedDmg = 0;
 
-                    if (isJumpOnlySkill)
-                    {
-                        if (finalInput == DefenseInput.Jump)
-                        {
-                            reducedDmg = 0;
-                            targetCtrl?.ExecuteJump();
-                        }
-                        else
-                        {
-                            reducedDmg = enemy.ATK;
-                            if (finalInput == DefenseInput.Dodge) targetCtrl?.ExecuteDodge();
-                            else if (finalInput == DefenseInput.Parry) targetCtrl?.ExecuteParry();
-                        }
-                    }
-                    else if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
+                    if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
                     {
                         reducedDmg = 0; 
                         if (finalInput == DefenseInput.Dodge) targetCtrl?.ExecuteDodge();
@@ -779,7 +846,7 @@ public class BattleManager : MonoBehaviour
                 targetCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
                 
                 // 적군 제자리 복귀
-                if (shouldAdvanceToTarget)
+                if (movedToCenter)
                 {
                     enemy.PlayBattleAnim(ResolveEnemyReturnMoveHash(enemy));
                     yield return enemy.transform.DOMove(PositionManager.Instance.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();

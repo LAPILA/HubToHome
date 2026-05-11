@@ -45,5 +45,8 @@ public enum EnemyAttackType
     RangedAoE,      // 원거리/장판 (위치 지정 공격, 방향키로 범위 밖으로 피해야 함)
     AoEAll,         // 전체 공격 (회피 불가, 패링이나 방어만 가능)
     BulletHell,
-    JumpOnly
+    ParryOnly,
+    DodgeOnly,
+    JumpOnly,
+    DodgeOrJump
 }

@@ -18,6 +18,9 @@ public class EnemyData : SerializedScriptableObject
     [Required, AssetsOnly]
     [Tooltip("BattleScene 또는 심리스 전투에서 실제로 생성할 전투용 적 프리팹입니다. 비워두면 BattleManager의 기본 Enemy Base Prefab을 사용합니다.")]
     public GameObject BattlePrefab;
+    [BoxGroup("Battle Presentation")]
+    [Tooltip("공격 후 원래 자리로 돌아갈 때 사용할 애니메이션 Trigger 이름입니다. 기본값은 BattleMove 입니다.")]
+    public string ReturnMoveTrigger = "BattleMove";
 
     [BoxGroup("Base Stats")] 
     [HorizontalGroup("Base Stats/R1", LabelWidth = 40)] public int MaxHP = 100;

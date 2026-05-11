@@ -16,10 +16,51 @@ MonoBehaviour:
   SkillName: SkillCrossCut
   SkillID: skill_000
   Description: "\uC810\uD504\uB85C\uD53C\uD558\uB294 \uCC38\uACA9"
+  UsageProfile: 2
   MPCost: 0
   TargetType: 1
   IsAoE: 0
-  ActionTimeline: []
+  ActionTimeline:
+  - rid: 8456611354123173968
+  - rid: 8456611354123173980
+  - rid: 8456611354123173969
+  - rid: 8456611354123173970
+  - rid: 8456611354123173982
+  - rid: 8456611354123173971
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 8456611354123173968
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 3
+        Duration: 0.2
+        MoveEase: 6
+    - rid: 8456611354123173969
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        AnimTriggerName: CrossCut
+        DelayAfter: 0
+    - rid: 8456611354123173970
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
+        Pivot: 0
+        UseActorRotation: 0
+    - rid: 8456611354123173971
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 1
+        ShakeCamera: 1
+    - rid: 8456611354123173980
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        WaitTime: 0.5
+    - rid: 8456611354123173982
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Requirement: 2
+        TimeWindow: 0.8
+        FailDamageMultiplier: 1
+        ShakeOnFail: 1
+        DelayAfter: 0.1

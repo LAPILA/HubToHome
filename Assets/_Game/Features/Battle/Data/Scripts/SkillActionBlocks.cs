@@ -4,13 +4,15 @@ using UnityEngine;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 
+public enum DefenseRequirement { ParryOnly, DodgeOnly, JumpOnly, DodgeOrJump }
+
 // ═══════════════════════════════════════════════════════════════
 // ── 1. 공통 컨텍스트 및 베이스 클래스 ──
 // ═══════════════════════════════════════════════════════════════
 
 public class SkillContext
 {
-    public PlayerCharacter Actor;
+    public CharacterBase Actor;
     public List<CharacterBase> Targets;
     
     public float CurrentDamageMultiplier = 1.0f;
@@ -24,6 +26,44 @@ public abstract class SkillActionBlock
 {
     [HideInInspector] public string BlockName => GetType().Name.Replace("Action_", "");
     public abstract IEnumerator Execute(SkillContext context);
+
+    protected static void PlayActorBattleAnim(CharacterBase actor, int triggerHash)
+    {
+        switch (actor)
+        {
+            case PlayerCharacter player:
+                player.PlayBattleAnim(triggerHash);
+                break;
+            case EnemyCharacter enemy:
+                enemy.PlayBattleAnim(triggerHash);
+                break;
+        }
+    }
+
+    protected static Vector3 GetActorDefaultBattlePos(CharacterBase actor)
+    {
+        var pm = PositionManager.Instance;
+        if (pm == null || actor == null) return actor != null ? actor.transform.position : Vector3.zero;
+
+        if (actor is PlayerCharacter player)
+        {
+            int idx = BattleManager.Instance != null ? BattleManager.Instance._playerParty.IndexOf(player) : -1;
+            return idx >= 0 ? pm.GetPlayerDefaultPos(idx) : actor.transform.position;
+        }
+
+        if (actor is EnemyCharacter enemy)
+        {
+            int idx = BattleManager.Instance != null ? BattleManager.Instance._enemies.IndexOf(enemy) : -1;
+            return idx >= 0 ? pm.GetEnemyDefaultPos(idx) : actor.transform.position;
+        }
+
+        return actor.transform.position;
+    }
+
+    protected static PlayerController GetPlayerController(CharacterBase actor)
+    {
+        return actor != null ? actor.GetComponent<PlayerController>() : null;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -68,12 +108,12 @@ public class Action_Move : SkillActionBlock
             }
         }
         else if (Destination == MoveDest.Center && pm != null) targetPos = pm.GetCenterPos();
-        else if (Destination == MoveDest.OriginalPos && pm != null) 
-            targetPos = pm.GetPlayerDefaultPos(BattleManager.Instance._playerParty.IndexOf(context.Actor as PlayerCharacter));
+        else if (Destination == MoveDest.OriginalPos)
+            targetPos = GetActorDefaultBattlePos(context.Actor);
 
-        context.Actor.PlayBattleAnim(PlayerCharacter.HashBattleMove); 
+        PlayActorBattleAnim(context.Actor, context.Actor is EnemyCharacter ? EnemyCharacter.HashBattleMove : PlayerCharacter.HashBattleMove);
         yield return context.Actor.transform.DOMove(targetPos, Duration).SetEase(MoveEase).WaitForCompletion();
-        context.Actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle); 
+        PlayActorBattleAnim(context.Actor, context.Actor is EnemyCharacter ? EnemyCharacter.HashBattleIdle : PlayerCharacter.HashBattleIdle);
     }
 }
 
@@ -82,12 +122,14 @@ public class Action_Move : SkillActionBlock
 public class Action_PlayAnim : SkillActionBlock
 {
     [LabelText("애니메이션 이름 (Trigger)")] public string AnimTriggerName = "Attack";
-    [LabelText("애니메이션 후 대기시간")] public float DelayAfter = 0.1f;
+    [LabelText("애니메이션 후 대기시간")]
+    [InfoBox("애니메이션과 VFX를 같은 박자에 맞추고 싶으면 0으로 두고, 필요한 경우에만 Wait 블록 또는 DelayAfter를 사용하세요.")]
+    public float DelayAfter = 0f;
 
     public override IEnumerator Execute(SkillContext context)
     {
         int hash = Animator.StringToHash(AnimTriggerName);
-        context.Actor.PlayBattleAnim(hash);
+        PlayActorBattleAnim(context.Actor, hash);
         if (DelayAfter > 0) yield return new WaitForSeconds(DelayAfter);
     }
 }
@@ -193,6 +235,7 @@ public class Action_VFX : SkillActionBlock
     
     [AssetsOnly, Required] public GameObject VfxPrefab;
     [LabelText("소환 위치")] public VfxPivot Pivot;
+    [LabelText("Actor 회전 사용")] public bool UseActorRotation = false;
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -210,18 +253,88 @@ public class Action_VFX : SkillActionBlock
             case VfxPivot.TargetTop:    if (target != null) spawnPos = target.GetPivot("Top").position; break;
         }
 
+        Quaternion rotation = UseActorRotation ? context.Actor.transform.rotation : Quaternion.identity;
+
         // 🚨 GameObject.Instantiate 에러 수정 및 ObjectPool 적용
         GameObject spawnedVfx;
         if (ObjectPoolManager.Instance != null)
         {
-            spawnedVfx = ObjectPoolManager.Instance.Spawn(VfxPrefab, spawnPos, context.Actor.transform.rotation);
+            spawnedVfx = ObjectPoolManager.Instance.Spawn(VfxPrefab, spawnPos, rotation);
         }
         else
         {
-            spawnedVfx = GameObject.Instantiate(VfxPrefab, spawnPos, context.Actor.transform.rotation);
+            spawnedVfx = GameObject.Instantiate(VfxPrefab, spawnPos, rotation);
         }
         CharacterVFX.ApplyRuntimeAudioNormalization(spawnedVfx);
         yield break; 
+    }
+}
+
+[System.Serializable]
+[TypeInfoBox("적 스킬용 방어 대응 윈도우입니다. 올바른 입력이면 회피/패링, 실패하면 지정 배율 데미지를 줍니다.")]
+public class Action_DefenseWindow : SkillActionBlock
+{
+    [LabelText("요구 입력")] public DefenseRequirement Requirement = DefenseRequirement.JumpOnly;
+    [LabelText("판정 시간")] public float TimeWindow = 0.8f;
+    [LabelText("실패 데미지 배율")] public float FailDamageMultiplier = 1f;
+    [LabelText("실패 시 카메라 흔들기")] public bool ShakeOnFail = true;
+    [LabelText("성공 후 딜레이")] public float DelayAfter = 0.1f;
+
+    public override IEnumerator Execute(SkillContext context)
+    {
+        if (!(context.Actor is EnemyCharacter enemy) || context.Targets == null || context.Targets.Count == 0)
+            yield break;
+
+        CharacterBase target = context.Targets[0];
+        PlayerController targetCtrl = GetPlayerController(target);
+
+        bool qteFinished = false;
+        DefenseInput finalInput = DefenseInput.None;
+        QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
+
+        QTEManager.Instance.StartDefenseQTE(TimeWindow, 1.0f, (input, grade) =>
+        {
+            finalInput = input;
+            finalGrade = grade;
+            qteFinished = true;
+        });
+
+        yield return new WaitUntil(() => qteFinished);
+
+        bool success = finalGrade != QTEManager.QTEGrade.Miss && IsMatch(finalInput);
+        PlayReaction(targetCtrl, finalInput);
+
+        if (!success)
+        {
+            int dmg = target.TakePureDamage(Mathf.RoundToInt(enemy.ATK * FailDamageMultiplier));
+            targetCtrl?.PlayHurtEffect();
+            BattleManager.Instance.InvokeDamageEvent(target, dmg, false);
+            if (ShakeOnFail)
+                CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.35f, true);
+        }
+
+        if (DelayAfter > 0f)
+            yield return new WaitForSeconds(DelayAfter);
+    }
+
+    private bool IsMatch(DefenseInput input)
+    {
+        return Requirement switch
+        {
+            DefenseRequirement.ParryOnly => input == DefenseInput.Parry,
+            DefenseRequirement.DodgeOnly => input == DefenseInput.Dodge,
+            DefenseRequirement.JumpOnly => input == DefenseInput.Jump,
+            DefenseRequirement.DodgeOrJump => input == DefenseInput.Dodge || input == DefenseInput.Jump,
+            _ => false
+        };
+    }
+
+    private void PlayReaction(PlayerController controller, DefenseInput input)
+    {
+        if (controller == null) return;
+        if (input == DefenseInput.Parry) controller.ExecuteParry();
+        else if (input == DefenseInput.Dodge) controller.ExecuteDodge();
+        else if (input == DefenseInput.Jump) controller.ExecuteJump();
     }
 }
 
@@ -307,7 +420,7 @@ public class Action_SequentialMelee : SkillActionBlock
             Vector3 targetPos = target.GetPivot("Front").position;
             yield return context.Actor.transform.DOMove(targetPos, DashSpeed).SetEase(Ease.OutExpo).WaitForCompletion();
 
-            context.Actor.PlayBattleAnim(Animator.StringToHash(AttackAnimTrigger));
+            PlayActorBattleAnim(context.Actor, Animator.StringToHash(AttackAnimTrigger));
             yield return new WaitForSeconds(0.1f); 
 
             if (HitVfxPrefab != null)
