@@ -43,7 +43,7 @@ MonoBehaviour:
       Data: Burn
     - Name: $v
       Entry: 4
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -55,7 +55,7 @@ MonoBehaviour:
       Data: Freeze
     - Name: $v
       Entry: 4
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -67,7 +67,7 @@ MonoBehaviour:
       Data: Poison
     - Name: $v
       Entry: 4
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -79,7 +79,7 @@ MonoBehaviour:
       Data: Bleed
     - Name: $v
       Entry: 4
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -91,7 +91,7 @@ MonoBehaviour:
       Data: Stun
     - Name: $v
       Entry: 4
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -103,7 +103,7 @@ MonoBehaviour:
       Data: Bind
     - Name: $v
       Entry: 4
-      Data: 1
+      Data: 0
     - Name: 
       Entry: 8
       Data: 
@@ -119,16 +119,22 @@ MonoBehaviour:
   BattleBGM: {fileID: 0}
   BattlePrefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
   ReturnMoveTrigger: BattleMove
-  MaxHP: 5000
+  MaxHP: 2500
   ATK: 20
   DEF: 25
   SPD: 8
-  SkillUseChance: 0.529
+  SkillUseChance: 0.8
+  StrongSkillUseChance: 0.3
+  TelegraphStrongSkill: 1
+  TelegraphTurns: 1
   HasEnragedPattern: 1
   IsLargeEnemy: 0
   SkillList:
+  - {fileID: 11400000, guid: 57277bc7847637343b5b2fb2c1d54910, type: 2}
+  - {fileID: 11400000, guid: d91f2fcf42c2672489df5cbefd7c1f51, type: 2}
+  StrongSkillList:
   - {fileID: 11400000, guid: f11cc42b1b06a2f4da055533977747a4, type: 2}
-  QTEDifficultyMultiplier: 1
+  QTEDifficultyMultiplier: 0.5
   DropItemIDs: []
-  EXPReward: 20
-  GoldReward: 10
+  EXPReward: 300
+  GoldReward: 6868

@@ -24,6 +24,7 @@ public class BattleManager : MonoBehaviour
     public event Action<PlayerCharacter, int>       OnMPChanged;          
     public event Action<bool>                       OnBattleEnded;        
     public event Action<PlayerMenuAction>           OnTargetSelectionStarted;
+    public event Action<BattleNarrationMessage>     OnBattleNarrationRequested;
     #endregion
 
     #region [ Inspector Settings ]
@@ -80,6 +81,8 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private float _enemyAoEWindup = 0.35f;
     [Tooltip("적 단일공격이 시작되기 전에 화면 중앙으로 이동하는 시간")]
     [SerializeField] private float _enemyCenterAdvanceDuration = 0.18f;
+    [Header("Narration")]
+    [SerializeField] private BattleNarrationConfig _battleNarrationConfig;
     #endregion
 
     #region [ Internal State ]
@@ -97,7 +100,42 @@ public class BattleManager : MonoBehaviour
 
     private PlayerCharacter _pendingActor;
     private PlayerMenuAction _pendingAction;
+    private int _battleTurnCounter = 0;
+    private Transform _battleCameraFocusPoint;
+    private readonly Dictionary<EnemyCharacter, EnemyQueuedAction> _reservedEnemyActionByActor = new Dictionary<EnemyCharacter, EnemyQueuedAction>();
+    private bool _isRunInProgress;
     #endregion
+
+    private struct EnemyQueuedAction
+    {
+        public EnemyAction Action;
+        public SkillData Skill;
+        public int TurnsRemaining;
+    }
+
+    private Transform EnsureBattleCameraFocusPoint()
+    {
+        if (_battleCameraFocusPoint != null) return _battleCameraFocusPoint;
+        GameObject go = new GameObject("BattleCameraFocusPoint");
+        _battleCameraFocusPoint = go.transform;
+        return _battleCameraFocusPoint;
+    }
+
+    private Transform GetPrimaryAlivePlayerTransform()
+    {
+        int idx = _playerParty.FindIndex(p => p != null && p.IsAlive);
+        if (idx < 0) return null;
+        return _playerParty[idx].transform;
+    }
+
+    private void FocusCameraBetween(Transform a, Transform b)
+    {
+        if (a == null || b == null) return;
+
+        Transform focus = EnsureBattleCameraFocusPoint();
+        focus.position = (a.position + b.position) * 0.5f;
+        CameraController.Instance?.SetTarget(focus);
+    }
 
     private List<CharacterBase> GetVisiblePredictedTurnQueue()
     {
@@ -135,6 +173,50 @@ public class BattleManager : MonoBehaviour
         OnTurnQueueUpdated?.Invoke(GetVisiblePredictedTurnQueue());
     }
 
+    private IEnumerator WaitForNarrationToFinish()
+    {
+        BattleUIController ui = BattleUIController.Instance;
+        if (ui == null) yield break;
+
+        while (ui.IsNarrationBlockingInput())
+            yield return null;
+    }
+
+    public void RequestNarration(BattleNarrationMessage message)
+    {
+        OnBattleNarrationRequested?.Invoke(message);
+    }
+
+    private void TryRequestFlavorNarration()
+    {
+        if (_battleNarrationConfig == null || _battleNarrationConfig.FlavorRules == null) return;
+
+        for (int i = 0; i < _battleNarrationConfig.FlavorRules.Count; i++)
+        {
+            BattleFlavorRule rule = _battleNarrationConfig.FlavorRules[i];
+            if (rule == null || rule.TriggeredOnce) continue;
+
+            EnemyCharacter focusEnemy = _enemies.Find(e => e != null && e.IsAlive && (string.IsNullOrWhiteSpace(rule.EnemyNameFilter) || (e.Data != null && e.Data.EnemyName == rule.EnemyNameFilter)));
+            if (!IsFlavorRuleSatisfied(rule, focusEnemy)) continue;
+
+            string enemyName = focusEnemy != null && focusEnemy.Data != null ? focusEnemy.Data.EnemyName : "적";
+            string text = rule.Template.Replace("{enemy}", enemyName).Replace("{turn}", _battleTurnCounter.ToString());
+            RequestNarration(BattleNarrationFormatter.Flavor(text, rule.Style, rule.Priority, rule.HoldOverride));
+            rule.TriggeredOnce = true;
+        }
+    }
+
+    private bool IsFlavorRuleSatisfied(BattleFlavorRule rule, EnemyCharacter focusEnemy)
+    {
+        return rule.TriggerType switch
+        {
+            BattleFlavorTriggerType.BattleStart => _battleTurnCounter <= 1,
+            BattleFlavorTriggerType.TurnCountAtLeast => _battleTurnCounter >= Mathf.Max(1, rule.MinTurnCount),
+            BattleFlavorTriggerType.EnemyHpBelowPercent => focusEnemy != null && focusEnemy.MaxHP > 0 && ((float)focusEnemy.CurrentHP / focusEnemy.MaxHP) <= rule.EnemyHpBelowPercent,
+            _ => false
+        };
+    }
+
     #region [ Initialization ]
     private void Awake()
     {
@@ -144,6 +226,7 @@ public class BattleManager : MonoBehaviour
 
     private void Start() 
     {
+        BattleNarrationFormatter.Config = _battleNarrationConfig;
         // 전용 배틀 씬일 경우에만 자동 셋업 루틴을 시작합니다. (오버월드 버그 방지)
         if (_isDedicatedBattleScene) StartCoroutine(DelayedStartRoutine());
     }
@@ -237,11 +320,18 @@ public class BattleManager : MonoBehaviour
     private IEnumerator SeamlessIntroRoutine(PlayerController playerCtrl)
     {
         var pm = PositionManager.Instance;
-        if (pm != null && pm.CenterTransform != null)
-    {
-        CameraController.Instance?.SetTarget(pm.CenterTransform);
-        Debug.Log("<color=yellow>[카메라] 타겟을 CenterPos로 변경했습니다.</color>");
-    }
+        if (pm != null && playerCtrl != null)
+        {
+            Vector3 battlePos = pm.GetPlayerDefaultPos(0);
+            playerCtrl.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+            
+            SetGhostTrail(playerCtrl.GetComponent<CharacterBase>(), true);
+            yield return playerCtrl.transform.DOMove(battlePos, 0.5f).SetEase(Ease.OutExpo).WaitForCompletion();
+            SetGhostTrail(playerCtrl.GetComponent<CharacterBase>(), false);
+            
+            playerCtrl.SetFacingDirection(3);
+            playerCtrl.SetBattleMode(true);
+        }
 
         if (pm != null && playerCtrl != null)
         {
@@ -259,6 +349,11 @@ public class BattleManager : MonoBehaviour
         BattleUIController.Instance?.HideSkillQTE();
 
         OnBattleStarted?.Invoke(_playerParty, _enemies);
+        _battleNarrationConfig?.ResetRuntimeState();
+        _battleTurnCounter = 0;
+        RequestNarration(BattleNarrationFormatter.BattleStart());
+        TryRequestFlavorNarration();
+        yield return StartCoroutine(WaitForNarrationToFinish());
         ChangeState(BattleState.Init);
         ChangeState(BattleState.TurnCalc);
     }
@@ -368,7 +463,11 @@ public class BattleManager : MonoBehaviour
         }
 
         OnBattleStarted?.Invoke(_playerParty, _enemies);
-        yield return new WaitForSeconds(0.5f);
+        _battleNarrationConfig?.ResetRuntimeState();
+        _battleTurnCounter = 0;
+        RequestNarration(BattleNarrationFormatter.BattleStart());
+        TryRequestFlavorNarration();
+        yield return StartCoroutine(WaitForNarrationToFinish());
         ChangeState(BattleState.TurnCalc);
     }
 
@@ -384,12 +483,22 @@ public class BattleManager : MonoBehaviour
     {
         return enemy != null && enemy.Data != null && enemy.Data.SkillList != null && enemy.Data.SkillList.Count > 0;
     }
-
-    private SkillData GetEnemySequenceSkill(EnemyCharacter enemy)
+private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action)
+{
+    if (enemy == null || enemy.Data == null) return null;
+    if (action == EnemyAction.UseSkill && enemy.Data.SkillList != null && enemy.Data.SkillList.Count > 0)
     {
-        if (!EnemyHasSequenceSkill(enemy)) return null;
-        return enemy.Data.SkillList[0];
+        int rand = UnityEngine.Random.Range(0, enemy.Data.SkillList.Count);
+        return enemy.Data.SkillList[rand];
     }
+    if (action == EnemyAction.UseStrongSkill && enemy.Data.StrongSkillList != null && enemy.Data.StrongSkillList.Count > 0)
+    {
+        int rand = UnityEngine.Random.Range(0, enemy.Data.StrongSkillList.Count);
+        return enemy.Data.StrongSkillList[rand];
+    }
+
+    return null;
+}
 
     private int ResolveEnemyReturnMoveHash(EnemyCharacter enemy)
     {
@@ -435,7 +544,11 @@ public class BattleManager : MonoBehaviour
 
         Vector3 centerPos = PositionManager.Instance != null ? PositionManager.Instance.GetCenterPos() : enemy.transform.position;
         enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
+        
+        SetGhostTrail(enemy, true);
         yield return enemy.transform.DOMove(centerPos, _enemyCenterAdvanceDuration).SetEase(Ease.OutQuad).WaitForCompletion();
+        SetGhostTrail(enemy, false);
+        
         enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
     }
 
@@ -482,7 +595,9 @@ public class BattleManager : MonoBehaviour
         if (Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
         {
             enemy.PlayBattleAnim(ResolveEnemyReturnMoveHash(enemy));
+            SetGhostTrail(enemy, true);
             yield return enemy.transform.DOMove(defaultPos, 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+            SetGhostTrail(enemy, false);
         }
 
         enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
@@ -542,15 +657,30 @@ public class BattleManager : MonoBehaviour
         // 액터 진영에 따른 턴 분기
         if (actor is PlayerCharacter player)
         {
-            player.HealMP(_mpPerTurn); 
-            OnMPChanged?.Invoke(player, player.CurrentMP); 
-            OnPlayerTurnStarted?.Invoke(player);
-            ChangeState(BattleState.PlayerActionSelect);
+            _battleTurnCounter++;
+            StartCoroutine(BeginPlayerTurnRoutine(player));
         }
         else if (actor is EnemyCharacter)
         {
-            ChangeState(BattleState.EnemyAction);
+            StartCoroutine(BeginEnemyTurnRoutine());
         }
+    }
+
+    private IEnumerator BeginPlayerTurnRoutine(PlayerCharacter player)
+    {
+        player.HealMP(_mpPerTurn);
+        OnMPChanged?.Invoke(player, player.CurrentMP);
+        TryRequestFlavorNarration();
+        yield return StartCoroutine(WaitForNarrationToFinish());
+        OnPlayerTurnStarted?.Invoke(player);
+        ChangeState(BattleState.PlayerActionSelect);
+        yield break;
+    }
+
+    private IEnumerator BeginEnemyTurnRoutine()
+    {
+        yield return StartCoroutine(WaitForNarrationToFinish());
+        ChangeState(BattleState.EnemyAction);
     }
     #endregion
 
@@ -649,13 +779,13 @@ public class BattleManager : MonoBehaviour
         var target = _enemies[targetIndex];
         var pm = PositionManager.Instance;
 
-        CameraController.Instance?.ModePlayerAction();
-        CameraController.Instance?.ZoomOnTransform(actor.transform, 4.2f, 0.3f); 
+        // 전투 중 카메라 워킹/줌 연출 비활성화
 
         // 하드코딩 제거: 인스펙터 변수 참조
         Vector3 frontPos = target.transform.position + _meleeAttackOffset; 
         
         actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+        SetGhostTrail(actor, true);
         yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
 
         Vector3 pullBackPos = frontPos + _meleePullbackOffset;
@@ -675,14 +805,19 @@ public class BattleManager : MonoBehaviour
         OnDamageDealt?.Invoke(target, dmg, false);
         
         yield return new WaitForSeconds(_playerAttackRecoverDelay); 
+        SetGhostTrail(actor, false);
 
         // 제자리 복귀
         int idx = _playerParty.IndexOf(actor);
         actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+        SetGhostTrail(actor, true);
         yield return actor.transform.DOJump(pm.GetPlayerDefaultPos(idx), 0.5f, 1, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
+        SetGhostTrail(actor, false);
         
         actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         CameraController.Instance?.ResetCamera(0.4f);
+
+        yield return StartCoroutine(WaitForNarrationToFinish());
 
         EndAction();
     }
@@ -691,7 +826,6 @@ public class BattleManager : MonoBehaviour
     {
         actor.ConsumeMP(skill.MPCost);
         OnMPChanged?.Invoke(actor, actor.CurrentMP);
-
         List<CharacterBase> targets = new List<CharacterBase>();
         if (skill.IsAoE)
         {
@@ -706,8 +840,7 @@ public class BattleManager : MonoBehaviour
 
         if (targets.Count == 0) { EndAction(); yield break; }
 
-        CameraController.Instance?.ModePlayerAction();
-        CameraController.Instance?.ZoomOnTransform(actor.transform, 4.0f, 0.3f); 
+        // 전투 중 카메라 워킹/줌 연출 비활성화
 
         Vector3 originalPos = PositionManager.Instance.GetPlayerDefaultPos(_playerParty.IndexOf(actor));
 
@@ -732,11 +865,14 @@ public class BattleManager : MonoBehaviour
         if (Vector3.Distance(actor.transform.position, originalPos) > 0.1f)
         {
             actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+            SetGhostTrail(actor, true);
             yield return actor.transform.DOMove(originalPos, 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
+            SetGhostTrail(actor, false);
         }
 
         actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         CameraController.Instance?.ResetCamera(0.4f); 
+        yield return StartCoroutine(WaitForNarrationToFinish());
         
         EndAction();
     }
@@ -782,6 +918,8 @@ public class BattleManager : MonoBehaviour
         yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
         actorCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
 
+        yield return StartCoroutine(WaitForNarrationToFinish());
+
         EndAction(); 
     }
     #endregion
@@ -792,25 +930,78 @@ public class BattleManager : MonoBehaviour
         var enemy = _turnQueue[_currentActorIndex - 1] as EnemyCharacter;
         if (enemy == null) { EndAction(); yield break; }
 
-        var action = enemy.DecideAction();
-        SkillData enemySkill = action == EnemyAction.UseSkill ? GetEnemySequenceSkill(enemy) : null;
+        SkillData enemySkill = null;
+        EnemyAction action;
+        bool isExecutingReservedAction = false;
+
+        if (_reservedEnemyActionByActor.TryGetValue(enemy, out EnemyQueuedAction reservedAction))
+        {
+            reservedAction.TurnsRemaining--;
+            if (reservedAction.TurnsRemaining > 0)
+            {
+                _reservedEnemyActionByActor[enemy] = reservedAction;
+                EndAction();
+                yield break;
+            }
+
+            action = reservedAction.Action;
+            enemySkill = reservedAction.Skill;
+            _reservedEnemyActionByActor.Remove(enemy);
+            isExecutingReservedAction = true;
+        }
+        else
+        {
+            action = enemy.DecideAction();
+            // 🚨 수정됨: action을 넘겨서 UseSkill, UseStrongSkill 모두 정상적으로 스킬을 뽑아오게 변경
+            enemySkill = GetEnemySequenceSkill(enemy, action); 
+        }
+
         var attackType = action switch
         {
+            // 🚨 수정됨: 강한 스킬(UseStrongSkill)일 때도 스킬 타입을 판정하도록 추가
             EnemyAction.UseSkill when enemySkill != null => ResolveEnemySkillAttackType(enemySkill),
+            EnemyAction.UseStrongSkill when enemySkill != null => ResolveEnemySkillAttackType(enemySkill), 
             EnemyAction.EnragedAttack => EnemyAttackType.AoEAll,
             _ => EnemyAttackType.MeleeClose
         };
 
         OnEnemyActionStarted?.Invoke(enemy, attackType);
-        CameraController.Instance?.ModeEnemyAction();
+        
+        // 🚨 수정됨: 강한 스킬(UseStrongSkill)일 경우에만 예고를 띄우도록 조건 변경
+        bool shouldTelegraphSkillThisTurn = enemy.Data != null
+            && enemy.Data.TelegraphStrongSkill
+            && action == EnemyAction.UseStrongSkill 
+            && enemySkill != null
+            && !isExecutingReservedAction
+            && !_reservedEnemyActionByActor.ContainsKey(enemy);
 
-        if (action == EnemyAction.UseSkill && enemySkill != null)
+        if (shouldTelegraphSkillThisTurn)
         {
+            string enemyName = enemy != null && enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.EnemyName) ? enemy.Data.EnemyName : "적";
+            string warnText = $"{enemyName}가 강한 공격을 준비한다...";
+            RequestNarration(new BattleNarrationMessage(warnText, BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.4f, true));
+            yield return StartCoroutine(WaitForNarrationToFinish());
+
+            _reservedEnemyActionByActor[enemy] = new EnemyQueuedAction
+            {
+                Action = action,
+                Skill = enemySkill,
+                TurnsRemaining = Mathf.Max(1, enemy.Data.TelegraphTurns)
+            };
+            EndAction();
+            yield break;
+        }
+        if ((action == EnemyAction.UseSkill || action == EnemyAction.UseStrongSkill) && enemySkill != null)
+        {
+            string enemyName = enemy != null && enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.EnemyName) ? enemy.Data.EnemyName : "적";
+            RequestNarration(new BattleNarrationMessage($"{enemyName}의 {enemySkill.SkillName}!", BattleNarrationStyle.Normal, BattleNarrationPriority.Normal, 1.0f));
+            
+            yield return new WaitForSeconds(0.5f);
+
             yield return StartCoroutine(ExecuteEnemySequenceSkill(enemy, enemySkill));
         }
         else if (attackType == EnemyAttackType.MeleeClose)
         {
-            // 첫 번째 살아있는 플레이어 타겟팅
             int targetIdx = _playerParty.FindIndex(p => p.IsAlive);
             if (targetIdx >= 0)
             {
@@ -890,7 +1081,9 @@ public class BattleManager : MonoBehaviour
                 if (movedToCenter)
                 {
                     enemy.PlayBattleAnim(ResolveEnemyReturnMoveHash(enemy));
+                    SetGhostTrail(enemy, true);
                     yield return enemy.transform.DOMove(PositionManager.Instance.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
+                    SetGhostTrail(enemy, false);
                 }
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
             }
@@ -910,6 +1103,7 @@ public class BattleManager : MonoBehaviour
             yield return new WaitForSeconds(_enemyPostHitDelay);
         }
 
+        yield return StartCoroutine(WaitForNarrationToFinish());
         EndAction(); 
     }
     #endregion
@@ -920,15 +1114,36 @@ public class BattleManager : MonoBehaviour
 
     private IEnumerator RunRoutine()
     {
-        Debug.Log("무사히 도망쳤다!");
-        CommitOverworldEncounterResult(false);
-        yield return StartCoroutine(BattleOutroRoutine(false));
+        if (_isRunInProgress) yield break;
+        _isRunInProgress = true;
+
+        RequestNarration(new BattleNarrationMessage("도망을 시도했다...", BattleNarrationStyle.Normal, BattleNarrationPriority.High, 0.2f, true));
+        yield return StartCoroutine(WaitForNarrationToFinish());
+
+        bool success = UnityEngine.Random.value < 0.6f;
+        RequestNarration(new BattleNarrationMessage(success ? "도망에 성공했다!" : "도망에 실패했다...", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
+        yield return StartCoroutine(WaitForNarrationToFinish());
+
+        if (success)
+        {
+            CommitOverworldEncounterResult(false);
+            _isRunInProgress = false;
+            yield return StartCoroutine(BattleOutroRoutine(false));
+        }
+        else
+        {
+            _isRunInProgress = false;
+            EndAction();
+        }
     }
 
     private IEnumerator BattleEndRoutine()
     {
         CommitOverworldEncounterResult(CheckVictory());
-        yield return _waitMedium;
+        RequestNarration(CheckVictory()
+            ? new BattleNarrationMessage("전투에서 승리했다!", BattleNarrationStyle.Normal, BattleNarrationPriority.High, 0.2f, true)
+            : new BattleNarrationMessage("눈 앞이 캄캄해졌다...", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
+        yield return StartCoroutine(WaitForNarrationToFinish());
         yield return StartCoroutine(BattleOutroRoutine(CheckVictory()));
     }
 
@@ -960,11 +1175,8 @@ public class BattleManager : MonoBehaviour
     {
         Time.timeScale = 1.0f; // 슬로우 모션 방지
         OnBattleEnded?.Invoke(isVictory);
-
-        
-        
-        // UI 결과창이 충분히 렌더링될 수 있도록 Realtime 사용
-        yield return new WaitForSecondsRealtime(2.5f); 
+        BattleUIController.Instance?.ClearNarrationLog();
+        yield return new WaitForSecondsRealtime(0.25f);
 
         foreach (var player in _playerParty)
         {
@@ -1066,6 +1278,13 @@ public class BattleManager : MonoBehaviour
     public void InvokeMPChangedEvent(PlayerCharacter player, int newMP)
     {
         OnMPChanged?.Invoke(player, newMP);
+    }
+
+    public static void SetGhostTrail(CharacterBase character, bool active)
+    {
+        if (character == null) return;
+        var trail = character.GetComponentInChildren<CharacterGhostTrail>();
+        if (trail != null) trail.SetTrailActive(active);
     }
     #endregion
 }

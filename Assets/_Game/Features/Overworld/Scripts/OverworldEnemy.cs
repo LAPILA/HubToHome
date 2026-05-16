@@ -41,7 +41,6 @@ public class OverworldEnemy : MonoBehaviour
     [SerializeField] private float _battleFadeDuration = 0.08f;
     [SerializeField] private string _battleSceneName = "BattleScene";
     [SerializeField] private bool _destroyAfterTouch = false;
-    [SerializeField] private float _postEscapeDisableDuration = 3f;
     [SerializeField] private float _postEscapeAlpha = 0.5f;
 
     [Header("Persistence")]

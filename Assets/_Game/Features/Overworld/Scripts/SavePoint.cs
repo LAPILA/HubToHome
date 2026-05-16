@@ -3,10 +3,7 @@ using DG.Tweening;
 
 public class SavePoint : InteractableBase
 {
-    public enum SaveMode { QuickSave, SlotSelect }
-
     [Header("Save Settings")]
-    [SerializeField] private SaveMode _saveMode = SaveMode.QuickSave;
     [SerializeField] private int _quickSaveSlot = 0;
     [SerializeField] private bool _autoSaveOnPass = false;
     [SerializeField] private int  _autoSaveSlot = 99; 

@@ -210,6 +210,11 @@ public class EnemyCharacter : CharacterBase
         if (hpRatio <= 0.5f && Data.HasEnragedPattern)
             return EnemyAction.EnragedAttack;
 
+        if (Data.StrongSkillList != null && Data.StrongSkillList.Count > 0)
+        {
+            if (Random.value < Data.StrongSkillUseChance) return EnemyAction.UseStrongSkill;
+        }
+
         if (Data.SkillList != null && Data.SkillList.Count > 0)
         {
             if (Random.value < Data.SkillUseChance) return EnemyAction.UseSkill;
@@ -247,4 +252,4 @@ public class EnemyCharacter : CharacterBase
     }
 }
 
-public enum EnemyAction { BasicAttack, UseSkill, EnragedAttack, Defend }
+public enum EnemyAction { BasicAttack, UseSkill, UseStrongSkill, EnragedAttack, Defend }

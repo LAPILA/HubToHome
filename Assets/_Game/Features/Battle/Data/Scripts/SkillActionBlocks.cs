@@ -113,7 +113,13 @@ public class Action_Move : SkillActionBlock
             targetPos = GetActorDefaultBattlePos(context.Actor);
 
         PlayActorBattleAnim(context.Actor, context.Actor is EnemyCharacter ? EnemyCharacter.HashBattleMove : PlayerCharacter.HashBattleMove);
+
+        var ghostTrail = context.Actor.GetComponentInChildren<CharacterGhostTrail>();
+        if (ghostTrail != null) ghostTrail.SetTrailActive(true);
+
         yield return context.Actor.transform.DOMove(targetPos, Duration).SetEase(MoveEase).WaitForCompletion();
+        if (ghostTrail != null) ghostTrail.SetTrailActive(false);
+
         PlayActorBattleAnim(context.Actor, context.Actor is EnemyCharacter ? EnemyCharacter.HashBattleIdle : PlayerCharacter.HashBattleIdle);
     }
 }
@@ -407,10 +413,12 @@ public class Action_SequentialMelee : SkillActionBlock
     {
         if (context.Targets.Count == 0) yield break;
 
+        // 잔상 컴포넌트 찾기
+        var ghostTrail = context.Actor.GetComponentInChildren<CharacterGhostTrail>();
+
         List<CharacterBase> shuffledTargets = new List<CharacterBase>(context.Targets);
         for (int i = 0; i < shuffledTargets.Count; i++) {
             CharacterBase temp = shuffledTargets[i];
-            // 🚨 UnityEngine.Random 명시적 선언으로 에러 방지
             int randomIndex = UnityEngine.Random.Range(i, shuffledTargets.Count); 
             shuffledTargets[i] = shuffledTargets[randomIndex];
             shuffledTargets[randomIndex] = temp;
@@ -421,7 +429,11 @@ public class Action_SequentialMelee : SkillActionBlock
             if (!target.IsAlive) continue;
 
             Vector3 targetPos = target.GetPivot("Front").position;
+
+            // 🚨 다음 타겟으로 슉! 이동할 때 잔상 켜기
+            if (ghostTrail != null) ghostTrail.SetTrailActive(true);
             yield return context.Actor.transform.DOMove(targetPos, DashSpeed).SetEase(Ease.OutExpo).WaitForCompletion();
+            if (ghostTrail != null) ghostTrail.SetTrailActive(false); // 🚨 도착하면 끄기
 
             PlayActorBattleAnim(context.Actor, Animator.StringToHash(AttackAnimTrigger));
             yield return new WaitForSeconds(0.1f); 
@@ -443,5 +455,43 @@ public class Action_SequentialMelee : SkillActionBlock
         }
 
         context.CurrentDamageMultiplier = 1.0f; 
+    }
+}
+
+[System.Serializable]
+[TypeInfoBox("적 전용: 강한 공격 전 타이밍(QTE)을 알려주는 시각적 징조를 띄웁니다. 플레이어가 쓰면 무시됩니다.")]
+public class Action_EnemyTelegraph : SkillActionBlock
+{
+    [AssetsOnly, Required] public GameObject WarningVFXPrefab;
+    [LabelText("징조 유지 시간 (초)")] public float TimingDuration = 0.8f;
+
+    public override IEnumerator Execute(SkillContext context)
+    {
+        // 플레이어면 이 블록은 그냥 패스 (적 전용 기믹)
+        if (context.Actor is PlayerCharacter) yield break;
+
+        GameObject spawnedVFX = null;
+
+        if (WarningVFXPrefab != null)
+        {
+            // 적 위치에 이펙트 생성 (ObjectPoolManager 지원)
+            if (ObjectPoolManager.Instance != null)
+                spawnedVFX = ObjectPoolManager.Instance.Spawn(WarningVFXPrefab, context.Actor.transform.position, Quaternion.identity);
+            else
+                spawnedVFX = GameObject.Instantiate(WarningVFXPrefab, context.Actor.transform.position, Quaternion.identity);
+
+            // 이펙트 스크립트 실행 (원에 조여드는 시간 전달)
+            //var telegraphVFX = spawnedVFX.GetComponent<TelegraphTimingEffect>();
+            //if (telegraphVFX != null) telegraphVFX.PlayTelegraph(TimingDuration);
+        }
+
+        // 세키로처럼 '챙!' 소리나 이펙트가 모일 때까지 대기
+        yield return new WaitForSeconds(TimingDuration);
+
+        if (spawnedVFX != null)
+        {
+            if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.Despawn(spawnedVFX);
+            else GameObject.Destroy(spawnedVFX);
+        }
     }
 }

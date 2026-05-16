@@ -53,6 +53,7 @@ public class BattleSubMenu : MonoBehaviour
     private void Update()
     {
         if (!IsActive || _isAnimating) return;
+        if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
 
         // 상하좌우 그리드 이동
         if (GameInput.BattleUpPressed) ChangeIndex(-2);

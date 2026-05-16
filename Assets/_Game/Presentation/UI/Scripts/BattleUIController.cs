@@ -28,8 +28,7 @@ public class BattleUIController : MonoBehaviour
     
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleMenuUI  _battleMenuUI;
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private DefenseQTEUI  _defenseQTEUI;
-    [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private UIPanel       _resultPanel;
-    [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private TMPro.TextMeshProUGUI _resultLabel;
+    [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleNarrationUI _narrationUI;
     #endregion
 
     #region [ UI Settings & Magic Numbers ]
@@ -61,9 +60,11 @@ public class BattleUIController : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
+        if (_narrationUI == null)
+            _narrationUI = BattleNarrationUI.FindInActiveScene();
+
         _battleMenuUI?.HideImmediate(); 
         _defenseQTEUI?.HideImmediate();
-        _resultPanel?.HideImmediate();
         if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
 
         if (_partyStatusPanel != null)
@@ -78,6 +79,9 @@ public class BattleUIController : MonoBehaviour
 
     private void Start()
     {
+        if (_narrationUI == null)
+            _narrationUI = BattleNarrationUI.FindInActiveScene();
+
         var bm = BattleManager.Instance;
         if (bm == null) 
         {
@@ -95,6 +99,7 @@ public class BattleUIController : MonoBehaviour
         bm.OnMPChanged              += HandleMPChanged;
         bm.OnBattleEnded            += HandleBattleEnded;
         bm.OnTargetSelectionStarted += HandleTargetSelectionStarted;
+        bm.OnBattleNarrationRequested += HandleBattleNarrationRequested;
     }
 
     private void OnDestroy()
@@ -112,6 +117,7 @@ public class BattleUIController : MonoBehaviour
         bm.OnMPChanged              -= HandleMPChanged;
         bm.OnBattleEnded            -= HandleBattleEnded;
         bm.OnTargetSelectionStarted -= HandleTargetSelectionStarted;
+        bm.OnBattleNarrationRequested -= HandleBattleNarrationRequested;
     }
 
     private void Update()
@@ -143,6 +149,7 @@ public class BattleUIController : MonoBehaviour
     private void HandleTargetingInput()
     {
         if (!_isTargetingMode) return;
+        if (IsNarrationBlockingInput()) return;
 
         if (GameInput.BattleLeftPressed)
             NavigateTarget(-1);
@@ -220,8 +227,15 @@ public class BattleUIController : MonoBehaviour
     #region [ Event Handlers (View Rendering) ]
     private void HandleBattleStarted(List<PlayerCharacter> party, List<EnemyCharacter> enemies)
     {
+        if (_narrationUI == null)
+            _narrationUI = BattleNarrationUI.FindInActiveScene();
+
+        if (_narrationUI == null)
+            Debug.LogWarning("[BattleUIController] BattleNarrationUI를 찾지 못했습니다. BattleNarrationPanel 참조를 확인하세요.");
+
         _party   = party;
         _enemies = enemies;
+        _narrationUI?.Clear();
         for (int i = 0; i < _partySlots.Length; i++)
         {
             if (i < party.Count && party[i] != null) 
@@ -292,11 +306,25 @@ public class BattleUIController : MonoBehaviour
 
     private void HandleDamageDealt(CharacterBase target, int damage, bool isCrit)
     {
+        // 포켓몬식 로그 정책: 데미지 수치/공격명 로그는 비표시, 회복 수치만 표시
+        if (damage < 0)
+            HandleBattleNarrationRequested(BattleNarrationFormatter.Heal(target, -damage));
+
         if (target is PlayerCharacter pc)
         {
             int idx = _party?.IndexOf(pc) ?? -1;
             if (idx >= 0 && idx < _partySlots.Length)
                 _partySlots[idx].RefreshHP(pc.CurrentHP, pc.MaxHP, _barTweenDuration, Ease.OutQuad);
+
+            if (pc.MaxHP > 0 && pc.CurrentHP > 0 && (float)pc.CurrentHP / pc.MaxHP <= 0.25f)
+            {
+                HandleBattleNarrationRequested(new BattleNarrationMessage(
+                    $"{pc.DisplayName}의 체력이 위험하다...",
+                    BattleNarrationStyle.Warning,
+                    BattleNarrationPriority.High,
+                    0.15f,
+                    true));
+            }
         }
     }
 
@@ -309,7 +337,14 @@ public class BattleUIController : MonoBehaviour
 
     private void HandleTurnQueueUpdated(List<CharacterBase> queue)
     {
-        foreach (Transform child in _turnQueueContainer) Destroy(child.gameObject);
+        foreach (Transform child in _turnQueueContainer)
+        {
+            if (child != null)
+            {
+                child.DOKill();
+                Destroy(child.gameObject);
+            }
+        }
 
         foreach (var actor in queue)
         {
@@ -337,8 +372,12 @@ public class BattleUIController : MonoBehaviour
             if (go.GetComponentInChildren<TMPro.TextMeshProUGUI>() is var txt && txt != null) 
                 txt.text = GetActorDisplayName(actor);
 
-            go.transform.localScale = Vector3.zero;
-            go.transform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack);
+            if (go != null)
+            {
+                go.transform.DOKill();
+                go.transform.localScale = Vector3.zero;
+                go.transform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack).SetLink(go);
+            }
         }
     }
 
@@ -369,23 +408,28 @@ public class BattleUIController : MonoBehaviour
 
     private void HandleBattleEnded(bool victory)
     {
-        Debug.Log($"<color=yellow>[BattleUIController] 전투 종료 이벤트 수신! 승리 여부: {victory}</color>");
-        
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
         _battleMenuUI?.HideImmediate();
-        ResetPartyPanelPosition(); // 🚨 전투 끝나면 얌전히 제자리로
+        ResetPartyPanelPosition();
+        _narrationUI?.Clear();
+    }
 
-        if (_resultPanel != null && _resultLabel != null)
+    private void HandleBattleNarrationRequested(BattleNarrationMessage message)
+    {
+        if (_narrationUI == null)
+            _narrationUI = BattleNarrationUI.FindInActiveScene();
+
+        if (_narrationUI == null)
         {
-            Debug.Log("<color=green>[BattleUIController] 결과창 UI가 정상 할당되어 렌더링을 시작합니다.</color>");
-            _resultLabel.text = victory ? "<wave>승리!</wave>" : "<shake>패배...</shake>";
-            _resultPanel.Show();
+            Debug.LogWarning($"[BattleUIController] 나레이션 요청을 처리할 UI가 없습니다. text={message.Text}");
+            return;
         }
-        else
-        {
-            Debug.LogError("<color=red>[BattleUIController] 치명적 오류: ResultPanel 또는 ResultLabel이 인스펙터에 할당되지 않았습니다! 배틀 씬의 인스펙터를 확인하세요.</color>");
-        }
+
+        if (!_narrationUI.gameObject.activeSelf)
+            _narrationUI.gameObject.SetActive(true);
+
+        _narrationUI.Enqueue(message);
     }
     #endregion
 
@@ -393,6 +437,8 @@ public class BattleUIController : MonoBehaviour
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();
+    public bool IsNarrationBlockingInput() => _narrationUI != null && _narrationUI.IsBusy;
+    public void ClearNarrationLog() => _narrationUI?.Clear();
 
     private void SetTurnLabel(string text)
     {

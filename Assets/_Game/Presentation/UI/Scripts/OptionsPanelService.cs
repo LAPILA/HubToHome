@@ -22,7 +22,7 @@ public static class OptionsPanelService
             return _cachedPanel;
         }
 
-        _cachedPanel = Object.FindObjectOfType<ConfigPanelUI>(true);
+        _cachedPanel = Object.FindFirstObjectByType<ConfigPanelUI>(FindObjectsInactive.Include);
         if (!IsAlive(_cachedPanel))
         {
             Debug.LogWarning("[OptionsPanelService] ConfigPanelUI를 찾지 못했습니다. 씬/프리팹에 ConfigPanelUI를 배치하고 연결해주세요.");
@@ -49,7 +49,7 @@ public static class OptionsPanelService
     {
         if (UIManager.Instance == null) return;
 
-        var panel = IsAlive(_cachedPanel) ? _cachedPanel : Object.FindObjectOfType<ConfigPanelUI>(true);
+        var panel = IsAlive(_cachedPanel) ? _cachedPanel : Object.FindFirstObjectByType<ConfigPanelUI>(FindObjectsInactive.Include);
         if (!IsAlive(panel)) return;
 
         _cachedPanel = panel;

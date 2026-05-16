@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: Skill_Crash
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "\uB0B4\uB824\uCE58\uAE30"
+  SkillID: skill_002
+  Description: "\uB9E4\uC6B0 \uBA4B\uC9C4 \uB0B4\uB824\uCC0D\uAE30"
+  UsageProfile: 0
+  MPCost: 30
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 8456611228188409976
+  - rid: 8456611228188409979
+  - rid: 8456611228188409978
+  - rid: 8456611228188409980
+  - rid: 8456611228188409981
+  references:
+    version: 2
+    RefIds:
+    - rid: 8456611228188409976
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 2
+        Duration: 0.3
+        MoveEase: 6
+    - rid: 8456611228188409978
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 0
+        Duration: 0.1
+        MoveEase: 17
+    - rid: 8456611228188409979
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        AnimTriggerName: Attack
+        DelayAfter: 0.1
+    - rid: 8456611228188409980
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: a92d3e7dae3e14040994a16acae887e0, type: 3}
+        Pivot: 3
+        UseActorRotation: 0
+    - rid: 8456611228188409981
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 1
+        ShakeCamera: 1

@@ -6,11 +6,13 @@ using TMPro;
 using DG.Tweening;
 using Febucci.UI.Examples;
 using Febucci.TextAnimatorForUnity;
+using UnityEngine.SceneManagement;
 
 public class DialogueUI : MonoBehaviour
 {
     private static readonly Color ChoiceSelectedColor = new Color(1f, 0.95f, 0.3f);
 
+    [SerializeField] private Canvas _rootCanvas;
     [SerializeField] private CanvasGroup _canvasGroup;
     
     [Header("Text Animator & Sound")]
@@ -35,12 +37,29 @@ public class DialogueUI : MonoBehaviour
     private List<ChoiceData> _activeChoices;
     private System.Action<ChoiceData> _onChoiceSelected;
     private int _selectedChoiceIndex;
+    private Coroutine _cameraRebindRoutine;
 
     private void Awake()
     {   
+        if (_rootCanvas == null) _rootCanvas = GetComponentInParent<Canvas>(true);
         if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
         if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
         PrepareChoiceUI();
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        if (_cameraRebindRoutine != null)
+        {
+            StopCoroutine(_cameraRebindRoutine);
+            _cameraRebindRoutine = null;
+        }
     }
 
     private void Update()
@@ -59,6 +78,8 @@ public class DialogueUI : MonoBehaviour
     public void OpenPanel()
     {
         gameObject.SetActive(true);
+        RebindCanvasCameraImmediate();
+        StartCameraRebindRetry();
         ApplyConfiguredTextSpeed();
         if (_canvasGroup != null)
         {
@@ -129,7 +150,66 @@ public class DialogueUI : MonoBehaviour
         if (_typewriter == null) return;
 
         float speed = GameConfigManager.EnsureInstance().TextSpeed;
-        _typewriter.SetTypewriterSpeed(Mathf.Max(0.05f, speed));
+        float boosted = Mathf.Clamp(speed * 2.5f, 1.2f, 8f);
+        _typewriter.SetTypewriterSpeed(boosted);
+    }
+
+    private void ResolveCanvasCamera()
+    {
+        if (_rootCanvas == null) return;
+        if (_rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay) return;
+
+        Camera target = Camera.main;
+        if (target == null)
+        {
+            Camera[] cams = Camera.allCameras;
+            for (int i = 0; i < cams.Length; i++)
+            {
+                if (cams[i] != null && cams[i].isActiveAndEnabled)
+                {
+                    target = cams[i];
+                    break;
+                }
+            }
+        }
+
+        // 씬 전환/카메라 교체 시에도 항상 최신 월드 카메라로 강제 동기화
+        _rootCanvas.worldCamera = target;
+    }
+
+    public void RebindCanvasCameraImmediate()
+    {
+        ResolveCanvasCamera();
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        RebindCanvasCameraImmediate();
+        StartCameraRebindRetry();
+    }
+
+    private void StartCameraRebindRetry()
+    {
+        if (!isActiveAndEnabled) return;
+        if (_cameraRebindRoutine != null)
+            StopCoroutine(_cameraRebindRoutine);
+        _cameraRebindRoutine = StartCoroutine(CoRebindCanvasCameraRetry());
+    }
+
+    private IEnumerator CoRebindCanvasCameraRetry()
+    {
+        for (int i = 0; i < 20; i++)
+        {
+            ResolveCanvasCamera();
+            if (_rootCanvas != null && (_rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay || _rootCanvas.worldCamera != null))
+            {
+                _cameraRebindRoutine = null;
+                yield break;
+            }
+            yield return null;
+        }
+
+        _cameraRebindRoutine = null;
     }
 
     private IEnumerator CoReapplyTypewriterSpeed()

@@ -26,9 +26,12 @@ MonoBehaviour:
   CharacterID: player_001
   DisplayName: Player
   DisplayNameMode: 1
-  BaseMaxHP: 100
+  BaseMaxHP: 300
   BaseMaxMP: 50
   BaseATK: 10
   BaseDEF: 5
   BaseSPD: 10
-  DefaultSkills: []
+  DefaultSkills:
+  - {fileID: 11400000, guid: a6266718f8bf9094698650cb43978de1, type: 2}
+  - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
+  - {fileID: 11400000, guid: b3261d09b33d084429857ad2e5dfc63b, type: 2}

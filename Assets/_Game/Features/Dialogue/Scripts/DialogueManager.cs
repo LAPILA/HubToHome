@@ -42,6 +42,9 @@ public class DialogueManager : MonoBehaviour
 
         if (_activeUI == null) { _isPlaying = false; return; }
 
+        // DontDestroyOnLoad UI가 새 씬 카메라를 확실히 물도록 대화 시작 직전에 즉시 재바인딩
+        _activeUI.RebindCanvasCameraImmediate();
+
         GameStateManager.Instance?.ChangeState(GameState.Dialogue); 
         _activeUI.OpenPanel();
         
@@ -171,6 +174,7 @@ public class DialogueManager : MonoBehaviour
         _nameInputUI.Open((newName) => {
             if (GlobalDataManager.Instance != null) GlobalDataManager.Instance.PlayerName = newName;
             _isNaming = false;
+            _activeUI.RebindCanvasCameraImmediate();
             _activeUI.OpenPanel();
             NextNode(); // 이름 입력 후 다음 대사로
         });

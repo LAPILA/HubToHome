@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
-  m_Name: NewDialogue
+  m_Name: SampleDialogue
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
   Style: 0
   Nodes:

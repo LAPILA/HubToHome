@@ -116,6 +116,7 @@ GameObject:
   - component: {fileID: 8926160897552926385}
   - component: {fileID: 1699074167755928894}
   - component: {fileID: 8176373214988643597}
+  - component: {fileID: 42486569850555064}
   m_Layer: 7
   m_Name: Player_Base
   m_TagString: Player
@@ -477,6 +478,21 @@ MonoBehaviour:
   _interactLayer:
     serializedVersion: 2
     m_Bits: 64
+--- !u!114 &42486569850555064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3767812405821268843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 818fe571227e2654ea42c4bbf17bef6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterGhostTrail
+  _spawnInterval: 0.01
+  _ghostLifetime: 0.4
+  _ghostStartColor: {r: 1, g: 1, b: 1, a: 0.6}
 --- !u!1 &4761410622005152668
 GameObject:
   m_ObjectHideFlags: 0

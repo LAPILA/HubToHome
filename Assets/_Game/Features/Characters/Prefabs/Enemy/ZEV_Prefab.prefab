@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 201333056435609199}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: 2, z: 0}
+  m_LocalPosition: {x: -1, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -56,7 +56,7 @@ Transform:
   m_GameObject: {fileID: 1378944307133045415}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: 6, z: 0}
+  m_LocalPosition: {x: -1, y: 3.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -116,6 +116,7 @@ GameObject:
   - component: {fileID: 458867946328447204}
   - component: {fileID: 6998936918429272537}
   - component: {fileID: 8575338402871891709}
+  - component: {fileID: 247497032874776338}
   m_Layer: 6
   m_Name: ZEV_Prefab
   m_TagString: Player
@@ -284,8 +285,8 @@ BoxCollider2D:
   m_Offset: {x: 0, y: 0.8125}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.64912283, y: 0}
-    oldSize: {x: 3.8, y: 4.266667}
+    pivot: {x: 0.6909091, y: 0}
+    oldSize: {x: 3.6666667, y: 4.5333333}
     newSize: {x: 2, y: 1.5625}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -436,7 +437,6 @@ MonoBehaviour:
   _battleFadeDuration: 0.08
   _battleSceneName: BattleScene
   _destroyAfterTouch: 1
-  _postEscapeDisableDuration: 3
   _postEscapeAlpha: 0.5
   _enemyId: 
   _victoryHandling: 1
@@ -475,6 +475,21 @@ MonoBehaviour:
   _battleSceneName: BattleScene
   _battleSceneFadeDuration: 0.08
   _disableSiblingOverworldEnemy: 1
+--- !u!114 &247497032874776338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3461299171839533844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 818fe571227e2654ea42c4bbf17bef6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterGhostTrail
+  _spawnInterval: 0.03
+  _ghostLifetime: 0.4
+  _ghostStartColor: {r: 0, g: 1, b: 0.7775214, a: 1}
 --- !u!1 &5941587637502663154
 GameObject:
   m_ObjectHideFlags: 0
@@ -531,7 +546,7 @@ Transform:
   m_GameObject: {fileID: 7395170661256182567}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4, y: -1, z: 0}
+  m_LocalPosition: {x: -2.5, y: -1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -562,7 +577,7 @@ Transform:
   m_GameObject: {fileID: 8269516828072132034}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2, y: -1, z: 0}
+  m_LocalPosition: {x: 1, y: -1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -593,7 +608,7 @@ Transform:
   m_GameObject: {fileID: 8473246281473904783}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4, y: 2, z: 0}
+  m_LocalPosition: {x: -2.5, y: 1.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

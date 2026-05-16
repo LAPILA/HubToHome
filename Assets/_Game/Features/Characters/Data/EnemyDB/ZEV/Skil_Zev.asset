@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Skil_Zev
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 0}
-  SkillName: SkillCrossCut
+  SkillName: "\uAC15\uD55C\uCC38\uACA9"
   SkillID: skill_000
   Description: "\uC810\uD504\uB85C\uD53C\uD558\uB294 \uCC38\uACA9"
   UsageProfile: 2
@@ -24,6 +24,8 @@ MonoBehaviour:
   - rid: 8456611354123173968
   - rid: 8456611354123173980
   - rid: 8456611354123173969
+  - rid: 8456611412392017921
+  - rid: 8456611412392017920
   - rid: 8456611354123173970
   - rid: 8456611354123173982
   - rid: 8456611354123173971
@@ -39,7 +41,7 @@ MonoBehaviour:
     - rid: 8456611354123173969
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
       data:
-        AnimTriggerName: CrossCut
+        AnimTriggerName: CrossCutReady
         DelayAfter: 0
     - rid: 8456611354123173970
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
@@ -64,3 +66,12 @@ MonoBehaviour:
         FailDamageMultiplier: 1
         ShakeOnFail: 1
         DelayAfter: 0.1
+    - rid: 8456611412392017920
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        AnimTriggerName: CrossCutAttack
+        DelayAfter: 0
+    - rid: 8456611412392017921
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        WaitTime: 1

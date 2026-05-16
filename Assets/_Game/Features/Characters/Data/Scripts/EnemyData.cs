@@ -34,15 +34,29 @@ public class EnemyData : SerializedScriptableObject
 
     [BoxGroup("AI & Pattern")]
     [Range(0f, 1f)] public float SkillUseChance = 0.3f;
+    [BoxGroup("AI & Pattern")]
+    [Range(0f, 1f), Tooltip("강한 공격 후보를 고를 확률입니다. 선택되면 TelegraphStrongSkill 규칙에 따라 예고 후 실행됩니다.")]
+    public float StrongSkillUseChance = 0.25f;
+    [BoxGroup("AI & Pattern")]
+    [Tooltip("강한 공격/스킬을 예고한 뒤 플레이어 행동 1번 후 실제 실행할지 여부")]
+    public bool TelegraphStrongSkill = true;
+    [BoxGroup("AI & Pattern")]
+    [MinValue(1), Tooltip("강한 공격 예고 후 몇 번째 자기 턴에 실행할지. 기본 1 = 다음 자기 턴")]
+    public int TelegraphTurns = 1;
     [BoxGroup("AI & Pattern")] public bool HasEnragedPattern = false;
     [BoxGroup("AI & Pattern")] 
     [InfoBox("대형 적은 중앙으로 이동하지 않고 제자리에서 공격합니다.", InfoMessageType.Info, "IsLargeEnemy")]
     public bool IsLargeEnemy = false;
 
     [BoxGroup("Combat Logic")]
-    [InfoBox("적 스킬 패턴을 사용하려면 SkillList에 1개 이상 넣고 SkillUseChance를 조절하세요.")]
+    [InfoBox("일반 적 스킬입니다. 선택되면 예고 없이 바로 사용합니다.")]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<SkillData> SkillList = new List<SkillData>();
+
+    [BoxGroup("Combat Logic")]
+    [InfoBox("강한 적 스킬입니다. TelegraphStrongSkill이 켜져 있으면 예고 후 다음 자기 턴에 사용합니다.")]
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    public List<SkillData> StrongSkillList = new List<SkillData>();
 
     [BoxGroup("Combat Logic")]
     [Range(0.5f, 2f), InfoBox("1.0 = 기본 / 2.0 = 판정 구간 절반으로 좁아짐")]

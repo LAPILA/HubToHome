@@ -24,9 +24,6 @@ public class ConfigPanelUI : UIPanel
     [SerializeField] private ScrollRect _scrollRect;
     [SerializeField] private TextMeshProUGUI _gameplayPreviewText;
 
-    [Header("Config")]
-    [SerializeField] private string _titleSceneName = "00_TitleScene";
-
     [Header("Audio SFX")]
     [SerializeField] private AudioClip _moveSfx;
     [SerializeField] private AudioClip _selectSfx;

@@ -112,6 +112,7 @@ public class BattleMenuUI : UIPanel
     {
         if (!_inputEnabled || !IsVisible) return;
         if (_subMenu != null && _subMenu.IsActive) return;
+        if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
 
         if (GameInput.BattleLeftPressed)
             Navigate(-1);
@@ -142,6 +143,7 @@ public class BattleMenuUI : UIPanel
 
     private void Confirm(int index)
     {
+        if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
         if (!_buttons[index].interactable) return; 
 
         var action = _mappedActions[index]; 

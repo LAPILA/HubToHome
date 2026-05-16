@@ -116,6 +116,7 @@ GameObject:
   - component: {fileID: 458867946328447204}
   - component: {fileID: 6998936918429272537}
   - component: {fileID: 8575338402871891709}
+  - component: {fileID: 8184649953409777146}
   m_Layer: 6
   m_Name: Enemy_Base
   m_TagString: Player
@@ -435,7 +436,6 @@ MonoBehaviour:
   _battleFadeDuration: 0.08
   _battleSceneName: BattleScene
   _destroyAfterTouch: 1
-  _postEscapeDisableDuration: 3
   _postEscapeAlpha: 0.5
   _enemyId: 
   _victoryHandling: 1
@@ -473,6 +473,22 @@ MonoBehaviour:
   _useDedicatedBattleScene: 0
   _battleSceneName: BattleScene
   _battleSceneFadeDuration: 0.08
+  _disableSiblingOverworldEnemy: 1
+--- !u!114 &8184649953409777146
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3461299171839533844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 818fe571227e2654ea42c4bbf17bef6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterGhostTrail
+  _spawnInterval: 0.05
+  _ghostLifetime: 0.4
+  _ghostStartColor: {r: 1, g: 0, b: 0.32299662, a: 0.6}
 --- !u!1 &5941587637502663154
 GameObject:
   m_ObjectHideFlags: 0
