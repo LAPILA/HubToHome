@@ -20,6 +20,7 @@ public class EnemyCharacter : CharacterBase
     private Animator _animator;
     private SpriteRenderer _spriteRenderer;
     private CharacterVFX _vfx; 
+    private Tween _returnToIdleTween;
 
     public Sprite BattlePortrait => Data != null && Data.Portrait != null
         ? Data.Portrait
@@ -127,6 +128,27 @@ public class EnemyCharacter : CharacterBase
             _animator.SetTrigger(triggerHash);
     }
 
+    public void ForceBattleIdle()
+    {
+        if (_animator == null || !HasParameter(HashBattleIdle)) return;
+
+        ResetTriggerIfExists(HashHurt);
+        ResetTriggerIfExists(HashAttack);
+        ResetTriggerIfExists(HashSkill);
+        ResetTriggerIfExists(HashCrossCut);
+        ResetTriggerIfExists(HashBattleMove);
+        ResetTriggerIfExists(HashBattleMoveBack);
+
+        _isBattleMode = true;
+
+        if (_animator.HasState(0, HashBattleIdle))
+        {
+            _animator.CrossFade(HashBattleIdle, 0.05f, 0);
+        }
+
+        _animator.SetTrigger(HashBattleIdle);
+    }
+
     public void PlayBasicAttackEffect()
     {
         if (_isBattleMode)
@@ -186,7 +208,16 @@ public class EnemyCharacter : CharacterBase
 
         _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
-        if (IsAlive) PlayBattleAnim(HashHurt);
+        if (IsAlive)
+        {
+            PlayBattleAnim(HashHurt);
+            _returnToIdleTween?.Kill();
+            _returnToIdleTween = DOVirtual.DelayedCall(0.35f, () =>
+            {
+                if (this != null && isActiveAndEnabled && IsAlive)
+                    ForceBattleIdle();
+            }).SetId(this);
+        }
         else         OnDie();
     }
 
@@ -247,6 +278,8 @@ public class EnemyCharacter : CharacterBase
 
     private void KillVisualTweens()
     {
+        _returnToIdleTween?.Kill();
+        _returnToIdleTween = null;
         if (_spriteRenderer != null) _spriteRenderer.DOKill();
         transform.DOKill(false);
     }

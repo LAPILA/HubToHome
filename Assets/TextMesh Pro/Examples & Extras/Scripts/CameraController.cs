@@ -11,6 +11,10 @@ using Sirenix.OdinInspector;
 public class CameraController : MonoBehaviour
 {
     public static CameraController Instance { get; private set; }
+    private const string CameraZoomTweenId = "CameraZoom";
+    private const string CameraImpactTweenId = "CameraImpact";
+    private const string CameraDutchTweenId = "CameraDutch";
+    private const string HitStopTweenId = "HitStop";
 
     [Title("🎥 컴포넌트 참조")]
     [SerializeField, Tooltip("시네마친 가상 카메라")] 
@@ -40,6 +44,8 @@ public class CameraController : MonoBehaviour
         {
             _vCam.Follow = _centerTarget;
         }
+
+        ResetCamera(0f);
     }
 
     // ─── [1. 시네머신 네이티브 포커스 및 줌 제어] ───
@@ -64,11 +70,12 @@ public class CameraController : MonoBehaviour
 
         SetTarget(target);
 
-        DOTween.Kill("CameraZoom");
+        DOTween.Kill(CameraZoomTweenId);
+        DOTween.Kill(CameraImpactTweenId);
         DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, targetZoom, duration)
             .SetEase(Ease.OutCubic)
             .SetUpdate(UpdateType.Late) 
-            .SetId("CameraZoom");
+            .SetId(CameraZoomTweenId);
     }
 
     /// <summary>
@@ -82,17 +89,28 @@ public class CameraController : MonoBehaviour
         // 중앙으로 타겟 복귀
         if (_centerTarget != null) SetTarget(_centerTarget);
 
-        DOTween.Kill("CameraZoom");
-        DOTween.Kill("HitStop");
+        DOTween.Kill(CameraZoomTweenId);
+        DOTween.Kill(CameraImpactTweenId);
+        DOTween.Kill(CameraDutchTweenId);
+        DOTween.Kill(HitStopTweenId);
 
         // 줌 및 화면 비틀기 복구 (LateUpdate 동기화)
-        DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, _defaultLensSize, duration)
-            .SetEase(Ease.InOutQuad)
-            .SetUpdate(UpdateType.Late)
-            .SetId("CameraZoom");
-            
-        DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, duration)
-            .SetUpdate(UpdateType.Late);
+        if (duration <= 0f)
+        {
+            _vCam.Lens.OrthographicSize = _defaultLensSize;
+            _vCam.Lens.Dutch = 0f;
+        }
+        else
+        {
+            DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, _defaultLensSize, duration)
+                .SetEase(Ease.InOutQuad)
+                .SetUpdate(UpdateType.Late)
+                .SetId(CameraZoomTweenId);
+                
+            DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, duration)
+                .SetUpdate(UpdateType.Late)
+                .SetId(CameraDutchTweenId);
+        }
 
         Time.timeScale = 1f; 
     }
@@ -110,6 +128,7 @@ public class CameraController : MonoBehaviour
 
     public void PlayHeavySlam(Vector3 direction, float intensity = 1.0f, bool lockHorizontal = true)
     {
+        if (_vCam == null) return;
         Vector3 finalDir = lockHorizontal ? new Vector3(direction.x, 0, 0).normalized : new Vector3(direction.x, direction.y, 0).normalized;
         if (finalDir == Vector3.zero) finalDir = Vector3.right;
 
@@ -117,19 +136,30 @@ public class CameraController : MonoBehaviour
             _impulseSource.GenerateImpulse(finalDir * intensity);
 
         _vCam.Lens.Dutch = 3f * (finalDir.x > 0 ? 1 : -1) * intensity;
-        DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, 0.3f).SetUpdate(UpdateType.Late);
+        DOTween.Kill(CameraDutchTweenId);
+        DOTween.To(() => _vCam.Lens.Dutch, x => _vCam.Lens.Dutch = x, 0, 0.3f).SetUpdate(UpdateType.Late).SetId(CameraDutchTweenId);
 
         StopFrame(0.05f * intensity);
     }
 
     public void PlayDashThroughImpact(float intensity = 1.0f)
     {
+        if (_vCam == null) return;
         float currentZoom = _vCam.Lens.OrthographicSize;
-        
+
+        DOTween.Kill(CameraZoomTweenId);
+        DOTween.Kill(CameraImpactTweenId);
         DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, currentZoom + 0.8f, 0.1f)
                .SetEase(Ease.OutQuad)
                .SetUpdate(UpdateType.Late)
-               .OnComplete(() => ZoomOnTransform(_vCam.Follow, currentZoom, 0.2f)); // 현재 타겟 유지
+               .SetId(CameraImpactTweenId)
+               .OnComplete(() =>
+               {
+                   DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, _defaultLensSize, 0.2f)
+                       .SetEase(Ease.OutQuad)
+                       .SetUpdate(UpdateType.Late)
+                       .SetId(CameraZoomTweenId);
+               });
 
         if (_impulseSource != null)
             _impulseSource.GenerateImpulse(Vector3.right * intensity);
@@ -141,8 +171,8 @@ public class CameraController : MonoBehaviour
 
     private void StopFrame(float duration)
     {
-        DOTween.Kill("HitStop");
+        DOTween.Kill(HitStopTweenId);
         Time.timeScale = 0.01f;
-        DOVirtual.DelayedCall(duration, () => Time.timeScale = 1f).SetUpdate(true).SetId("HitStop");
+        DOVirtual.DelayedCall(duration, () => Time.timeScale = 1f).SetUpdate(true).SetId(HitStopTweenId);
     }
 }

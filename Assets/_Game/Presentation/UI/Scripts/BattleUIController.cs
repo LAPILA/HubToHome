@@ -45,6 +45,7 @@ public class BattleUIController : MonoBehaviour
     private bool _isTargetingMode = false;
     private bool _isAllyTargeting = false;
     private int _selectedTargetIndex = 0;
+    private bool _isBattleEnding = false;
     
     // 🚨 체력창의 기본 Y좌표를 기억해둘 변수
     private float _defaultPartyPanelY;
@@ -235,6 +236,7 @@ public class BattleUIController : MonoBehaviour
 
         _party   = party;
         _enemies = enemies;
+        _isBattleEnding = false;
         _narrationUI?.Clear();
         for (int i = 0; i < _partySlots.Length; i++)
         {
@@ -306,6 +308,8 @@ public class BattleUIController : MonoBehaviour
 
     private void HandleDamageDealt(CharacterBase target, int damage, bool isCrit)
     {
+        if (_isBattleEnding) return;
+
         // 포켓몬식 로그 정책: 데미지 수치/공격명 로그는 비표시, 회복 수치만 표시
         if (damage < 0)
             HandleBattleNarrationRequested(BattleNarrationFormatter.Heal(target, -damage));
@@ -408,11 +412,12 @@ public class BattleUIController : MonoBehaviour
 
     private void HandleBattleEnded(bool victory)
     {
+        _isBattleEnding = true;
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
         _battleMenuUI?.HideImmediate();
         ResetPartyPanelPosition();
-        _narrationUI?.Clear();
+        if (victory) _narrationUI?.Clear();
     }
 
     private void HandleBattleNarrationRequested(BattleNarrationMessage message)
@@ -431,6 +436,7 @@ public class BattleUIController : MonoBehaviour
 
         _narrationUI.Enqueue(message);
     }
+
     #endregion
 
     #region [ Public QTE API & Utilities ]

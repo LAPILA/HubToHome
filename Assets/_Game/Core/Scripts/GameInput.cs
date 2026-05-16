@@ -159,9 +159,9 @@ public static class GameInput
     public static bool BattleRightPressed { get { UpdateCache(); return PressedRight(_prevBattleNavigate, _currBattleNavigate); } }
     public static bool BattleConfirmPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
     public static bool BattleCancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
-    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.WasPressedThisFrame(); } }
-    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteX.WasPressedThisFrame(); } }
-    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteC.WasPressedThisFrame(); } }
+    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.WasPressedThisFrame() || KeyboardPressed(Key.Z); } }
+    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteX.WasPressedThisFrame() || KeyboardPressed(Key.X); } }
+    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteC.WasPressedThisFrame() || KeyboardPressed(Key.C); } }
 
     public static bool DialogueAdvancePressed { get { if (_configModalActive) return false; EnsureInitialized(); return _dialogueAdvance.WasPressedThisFrame(); } }
     public static bool Choice1Pressed { get { if (_configModalActive) return false; EnsureInitialized(); return _choice1.WasPressedThisFrame(); } }
@@ -373,6 +373,15 @@ public static class GameInput
     private static bool IsRight(Vector2 value) => value.x > AxisThreshold;
     private static bool IsUp(Vector2 value) => value.y > AxisThreshold;
     private static bool IsDown(Vector2 value) => value.y < -AxisThreshold;
+
+    private static bool KeyboardPressed(Key key)
+    {
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return false;
+
+        KeyControl control = keyboard[key];
+        return control != null && control.wasPressedThisFrame;
+    }
 
     private static bool PressedLeft(Vector2 prev, Vector2 curr) => !IsLeft(prev) && IsLeft(curr);
     private static bool PressedRight(Vector2 prev, Vector2 curr) => !IsRight(prev) && IsRight(curr);

@@ -36,6 +36,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Color _hurtFlashColor     = Color.red;
     [SerializeField] private float _dieFlashDuration   = 0.12f;
     [SerializeField] private Color _dieFlashColor      = Color.white;
+    [SerializeField] private float _defenseAttemptCooldown = 0.12f;
 
     // ── 컴포넌트 캐싱 ─────────────────────────────────────────
     private Rigidbody2D    _rb;
@@ -45,6 +46,8 @@ public class PlayerController : MonoBehaviour
     private Collider2D[] _colliders;
     private Vector3        _originalLocalPos;
     private bool _defenseReactionLocked;
+    private float _lastDefenseAttemptTime = -999f;
+    private Vector3 _battleDefenseAnchorPosition;
 
     private Animator Animator
     {
@@ -108,7 +111,11 @@ public class PlayerController : MonoBehaviour
         }
 
         // 🚨 2차 방어: 전투 중일 때 이동 차단 (AreaTrigger를 통한 심리스 전투 시)
-        if (State == PlayerState.InBattle) return;
+        if (State == PlayerState.InBattle)
+        {
+            HandleBattleDefenseInput();
+            return;
+        }
 
         ReadInput();
         UpdateFacingDirection();
@@ -121,6 +128,50 @@ public class PlayerController : MonoBehaviour
         // 오버월드 옵션(Config) 호출
         if (GameInput.MenuPressed)
             OptionsPanelService.Open();
+    }
+
+    private void HandleBattleDefenseInput()
+    {
+        if (BattleManager.Instance == null || BattleManager.Instance.CurrentState != BattleState.EnemyAction)
+            return;
+
+        if (GameInput.QTEZPressed)
+        {
+            Debug.Log("[PlayerController] Enemy turn defense input: Parry(Z)");
+            AttemptDefenseInput(DefenseInput.Parry);
+        }
+        else if (GameInput.QTEXPressed)
+        {
+            Debug.Log("[PlayerController] Enemy turn defense input: Dodge(X)");
+            AttemptDefenseInput(DefenseInput.Dodge);
+        }
+        else if (GameInput.QTECPressed)
+        {
+            Debug.Log("[PlayerController] Enemy turn defense input: Jump(C)");
+            AttemptDefenseInput(DefenseInput.Jump);
+        }
+    }
+
+    private void AttemptDefenseInput(DefenseInput input)
+    {
+        if (Time.unscaledTime < _lastDefenseAttemptTime + _defenseAttemptCooldown)
+            return;
+
+        _lastDefenseAttemptTime = Time.unscaledTime;
+        _battleDefenseAnchorPosition = transform.position;
+
+        switch (input)
+        {
+            case DefenseInput.Parry:
+                TriggerParryAttemptAnim();
+                break;
+            case DefenseInput.Dodge:
+                PlayDodgeAttempt();
+                break;
+            case DefenseInput.Jump:
+                PlayJumpAttempt();
+                break;
+        }
     }
 
     private void FixedUpdate()
@@ -236,6 +287,8 @@ public class PlayerController : MonoBehaviour
 
         if (active)
         {
+            _defenseReactionLocked = false;
+            _battleDefenseAnchorPosition = transform.position;
             State = PlayerState.InBattle;
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _rb.linearVelocity = Vector2.zero;
@@ -243,6 +296,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
+            _defenseReactionLocked = false;
             State = PlayerState.Idle;
             _rb.bodyType = RigidbodyType2D.Dynamic;
         }
@@ -293,49 +347,111 @@ public class PlayerController : MonoBehaviour
         PlayBattleAnim(HashAttack);
     }
 
-    public void ExecuteParry()
+    public void ExecuteParry(bool ignoreCooldown = false)
     {
-        if (_defenseReactionLocked || !CanExecuteAction()) return;
+        if (!ignoreCooldown && (_defenseReactionLocked || !CanExecuteAction())) return;
+        if (ignoreCooldown) ResetDefenseReactionLock();
         _defenseReactionLocked = true;
-        PlayBattleAnim(HashParry);
+        TriggerParryAttemptAnim();
         DOVirtual.DelayedCall(0.22f, () => _defenseReactionLocked = false).SetUpdate(true);
     }
 
-    public void ExecuteDodge()
+    public void ExecuteDodge(bool ignoreCooldown = false)
     {
-        if (_defenseReactionLocked || !CanExecuteAction()) return;
+        if (!ignoreCooldown && (_defenseReactionLocked || !CanExecuteAction())) return;
+        if (ignoreCooldown) ResetDefenseReactionLock();
+        PlayDodgeAttempt();
+    }
+
+    public void ExecuteJump(bool ignoreCooldown = false)
+    {
+        if (!ignoreCooldown && (_defenseReactionLocked || !CanExecuteAction())) return;
+        if (ignoreCooldown) ResetDefenseReactionLock();
+        PlayJumpAttempt();
+    }
+
+    public void ConfirmDefenseSuccess(DefenseInput input)
+    {
+        switch (input)
+        {
+            case DefenseInput.Parry:
+                TriggerParryAttemptAnim();
+                PlayParryEffect();
+                break;
+            case DefenseInput.Dodge:
+                if (!_defenseReactionLocked) PlayDodgeAttempt();
+                break;
+            case DefenseInput.Jump:
+                if (!_defenseReactionLocked) PlayJumpAttempt();
+                break;
+        }
+    }
+
+    private void TriggerParryAttemptAnim()
+    {
+        if (_anim == null) return;
+        _anim.SetTrigger(HashParry);
+    }
+
+    private void PlayDodgeAttempt()
+    {
         _defenseReactionLocked = true;
-
-        var pChar = GetComponent<PlayerCharacter>();
-        pChar?.SetEvasive(true); 
-
-        DOTween.Kill(_rb); 
+        DOTween.Kill(_rb);
+        Vector3 anchor = _battleDefenseAnchorPosition;
         Vector3 dodgeDir = -GetFacingVector();
         _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
 
-        _rb.DOMove(transform.position + dodgeDir * 1.5f, 0.15f)
-            .SetEase(Ease.OutExpo)
-            .SetLoops(2, LoopType.Yoyo)
-            .OnComplete(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; }) 
-            .OnKill(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; });    
+        Sequence seq = DOTween.Sequence();
+        seq.Append(_rb.DOMove(anchor + dodgeDir * 1.0f, 0.08f).SetEase(Ease.OutExpo));
+        seq.Append(_rb.DOMove(anchor, 0.08f).SetEase(Ease.InOutQuad));
+        seq.OnComplete(() =>
+        {
+            if (_rb != null) _rb.position = anchor;
+            transform.position = anchor;
+            _defenseReactionLocked = false;
+        });
+        seq.OnKill(() =>
+        {
+            if (_rb != null) _rb.position = anchor;
+            transform.position = anchor;
+            _defenseReactionLocked = false;
+        });
     }
 
-    public void ExecuteJump()
+    private void PlayJumpAttempt()
     {
-        if (_defenseReactionLocked || !CanExecuteAction()) return;
         _defenseReactionLocked = true;
-
-        var pChar = GetComponent<PlayerCharacter>();
-        pChar?.SetEvasive(true); 
-
-        DOTween.Kill(_rb); 
+        DOTween.Kill(_rb);
+        Vector3 anchor = _battleDefenseAnchorPosition;
         _vfx?.Play(CharacterVFX.VFXAction.Jump_Dust);
 
-        _rb.DOMoveY(transform.position.y + 2.0f, 0.2f)
-            .SetEase(Ease.OutQuad)
-            .SetLoops(2, LoopType.Yoyo)
-            .OnComplete(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; }) 
-            .OnKill(() => { pChar?.SetEvasive(false); _defenseReactionLocked = false; });    
+        Sequence seq = DOTween.Sequence();
+        seq.Append(_rb.DOMoveY(anchor.y + 1.2f, 0.12f).SetEase(Ease.OutQuad));
+        seq.Append(_rb.DOMoveY(anchor.y, 0.12f).SetEase(Ease.InQuad));
+        seq.OnComplete(() =>
+        {
+            if (_rb != null) _rb.position = anchor;
+            transform.position = anchor;
+            _defenseReactionLocked = false;
+        });
+        seq.OnKill(() =>
+        {
+            if (_rb != null) _rb.position = anchor;
+            transform.position = anchor;
+            _defenseReactionLocked = false;
+        });
+    }
+
+    public void ResetDefenseReactionLock()
+    {
+        _defenseReactionLocked = false;
+
+        if (_rb != null) DOTween.Kill(_rb);
+        if (State == PlayerState.InBattle)
+        {
+            if (_rb != null) _rb.position = _battleDefenseAnchorPosition;
+            transform.position = _battleDefenseAnchorPosition;
+        }
     }
     // ── DOTween 이펙트 ────────────────────────────────────────
     public void PlayParryEffect()

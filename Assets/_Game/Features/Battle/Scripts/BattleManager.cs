@@ -104,6 +104,7 @@ public class BattleManager : MonoBehaviour
     private Transform _battleCameraFocusPoint;
     private readonly Dictionary<EnemyCharacter, EnemyQueuedAction> _reservedEnemyActionByActor = new Dictionary<EnemyCharacter, EnemyQueuedAction>();
     private bool _isRunInProgress;
+    private bool _isBattleEnding;
     #endregion
 
     private struct EnemyQueuedAction
@@ -184,6 +185,9 @@ public class BattleManager : MonoBehaviour
 
     public void RequestNarration(BattleNarrationMessage message)
     {
+        if (_isBattleEnding && message.Priority != BattleNarrationPriority.Critical)
+            return;
+
         OnBattleNarrationRequested?.Invoke(message);
     }
 
@@ -227,6 +231,7 @@ public class BattleManager : MonoBehaviour
     private void Start() 
     {
         BattleNarrationFormatter.Config = _battleNarrationConfig;
+        CameraController.Instance?.ResetCamera(0f);
         // 전용 배틀 씬일 경우에만 자동 셋업 루틴을 시작합니다. (오버월드 버그 방지)
         if (_isDedicatedBattleScene) StartCoroutine(DelayedStartRoutine());
     }
@@ -351,6 +356,7 @@ public class BattleManager : MonoBehaviour
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
+        _isBattleEnding = false;
         RequestNarration(BattleNarrationFormatter.BattleStart());
         TryRequestFlavorNarration();
         yield return StartCoroutine(WaitForNarrationToFinish());
@@ -364,6 +370,7 @@ public class BattleManager : MonoBehaviour
     private IEnumerator DelayedStartRoutine()
     {
         ChangeState(BattleState.Init);
+        CameraController.Instance?.ResetCamera(0f);
         if (_battleUICanvas != null) { _battleUICanvas.SetActive(true); yield return null; }
 
         var global = GlobalDataManager.Instance;
@@ -465,6 +472,7 @@ public class BattleManager : MonoBehaviour
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
+        _isBattleEnding = false;
         RequestNarration(BattleNarrationFormatter.BattleStart());
         TryRequestFlavorNarration();
         yield return StartCoroutine(WaitForNarrationToFinish());
@@ -761,6 +769,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     private void EndAction()
     {
         Time.timeScale = 1.0f;
+        QTEManager.Instance?.ForceStop();
         _pendingActor = null;
         CurrentPendingSkill = null;
         CurrentPendingItem = null;
@@ -1019,7 +1028,13 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
 
                 // 공격 애니메이션은 한 번만 재생하고, QTE 판정은 별도로 유지합니다.
-                QTEManager.Instance.StartDefenseQTE(_enemyDefenseQTEWindow, 1.0f, (input, grade) => { finalInput = input; finalGrade = grade; qteFinished = true; });
+                targetCtrl?.ResetDefenseReactionLock();
+                QTEManager.Instance.StartDefenseQTE(_enemyDefenseQTEWindow, 1.0f, (input, grade) =>
+                {
+                    finalInput = input;
+                    finalGrade = grade;
+                    qteFinished = true;
+                });
                 yield return new WaitForSeconds(_enemyAttackVisualDuration);
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
                 yield return new WaitUntil(() => qteFinished);
@@ -1041,12 +1056,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                     if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
                     {
                         reducedDmg = 0; 
-                        if (finalInput == DefenseInput.Dodge) targetCtrl?.ExecuteDodge();
-                        else targetCtrl?.ExecuteJump();
+                        targetCtrl?.ConfirmDefenseSuccess(finalInput);
                     }
                     else // 패링
                     {
-                        targetCtrl?.ExecuteParry(); 
+                        targetCtrl?.ConfirmDefenseSuccess(finalInput);
                         if (finalGrade == QTEManager.QTEGrade.Perfect) 
                         { 
                             reducedDmg = 0;
@@ -1106,6 +1120,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         yield return StartCoroutine(WaitForNarrationToFinish());
         EndAction(); 
     }
+
     #endregion
 
     #region [ Outro & Scene Transitions ]
@@ -1139,12 +1154,16 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator BattleEndRoutine()
     {
-        CommitOverworldEncounterResult(CheckVictory());
-        RequestNarration(CheckVictory()
-            ? new BattleNarrationMessage("전투에서 승리했다!", BattleNarrationStyle.Normal, BattleNarrationPriority.High, 0.2f, true)
-            : new BattleNarrationMessage("눈 앞이 캄캄해졌다...", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
+        bool victory = CheckVictory();
+        _isBattleEnding = true;
+        QTEManager.Instance?.ForceStop();
+        CommitOverworldEncounterResult(victory);
+        RequestNarration(victory
+            ? new BattleNarrationMessage("전투에서 승리했다!", BattleNarrationStyle.System, BattleNarrationPriority.Critical, 0.8f, true)
+            : new BattleNarrationMessage("눈 앞이 캄캄해졌다...", BattleNarrationStyle.System, BattleNarrationPriority.Critical, 2.0f, true));
         yield return StartCoroutine(WaitForNarrationToFinish());
-        yield return StartCoroutine(BattleOutroRoutine(CheckVictory()));
+        if (!victory) yield return new WaitForSecondsRealtime(0.75f);
+        yield return StartCoroutine(BattleOutroRoutine(victory));
     }
 
     private void CommitOverworldEncounterResult(bool isVictory)
@@ -1175,7 +1194,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         Time.timeScale = 1.0f; // 슬로우 모션 방지
         OnBattleEnded?.Invoke(isVictory);
-        BattleUIController.Instance?.ClearNarrationLog();
+        if (isVictory)
+            BattleUIController.Instance?.ClearNarrationLog();
         yield return new WaitForSecondsRealtime(0.25f);
 
         foreach (var player in _playerParty)

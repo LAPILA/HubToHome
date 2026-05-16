@@ -35,7 +35,7 @@ public class QTEManager : MonoBehaviour
     #region [ Defense QTE (방어) ]
     public void StartDefenseQTE(float attackDelay, float difficultyMult, Action<DefenseInput, QTEGrade> onResult)
     {
-        if (IsActive) return;
+        if (IsActive) ForceStop();
         StartCoroutine(DefenseQTERoutine(attackDelay, difficultyMult, onResult));
     }
 
@@ -83,7 +83,7 @@ public class QTEManager : MonoBehaviour
             else if (timeLeft <= gd) grade = QTEGrade.Good;
             else                     grade = QTEGrade.Bad;
         }
-        
+
         onResult?.Invoke(input, grade);
     }
     #endregion

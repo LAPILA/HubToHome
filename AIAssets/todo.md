@@ -24,6 +24,32 @@
 
 ## 파생 작업 목록
 
+### High / Battle Stability
+
+- [ ] `CameraController`가 현재 `Assets/TextMesh Pro/Examples & Extras/Scripts/CameraController.cs`에 있어 first-party 전투 코드와 위치가 어긋납니다.  
+  정리: 전투 카메라 컨트롤러를 `Assets/_Game/Presentation` 또는 `Assets/_Game/Features/Battle/Scripts` 아래로 이동하고 TextMesh Pro 샘플 폴더와 분리해야 합니다.  
+  대상 파일: `Assets/TextMesh Pro/Examples & Extras/Scripts/CameraController.cs`, `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
+
+- [ ] 방어 QTE 입력 표기를 코드/기획/UI에서 `Z=패링, C=회피, Space=점프`로 통일하기  
+  정리: 런타임 판정은 수정했지만, `GameInput` 주석과 InputAction 이름(`QTE_X`, `QTE_C`)은 과거 `Z/X/C` 관성이 남아 있습니다. 리바인딩 UI까지 고려해 액션명과 표시 문자열을 정리해야 합니다.  
+  대상 파일: `Assets/_Game/Core/Scripts/GameInput.cs`, `Assets/_Game/Presentation/UI/Scripts/QTEManager.cs`, `Assets/_Game/Presentation/UI/Scripts/DefenseQTEUI.cs`
+
+- [ ] 적 스킬 타임라인의 방어 QTE 블록도 기본공격 QTE와 동일한 입력 정책/락 해제 정책을 공유하도록 통합하기  
+  정리: 이번 수정은 `QTEManager`와 기본 적 공격 루프를 안정화했습니다. 스킬 `Action_DefenseWindow` 쪽도 같은 실패/중복 시작/연출 락 정책을 쓰는지 플레이테스트가 필요합니다.  
+  대상 파일: `Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs`, `Assets/_Game/Presentation/UI/Scripts/QTEManager.cs`, `Assets/_Game/Features/Overworld/Scripts/PlayerController.cs`
+
+- [ ] 전조증상 아트 파이프라인 확정하기 (`Sprite` vs `AnimatorTrigger` vs `PrefabVFX`)  
+  정리: `Action_EnemyTelegraph`는 이제 세 표현 방식을 모두 받을 수 있게 열어두었습니다. 실제 프로젝트에서는 pixel 단일 일러, 깜빡임 애니메이션, 프리팹 VFX 중 어떤 조합을 메인으로 쓸지 정해야 합니다.  
+  대상 파일: `Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs`, `Assets/_Game/Features/Characters/Data/Scripts/EnemyData.cs`
+
+- [ ] 전조 후 방어 허용 윈도우(`open delay`, `window duration`)를 `DefenseWindow`와 실제로 연결하기  
+  정리: 현재 필드는 추가했지만, 실제 판정 윈도우는 여전히 `Action_DefenseWindow.TimeWindow`가 직접 담당합니다. 전조 블록의 시간 데이터와 판정 블록을 자동 연동하는 후속 정리가 필요합니다.  
+  대상 파일: `Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs`, `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
+
+- [ ] 패배 연출과 씬 전환 정책 확정하기  
+  정리: 패배 문구가 보이도록 hold 시간을 늘리고 전환 전 대기를 추가했지만, 전용 GameOver UI/리스폰/세이브 복구 정책은 아직 기획적으로 닫히지 않았습니다.  
+  대상 파일: `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`, `Assets/_Game/Core/Scripts/SceneLoader.cs`, `Assets/_Game/Core/Scripts/GlobalDataManager.cs`
+
 ### High / Encounter Stability
 
 - [ ] 전투 도주 후 오버월드 적의 collider, 이동 상태, 재조우 쿨다운이 어긋나지 않도록 안정화하기  

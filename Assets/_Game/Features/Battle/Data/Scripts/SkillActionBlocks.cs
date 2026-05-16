@@ -5,6 +5,7 @@ using DG.Tweening;
 using Sirenix.OdinInspector;
 
 public enum DefenseRequirement { ParryOnly, DodgeOnly, JumpOnly, DodgeOrJump }
+public enum TelegraphVisualMode { Sprite, AnimatorTrigger, PrefabVFX }
 
 // ═══════════════════════════════════════════════════════════════
 // ── 1. 공통 컨텍스트 및 베이스 클래스 ──
@@ -299,6 +300,7 @@ public class Action_DefenseWindow : SkillActionBlock
         DefenseInput finalInput = DefenseInput.None;
         QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
 
+        targetCtrl?.ResetDefenseReactionLock();
         QTEManager.Instance.StartDefenseQTE(TimeWindow, 1.0f, (input, grade) =>
         {
             finalInput = input;
@@ -309,7 +311,8 @@ public class Action_DefenseWindow : SkillActionBlock
         yield return new WaitUntil(() => qteFinished);
 
         bool success = finalGrade != QTEManager.QTEGrade.Miss && IsMatch(finalInput);
-        PlayReaction(targetCtrl, finalInput);
+        if (success)
+            targetCtrl?.ConfirmDefenseSuccess(finalInput);
 
         if (!success)
         {
@@ -338,13 +341,6 @@ public class Action_DefenseWindow : SkillActionBlock
         };
     }
 
-    private void PlayReaction(PlayerController controller, DefenseInput input)
-    {
-        if (controller == null) return;
-        if (input == DefenseInput.Parry) controller.ExecuteParry();
-        else if (input == DefenseInput.Dodge) controller.ExecuteDodge();
-        else if (input == DefenseInput.Jump) controller.ExecuteJump();
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -462,8 +458,25 @@ public class Action_SequentialMelee : SkillActionBlock
 [TypeInfoBox("적 전용: 강한 공격 전 타이밍(QTE)을 알려주는 시각적 징조를 띄웁니다. 플레이어가 쓰면 무시됩니다.")]
 public class Action_EnemyTelegraph : SkillActionBlock
 {
+    [LabelText("방어 힌트")]
+    [InfoBox("전조가 어떤 방어 행동을 요구하는지 데이터 차원에서 먼저 고정합니다. 실제 판정은 뒤의 DefenseWindow와 같이 맞춰 주세요.")]
+    public DefenseRequirement ExpectedDefense = DefenseRequirement.ParryOnly;
+
+    [LabelText("표현 방식")]
+    public TelegraphVisualMode VisualMode = TelegraphVisualMode.PrefabVFX;
+
     [AssetsOnly, Required] public GameObject WarningVFXPrefab;
+    [PreviewField(60, ObjectFieldAlignment.Left), LabelText("전조 스프라이트")]
+    public Sprite WarningSprite;
+    [LabelText("애니메이터 트리거")]
+    public string AnimatorTriggerName = "";
+    [LabelText("붙일 Pivot")]
+    public string AttachPivotName = "Back";
     [LabelText("징조 유지 시간 (초)")] public float TimingDuration = 0.8f;
+    [LabelText("방어 허용 시작 오프셋")]
+    [MinValue(0f)] public float DefenseOpenDelay = 0f;
+    [LabelText("방어 허용 지속 시간")]
+    [MinValue(0.05f)] public float DefenseWindowDuration = 0.8f;
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -471,26 +484,52 @@ public class Action_EnemyTelegraph : SkillActionBlock
         if (context.Actor is PlayerCharacter) yield break;
 
         GameObject spawnedVFX = null;
+        Transform attachPivot = context.Actor != null ? context.Actor.GetPivot(AttachPivotName) : null;
+        if (attachPivot == null && context.Actor != null) attachPivot = context.Actor.transform;
 
-        if (WarningVFXPrefab != null)
+        if (VisualMode == TelegraphVisualMode.AnimatorTrigger && context.Actor is EnemyCharacter enemy && !string.IsNullOrWhiteSpace(AnimatorTriggerName))
+        {
+            enemy.PlaySkillAnim(AnimatorTriggerName, EnemyCharacter.HashSkill);
+        }
+        else if (VisualMode == TelegraphVisualMode.Sprite && WarningSprite != null)
+        {
+            spawnedVFX = new GameObject($"TelegraphSprite_{ExpectedDefense}");
+            var sr = spawnedVFX.AddComponent<SpriteRenderer>();
+            sr.sprite = WarningSprite;
+            sr.sortingOrder = 50;
+            if (attachPivot != null)
+            {
+                spawnedVFX.transform.SetParent(attachPivot, false);
+                spawnedVFX.transform.localPosition = Vector3.zero;
+            }
+            else if (context.Actor != null)
+            {
+                spawnedVFX.transform.position = context.Actor.transform.position;
+            }
+        }
+        else if (WarningVFXPrefab != null)
         {
             // 적 위치에 이펙트 생성 (ObjectPoolManager 지원)
             if (ObjectPoolManager.Instance != null)
-                spawnedVFX = ObjectPoolManager.Instance.Spawn(WarningVFXPrefab, context.Actor.transform.position, Quaternion.identity);
+                spawnedVFX = ObjectPoolManager.Instance.Spawn(WarningVFXPrefab, attachPivot != null ? attachPivot.position : context.Actor.transform.position, Quaternion.identity);
             else
-                spawnedVFX = GameObject.Instantiate(WarningVFXPrefab, context.Actor.transform.position, Quaternion.identity);
+                spawnedVFX = GameObject.Instantiate(WarningVFXPrefab, attachPivot != null ? attachPivot.position : context.Actor.transform.position, Quaternion.identity);
+
+            if (attachPivot != null)
+                spawnedVFX.transform.SetParent(attachPivot, true);
 
             // 이펙트 스크립트 실행 (원에 조여드는 시간 전달)
             //var telegraphVFX = spawnedVFX.GetComponent<TelegraphTimingEffect>();
             //if (telegraphVFX != null) telegraphVFX.PlayTelegraph(TimingDuration);
         }
 
-        // 세키로처럼 '챙!' 소리나 이펙트가 모일 때까지 대기
+        // 전조 표시 후 일정 시간 내에 대응 입력을 받는 구조를 열어둡니다.
+        // 현재 실제 판정은 뒤의 DefenseWindow 블록이 담당하므로, 여기서는 연출 지속 시간만 관리합니다.
         yield return new WaitForSeconds(TimingDuration);
 
         if (spawnedVFX != null)
         {
-            if (ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.Despawn(spawnedVFX);
+            if (VisualMode == TelegraphVisualMode.PrefabVFX && ObjectPoolManager.Instance != null) ObjectPoolManager.Instance.Despawn(spawnedVFX);
             else GameObject.Destroy(spawnedVFX);
         }
     }
