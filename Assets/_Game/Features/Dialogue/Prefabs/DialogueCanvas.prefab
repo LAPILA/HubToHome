@@ -171,7 +171,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -537.6, y: -1.6000061}
+  m_AnchoredPosition: {x: -437.59998, y: -1.6000061}
   m_SizeDelta: {x: 250, y: 250}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6383356174270882355
@@ -408,7 +408,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 220}
-  m_SizeDelta: {x: 0, y: 440}
+  m_SizeDelta: {x: -700, y: 440}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8069574397091270137
 CanvasRenderer:
@@ -442,7 +442,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0055ba3ee34c424d80e122cbfd58871, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DialogueUI
-  _rootCanvas: {fileID: 0}
+  _rootCanvas: {fileID: 4376838518629126696}
   _canvasGroup: {fileID: 7947173928697179042}
   _typewriter: {fileID: 4668929848213701413}
   _soundWriter: {fileID: 8514503251752690276}
@@ -626,7 +626,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -270, y: 100.79999}
+  m_AnchoredPosition: {x: -170, y: 100.79999}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2461533293805164946
@@ -827,7 +827,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 64.85
+  m_fontSize: 55.6
   m_fontSizeBase: 75
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -1009,8 +1009,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: 448.83127, y: 168.31172}
-  m_SizeDelta: {x: -897.66, y: 187.79}
+  m_AnchoredPosition: {x: 0, y: 168.31172}
+  m_SizeDelta: {x: -700, y: 187.79}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7045489858658563191
 MonoBehaviour:
@@ -1559,7 +1559,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 166}
-  m_SizeDelta: {x: 0, y: 332}
+  m_SizeDelta: {x: -700, y: 332}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1700292032708678411
 CanvasRenderer:
@@ -1593,7 +1593,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0055ba3ee34c424d80e122cbfd58871, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DialogueUI
-  _rootCanvas: {fileID: 0}
+  _rootCanvas: {fileID: 4376838518629126696}
   _canvasGroup: {fileID: 8891450075690245520}
   _typewriter: {fileID: 6407109161996391538}
   _soundWriter: {fileID: 1108945610417301615}
@@ -1825,7 +1825,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &5486682297355495232
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1881,7 +1881,6 @@ MonoBehaviour:
   _messageText: {fileID: 3215776237098217772}
   _typeInterval: 0.015
   _defaultHoldDuration: 1
-  _fadeDuration: 0.15
   _maxQueueCount: 8
   _maxRollingLines: 8
 --- !u!1 &8757311659199524407
@@ -1973,7 +1972,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -270, y: 25.20001}
+  m_AnchoredPosition: {x: -170, y: 25.20001}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2941996538325046732
@@ -2073,7 +2072,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: -864.0733, w: -136.09851}
+  m_margin: {x: 0, y: 0, z: -648.9556, w: -134.03012}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0

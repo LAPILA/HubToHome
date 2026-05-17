@@ -49,6 +49,17 @@ public class QTEManager : MonoBehaviour
         while (elapsed < attackDelay && !inputReceived)
         {
             elapsed += Time.deltaTime;
+
+            if (BattleManager.Instance != null && BattleManager.Instance._playerParty.Count > 0)
+            {
+                var ctrl = BattleManager.Instance._playerParty[0]?.GetComponent<PlayerController>();
+                if (ctrl != null && ctrl.TryConsumeBufferedDefenseInput(out input))
+                {
+                    inputReceived = true;
+                    yield return null;
+                    continue;
+                }
+            }
             
             if (GameInput.QTEZPressed)
             {

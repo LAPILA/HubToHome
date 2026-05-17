@@ -36,11 +36,13 @@ public class GameConfigManager : MonoBehaviour
     private const string ScreenShakeKey = "Config.ScreenShake";
     private const string VSyncKey = "Config.VSync";
     private const string TargetFpsKey = "Config.TargetFps";
+    private const int DefaultWindowWidth = 640;
+    private const int DefaultWindowHeight = 480;
 
     public float MasterVolume { get; private set; } = DefaultVolume;
     public float BgmVolume { get; private set; } = DefaultVolume;
     public float SfxVolume { get; private set; } = DefaultVolume;
-    public bool IsFullscreen { get; private set; } = true;
+    public bool IsFullscreen { get; private set; } = false;
     public LanguageType Language { get; private set; } = LanguageType.KR;
     public float TextSpeed { get; private set; } = 1f;
     public bool AutoAdvance { get; private set; } = false;
@@ -71,7 +73,7 @@ public class GameConfigManager : MonoBehaviour
         MasterVolume = PlayerPrefs.GetFloat(MasterVolumeKey, DefaultVolume);
         BgmVolume = PlayerPrefs.GetFloat(BgmVolumeKey, DefaultVolume);
         SfxVolume = PlayerPrefs.GetFloat(SfxVolumeKey, DefaultVolume);
-        IsFullscreen = PlayerPrefs.GetInt(FullscreenKey, Screen.fullScreen ? 1 : 0) == 1;
+        IsFullscreen = PlayerPrefs.GetInt(FullscreenKey, 0) == 1;
         Language = (LanguageType)PlayerPrefs.GetInt(LanguageKey, (int)LanguageType.KR);
         TextSpeed = PlayerPrefs.GetFloat(TextSpeedKey, 1f);
         AutoAdvance = PlayerPrefs.GetInt(AutoAdvanceKey, 0) == 1;
@@ -98,10 +100,25 @@ public class GameConfigManager : MonoBehaviour
     public void ApplyAll()
     {
         ApplyAudio();
-        Screen.fullScreen = IsFullscreen;
+        ApplyDisplayMode();
         QualitySettings.vSyncCount = UseVSync ? 1 : 0;
         Application.targetFrameRate = UseVSync ? -1 : TargetFps;
         LocalizationManager.Instance?.ChangeLanguage(Language);
+    }
+
+    private void ApplyDisplayMode()
+    {
+        if (IsFullscreen)
+        {
+            Screen.fullScreenMode = FullScreenMode.FullScreenWindow;
+            Screen.fullScreen = true;
+        }
+        else
+        {
+            Screen.fullScreen = false;
+            Screen.fullScreenMode = FullScreenMode.Windowed;
+            Screen.SetResolution(DefaultWindowWidth, DefaultWindowHeight, FullScreenMode.Windowed);
+        }
     }
 
     public void ApplyAudio()
@@ -133,7 +150,7 @@ public class GameConfigManager : MonoBehaviour
     public void SetFullscreen(bool value)
     {
         IsFullscreen = value;
-        Screen.fullScreen = IsFullscreen;
+        ApplyDisplayMode();
         Save();
     }
 
@@ -179,7 +196,7 @@ public class GameConfigManager : MonoBehaviour
         MasterVolume = DefaultVolume;
         BgmVolume = DefaultVolume;
         SfxVolume = DefaultVolume;
-        IsFullscreen = true;
+        IsFullscreen = false;
         Language = LanguageType.KR;
         TextSpeed = 1f;
         AutoAdvance = false;

@@ -58,10 +58,6 @@ public class EnemyData : SerializedScriptableObject
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<SkillData> StrongSkillList = new List<SkillData>();
 
-    [BoxGroup("Combat Logic")]
-    [Range(0.5f, 2f), InfoBox("1.0 = 기본 / 2.0 = 판정 구간 절반으로 좁아짐")]
-    public float QTEDifficultyMultiplier = 1f;
-
     // ── 🚨 추가됨: 상태이상 내성 (배율) ──
     [BoxGroup("Resistances (상태이상 내성)")]
     [InfoBox("1.0은 기본 확률, 0.0이면 완전 면역, 2.0이면 2배로 잘 걸림")]

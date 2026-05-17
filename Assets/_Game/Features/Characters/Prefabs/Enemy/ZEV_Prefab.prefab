@@ -114,7 +114,6 @@ GameObject:
   - component: {fileID: 4223549662492093496}
   - component: {fileID: 202491752110947330}
   - component: {fileID: 458867946328447204}
-  - component: {fileID: 6998936918429272537}
   - component: {fileID: 8575338402871891709}
   - component: {fileID: 247497032874776338}
   m_Layer: 6
@@ -187,7 +186,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 1655595087
   m_SortingLayer: -1
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7443066013462779277, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -285,8 +284,8 @@ BoxCollider2D:
   m_Offset: {x: 0, y: 0.8125}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.6909091, y: 0}
-    oldSize: {x: 3.6666667, y: 4.5333333}
+    pivot: {x: 0.54285717, y: 0}
+    oldSize: {x: 4.6666665, y: 4.5333333}
     newSize: {x: 2, y: 1.5625}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -417,40 +416,6 @@ MonoBehaviour:
   _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   _flashDuration: 0.08
   _shakeStrength: 0.15
---- !u!114 &6998936918429272537
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3461299171839533844}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 93264bd648e0a204481c1723d89047ef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OverworldEnemy
-  _mode: 0
-  _additionalEncounterEnemies: []
-  _overrideBattleBGM: {fileID: 8300000, guid: cb1d33b06c9c049488335f81b890d6c5, type: 3}
-  _encounterSFX: {fileID: 8300000, guid: 6ad1ec81ab1a6774989652d8b79cdbc2, type: 3}
-  _encounterDelay: 0.08
-  _battleFadeDuration: 0.08
-  _battleSceneName: BattleScene
-  _destroyAfterTouch: 1
-  _postEscapeAlpha: 0.5
-  _enemyId: 
-  _victoryHandling: 1
-  _waypoints: []
-  _moveSpeed: 2
-  _arriveDistance: 0.05
-  _waitAtPoint: 0.15
-  _loop: 1
-  _animator: {fileID: 8643868022141659312}
-  _usePlayerLikeMoveParams: 1
-  _moveXParam: MoveX
-  _moveYParam: MoveY
-  _isMovingParam: IsMoving
-  _battleIdleParam: BattleIdle
 --- !u!114 &8575338402871891709
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -470,7 +435,7 @@ MonoBehaviour:
   _dialogue: {fileID: 11400000, guid: c281fbbf347fdeb44a7a1089d48567e2, type: 2}
   _fallbackEncounterEnemies:
   - {fileID: 11400000, guid: 2ecad76fe6f59d642b2989116b593269, type: 2}
-  _fallbackBattleBgm: {fileID: 8300000, guid: cb1d33b06c9c049488335f81b890d6c5, type: 3}
+  _fallbackBattleBgm: {fileID: 8300000, guid: 715eb49a792787c48b2dcaf68b3512c0, type: 3}
   _useDedicatedBattleScene: 0
   _battleSceneName: BattleScene
   _battleSceneFadeDuration: 0.08

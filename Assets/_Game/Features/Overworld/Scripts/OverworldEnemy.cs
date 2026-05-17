@@ -81,6 +81,8 @@ public class OverworldEnemy : MonoBehaviour
     private SpriteRenderer _spriteRenderer;
     private Coroutine _cooldownRoutine;
     private string _sceneName;
+    private int _baseSortingOrder;
+    private bool _hasSortingBase;
 
     public string EnemyId => _enemyId;
     public bool DefeatsOnVictory => _victoryHandling == PersistentEnemyStateHandling.DefeatOnVictory;
@@ -95,6 +97,11 @@ public class OverworldEnemy : MonoBehaviour
         _collider = GetComponent<Collider2D>();
         _enemyCharacter = GetComponent<EnemyCharacter>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
+        if (_spriteRenderer != null)
+        {
+            _baseSortingOrder = _spriteRenderer.sortingOrder;
+            _hasSortingBase = true;
+        }
         if (_animator == null) _animator = GetComponent<Animator>();
         _hashMoveX = Animator.StringToHash(_moveXParam);
         _hashMoveY = Animator.StringToHash(_moveYParam);
@@ -115,6 +122,11 @@ public class OverworldEnemy : MonoBehaviour
         if (_runtimeDisabledForBattle) return;
         if (_triggered || _mode != EncounterMode.PatrolContactBattle) return;
         Patrol();
+    }
+
+    private void LateUpdate()
+    {
+        UpdateSortingOrder();
     }
 
     private void Patrol()
@@ -387,6 +399,12 @@ public class OverworldEnemy : MonoBehaviour
         _triggered = false;
         _waitTimer = 0f;
         UpdateMoveAnimation(Vector2.zero);
+    }
+
+    private void UpdateSortingOrder()
+    {
+        if (!_hasSortingBase || _spriteRenderer == null) return;
+        _spriteRenderer.sortingOrder = _baseSortingOrder - Mathf.RoundToInt(transform.position.y * 100f);
     }
 
     private void DisablePermanently()

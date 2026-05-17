@@ -22,12 +22,9 @@ MonoBehaviour:
   IsAoE: 0
   ActionTimeline:
   - rid: 8456611354123173968
-  - rid: 8456611354123173980
   - rid: 8456611354123173969
-  - rid: 8456611412392017921
-  - rid: 8456611412392017920
+  - rid: 8456611482560888833
   - rid: 8456611354123173970
-  - rid: 8456611354123173982
   - rid: 8456611354123173971
   references:
     version: 2
@@ -42,36 +39,34 @@ MonoBehaviour:
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
       data:
         AnimTriggerName: CrossCutReady
-        DelayAfter: 0
+        DelayAfter: 0.65
     - rid: 8456611354123173970
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
-        VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
-        Pivot: 0
+        VfxPrefab: {fileID: 4748681987041982144, guid: 6a096f17e0593e44590ee0ab4539081e, type: 3}
+        Pivot: 2
         UseActorRotation: 0
     - rid: 8456611354123173971
       type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
       data:
-        SkillMultiplier: 1
+        SkillMultiplier: 5
         ShakeCamera: 1
-    - rid: 8456611354123173980
-      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
-      data:
-        WaitTime: 0.5
-    - rid: 8456611354123173982
+    - rid: 8456611482560888833
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
-        Requirement: 2
-        TimeWindow: 0.8
+        PatternMode: 0
+        Requirement: 1
+        UseTelegraph: 1
+        TelegraphVisualMode: 2
+        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningSprite: {fileID: 21300000, guid: 7194ed99d6493444eaa980bd9daa6525, type: 3}
+        TelegraphAnimatorTriggerName: 
+        TelegraphAttachPivotName: Center
+        TelegraphDuration: 0.2
+        DefenseOpenDelay: 0.1
+        TimeWindow: 0.2
         FailDamageMultiplier: 1
         ShakeOnFail: 1
-        DelayAfter: 0.1
-    - rid: 8456611412392017920
-      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
-      data:
-        AnimTriggerName: CrossCutAttack
         DelayAfter: 0
-    - rid: 8456611412392017921
-      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
-      data:
-        WaitTime: 1
+        AttackAnimTriggerName: CrossCutAttack
+        AttackAnimDelay: 0

@@ -145,11 +145,11 @@ public class CameraController : MonoBehaviour
     public void PlayDashThroughImpact(float intensity = 1.0f)
     {
         if (_vCam == null) return;
-        float currentZoom = _vCam.Lens.OrthographicSize;
+        float impactZoom = _defaultLensSize + 0.8f;
 
         DOTween.Kill(CameraZoomTweenId);
         DOTween.Kill(CameraImpactTweenId);
-        DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, currentZoom + 0.8f, 0.1f)
+        DOTween.To(() => _vCam.Lens.OrthographicSize, x => _vCam.Lens.OrthographicSize = x, impactZoom, 0.1f)
                .SetEase(Ease.OutQuad)
                .SetUpdate(UpdateType.Late)
                .SetId(CameraImpactTweenId)

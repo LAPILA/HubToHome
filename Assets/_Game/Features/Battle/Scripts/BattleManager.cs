@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 using Unity.Cinemachine;
+using UnityEngine.UI;
 using Sirenix.OdinInspector;
 
 /// <summary>
@@ -183,6 +184,24 @@ public class BattleManager : MonoBehaviour
             yield return null;
     }
 
+    private IEnumerator WarmupBattlePresentation()
+    {
+        if (_battleUICanvas != null)
+            _battleUICanvas.SetActive(true);
+
+        Canvas.ForceUpdateCanvases();
+        CameraController.Instance?.ResetCamera(0f);
+
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        Canvas.ForceUpdateCanvases();
+        CameraController.Instance?.ResetCamera(0f);
+
+        if (_battleUICanvas != null && _battleUICanvas.TryGetComponent(out RectTransform battleUiRect))
+            LayoutRebuilder.ForceRebuildLayoutImmediate(battleUiRect);
+    }
+
     public void RequestNarration(BattleNarrationMessage message)
     {
         if (_isBattleEnding && message.Priority != BattleNarrationPriority.Critical)
@@ -231,7 +250,6 @@ public class BattleManager : MonoBehaviour
     private void Start() 
     {
         BattleNarrationFormatter.Config = _battleNarrationConfig;
-        CameraController.Instance?.ResetCamera(0f);
         // 전용 배틀 씬일 경우에만 자동 셋업 루틴을 시작합니다. (오버월드 버그 방지)
         if (_isDedicatedBattleScene) StartCoroutine(DelayedStartRoutine());
     }
@@ -258,12 +276,17 @@ public class BattleManager : MonoBehaviour
     /// </summary>
     public void StartSeamlessBattle(List<EnemyData> encounterEnemies, PlayerController playerCtrl)
     {
+        StartCoroutine(StartSeamlessBattleRoutine(encounterEnemies, playerCtrl));
+    }
+
+    private IEnumerator StartSeamlessBattleRoutine(List<EnemyData> encounterEnemies, PlayerController playerCtrl)
+    {
         Debug.Log("<color=cyan>[BattleManager] 심리스 전투 연출 시작!</color>");
 
         if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.PendingBattleBGM != null)
             AudioManager.Instance?.CrossFadeBGM(GlobalDataManager.Instance.PendingBattleBGM, 0.8f);
 
-        if (_battleUICanvas != null) _battleUICanvas.SetActive(true);
+        yield return StartCoroutine(WarmupBattlePresentation());
 
         _playerParty.Clear();
         PlayerCharacter playerChar = playerCtrl.GetComponent<PlayerCharacter>();
@@ -338,20 +361,12 @@ public class BattleManager : MonoBehaviour
             playerCtrl.SetBattleMode(true);
         }
 
-        if (pm != null && playerCtrl != null)
-        {
-            Vector3 battlePos = pm.GetPlayerDefaultPos(0);
-            playerCtrl.PlayBattleAnim(PlayerCharacter.HashBattleMove);
-            yield return playerCtrl.transform.DOMove(battlePos, 0.5f).SetEase(Ease.OutExpo).WaitForCompletion();
-            
-            playerCtrl.SetFacingDirection(3); // 오른쪽 보기
-            playerCtrl.SetBattleMode(true);   // 이동 잠금 및 Idle 전환
-        }
-
         // QTE UI 레이아웃 예열 (첫 스킬 노드 누락 방지)
         BattleUIController.Instance?.ShowSkillQTE(Vector2.zero, "", 0f);
         yield return null; 
         BattleUIController.Instance?.HideSkillQTE();
+        Canvas.ForceUpdateCanvases();
+        CameraController.Instance?.ResetCamera(0f);
 
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         _battleNarrationConfig?.ResetRuntimeState();
@@ -370,8 +385,7 @@ public class BattleManager : MonoBehaviour
     private IEnumerator DelayedStartRoutine()
     {
         ChangeState(BattleState.Init);
-        CameraController.Instance?.ResetCamera(0f);
-        if (_battleUICanvas != null) { _battleUICanvas.SetActive(true); yield return null; }
+        yield return StartCoroutine(WarmupBattlePresentation());
 
         var global = GlobalDataManager.Instance;
         var pm = PositionManager.Instance;
@@ -469,6 +483,9 @@ public class BattleManager : MonoBehaviour
             BattleUIController.Instance.HideSkillQTE();
         }
 
+        Canvas.ForceUpdateCanvases();
+        CameraController.Instance?.ResetCamera(0f);
+
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
@@ -534,10 +551,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         {
             return defenseWindow.Requirement switch
             {
-                DefenseRequirement.ParryOnly => EnemyAttackType.ParryOnly,
-                DefenseRequirement.DodgeOnly => EnemyAttackType.DodgeOnly,
+                DefenseRequirement.ParryOrDodge => EnemyAttackType.MeleeClose, 
+                
                 DefenseRequirement.JumpOnly => EnemyAttackType.JumpOnly,
-                DefenseRequirement.DodgeOrJump => EnemyAttackType.DodgeOrJump,
                 _ => EnemyAttackType.MeleeClose
             };
         }
@@ -676,6 +692,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator BeginPlayerTurnRoutine(PlayerCharacter player)
     {
+        ResetAllPlayerBattlePoses();
+        player.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         player.HealMP(_mpPerTurn);
         OnMPChanged?.Invoke(player, player.CurrentMP);
         TryRequestFlavorNarration();
@@ -687,8 +705,50 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator BeginEnemyTurnRoutine()
     {
+        ResetAllPlayerBattlePoses();
         yield return StartCoroutine(WaitForNarrationToFinish());
         ChangeState(BattleState.EnemyAction);
+    }
+
+    private void ResetAllPlayerBattlePoses()
+    {
+        PositionManager pm = PositionManager.Instance;
+
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player == null) continue;
+
+            PlayerController ctrl = player.GetComponent<PlayerController>();
+            Vector3 defaultPos = pm != null ? pm.GetPlayerDefaultPos(i) : player.transform.position;
+
+            if (ctrl != null)
+            {
+                ctrl.SetBattleSortingBoost(0);
+                ctrl.SnapToBattleAnchor(defaultPos);
+            }
+            else
+                player.transform.position = defaultPos;
+
+            player.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+        }
+    }
+
+    private void SetActorForeground(CharacterBase actor, bool active)
+    {
+        const int boost = 5000;
+        if (actor == null) return;
+
+        if (actor is PlayerCharacter player)
+        {
+            player.GetComponent<PlayerController>()?.SetBattleSortingBoost(active ? boost : 0);
+        }
+        else if (actor is EnemyCharacter enemy)
+        {
+            SpriteRenderer sr = enemy.GetComponent<SpriteRenderer>();
+            if (sr != null)
+                sr.sortingOrder = active ? boost : 0;
+        }
     }
     #endregion
 
@@ -770,6 +830,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         Time.timeScale = 1.0f;
         QTEManager.Instance?.ForceStop();
+        ResetAllPlayerBattlePoses();
         _pendingActor = null;
         CurrentPendingSkill = null;
         CurrentPendingItem = null;
@@ -794,6 +855,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         Vector3 frontPos = target.transform.position + _meleeAttackOffset; 
         
         actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+        SetActorForeground(actor, true);
         SetGhostTrail(actor, true);
         yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
 
@@ -810,11 +872,12 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         yield return new WaitForSeconds(_playerAttackHitDelay);
 
         int dmg = target.TakeDamage(actor.ATK);
-        CameraController.Instance?.PlayDashThroughImpact(1.0f);
+        CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
         OnDamageDealt?.Invoke(target, dmg, false);
         
         yield return new WaitForSeconds(_playerAttackRecoverDelay); 
         SetGhostTrail(actor, false);
+        SetActorForeground(actor, false);
 
         // 제자리 복귀
         int idx = _playerParty.IndexOf(actor);
@@ -874,9 +937,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (Vector3.Distance(actor.transform.position, originalPos) > 0.1f)
         {
             actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+            SetActorForeground(actor, true);
             SetGhostTrail(actor, true);
             yield return actor.transform.DOMove(originalPos, 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
             SetGhostTrail(actor, false);
+            SetActorForeground(actor, false);
         }
 
         actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
@@ -913,6 +978,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         var pm = PositionManager.Instance;
 
         actorCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+        SetActorForeground(actor, true);
         yield return actor.transform.DOMove(actor.transform.position + Vector3.right * 1f, 0.2f).SetEase(Ease.OutQuad).WaitForCompletion();
         actorCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
 
@@ -925,6 +991,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         int idx = _playerParty.IndexOf(actor);
         actorCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleMove);
         yield return actor.transform.DOMove(pm.GetPlayerDefaultPos(idx), 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
+        SetActorForeground(actor, false);
         actorCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
 
         yield return StartCoroutine(WaitForNarrationToFinish());
@@ -1019,6 +1086,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 bool movedToCenter = enemy.Data == null || !enemy.Data.IsLargeEnemy;
 
                 yield return StartCoroutine(MoveEnemyToCenterIfNeeded(enemy));
+                SetActorForeground(enemy, true);
 
                 enemy.PlayBasicAttackEffect();
                 enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
@@ -1028,7 +1096,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
 
                 // 공격 애니메이션은 한 번만 재생하고, QTE 판정은 별도로 유지합니다.
-                targetCtrl?.ResetDefenseReactionLock();
+                targetCtrl?.PrepareDefenseWindow();
                 QTEManager.Instance.StartDefenseQTE(_enemyDefenseQTEWindow, 1.0f, (input, grade) =>
                 {
                     finalInput = input;
@@ -1051,44 +1119,18 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 }
                 else
                 {
-                    int reducedDmg = 0;
-
+                    targetCtrl?.ConfirmDefenseSuccess(finalInput);
+                    if (finalInput == DefenseInput.Parry && finalGrade == QTEManager.QTEGrade.Perfect)
+                    {
+                        target.HealMP(_mpOnParryPerfect);
+                        OnMPChanged?.Invoke(target, target.CurrentMP);
+                    }
                     if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
-                    {
-                        reducedDmg = 0; 
-                        targetCtrl?.ConfirmDefenseSuccess(finalInput);
-                    }
-                    else // 패링
-                    {
-                        targetCtrl?.ConfirmDefenseSuccess(finalInput);
-                        if (finalGrade == QTEManager.QTEGrade.Perfect) 
-                        { 
-                            reducedDmg = 0;
-                            target.HealMP(_mpOnParryPerfect); 
-                            OnMPChanged?.Invoke(target, target.CurrentMP); 
-                        }
-                        else
-                        {
-                            reducedDmg = finalGrade switch { 
-                                QTEManager.QTEGrade.Great => Mathf.RoundToInt(enemy.ATK * 0.15f), 
-                                QTEManager.QTEGrade.Good  => Mathf.RoundToInt(enemy.ATK * 0.40f), 
-                                QTEManager.QTEGrade.Bad   => Mathf.RoundToInt(enemy.ATK * 0.70f), 
-                                _ => enemy.ATK 
-                            };
-                        }
-                    }
-
-                    if (reducedDmg > 0) 
-                    {
-                        int actualDmg = target.TakePureDamage(reducedDmg);
-                        CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.3f, true);
-                        
-                        // 🚨 핵심 해결: 패링을 못 쳐서 깎인 데미지도 체력바 갱신 방송!
-                        OnDamageDealt?.Invoke(target, actualDmg, false);
-                    }
+                        yield return targetCtrl != null ? StartCoroutine(targetCtrl.WaitForDefenseVisualComplete(0.5f)) : null;
                 }
 
                 yield return new WaitForSeconds(_enemyPostHitDelay);
+                targetCtrl?.ResetDefenseReactionLock();
                 targetCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
                 
                 // 적군 제자리 복귀
@@ -1099,6 +1141,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                     yield return enemy.transform.DOMove(PositionManager.Instance.GetEnemyDefaultPos(_enemies.IndexOf(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
                     SetGhostTrail(enemy, false);
                 }
+                SetActorForeground(enemy, false);
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
             }
         }

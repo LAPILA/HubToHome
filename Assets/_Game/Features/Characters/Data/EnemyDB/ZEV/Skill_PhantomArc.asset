@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: Skill_PhantomArc
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "\uD658\uC601\uD638\uCC38"
+  SkillID: skill_005
+  Description: "\uC804\uBC29\uC73C\uB85C \uD30C\uACE0\uB4E4\uACE0 \uB2E4\uC2DC \uAC00\uB85C\uC9C8\uB7EC
+    \uCC38\uACA9\uD55C\uB2E4"
+  UsageProfile: 0
+  MPCost: 0
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 4001
+  - rid: 4002
+  - rid: 4003
+  - rid: 4004
+  - rid: 4005
+  - rid: 4006
+  - rid: 4007
+  references:
+    version: 2
+    RefIds:
+    - rid: 4001
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 0
+        Duration: 0.11
+        MoveEase: 6
+    - rid: 4002
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        AnimTriggerName: CrossCutAttack
+        DelayAfter: 0
+    - rid: 4003
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
+        Pivot: 1
+        UseActorRotation: 0
+    - rid: 4004
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 1.2
+        ShakeCamera: 0
+    - rid: 4005
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 3
+        Duration: 0.08
+        MoveEase: 6
+    - rid: 4006
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: 6a096f17e0593e44590ee0ab4539081e, type: 3}
+        Pivot: 0
+        UseActorRotation: 0
+    - rid: 4007
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 1.9
+        ShakeCamera: 1

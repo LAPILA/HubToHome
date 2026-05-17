@@ -86,10 +86,13 @@ public class EnemyCharacter : CharacterBase
 
     public IEnumerator ForceEnterBattleIdleRoutine()
     {
+        if (!IsAlive) yield break;
         SetBattleMode(true);
         yield return null;
+        if (!IsAlive) yield break;
         PlayBattleAnim(HashBattleIdle);
         yield return null;
+        if (!IsAlive) yield break;
         PlayBattleAnim(HashBattleIdle);
     }
 
@@ -121,6 +124,9 @@ public class EnemyCharacter : CharacterBase
     {
         if (_animator == null || !HasParameter(triggerHash)) return;
 
+        if (!IsAlive && triggerHash != HashDie)
+            return;
+
         if (triggerHash == HashBattleIdle || triggerHash == HashBattleMove || triggerHash == HashBattleMoveBack || triggerHash == HashAttack || triggerHash == HashSkill)
             _isBattleMode = true;
 
@@ -130,6 +136,7 @@ public class EnemyCharacter : CharacterBase
 
     public void ForceBattleIdle()
     {
+        if (!IsAlive) return;
         if (_animator == null || !HasParameter(HashBattleIdle)) return;
 
         ResetTriggerIfExists(HashHurt);
@@ -224,7 +231,16 @@ public class EnemyCharacter : CharacterBase
     protected override void OnDie()
     {
         KillVisualTweens();
-        PlayBattleAnim(HashDie);
+        _isBattleMode = true;
+        ResetTriggerIfExists(HashBattleIdle);
+        ResetTriggerIfExists(HashBattleMove);
+        ResetTriggerIfExists(HashBattleMoveBack);
+        ResetTriggerIfExists(HashAttack);
+        ResetTriggerIfExists(HashSkill);
+        ResetTriggerIfExists(HashCrossCut);
+        ResetTriggerIfExists(HashHurt);
+        if (_animator != null && HasParameter(HashDie))
+            _animator.SetTrigger(HashDie);
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOFade(0f, 0.8f).SetDelay(0.2f).OnComplete(() => {

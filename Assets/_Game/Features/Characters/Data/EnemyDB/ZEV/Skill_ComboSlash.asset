@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Skill_ComboSlash
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
-  SkillName: "\uCC38\uACA9"
+  SkillName: "\uC5F0\uCC38"
   SkillID: skill_001
   Description: "\uAC00\uB85C \uC138\uB85C \uB9C8\uBB34\uB9AC!"
-  UsageProfile: 0
+  UsageProfile: 2
   MPCost: 0
   TargetType: 1
   IsAoE: 0
@@ -24,13 +24,16 @@ MonoBehaviour:
   - rid: 8456611228188409963
   - rid: 8456611228188409967
   - rid: 8456611228188409951
+  - rid: 9223372036854775807
   - rid: 8456611228188409973
   - rid: 8456611228188409954
+  - rid: 8456611486798184541
   - rid: 8456611228188409974
   - rid: 8456611228188409968
   - rid: 8456611395573645414
   - rid: 8456611228188409971
   - rid: 8456611228188409958
+  - rid: 8456611486798184542
   - rid: 8456611228188409975
   references:
     version: 2
@@ -39,19 +42,19 @@ MonoBehaviour:
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
         VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
-        Pivot: 1
+        Pivot: 0
         UseActorRotation: 0
     - rid: 8456611228188409954
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
         VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
-        Pivot: 1
+        Pivot: 0
         UseActorRotation: 0
     - rid: 8456611228188409958
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
         VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
-        Pivot: 1
+        Pivot: 0
         UseActorRotation: 0
     - rid: 8456611228188409963
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
@@ -85,13 +88,70 @@ MonoBehaviour:
       type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
       data:
         SkillMultiplier: 1
-        ShakeCamera: 0
+        ShakeCamera: 1
     - rid: 8456611228188409975
       type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
       data:
-        SkillMultiplier: 2
+        SkillMultiplier: 1
         ShakeCamera: 1
     - rid: 8456611395573645414
       type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
       data:
         WaitTime: 0.2
+    - rid: 8456611486798184541
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        PatternMode: 0
+        Requirement: 0
+        UseTelegraph: 1
+        TelegraphVisualMode: 2
+        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: 
+        TelegraphAttachPivotName: Center
+        TelegraphDuration: 0.1
+        DefenseOpenDelay: 0.1
+        TimeWindow: 0.1
+        FailDamageMultiplier: 1
+        ShakeOnFail: 1
+        DelayAfter: 0
+        AttackAnimTriggerName: 
+        AttackAnimDelay: 0.1
+    - rid: 8456611486798184542
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        PatternMode: 0
+        Requirement: 0
+        UseTelegraph: 1
+        TelegraphVisualMode: 2
+        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: 
+        TelegraphAttachPivotName: Center
+        TelegraphDuration: 0.1
+        DefenseOpenDelay: 0.1
+        TimeWindow: 0.1
+        FailDamageMultiplier: 1
+        ShakeOnFail: 1
+        DelayAfter: 0
+        AttackAnimTriggerName: 
+        AttackAnimDelay: 0.1
+    - rid: 9223372036854775807
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        PatternMode: 0
+        Requirement: 0
+        UseTelegraph: 1
+        TelegraphVisualMode: 2
+        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: 
+        TelegraphAttachPivotName: Center
+        TelegraphDuration: 0.1
+        DefenseOpenDelay: 0.1
+        TimeWindow: 0.1
+        FailDamageMultiplier: 1
+        ShakeOnFail: 1
+        DelayAfter: 0
+        AttackAnimTriggerName: 
+        AttackAnimDelay: 0.1
