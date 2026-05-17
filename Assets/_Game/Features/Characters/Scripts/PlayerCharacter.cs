@@ -67,8 +67,9 @@ public class PlayerCharacter : CharacterBase
 
     public void PlayBattleAnim(int triggerHash)
     {
-        if (_animator != null && HasParameter(triggerHash))
-            _animator.SetTrigger(triggerHash);
+        if (_animator == null || !HasParameter(triggerHash)) return;
+        if (!IsAlive && triggerHash != HashDie) return;
+        _animator.SetTrigger(triggerHash);
     }
 
     public void PlayBasicAttackEffect()

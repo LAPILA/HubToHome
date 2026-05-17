@@ -119,6 +119,10 @@
   정리: 적 사망 뒤 Idle이 다시 들어가는 경로를 추가 차단했고, 빌드에서 BattleScene 진입 첫 0.2초 동안 카메라 축소/UI 어긋남이 보이던 문제를 줄이기 위해 캔버스/카메라 프리웜 코루틴을 넣었습니다.  
   대상 파일: `Assets/_Game/Features/Characters/Scripts/EnemyCharacter.cs`, `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
 
+- [x] 플레이어 패배 후 Idle 재진입 및 ZEV 50% 이하 무동작 데미지 버그 수정  
+  정리: 플레이어도 사망 후에는 `Die` 외 애니메이션을 무시하도록 막았고, ZEV의 HP 50% 이하 enraged 분기가 강제로 `AoEAll` 광역 데미지로만 빠지던 문제를 실제 스킬/강스킬 사용으로 바꿨습니다. 또한 전투 후처리에서 죽은 대상에게 Idle을 다시 넣지 않도록 생존 체크를 추가했습니다.  
+  대상 파일: `Assets/_Game/Features/Characters/Scripts/PlayerCharacter.cs`, `Assets/_Game/Features/Characters/Scripts/EnemyCharacter.cs`, `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
+
 - [ ] `BattleManager`를 상태 전이/행동 실행/방어 판정/종료 처리 단위로 분리하기  
   정리: 현재 `BattleManager`가 사실상 God Object에 가까워 유지보수 비용이 너무 높습니다. 적어도 `EnemyActionRoutine`, `BattleEndRoutine`, 플레이어 액션 실행부는 별도 서비스/핸들러로 분리해야 합니다.  
   대상 파일: `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`, `Assets/_Game/Features/Battle/Scripts/BattleStateMachine.cs`, `Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs`

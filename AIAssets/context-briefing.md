@@ -123,6 +123,13 @@
 - `Assets/_Game/Features/Characters/Scripts/EnemyCharacter.cs`
   - 죽었을 때 가끔 `BattleIdle`로 돌아오던 건 사망 이후에도 idle 진입 코루틴/트리거 경로가 완전히 차단되지 않은 게 원인이었습니다.
   - 현재는 `PlayBattleAnim()`이 `!IsAlive`일 때 `HashDie` 외 트리거를 무시하고, `ForceEnterBattleIdleRoutine()`도 각 프레임마다 생존 여부를 다시 확인합니다. `OnDie()`는 `PlayBattleAnim(HashDie)` 경유 대신 직접 `Die` 트리거를 넣어 idle 차단과 분리했습니다.
+  - 추가 수정: HP 50% 이하에서 `HasEnragedPattern`이 켜져 있을 때 무조건 `EnragedAttack`으로 가던 분기를 바꿨습니다. 이제 강스킬 리스트가 있으면 `UseStrongSkill`, 일반 스킬만 있으면 `UseSkill`, 둘 다 없을 때만 `BasicAttack`으로 갑니다. 이로써 행동 애니메이션 없이 광역 데미지만 들어가던 경로를 제거했습니다.
+
+- `Assets/_Game/Features/Characters/Scripts/PlayerCharacter.cs`
+  - 플레이어 사망 뒤에도 `HashBattleIdle` 같은 트리거가 다시 들어갈 수 있었기 때문에, `PlayBattleAnim()`에서도 `!IsAlive`일 때는 `HashDie` 외 애니메이션을 무시하도록 보강했습니다.
+
+- `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
+  - 플레이어/적 후처리 루틴에서 생존 여부 확인 없이 `BattleIdle`을 다시 넣던 경로를 일부 차단했습니다. 특히 `ResetAllPlayerBattlePoses()`는 죽은 플레이어를 건너뛰고, 적 근접공격 후 방어 대상/적 자신에게 idle을 줄 때도 `IsAlive`를 확인합니다.
 
 ## 전조증상(telegraph) 설계 의견
 

@@ -255,7 +255,15 @@ public class EnemyCharacter : CharacterBase
 
         float hpRatio = (float)CurrentHP / MaxHP;
         if (hpRatio <= 0.5f && Data.HasEnragedPattern)
-            return EnemyAction.EnragedAttack;
+        {
+            if (Data.StrongSkillList != null && Data.StrongSkillList.Count > 0)
+                return EnemyAction.UseStrongSkill;
+
+            if (Data.SkillList != null && Data.SkillList.Count > 0)
+                return EnemyAction.UseSkill;
+
+            return EnemyAction.BasicAttack;
+        }
 
         if (Data.StrongSkillList != null && Data.StrongSkillList.Count > 0)
         {

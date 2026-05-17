@@ -718,6 +718,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         {
             PlayerCharacter player = _playerParty[i];
             if (player == null) continue;
+            if (!player.IsAlive) continue;
 
             PlayerController ctrl = player.GetComponent<PlayerController>();
             Vector3 defaultPos = pm != null ? pm.GetPlayerDefaultPos(i) : player.transform.position;
@@ -1131,7 +1132,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
                 yield return new WaitForSeconds(_enemyPostHitDelay);
                 targetCtrl?.ResetDefenseReactionLock();
-                targetCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+                if (target != null && target.IsAlive)
+                    targetCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
                 
                 // 적군 제자리 복귀
                 if (movedToCenter)
@@ -1142,7 +1144,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                     SetGhostTrail(enemy, false);
                 }
                 SetActorForeground(enemy, false);
-                enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+                if (enemy != null && enemy.IsAlive)
+                    enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
             }
         }
         else // 광역기 처리
