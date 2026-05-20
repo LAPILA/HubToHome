@@ -696,6 +696,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         player.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         player.HealMP(_mpPerTurn);
         OnMPChanged?.Invoke(player, player.CurrentMP);
+        player.TryShowBattleSpeech(BattleSpeechTrigger.TurnStart, null, null, _battleTurnCounter);
         TryRequestFlavorNarration();
         yield return StartCoroutine(WaitForNarrationToFinish());
         OnPlayerTurnStarted?.Invoke(player);
@@ -899,6 +900,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         actor.ConsumeMP(skill.MPCost);
         OnMPChanged?.Invoke(actor, actor.CurrentMP);
+        actor.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, skill, null, _battleTurnCounter);
         List<CharacterBase> targets = new List<CharacterBase>();
         if (skill.IsAoE)
         {
@@ -1070,10 +1072,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
         if ((action == EnemyAction.UseSkill || action == EnemyAction.UseStrongSkill) && enemySkill != null)
         {
-            string enemyName = enemy != null && enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.EnemyName) ? enemy.Data.EnemyName : "적";
-            RequestNarration(new BattleNarrationMessage($"{enemyName}의 {enemySkill.SkillName}!", BattleNarrationStyle.Normal, BattleNarrationPriority.Normal, 1.0f));
-            
-            yield return new WaitForSeconds(0.5f);
+            enemy.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, enemySkill, null, _battleTurnCounter, 1.2f);
+            yield return new WaitForSeconds(0.18f);
 
             yield return StartCoroutine(ExecuteEnemySequenceSkill(enemy, enemySkill));
         }

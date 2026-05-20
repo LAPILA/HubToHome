@@ -49,6 +49,12 @@ public abstract class CharacterBase : MonoBehaviour
     public bool CanDodgeOrJump() => !IsBound && !IsStunned;
     public bool CanTakeTurn() => IsAlive && !IsStunned;
 
+    public bool TryShowBattleSpeech(BattleSpeechTrigger trigger, SkillData skill = null, CharacterBase target = null, int battleTurn = 0, float holdOverride = -1f)
+    {
+        BattleSpeechBubble bubble = GetComponentInChildren<BattleSpeechBubble>(true);
+        return bubble != null && bubble.TryShow(trigger, this, skill, target, battleTurn, holdOverride);
+    }
+
     public Transform GetPivot(string pivotName)
     {
         Transform pivot = transform.Find($"Pivots/{pivotName}");
