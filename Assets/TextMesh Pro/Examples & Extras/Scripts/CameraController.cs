@@ -34,7 +34,6 @@ public class CameraController : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        DOTween.SetTweensCapacity(500, 100);
     }
 
     private void OnDestroy()

@@ -11,7 +11,7 @@ using Sirenix.OdinInspector;
 /// 전투의 전체 흐름을 제어하는 중앙 매니저 (Singleton & State Machine 기반).
 /// 옵저버(Observer) 패턴을 활용하여 UI와의 결합도를 낮췄습니다.
 /// </summary>
-public class BattleManager : MonoBehaviour
+public class BattleManager : MonoBehaviour, ISceneRevealGate
 {
     public static BattleManager Instance { get; private set; }
 
@@ -106,7 +106,12 @@ public class BattleManager : MonoBehaviour
     private readonly Dictionary<EnemyCharacter, EnemyQueuedAction> _reservedEnemyActionByActor = new Dictionary<EnemyCharacter, EnemyQueuedAction>();
     private bool _isRunInProgress;
     private bool _isBattleEnding;
+    private IEncounterSource _activeEncounterSource;
+    private PlayerController _activeEncounterPlayer;
+    private bool _isReadyToReveal = true;
     #endregion
+
+    public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
 
     private struct EnemyQueuedAction
     {
@@ -247,6 +252,7 @@ public class BattleManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        _isReadyToReveal = !_isDedicatedBattleScene;
     }
 
     private void Start() 
@@ -276,8 +282,10 @@ public class BattleManager : MonoBehaviour
     /// <summary>
     /// 오버월드 맵 위에서 씬 전환 없이 그대로 전투를 시작할 때 호출됩니다.
     /// </summary>
-    public void StartSeamlessBattle(List<EnemyData> encounterEnemies, PlayerController playerCtrl)
+    public void StartSeamlessBattle(List<EnemyData> encounterEnemies, PlayerController playerCtrl, IEncounterSource encounterSource = null)
     {
+        _activeEncounterSource = encounterSource;
+        _activeEncounterPlayer = playerCtrl;
         StartCoroutine(StartSeamlessBattleRoutine(encounterEnemies, playerCtrl));
     }
 
@@ -386,6 +394,7 @@ public class BattleManager : MonoBehaviour
     /// </summary>
     private IEnumerator DelayedStartRoutine()
     {
+        _isReadyToReveal = false;
         ChangeState(BattleState.Init);
         yield return StartCoroutine(WarmupBattlePresentation());
 
@@ -489,6 +498,12 @@ public class BattleManager : MonoBehaviour
         CameraController.Instance?.ResetCamera(0f);
 
         OnBattleStarted?.Invoke(_playerParty, _enemies);
+        Canvas.ForceUpdateCanvases();
+        yield return null;
+        Canvas.ForceUpdateCanvases();
+        CameraController.Instance?.ResetCamera(0f);
+        _isReadyToReveal = true;
+
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
         _isBattleEnding = false;
@@ -1214,6 +1229,25 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         yield return StartCoroutine(BattleOutroRoutine(victory));
     }
 
+    #if UNITY_EDITOR
+    public void EditorCheatWinBattle()
+    {
+        if (_isBattleEnding || _enemies == null || _enemies.Count == 0) return;
+
+        foreach (EnemyCharacter enemy in _enemies)
+        {
+            if (enemy == null || !enemy.IsAlive) continue;
+
+            int damage = Mathf.Max(999999, enemy.MaxHP * 10);
+            int dealt = enemy.TakePureDamage(damage);
+            OnDamageDealt?.Invoke(enemy, dealt, false);
+        }
+
+        if (CheckVictory())
+            ChangeState(BattleState.BattleEnd);
+    }
+    #endif
+
     private void CommitOverworldEncounterResult(bool isVictory)
     {
         var global = GlobalDataManager.Instance;
@@ -1261,6 +1295,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         {
             // 오버월드 심리스 복귀 로직
             if (_battleUICanvas != null) _battleUICanvas.SetActive(false);
+
+            PlayerController encounterPlayer = _activeEncounterPlayer;
+            if (encounterPlayer == null && _playerParty.Count > 0 && _playerParty[0] != null)
+                encounterPlayer = _playerParty[0].GetComponent<PlayerController>();
+
+            _activeEncounterSource?.OnEncounterResolved(isVictory, encounterPlayer);
+            _activeEncounterSource = null;
+            _activeEncounterPlayer = null;
 
             foreach (var player in _playerParty)
             {

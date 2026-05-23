@@ -12,7 +12,7 @@ using Sirenix.OdinInspector;
 [RequireComponent(typeof(Collider2D))]
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(EnemyCharacter))]
-public class OverworldEnemy : MonoBehaviour
+public class OverworldEnemy : MonoBehaviour, IEncounterSource
 {
     private static float s_globalEncounterLockUntil;
 
@@ -40,8 +40,11 @@ public class OverworldEnemy : MonoBehaviour
     [SerializeField] private float _encounterDelay = 0.08f;
     [SerializeField] private float _battleFadeDuration = 0.08f;
     [SerializeField] private string _battleSceneName = "BattleScene";
+    [SerializeField] private bool _useDedicatedBattleScene = true;
     [SerializeField] private bool _destroyAfterTouch = false;
     [SerializeField] private float _postEscapeAlpha = 0.5f;
+    [SerializeField] private float _postBattleGraceDuration = 1f;
+    [SerializeField] private float _postBattleNudgeDistance = 0.35f;
 
     [Header("Persistence")]
     [SerializeField] private string _enemyId;
@@ -83,6 +86,10 @@ public class OverworldEnemy : MonoBehaviour
     private string _sceneName;
     private int _baseSortingOrder;
     private bool _hasSortingBase;
+    private float _localEncounterBlockedUntil;
+    private bool _waitForPlayerExitBeforeRearm;
+    private PlayerController _pendingRearmPlayer;
+    private bool _encounterInProgress;
 
     public string EnemyId => _enemyId;
     public bool DefeatsOnVictory => _victoryHandling == PersistentEnemyStateHandling.DefeatOnVictory;
@@ -119,6 +126,16 @@ public class OverworldEnemy : MonoBehaviour
 
     private void FixedUpdate()
     {
+        RefreshEncounterExitWait();
+        if (!_encounterInProgress
+            && _triggered
+            && !_waitForPlayerExitBeforeRearm
+            && _cooldownRoutine == null
+            && Time.unscaledTime >= _localEncounterBlockedUntil)
+        {
+            _triggered = false;
+        }
+
         if (_runtimeDisabledForBattle) return;
         if (_triggered || _mode != EncounterMode.PatrolContactBattle) return;
         Patrol();
@@ -186,7 +203,10 @@ public class OverworldEnemy : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (_runtimeDisabledForBattle) return;
+        if (EncounterCollisionGuard.IsGloballyBlocked) return;
         if (Time.unscaledTime < s_globalEncounterLockUntil) return;
+        if (Time.unscaledTime < _localEncounterBlockedUntil) return;
+        if (_waitForPlayerExitBeforeRearm) return;
         if (_triggered) return;
         if (_mode != EncounterMode.PatrolContactBattle) return;
         if (!other.CompareTag("Player")) return;
@@ -195,6 +215,16 @@ public class OverworldEnemy : MonoBehaviour
         if (player == null) return;
 
         StartCoroutine(StartSceneBattleRoutine(player));
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (!_waitForPlayerExitBeforeRearm) return;
+        if (!other.CompareTag("Player")) return;
+
+        PlayerController player = other.GetComponent<PlayerController>() ?? _pendingRearmPlayer;
+        if (player == null || !EncounterCollisionGuard.IsPlayerOverlapping(_collider, player))
+            ClearExitWaitAndRearm();
     }
 
     public void DisableForBattleInstance()
@@ -227,10 +257,12 @@ public class OverworldEnemy : MonoBehaviour
         }
 
         _triggered = true;
+        _encounterInProgress = true;
         s_globalEncounterLockUntil = Time.unscaledTime + Mathf.Max(0.75f, _encounterDelay + 0.5f);
         _rb.linearVelocity = Vector2.zero;
         UpdateMoveAnimation(Vector2.zero);
-        _collider.enabled = false;
+        if (_useDedicatedBattleScene && _collider != null)
+            _collider.enabled = false;
         player.SetBattleMode(true);
 
         AudioManager.Instance?.PlaySFX(_encounterSFX);
@@ -238,17 +270,24 @@ public class OverworldEnemy : MonoBehaviour
         if (_encounterDelay > 0f)
             yield return new WaitForSecondsRealtime(_encounterDelay);
 
-        BattleEncounterService.StartEncounter(
+        bool started = BattleEncounterService.StartEncounter(
             player,
             resolvedEnemies,
             ResolveBattleBGM(resolvedEnemies),
-            true,
+            _useDedicatedBattleScene,
             _battleSceneName,
             _battleFadeDuration,
             _enemyId,
-            DefeatsOnVictory);
+            DefeatsOnVictory,
+            this);
 
-        if (_destroyAfterTouch) Destroy(gameObject);
+        if (!started)
+        {
+            _encounterInProgress = false;
+            _triggered = false;
+        }
+
+        if (_destroyAfterTouch && _useDedicatedBattleScene) Destroy(gameObject);
     }
 
     private void UpdateMoveAnimation(Vector2 velocity)
@@ -360,7 +399,6 @@ public class OverworldEnemy : MonoBehaviour
         _triggered = true;
         _waitTimer = duration;
         if (_rb != null) _rb.linearVelocity = Vector2.zero;
-        if (_collider != null) _collider.enabled = false;
         UpdateMoveAnimation(Vector2.zero);
 
         Color original = _spriteRenderer != null ? _spriteRenderer.color : Color.white;
@@ -396,9 +434,48 @@ public class OverworldEnemy : MonoBehaviour
 
         if (_collider != null) _collider.enabled = true;
         if (_rb != null) _rb.linearVelocity = Vector2.zero;
-        _triggered = false;
+        RefreshEncounterExitWait();
+        _triggered = _waitForPlayerExitBeforeRearm;
         _waitTimer = 0f;
         UpdateMoveAnimation(Vector2.zero);
+    }
+
+    public void OnEncounterResolved(bool victory, PlayerController player)
+    {
+        _encounterInProgress = false;
+        _pendingRearmPlayer = player;
+        EncounterCollisionGuard.BlockAll(_postBattleGraceDuration);
+        _localEncounterBlockedUntil = Time.unscaledTime + Mathf.Max(0f, _postBattleGraceDuration);
+        s_globalEncounterLockUntil = Mathf.Max(s_globalEncounterLockUntil, _localEncounterBlockedUntil);
+
+        EncounterCollisionGuard.NudgePlayerOutOf(_collider, player, _postBattleNudgeDistance);
+        _waitForPlayerExitBeforeRearm = EncounterCollisionGuard.IsPlayerOverlapping(_collider, player);
+
+        if (victory && DefeatsOnVictory)
+        {
+            DisablePermanently();
+            return;
+        }
+
+        if (victory)
+            RestoreActiveState();
+        else
+            StartCooldown(Mathf.Max(_postBattleGraceDuration, 0.75f), _postEscapeAlpha);
+    }
+
+    private void RefreshEncounterExitWait()
+    {
+        if (!_waitForPlayerExitBeforeRearm) return;
+        if (_pendingRearmPlayer == null || !EncounterCollisionGuard.IsPlayerOverlapping(_collider, _pendingRearmPlayer))
+            ClearExitWaitAndRearm();
+    }
+
+    private void ClearExitWaitAndRearm()
+    {
+        _waitForPlayerExitBeforeRearm = false;
+        _pendingRearmPlayer = null;
+        if (!_runtimeDisabledForBattle && Time.unscaledTime >= _localEncounterBlockedUntil)
+            _triggered = false;
     }
 
     private void UpdateSortingOrder()
@@ -419,7 +496,6 @@ public class OverworldEnemy : MonoBehaviour
         }
 
         if (_rb != null) _rb.linearVelocity = Vector2.zero;
-        if (_collider != null) _collider.enabled = false;
         UpdateMoveAnimation(Vector2.zero);
         gameObject.SetActive(false);
     }

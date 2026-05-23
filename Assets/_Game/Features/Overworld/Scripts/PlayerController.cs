@@ -289,6 +289,33 @@ public class PlayerController : MonoBehaviour
         };
     }
 
+    public Vector2 GetFacingVector2()
+    {
+        return GetFacingVector();
+    }
+
+    public void NudgeFromEncounter(Vector2 direction, float distance)
+    {
+        if (direction.sqrMagnitude < 0.0001f || distance <= 0f) return;
+        if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+
+        Vector2 offset = direction.normalized * distance;
+        Vector3 targetPosition = transform.position + new Vector3(offset.x, offset.y, 0f);
+
+        DOTween.Kill(transform);
+        if (_rb != null)
+        {
+            DOTween.Kill(_rb);
+            _rb.position = targetPosition;
+            _rb.linearVelocity = Vector2.zero;
+        }
+
+        transform.position = targetPosition;
+        _battleDefenseAnchorPosition = targetPosition;
+        _moveInput = Vector2.zero;
+        _prevLeft = _prevRight = _prevUp = _prevDown = false;
+    }
+
     // ── 애니메이터 업데이트 ───────────────────────────────────
     private void UpdateAnimator(bool isMoving)
     {

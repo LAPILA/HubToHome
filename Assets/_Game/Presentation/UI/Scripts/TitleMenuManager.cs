@@ -32,8 +32,13 @@ public class TitleMenuManager : MonoBehaviour
         GameConfigManager.EnsureInstance();
         UIRuntimeGuard.NormalizeCanvas(gameObject);
 
+        #if UNITY_EDITOR
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        #else
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+        #endif
 
         bool hasSaveData = PlayerPrefs.HasKey("SaveFileExists");
 

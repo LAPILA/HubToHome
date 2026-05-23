@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HubToHome 현재 구현 현황 지도</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #1f2933;
+      --muted: #667386;
+      --line: #d8dee7;
+      --accent: #0f766e;
+      --accent-soft: #e8f7f4;
+      --blue: #1d4ed8;
+      --blue-soft: #eaf1ff;
+      --warn: #9a5b00;
+      --warn-soft: #fff7e6;
+      --danger: #b42318;
+      --danger-soft: #fff0ed;
+      --code: #eef2f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "Malgun Gothic", AppleSDGothicNeo, sans-serif;
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    header {
+      margin-bottom: 22px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 22px 0;
+    }
+
+    .summary-item,
+    section,
+    .system-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .summary-item {
+      padding: 16px;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 21px;
+    }
+
+    .summary-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    section {
+      margin-top: 18px;
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .section-body { padding: 18px 20px 20px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .system-card {
+      padding: 16px;
+      min-height: 170px;
+    }
+
+    .system-card h3 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .done { color: var(--accent); background: var(--accent-soft); }
+    .proto { color: var(--blue); background: var(--blue-soft); }
+    .debt { color: var(--warn); background: var(--warn-soft); }
+    .gap { color: var(--danger); background: var(--danger-soft); }
+
+    p { margin: 0 0 12px; }
+    p:last-child { margin-bottom: 0; }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+
+    li { margin: 5px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      background: #fbfcfe;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: var(--code);
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      min-height: 116px;
+    }
+
+    .flow-step strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .flow-step span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .note {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .muted { color: var(--muted); }
+
+    @media (max-width: 900px) {
+      .summary,
+      .grid,
+      .flow { grid-template-columns: 1fr; }
+
+      main {
+        width: min(100% - 24px, 1160px);
+        padding-top: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>HubToHome 현재 구현 현황 지도</h1>
+    <p class="subtitle">기준: 2026-05-24 KST, 현재 로컬 프로젝트의 <code>Assets/_Game</code>, <code>AIAssets</code>, Unity Build Settings 확인 결과</p>
+  </header>
+
+  <div class="summary">
+    <div class="summary-item">
+      <strong>4</strong>
+      <span>빌드 등록 씬: Title, Intro, Overworld, Battle</span>
+    </div>
+    <div class="summary-item">
+      <strong>72</strong>
+      <span><code>Assets/_Game</code> 안의 C# 스크립트</span>
+    </div>
+    <div class="summary-item">
+      <strong>21</strong>
+      <span>게임 전용 prefab</span>
+    </div>
+    <div class="summary-item">
+      <strong>19</strong>
+      <span>게임 데이터 asset</span>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>한줄 판단</h2>
+      <span class="tag proto">Vertical Slice</span>
+    </div>
+    <div class="section-body">
+      <p class="note">
+        이 프로젝트는 단순 전투 테스트가 아니라, <strong>타이틀 -> 인트로/이름 입력 -> 오버월드 -> 대화/접촉 조우 -> 전투 -> 복귀</strong>까지
+        첫 번째 플레이어블 루프가 붙어 있는 상태입니다. 다만 저장 복구, 전투 정책 분리, 데이터 검증, 상태이상/아이템 마감은 아직 기반 공사가 더 필요합니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>현재 플레이 루프</h2>
+      <span class="tag proto">Playable Path</span>
+    </div>
+    <div class="section-body">
+      <div class="flow">
+        <div class="flow-step">
+          <strong>1. Title</strong>
+          <span><code>TitleMenuManager</code>가 새 게임, Continue, Settings, Quit 메뉴를 다룹니다.</span>
+        </div>
+        <div class="flow-step">
+          <strong>2. Intro / Dialogue</strong>
+          <span><code>IntroManager</code>, <code>DialogueManager</code>, <code>NameInputUI</code>로 초반 대사와 이름 입력이 연결됩니다.</span>
+        </div>
+        <div class="flow-step">
+          <strong>3. Overworld</strong>
+          <span><code>PlayerController</code>, 상호작용, NPC 대화, 순찰 적 접촉 조우가 존재합니다.</span>
+        </div>
+        <div class="flow-step">
+          <strong>4. Battle</strong>
+          <span><code>BattleManager</code>가 전용 배틀 씬/심리스 전투, 턴, QTE, 승패 복귀를 처리합니다.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>구현된 시스템</h2>
+      <span class="tag done">Current Features</span>
+    </div>
+    <div class="section-body">
+      <div class="grid">
+        <article class="system-card">
+          <h3>코어 부트스트랩/전역 서비스 <span class="tag done">구현됨</span></h3>
+          <p><code>GameBootstrap</code>와 CoreSettings prefab 계층이 있고, 오디오, UI, 씬 로더, 전역 데이터, 플래그, 오브젝트 풀을 전역 서비스로 씁니다.</p>
+          <ul>
+            <li><code>AudioManager</code>, <code>SceneLoader</code>, <code>UIManager</code></li>
+            <li><code>GlobalDataManager</code>, <code>GameFlagManager</code>, <code>ObjectPoolManager</code></li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>설정/입력 계층 <span class="tag proto">사용 가능</span></h3>
+          <p>설정 저장과 즉시 적용은 <code>GameConfigManager</code>, 실제 입력 파사드는 <code>GameInput</code>, 화면 UI는 <code>ConfigPanelUI</code>가 맡습니다.</p>
+          <ul>
+            <li>볼륨, 언어, 텍스트 속도, 자동 진행, 흔들림, 전체화면, VSync, FPS</li>
+            <li>키 리바인딩과 설정 패널 내 키 캡처</li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>현지화/대화 <span class="tag proto">부분 구현</span></h3>
+          <p><code>LocalizationManager</code>와 CSV 테이블이 있고, 대화 데이터는 ScriptableObject 기반입니다. 대화 스타일은 오버월드/시네마틱으로 나뉩니다.</p>
+          <ul>
+            <li><code>DialogueData</code>, <code>SpeakerData</code>, <code>DialogueUI</code></li>
+            <li>선택지 분기와 선택지 기반 전투 진입</li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>오버월드 조작/상호작용 <span class="tag proto">프로토타입</span></h3>
+          <p>플레이어 이동, Y축 sorting, 상호작용 인터페이스, 저장 포인트, 지역 트리거, 대화형 전투 NPC, 순찰 적이 들어가 있습니다.</p>
+          <ul>
+            <li><code>PlayerController</code>, <code>InteractionSystem</code>, <code>SavePoint</code></li>
+            <li><code>AreaTrigger</code>, <code>DialogueBattleNPC</code>, <code>OverworldEnemy</code></li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>전투 진입 파이프라인 <span class="tag done">좋은 방향</span></h3>
+          <p><code>BattleEncounterService</code>가 오버월드 접촉, 대화 선택지, 전용 BattleScene 로드를 한 경로로 모읍니다.</p>
+          <ul>
+            <li>적 목록, BGM, 복귀 씬, 조우 ID 전달</li>
+            <li>심리스 전투와 전용 배틀 씬 전투 모두 고려</li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>턴제 전투 <span class="tag proto">핵심 구현</span></h3>
+          <p><code>BattleManager</code>가 파티/적 생성, 턴 큐, 메뉴 선택, 기본 공격, 스킬, 아이템, 도주, 승패 처리를 담당합니다.</p>
+          <ul>
+            <li>속도 기반 턴 큐와 visible turn queue</li>
+            <li>MP 회복, 데미지 이벤트, 나레이션 이벤트</li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>스킬 타임라인 <span class="tag done">강점</span></h3>
+          <p><code>SkillData</code>가 ActionTimeline을 들고, <code>SkillActionBlock</code> 파생 블록으로 이동, 애니메이션, 데미지, QTE, VFX, 방어창, 투사체, 연속 근접을 조립합니다.</p>
+          <ul>
+            <li><code>Action_Move</code>, <code>Action_PlayAnim</code>, <code>Action_Damage</code></li>
+            <li><code>Action_DefenseWindow</code>, <code>Action_Projectile</code>, <code>Action_SequentialMelee</code></li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>패링/회피/점프 방어 <span class="tag proto">구현 중</span></h3>
+          <p>33원정대식 반응 방어를 목표로 <code>QTEManager</code>, <code>GameInput</code>, <code>Action_DefenseWindow</code>, <code>PlayerController</code>가 연결되어 있습니다.</p>
+          <ul>
+            <li>Z/X/C 기반 방어 입력 fallback</li>
+            <li>전조 VFX, 입력 판정 창, 성공 시 데미지 무효 흐름</li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>캐릭터/스탯/상태이상 <span class="tag proto">기반 있음</span></h3>
+          <p><code>CharacterBase</code>를 중심으로 플레이어/적이 나뉘고, HP/MP/ATK/DEF/SPD, 원소 타입, 다수 상태이상 클래스가 있습니다.</p>
+          <ul>
+            <li><code>PlayerCharacter</code>, <code>EnemyCharacter</code>, <code>AllyCharacter</code></li>
+            <li>Burn, Freeze, Bleed, Poison, Bind, Stun, Berserk, StatModifier 등</li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>전투 UI/나레이션 <span class="tag proto">꽤 진행됨</span></h3>
+          <p>전투 메뉴, 서브메뉴, 파티 슬롯, 턴 초상화, 방어 QTE UI, 전투 나레이션, 말풍선 규칙이 분리되어 있습니다.</p>
+          <ul>
+            <li><code>BattleUIController</code>, <code>BattleMenuUI</code>, <code>BattleSubMenu</code></li>
+            <li><code>BattleNarrationUI</code>, <code>BattleSpeechBubble</code></li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>아이템/인벤토리 <span class="tag debt">초기 기반</span></h3>
+          <p><code>ItemData</code>와 <code>InventoryManager</code>가 있으나, 상태이상 적용과 전투 아이템 정책은 아직 문자열 분기 의존이 큽니다.</p>
+          <ul>
+            <li>소모품, 키아이템, 장비 타입</li>
+            <li>HP/MP 회복, 데미지, 상태이상 적용 설계 흔적</li>
+          </ul>
+        </article>
+
+        <article class="system-card">
+          <h3>연출/VFX/카메라 <span class="tag proto">구현 있음</span></h3>
+          <p>텔레그래프 VFX, 캐릭터 피격/잔상 효과, 자동 despawn, 배경 관리, 전투 카메라 임팩트가 들어가 있습니다.</p>
+          <ul>
+            <li><code>CharacterVFX</code>, <code>CharacterGhostTrail</code>, <code>VFXAutoDespawn</code></li>
+            <li>Cinemachine, Pixel Perfect Camera, PostProcess Battle profile</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>씬 구성</h2>
+      <span class="tag proto">Build Settings</span>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Build Index</th>
+            <th>Scene</th>
+            <th>역할</th>
+            <th>현재 판단</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>0</td>
+            <td><code>00_TitleScene</code></td>
+            <td>타이틀 메뉴, 설정 패널 진입, 새 게임 시작</td>
+            <td><span class="tag proto">Continue 미완</span></td>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td><code>01_IntroScene</code></td>
+            <td>인트로/대화/이름 입력 흐름</td>
+            <td><span class="tag proto">초반 루프</span></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><code>OverworldScene</code></td>
+            <td>플레이어 이동, NPC/적 조우, 맵 이벤트</td>
+            <td><span class="tag proto">조우 테스트 가능</span></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><code>BattleScene</code></td>
+            <td>전용 전투 화면, Battle UI, QTE, 전투 포지션, 카메라</td>
+            <td><span class="tag done">현재 열려 있음</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>현재 BattleScene 루트</h2>
+      <span class="tag done">Unity MCP 확인</span>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Root</th>
+            <th>주요 컴포넌트</th>
+            <th>역할</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>[Manager]</code></td>
+            <td><code>BattleManager</code>, <code>QTEManager</code>, <code>PositionManager</code>, <code>CinemachineImpulseSource</code></td>
+            <td>전투 실행/판정/위치/임팩트 중심</td>
+          </tr>
+          <tr>
+            <td><code>[BackGround]</code></td>
+            <td><code>BackgroundManager</code></td>
+            <td>전투 배경 표시</td>
+          </tr>
+          <tr>
+            <td><code>[BattlePositions]</code></td>
+            <td><code>Transform</code> anchors</td>
+            <td>플레이어/적/중앙/공격 위치 기준점</td>
+          </tr>
+          <tr>
+            <td><code>BattleScenePostProcess</code></td>
+            <td><code>Volume</code></td>
+            <td>전투 후처리 프로파일</td>
+          </tr>
+          <tr>
+            <td><code>[BattleUI]</code></td>
+            <td><code>Canvas</code>, <code>CanvasScaler</code>, <code>GraphicRaycaster</code></td>
+            <td>전투 메뉴와 HUD</td>
+          </tr>
+          <tr>
+            <td><code>[Camera]</code></td>
+            <td><code>CinemachineImpulseSource</code>, 하위 <code>PPC</code>, <code>CinemachineCamera</code></td>
+            <td>Pixel Perfect 실제 카메라와 Cinemachine 가상 카메라</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>데이터 자산</h2>
+      <span class="tag proto">ScriptableObject</span>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th>영역</th>
+            <th>대표 자산</th>
+            <th>의미</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>스킬</td>
+            <td><code>Skill_ComboSlash</code>, <code>Skill_Crash</code>, <code>Skill_MultiSlash</code></td>
+            <td>아군/공용 스킬 타임라인 샘플</td>
+          </tr>
+          <tr>
+            <td>적 ZEV</td>
+            <td><code>Enemy_ZEV</code>, <code>Skil_Zev</code>, <code>Skill_BlinkSlash</code>, <code>Skill_GaleRush</code>, <code>Skill_PhantomArc</code></td>
+            <td>적 데이터와 적 전용 공격/방어 반응 스킬</td>
+          </tr>
+          <tr>
+            <td>캐릭터</td>
+            <td><code>PlayerDB</code>, <code>DB_Slime</code></td>
+            <td>플레이어/적 기본 데이터베이스</td>
+          </tr>
+          <tr>
+            <td>대화</td>
+            <td><code>Intro1</code>, <code>Intro2</code>, <code>SampleDialogue</code></td>
+            <td>인트로와 샘플 이벤트 대화</td>
+          </tr>
+          <tr>
+            <td>전투 문장</td>
+            <td><code>BattleNarrationConfig_Default</code></td>
+            <td>전투 메시지와 flavor narration 규칙</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>이미 보이는 미완성 연결부</h2>
+      <span class="tag debt">다음 분석 후보</span>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th>우선도</th>
+            <th>영역</th>
+            <th>현재 상태</th>
+            <th>시니어가 해줄 만한 일</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag gap">높음</span></td>
+            <td>저장/이어하기</td>
+            <td><code>SaveManager</code>는 슬롯 파일 저장/로드가 있으나, 타이틀 Continue는 아직 실질 로드 루프와 약하게 연결되어 있습니다.</td>
+            <td>저장 슬롯, 마지막 씬, GlobalData 복원, Continue 버튼 정책을 닫기</td>
+          </tr>
+          <tr>
+            <td><span class="tag gap">높음</span></td>
+            <td>BattleManager 비대화</td>
+            <td>전투 진입, 턴, 적 AI, 방어 판정, 연출, 종료가 한 파일에 몰려 있습니다.</td>
+            <td>전투 상태 전이, 적 행동 실행, 방어 판정 정책을 분리</td>
+          </tr>
+          <tr>
+            <td><span class="tag debt">중간</span></td>
+            <td>스킬/방어 데이터 검증</td>
+            <td>데이터 드리븐 구조는 좋지만, 잘못된 블록 조합을 막는 검증 레이어가 없습니다.</td>
+            <td>에디터 검증기, 스킬 타임라인 lint, 전조/판정 누락 경고 추가</td>
+          </tr>
+          <tr>
+            <td><span class="tag debt">중간</span></td>
+            <td>아이템/상태이상</td>
+            <td>상태이상 클래스는 많지만 적용 경로는 문자열 분기 중심입니다.</td>
+            <td>StatusFactory 또는 registry로 전투/아이템 공용 적용 경로 만들기</td>
+          </tr>
+          <tr>
+            <td><span class="tag debt">중간</span></td>
+            <td>전투 카메라/연출</td>
+            <td>기능은 있으나 <code>CameraController</code>가 TMP 예제 폴더에 있고, 픽셀 퍼펙트 전투와 Dutch roll이 충돌할 수 있습니다.</td>
+            <td>first-party 폴더로 이동하고 흔들림 정책/옵션 적용 정리</td>
+          </tr>
+          <tr>
+            <td><span class="tag debt">중간</span></td>
+            <td>설정/현지화 마감</td>
+            <td>설정 시스템은 usable하지만 일부 선택지/메뉴 텍스트는 현지화 파이프라인 밖에 남아 있습니다.</td>
+            <td>문자열 키 체계와 설정 UI 표시 정책 마감</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>시니어 관점의 첫 인상</h2>
+      <span class="tag proto">다음 단계로 이어갈 지점</span>
+    </div>
+    <div class="section-body">
+      <p>
+        주니어가 만든 프로젝트치고는 기능이 꽤 많이 붙어 있습니다. 특히 <code>BattleEncounterService</code>와 <code>SkillActionBlock</code> 계열은 확장 방향이 좋습니다.
+        반대로 위험한 곳은 플레이 루프의 끝부분입니다. 저장 복구, 전투 종료 후 월드 상태, 적 행동/방어 판정의 단일 정책화가 아직 덜 닫혀 있습니다.
+      </p>
+      <p>
+        다음 분석은 "새 기능을 더 붙이기"보다, 이미 있는 수직 슬라이스를 제품화 가능한 기반으로 조이는 쪽이 효율적입니다.
+        특히 저장/전투 정책/데이터 검증을 잡아주면 이후 콘텐츠를 넣을 때 사고가 크게 줄어듭니다.
+      </p>
+    </div>
+  </section>
+</main>
+</body>
+</html>

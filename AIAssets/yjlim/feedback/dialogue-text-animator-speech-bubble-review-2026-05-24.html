@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dialogue Text Animator / Speech Bubble Follow-up</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f4f6f8;
+      color: #1f2933;
+      font-family: "Segoe UI", "Malgun Gothic", AppleSDGothicNeo, sans-serif;
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(960px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    header {
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #d8dee7;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: #667386;
+      font-size: 15px;
+    }
+
+    section {
+      margin-top: 18px;
+      overflow: hidden;
+      border: 1px solid #d8dee7;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      border-bottom: 1px solid #d8dee7;
+      background: #fbfcfe;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 700;
+      background: #e8f7f4;
+      color: #0f766e;
+    }
+
+    .tag.watch {
+      background: #fff7e6;
+      color: #9a5b00;
+    }
+
+    .content {
+      padding: 18px;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin: 4px 0;
+      color: #667386;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef2f6;
+      color: #1e344f;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 0.92em;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Dialogue Text Animator / Speech Bubble Follow-up</h1>
+      <p class="subtitle">
+        2026-05-24 확인 결과. 이전 메모의 "Text Animator 관련 오류 날 만한 것"과 "speech bubble 조건 구현 여부"에 대한 후속 피드백입니다.
+      </p>
+    </header>
+
+    <section>
+      <div class="section-head">
+        <h2>현재 결론</h2>
+        <span class="tag">No immediate fix</span>
+      </div>
+      <div class="content">
+        <p>
+          현재 기준으로는 컴파일 오류나 Unity 콘솔의 게임 코드 오류는 확인되지 않았습니다.
+          <code>DialogueCanvas.prefab</code> 내부의 일반 대사용 Text Animator 구성도 존재합니다.
+        </p>
+        <p>
+          따라서 지금 당장 수정할 항목으로 보기보다는, 실제 플레이 중 텍스트 애니메이션 오류나 말풍선 미출력 증상이 확인되면 그때 재현 기준으로 고치는 쪽이 적절합니다.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>확인된 구성</h2>
+        <span class="tag">Verified</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>Assets/_Game/Features/Dialogue/Prefabs/DialogueCanvas.prefab</code> 안에 <code>OverworldPanel</code>, <code>CinematicPanel</code>, <code>BattleNarrationPanel</code>이 있습니다.</li>
+          <li><code>OverworldPanel/DialogueText</code>, <code>CinematicPanel/DialogueText</code>에는 <code>TypewriterComponent</code>, <code>TextAnimator_TMP</code>, <code>TAnimSoundWriter</code>가 붙어 있습니다.</li>
+          <li>전투 시작, n턴 이상, 적 HP 이하 조건의 전투 내레이션 데이터는 <code>BattleNarrationConfig_Default.asset</code>에 있습니다.</li>
+          <li><code>BattleSpeechBubble</code> 코드는 존재하지만, 현재 검색 기준으로 실제 캐릭터/프리팹 연결은 확인되지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>나중에 증상 발견 시 볼 곳</h2>
+        <span class="tag watch">Watch list</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>대사 타이핑 완료/스킵 이상: <code>Assets/_Game/Presentation/UI/Scripts/DialogueUI.cs</code></li>
+          <li>전투 전/중 하단 내레이션 대기 시간이 이상하게 길 때: <code>Assets/_Game/Presentation/UI/Scripts/BattleNarrationUI.cs</code></li>
+          <li>말풍선이 연결된 뒤 Text Animator 효과가 안 보일 때: <code>Assets/_Game/Presentation/UI/Scripts/BattleUIController.cs</code>의 <code>BattleSpeechBubble.Show()</code>, <code>ResizeToText()</code></li>
+          <li>HP/특정 스킬/n턴 조건 말풍선이 아예 안 뜰 때: 캐릭터 프리팹에 <code>BattleSpeechBubble</code> 컴포넌트와 rule 데이터가 연결되어 있는지 확인해야 합니다.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

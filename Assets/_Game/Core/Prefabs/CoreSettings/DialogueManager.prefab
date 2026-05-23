@@ -77,6 +77,26 @@ PrefabInstance:
       propertyPath: m_fontSize
       value: 72
       objectReference: {fileID: 0}
+    - target: {fileID: 1611557340164344866, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: m_margin.w
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 1611557340164344866, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: m_margin.x
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 1611557340164344866, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: m_margin.y
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 1611557340164344866, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: m_margin.z
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 3184220686571562415, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
+      propertyPath: m_MatchWidthOrHeight
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4376838518629126696, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
       propertyPath: m_RenderMode
       value: 0

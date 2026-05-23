@@ -23,8 +23,9 @@ public class BattleSubMenu : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _descriptionText;
 
     [Header("Animation Settings")]
-    [SerializeField] private float _showY = 150f;
-    [SerializeField] private float _hideY = -200f;
+    [SerializeField] private float _showOffsetY = 130f;
+    [SerializeField, HideInInspector] private float _showY = 150f;
+    [SerializeField, HideInInspector] private float _hideY = -200f;
     [SerializeField] private float _slideDuration = 0.25f;
 
     [Header("Style Settings")]
@@ -43,11 +44,16 @@ public class BattleSubMenu : MonoBehaviour
 
     public bool IsActive { get; private set; }
     private bool _isAnimating = false;
+    private float _hiddenY;
+    private float _shownY;
 
     private void Awake()
     {
         if (_rectTransform == null) _rectTransform = GetComponent<RectTransform>();
-        _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _hideY);
+
+        _hiddenY = _rectTransform.anchoredPosition.y;
+        _shownY = _hiddenY + ResolveShowOffsetY();
+        _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _hiddenY);
     }
 
     private void Update()
@@ -184,16 +190,25 @@ public class BattleSubMenu : MonoBehaviour
     {
         _isAnimating = true;
         _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_showY, _slideDuration).SetEase(Ease.OutCubic).OnComplete(() => _isAnimating = false);
+        _rectTransform.DOAnchorPosY(_shownY, _slideDuration).SetEase(Ease.OutCubic).OnComplete(() => _isAnimating = false);
     }
 
     private void PlaySlideOut(System.Action onComplete)
     {
         _isAnimating = true;
         _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_hideY, _slideDuration).SetEase(Ease.InCubic).OnComplete(() => {
+        _rectTransform.DOAnchorPosY(_hiddenY, _slideDuration).SetEase(Ease.InCubic).OnComplete(() => {
             _isAnimating = false;
             onComplete?.Invoke();
         });
+    }
+
+    private float ResolveShowOffsetY()
+    {
+        if (Mathf.Abs(_showOffsetY) > 0.01f)
+            return _showOffsetY;
+
+        float legacyOffset = _showY - _hideY;
+        return Mathf.Abs(legacyOffset) > 0.01f ? legacyOffset : 130f;
     }
 }

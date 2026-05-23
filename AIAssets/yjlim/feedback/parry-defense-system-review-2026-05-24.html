@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HubToHome 패링/회피/점프 방어 시스템 리뷰</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #1f2933;
+      --muted: #667386;
+      --line: #d8dee7;
+      --accent: #0f766e;
+      --accent-soft: #e8f7f4;
+      --danger: #b42318;
+      --danger-soft: #fff0ed;
+      --warn: #9a5b00;
+      --warn-soft: #fff7e6;
+      --info: #1d4ed8;
+      --info-soft: #eaf1ff;
+      --code: #eef2f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "Malgun Gothic", AppleSDGothicNeo, sans-serif;
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    header {
+      margin-bottom: 22px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 22px 0;
+    }
+
+    .summary-item,
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .summary-item {
+      padding: 16px;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .summary-item span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    section {
+      margin-top: 18px;
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .p1 { background: var(--danger-soft); color: var(--danger); }
+    .p2 { background: var(--warn-soft); color: var(--warn); }
+    .p3 { background: var(--info-soft); color: var(--info); }
+    .ok { background: var(--accent-soft); color: var(--accent); }
+
+    .content {
+      padding: 20px;
+    }
+
+    .finding {
+      margin: 0 0 10px;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin: 4px 0;
+      color: var(--muted);
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: var(--code);
+      color: #1e344f;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    .evidence {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .evidence strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .evidence ul {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 18px;
+    }
+
+    .note {
+      margin-top: 22px;
+      padding: 16px 18px;
+      border: 1px solid #b7d8d1;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: #0f4f49;
+      font-size: 14px;
+    }
+
+    .decision {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-left: 4px solid var(--accent);
+      background: #f7fbfa;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        width: min(100% - 24px, 1120px);
+        padding-top: 24px;
+      }
+
+      .summary,
+      .evidence ul {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>패링/회피/점프 방어 시스템 리뷰</h1>
+      <p class="subtitle">
+        목적: 33원정대식 "예고 → 짧은 반응창 → 성공 보상 / 실패 피격" 감각을 기준으로 현재 SkillData 기반 방어 구조를 검토했습니다.
+        이 문서는 의견 정리용이며 코드 수정은 포함하지 않습니다.
+      </p>
+    </header>
+
+    <div class="summary" aria-label="요약">
+      <div class="summary-item">
+        <strong>현재 방향</strong>
+        <span><code>SkillData.ActionTimeline</code>과 <code>Action_DefenseWindow</code> 구조는 목표한 전투 감각을 만들기 좋은 출발점입니다.</span>
+      </div>
+      <div class="summary-item">
+        <strong>가장 큰 위험</strong>
+        <span>성공 방어 후에도 일부 공격 블록에서 최소 1 데미지가 들어갈 수 있습니다.</span>
+      </div>
+      <div class="summary-item">
+        <strong>우선 정리 대상</strong>
+        <span>예고 시간, 입력창 시간, 요구 입력, 성공/실패 결과를 하나의 계약으로 통일해야 합니다.</span>
+      </div>
+    </div>
+
+    <section>
+      <div class="section-head">
+        <h2>1. 성공 방어 후 최소 1 데미지 가능성</h2>
+        <span class="tag p1">P1</span>
+      </div>
+      <div class="content">
+        <p class="finding">성공 방어가 일부 스킬 블록에서 완전 무효화되지 않을 수 있습니다.</p>
+        <p>
+          <code>Action_DefenseWindow</code>는 성공 시 <code>CurrentDamageMultiplier = 0f</code>로 만듭니다.
+          하지만 <code>Action_Projectile</code>과 <code>Action_SequentialMelee</code>는 0으로 계산된 데미지를 그대로
+          <code>TakeDamage()</code>에 넘깁니다. <code>CharacterBase.TakeDamage()</code>는 최종 데미지를 최소 1로 보정하므로,
+          플레이어 입장에서는 "패링/회피/점프 성공했는데 1 데미지"처럼 보일 수 있습니다.
+        </p>
+        <div class="decision">
+          추천 방향: 모든 공격 블록이 <code>CurrentDamageMultiplier &lt;= 0</code>일 때 데미지 호출 자체를 건너뛰도록 계약을 맞추는 것이 좋습니다.
+        </div>
+        <div class="evidence">
+          <strong>확인 위치</strong>
+          <ul>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:426</code></li>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:505</code></li>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:561</code></li>
+            <li><code>Assets/_Game/Features/Characters/Scripts/CharacterBase.cs:135</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>2. TelegraphThenNextTurnWindow 모드의 함정</h2>
+        <span class="tag p1">P1</span>
+      </div>
+      <div class="content">
+        <p class="finding">현재 모드 2는 "이번 턴 예고만"이라는 이름과 다르게 뒤 블록이 계속 실행될 수 있습니다.</p>
+        <p>
+          <code>Action_DefenseWindow</code>가 <code>TelegraphThenNextTurnWindow</code>일 때는 예고를 보여주고 자기 블록만 종료합니다.
+          하지만 <code>BattleManager.ExecuteEnemySequenceSkill()</code>은 다음 타임라인 블록을 계속 실행합니다.
+          따라서 뒤에 <code>Action_Damage</code>가 있으면 "예고만 해야 하는 턴에 데미지까지 들어가는" 상태가 될 수 있습니다.
+        </p>
+        <p>
+          현재 ZEV 관련 에셋들은 <code>PatternMode: 0</code>이라 즉시 문제는 아닙니다.
+          다만 담당자가 모드 2를 선택하는 순간 재현될 수 있는 구조적 함정입니다.
+        </p>
+        <div class="decision">
+          추천 방향: 모드 2를 유지하려면 타임라인 전체 중단 플래그를 명시하거나, 예고용 블록과 실제 판정 블록을 분리하는 쪽이 안전합니다.
+        </div>
+        <div class="evidence">
+          <strong>확인 위치</strong>
+          <ul>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:375</code></li>
+            <li><code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs:613</code></li>
+            <li><code>Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Skil_Zev.asset:57</code></li>
+            <li><code>Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Skill_ComboSlash.asset:104</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>3. 예고 시간과 입력창 시간의 의미 불일치</h2>
+        <span class="tag p2">P2</span>
+      </div>
+      <div class="content">
+        <p class="finding">에셋 설정은 "예고 후 입력창"처럼 보이지만, 코드에서는 예고 VFX와 입력창이 거의 동시에 열립니다.</p>
+        <p>
+          현재 일반 모드에서는 <code>DefenseOpenDelay</code>만큼 먼저 기다린 뒤 <code>SpawnTelegraph()</code>와
+          <code>StartDefenseQTE()</code>를 시작합니다. 반면 <code>TelegraphDuration</code>은 모드 2가 아니면 사실상 의미가 약합니다.
+          담당자가 에셋에서 <code>TelegraphDuration</code>, <code>DefenseOpenDelay</code>, <code>TimeWindow</code>를 나눠 넣어도
+          실제 체감은 기대와 다를 수 있습니다.
+        </p>
+        <div class="decision">
+          추천 방향: 용어를 <code>WarningDuration</code>, <code>InputOpenDelay</code>, <code>InputWindow</code>처럼 분리하고,
+          인스펙터 설명도 "언제 보이고 언제 판정되는지" 기준으로 바꾸는 것이 좋습니다.
+        </div>
+        <div class="evidence">
+          <strong>확인 위치</strong>
+          <ul>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:390</code></li>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:396</code></li>
+            <li><code>Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Skil_Zev.asset:65</code></li>
+            <li><code>Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Skill_Crash.asset:67</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>4. 기본 공격은 입력 종류를 검사하지 않음</h2>
+        <span class="tag p2">P2</span>
+      </div>
+      <div class="content">
+        <p class="finding">기본 적 공격은 타이밍만 맞으면 패링/회피/점프 어느 입력이든 성공 처리됩니다.</p>
+        <p>
+          스킬 쪽은 <code>Action_DefenseWindow.IsMatch()</code>에서 요구 입력을 검사합니다.
+          하지만 기본 근접 공격 경로는 <code>finalGrade == Miss</code>만 실패로 보고, 그 외 입력은 모두 성공 처리합니다.
+          33원정대식 감각을 목표로 한다면 공격별 요구 행동이 있어야 합니다.
+        </p>
+        <div class="decision">
+          추천 방향: 기본 공격도 <code>EnemyAttackType</code>이나 별도 <code>DefenseRequirement</code>를 통해 요구 입력을 검사하도록 맞추는 것이 좋습니다.
+        </div>
+        <div class="evidence">
+          <strong>확인 위치</strong>
+          <ul>
+            <li><code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs:1114</code></li>
+            <li><code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs:1125</code></li>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:451</code></li>
+            <li><code>Assets/_Game/Features/Battle/Scripts/BattleStateMachine.cs:42</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>5. 입력 표기 불일치</h2>
+        <span class="tag p2">P2</span>
+      </div>
+      <div class="content">
+        <p class="finding">실제 키 매핑과 주석/문서가 어긋나 있습니다.</p>
+        <p>
+          실제 입력은 <code>GameInput</code> 기준 <code>Z = Parry</code>, <code>X = Dodge</code>, <code>C = Jump</code>입니다.
+          그런데 <code>BattleStateMachine</code> 주석에는 회피가 C, 점프가 Space로 적혀 있습니다.
+          담당자가 주석을 믿고 에셋이나 UI 문구를 만들면 테스트가 헷갈릴 수 있습니다.
+        </p>
+        <div class="decision">
+          추천 방향: 현재 결정이 <code>Z / X / C</code>라면 enum 주석, UI 라벨, 기획 문서, QTE 설명을 같은 표기로 통일해야 합니다.
+        </div>
+        <div class="evidence">
+          <strong>확인 위치</strong>
+          <ul>
+            <li><code>Assets/_Game/Core/Scripts/GameInput.cs:162</code></li>
+            <li><code>Assets/_Game/Core/Scripts/GameInput.cs:177</code></li>
+            <li><code>Assets/_Game/Features/Battle/Scripts/BattleStateMachine.cs:34</code></li>
+            <li><code>Assets/_Game/Presentation/UI/Scripts/QTEManager.cs:134</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>6. QTE 등급 활용이 약함</h2>
+        <span class="tag p3">P3</span>
+      </div>
+      <div class="content">
+        <p class="finding">Perfect, Great, Good, Bad를 계산하지만 결과 차이는 거의 없습니다.</p>
+        <p>
+          <code>QTEManager</code>는 등급을 계산합니다. 하지만 현재 스킬 방어는 <code>Miss</code>만 아니면 성공이고,
+          차이는 Perfect Parry의 MP 회복 정도입니다. 손맛을 더 만들려면 등급별로 보상과 리스크를 나눌 여지가 있습니다.
+        </p>
+        <div class="decision">
+          추천 방향: 예를 들어 Perfect Parry는 MP 회복과 반격 기회, Great/Good은 무효화, Bad는 피해 경감 정도로 구분하면 반응형 전투 감각이 살아납니다.
+        </div>
+        <div class="evidence">
+          <strong>확인 위치</strong>
+          <ul>
+            <li><code>Assets/_Game/Presentation/UI/Scripts/QTEManager.cs:82</code></li>
+            <li><code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs:422</code></li>
+            <li><code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs:1126</code></li>
+            <li><code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs:1128</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>콘솔 메시지 확인</h2>
+        <span class="tag ok">MCP</span>
+      </div>
+      <div class="content">
+        <p>
+          현재 콘솔의 실제 Error는 게임 코드가 아니라 <code>Packages/com.coplaydev.unity-mcp</code> 쪽 메시지입니다.
+          내용은 <code>MCP-FOR-UNITY: Client handler error: Cannot access a disposed object.</code>였습니다.
+        </p>
+        <p>
+          C# 프로젝트 진단은 에러/경고 0개였고, <code>SkillActionBlocks.cs</code>, <code>QTEManager.cs</code> 검증도 깨끗했습니다.
+          이 메시지는 MCP 클라이언트 핸들러 수명 문제로 보이며, 패링 시스템의 런타임 버그로 보지는 않습니다.
+        </p>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>담당자에게 제안하는 다음 액션:</strong>
+      먼저 데미지 무효화 계약과 모드 2 동작을 정리한 뒤, 기본 공격과 스킬 공격이 같은 방어 판정 로직을 쓰도록 통합하는 것을 추천합니다.
+      그 다음에 33원정대식 손맛을 위해 등급별 보상과 타이밍 값을 튜닝하는 순서가 좋습니다.
+    </div>
+  </main>
+</body>
+</html>

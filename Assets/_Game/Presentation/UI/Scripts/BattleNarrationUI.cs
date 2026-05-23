@@ -10,6 +10,11 @@ using UnityEngine.SceneManagement;
 public class BattleNarrationUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI _messageText;
+    [SerializeField] private RectTransform _bubbleBackground;
+    [SerializeField] private Vector2 _bubblePadding = new Vector2(72f, 48f);
+    [SerializeField] private Vector2 _minBubbleSize = new Vector2(240f, 96f);
+    [SerializeField] private float _maxBubbleWidthRatio = 0.5f;
+    [SerializeField] private float _maxBubbleHeightRatio = 0.35f;
     [SerializeField] private float _typeInterval = 0.008f;
     [SerializeField] private float _defaultHoldDuration = 0.12f;
     [SerializeField] private int _maxQueueCount = 20;
@@ -31,6 +36,7 @@ public class BattleNarrationUI : MonoBehaviour
     {
         _canvasGroup = GetComponent<CanvasGroup>();
         if (_messageText == null) _messageText = GetComponentInChildren<TextMeshProUGUI>(true);
+        if (_bubbleBackground == null) _bubbleBackground = FindChildRect("Backg");
         HideImmediate();
     }
 
@@ -85,6 +91,7 @@ public class BattleNarrationUI : MonoBehaviour
         _messageText.color = Color.white;
         _messageText.text = msg.Text;
         _messageText.maxVisibleCharacters = 0;
+        ResizeBubbleToText(msg.Text);
         _messageText.ForceMeshUpdate();
 
         int total = _messageText.textInfo.characterCount;
@@ -160,6 +167,49 @@ public class BattleNarrationUI : MonoBehaviour
             _sb.Append(_rollingLines[i]);
         }
         _messageText.text = _sb.ToString();
+    }
+
+    private void ResizeBubbleToText(string text)
+    {
+        if (_messageText == null || _bubbleBackground == null || string.IsNullOrWhiteSpace(text))
+            return;
+
+        RectTransform canvasRect = GetComponentInParent<Canvas>()?.transform as RectTransform;
+        float canvasWidth = canvasRect != null && canvasRect.rect.width > 1f ? canvasRect.rect.width : Screen.width;
+        float canvasHeight = canvasRect != null && canvasRect.rect.height > 1f ? canvasRect.rect.height : Screen.height;
+
+        float maxWidth = Mathf.Max(_minBubbleSize.x, canvasWidth * Mathf.Clamp01(_maxBubbleWidthRatio));
+        float maxHeight = Mathf.Max(_minBubbleSize.y, canvasHeight * Mathf.Clamp01(_maxBubbleHeightRatio));
+        float textMaxWidth = Mathf.Max(1f, maxWidth - _bubblePadding.x);
+        float textMaxHeight = Mathf.Max(1f, maxHeight - _bubblePadding.y);
+
+        Vector2 preferred = _messageText.GetPreferredValues(text, textMaxWidth, textMaxHeight);
+        Vector2 bubbleSize = new Vector2(
+            Mathf.Clamp(preferred.x + _bubblePadding.x, _minBubbleSize.x, maxWidth),
+            Mathf.Clamp(preferred.y + _bubblePadding.y, _minBubbleSize.y, maxHeight));
+
+        _bubbleBackground.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, bubbleSize.x);
+        _bubbleBackground.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, bubbleSize.y);
+
+        RectTransform textRect = _messageText.rectTransform;
+        textRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Max(1f, bubbleSize.x - _bubblePadding.x));
+        textRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(1f, bubbleSize.y - _bubblePadding.y));
+        textRect.anchoredPosition = Vector2.zero;
+
+        Canvas.ForceUpdateCanvases();
+    }
+
+    private RectTransform FindChildRect(string childName)
+    {
+        RectTransform[] rects = GetComponentsInChildren<RectTransform>(true);
+        for (int i = 0; i < rects.Length; i++)
+        {
+            RectTransform rect = rects[i];
+            if (rect != null && rect != transform && rect.name == childName)
+                return rect;
+        }
+
+        return null;
     }
 
     public static BattleNarrationUI FindInActiveScene()

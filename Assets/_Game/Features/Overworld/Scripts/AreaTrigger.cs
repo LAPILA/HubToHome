@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Sirenix.OdinInspector;
 
 [RequireComponent(typeof(Collider2D))]
-public class AreaTrigger : MonoBehaviour
+public class AreaTrigger : MonoBehaviour, IEncounterSource
 {
     public enum TriggerType { SceneTransition, AutoEvent, BattleEncounter, SceneBattleEncounter }
 
@@ -43,10 +43,22 @@ public class AreaTrigger : MonoBehaviour
     public float EncounterDelay = 0.08f;
     [BoxGroup("Battle Encounter")]
     public float BattleFadeDuration = 0.08f;
+    [BoxGroup("Battle Encounter")]
+    public float PostBattleGraceDuration = 1f;
+    [BoxGroup("Battle Encounter")]
+    public float PostBattleNudgeDistance = 0.35f;
 
     private bool _isProcessing = false;
+    private Collider2D _collider;
+    private float _localEncounterBlockedUntil;
+    private bool _waitForPlayerExitBeforeRearm;
+    private PlayerController _pendingRearmPlayer;
 
-    private void Awake() { GetComponent<Collider2D>().isTrigger = true; }
+    private void Awake()
+    {
+        _collider = GetComponent<Collider2D>();
+        _collider.isTrigger = true;
+    }
 
     private void Start()
     {
@@ -61,10 +73,27 @@ public class AreaTrigger : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        RefreshEncounterExitWait();
+        if (IsBattleTrigger())
+        {
+            if (EncounterCollisionGuard.IsGloballyBlocked) return;
+            if (Time.unscaledTime < _localEncounterBlockedUntil) return;
+            if (_waitForPlayerExitBeforeRearm) return;
+        }
         if (_isProcessing || !other.CompareTag("Player")) return;
         _isProcessing = true;
 
         ExecuteTrigger(other.GetComponent<PlayerController>());
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (!_waitForPlayerExitBeforeRearm) return;
+        if (!other.CompareTag("Player")) return;
+
+        PlayerController player = other.GetComponent<PlayerController>() ?? _pendingRearmPlayer;
+        if (player == null || !EncounterCollisionGuard.IsPlayerOverlapping(_collider, player))
+            ClearExitWaitAndRearm();
     }
 
     private void ExecuteTrigger(PlayerController player)
@@ -108,8 +137,14 @@ public class AreaTrigger : MonoBehaviour
     private void HandleBattle(PlayerController player)
     {
         AudioManager.Instance?.PlaySFX(EncounterSFX);
-        bool started = BattleEncounterService.StartEncounter(player, EncounterEnemies, ResolveBattleBGM(EncounterEnemies));
-        if (started && DestroyOnVictory) Destroy(gameObject);
+        bool started = BattleEncounterService.StartEncounter(
+            player,
+            EncounterEnemies,
+            ResolveBattleBGM(EncounterEnemies),
+            encounterSource: this);
+
+        if (!started)
+            _isProcessing = false;
     }
 
     private System.Collections.IEnumerator LoadBattleSceneAfterDelay(PlayerController player)
@@ -124,6 +159,57 @@ public class AreaTrigger : MonoBehaviour
             true,
             "BattleScene",
             BattleFadeDuration);
+    }
+
+    public void OnEncounterResolved(bool victory, PlayerController player)
+    {
+        _pendingRearmPlayer = player;
+        EncounterCollisionGuard.BlockAll(PostBattleGraceDuration);
+        _localEncounterBlockedUntil = Time.unscaledTime + Mathf.Max(0f, PostBattleGraceDuration);
+        EncounterCollisionGuard.NudgePlayerOutOf(_collider, player, PostBattleNudgeDistance);
+        _waitForPlayerExitBeforeRearm = EncounterCollisionGuard.IsPlayerOverlapping(_collider, player);
+
+        if (victory && DestroyOnVictory)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        if (_waitForPlayerExitBeforeRearm || Time.unscaledTime < _localEncounterBlockedUntil)
+            StartCoroutine(CoRearmWhenSafe());
+        else
+            _isProcessing = false;
+    }
+
+    private System.Collections.IEnumerator CoRearmWhenSafe()
+    {
+        while (Time.unscaledTime < _localEncounterBlockedUntil
+            || (_pendingRearmPlayer != null && EncounterCollisionGuard.IsPlayerOverlapping(_collider, _pendingRearmPlayer)))
+        {
+            yield return null;
+        }
+
+        ClearExitWaitAndRearm();
+    }
+
+    private void RefreshEncounterExitWait()
+    {
+        if (!_waitForPlayerExitBeforeRearm) return;
+        if (_pendingRearmPlayer == null || !EncounterCollisionGuard.IsPlayerOverlapping(_collider, _pendingRearmPlayer))
+            ClearExitWaitAndRearm();
+    }
+
+    private void ClearExitWaitAndRearm()
+    {
+        _waitForPlayerExitBeforeRearm = false;
+        _pendingRearmPlayer = null;
+        if (Time.unscaledTime >= _localEncounterBlockedUntil)
+            _isProcessing = false;
+    }
+
+    private bool IsBattleTrigger()
+    {
+        return Type == TriggerType.BattleEncounter || Type == TriggerType.SceneBattleEncounter;
     }
 
     private static AudioClip ResolveBattleBGM(List<EnemyData> enemies)

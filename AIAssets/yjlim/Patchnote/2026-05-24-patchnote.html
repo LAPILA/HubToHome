@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HubToHome 패치노트 - 2026-05-24</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111318;
+      --panel: #1a1f29;
+      --panel-2: #202633;
+      --text: #edf1f7;
+      --muted: #aeb8c9;
+      --line: #303849;
+      --accent: #7dd3fc;
+      --good: #8ef6b0;
+      --warn: #ffd37a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Noto Sans KR", sans-serif;
+      line-height: 1.65;
+    }
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 48px 0 64px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 18px 0;
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--line);
+      padding: 16px 18px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    .tag {
+      color: #0d141b;
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .content { padding: 18px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .box {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--good);
+    }
+    p { margin: 0 0 10px; }
+    ul { margin: 0; padding-left: 20px; }
+    code {
+      color: #d8ecff;
+      background: rgba(125,211,252,0.1);
+      border: 1px solid rgba(125,211,252,0.18);
+      border-radius: 5px;
+      padding: 1px 5px;
+    }
+    .note {
+      border-left: 4px solid var(--warn);
+      background: rgba(255,211,122,0.08);
+      padding: 14px 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>HubToHome 패치노트</h1>
+      <p class="subtitle">2026-05-24 작업 통합본. 기존 여러 HTML 패치노트를 이 파일 하나로 합쳤습니다.</p>
+    </header>
+
+    <section>
+      <div class="section-head">
+        <h2>1. 타이틀~배틀 UI 해상도 대응</h2>
+        <span class="tag">Resolution UI</span>
+      </div>
+      <div class="content">
+        <div class="grid">
+          <div class="box">
+            <h3>완료</h3>
+            <p>타이틀부터 배틀씬까지 UI 관련 해상도 대응은 현재 기준으로 완료되었습니다. 배틀씬 쪽 UI 문제도 모두 해결된 것으로 기록합니다.</p>
+          </div>
+          <div class="box">
+            <h3>Canvas Scaler</h3>
+            <p><code>DialogueCanvas</code>의 <code>CanvasScaler Match Width Or Height</code>가 height 기준이라 640x480에서 가로 UI가 좁게 잡히던 원인을 확인했습니다. width 기준인 <code>0</code>으로 바꾸면 가로 대응이 자연스럽게 동작합니다.</p>
+          </div>
+          <div class="box">
+            <h3>보류</h3>
+            <p>스킬창 UI 위치는 약간 애매해 보이나, 배치 의도와 최종 디자인 기준을 알 수 없어 이번 작업에서는 그대로 둡니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>2. 입력/QTE/전투 UI 안정화</h2>
+        <span class="tag">Battle Input</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>QTE 입력 판정을 한 곳으로 통일해 연타, Z/X/C, 방향키 동시 입력 시 판정 꼬임 가능성을 줄였습니다.</li>
+          <li><code>BattleSubMenu</code>는 절대 Y 좌표 대신 씬에 배치된 초기 위치를 기준으로 열림 위치를 계산하게 했습니다.</li>
+          <li>서브메뉴 표시 위치는 <code>초기 숨김 위치 + _showOffsetY</code>이며 기본 offset은 <code>130</code>입니다.</li>
+          <li>옵션 패널 쪽 마스크는 불필요해 보여 사용자 수동으로 비활성화했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>3. BattleScene 전환/페이드</h2>
+        <span class="tag">Scene Reveal</span>
+      </div>
+      <div class="content">
+        <div class="grid">
+          <div class="box">
+            <h3>원인</h3>
+            <p>기존 <code>SceneLoader</code>는 씬 활성화 직후 페이드를 걷었지만, 전용 <code>BattleScene</code>에서는 플레이어 생성, 위치 배치, 몬스터 생성, UI 갱신, 카메라 리셋이 뒤따랐습니다.</p>
+          </div>
+          <div class="box">
+            <h3>수정</h3>
+            <p><code>ISceneRevealGate</code> 구조를 추가해 <code>BattleManager</code>가 준비 완료 신호를 열기 전까지 페이드가 유지되도록 했습니다.</p>
+          </div>
+          <div class="box">
+            <h3>수동 수정</h3>
+            <p>사용자가 <code>FadePanel</code> 크기 불일치를 수정했습니다. 이후 전투 진입/종료 페이드 확인 시 수정 완료 기준으로 봅니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>4. 오버월드 배경 전투 재조우 방지</h2>
+        <span class="tag">Encounter</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>전투 종료 직후 플레이어가 같은 적 trigger 안에 남아 이미 이긴 적과 즉시 재전투하는 문제를 보완했습니다.</li>
+          <li><code>IEncounterSource</code>와 <code>EncounterCollisionGuard</code>를 추가했습니다.</li>
+          <li>플레이어를 적 collider 밖으로 살짝 밀어내고, trigger exit 전까지 해당 적 조우를 막고, 짧은 grace time 동안 조우를 무시합니다.</li>
+          <li>collider를 끄는 방식은 사용하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>5. 대화/말풍선 UI</h2>
+        <span class="tag">Dialogue UI</span>
+      </div>
+      <div class="content">
+        <div class="grid">
+          <div class="box">
+            <h3>BattleNarration</h3>
+            <p><code>BattleNarrationUI</code>가 <code>Backg</code> RectTransform을 찾아 TMP preferred size 기준으로 말풍선과 텍스트 영역을 함께 조정하게 했습니다. 최대 가로폭은 캔버스의 50%입니다.</p>
+          </div>
+          <div class="box">
+            <h3>CinematicPanel</h3>
+            <p>사용자가 <code>DialogueManager &gt; CinematicPanel &gt; DialogueText</code> TMP Margin을 일괄 <code>10</code>으로 정리했습니다.</p>
+          </div>
+          <div class="box">
+            <h3>OverworldPanel</h3>
+            <p><code>OverworldPanel</code>과 <code>Backg</code>는 부모 패널과 캔버스 스케일을 따라 해상도에 맞춰 변하는 구조로 확인했습니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>6. DOTween 예외 완화</h2>
+        <span class="tag">DOTween</span>
+      </div>
+      <div class="content">
+        <p>타이틀 씬에서 발생하던 DOTween <code>IndexOutOfRangeException</code> 원인 후보로 런타임 중 전역 tween capacity를 재설정하는 코드가 확인되었습니다. <code>CameraController</code>에서 <code>DOTween.SetTweensCapacity(...)</code> 호출을 제거했습니다.</p>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>7. UI 아트/레이아웃 작업</h2>
+        <span class="tag">UI Art</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>SettingPanel.png</code>를 UI <code>Sliced</code> 이미지로 쓰기 위해 Sprite Border를 <code>6,6,6,6</code>으로 설정했습니다.</li>
+          <li><code>BattleSubMenu</code> 하위 구조를 <code>UpperPanel</code>과 <code>DownPanel</code>로 분리한 작업 기록을 남겼습니다.</li>
+          <li><code>PartySlot_Prefab</code> 반응형 앵커 조정 시도는 사용자 요청에 따라 롤백했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>8. 에디터 디버그/기록 방식</h2>
+        <span class="tag">Workflow</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>에디터 전용 치트 매니저를 추가했고, 일반 빌드에는 포함되지 않도록 <code>UNITY_EDITOR</code> 조건으로 제한했습니다.</li>
+          <li><code>Kill All Enemies</code>와 <code>Instant Victory</code>가 기존 승리 종료 루틴을 타도록 연결했습니다.</li>
+          <li>타이틀 씬 빠른 실행 단축키 <code>Alt + Shift + P</code>를 추가했습니다.</li>
+          <li>앞으로 작업 기록은 <code>AIAssets/YYYY-MM-DD-update.md</code>와 날짜별 사람용 HTML 문서에 남깁니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>9. 검증 상태</h2>
+        <span class="tag">QA</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>dotnet build .\HubToHome.sln --no-restore</code> 통과.</li>
+          <li>신규 C# 컴파일 오류 없음.</li>
+          <li>기존 경고: Unity/MCP 참조의 <code>System.Net.Http</code>, <code>System.IO.Compression</code> 버전 충돌, <code>PlayerController._defenseReactionLocked</code> 미사용 경고.</li>
+          <li>Unity Play Mode, 씬 저장, build.exe 실행 검증은 사용자 허락이 필요한 단계라 별도 확인 필요.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>관리 기준:</strong> 2026-05-24부터 <code>AIAssets/yjlim/Patchnote</code> 폴더의 오늘 작업 패치노트는 이 HTML 하나로 관리합니다.
+    </div>
+  </main>
+</body>
+</html>

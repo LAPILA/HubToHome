@@ -1,7 +1,13 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using DG.Tweening;
+
+public interface ISceneRevealGate
+{
+    bool IsReadyToReveal { get; }
+}
 
 public class SceneLoader : MonoBehaviour
 {
@@ -11,6 +17,7 @@ public class SceneLoader : MonoBehaviour
     [SerializeField] private CanvasGroup _fadeCanvas;
     private bool _isLoading;
     [SerializeField] private UnityEngine.UI.Image _fadeImage; // Flash 연출 시 색상 변경용
+    [SerializeField] private float _sceneRevealGateTimeout = 5f;
 
     private void Awake()
     {
@@ -63,6 +70,7 @@ public class SceneLoader : MonoBehaviour
 
         op.allowSceneActivation = true;
         yield return null;
+        yield return StartCoroutine(WaitForSceneRevealGate(sceneName));
 
         // Flash 연출이면 페이드 인을 살짝 더 길게 가져감
         float inDuration = isFlash ? 0.3f : duration;
@@ -70,5 +78,75 @@ public class SceneLoader : MonoBehaviour
 
         _fadeCanvas.blocksRaycasts = false;
         _isLoading = false;
+    }
+
+    private IEnumerator WaitForSceneRevealGate(string sceneName)
+    {
+        float startedAt = Time.unscaledTime;
+        Scene loadedScene = SceneManager.GetSceneByName(sceneName);
+
+        while ((!loadedScene.IsValid() || !loadedScene.isLoaded || SceneManager.GetActiveScene().handle != loadedScene.handle)
+            && !IsRevealGateTimedOut(startedAt))
+        {
+            loadedScene = SceneManager.GetSceneByName(sceneName);
+            yield return null;
+        }
+
+        if (!loadedScene.IsValid() || !loadedScene.isLoaded)
+            yield break;
+
+        List<ISceneRevealGate> gates = FindRevealGates(loadedScene);
+        if (gates.Count == 0)
+            yield break;
+
+        while (!AreAllRevealGatesReady(gates))
+        {
+            if (IsRevealGateTimedOut(startedAt))
+            {
+                Debug.LogWarning($"[SceneLoader] Scene reveal gate timed out. Scene={sceneName}");
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    private bool IsRevealGateTimedOut(float startedAt)
+    {
+        return _sceneRevealGateTimeout > 0f && Time.unscaledTime - startedAt >= _sceneRevealGateTimeout;
+    }
+
+    private static List<ISceneRevealGate> FindRevealGates(Scene scene)
+    {
+        List<ISceneRevealGate> gates = new List<ISceneRevealGate>();
+        if (!scene.IsValid() || !scene.isLoaded)
+            return gates;
+
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            MonoBehaviour[] behaviours = roots[i].GetComponentsInChildren<MonoBehaviour>(true);
+            for (int j = 0; j < behaviours.Length; j++)
+            {
+                if (behaviours[j] is ISceneRevealGate gate)
+                    gates.Add(gate);
+            }
+        }
+
+        return gates;
+    }
+
+    private static bool AreAllRevealGatesReady(List<ISceneRevealGate> gates)
+    {
+        for (int i = 0; i < gates.Count; i++)
+        {
+            if (gates[i] is Object unityObject && unityObject == null)
+                continue;
+
+            if (!gates[i].IsReadyToReveal)
+                return false;
+        }
+
+        return true;
     }
 }
