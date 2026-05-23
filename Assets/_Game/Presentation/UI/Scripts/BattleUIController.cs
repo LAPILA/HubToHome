@@ -63,6 +63,7 @@ public class BattleUIController : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        NormalizeForCurrentResolution();
 
         if (_narrationUI == null)
             _narrationUI = BattleNarrationUI.FindInActiveScene();
@@ -155,16 +156,22 @@ public class BattleUIController : MonoBehaviour
         if (!_isTargetingMode) return;
         if (IsNarrationBlockingInput()) return;
 
-        if (GameInput.BattleLeftPressed)
+        bool left = GameInput.BattleLeftPressed;
+        bool right = GameInput.BattleRightPressed;
+        bool confirm = GameInput.BattleConfirmPressed;
+        bool cancel = GameInput.BattleCancelPressed;
+        if ((left && right) || (confirm && cancel)) return;
+
+        if (left)
             NavigateTarget(-1);
-        else if (GameInput.BattleRightPressed)
+        else if (right)
             NavigateTarget(1);
-        else if (GameInput.BattleConfirmPressed)
+        else if (confirm)
         {
             ExitTargetingMode();
             BattleManager.Instance.ConfirmTargetAndExecute(_selectedTargetIndex);
         }
-        else if (GameInput.BattleCancelPressed)
+        else if (cancel)
         {
             ExitTargetingMode();
             BattleManager.Instance.CancelActionSelection(); // 타겟팅 취소 시 
@@ -452,6 +459,7 @@ public class BattleUIController : MonoBehaviour
     public void HideSkillQTE() => _defenseQTEUI?.Hide();
     public bool IsNarrationBlockingInput() => _narrationUI != null && _narrationUI.IsBusy;
     public void ClearNarrationLog() => _narrationUI?.Clear();
+    public void NormalizeForCurrentResolution() => UIRuntimeGuard.NormalizeCanvas(gameObject);
 
     private void SetTurnLabel(string text)
     {
@@ -830,5 +838,44 @@ public class BattleSpeechBubble : MonoBehaviour
             .Replace("{turn}", battleTurn.ToString())
             .Replace("{hp}", actor != null ? actor.CurrentHP.ToString() : "0")
             .Replace("{maxHp}", actor != null ? actor.MaxHP.ToString() : "0");
+    }
+}
+
+public static class UIRuntimeGuard
+{
+    private static readonly Vector2 DefaultReferenceResolution = new Vector2(1920f, 1080f);
+
+    public static void NormalizeCanvas(GameObject owner)
+    {
+        NormalizeCanvas(owner, DefaultReferenceResolution);
+    }
+
+    public static void NormalizeCanvas(GameObject owner, Vector2 referenceResolution)
+    {
+        if (owner == null) return;
+
+        Canvas canvas = owner.GetComponent<Canvas>();
+        if (canvas == null) canvas = owner.GetComponentInParent<Canvas>(true);
+        if (canvas == null) canvas = owner.GetComponentInChildren<Canvas>(true);
+        if (canvas == null) return;
+
+        RectTransform canvasRect = canvas.transform as RectTransform;
+        if (canvasRect != null && IsZeroScale(canvasRect.localScale))
+            canvasRect.localScale = Vector3.one;
+
+        CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
+        if (scaler == null) return;
+
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = referenceResolution;
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        scaler.matchWidthOrHeight = 0.5f;
+    }
+
+    private static bool IsZeroScale(Vector3 scale)
+    {
+        return Mathf.Abs(scale.x) < 0.001f
+            || Mathf.Abs(scale.y) < 0.001f
+            || Mathf.Abs(scale.z) < 0.001f;
     }
 }

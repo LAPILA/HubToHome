@@ -25,10 +25,12 @@ public class TitleMenuManager : MonoBehaviour
 
     private GameObject _lastSelected;
     private bool _isLocked = false;
+    private int _manualSubmitFrame = -1;
 
     private void Awake()
     {
         GameConfigManager.EnsureInstance();
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -75,8 +77,9 @@ public class TitleMenuManager : MonoBehaviour
             }
         }
 
-        if (GameInput.UISubmitPressed)
+        if (GameInput.UISubmitPressed && _manualSubmitFrame != Time.frameCount)
         {
+            _manualSubmitFrame = Time.frameCount;
             GameObject currentSelected = EventSystem.current.currentSelectedGameObject;
             if (currentSelected != null)
             {
@@ -133,6 +136,7 @@ public class TitleMenuManager : MonoBehaviour
 
     private void ExecuteWithBlink(TextMeshProUGUI textTarget, System.Action onCompleteAction)
     {
+        if (_isLocked) return;
         _isLocked = true; 
         AudioManager.Instance?.PlaySFX(_confirmSFX);
 

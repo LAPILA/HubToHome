@@ -9,6 +9,7 @@ public class SceneLoader : MonoBehaviour
 
     [Header("Fade UI")]
     [SerializeField] private CanvasGroup _fadeCanvas;
+    private bool _isLoading;
     [SerializeField] private UnityEngine.UI.Image _fadeImage; // Flash 연출 시 색상 변경용
 
     private void Awake()
@@ -37,6 +38,16 @@ public class SceneLoader : MonoBehaviour
 
     private IEnumerator FadeAndLoad(string sceneName, float duration, Color fadeColor, bool isFlash = false)
     {
+        if (_isLoading) yield break;
+        _isLoading = true;
+
+        if (_fadeCanvas == null)
+        {
+            SceneManager.LoadScene(sceneName);
+            _isLoading = false;
+            yield break;
+        }
+
         _fadeCanvas.blocksRaycasts = true;
         
         if (_fadeImage != null) _fadeImage.color = fadeColor;
@@ -58,5 +69,6 @@ public class SceneLoader : MonoBehaviour
         yield return _fadeCanvas.DOFade(0f, inDuration).SetUpdate(true).WaitForCompletion();
 
         _fadeCanvas.blocksRaycasts = false;
+        _isLoading = false;
     }
 }

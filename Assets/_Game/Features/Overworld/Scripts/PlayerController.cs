@@ -157,21 +157,8 @@ public class PlayerController : MonoBehaviour
         if (!_defenseInputWindowOpen)
             return;
 
-        if (GameInput.QTEZPressed)
-        {
-            Debug.Log("[PlayerController] Enemy turn defense input: Parry(Z)");
-            AttemptDefenseInput(DefenseInput.Parry);
-        }
-        else if (GameInput.QTEXPressed)
-        {
-            Debug.Log("[PlayerController] Enemy turn defense input: Dodge(X)");
-            AttemptDefenseInput(DefenseInput.Dodge);
-        }
-        else if (GameInput.QTECPressed)
-        {
-            Debug.Log("[PlayerController] Enemy turn defense input: Jump(C)");
-            AttemptDefenseInput(DefenseInput.Jump);
-        }
+        if (GameInput.TryReadDefenseInputThisFrame(out DefenseInput input))
+            AttemptDefenseInput(input);
     }
 
     private void AttemptDefenseInput(DefenseInput input)
@@ -540,6 +527,8 @@ public class PlayerController : MonoBehaviour
     {
         _battleDefenseAnchorPosition = transform.position;
         _defenseReactionLocked = false;
+        _bufferedDefenseInput = DefenseInput.None;
+        _lastDefenseAttemptTime = -999f;
         _defenseInputWindowOpen = true;
     }
 

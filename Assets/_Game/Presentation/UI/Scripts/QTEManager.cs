@@ -25,6 +25,8 @@ public class QTEManager : MonoBehaviour
     #endregion
 
     public bool IsActive { get; private set; } = false;
+    private Action<DefenseInput, QTEGrade> _activeDefenseCallback;
+    private Action<int, int> _activeSequenceCallback;
 
     private void Awake()
     {
@@ -36,6 +38,7 @@ public class QTEManager : MonoBehaviour
     public void StartDefenseQTE(float attackDelay, float difficultyMult, Action<DefenseInput, QTEGrade> onResult)
     {
         if (IsActive) ForceStop();
+        _activeDefenseCallback = onResult;
         StartCoroutine(DefenseQTERoutine(attackDelay, difficultyMult, onResult));
     }
 
@@ -61,21 +64,8 @@ public class QTEManager : MonoBehaviour
                 }
             }
             
-            if (GameInput.QTEZPressed)
-            {
-                input = DefenseInput.Parry;
+            if (GameInput.TryReadDefenseInputThisFrame(out input))
                 inputReceived = true;
-            }
-            else if (GameInput.QTEXPressed)
-            {
-                input = DefenseInput.Dodge;
-                inputReceived = true;
-            }
-            else if (GameInput.QTECPressed)
-            {
-                input = DefenseInput.Jump;
-                inputReceived = true;
-            }
             yield return null; 
         }
 
@@ -95,14 +85,16 @@ public class QTEManager : MonoBehaviour
             else                     grade = QTEGrade.Bad;
         }
 
-        onResult?.Invoke(input, grade);
+        CompleteDefense(input, grade);
     }
     #endregion
 
     #region [ Sequence QTE (스킬 공격) ]
     public void StartSequenceQTE(List<SkillQTENode> nodes, float timeLimit, Action<int, int> onComplete)
     {
-        if (IsActive || nodes == null || nodes.Count == 0) return;
+        if (nodes == null || nodes.Count == 0) return;
+        if (IsActive) ForceStop();
+        _activeSequenceCallback = onComplete;
         StartCoroutine(SequenceQTERoutine(nodes, timeLimit, onComplete));
     }
 
@@ -135,15 +127,13 @@ public class QTEManager : MonoBehaviour
             {
                 elapsed += Time.deltaTime;
                 
-                bool z = GameInput.QTEZPressed;
-                bool x = GameInput.QTEXPressed;
-                bool c = GameInput.QTECPressed;
-
-                if (z || x || c)
+                if (GameInput.TryReadDefenseInputThisFrame(out DefenseInput input))
                 {
                     isAnswered = true;
                     string keyLower = node.TargetKey.ToLower();
-                    isHit = (keyLower == "z" && z) || (keyLower == "x" && x) || (keyLower == "c" && c);
+                    isHit = (keyLower == "z" && input == DefenseInput.Parry)
+                        || (keyLower == "x" && input == DefenseInput.Dodge)
+                        || (keyLower == "c" && input == DefenseInput.Jump);
                     if (isHit) successCount++;
                 }
                 yield return null;
@@ -155,13 +145,29 @@ public class QTEManager : MonoBehaviour
 
         BattleUIController.Instance.HideSkillQTE();
         IsActive = false;
-        onComplete?.Invoke(successCount, nodes.Count);
+        CompleteSequence(successCount, nodes.Count);
     }
     #endregion
 
     public void ForceStop()
     {
         StopAllCoroutines();
+        CompleteDefense(DefenseInput.None, QTEGrade.Miss);
+        CompleteSequence(0, 0);
         IsActive = false;
+    }
+
+    private void CompleteDefense(DefenseInput input, QTEGrade grade)
+    {
+        Action<DefenseInput, QTEGrade> callback = _activeDefenseCallback;
+        _activeDefenseCallback = null;
+        callback?.Invoke(input, grade);
+    }
+
+    private void CompleteSequence(int successCount, int totalCount)
+    {
+        Action<int, int> callback = _activeSequenceCallback;
+        _activeSequenceCallback = null;
+        callback?.Invoke(successCount, totalCount);
     }
 }

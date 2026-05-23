@@ -37,6 +37,12 @@ public class CameraController : MonoBehaviour
         DOTween.SetTweensCapacity(500, 100);
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
     private void Start()
     {
         // 시작 시 카메라의 기본 타겟을 Center로 고정

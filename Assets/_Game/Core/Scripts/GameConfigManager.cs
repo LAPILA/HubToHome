@@ -110,13 +110,13 @@ public class GameConfigManager : MonoBehaviour
     {
         if (IsFullscreen)
         {
-            Screen.fullScreenMode = FullScreenMode.FullScreenWindow;
-            Screen.fullScreen = true;
+            Resolution resolution = Screen.currentResolution;
+            int width = Mathf.Max(DefaultWindowWidth, resolution.width);
+            int height = Mathf.Max(DefaultWindowHeight, resolution.height);
+            Screen.SetResolution(width, height, FullScreenMode.FullScreenWindow);
         }
         else
         {
-            Screen.fullScreen = false;
-            Screen.fullScreenMode = FullScreenMode.Windowed;
             Screen.SetResolution(DefaultWindowWidth, DefaultWindowHeight, FullScreenMode.Windowed);
         }
     }

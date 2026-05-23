@@ -189,6 +189,7 @@ public class BattleManager : MonoBehaviour
         if (_battleUICanvas != null)
             _battleUICanvas.SetActive(true);
 
+        BattleUIController.Instance?.NormalizeForCurrentResolution();
         Canvas.ForceUpdateCanvases();
         CameraController.Instance?.ResetCamera(0f);
 
@@ -196,6 +197,7 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForEndOfFrame();
 
         Canvas.ForceUpdateCanvases();
+        BattleUIController.Instance?.NormalizeForCurrentResolution();
         CameraController.Instance?.ResetCamera(0f);
 
         if (_battleUICanvas != null && _battleUICanvas.TryGetComponent(out RectTransform battleUiRect))

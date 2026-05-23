@@ -163,6 +163,21 @@ public static class GameInput
     public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteX.WasPressedThisFrame() || KeyboardPressed(Key.X); } }
     public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteC.WasPressedThisFrame() || KeyboardPressed(Key.C); } }
 
+    public static bool TryReadDefenseInputThisFrame(out DefenseInput input)
+    {
+        input = DefenseInput.None;
+        bool z = QTEZPressed;
+        bool x = QTEXPressed;
+        bool c = QTECPressed;
+
+        int pressedCount = (z ? 1 : 0) + (x ? 1 : 0) + (c ? 1 : 0);
+        if (pressedCount != 1)
+            return false;
+
+        input = z ? DefenseInput.Parry : x ? DefenseInput.Dodge : DefenseInput.Jump;
+        return true;
+    }
+
     public static bool DialogueAdvancePressed { get { if (_configModalActive) return false; EnsureInitialized(); return _dialogueAdvance.WasPressedThisFrame(); } }
     public static bool Choice1Pressed { get { if (_configModalActive) return false; EnsureInitialized(); return _choice1.WasPressedThisFrame(); } }
     public static bool Choice2Pressed { get { if (_configModalActive) return false; EnsureInitialized(); return _choice2.WasPressedThisFrame(); } }
