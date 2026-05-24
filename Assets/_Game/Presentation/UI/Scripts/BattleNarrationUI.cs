@@ -37,6 +37,7 @@ public class BattleNarrationUI : MonoBehaviour
         _canvasGroup = GetComponent<CanvasGroup>();
         if (_messageText == null) _messageText = GetComponentInChildren<TextMeshProUGUI>(true);
         if (_bubbleBackground == null) _bubbleBackground = FindChildRect("Backg");
+        DisableTmpAutomaticWrapping();
         HideImmediate();
     }
 
@@ -89,9 +90,11 @@ public class BattleNarrationUI : MonoBehaviour
         _canvasGroup.DOKill();
         _canvasGroup.alpha = 1f;
         _messageText.color = Color.white;
-        _messageText.text = msg.Text;
+        DisableTmpAutomaticWrapping();
+        string wrappedText = WrapTextForBubble(msg.Text);
+        _messageText.text = wrappedText;
         _messageText.maxVisibleCharacters = 0;
-        ResizeBubbleToText(msg.Text);
+        ResizeBubbleToText(wrappedText);
         _messageText.ForceMeshUpdate();
 
         int total = _messageText.textInfo.characterCount;
@@ -197,6 +200,28 @@ public class BattleNarrationUI : MonoBehaviour
         textRect.anchoredPosition = Vector2.zero;
 
         Canvas.ForceUpdateCanvases();
+    }
+
+    private void DisableTmpAutomaticWrapping()
+    {
+        if (_messageText == null) return;
+
+        // SmartTextWrapper owns line breaks here; TMP auto wrapping can split Korean tokens like "있어.".
+        _messageText.textWrappingMode = TextWrappingModes.NoWrap;
+    }
+
+    private string WrapTextForBubble(string text)
+    {
+        if (_messageText == null || string.IsNullOrWhiteSpace(text))
+            return text;
+
+        RectTransform canvasRect = GetComponentInParent<Canvas>()?.transform as RectTransform;
+        float canvasWidth = canvasRect != null && canvasRect.rect.width > 1f ? canvasRect.rect.width : Screen.width;
+        float maxWidth = Mathf.Max(_minBubbleSize.x, canvasWidth * Mathf.Clamp01(_maxBubbleWidthRatio));
+        float textMaxWidth = Mathf.Max(1f, maxWidth - _bubblePadding.x);
+
+        // Keep battle narration from ending lines with tiny word fragments before measuring the bubble.
+        return SmartTextWrapper.Wrap(_messageText, text, textMaxWidth);
     }
 
     private RectTransform FindChildRect(string childName)

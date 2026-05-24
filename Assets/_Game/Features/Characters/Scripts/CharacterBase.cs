@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -49,10 +50,34 @@ public abstract class CharacterBase : MonoBehaviour
     public bool CanDodgeOrJump() => !IsBound && !IsStunned;
     public bool CanTakeTurn() => IsAlive && !IsStunned;
 
-    public bool TryShowBattleSpeech(BattleSpeechTrigger trigger, SkillData skill = null, CharacterBase target = null, int battleTurn = 0, float holdOverride = -1f)
+    public bool TryShowBattleSpeech(
+        BattleSpeechTrigger trigger,
+        SkillData skill = null,
+        CharacterBase target = null,
+        int battleTurn = 0,
+        float holdOverride = -1f,
+        BattleSpeechBubbleDirection? directionOverride = null)
     {
-        BattleSpeechBubble bubble = GetComponentInChildren<BattleSpeechBubble>(true);
-        return bubble != null && bubble.TryShow(trigger, this, skill, target, battleTurn, holdOverride);
+        BattleSpeechBubble bubble = GetBattleSpeechBubble();
+        return bubble != null && bubble.TryShow(trigger, this, skill, target, battleTurn, holdOverride, directionOverride);
+    }
+
+    public bool IsBattleSpeechShowing()
+    {
+        BattleSpeechBubble bubble = GetBattleSpeechBubble();
+        return bubble != null && bubble.IsShowing;
+    }
+
+    public IEnumerator WaitForBattleSpeech()
+    {
+        BattleSpeechBubble bubble = GetBattleSpeechBubble();
+        if (bubble != null)
+            yield return bubble.WaitUntilHidden();
+    }
+
+    private BattleSpeechBubble GetBattleSpeechBubble()
+    {
+        return GetComponentInChildren<BattleSpeechBubble>(true);
     }
 
     public Transform GetPivot(string pivotName)

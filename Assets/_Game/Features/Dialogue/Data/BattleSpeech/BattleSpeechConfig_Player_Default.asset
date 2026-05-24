@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e442a2e2f0114f5fa49ef5f6c21ba7d2, type: 3}
+  m_Name: BattleSpeechConfig_Player_Default
+  m_EditorClassIdentifier: Assembly-CSharp::BattleSpeechConfig
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  Rules:
+  - Trigger: 0
+    Chance: 0.35
+    MinBattleTurn: 1
+    HpRatioBelow: 1
+    SkillIdFilter: 
+    TriggerOnce: 0
+    Direction: 0
+    Text: 내 차례야.
+    HasTriggered: 0
+  - Trigger: 1
+    Chance: 1
+    MinBattleTurn: 0
+    HpRatioBelow: 1
+    SkillIdFilter: 
+    TriggerOnce: 0
+    Direction: 0
+    Text: "{skill}!"
+    HasTriggered: 0
+  - Trigger: 2
+    Chance: 0.45
+    MinBattleTurn: 0
+    HpRatioBelow: 1
+    SkillIdFilter: 
+    TriggerOnce: 0
+    Direction: 0
+    Text: 이 정도는 버틸 수 있어.
+    HasTriggered: 0
+  - Trigger: 3
+    Chance: 1
+    MinBattleTurn: 0
+    HpRatioBelow: 0.35
+    SkillIdFilter: 
+    TriggerOnce: 1
+    Direction: 0
+    Text: 아직 함께할 수 있어.
+    HasTriggered: 0

@@ -211,6 +211,10 @@
             <h3>OverworldPanel</h3>
             <p><code>OverworldPanel</code>과 <code>Backg</code>는 부모 패널과 캔버스 스케일을 따라 해상도에 맞춰 변하는 구조로 확인했습니다.</p>
           </div>
+          <div class="box">
+            <h3>BattleSpeechBubble</h3>
+            <p><code>BattleSpeechBubbleDirection</code>을 추가해 <code>Up</code>, <code>Left</code>, <code>Right</code> 방향을 rule 또는 호출부에서 지정할 수 있게 했습니다. 표시 시 방향별 스프라이트를 적용하고 <code>Image Type = Sliced</code>로 세팅합니다. <code>BattleSpeechBubble_Enemy</code>와 <code>BattleSpeechBubble_Player</code> 프리팹에도 세 방향 스프라이트 참조를 연결했습니다.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -233,6 +237,10 @@
       <div class="content">
         <ul>
           <li><code>SettingPanel.png</code>를 UI <code>Sliced</code> 이미지로 쓰기 위해 Sprite Border를 <code>6,6,6,6</code>으로 설정했습니다.</li>
+          <li>적 캐릭터 대사용 언더테일풍 흑백 픽셀 말풍선 세트를 추가했습니다. 몸통은 <code>EnemySpeechBubble.png</code>, 꼬리는 <code>EnemySpeechBubble_Bottom.png</code>, <code>EnemySpeechBubble_Left.png</code>, <code>EnemySpeechBubble_Right.png</code>로 분리했습니다.</li>
+          <li>몸통 이미지는 <code>128x64</code>, 꼬리 이미지는 각각 <code>32x32</code>입니다.</li>
+          <li>몸통만 <code>Image Type = Sliced</code>로 늘리고, 꼬리는 별도 <code>Image Type = Simple</code> 이미지로 배치합니다.</li>
+          <li>sprite border 기준은 몸통 <code>8,8,8,8</code>, 꼬리 sprite는 <code>0,0,0,0</code>입니다.</li>
           <li><code>BattleSubMenu</code> 하위 구조를 <code>UpperPanel</code>과 <code>DownPanel</code>로 분리한 작업 기록을 남겼습니다.</li>
           <li><code>PartySlot_Prefab</code> 반응형 앵커 조정 시도는 사용자 요청에 따라 롤백했습니다.</li>
         </ul>
@@ -256,7 +264,24 @@
 
     <section>
       <div class="section-head">
-        <h2>9. 검증 상태</h2>
+        <h2>9. 전투 대사 말풍선 프리팹</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>BattleSpeechBubble</code>를 프리팹에 안정적으로 붙일 수 있도록 <code>BattleUIController.cs</code>에서 분리해 <code>Assets/_Game/Features/Dialogue/Scripts/BattleSpeechBubble.cs</code>로 옮겼습니다.</li>
+          <li><code>Assets/_Game/Features/Dialogue/Prefabs/BattleSpeech</code> 폴더를 만들고 <code>BattleSpeechBubble_Enemy.prefab</code>, <code>BattleSpeechBubble_Player.prefab</code>를 추가했습니다.</li>
+          <li>각 프리팹은 World Space Canvas, sliced 말풍선 몸통, 별도 <code>Tail</code> 이미지, TMP 텍스트, <code>BattleSpeechRule</code> 기본 테스트 규칙을 포함합니다.</li>
+          <li><code>BattleSpeechBubble</code> 컴포넌트는 <code>_tailRoot</code>, <code>_tailImage</code>, 몸통 sprite, 방향별 꼬리 sprite 참조를 갖습니다.</li>
+          <li><code>Enemy_Base.prefab</code>, <code>ZEV_Prefab.prefab</code>, <code>Player_Base.prefab</code> 루트 하위에 nested prefab으로 연결했습니다.</li>
+          <li>Unity MCP 프리팹 계층 확인 기준으로 신규 말풍선 프리팹과 세 캐릭터 연결 모두 Missing 없이 인식되었습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>10. 검증 상태</h2>
         <span class="tag">QA</span>
       </div>
       <div class="content">
@@ -265,6 +290,507 @@
           <li>신규 C# 컴파일 오류 없음.</li>
           <li>기존 경고: Unity/MCP 참조의 <code>System.Net.Http</code>, <code>System.IO.Compression</code> 버전 충돌, <code>PlayerController._defenseReactionLocked</code> 미사용 경고.</li>
           <li>Unity Play Mode, 씬 저장, build.exe 실행 검증은 사용자 허락이 필요한 단계라 별도 확인 필요.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>11. Battle Dialogue Cheat Tests</h2>
+        <span class="tag">Editor Cheat</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>전투 중에만 보이는 <code>Battle Dialogue Tests</code> 치트 섹션을 추가했습니다.</li>
+          <li><code>BattleNarrationEventType</code> enum 값을 버튼으로 나열해, 각 이벤트 타입이 실제 <code>BattleManager.RequestNarration(...)</code> 경로로 정상 출력되는지 확인할 수 있습니다.</li>
+          <li><code>BattleNarrationStyle</code> enum도 smoke test 버튼으로 추가해 Normal, Damage, Heal, Warning, System 표시를 빠르게 확인할 수 있습니다.</li>
+          <li>테스트 대상 플레이어, 적, 스킬은 현재 전투의 살아있는 첫 대상에서 자동으로 가져오며, 없을 때는 formatter fallback 문구를 그대로 검증합니다.</li>
+          <li>기존 치트 매니저와 동일하게 <code>UNITY_EDITOR</code> 조건 안에서만 동작합니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>12. Cheat Window Resolution Scaling</h2>
+        <span class="tag">Editor Cheat</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>치트창 크기를 1920x1080 기준으로 보정했습니다.</li>
+          <li>640x480에서는 너무 크게 보이고 4K에서는 너무 작게 보이던 고정 픽셀 문제를 줄이기 위해 <code>GUI.matrix</code> 스케일을 적용했습니다.</li>
+          <li>창 크기, 폰트, 버튼, 스크롤 영역이 같은 비율로 스케일되며, 화면 밖 방지 계산도 같은 기준 좌표로 처리합니다.</li>
+          <li>이 변경은 에디터 전용 치트창에만 적용됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>13. Battle Dialogue Tests Visibility Fix</h2>
+        <span class="tag">Editor Cheat</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>Battle Dialogue Tests</code> 섹션이 전투 중에도 보이지 않을 수 있던 문제를 수정했습니다.</li>
+          <li>기존에는 <code>Instant Victory</code>와 같은 활성 전투 조건을 사용해서 <code>BattleState.Init</code> 또는 적 생존 체크에 걸리면 섹션이 숨겨질 수 있었습니다.</li>
+          <li>이제 다이얼로그 테스트는 <code>BattleManager</code>가 있고 <code>BattleEnd</code>가 아닌 동안 표시됩니다.</li>
+          <li><code>Instant Victory</code>는 기존처럼 살아있는 적이 있는 실제 진행 중 전투에서만 표시됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>14. Console Pro Imported</h2>
+        <span class="tag">Debug Tool</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>사용자가 Unity 에디터에 Console Pro를 임포트했습니다. 루트 경로는 <code>Assets/ConsolePro</code>입니다.</li>
+          <li>주요 파일은 <code>ConsolePro.Editor.dll</code>, <code>Editor Console Pro Documentation.pdf</code>, <code>ConsoleProDebug.cs</code>, <code>RemoteServer.zip</code>입니다.</li>
+          <li>Console Pro는 기본 Console보다 검색, 필터링, 그룹화가 편해서 <code>BattleSpeechBubble</code> 호출 여부와 룰 조건 통과 여부를 추적할 때 유용합니다.</li>
+          <li>코드에서는 <code>FlyingWormConsole3.ConsoleProDebug</code>를 사용할 수 있습니다.</li>
+          <li>특정 필터 로그: <code>ConsoleProDebug.LogToFilter("message", "BattleSpeech");</code></li>
+          <li>값 추적: <code>ConsoleProDebug.Watch("BattleSpeech Trigger", trigger.ToString());</code></li>
+          <li>검색 요청: <code>ConsoleProDebug.Search("BattleSpeech");</code></li>
+          <li>임시 디버그 로그는 검증 후 제거하거나 <code>UNITY_EDITOR</code> 조건으로 제한하는 것을 권장합니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>15. Dialogue Console Pro Logs</h2>
+        <span class="tag">Debug Tool</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>DialogueManager</code> 호출 흐름을 Console Pro <code>Dialogue</code> 필터로 출력하도록 추가했습니다.</li>
+          <li><code>StartDialogue requested</code>, <code>ignored</code>, <code>started</code> 로그로 호출 진입과 무시 사유를 확인할 수 있습니다.</li>
+          <li><code>PlayNode</code> 로그로 현재 다이얼로그 이름, 노드 인덱스, speaker, localization key, event id를 확인할 수 있습니다.</li>
+          <li><code>ShowChoices</code>, <code>Choice selected</code>, <code>EndDialogue</code> 로그도 함께 출력됩니다.</li>
+          <li>구현은 <code>ConsoleProDebug.LogToFilter(..., "Dialogue")</code> 기반이며, Console Pro API 호출은 <code>UNITY_EDITOR</code> 조건 안에서만 수행됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>16. BattleSpeechConfig Assets</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>BattleNarrationConfig_Default</code>와 같은 데이터 asset 방식으로 <code>BattleSpeechConfig</code>를 추가했습니다.</li>
+          <li>신규 스크립트: <code>Assets/_Game/Features/Dialogue/Scripts/BattleSpeechConfig.cs</code></li>
+          <li>신규 데이터 폴더: <code>Assets/_Game/Features/Dialogue/Data/BattleSpeech</code></li>
+          <li><code>BattleSpeechConfig_Enemy_Default.asset</code>, <code>BattleSpeechConfig_Player_Default.asset</code>를 추가했습니다.</li>
+          <li><code>BattleSpeechBubble_Enemy.prefab</code>는 enemy config를, <code>BattleSpeechBubble_Player.prefab</code>는 player config를 참조합니다.</li>
+          <li><code>BattleSpeechBubble</code>는 config가 있으면 config의 <code>Rules</code>를 런타임 복사본으로 만들어 사용합니다. 이 때문에 <code>TriggerOnce</code> 상태가 원본 asset에 직접 남지 않습니다.</li>
+          <li>Unity MCP 기준 두 config asset은 <code>BattleSpeechConfig</code> 타입으로 인식되며, 말풍선 프리팹과 캐릭터 nested prefab 연결도 유지됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>17. Battle Speech Korean Text</h2>
+        <span class="tag">Dialogue</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>앞으로 대사, 나레이션, 말풍선 등 플레이어가 보는 텍스트 컨텍스트는 한국어를 기본으로 작성합니다.</li>
+          <li><code>BattleSpeechConfig_Enemy_Default.asset</code>, <code>BattleSpeechConfig_Player_Default.asset</code>의 기본 문구를 한국어로 변경했습니다.</li>
+          <li>config 누락 시 fallback으로 쓰일 수 있는 <code>BattleSpeechBubble_Enemy.prefab</code>, <code>BattleSpeechBubble_Player.prefab</code> 내부 rule 문구도 동일하게 한국어로 맞췄습니다.</li>
+          <li><code>{skill}</code> 같은 런타임 치환 토큰은 유지했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>14. Battle SpeechBubble Cheat Tests</h2>
+        <span class="tag">Editor Cheat</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>치트창 <code>Battle</code> 탭에 <code>Battle SpeechBubble Tests</code> 섹션을 추가했습니다.</li>
+          <li>플레이어와 적 각각에 대해 <code>BattleSpeechTrigger</code> enum 버튼을 제공합니다: TurnStart, SkillUse, DamageTaken, LowHp, BattleFlavor.</li>
+          <li>버튼은 먼저 실제 런타임 경로인 <code>CharacterBase.TryShowBattleSpeech(...)</code>를 호출합니다.</li>
+          <li>확률/조건 때문에 룰이 선택되지 않으면 같은 <code>BattleSpeechBubble</code> 컴포넌트에 직접 테스트 문구를 띄워 말풍선 표시 자체를 확인할 수 있게 했습니다.</li>
+          <li><code>BattleSpeechBubbleDirection</code> Up, Left, Right 방향별 smoke test도 플레이어/적 각각에 대해 추가했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>18. Battle Speech Flow Blocking</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>전투 말풍선이 단순 겹침 연출이 아니라, 기존 전투 나레이션처럼 표시가 끝난 뒤 다음 액션으로 진행되도록 변경했습니다.</li>
+          <li><code>BattleSpeechBubble</code>에 표시 상태와 <code>WaitUntilHidden()</code> 대기 코루틴을 추가했습니다.</li>
+          <li>표시 시간 종료 또는 확인 입력으로 말풍선을 넘길 수 있습니다.</li>
+          <li><code>CharacterBase</code>에 말풍선 상태 확인 및 대기 API를 추가했습니다.</li>
+          <li><code>BattleManager</code>에서 플레이어 턴 시작, 플레이어 스킬 사용, 적 스킬 사용 대사를 말풍선 종료 후 다음 단계로 진행하도록 연결했습니다.</li>
+          <li>피격 말풍선도 액션 종료 전 공통 대기 지점에서 기다리도록 공통 나레이션 대기 흐름에 포함했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>19. Battle Speech YAML Parse Fix</h2>
+        <span class="tag">Bug Fix</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>BattleSpeechConfig_Enemy_Default.asset</code>의 <code>Text: '{skill}'을 써주지.</code> 문구가 Unity YAML 파싱 오류를 일으키던 문제를 수정했습니다.</li>
+          <li>스킬 치환 문구는 YAML에서 안전하도록 큰따옴표 문자열인 <code>Text: "{skill}을 써주지."</code>, <code>Text: "{skill}!"</code> 형태로 정리했습니다.</li>
+          <li>config asset과 prefab fallback 문구를 같은 기준으로 맞췄습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>20. Battle Speech Pivot Positioning</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>말풍선 표시 시 actor의 피봇을 기준으로 위치를 다시 계산하도록 변경했습니다.</li>
+          <li><code>Right</code> 말풍선은 <code>Pivots/FrontMiddle</code> 오른쪽, <code>Left</code> 말풍선은 <code>Pivots/FrontMiddle</code> 왼쪽에 배치됩니다.</li>
+          <li><code>Up</code> 말풍선은 <code>Pivots/Top</code> 위쪽에 배치됩니다.</li>
+          <li><code>BattleSpeechBubble</code>에 side/top pivot 이름, gap, offset 조정값을 추가했습니다.</li>
+          <li>텍스트 크기 계산과 위치 계산이 같은 기준을 쓰도록 <code>Box</code> RectTransform을 런타임에 center anchor로 정규화합니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>15. Battle SpeechBubble Direction Mode</h2>
+        <span class="tag">Editor Cheat</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>Battle SpeechBubble Tests</code>에 <code>Top</code>/<code>Front</code> 방향 모드를 추가했습니다.</li>
+          <li><code>Top</code>은 플레이어와 적 모두 위쪽 말풍선으로 표시합니다.</li>
+          <li><code>Front</code>는 플레이어 기준 오른쪽, 적 기준 왼쪽 말풍선으로 표시합니다.</li>
+          <li>트리거 테스트는 선택된 방향을 <code>TryShowBattleSpeech(..., directionOverride)</code>로 넘기며, fallback 직접 표시도 같은 방향을 유지합니다.</li>
+          <li>직접 확인용 버튼도 <code>Player Top</code>, <code>Enemy Top</code>, <code>Player Front</code>, <code>Enemy Front</code>로 정리했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>21. Battle Speech Text Resize</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>BattleNarrationPanel</code>과 같은 방향으로 말풍선 배경과 텍스트 영역이 텍스트 크기에 맞춰 함께 조정되도록 개선했습니다.</li>
+          <li><code>BattleSpeechBubble.ResizeToText(...)</code>가 배경 RectTransform과 <code>SpeechText</code> RectTransform 크기를 모두 갱신합니다.</li>
+          <li><code>BattleSpeechBubble_Enemy.prefab</code>, <code>BattleSpeechBubble_Player.prefab</code>의 TMP wrapping을 활성화했습니다.</li>
+          <li>긴 텍스트와 큰 폰트 크기가 말풍선 높이 계산에 반영될 수 있도록 정리했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>22. Battle Speech Max Size</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>기존 말풍선 최대 크기는 <code>360 x 180</code>이었습니다.</li>
+          <li><code>BattleSpeechBubble</code> 기본값과 enemy/player 말풍선 프리팹의 <code>_maxSize</code>를 <code>1080 x 540</code>으로 확장했습니다.</li>
+          <li><code>SpeechText</code> RectTransform을 런타임에 center anchor/pivot 기준으로 정규화하여 세로 크기 적용이 안정적으로 반영되도록 보정했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>23. Battle Speech Unlimited Height</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>말풍선 세로 크기는 텍스트 preferred height에 맞춰 제한 없이 늘어나도록 변경했습니다.</li>
+          <li><code>BattleSpeechBubble.ResizeToText(...)</code>에서 세로 크기 계산의 <code>_maxSize.y</code> 클램프를 제거했습니다.</li>
+          <li>가로 크기는 <code>_maxSize.x</code>까지 제한하고, 세로 크기는 텍스트 높이와 padding 기준으로 계속 확장됩니다.</li>
+          <li><code>Up</code> 방향 말풍선은 <code>Box</code> pivot을 아래 변 기준으로 바꾸고, <code>Pivots/Top + _topGap</code> 위치에 그 아래 변을 둡니다.</li>
+          <li>따라서 말풍선이 세로로 길어져도 아래 변은 Top 피봇 위쪽에 유지되고, 플레이어 또는 적의 머리 쪽을 침범하지 않도록 위쪽으로 길어집니다.</li>
+          <li><code>Left</code>/<code>Right</code> 말풍선은 현재 <code>Pivots/FrontMiddle</code> 높이를 중심으로 위아래가 함께 늘어나는 방식입니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>24. Battle Speech Directional Edge Pivot</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>말풍선은 actor 피봇 쪽 변을 고정하고, actor 반대 방향으로만 길어지도록 정리했습니다.</li>
+          <li><code>Right</code> 방향은 <code>Box</code> pivot을 <code>(0, 0.5)</code>로 설정해 왼쪽 변을 고정하고 오른쪽으로 확장합니다.</li>
+          <li><code>Left</code> 방향은 <code>Box</code> pivot을 <code>(1, 0.5)</code>로 설정해 오른쪽 변을 고정하고 왼쪽으로 확장합니다.</li>
+          <li><code>Up</code> 방향은 <code>Box</code> pivot을 <code>(0.5, 0)</code>로 설정해 아래 변을 고정하고 위쪽으로 확장합니다.</li>
+          <li><code>PositionForActor(...)</code>는 이제 말풍선 반폭/반높이 보정 대신 actor 피봇에서 gap만 더한 위치에 말풍선 기준 변을 둡니다.</li>
+          <li>플레이어 오른쪽 말풍선과 적 왼쪽 말풍선 모두 텍스트 길이가 늘어나도 캐릭터 쪽으로 침범하지 않고 바깥쪽으로 확장됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>25. Battle Speech Text Margins And Tail Area</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>SpeechText</code> 본문 마진을 left <code>8</code>, top <code>6</code>, right <code>8</code>, bottom <code>6</code>으로 코드 기준화했습니다.</li>
+          <li>이후 꼬리 분리 작업으로 side 꼬리 크기와 아래 꼬리 크기는 <code>Box</code> 본문 크기 계산에서 제외했습니다.</li>
+          <li><code>ResizeToText(...)</code>는 텍스트 마진을 포함한 몸통 <code>Box</code> 크기를 계산합니다.</li>
+          <li><code>Tail</code> 이미지는 <code>PositionTail(...)</code>에서 방향별로 별도 크기와 위치를 잡습니다.</li>
+          <li>꼬리 위에 텍스트가 올라가지 않도록 처리하던 방식은 별도 꼬리 이미지 배치 방식으로 대체되었습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>26. Battle Speech Side Text Offset Fix</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>이 항목의 최초 해석은 이후 검증에서 정정되었습니다.</li>
+          <li>문제의 원인은 좌우 텍스트 오프셋 방향이 아니라 <code>SpeechText</code> 본문 영역이 박스 좌우를 너무 많이 차지하는 것이었습니다.</li>
+          <li>좌우 오프셋 반전 변경은 되돌렸고, 아래 <code>Battle Speech Horizontal Text Margin</code> 항목의 공통 좌우 마진으로 최종 정리했습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>27. Battle Speech Horizontal Text Margin</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>좌우 문제는 텍스트 오프셋 방향이 아니라 <code>SpeechText</code> 본문 영역이 박스 좌우를 너무 많이 차지하는 문제로 정정했습니다.</li>
+          <li>이전 좌우 오프셋 반전 변경은 되돌렸습니다.</li>
+          <li>중복되던 좌우 마진 값을 <code>_horizontalTextMargin = 40</code> 하나로 통일했습니다.</li>
+          <li>기존 <code>_sideHorizontalTextMargin</code> 직렬화 값은 <code>FormerlySerializedAs</code>로 이어받습니다.</li>
+          <li><code>Up</code>/<code>Left</code>/<code>Right</code> 말풍선 모두 같은 좌우 텍스트 마진 값을 사용합니다.</li>
+          <li>위/아래 텍스트 마진은 <code>_verticalTextMargins = (6, 6)</code>으로 분리했습니다.</li>
+          <li>이후 꼬리 분리 작업으로 side 꼬리 크기와 top 아래꼬리 크기는 박스 본문 크기 계산에서 빠지고, 별도 <code>Tail</code> 이미지 배치에만 사용됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>28. Battle Speech Max Width Reduced</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>기존 3배 기준이던 말풍선 최대 가로 크기 <code>1080</code>을 2배 기준인 <code>720</code>으로 줄였습니다.</li>
+          <li><code>BattleSpeechBubble</code> 기본 <code>_maxSize</code>를 <code>720 x 540</code>으로 변경했습니다.</li>
+          <li><code>BattleSpeechBubble_Enemy.prefab</code>, <code>BattleSpeechBubble_Player.prefab</code>의 <code>_maxSize</code> 직렬화 값도 <code>720 x 540</code>으로 맞췄습니다.</li>
+          <li>세로 크기는 기존처럼 텍스트 preferred height 기반 무제한 확장 구조를 유지합니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>16. Battle SpeechBubble Side Sprite Rename</h2>
+        <span class="tag">UI Art</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>전투 말풍선 side sprite의 <code>Left</code>/<code>Right</code> 이름과 실제 방향 의미가 반대로 쓰이던 문제를 정리했습니다.</li>
+          <li><code>EnemySpeechBubble_Right.png</code>는 오른쪽 위치용 말풍선으로, 꼬리가 왼쪽을 향하도록 교환했습니다.</li>
+          <li><code>EnemySpeechBubble_Left.png</code>는 왼쪽 위치용 말풍선으로, 꼬리가 오른쪽을 향하도록 교환했습니다.</li>
+          <li>최종 구조에서는 <code>_leftBubbleSprite</code>/<code>_rightBubbleSprite</code> 대신 <code>_leftTailSprite</code>/<code>_rightTailSprite</code>를 사용합니다.</li>
+          <li>enum은 계속 말풍선의 위치 방향을 의미하고, 실제 꼬리 방향은 위치와 반대쪽 sprite를 선택합니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>17. 말풍선 몸통/꼬리 분리</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>원인: 기존 말풍선은 몸통과 꼬리가 한 장의 <code>Sliced</code> 이미지에 들어 있어, 텍스트에 맞춰 몸통이 늘어날 때 꼬리도 같이 늘어났습니다.</li>
+          <li><code>EnemySpeechBubble.png</code>는 꼬리 없는 몸통 전용 이미지로 정리했습니다.</li>
+          <li><code>EnemySpeechBubble_Bottom.png</code>, <code>EnemySpeechBubble_Left.png</code>, <code>EnemySpeechBubble_Right.png</code>는 꼬리 전용 이미지로 분리했습니다.</li>
+          <li><code>BattleSpeechBubble.cs</code>는 몸통 <code>Image</code>와 꼬리 <code>Image</code>를 따로 제어합니다. 몸통은 <code>Sliced</code>, 꼬리는 <code>Simple</code>입니다.</li>
+          <li><code>BattleSpeechBubble_Enemy.prefab</code>, <code>BattleSpeechBubble_Player.prefab</code>에 <code>Tail</code> 자식을 추가하고 <code>_tailRoot</code>, <code>_tailImage</code>에 연결했습니다.</li>
+          <li><code>Up</code>은 아래 방향 꼬리, <code>Left</code>는 오른쪽 방향 꼬리, <code>Right</code>는 왼쪽 방향 꼬리를 사용합니다.</li>
+          <li>결과: 말풍선 몸통이 텍스트 길이에 따라 늘어나도 꼬리는 더 이상 늘어나지 않습니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code>, <code>git diff --check</code> 통과. 씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>18. 말풍선 레이아웃 TDD 검증</h2>
+        <span class="tag">TDD</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>BattleSpeechBubbleLayout</code> 계산 모듈을 추가해 방향별 body/tail/text 레이아웃을 한 곳에서 계산하도록 정리했습니다.</li>
+          <li><code>BattleSpeechBubble</code>는 이 계산 결과를 적용하도록 리팩터링했습니다.</li>
+          <li>EditMode 테스트 <code>BattleSpeechBubbleLayoutTests.cs</code>를 추가했습니다.</li>
+          <li>테스트는 <code>Right</code>, <code>Left</code>, <code>Up</code> 방향에서 몸통과 꼬리의 맞닿는 변, 기존 텍스트 마진, 꼬리 크기, 음수 입력 clamp를 검증합니다.</li>
+          <li>C# LSP 진단, csproj 포함 여부, <code>dotnet build .\HubToHome.sln --no-restore</code>, Unity Console error 0건을 확인했습니다.</li>
+          <li>Unity Test Runner 실행은 현재 Editor가 Play Mode 진입/실행 중이라 거부되었습니다. 사용자 작업을 방해하지 않기 위해 Play Mode를 강제로 중지하지 않았습니다.</li>
+          <li>씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>19. 말풍선 꼬리 3분할 축소</h2>
+        <span class="tag">UI Art</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>기존 꼬리 이미지가 4단으로 길게 뻗어 있어 3분할 형태로 다시 그렸습니다.</li>
+          <li>몸통과 맞닿는 중앙 접합부의 흰색 테두리를 제거해 검은 내부가 자연스럽게 이어지도록 했습니다.</li>
+          <li>수정 파일: <code>EnemySpeechBubble_Bottom.png</code>, <code>EnemySpeechBubble_Left.png</code>, <code>EnemySpeechBubble_Right.png</code>.</li>
+          <li>표시 길이는 3분할 이미지 기준으로 줄였고, 최종 레이아웃은 기본 꼬리 rect <code>32x32</code>에 방향별 scale을 곱하는 방식으로 정리했습니다.</li>
+          <li>최종 표시 크기: 위쪽 꼬리 <code>128x64</code>, 좌/우 꼬리 <code>64x64</code>.</li>
+          <li><code>BattleSpeechBubble_Enemy.prefab</code>, <code>BattleSpeechBubble_Player.prefab</code>의 꼬리 크기 직렬화 값은 <code>_sideTailSize = 32</code>, <code>_topTailSize = 32</code>로 맞췄고, 레이아웃 테스트 기대값도 함께 갱신했습니다.</li>
+          <li>C# LSP 진단과 <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. 씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>20. 말풍선 꼬리 스케일/접합 위치</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>위쪽 말풍선 꼬리는 절대 스케일 <code>x=4</code>, <code>y=2</code>를 적용합니다.</li>
+          <li>위쪽 말풍선 꼬리는 <code>y +4</code>만큼 더 올라와 몸통과 4px 겹치게 했습니다.</li>
+          <li>위쪽 말풍선 꼬리 x 좌표는 캐릭터 <code>Top</code> 피봇과 일치하도록 <code>Tail.x = 0</code>을 유지하고, <code>_topOffset.x</code>는 사용하지 않게 했습니다.</li>
+          <li>좌/우 꼬리는 절대 스케일 <code>x=2</code>, <code>y=2.5</code>를 적용합니다.</li>
+          <li>좌/우 꼬리는 말풍선 몸통 쪽으로 x축 <code>32</code>만큼 들어가는 기준에 방향별 보정값을 더해 배치합니다.</li>
+          <li><code>BattleSpeechBubbleLayout</code>에 <code>TailScale</code> 결과를 추가하고, <code>BattleSpeechBubble.PositionTail(...)</code>에서 크기, 스케일, 위치를 함께 적용합니다.</li>
+          <li>Enemy/Player 말풍선 프리팹의 <code>Tail</code> 기본 scale/position도 위쪽 말풍선 기준으로 맞췄습니다.</li>
+          <li>C# LSP 진단 통과. 씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>21. 오른쪽 말풍선 왼쪽 꼬리 x 보정</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>오른쪽 말풍선은 몸통이 캐릭터 오른쪽에 뜨고, 꼬리는 몸통 왼쪽에 붙는 구조입니다.</li>
+          <li>현재 꼬리 sprite 접합 기준에 맞춰 <code>BattleSpeechBubbleDirection.Right</code>의 tail x 좌표를 기존 계산값에서 <code>-16</code>만큼 이동시켰습니다.</li>
+          <li>오른쪽 말풍선 몸통은 <code>RightBoxHorizontalOffset = 8</code>로 x축 <code>+8</code>만큼 이동시켰습니다.</li>
+          <li>왼쪽 말풍선 몸통은 <code>LeftBoxHorizontalOffset = -16</code>으로 x축 <code>-16</code>만큼 이동시켰습니다.</li>
+          <li>위쪽 말풍선의 위치 계산은 변경하지 않았습니다.</li>
+          <li>레이아웃 테스트 기대값도 현재 scale/overlap 값과 방향별 x 보정값에 맞춰 갱신했습니다.</li>
+          <li>씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>22. SmartTextWrapper 공용 줄바꿈 시스템</h2>
+        <span class="tag">Shared UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>한국어/짧은 전투 대사에서 마지막 단어 조각만 다음 줄로 떨어지는 문제를 줄이기 위해 <code>SmartTextWrapper</code>를 추가했습니다.</li>
+          <li>위치: <code>Assets/_Game/Shared/Scripts/Text/SmartTextWrapper.cs</code>.</li>
+          <li>사용법: TMP UI에서는 <code>SmartTextWrapper.Wrap(tmpText, rawText, maxTextWidth)</code>를 호출하면 됩니다.</li>
+          <li>테스트나 TMP 외부 시스템에서는 <code>SmartTextWrapper.Wrap(rawText, maxTextWidth, measureWidth)</code> overload를 사용할 수 있습니다.</li>
+          <li>공백 기준 토큰을 greedy 방식으로 배치하고, 같은 토큰 폭은 호출 중 캐시합니다. 한 토큰 자체가 너무 길 때만 문자 단위로 fallback합니다.</li>
+          <li><code>SmartTextWrapOptions</code>로 기능 on/off, 기존 줄바꿈 보존, 공백 정리 여부를 조정할 수 있습니다.</li>
+          <li>1차 적용 대상은 <code>BattleSpeechBubble</code>과 <code>BattleNarrationUI</code>입니다. QTE, HP/MP, 메뉴 버튼, 옵션 값 같은 짧은 UI 라벨에는 적용하지 않았습니다.</li>
+          <li>SmartWrap 적용 대상 TMP는 런타임에 <code>TextWrappingModes.NoWrap</code>으로 자동 wrapping을 끕니다. 그래야 TMP가 SmartWrap 이후에 <code>있어.</code>를 <code>있/어.</code>처럼 다시 쪼개지 않습니다.</li>
+          <li>테스트 파일: <code>Assets/_Game/Shared/Tests/Editor/SmartTextWrapperTests.cs</code>.</li>
+          <li>C# LSP 진단, Unity script validation, Unity Console error 0건, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. EditMode Test Runner는 에디터가 Play Mode 상태라 시작하지 못했습니다.</li>
+          <li>씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>23. SmartWrap TMP 자동 줄바꿈 차단</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>BattleSpeechBubble</code>에서 <code>이 정도는 버틸 수 있어.</code>가 <code>이 정도는 버틸 수 있/어.</code>처럼 음절 단위로 갈라지는 원인을 확인했습니다.</li>
+          <li>원인은 SmartWrap 이후 TMP 자체 자동 wrapping이 다시 동작한 것입니다.</li>
+          <li><code>BattleSpeechBubble</code>과 <code>BattleNarrationUI</code>에서 출력 대상 TMP를 런타임에 <code>TextWrappingModes.NoWrap</code>으로 설정했습니다.</li>
+          <li>이제 SmartWrap이 삽입한 명시적 줄바꿈만 말풍선 줄바꿈 기준으로 사용됩니다.</li>
+          <li>프리팹/씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>24. SmartWrap 후보 줄 전체 폭 측정</h2>
+        <span class="tag">Shared UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>TMP 자동 wrapping을 끈 뒤, SmartWrap이 줄을 자르지 않은 문장이 텍스트 박스 밖으로 나가는 문제를 확인했습니다.</li>
+          <li>기존 SmartWrap은 토큰 폭과 공백 폭을 누적해서 판단했지만, 실제 TMP 표시 폭은 후보 줄 전체 문자열의 glyph/spacing/폰트 메트릭으로 결정됩니다.</li>
+          <li>줄바꿈 판정을 <code>토큰별 합산</code>이 아니라 <code>현재 줄 + 다음 토큰</code> 후보 문자열 전체를 측정하는 방식으로 바꿨습니다.</li>
+          <li><code>이 정도는 버틸 수 있어.</code>처럼 마지막 토큰까지 붙인 후보 줄이 최대 폭을 넘으면 <code>있어.</code> 토큰 전체가 다음 줄로 넘어갑니다.</li>
+          <li>회귀 테스트 <code>WrapMeasuresWholeCandidateLineInsteadOfAddingTokenWidths</code>를 추가했습니다.</li>
+          <li>C# LSP 진단과 <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. 씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>29. Battle Speech Tail Stencil Cutout</h2>
+        <span class="tag">Battle Speech</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>문제: 말풍선 몸통 <code>Box</code>와 꼬리 <code>Tail</code>을 각각 알파로 fade out하면, 꼬리가 가리고 있던 몸통 외곽선이 fade 중 희미하게 보일 수 있습니다.</li>
+          <li>선택한 해결 방식은 꼬리 모양을 stencil cutout으로 사용해서 몸통이 애초에 꼬리 영역 아래를 그리지 않게 하는 방식입니다.</li>
+          <li><code>BattleSpeechBubble</code>이 런타임에 <code>TailStencilWrite</code>, <code>TailStencilClear</code> 이미지를 생성합니다. 프리팹 계층에는 별도 오브젝트를 추가하지 않았습니다.</li>
+          <li>렌더 순서는 <code>TailStencilWrite -> Box -> TailStencilClear -> Tail</code>입니다.</li>
+          <li><code>TailStencilWrite</code>는 꼬리 sprite의 alpha 영역만 stencil ref <code>13</code>으로 기록하고, <code>Box</code>는 해당 stencil 영역을 건너뜁니다.</li>
+          <li><code>TailStencilClear</code>는 같은 영역을 다시 <code>0</code>으로 지워 이후 UI 렌더링에 stencil 영향이 남지 않게 합니다.</li>
+          <li>실제 <code>Tail</code>은 마지막에 정상 렌더링되므로 Box/Tail이 함께 fade out되어도 겹쳐 숨겨진 외곽선이 드러나지 않는 구조입니다.</li>
+          <li>검증: C# LSP 진단, Unity script validation, Unity Console error 0건, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. 빌드에는 기존 assembly conflict/unused field 경고만 남아 있습니다.</li>
         </ul>
       </div>
     </section>

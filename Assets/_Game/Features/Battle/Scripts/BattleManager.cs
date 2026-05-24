@@ -183,10 +183,28 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private IEnumerator WaitForNarrationToFinish()
     {
         BattleUIController ui = BattleUIController.Instance;
-        if (ui == null) yield break;
 
-        while (ui.IsNarrationBlockingInput())
+        while ((ui != null && ui.IsNarrationBlockingInput()) || IsAnyBattleSpeechShowing())
             yield return null;
+    }
+
+    private bool IsAnyBattleSpeechShowing()
+    {
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player != null && player.IsBattleSpeechShowing())
+                return true;
+        }
+
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            EnemyCharacter enemy = _enemies[i];
+            if (enemy != null && enemy.IsBattleSpeechShowing())
+                return true;
+        }
+
+        return false;
     }
 
     private IEnumerator WarmupBattlePresentation()
@@ -713,7 +731,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         player.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         player.HealMP(_mpPerTurn);
         OnMPChanged?.Invoke(player, player.CurrentMP);
-        player.TryShowBattleSpeech(BattleSpeechTrigger.TurnStart, null, null, _battleTurnCounter);
+        if (player.TryShowBattleSpeech(BattleSpeechTrigger.TurnStart, null, null, _battleTurnCounter))
+            yield return StartCoroutine(player.WaitForBattleSpeech());
         TryRequestFlavorNarration();
         yield return StartCoroutine(WaitForNarrationToFinish());
         OnPlayerTurnStarted?.Invoke(player);
@@ -917,7 +936,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         actor.ConsumeMP(skill.MPCost);
         OnMPChanged?.Invoke(actor, actor.CurrentMP);
-        actor.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, skill, null, _battleTurnCounter);
+        if (actor.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, skill, null, _battleTurnCounter))
+            yield return StartCoroutine(actor.WaitForBattleSpeech());
         List<CharacterBase> targets = new List<CharacterBase>();
         if (skill.IsAoE)
         {
@@ -1089,8 +1109,10 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
         if ((action == EnemyAction.UseSkill || action == EnemyAction.UseStrongSkill) && enemySkill != null)
         {
-            enemy.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, enemySkill, null, _battleTurnCounter, 1.2f);
-            yield return new WaitForSeconds(0.18f);
+            if (enemy.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, enemySkill, null, _battleTurnCounter, 1.2f))
+                yield return StartCoroutine(enemy.WaitForBattleSpeech());
+            else
+                yield return new WaitForSeconds(0.18f);
 
             yield return StartCoroutine(ExecuteEnemySequenceSkill(enemy, enemySkill));
         }

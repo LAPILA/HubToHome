@@ -30,7 +30,25 @@ public class DialogueManager : MonoBehaviour
 
     public void StartDialogue(DialogueData data, Action onComplete = null, DialogueEncounterContext encounterContext = null)
     {
-        if (_isPlaying || data == null || data.Nodes.Count == 0) return;
+        LogDialogueConsole($"StartDialogue requested data={GetDialogueName(data)}");
+
+        if (_isPlaying)
+        {
+            LogDialogueConsole($"StartDialogue ignored: already playing current={GetDialogueName(_currentDialogue)} requested={GetDialogueName(data)}");
+            return;
+        }
+
+        if (data == null)
+        {
+            LogDialogueConsole("StartDialogue ignored: data is null");
+            return;
+        }
+
+        if (data.Nodes.Count == 0)
+        {
+            LogDialogueConsole($"StartDialogue ignored: no nodes data={GetDialogueName(data)}");
+            return;
+        }
 
         _isPlaying = true;
         _currentDialogue = data;
@@ -40,7 +58,14 @@ public class DialogueManager : MonoBehaviour
 
         _activeUI = (data.Style == DialogueStyle.Cinematic) ? _cinematicPanel : _overworldPanel;
 
-        if (_activeUI == null) { _isPlaying = false; return; }
+        if (_activeUI == null)
+        {
+            LogDialogueConsole($"StartDialogue failed: active UI missing data={GetDialogueName(data)} style={data.Style}");
+            _isPlaying = false;
+            return;
+        }
+
+        LogDialogueConsole($"StartDialogue started data={GetDialogueName(data)} style={data.Style} nodes={data.Nodes.Count}");
 
         // DontDestroyOnLoad UI가 새 씬 카메라를 확실히 물도록 대화 시작 직전에 즉시 재바인딩
         _activeUI.RebindCanvasCameraImmediate();
@@ -69,6 +94,8 @@ public class DialogueManager : MonoBehaviour
     {
         if (node == null) return;
 
+        LogDialogueConsole($"PlayNode data={GetDialogueName(_currentDialogue)} index={_currentNodeIndex} speaker={node.Speaker} key={node.LocalizationKey} event={node.EventTriggerID}");
+
         // 🚨 1. 이름 입력 이벤트 체크
         if (node.EventTriggerID == "RequestName")
         {
@@ -88,6 +115,7 @@ public class DialogueManager : MonoBehaviour
 
         if (node.IsChoiceNode && node.Choices != null && node.Choices.Count > 0)
         {
+            LogDialogueConsole($"ShowChoices data={GetDialogueName(_currentDialogue)} index={_currentNodeIndex} count={node.Choices.Count}");
             _activeUI.ShowChoices(node.Choices, OnChoiceSelected);
         }
     }
@@ -105,12 +133,14 @@ public class DialogueManager : MonoBehaviour
 
         if (choice.StartBattleEncounter)
         {
+            LogDialogueConsole($"Choice selected: start battle flag={choice.SetFlagOnSelect}");
             StartCoroutine(CoStartBattleFromChoice(choice));
             return;
         }
 
         if (choice.NextDialogue != null)
         {
+            LogDialogueConsole($"Choice selected: next dialogue={GetDialogueName(choice.NextDialogue)} flag={choice.SetFlagOnSelect}");
             _currentDialogue = choice.NextDialogue;
             _currentNodeIndex = 0;
             PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
@@ -189,6 +219,8 @@ public class DialogueManager : MonoBehaviour
 
     public void EndDialogue()
     {
+        LogDialogueConsole($"EndDialogue data={GetDialogueName(_currentDialogue)} nodeIndex={_currentNodeIndex}");
+
         _isPlaying = false;
         if (_activeUI != null) _activeUI.ClosePanel(); 
         _encounterContext = null;
@@ -198,5 +230,18 @@ public class DialogueManager : MonoBehaviour
         var cb = _onCompleteCallback;
         _onCompleteCallback = null;
         cb?.Invoke(); // 🚨 인트로 매니저의 OnNameConfirmed 등이 여기서 실행됨
+    }
+
+    private static string GetDialogueName(DialogueData data)
+    {
+        return data != null ? data.name : "null";
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    private static void LogDialogueConsole(string message)
+    {
+#if UNITY_EDITOR
+        FlyingWormConsole3.ConsoleProDebug.LogToFilter($"[DialogueManager] {message}", "Dialogue");
+#endif
     }
 }
