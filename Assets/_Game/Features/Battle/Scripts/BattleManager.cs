@@ -846,18 +846,31 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     public void ConfirmTargetAndExecute(int targetIndex)
     {
         if (CurrentState == BattleState.ActionExecute) return;
-        ChangeState(BattleState.ActionExecute);
-
         if (_pendingAction == PlayerMenuAction.Attack)
+        {
+            ChangeState(BattleState.ActionExecute);
             StartCoroutine(ExecuteAttack(_pendingActor, targetIndex));
+        }
         else if (_pendingAction == PlayerMenuAction.Skill && CurrentPendingSkill != null)
         {
-            if (_pendingActor.CurrentMP >= CurrentPendingSkill.MPCost)
-                StartCoroutine(ExecuteSkill(_pendingActor, targetIndex, CurrentPendingSkill));
-            else { Debug.LogWarning("MP 부족!"); EndAction(); }
+            if (_pendingActor.CurrentMP < CurrentPendingSkill.MPCost)
+            {
+                RequestNarration(new BattleNarrationMessage("MP가 부족하다.", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
+                _pendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+                CurrentPendingSkill = null;
+                CurrentPendingItem = null;
+                ChangeState(BattleState.PlayerActionSelect);
+                return;
+            }
+
+            ChangeState(BattleState.ActionExecute);
+            StartCoroutine(ExecuteSkill(_pendingActor, targetIndex, CurrentPendingSkill));
         }
         else if (_pendingAction == PlayerMenuAction.Item && CurrentPendingItem != null)
+        {
+            ChangeState(BattleState.ActionExecute);
             StartCoroutine(ExecuteItem(_pendingActor, targetIndex, CurrentPendingItem));
+        }
         else
             EndAction();
     }

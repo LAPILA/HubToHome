@@ -23,6 +23,8 @@ public class BattleMenuUI : UIPanel
     #region [ Animation & Style Settings ]
     [FoldoutGroup("Slide Animation"), LabelWidth(140)] 
     [SerializeField] private float _menuSlideOffsetY = 150f; 
+    [FoldoutGroup("Slide Animation"), LabelWidth(140)]
+    [SerializeField] private float _menuSlideExtraOffsetY = 50f;
     [FoldoutGroup("Slide Animation"), LabelWidth(140)] 
     [SerializeField] private float _menuSlideDuration = 0.25f;
 
@@ -256,9 +258,11 @@ public class BattleMenuUI : UIPanel
     #region [ UI Animations (Slide & Sync) ]
     private void SlideMenuUp()
     {
+        float slideOffsetY = ResolveMenuSlideOffsetY();
+
         _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_baseMenuY + _menuSlideOffsetY, _menuSlideDuration).SetEase(Ease.OutCubic);
-        BattleUIController.Instance?.MovePartyPanelUp(_menuSlideOffsetY, _menuSlideDuration);
+        _rectTransform.DOAnchorPosY(_baseMenuY + slideOffsetY, _menuSlideDuration).SetEase(Ease.OutCubic);
+        BattleUIController.Instance?.MovePartyPanelUp(slideOffsetY, _menuSlideDuration);
     }
 
     private void SlideMenuDown()
@@ -295,6 +299,11 @@ public class BattleMenuUI : UIPanel
                 img.DOColor(_normalColor, 0.1f);
             }
         }
+    }
+
+    private float ResolveMenuSlideOffsetY()
+    {
+        return _menuSlideOffsetY + _menuSlideExtraOffsetY;
     }
 
     

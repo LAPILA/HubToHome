@@ -290,7 +290,7 @@ public sealed class CheatManager : MonoBehaviour
     {
         return _selectedCategory switch
         {
-            0 => 1480f,
+            0 => 1280f,
             1 => Mathf.Max(540f, GetPlayers().Count * 114f + 135f),
             _ => 540f
         };
@@ -318,24 +318,6 @@ public sealed class CheatManager : MonoBehaviour
         }
         GUILayout.EndHorizontal();
 
-        GUILayout.Space(10f);
-        DrawHelp("Style smoke test");
-        GUILayout.BeginHorizontal();
-        column = 0;
-        foreach (BattleNarrationStyle style in Enum.GetValues(typeof(BattleNarrationStyle)))
-        {
-            if (GUILayout.Button(style.ToString(), _buttonStyle, GUILayout.Height(39f)))
-                battle.RequestNarration(new BattleNarrationMessage($"[Cheat Test] Style: {style}", style, BattleNarrationPriority.High, 0.8f));
-
-            column++;
-            if (column % 3 == 0)
-            {
-                GUILayout.EndHorizontal();
-                GUILayout.Space(6f);
-                GUILayout.BeginHorizontal();
-            }
-        }
-        GUILayout.EndHorizontal();
         GUILayout.Space(10f);
     }
 
@@ -399,24 +381,6 @@ public sealed class CheatManager : MonoBehaviour
             GUILayout.EndHorizontal();
             GUILayout.Space(6f);
         }
-
-        GUILayout.Space(10f);
-        DrawHelp("Direct direction smoke test");
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Player Top", _buttonStyle, GUILayout.Height(39f)))
-            ShowSpeechBubbleDirect(player, "[Cheat] Player bubble Top", BattleSpeechBubbleDirection.Up);
-        if (GUILayout.Button("Enemy Top", _buttonStyle, GUILayout.Height(39f)))
-            ShowSpeechBubbleDirect(enemy, "[Cheat] Enemy bubble Top", BattleSpeechBubbleDirection.Up);
-        GUILayout.EndHorizontal();
-        GUILayout.Space(6f);
-
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Player Front", _buttonStyle, GUILayout.Height(39f)))
-            ShowSpeechBubbleDirect(player, "[Cheat] Player bubble Front", ResolveSpeechBubbleDirection(player, SpeechBubbleCheatDirectionMode.Front));
-        if (GUILayout.Button("Enemy Front", _buttonStyle, GUILayout.Height(39f)))
-            ShowSpeechBubbleDirect(enemy, "[Cheat] Enemy bubble Front", ResolveSpeechBubbleDirection(enemy, SpeechBubbleCheatDirectionMode.Front));
-        GUILayout.EndHorizontal();
-        GUILayout.Space(6f);
 
         GUILayout.Space(10f);
     }

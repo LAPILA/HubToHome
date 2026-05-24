@@ -795,9 +795,185 @@
       </div>
     </section>
 
+    <section>
+      <div class="section-head">
+        <h2>17. Editor Play Scene Shortcuts</h2>
+        <span class="tag">Editor Shortcut</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>에디터 Play 시작 단축키를 씬별로 분리했습니다.</li>
+          <li><code>Alt + Shift + 1</code>: 타이틀 씬 <code>Assets/_Game/Scenes/Title/00_TitleScene.unity</code>에서 바로 시작합니다.</li>
+          <li><code>Alt + Shift + 2</code>: 오버월드 씬 <code>Assets/_Game/Scenes/OverworldScene.unity</code>에서 바로 시작합니다.</li>
+          <li>기존 <code>Alt + Shift + P</code> 타이틀 시작 단축키는 제거했습니다.</li>
+          <li>공통 실행 헬퍼에서 저장 확인, 씬 존재 검사, Play Mode 중복 진입 방지를 처리합니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>30. Title UI Z Submit Fallback</h2>
+        <span class="tag">Title UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>문제: 타이틀 씬에서 선택된 버튼이 있어도 <code>Z</code> 입력으로 버튼 선택/실행이 되지 않는 경우가 있었습니다.</li>
+          <li>원인: <code>TitleMenuManager</code>는 <code>GameInput.UISubmitPressed</code>만 보고 선택 버튼을 수동 실행하는데, 기존 <code>UISubmitPressed</code>는 UI InputAction <code>Submit</code>만 확인했습니다.</li>
+          <li>액션 바인딩 또는 EventSystem 포커스가 해당 프레임의 Submit을 놓치면, 기본 확인키인 <code>Z</code>가 눌려도 타이틀 버튼 실행까지 이어지지 않았습니다.</li>
+          <li>수정: <code>Assets/_Game/Core/Scripts/GameInput.cs</code>의 <code>UISubmitPressed</code>에 <code>Z</code>, <code>Enter</code>, <code>NumpadEnter</code> 직접 입력 fallback을 추가했습니다.</li>
+          <li>Config 패널 활성 중에는 기존처럼 UI submit이 막히므로 옵션 패널 입력과 충돌하지 않습니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. 기존 assembly conflict/unused field 경고만 남았습니다.</li>
+          <li>씬 파일은 수정하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+
     <div class="note">
       <strong>관리 기준:</strong> 2026-05-24부터 <code>AIAssets/yjlim/Patchnote</code> 폴더의 오늘 작업 패치노트는 이 HTML 하나로 관리합니다.
     </div>
+    <section>
+      <div class="section-head">
+        <h2>31. UI Resolution TMP Refresh Service</h2>
+        <span class="tag">Shared UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>문제: 640x480 GameView에서 SettingsCategories 하위 TMP 텍스트가 흐리게 보이고, Bold를 껐다 켜면 선명해지는 현상을 확인했습니다.</li>
+          <li>원인 판단: Bold 상태 자체가 아니라, 해상도/CanvasScaler 변경 이후 TMP SDF 메시 스케일과 패딩 데이터가 갱신되지 않은 상태로 남는 문제로 보았습니다.</li>
+          <li><code>GameConfigManager</code>에 <code>DisplaySettingsChanged</code> 이벤트를 추가하고, <code>Screen.SetResolution(...)</code> 이후 발행하도록 했습니다.</li>
+          <li><code>UIResolutionRefreshService</code>를 추가해 런타임에 자동 생성되도록 했습니다.</li>
+          <li>해상도, 화면 크기, 전체화면 모드 변경 또는 씬 로드 후 다음 프레임/EndOfFrame에 모든 로드된 <code>TMP_Text</code>를 전역 갱신합니다.</li>
+          <li>갱신 내용: <code>Canvas.ForceUpdateCanvases()</code>, <code>UpdateMeshPadding()</code>, <code>SetVerticesDirty()</code>, <code>SetMaterialDirty()</code>, <code>ForceMeshUpdate(true, true)</code>.</li>
+          <li>특정 TMP 오브젝트별 대응이 아니라 게임 전체 UI 텍스트를 변경 감지 시 1회만 갱신하는 방식입니다.</li>
+          <li>검증: C# LSP 단일 파일 진단 통과, Unity Console error 0건 확인.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>32. Title UI Z Submit Debug Logs</h2>
+        <span class="tag">Title UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>타이틀 씬에서 <code>Z</code> 입력이 버튼 실행까지 이어지지 않는 현상을 추적하기 위해 임시 진단 로그를 추가했습니다.</li>
+          <li>씬 파일은 수정하지 않았고, <code>GameInput</code>과 <code>TitleMenuManager</code> 코드에만 추적용 로그를 삽입했습니다.</li>
+          <li>로그 태그는 <code>[DEBUG-title-submit-20260524]</code>입니다.</li>
+          <li><code>submit-probe</code> 로그에서 UI Submit 액션, Player Confirm 액션, raw <code>Z</code>/<code>Enter</code>/<code>NumpadEnter</code>, Config modal, lock, config visible, EventSystem, selected, lastSelected 상태를 한 번에 확인할 수 있습니다.</li>
+          <li>Submit이 들어왔는데 선택 오브젝트가 없으면 <code>submit-but-no-selected</code>, 선택 오브젝트가 Button이 아니면 <code>submit-but-selected-has-no-button</code>, 실제 실행까지 갔으면 <code>invoke</code>가 출력됩니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. 기존 assembly conflict/unused field 경고만 남았습니다.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>33. Title UI Config Modal Stuck Flag Fix</h2>
+        <span class="tag">Title UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>재현 로그상 <code>Z</code>, UI Submit, selected button은 정상이었지만 <code>configModal=True</code>, <code>configVisible=False</code> 상태였습니다.</li>
+          <li>옵션 패널은 보이지 않는데 <code>GameInput</code>의 config modal 플래그가 true로 남아 타이틀 Submit이 차단되는 것이 실제 원인이었습니다.</li>
+          <li><code>ConfigPanelUI.Awake()</code>, <code>OnDisable()</code>, <code>OnDestroy()</code>에서 <code>GameInput.SetConfigModalActive(false)</code>를 호출하도록 수정했습니다.</li>
+          <li>정상 Hide 경로 외에 비활성화/파괴/도메인 reload 설정 차이 같은 우회 경로에서도 옵션 입력 모드가 남지 않도록 했습니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. 기존 assembly conflict/unused field 경고만 남았습니다.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>34. Title UI Debug Logs Removed</h2>
+        <span class="tag">Title UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>원인 확인 후 <code>[DEBUG-title-submit-20260524]</code> 진단 로그를 제거했습니다.</li>
+          <li><code>GameInput</code>의 임시 <code>TitleSubmitDebugState</code>, <code>GetTitleSubmitDebugState()</code>를 제거했습니다.</li>
+          <li><code>TitleMenuManager</code>의 임시 상태 로그와 보조 출력 함수를 제거했습니다.</li>
+          <li>실제 수정인 <code>ConfigPanelUI</code>의 config modal 플래그 복구 처리는 유지했습니다.</li>
+          <li>검증: 관련 debug 문자열 검색 결과 코드에 남아있지 않고, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>32. Battle Skill MP Shortage Turn Guard</h2>
+        <span class="tag">Battle</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>문제: 적이 강공격을 준비 중일 때 플레이어가 MP 부족 스킬을 선택하면, 스킬은 시전되지 않고 바로 적 강공격으로 넘어갔습니다.</li>
+          <li>원인: MP 부족 분기에서 <code>EndAction()</code>을 호출해 플레이어 턴을 소비하고 있었습니다.</li>
+          <li>강공격 예고는 이미 <code>_reservedEnemyActionByActor</code>에 다음 적 턴 행동을 예약하므로, 플레이어 턴이 소비되면 곧바로 예약 강공격이 실행됩니다.</li>
+          <li>수정: MP 부족 시 <code>EndAction()</code>을 호출하지 않고, "MP가 부족하다." 내레이션 후 <code>PlayerActionSelect</code>로 되돌리도록 했습니다.</li>
+          <li>공격/스킬/아이템은 실제 실행 가능한 경우에만 <code>ActionExecute</code> 상태로 전환되도록 조정했습니다.</li>
+          <li>검증: C# LSP 단일 파일 진단 통과, Unity Console error 0건 확인, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>35. Battle Action Bar Slide Offset +50</h2>
+        <span class="tag">Battle UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>전투 중 Skill/Item 서브메뉴를 열 때 하단 행동바가 덜 올라와 보이는 문제를 확인했습니다.</li>
+          <li><code>BattleMenuUI.SlideMenuUp()</code>가 씬 직렬화 값 <code>_menuSlideOffsetY = 130</code>만 사용하고 있어 실제 이동량이 부족했습니다.</li>
+          <li><code>_menuSlideExtraOffsetY = 50f</code>를 추가해 실제 이동량을 <code>_menuSlideOffsetY + _menuSlideExtraOffsetY</code>로 계산하도록 했습니다.</li>
+          <li>현재 BattleScene 값 기준 행동바 이동량은 <code>130 -> 180</code>이 됩니다.</li>
+          <li>같이 움직이는 PartyStatusPanel도 동일한 이동량을 사용해 상대 위치가 틀어지지 않게 했습니다.</li>
+          <li>씬 파일은 수정하지 않았습니다. 검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>36. Title UI Z Confirm Navigation Lock</h2>
+        <span class="tag">Title UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>문제: 타이틀 메뉴에서 <code>Z</code>로 버튼을 확정한 직후 방향키를 누르면, 버튼 blink 중에도 Unity <code>EventSystem</code> navigation이 살아 있어 선택 상태가 어긋나거나 이동이 막힌 것처럼 보일 수 있었습니다.</li>
+          <li>수정: 버튼 확정 순간 <code>LockTitleInput()</code>에서 현재 선택 버튼을 저장하고, <code>EventSystem.sendNavigationEvents</code>를 꺼서 방향키 선택 이동 자체를 막도록 했습니다.</li>
+          <li>잠금 중 선택 오브젝트가 바뀌면 <code>KeepLockedSelection()</code>으로 확정 당시 버튼을 유지합니다.</li>
+          <li>blink 완료 후 <code>UnlockTitleInput()</code>에서 기존 navigation 설정을 복구합니다.</li>
+          <li>오브젝트 비활성화 등으로 tween 완료 콜백이 누락되어도 <code>OnDisable()</code>에서 입력 잠금을 복구하도록 안전장치를 추가했습니다.</li>
+          <li>씬 파일은 수정하지 않았습니다. 검증: <code>dotnet build .\HubToHome.sln --no-restore</code>, <code>git diff --check -- Assets/_Game/Presentation/UI/Scripts/TitleMenuManager.cs</code> 통과.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>37. Battle Party Status Fixed Slot Layout</h2>
+        <span class="tag">Battle UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>BattleScene</code>의 <code>PartyStatusPanel</code> 슬롯 배치를 <code>HorizontalLayoutGroup</code> 의존 방식에서 전용 고정 포지션 레이아웃으로 전환했습니다.</li>
+          <li><code>PartySlotFixedLayout</code> 컴포넌트를 추가해 활성 슬롯 1번은 왼쪽, 2번은 중앙, 3번은 오른쪽 앵커에 고정되도록 했습니다.</li>
+          <li>파티가 2명일 때는 왼쪽 + 중앙만 사용하며, 해상도가 바뀌어도 <code>RectTransform</code> anchor 기준점이 유지됩니다.</li>
+          <li>기존 <code>HorizontalLayoutGroup</code>은 새 레이아웃과 충돌하지 않도록 비활성화했습니다.</li>
+          <li>검증: Unity MCP로 컴포넌트 부착 및 슬롯 anchor/pivot <code>0 / 0.5 / 1</code> 배치를 확인했고, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>38. Editor Cheat Smoke Test Buttons Removed</h2>
+        <span class="tag">Cheat</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>CheatManager</code>에서 동작하지 않던 smoke test 계열 치트 UI를 제거했습니다.</li>
+          <li>Battle Dialogue Tests의 <code>Style smoke test</code> 버튼 묶음을 제거했습니다.</li>
+          <li>Battle SpeechBubble Tests의 <code>Direct direction smoke test</code> 버튼 묶음을 제거했습니다.</li>
+          <li>제거된 UI만큼 Battle 탭 스크롤 콘텐츠 높이를 줄였습니다.</li>
+          <li>검증: <code>CheatManager.cs</code> 내 smoke 문구 없음, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과.</li>
+        </ul>
+      </div>
+    </section>
   </main>
 </body>
 </html>

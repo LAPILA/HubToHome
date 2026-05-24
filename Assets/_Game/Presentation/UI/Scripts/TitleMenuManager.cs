@@ -26,6 +26,9 @@ public class TitleMenuManager : MonoBehaviour
     private GameObject _lastSelected;
     private bool _isLocked = false;
     private int _manualSubmitFrame = -1;
+    private EventSystem _lockedEventSystem;
+    private GameObject _lockedSelectedObject;
+    private bool _restoreNavigationEvents;
 
     private void Awake()
     {
@@ -64,9 +67,21 @@ public class TitleMenuManager : MonoBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        if (_isLocked)
+            UnlockTitleInput();
+    }
+
     private void Update()
     {
-        if (_isLocked || EventSystem.current == null) return;
+        if (_isLocked)
+        {
+            KeepLockedSelection();
+            return;
+        }
+
+        if (EventSystem.current == null) return;
         if (_configPanel != null && _configPanel.IsVisible) return;
 
         if (EventSystem.current.currentSelectedGameObject == null && _lastSelected != null)
@@ -142,16 +157,55 @@ public class TitleMenuManager : MonoBehaviour
     private void ExecuteWithBlink(TextMeshProUGUI textTarget, System.Action onCompleteAction)
     {
         if (_isLocked) return;
-        _isLocked = true; 
+        LockTitleInput();
         AudioManager.Instance?.PlaySFX(_confirmSFX);
+
+        System.Action complete = () =>
+        {
+            UnlockTitleInput();
+            onCompleteAction?.Invoke();
+        };
 
         if (textTarget != null)
         {
-            textTarget.DOFade(0f, 0.15f).SetLoops(2, LoopType.Yoyo).OnComplete(() => onCompleteAction?.Invoke());
+            textTarget.DOFade(0f, 0.15f).SetLoops(2, LoopType.Yoyo).OnComplete(() => complete());
         }
         else
         {
-            onCompleteAction?.Invoke();
+            complete();
         }
+    }
+
+    private void LockTitleInput()
+    {
+        _isLocked = true;
+        _lockedEventSystem = EventSystem.current;
+        _lockedSelectedObject = _lockedEventSystem != null ? _lockedEventSystem.currentSelectedGameObject : null;
+
+        if (_lockedEventSystem != null)
+        {
+            _restoreNavigationEvents = _lockedEventSystem.sendNavigationEvents;
+            _lockedEventSystem.sendNavigationEvents = false;
+        }
+    }
+
+    private void UnlockTitleInput()
+    {
+        if (_lockedEventSystem != null)
+        {
+            _lockedEventSystem.sendNavigationEvents = _restoreNavigationEvents;
+        }
+
+        _lockedEventSystem = null;
+        _lockedSelectedObject = null;
+        _isLocked = false;
+    }
+
+    private void KeepLockedSelection()
+    {
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null || _lockedSelectedObject == null) return;
+        if (eventSystem.currentSelectedGameObject != _lockedSelectedObject)
+            eventSystem.SetSelectedGameObject(_lockedSelectedObject);
     }
 }

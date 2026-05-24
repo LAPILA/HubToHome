@@ -48,6 +48,12 @@ public class ConfigPanelUI : UIPanel
 
     private GameConfigManager Config { get { return GameConfigManager.EnsureInstance(); } }
 
+    protected override void Awake()
+    {
+        base.Awake();
+        GameInput.SetConfigModalActive(false);
+    }
+
     public override void Show()
     {
         base.Show();
@@ -76,8 +82,19 @@ public class ConfigPanelUI : UIPanel
             GameStateManager.Instance.ChangeState(GameState.Exploration);
     }
 
-    private void OnDisable() { KillAllTweens(); OnDisableLanguageHook(); }
-    private void OnDestroy() { KillAllTweens(); ClearRows(); }
+    private void OnDisable()
+    {
+        KillAllTweens();
+        OnDisableLanguageHook();
+        GameInput.SetConfigModalActive(false);
+    }
+
+    private void OnDestroy()
+    {
+        KillAllTweens();
+        ClearRows();
+        GameInput.SetConfigModalActive(false);
+    }
 
     private void OnEnable()
     {

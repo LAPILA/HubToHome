@@ -21,6 +21,7 @@ public enum ConfigurableAction
 public class GameConfigManager : MonoBehaviour
 {
     public static GameConfigManager Instance { get; private set; }
+    public static event Action DisplaySettingsChanged;
 
     public const float DefaultVolume = 0.8f;
     public const float BgmOutputCompensation = 0.2f;
@@ -119,6 +120,8 @@ public class GameConfigManager : MonoBehaviour
         {
             Screen.SetResolution(DefaultWindowWidth, DefaultWindowHeight, FullScreenMode.Windowed);
         }
+
+        DisplaySettingsChanged?.Invoke();
     }
 
     public void ApplyAudio()

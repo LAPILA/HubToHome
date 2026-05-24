@@ -8,26 +8,38 @@ using UnityEngine;
 public static class PlayFromTitleSceneShortcut
 {
     private const string TitleScenePath = "Assets/_Game/Scenes/Title/00_TitleScene.unity";
+    private const string OverworldScenePath = "Assets/_Game/Scenes/OverworldScene.unity";
 
-    [Shortcut("HubToHome/Play From Title Scene", KeyCode.P, ShortcutModifiers.Alt | ShortcutModifiers.Shift)]
+    [Shortcut("HubToHome/Play From Title Scene", KeyCode.Alpha1, ShortcutModifiers.Alt | ShortcutModifiers.Shift)]
     private static void PlayFromTitleScene()
+    {
+        PlayFromScene(TitleScenePath, "Title", "Alt+Shift+1");
+    }
+
+    [Shortcut("HubToHome/Play From Overworld Scene", KeyCode.Alpha2, ShortcutModifiers.Alt | ShortcutModifiers.Shift)]
+    private static void PlayFromOverworldScene()
+    {
+        PlayFromScene(OverworldScenePath, "Overworld", "Alt+Shift+2");
+    }
+
+    private static void PlayFromScene(string scenePath, string sceneLabel, string shortcutLabel)
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
         {
-            Debug.LogWarning("[PlayFromTitleScene] Play Mode is already active or changing. Stop Play Mode before using Alt+Shift+P.");
+            Debug.LogWarning($"[PlayFromSceneShortcut] Play Mode is already active or changing. Stop Play Mode before using {shortcutLabel}.");
             return;
         }
 
-        if (!File.Exists(TitleScenePath))
+        if (!File.Exists(scenePath))
         {
-            Debug.LogError($"[PlayFromTitleScene] Title scene not found: {TitleScenePath}");
+            Debug.LogError($"[PlayFromSceneShortcut] {sceneLabel} scene not found: {scenePath}");
             return;
         }
 
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             return;
 
-        EditorSceneManager.OpenScene(TitleScenePath, OpenSceneMode.Single);
+        EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
         EditorApplication.isPlaying = true;
     }
 }
