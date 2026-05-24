@@ -974,6 +974,153 @@
         </ul>
       </div>
     </section>
+    <section>
+      <div class="section-head">
+        <h2>39. Overworld Menu Shell M1</h2>
+        <span class="tag">Overworld UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>오버월드에서 <code>C</code> 입력 시 델타룬식 메뉴 셸이 열리도록 추가했습니다. 상단 패널은 위에서 내려오고, 하단 파티 패널은 아래에서 올라옵니다.</li>
+          <li>상단 카테고리는 <code>ITEM</code>, <code>EQUIP</code>, <code>POWER</code>, <code>CONFIG</code> 4개이며 좌/우 입력으로 선택합니다.</li>
+          <li><code>Z</code>/Confirm 입력 시 중앙의 빈 카테고리 프레임만 열립니다. 아이템, 장비, 능력, 설정 내부 콘텐츠는 M2 범위로 남겨두었습니다.</li>
+          <li><code>X</code>/Cancel 입력 시 열린 중앙 프레임을 먼저 닫고, 프레임이 닫힌 상태에서는 메뉴 셸을 닫습니다.</li>
+          <li>우상단 돈 표시를 위해 <code>GlobalDataManager</code>와 <code>SaveData</code>에 <code>Money</code> 값을 추가하고 저장/로드 흐름에 포함했습니다.</li>
+          <li>해상도 대응은 <code>CanvasScaler.ScaleWithScreenSize</code>와 <code>640x480</code> 기준 해상도를 사용했습니다. 640, 1920, 4K 등에서 같은 비례를 유지하는 구조입니다.</li>
+          <li>씬/프리팹은 수정하지 않았고, UI는 런타임에 생성됩니다.</li>
+          <li>검증: C# LSP 단일 파일 진단 오류/경고 없음, Unity MCP <code>validate_script</code> 오류 0개, Unity Console error 0개.</li>
+          <li>참고: <code>dotnet build .\HubToHome.sln --no-restore</code>는 Unity 생성 <code>Assembly-CSharp.csproj</code>가 새 <code>OverworldMenuUI.cs</code>를 아직 포함하지 않아 실패했습니다. 활성 씬 보호 규칙 때문에 강제 Unity refresh는 수행하지 않았습니다.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>40. Overworld Menu Shell Verification</h2>
+        <span class="tag">Test</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>Unity <code>Assets/Refresh</code> 후 <code>OverworldMenuUI.cs</code>가 Unity 컴파일 목록에 정상 편입되는 것을 확인했습니다.</li>
+          <li><code>OverworldMenuUI.Open()</code>이 EditMode에서 <code>Awake()</code> 실행 여부에 의존하지 않도록 UI 빌드를 보장했습니다.</li>
+          <li><code>DontDestroyOnLoad</code>는 Play Mode에서만 호출하도록 제한했습니다.</li>
+          <li>TMP obsolete 경고를 제거하기 위해 <code>textWrappingMode = TextWrappingModes.NoWrap</code>을 사용하도록 변경했습니다.</li>
+          <li><code>OverworldMenuUITests</code>를 추가해 메뉴 셸 생성, 해상도 기준 CanvasScaler, 초기 중앙 프레임 닫힘 상태, 카테고리 표시, 기본 돈 표시, Money 저장/소비/로드 동작을 검증했습니다.</li>
+          <li>기존 <code>BattleSpeechBubbleLayoutTests</code>의 오른쪽 꼬리 위치 기대값을 현재 레이아웃 계산 계약에 맞춰 갱신했습니다.</li>
+          <li>검증 결과: 추가 테스트 3/3 통과, 전체 EditMode 테스트 12/12 통과, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, C# LSP 프로젝트 진단 오류/경고 없음.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>41. Overworld Category Window M2-A</h2>
+        <span class="tag">Overworld UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>OverworldMenuUI.OpenCategory(OverworldMenuCategory category)</code> 공개 진입점을 추가했습니다.</li>
+          <li>중앙 <code>CategoryWindow</code> 아래에 <code>Content</code> 루트를 두고, 창을 열 때 선택 카테고리 내용만 다시 빌드합니다.</li>
+          <li><code>ITEM</code> 창은 <code>USE / TOSS / KEY</code> 헤더, 빈 상태 <code>NO ITEMS</code>, 보유 아이템 <code>아이템명 x수량</code> 표시를 지원합니다.</li>
+          <li><code>POWER</code> 창은 아직 세부 스탯/능력 UI가 없으므로 <code>SELECT</code>만 보이는 빈 단계로 유지했습니다.</li>
+          <li><code>EQUIP</code>, <code>CONFIG</code>는 내부 연결 전 자리 표시로 각각 <code>NO EQUIPMENT</code>, <code>OPTIONS</code>를 보여줍니다.</li>
+          <li>EditMode/런타임 초기화 타이밍 차이 대응을 위해 <code>GlobalDataManager.Instance</code>가 없으면 씬의 <code>GlobalDataManager</code>를 fallback으로 찾습니다.</li>
+          <li><code>OverworldMenuUITests</code>를 6개로 확장해 ITEM 헤더/빈 상태, 보유 아이템 표시, POWER 빈 SELECT 상태, Money 저장/로드를 검증했습니다.</li>
+          <li>TDD RED 확인: <code>OpenCategory</code> 미구현 컴파일 실패, EditMode singleton fallback 실패, 테스트 간 데이터 잔존 실패를 순서대로 확인하고 수정했습니다.</li>
+          <li>검증: <code>OverworldMenuUITests</code> 6/6 통과, 전체 EditMode 테스트 15/15 통과, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, C# LSP <code>check_project</code> 오류/경고 없음.</li>
+          <li>남은 경고: 기존 <code>System.Net.Http</code>/<code>System.IO.Compression</code> assembly conflict 및 <code>PlayerController._defenseReactionLocked</code> unused 경고.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>42. Overworld Slide Panel Pivot Fix</h2>
+        <span class="tag">Overworld UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>문제: 오버월드 메뉴의 위/아래 슬라이드 패널이 화면 안으로 절반 정도만 들어오는 것처럼 보였습니다.</li>
+          <li>원인: <code>TopPanel</code>, <code>BottomPanel</code>의 anchor는 각각 화면 위/아래 edge였지만 pivot은 기본 중앙값이라, <code>DOAnchorPosY(0)</code>이 패널 edge가 아니라 중앙을 화면 경계에 맞췄습니다.</li>
+          <li>수정: <code>TopPanel.pivot = (0.5, 1)</code>, <code>BottomPanel.pivot = (0.5, 0)</code>으로 명시해 edge 기준 슬라이드가 되게 했습니다.</li>
+          <li>회귀 테스트: 열림 완료 후 위 패널 top과 아래 패널 bottom이 루트 화면 경계에 맞는지 world corner로 검증하는 테스트를 추가했습니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, C# LSP 단일 파일 진단 오류/경고 없음.</li>
+          <li>보류: Unity Editor가 현재 Play Mode 전환/실행 상태로 잡혀 있어 강제 refresh 및 EditMode 테스트 실행은 하지 않았습니다. Play Mode 종료 후 새 회귀 테스트와 전체 EditMode 테스트 재검증이 필요합니다.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>43. Overworld Bottom Party Slots</h2>
+        <span class="tag">Overworld UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>하단 <code>PartyContent</code>를 좌/중/우 3개의 <code>PartySlotAnchor</code>로 고정 생성하도록 변경했습니다.</li>
+          <li>각 anchor는 <code>LayoutElement.flexibleWidth = 1</code>을 사용해 해상도 변경 후에도 동일한 폭의 3분할 구조를 유지합니다.</li>
+          <li>실제 <code>GlobalDataManager.Party</code> 데이터를 왼쪽부터 최대 3명까지 배치합니다.</li>
+          <li>캐릭터 표시는 기존 <code>Assets/_Game/Presentation/UI/Prefabs/Battle/PartySlot_Prefab.prefab</code>을 인스턴스화해 사용합니다.</li>
+          <li>프리팹 내부 <code>NameText</code>, <code>HPText</code>, <code>MPText</code>, <code>Portrait</code>, <code>HPBar</code>, <code>MPBar</code>를 찾아 이름/HP/MP/바 값에 연결합니다.</li>
+          <li>파티 데이터가 비어 있으면 초기 화면 확인을 위해 좌측에 기본 플레이어 슬롯만 표시합니다.</li>
+          <li>회귀 테스트: 하단 패널이 3개의 동일 폭 anchor를 만들고, 실제 파티 데이터가 좌측부터 <code>PartySlot_Prefab</code>에 바인딩되는지 검증하는 테스트를 추가했습니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과. 기존 <code>System.Net.Http</code>/<code>System.IO.Compression</code> assembly conflict 경고는 남아 있습니다.</li>
+          <li>보류: Unity Editor가 Play Mode 전환/실행 상태로 잡혀 있어 강제 refresh 및 EditMode 테스트 실행은 하지 않았습니다. Play Mode 종료 후 관련 EditMode 테스트 재검증이 필요합니다.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>44. Overworld Top Panel Layout</h2>
+        <span class="tag">Overworld UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li>상단 카테고리 버튼 4개가 좌측에 몰리지 않도록 <code>CategorySlots</code>를 상단 패널 중앙 anchor에 배치했습니다.</li>
+          <li>좌측에는 현재 선택 중인 메뉴명 <code>CategoryLabel</code>을 표시하고, 우측에는 돈 아이콘 역할의 <code>D$</code>와 실제 보유 금액을 분리 표시합니다.</li>
+          <li>카테고리 버튼 크기를 황금비에 가까운 <code>78 x 48.2</code> 기준으로 조정했습니다.</li>
+          <li>버튼 간격을 <code>17.2</code>로 늘려 레퍼런스처럼 버튼 사이가 분명히 떨어져 보이도록 했습니다.</li>
+          <li>버튼 내부 텍스트 기준 크기를 기존 <code>13</code>에서 <code>39</code>로 올렸습니다. 긴 메뉴명은 TMP autosize로 버튼 안에서만 줄어들게 해 텍스트가 박스 밖으로 터지지 않게 했습니다.</li>
+          <li>돈 표시 포맷은 기존 단일 <code>D$ 0</code> 텍스트에서 <code>MoneyIcon = D$</code>, <code>MoneyLabel = 0</code> 구조로 분리했습니다.</li>
+          <li>회귀 테스트: 중앙 슬롯 anchor, 버튼 4개, 황금비에 가까운 버튼 비율, 39 기준 글자 크기, 돈 아이콘/금액 분리 표시를 검증하도록 갱신했습니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, Unity Console error 0개.</li>
+          <li>남은 경고: 기존 <code>System.Net.Http</code>/<code>System.IO.Compression</code> assembly conflict 및 <code>PlayerController._defenseReactionLocked</code> unused 경고.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>45. Overworld Top Panel 1:6:1 Layout</h2>
+        <span class="tag">Overworld UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>TopPanel</code> 내부에 <code>TopPanelLayout</code>을 추가하고, <code>HorizontalLayoutGroup</code>으로 상단 전체 배치를 관리하도록 변경했습니다.</li>
+          <li>하위 영역을 <code>CategoryLabelPanel : CategorySlots : MoneyPanel = 1 : 6 : 1</code> flexible width 비율로 분리했습니다.</li>
+          <li>좌측 1/8 영역에는 현재 선택 메뉴명 <code>CategoryLabel</code>을 배치했습니다.</li>
+          <li>중앙 6/8 영역에는 카테고리 버튼 4개를 <code>CategorySlots</code> 안에서 중앙 정렬했습니다.</li>
+          <li>우측 1/8 영역에는 <code>MoneyPanel</code>을 만들고, <code>D$</code> 아이콘 텍스트와 금액 텍스트를 내부 layout으로 관리하도록 했습니다.</li>
+          <li><code>CategoryLabel</code>과 돈 표시 텍스트는 낮은 해상도에서도 영역 밖으로 튀어나가지 않도록 TMP autosize 범위를 지정했습니다.</li>
+          <li>추가 보정: <code>CategorySlots</code>에 직접 버튼 layout을 넣으면 버튼 preferred width가 외부 레이아웃 계산에 먼저 반영되어 <code>1:6:1</code> 비율이 깨졌습니다. 이를 막기 위해 <code>CategorySlots</code> 내부에 <code>CategorySlotRow</code>를 추가하고 버튼 4개와 spacing은 안쪽 row에서만 관리하도록 분리했습니다.</li>
+          <li>회귀 테스트: 상단 패널이 실제로 <code>1:6:1</code> 비율을 유지하는지, 좌측/중앙/우측 영역이 서로 겹치지 않는지 검증하도록 갱신했습니다.</li>
+          <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, Unity Console error 0개.</li>
+          <li>남은 경고: 기존 <code>System.Net.Http</code>/<code>System.IO.Compression</code> assembly conflict 및 <code>PlayerController._defenseReactionLocked</code> unused 경고.</li>
+        </ul>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>46. Overworld Category Slot Row Prefab Bake</h2>
+        <span class="tag">Overworld UI</span>
+      </div>
+      <div class="content">
+        <ul>
+          <li><code>CategorySlotRow</code>를 <code>CategorySlots</code> 내부 전체 stretch 구조로 변경했습니다. anchor min/max는 <code>(0, 0)</code>/<code>(1, 1)</code>, 상하좌우 margin은 모두 <code>0</code>입니다.</li>
+          <li><code>CategorySlots</code>는 상단 패널의 1:6:1 layout 중 중앙 6/8 영역만 담당하고, 실제 4개 슬롯의 간격과 정렬은 내부 <code>CategorySlotRow</code>에서 관리합니다.</li>
+          <li><code>Assets/_Game/Presentation/UI/Editor/OverworldMenuPrefabBaker.cs</code>를 추가해 <code>Tools/HubToHome/UI/Bake Overworld Menu Prefab</code> 메뉴로 현재 UI를 프리팹화할 수 있게 했습니다.</li>
+          <li><code>Assets/_Game/Presentation/UI/Prefabs/Overworld/OverworldMenuUI.prefab</code> 프리팹을 생성했습니다.</li>
+          <li>에디터 환경에서는 <code>OverworldMenuUI</code>가 위 프리팹을 먼저 로드하고, 없을 때만 기존 코드 생성 방식으로 fallback 합니다.</li>
+          <li>프리팹 인스턴스에서 하위 UI가 중복 생성되지 않도록 기존 계층 바인딩 흐름을 추가했습니다.</li>
+          <li>검증: 프리팹 bake 성공, Unity Console error 0개, MCP 프리팹 계층에서 <code>TopPanel/TopPanelLayout/CategorySlots/CategorySlotRow</code>와 슬롯 4개 확인, <code>dotnet build .\HubToHome.sln --no-restore</code> 통과.</li>
+        </ul>
+      </div>
+    </section>
   </main>
 </body>
 </html>

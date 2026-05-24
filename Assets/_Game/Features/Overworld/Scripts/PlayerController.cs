@@ -141,7 +141,7 @@ public class PlayerController : MonoBehaviour
 
         // 오버월드 옵션(Config) 호출
         if (GameInput.MenuPressed)
-            OptionsPanelService.Open();
+            UIManager.Instance.OpenPanel("OverWorldPanel");
     }
 
     private void LateUpdate()

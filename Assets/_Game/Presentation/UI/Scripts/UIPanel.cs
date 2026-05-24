@@ -60,6 +60,11 @@ public class UIPanel : MonoBehaviour
             });
     }
 
+    public virtual bool TryHandleCancelInput()
+    {
+        return false;
+    }
+
     // ── 즉시 표시/숨김 ────────────────────────────────────────
     public void HideImmediate()
     {

@@ -26,6 +26,7 @@ public class GlobalDataManager : MonoBehaviour
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
     private readonly Dictionary<string, OverworldEnemyRuntimeState> _overworldEnemyStates = new Dictionary<string, OverworldEnemyRuntimeState>();
+    public int Money { get; private set; } = 0;
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
     public AudioClip PendingBattleBGM { get; set; }
@@ -122,6 +123,20 @@ public class GlobalDataManager : MonoBehaviour
 
     public int GetItemCount(string itemID) => _inventoryDict.TryGetValue(itemID, out int count) ? count : 0;
     public IReadOnlyDictionary<string, int> GetInventory() => _inventoryDict;
+
+    public void AddMoney(int amount)
+    {
+        Money = Mathf.Max(0, Money + amount);
+    }
+
+    public bool SpendMoney(int amount)
+    {
+        amount = Mathf.Max(0, amount);
+        if (Money < amount) return false;
+
+        Money -= amount;
+        return true;
+    }
     #endregion
 
     #region [ Overworld Enemy Runtime State ]
@@ -222,7 +237,8 @@ public class GlobalDataManager : MonoBehaviour
             // 안전한 깊은 복사(Deep Copy)
             InventoryDict = new Dictionary<string, int>(_inventoryDict),
             eventFlags    = new Dictionary<string, int>(_eventFlags),
-            PartyData     = new List<CharacterSaveData>(Party)
+            PartyData     = new List<CharacterSaveData>(Party),
+            Money         = Money
         };
         return data;
     }
@@ -242,6 +258,7 @@ public class GlobalDataManager : MonoBehaviour
         foreach (var kv in data.eventFlags) _eventFlags[kv.Key] = kv.Value;
 
         Party = new List<CharacterSaveData>(data.PartyData);
+        Money = Mathf.Max(0, data.Money);
     }
     #endregion
 }

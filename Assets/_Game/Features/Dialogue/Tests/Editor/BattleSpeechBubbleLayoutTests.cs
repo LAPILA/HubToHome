@@ -16,7 +16,7 @@ public class BattleSpeechBubbleLayoutTests
 
         Assert.That(result.BoxPivot, Is.EqualTo(new Vector2(0f, 0.5f)));
         Assert.That(result.BoxAnchoredPosition, Is.EqualTo(new Vector2(72f, 0f)));
-        Assert.That(result.TailAnchoredPosition, Is.EqualTo(new Vector2(48f, 0f)));
+        Assert.That(result.TailAnchoredPosition, Is.EqualTo(new Vector2(56f, 0f)));
         Assert.That(result.TailSize, Is.EqualTo(new Vector2(32f, 32f)));
         Assert.That(result.TailScale, Is.EqualTo(new Vector2(2f, 2.5f)));
         Assert.That(result.TextSize, Is.EqualTo(new Vector2(180f, 84f)));
@@ -24,7 +24,7 @@ public class BattleSpeechBubbleLayoutTests
 
         float bodyLeft = result.BoxAnchoredPosition.x;
         float tailRight = result.TailAnchoredPosition.x + result.TailSize.x * result.TailScale.x * 0.5f;
-        Assert.That(tailRight - bodyLeft, Is.EqualTo(8f).Within(0.001f));
+        Assert.That(tailRight - bodyLeft, Is.EqualTo(16f).Within(0.001f));
     }
 
     [Test]
@@ -88,6 +88,6 @@ public class BattleSpeechBubbleLayoutTests
         Assert.That(result.TailSize, Is.EqualTo(new Vector2(1f, 1f)));
         Assert.That(result.TailScale, Is.EqualTo(new Vector2(2f, 2.5f)));
         Assert.That(result.BoxAnchoredPosition, Is.EqualTo(new Vector2(10f, 0f)));
-        Assert.That(result.TailAnchoredPosition, Is.EqualTo(new Vector2(-13f, 0f)));
+        Assert.That(result.TailAnchoredPosition, Is.EqualTo(new Vector2(-5f, 0f)));
     }
 }

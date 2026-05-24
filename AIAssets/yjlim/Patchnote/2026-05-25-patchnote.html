@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>2026-05-25 Patchnote</title>
+  <style>
+    body { margin: 0; padding: 32px; background: #111; color: #eee; font-family: Arial, sans-serif; line-height: 1.55; }
+    main { max-width: 960px; margin: 0 auto; }
+    h1 { margin: 0 0 24px; font-size: 28px; }
+    section { border: 1px solid #333; padding: 20px; margin: 16px 0; background: #181818; }
+    h2 { margin: 0 0 12px; font-size: 20px; }
+    code { color: #ffd166; }
+    li { margin: 6px 0; }
+    .tag { display: inline-block; margin-bottom: 12px; color: #8ecae6; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>2026-05-25 Patchnote</h1>
+    <section>
+      <h2>1. Overworld UI Prefab Reference Cleanup</h2>
+      <span class="tag">Overworld UI</span>
+      <ul>
+        <li><code>OverworldMenuUI</code>에서 <code>PartySlotPrefabPath</code>, <code>PartySlotResourceKey</code>, <code>OverworldMenuPrefabPath</code> 기반 로딩을 제거했습니다.</li>
+        <li>런타임 UI 생성기였던 <code>BuildUI()</code>, hierarchy 문자열 기반 바인딩, fallback party slot 생성 코드를 제거했습니다.</li>
+        <li>오버월드 메뉴의 정적 UI는 이제 프리팹에 연결된 직렬화 참조를 사용합니다.</li>
+        <li><code>OverworldPartySlotView</code>를 추가해 파티 슬롯 내부의 이름, HP, MP, portrait, HP bar, MP bar 참조를 프리팹 필드로 관리합니다.</li>
+        <li><code>PartySlot_Prefab</code> 루트에 <code>OverworldPartySlotView</code>를 추가하고 내부 참조를 연결했습니다.</li>
+        <li><code>PartySlot_Prefab</code>의 portrait 이미지를 <code>Assets/_Game/Features/Characters/Sprites/Sample/pfp.png</code>로 설정했습니다.</li>
+        <li><code>OverworldMenuUI.prefab</code>에 <code>PartySlotAnchor_1~3</code>을 추가하고, <code>OverworldMenuUI</code> 컴포넌트에 필요한 참조를 모두 연결했습니다.</li>
+        <li>불필요해진 <code>OverworldMenuPrefabBaker</code> editor script를 제거했습니다.</li>
+        <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, Unity script validation 오류 0개, Unity Console error 0개, prefab hierarchy 조회 성공.</li>
+        <li>참고: Unity Test Runner는 init timeout으로 테스트가 시작되지 못했습니다. 첫 실행에서 발견된 category slot ratio 문제는 프리팹 rect를 <code>78 x 48.2</code>로 조정해 수정했습니다.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>2. Overworld UI CategoryWindow Prefab Panel Toggle</h2>
+      <span class="tag">Overworld UI</span>
+      <ul>
+        <li><code>OverworldMenuUI</code>에서 CategoryWindow 콘텐츠를 런타임 생성/파괴하던 코드를 제거했습니다.</li>
+        <li><code>OverworldMenuUI.prefab</code>의 <code>CategoryWindow/Content</code> 아래에 <code>ItemPanel</code>, <code>EquipPanel</code>, <code>PowerPanel</code>, <code>ConfigPanel</code>을 미리 배치했습니다.</li>
+        <li>코드는 선택된 카테고리에 해당하는 패널만 켜고 나머지는 끄는 방식으로 동작합니다.</li>
+        <li>아이템 목록은 프리팹에 배치된 <code>ItemRow_1~6</code> 텍스트를 갱신하며, TMP 오브젝트를 새로 만들지 않습니다.</li>
+        <li>임시 마이그레이션용 editor script와 meta 파일은 작업 후 제거했습니다.</li>
+        <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, MCP prefab hierarchy에서 패널 4개와 아이템 행 6개 확인.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>3. OverworldMenuUI UIManager Lifecycle Cleanup</h2>
+      <span class="tag">Overworld UI</span>
+      <ul>
+        <li><code>OverworldMenuUI</code>가 <code>UIManager.OpenPanel("OverWorldPanel")</code> 흐름에 맞게 <code>Show()</code>/<code>Hide()</code>를 override하도록 정리했습니다.</li>
+        <li>예전 런타임 생성/직접 호출 방식에서 남아 있던 static singleton, <code>FindMenuInstance()</code>, <code>OpenCategory()</code>, <code>Toggle()</code>, <code>IsOpen</code>을 제거했습니다.</li>
+        <li><code>OverworldMenuUI</code>의 직접 <code>DontDestroyOnLoad</code> 처리를 제거하고, 생명주기는 <code>UIManager</code> 루트가 맡도록 정리했습니다.</li>
+        <li><code>UIPanel.TryHandleCancelInput()</code>을 추가해 최상단 패널이 X/Cancel 입력을 먼저 처리할 수 있게 했습니다.</li>
+        <li>CategoryWindow가 열린 상태에서 X/Cancel을 누르면 Overworld Menu Shell 전체가 닫히지 않고 Category Window만 닫히도록 했습니다.</li>
+        <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, Unity script refresh/compile 완료, 잔여 static/direct lookup 코드 검색 확인.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>4. Overworld UI Prefab Party Slot Binding</h2>
+      <span class="tag">Overworld UI</span>
+      <ul>
+        <li><code>OverworldMenuUI</code>가 <code>PartySlot_Prefab</code>을 런타임 생성/삭제하지 않도록 정리했습니다.</li>
+        <li><code>PartyContent/PartySlotAnchor_1~3</code> 아래에 배치된 <code>PartySlot_Prefab</code>의 <code>OverworldPartySlotView</code>를 찾아 실제 파티 정보를 주입합니다.</li>
+        <li><code>Party[0]</code>은 좌측 첫 번째 슬롯(플레이어), <code>Party[1]</code>과 <code>Party[2]</code>는 중앙/우측 슬롯에 표시됩니다.</li>
+        <li>해당 index에 동료 정보가 없으면 <code>PartySlotAnchor_n</code>을 비활성화합니다.</li>
+        <li><code>_partySlotPrefab</code>, <code>_partySlotObjects</code>, <code>CreatePartySlot</code>, <code>ClearPartySlots</code>, <code>DestroyForCurrentMode</code>, <code>SetSelectedCategory</code> 등 프리팹화 이후 불필요해진 잔여 코드를 제거했습니다.</li>
+        <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code> 통과, Unity script refresh/compile 후 prefab 저장 완료, 잔여 런타임 생성 코드 검색 확인.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>6. UIManager PPC Safe Area Pillarbox Calculation Fix</h2>
+      <span class="tag">UIManager / Overworld UI</span>
+      <ul>
+        <li>문제: 이전 계산은 <code>640x480</code>의 단순 4:3 비율을 Canvas 안에 맞추는 방식이었습니다.</li>
+        <li>하지만 URP <code>PixelPerfectCamera</code>의 <code>Pillarbox</code>는 <code>zoom = min(Screen.width/refX, Screen.height/refY)</code> 정수 배율을 구한 뒤 <code>refX * zoom</code>을 실제 출력 폭으로 사용합니다.</li>
+        <li><code>1920x1080</code> 기준 단순 4:3 폭은 <code>1440px</code>이지만, PPC pillarbox 실제 출력 폭은 <code>640 * 2 = 1280px</code>입니다.</li>
+        <li><code>UIPixelPerfectSafeAreaFitter</code>가 <code>PixelPerfectCamera.cropFrame</code>을 읽어 <code>Pillarbox</code>, <code>Letterbox</code>, <code>Windowbox</code>, <code>StretchFill</code>별 실제 출력 pixel size를 계산하도록 수정했습니다.</li>
+        <li>계산된 pixel size는 <code>Canvas.scaleFactor</code>로 나눠 overlay Canvas UI 단위로 변환합니다.</li>
+        <li>검증: <code>dotnet build .\HubToHome.sln --no-restore</code>, <code>git diff --check -- Assets/_Game/Core/Scripts/UIManager.cs</code> 통과.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>5. UIManager OverWorldPanel PPC Safe Area</h2>
+      <span class="tag">UIManager / Overworld UI</span>
+      <ul>
+        <li>문제: <code>OverworldMenuUI</code>는 overlay Canvas 전체 폭을 기준으로 stretch되고 있었지만, 실제 게임 카메라 <code>PPC</code>는 <code>640x480</code> 기준 4:3 안전 영역을 사용합니다.</li>
+        <li>16:9/4K 같은 넓은 화면에서는 UI가 PPC 안전 영역 밖까지 벌어져 좌우 UI가 잘릴 수 있었습니다.</li>
+        <li><code>UIManager</code>에 패널별 opt-in PPC safe area 구조를 추가했습니다.</li>
+        <li>현재 적용 대상은 <code>OverWorldPanel</code>만이며, Battle UI와 기타 fullscreen UI는 변경하지 않았습니다.</li>
+        <li>런타임에 <code>[PPC Safe Area]</code> RectTransform을 만들고, opted-in 패널의 직접 자식 UI를 그 아래로 이동시켜 stretch 기준을 4:3 중앙 영역으로 제한합니다.</li>
+        <li>활성 <code>PixelPerfectCamera</code> 중 이름이 <code>PPC</code>인 카메라의 reference resolution을 우선 사용하고, 없으면 <code>640x480</code> fallback을 사용합니다.</li>
+        <li>씬 파일은 수정하지 않았습니다. 검증: <code>dotnet build .\HubToHome.sln --no-restore</code>, <code>git diff --check -- Assets/_Game/Core/Scripts/UIManager.cs</code> 통과.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
