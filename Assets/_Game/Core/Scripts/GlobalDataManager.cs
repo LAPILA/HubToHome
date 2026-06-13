@@ -40,6 +40,8 @@ public class GlobalDataManager : MonoBehaviour
     #region [ Position & Scene Data ]
     public string LastOverworldScene;
     public string SpawnScene { get; set; } = "OverworldScene";
+    public string CurrentRoomId { get; set; } = string.Empty;
+    public string SpawnPointId { get; set; } = string.Empty;
     public float  SpawnX     { get; set; } = 0f;
     public float  SpawnY     { get; set; } = 0f;
     public int    LookingDir { get; set; } = 0; 
@@ -230,6 +232,8 @@ public class GlobalDataManager : MonoBehaviour
         {
             playerName       = PlayerName, // 🚨 세이브 데이터에 이름 추가!
             currentScene     = SpawnScene,
+            currentRoomId    = CurrentRoomId,
+            spawnPointId     = SpawnPointId,
             playerX          = SpawnX,
             playerY          = SpawnY,
             lookingDirection = LookingDir,
@@ -247,6 +251,8 @@ public class GlobalDataManager : MonoBehaviour
     {
         PlayerName   = data.playerName; // 🚨 이름 불러오기!
         SpawnScene   = data.currentScene;
+        CurrentRoomId = data.currentRoomId;
+        SpawnPointId = data.spawnPointId;
         SpawnX       = data.playerX;
         SpawnY       = data.playerY;
         LookingDir   = data.lookingDirection;
