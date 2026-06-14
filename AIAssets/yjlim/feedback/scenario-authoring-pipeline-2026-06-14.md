@@ -118,7 +118,7 @@ flowchart LR
   - `BattleScenarioData.Dialogues`는 전투 시나리오별 `DialogueId -> DialogueData` 참조 목록이다.
   - `ScenarioDialogueRegistry`는 이 목록을 검증/정리한 뒤 `DialogueManagerRunner`에 등록한다. 빈 ID, null reference는 무시하고, 중복 ID는 뒤쪽 유효 참조가 이긴다.
   - `BattleScenarioActionContextFactory`는 scenario ID, Primary Mode, Game Module, `IDialogueRunner` service를 조립한다. 따라서 `BattleManager`는 더 이상 dialogue runner 등록 규칙을 직접 알 필요가 없다.
-  - 아직 YAML importer/editor가 이 필드를 자동 동기화하지는 않는다. 후속 작업은 Scenario Source의 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 import/export하는 것이다.
+  - Scenario Source importer 1차가 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화한다. Source의 `DialogueDataId`는 `IScenarioDialogueReferenceResolver`를 통해 실제 `DialogueData`로 해석된다.
 - `ScenarioCatalogValidator.ValidateBattleScenario(...)`를 추가해 `dialogue.wait` ID 검증을 저작 단계에서 잡을 수 있게 했다.
   - 단일 `ValidateSequence(...)`는 action ID만 볼 수 있으므로 scenario-level registry가 필요한 검증에는 부족하다.
   - battle scenario 전체 검증은 catalog 검증, sequence action 검증, `BattleScenarioData.Dialogues` 기반 dialogue ID 검증을 함께 수행한다.
@@ -186,12 +186,15 @@ flowchart LR
 - `BattleEncounterMemoryRecorderTests` 4개를 추가했고, meet count 증가, saved memory seed, victory defeated 기록, fallback encounter ID 기록이 통과했다.
 - 최신 Unity MCP EditMode 전체 테스트는 82개 통과, 실패 0개다.
 - `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 다시 통과했다. 남은 경고는 기존 계열 5개다.
+- `ScenarioSourceSyncTests` 2개를 보강했고, source `dialogues` import와 unresolved `DialogueDataId` validation이 통과했다.
+- 최신 Unity MCP EditMode 전체 테스트는 84개 통과, 실패 0개다.
+- `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 남은 것은 기존 계열 경고 5개와 MCP disposed 로그 1개다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. Scenario Source/importer/editor에서 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화
+2. Scenario Source editor/export에서 `dialogues` 매핑을 다시 source로 보존하는 경로 구현
 3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
 4. Audio/Screen/Module 전환용 concrete presentation runner 설계
 5. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성

@@ -4,10 +4,14 @@ using UnityEngine;
 public sealed class ScenarioSourceImporter
 {
     private readonly IScenarioSourceParser _parser;
+    private readonly IScenarioDialogueReferenceResolver _dialogueResolver;
 
-    public ScenarioSourceImporter(IScenarioSourceParser parser)
+    public ScenarioSourceImporter(
+        IScenarioSourceParser parser,
+        IScenarioDialogueReferenceResolver dialogueResolver = null)
     {
         _parser = parser ?? new MissingYamlScenarioSourceParser();
+        _dialogueResolver = dialogueResolver ?? new MissingScenarioDialogueReferenceResolver();
     }
 
     public ScenarioSourceSyncResult Import(
@@ -24,7 +28,13 @@ public sealed class ScenarioSourceImporter
             return result;
         }
 
-        result.Scenario = CreateBattleScenario(parseResult.Document, sourceText, sourcePath, importedAtUtc);
+        result.Scenario = CreateBattleScenario(
+            parseResult.Document,
+            sourceText,
+            sourcePath,
+            importedAtUtc,
+            _dialogueResolver,
+            result.Validation);
         return result;
     }
 
@@ -32,7 +42,9 @@ public sealed class ScenarioSourceImporter
         ScenarioSourceDocument document,
         string sourceText,
         string sourcePath,
-        DateTime? importedAtUtc = null)
+        DateTime? importedAtUtc = null,
+        IScenarioDialogueReferenceResolver dialogueResolver = null,
+        ScenarioValidationResult validation = null)
     {
         if (document == null)
         {
@@ -50,6 +62,7 @@ public sealed class ScenarioSourceImporter
 
         CopyStrings(document.PartyIds, scenario.PartyIds);
         CopyStrings(document.EnemyIds, scenario.EnemyIds);
+        CopyDialogues(document, scenario, dialogueResolver, validation);
         CopyRules(document, scenario);
         CopySequences(document, scenario, metadata);
 
@@ -121,6 +134,64 @@ public sealed class ScenarioSourceImporter
         }
     }
 
+    private static void CopyDialogues(
+        ScenarioSourceDocument document,
+        BattleScenarioData scenario,
+        IScenarioDialogueReferenceResolver dialogueResolver,
+        ScenarioValidationResult validation)
+    {
+        scenario.Dialogues.Clear();
+        if (document.Dialogues == null)
+        {
+            return;
+        }
+
+        IScenarioDialogueReferenceResolver resolver = dialogueResolver ?? new MissingScenarioDialogueReferenceResolver();
+        for (int i = 0; i < document.Dialogues.Count; i++)
+        {
+            ScenarioSourceDialogueDocument sourceDialogue = document.Dialogues[i];
+            if (sourceDialogue == null)
+            {
+                continue;
+            }
+
+            string dialogueId = NormalizeId(sourceDialogue.DialogueId);
+            string dialogueDataId = NormalizeId(sourceDialogue.DialogueDataId);
+            if (string.IsNullOrEmpty(dialogueId))
+            {
+                validation?.AddError(
+                    "scenario.dialogue.id.required",
+                    "Scenario dialogue mapping requires a dialogue id.",
+                    dialogueDataId);
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(dialogueDataId))
+            {
+                validation?.AddError(
+                    "scenario.dialogue.reference.required",
+                    "Scenario dialogue mapping requires a DialogueData id.",
+                    dialogueId);
+                continue;
+            }
+
+            if (!resolver.TryResolveDialogue(dialogueDataId, out DialogueData dialogue) || dialogue == null)
+            {
+                validation?.AddError(
+                    "scenario.dialogue.unresolved",
+                    $"DialogueData id '{dialogueDataId}' could not be resolved for dialogue '{dialogueId}'.",
+                    dialogueId);
+                continue;
+            }
+
+            scenario.Dialogues.Add(new ScenarioDialogueReferenceData
+            {
+                DialogueId = dialogueId,
+                Dialogue = dialogue
+            });
+        }
+    }
+
     private static void CopySequences(
         ScenarioSourceDocument document,
         BattleScenarioData scenario,
@@ -180,6 +251,11 @@ public sealed class ScenarioSourceImporter
             Disabled = source.Disabled,
             Children = CloneActions(source.Children)
         };
+    }
+
+    private static string NormalizeId(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     }
 }
 

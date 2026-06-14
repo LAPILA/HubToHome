@@ -84,7 +84,7 @@ sequences:
 - Resolve IDs through catalogs or registries during import.
 - `memoryKey` maps to save-bound Encounter Memory in `GlobalDataManager` / `SaveData.EncounterMemory`. `BattleEncounterMemoryRecorder` seeds `PerEncounterMemory` rule IDs into `BattleScenarioRuntime` at battle setup and exports newly fired rule IDs back to memory at battle result.
 - Enemy IDs in `participants.enemies` and battle rule `when.enemy` map to `EnemyData.EnemyId`. Asset name and display name fallback exists only for migration.
-- Dialogue IDs used by `dialogue.wait` must appear in the scenario `dialogues` mapping or an imported dialogue catalog. The synchronized runtime asset stores these as `BattleScenarioData.Dialogues`, where each `ScenarioDialogueReferenceData` maps one stable `DialogueId` to a `DialogueData` reference.
+- Dialogue IDs used by `dialogue.wait` must appear in the scenario `dialogues` mapping or an imported dialogue catalog. The source document stores this as `ScenarioSourceDialogueDocument.DialogueId` plus `DialogueDataId`; `ScenarioSourceImporter` resolves `DialogueDataId` through `IScenarioDialogueReferenceResolver` and writes `BattleScenarioData.Dialogues`, where each `ScenarioDialogueReferenceData` maps one stable `DialogueId` to a `DialogueData` reference.
 - Keep `when` and `do` separate. `when` decides whether a beat fires; `do` names or inlines the Action Sequence.
 - Use `once` explicitly for rules that must not repeat.
 - Use `timing` explicitly when execution must wait for a skill, action, module, dialogue, or frame transition.
@@ -102,6 +102,7 @@ Reject or warn on:
 - Unknown actors, modules, dialogue IDs, clips, positions, or UI targets.
 - Unknown skill IDs used by `battle.skill.timeline`.
 - `dialogue.wait` IDs that do not resolve through `BattleScenarioData.Dialogues` / `ScenarioDialogueRegistry`.
+- `dialogues` entries whose `dialogueData` / `DialogueDataId` cannot resolve through `IScenarioDialogueReferenceResolver`; importer error code is `scenario.dialogue.unresolved`.
 - Missing `once` on HP threshold rules unless repeat is intentional.
 - Module switch without a matching module start/ready rule.
 - Dialogue action that cannot wait for completion.

@@ -9,8 +9,15 @@ public sealed class ScenarioSourceDocument
     public string MemoryKey = string.Empty;
     public List<string> PartyIds = new List<string>();
     public List<string> EnemyIds = new List<string>();
+    public List<ScenarioSourceDialogueDocument> Dialogues = new List<ScenarioSourceDialogueDocument>();
     public List<ScenarioSourceRuleDocument> Rules = new List<ScenarioSourceRuleDocument>();
     public List<ScenarioSourceSequenceDocument> Sequences = new List<ScenarioSourceSequenceDocument>();
+}
+
+public sealed class ScenarioSourceDialogueDocument
+{
+    public string DialogueId = string.Empty;
+    public string DialogueDataId = string.Empty;
 }
 
 public sealed class ScenarioSourceRuleDocument

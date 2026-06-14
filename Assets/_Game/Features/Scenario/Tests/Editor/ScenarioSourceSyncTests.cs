@@ -42,6 +42,54 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void ImporterCreatesDialogueReferencesThroughResolver()
+    {
+        const string sourceText = "id: test_battle\n";
+        const string sourcePath = "Assets/_Game/Features/Scenario/Source/test.scenario.yaml";
+        DialogueData dialogue = ScriptableObject.CreateInstance<DialogueData>();
+        ScenarioSourceDocument document = MakeDocument();
+        document.Dialogues.Add(new ScenarioSourceDialogueDocument
+        {
+            DialogueId = "zev.phase2",
+            DialogueDataId = "dlg_zev_phase2"
+        });
+
+        var importer = new ScenarioSourceImporter(
+            new FakeScenarioSourceParser(document),
+            new FakeDialogueReferenceResolver("dlg_zev_phase2", dialogue));
+
+        ScenarioSourceSyncResult result = importer.Import(sourceText, sourcePath);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Scenario.Dialogues.Count, Is.EqualTo(1));
+        Assert.That(result.Scenario.Dialogues[0].DialogueId, Is.EqualTo("zev.phase2"));
+        Assert.That(result.Scenario.Dialogues[0].Dialogue, Is.SameAs(dialogue));
+
+        DestroyScenario(result.Scenario);
+        UnityEngine.Object.DestroyImmediate(dialogue);
+    }
+
+    [Test]
+    public void ImporterReportsUnresolvedDialogueReferences()
+    {
+        ScenarioSourceDocument document = MakeDocument();
+        document.Dialogues.Add(new ScenarioSourceDialogueDocument
+        {
+            DialogueId = "zev.phase2",
+            DialogueDataId = "missing_dialogue"
+        });
+        var importer = new ScenarioSourceImporter(
+            new FakeScenarioSourceParser(document),
+            new FakeDialogueReferenceResolver("other_dialogue", null));
+
+        ScenarioSourceSyncResult result = importer.Import("id: test_battle\n", "Assets/test.scenario.yaml");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Validation.Messages.Exists(message => message.Code == "scenario.dialogue.unresolved"), Is.True);
+        DestroyScenario(result.Scenario);
+    }
+
+    [Test]
     public void SourceHashDetectsStaleRuntimeAsset()
     {
         var metadata = new ScenarioSourceMetadata
@@ -119,6 +167,30 @@ public class ScenarioSourceSyncTests
             {
                 Document = _document
             };
+        }
+    }
+
+    private sealed class FakeDialogueReferenceResolver : IScenarioDialogueReferenceResolver
+    {
+        private readonly string _expectedDialogueDataId;
+        private readonly DialogueData _dialogue;
+
+        public FakeDialogueReferenceResolver(string expectedDialogueDataId, DialogueData dialogue)
+        {
+            _expectedDialogueDataId = expectedDialogueDataId;
+            _dialogue = dialogue;
+        }
+
+        public bool TryResolveDialogue(string dialogueDataId, out DialogueData dialogue)
+        {
+            if (dialogueDataId == _expectedDialogueDataId && _dialogue != null)
+            {
+                dialogue = _dialogue;
+                return true;
+            }
+
+            dialogue = null;
+            return false;
         }
     }
 }
