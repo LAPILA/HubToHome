@@ -84,13 +84,14 @@ params:
   id:
     type: DialogueId
     required: true
-    validation: "IDialogueRunner에 등록된 안정적인 대화 ID여야 합니다."
+    validation: "Scenario Source dialogues 매핑 또는 BattleScenarioData.Dialogues를 통해 ScenarioDialogueRegistry에 등록된 안정적인 대화 ID여야 합니다."
 examples:
   - dialogue.wait:
       id: zev.phase2_intro
 completion: "DialogueManagerRunner가 대화 완료 콜백을 받으면 완료됩니다."
 cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다. 실제 DialogueManager 중단은 별도 action으로 확장해야 합니다."
 scope: "Overworld, Battle, transition, cinematic에서 호출 가능한 Presentation action입니다."
+runtimeBinding: "`BattleScenarioActionContextFactory`가 `BattleScenarioData.Dialogues`를 `ScenarioDialogueRegistry`로 등록하고, `DialogueManagerRunner`를 `IDialogueRunner` service로 주입합니다."
 ```
 
 ## Rules For New Actions

@@ -396,15 +396,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
     private ActionExecutionContext CreateBattleScenarioActionContext()
     {
-        var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
         BattleScenarioData scenarioData = _battleScenarioRuntime != null ? _battleScenarioRuntime.ScenarioData : null;
-
-        context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
-        context.PrimaryMode = scenarioData != null ? scenarioData.PrimaryMode : "battle";
-        context.ModuleId = scenarioData != null ? scenarioData.OpeningModule : string.Empty;
-        context.SetService<IDialogueRunner>(new DialogueManagerRunner());
-
-        return context;
+        return BattleScenarioActionContextFactory.Create(scenarioData);
     }
 
     #region [ Initialization ]

@@ -23,6 +23,7 @@
 - Battle event publication should go through `BattleScenarioRuntime`, not direct `BattleScenarioRuleRunner` / `BattleScenarioEventRouter` ownership inside `BattleManager`.
 - `BattleManager.OnBattleScenarioTriggersReady` is an emission seam for fired scenario triggers. Do not put sequence execution policy, module switching, or phase-specific branches directly in `BattleManager`; trigger sequences run through `BattleScenarioActionBridge` and `ActionDirector`.
 - `BattleScenarioActionBridge` is responsible for trigger-to-sequence lookup, child ActionExecutionHandle creation, sequential trigger execution, and failure propagation. Keep that logic out of `BattleManager`.
+- Battle scenario action contexts are created through `BattleScenarioActionContextFactory`. Keep scenario field setup and `BattleScenarioData.Dialogues` registration there instead of adding dialogue setup branches to `BattleManager`.
 
 ## Defense / QTE Intent
 

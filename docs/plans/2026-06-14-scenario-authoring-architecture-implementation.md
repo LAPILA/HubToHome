@@ -401,7 +401,7 @@ public interface IDialogueRunner
 
 **Step 2: Implement runtime adapter**
 
-Runtime adapter can resolve `DialogueData` later through catalog/registry. First wave may accept a test runner.
+`DialogueWaitActionAdapter` starts dialogue through `IDialogueRunner`. Runtime battle scenarios resolve `DialogueData` through `BattleScenarioData.Dialogues`, `ScenarioDialogueRegistry`, and `BattleScenarioActionContextFactory`; source/importer/editor sync for the scenario `dialogues` mapping remains a follow-up.
 
 **Step 3: Validate busy behavior**
 

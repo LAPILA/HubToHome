@@ -31,6 +31,17 @@ public sealed class DialogueManagerRunner : IDialogueRunner
         _dialogues[dialogueId.Trim()] = dialogue;
     }
 
+    public bool TryGetRegisteredDialogue(string dialogueId, out DialogueData dialogue)
+    {
+        dialogue = null;
+        if (string.IsNullOrWhiteSpace(dialogueId))
+        {
+            return false;
+        }
+
+        return _dialogues.TryGetValue(dialogueId.Trim(), out dialogue) && dialogue != null;
+    }
+
     public void ShowAndWait(string dialogueId, Action onComplete)
     {
         if (IsBusy)

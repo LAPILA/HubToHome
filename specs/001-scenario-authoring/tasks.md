@@ -36,6 +36,7 @@
 
 - [x] Add `flow.wait` adapter; keep `flow.parallel` as the `ActionDirector` group action.
 - [x] Add waitable `dialogue.wait` adapter using a testable dialogue runner seam.
+- [x] Add scenario dialogue reference registration so `BattleScenarioData.Dialogues` can resolve `dialogue.wait` IDs into `DialogueData`.
 - [ ] Add placeholder adapters for audio/screen/module commands.
 - [ ] Add legacy SkillData timeline adapter plan or first wrapper.
 - [x] Commit presentation adapters.

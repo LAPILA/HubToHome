@@ -32,4 +32,7 @@ public sealed class BattleScenarioData : ScriptableObject
 
     [Tooltip("이 전투 시나리오가 참조하는 Action Sequence 목록입니다.")]
     public List<ActionSequenceAsset> Sequences = new List<ActionSequenceAsset>();
+
+    [Tooltip("이 전투 시나리오에서 dialogue.wait가 참조할 Dialogue ID 매핑입니다.")]
+    public List<ScenarioDialogueReferenceData> Dialogues = new List<ScenarioDialogueReferenceData>();
 }

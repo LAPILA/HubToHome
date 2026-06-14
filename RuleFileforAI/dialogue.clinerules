@@ -20,6 +20,7 @@
 - Do not make dialogue subordinate to a battle module. Dialogue must remain callable from overworld, battle, transitions, and cinematics.
 - For Action Sequence integration, wrap existing dialogue through a `ShowDialogueAction` / `DialogueService.ShowAndWait` style adapter.
 - Scenario-authored dialogue beats should follow `.agents/skills/hubtohome-scenario-authoring/SKILL.md`, including waitable dialogue actions and validation that dialogue can pause/resume the sequence.
+- Scenario `dialogue.wait` IDs must be registered through `BattleScenarioData.Dialogues` and `ScenarioDialogueRegistry` before runtime execution. Do not hard-code dialogue IDs in `BattleManager` or a combat module.
 - Keep localization keys and fallback text clear.
 - If choice behavior changes, inspect `DialogueManager`, `DialogueData`, and any encounter context code.
 - Document new event trigger IDs and their owners.
