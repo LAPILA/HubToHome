@@ -149,20 +149,20 @@ public sealed class BattleTurnQteGameModuleRuntime : IGameModuleRuntime
 
     public IEnumerator Enter(ActionExecutionContext context)
     {
-        BattleUIController.Instance?.NormalizeForCurrentResolution();
+        BattleUIController.Instance?.ResumeBattleModuleInput();
         yield break;
     }
 
     public IEnumerator Exit(ActionExecutionContext context)
     {
         QTEManager.Instance?.ForceStop();
-        BattleUIController.Instance?.HideSkillQTE();
+        BattleUIController.Instance?.SuspendBattleModuleInput();
         yield break;
     }
 
     public IEnumerator Start(ActionExecutionContext context)
     {
-        BattleUIController.Instance?.NormalizeForCurrentResolution();
+        BattleUIController.Instance?.ResumeBattleModuleInput();
         yield break;
     }
 }

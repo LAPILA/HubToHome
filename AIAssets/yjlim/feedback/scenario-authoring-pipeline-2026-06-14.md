@@ -213,7 +213,9 @@ flowchart LR
 - `turn_qte` compatibility module을 battle context에 연결했다.
   - `BattleManager`가 `BattleScenarioActionContextFactory`를 호출할 때 `GameModuleActionRunner`를 함께 주입한다.
   - 현재 registry에는 `BattleTurnQteGameModuleRuntime` 하나가 `turn_qte` ID로 등록된다.
-  - 이 module은 QTE/skill QTE UI 정리와 battle UI 정규화만 담당한다. 아직 턴 계산, 플레이어 행동 선택, 적 행동, Battle Session State를 `BattleManager` 밖으로 꺼낸 것은 아니다.
+  - 이 module은 active QTE 중단, 타겟팅 커서/전투 메뉴/서브메뉴/방어 QTE UI 정리, party panel 위치 복구, battle UI 정규화를 담당한다.
+  - 이 정리는 `BattleUIController.SuspendBattleModuleInput()` / `ResumeBattleModuleInput()`과 `BattleMenuUI.SuspendForModuleSwitch()`를 통해 이루어진다.
+  - 아직 턴 계산, 플레이어 행동 선택, 적 행동, Battle Session State를 `BattleManager` 밖으로 꺼낸 것은 아니다.
   - 추가 변경 후 `dotnet build HubToHome.sln --no-restore`, `git diff --check`, C# LSP diagnostics가 통과했다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
@@ -221,7 +223,7 @@ flowchart LR
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
 2. Scenario Source YAML text writer와 editor UI에서 `dialogues` 매핑을 source로 저장하는 경로 구현
-3. 현재 QTE 전투를 `IGameModuleRuntime`으로 감싸는 `turn_qte` concrete module 설계
+3. 현재 QTE 전투의 턴/행동 선택/적 행동 상태를 단계적으로 `IGameModuleRuntime` 뒤로 옮기는 `turn_qte` concrete module 심화
 4. Battle Scenario Execution Gate의 module-transition 중 턴 진행 차단을 실제 sample scenario로 검증
 5. Audio/Screen concrete presentation runner 설계
 6. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성

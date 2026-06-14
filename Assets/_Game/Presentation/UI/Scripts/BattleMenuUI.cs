@@ -45,6 +45,7 @@ public class BattleMenuUI : UIPanel
     private int _selectedIndex = 0;
     private PlayerCharacter _currentActor;
     private bool _inputEnabled = false;
+    private bool _isExternallySuspended = false;
     
     private Button[] _buttons;
     private PlayerMenuAction[] _mappedActions;
@@ -81,6 +82,8 @@ public class BattleMenuUI : UIPanel
     #region [ Lifecycle & State ]
     protected override void OnShowComplete()
     {
+        if (_isExternallySuspended) return;
+
         _inputEnabled = true;
         
         if (_buttons != null && _buttons.Length > 0)
@@ -107,11 +110,49 @@ public class BattleMenuUI : UIPanel
             _runBtn.GetComponent<Image>().color = isEnabled ? _normalColor : _disabledColor;
         }
     }
+
+    public void SuspendForModuleSwitch()
+    {
+        _isExternallySuspended = true;
+        _inputEnabled = false;
+
+        _subMenu?.ForceCloseImmediate();
+
+        if (_rectTransform != null)
+        {
+            _rectTransform.DOKill();
+            _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _baseMenuY);
+        }
+
+        if (_buttons != null)
+        {
+            foreach (var button in _buttons)
+            {
+                if (button == null) continue;
+                button.transform.DOKill();
+                button.transform.localScale = Vector3.one;
+            }
+        }
+
+        HideImmediate();
+    }
+
+    public void ResumeAfterModuleSwitch()
+    {
+        _isExternallySuspended = false;
+
+        if (_rectTransform != null)
+        {
+            _rectTransform.DOKill();
+            _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _baseMenuY);
+        }
+    }
     #endregion
 
     #region [ Input & Navigation ]
     private void Update()
     {
+        if (_isExternallySuspended) return;
         if (!_inputEnabled || !IsVisible) return;
         if (_subMenu != null && _subMenu.IsActive) return;
         if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
@@ -207,11 +248,13 @@ public class BattleMenuUI : UIPanel
         if (entry is EmptyMenuEntry)
         {
             DOVirtual.DelayedCall(_menuSlideDuration, () => {
+                if (_isExternallySuspended) return;
                 _inputEnabled = true;
                 HighlightButton(_selectedIndex);
             });
             return;
         }
+        if (_isExternallySuspended) return;
         if (entry is SkillMenuEntry skillEntry)
             BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Skill, skillEntry.Data, null);
     }
@@ -222,11 +265,13 @@ public class BattleMenuUI : UIPanel
         if (entry is EmptyMenuEntry)
         {
             DOVirtual.DelayedCall(_menuSlideDuration, () => {
+                if (_isExternallySuspended) return;
                 _inputEnabled = true;
                 HighlightButton(_selectedIndex);
             });
             return;
         }
+        if (_isExternallySuspended) return;
         if (entry is ItemMenuEntry itemEntry)
             BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Item, null, itemEntry.Data);
     }
@@ -238,6 +283,7 @@ public class BattleMenuUI : UIPanel
         BattleManager.Instance.CancelActionSelection();
 
         DOVirtual.DelayedCall(_menuSlideDuration, () => {
+            if (_isExternallySuspended) return;
             _inputEnabled = true;
             HighlightButton(_selectedIndex);
         });
@@ -250,6 +296,7 @@ public class BattleMenuUI : UIPanel
         _buttons[index].transform.localScale = Vector3.one;
 
         _buttons[index].transform.DOPunchScale(Vector3.one * 0.35f, 0.25f, 8, 0.5f).OnComplete(() => {
+            if (_isExternallySuspended) return;
             BattleManager.Instance.OnPlayerActionSelected(_currentActor, action);
         });
     }

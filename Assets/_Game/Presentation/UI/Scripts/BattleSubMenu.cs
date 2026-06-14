@@ -106,6 +106,31 @@ public class BattleSubMenu : MonoBehaviour
         PlaySlideOut(null); 
     }
 
+    public void ForceCloseImmediate()
+    {
+        IsActive = false;
+        _isAnimating = false;
+        ClearCallbacks();
+
+        if (_rectTransform != null)
+        {
+            _rectTransform.DOKill();
+            _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _hiddenY);
+        }
+
+        if (_container != null)
+        {
+            _container.DOKill();
+            _container.anchoredPosition = new Vector2(_container.anchoredPosition.x, 0f);
+        }
+
+        foreach (var row in _spawnedRows)
+        {
+            if (row != null)
+                row.transform.DOKill();
+        }
+    }
+
     private void ConfirmSelection()
     {
         if (_entries.Count == 0 || _isAnimating) return;

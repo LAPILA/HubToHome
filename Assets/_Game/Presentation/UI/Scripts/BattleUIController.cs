@@ -454,6 +454,20 @@ public class BattleUIController : MonoBehaviour
     #endregion
 
     #region [ Public QTE API & Utilities ]
+    public void SuspendBattleModuleInput()
+    {
+        ExitTargetingMode();
+        _battleMenuUI?.SuspendForModuleSwitch();
+        _defenseQTEUI?.HideImmediate();
+        ResetPartyPanelPosition(0f);
+    }
+
+    public void ResumeBattleModuleInput()
+    {
+        _battleMenuUI?.ResumeAfterModuleSwitch();
+        NormalizeForCurrentResolution();
+    }
+
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();
