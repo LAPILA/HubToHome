@@ -54,6 +54,14 @@ Treat scenario YAML as the authoring source of truth and ScriptableObject assets
 - Do not add a new action without a catalog entry, validation rule, Korean display name, and at least one example.
 - Do not change serialized field names, enum values, ScriptableObject fields, or asset references without documenting migration risk.
 
+## Runtime Execution Contract
+
+- `ActionDirector` executes `ActionSequenceAsset` through `IActionAdapter` instances registered in `ActionAdapterRegistry`.
+- `ActionExecutionContext` is the place to pass mode, module, shared services, and the current `ActionExecutionHandle`; do not make adapters reach directly into unrelated singletons when a narrow service seam can be passed through context.
+- `flow.parallel` is currently a director-level group action. It runs child actions concurrently through the director rather than through a normal runtime adapter.
+- Disabled actions are skipped at execution time but should still stay visible in authoring tools.
+- Unknown action IDs must fail the current handle instead of silently continuing.
+
 ## Output Expectations
 
 For any meaningful change, leave enough durable context for another AI to continue:

@@ -18,11 +18,11 @@
 
 ## Phase 2 - Action Director Core
 
-- [ ] Create `ActionExecutionContext`, `ActionExecutionResult`, and `ActionExecutionHandle`.
-- [ ] Create `IActionAdapter` and `ActionAdapterRegistry`.
-- [ ] Create `ActionDirector` with sequential and parallel execution.
-- [ ] Add EditMode tests using fake adapters.
-- [ ] Commit Action Director core.
+- [x] Create `ActionExecutionContext`, `ActionExecutionResult`, and `ActionExecutionHandle`.
+- [x] Create `IActionAdapter` and `ActionAdapterRegistry`.
+- [x] Create `ActionDirector` with sequential and parallel execution.
+- [x] Add EditMode tests using fake adapters.
+- [x] Commit Action Director core.
 
 ## Phase 3 - Source Sync
 

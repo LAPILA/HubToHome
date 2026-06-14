@@ -74,6 +74,7 @@ sequences:
 - Use `parallel` for simultaneous actions; never imply concurrency from sibling ordering.
 - Keep dialogue as a waitable action, not a child of battle modules.
 - Keep save-bound facts in Encounter Memory, not in in-progress Battle Session State.
+- Runtime `flow.parallel` currently maps to `ActionDirector.ParallelActionId` and is handled as a director-level group action.
 
 ## Validation Expectations
 

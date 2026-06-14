@@ -62,15 +62,24 @@ flowchart LR
   - `ScenarioCatalogValidator`
   - `ScenarioValidationResult`
 - 검증기 1차 범위는 필수 카탈로그 필드 누락, 중복 action id, 시퀀스의 미등록 action id 탐지다.
+- 첫 Action Director 코어를 추가했다.
+  - `ActionExecutionContext`
+  - `ActionExecutionResult`
+  - `ActionExecutionHandle`
+  - `IActionAdapter`
+  - `ActionAdapterRegistry`
+  - `ActionDirector`
+- `ActionDirector`는 일반 액션을 `ActionAdapterRegistry`에서 찾아 실행하고, `flow.parallel`은 현재 내장 병렬 그룹 액션으로 처리한다.
+- 이번 병렬 실행기는 fake adapter와 frame-yield 기반 액션을 검증하는 1차 코어다. 실제 시간 대기, DOTween, DialogueManager, QTE 같은 presentation 액션은 이후 adapter/service 계층에서 다룬다.
 - Unity Editor 강제 refresh/reimport는 하지 않았다. 새 Scenario 파일은 현재 `.csproj`에 아직 포함되지 않았으므로, `dotnet build`만으로 새 파일 전체 검증이 됐다고 보면 안 된다.
-- 대신 Unity 6 NetStandard reference assembly와 `UnityEngine.CoreModule`을 직접 참조하는 별도 `csc` 컴파일로 Runtime Data/Catalog/Validator 스크립트의 문법과 참조 오류가 없음을 확인했다.
+- 대신 Unity 6 NetStandard reference assembly와 `UnityEngine.CoreModule`을 직접 참조하는 별도 `csc` 컴파일로 Runtime Data/Catalog/Validator/ActionDirector 스크립트의 문법과 참조 오류가 없음을 확인했다.
 - NUnit EditMode 테스트는 초안 파일을 추가했지만, 실제 실행은 Unity Test Runner에서 별도 검증해야 한다.
 
 ## 다음 구현 후보
 
-1. `ActionDirector` 실행 컨텍스트와 adapter registry 작성
-2. 순차/병렬 Action Sequence 실행 테스트 작성
-3. `flow.wait` / `flow.parallel` 최소 adapter 작성
-4. YAML import 검증기 작성
-5. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
-6. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
+1. `flow.wait` 최소 adapter 작성
+2. Dialogue/Audio/Screen/Module 전환용 presentation service seam 설계
+3. YAML import 검증기 작성
+4. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
+5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
+6. Battle Event Rule runner와 Encounter Memory 저장 경로 연결
