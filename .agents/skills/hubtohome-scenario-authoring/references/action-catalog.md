@@ -184,6 +184,37 @@ cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 �
 scope: "Battle Primary Mode 안의 Game Module 시작에 우선 사용합니다. Overworld module 시작은 runner 구현 후 확장합니다."
 ```
 
+```yaml
+id: battle.skill.timeline
+category: battle
+displayNameKo: "기존 스킬 타임라인 실행"
+summaryKo: "기존 SkillData.ActionTimeline 기반 QTE/스킬 블록을 실행합니다."
+runtimeAdapter: BattleSkillTimelineActionAdapter
+params:
+  skill:
+    type: SkillId
+    required: true
+    validation: "ISkillTimelineRunner가 해석할 수 있는 안정적인 SkillData ID여야 합니다."
+  actor:
+    type: ActorId
+    required: true
+    validation: "현재 Battle Session에서 해석 가능한 actor ID여야 합니다."
+  targets:
+    type: ActorId[]
+    required: false
+    default: []
+    validation: "비워두면 runner 구현이 스킬/전투 상태 기준으로 대상 선택을 결정할 수 있습니다."
+examples:
+  - battle.skill.timeline:
+      skill: zev_crosscut
+      actor: zev
+      targets: [player]
+completion: "ISkillTimelineRunner가 기존 SkillActionBlock timeline routine을 모두 완료하면 완료됩니다."
+cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다. 진행 중 SkillActionBlock 중단 정책은 concrete runner에서 보강해야 합니다."
+scope: "Battle Primary Mode에서 기존 QTE/스킬 시스템을 Action Sequence에 연결하기 위한 compatibility action입니다."
+runtimeBinding: "초기 adapter는 ID와 target 목록을 runner seam으로 전달합니다. 실제 SkillData/Actor/Target resolve와 SkillContext 구성은 concrete battle runner가 담당합니다."
+```
+
 ## Rules For New Actions
 
 - Prefer clear, specific actions over over-abstracted parameter bags.

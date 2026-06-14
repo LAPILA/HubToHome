@@ -389,13 +389,16 @@ git commit -m "feat: add scenario source sync"
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/ScreenFadeActionAdapter.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/ModuleSwitchActionAdapter.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/ModuleStartActionAdapter.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/BattleSkillTimelineActionAdapter.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IDialogueRunner.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/DialogueManagerRunner.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IAudioActionRunner.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IScreenTransitionRunner.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IGameModuleActionRunner.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/ISkillTimelineRunner.cs`
 - Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioPresentationAdapterTests.cs`
 - Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioPresentationCommandAdapterTests.cs`
+- Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioSkillTimelineAdapterTests.cs`
 
 Note: `flow.parallel` is not a normal adapter in the first implementation. It remains a director-level group action handled by `ActionDirector.ParallelActionId`.
 
@@ -421,7 +424,7 @@ If dialogue is already playing, adapter should fail or wait according to a docum
 
 **Step 4: Add command seams**
 
-Add starter adapters for `bgm.crossfade`, `screen.fade`, `module.switch`, and `module.start`. These adapters must call injected runner seams and fail clearly when the seam is missing. Concrete `AudioManager`, fade UI, and Game Module runner implementations can be added later without changing the Action grammar.
+Add starter adapters for `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, and `battle.skill.timeline`. These adapters must call injected runner seams and fail clearly when the seam is missing. Concrete `AudioManager`, fade UI, Game Module runner, and SkillData timeline runner implementations can be added later without changing the Action grammar.
 
 **Step 5: Commit**
 
@@ -568,8 +571,9 @@ git commit -m "feat: add scenario authoring editor"
 ## Task 10: Legacy QTE Skill Bridge
 
 **Files:**
-- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/LegacySkillTimelineActionAdapter.cs`
-- Test: `Assets/_Game/Features/Scenario/Tests/Editor/LegacySkillTimelineActionAdapterTests.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/BattleSkillTimelineActionAdapter.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/ISkillTimelineRunner.cs`
+- Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioSkillTimelineAdapterTests.cs`
 - Read only before editing: `Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs`
 - Read only before editing: `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
 
@@ -579,7 +583,7 @@ Do not rename `SkillActionBlock` or existing `Action_*` classes.
 
 **Step 2: Wrap execution**
 
-Adapter receives a `SkillData` reference or stable skill id and calls the same execution path currently used by BattleManager where practical.
+Adapter receives stable `skill`, `actor`, and optional `targets` IDs and calls `ISkillTimelineRunner`. The concrete battle runner resolves those IDs into `SkillData`, `CharacterBase`, target list, and `SkillContext`.
 
 **Step 3: Keep first bridge narrow**
 

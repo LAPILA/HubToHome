@@ -113,7 +113,7 @@ flowchart LR
   - 발화된 `BattleScenarioTrigger`는 `BattleManager.OnBattleScenarioTriggersReady` 이벤트로 외부에 알리고, 내부 실행은 `BattleScenarioActionBridge`가 `ActionDirector`로 넘긴다.
   - `BattleScenarioActionBridge`는 trigger의 `SequenceId`를 runtime sequence로 해석하고, 각 trigger마다 child `ActionExecutionHandle`을 만들어 순차 실행한다.
   - `BattleManager`는 bridge coroutine을 시작하거나 flush 시점에 기다릴 뿐이며, rule ID를 해석하거나 BGM/대사/페이드/모듈 전환 정책을 직접 갖지 않는다.
-  - 현재 기본 registry는 `flow.wait`, `dialogue.wait`만 등록한다. 실제 대사 content를 쓰려면 Dialogue ID를 `DialogueData`에 등록하는 authoring/import 경로가 다음 단계로 필요하다.
+  - 현재 기본 registry는 `flow.wait`, `dialogue.wait`, `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, `battle.skill.timeline`을 등록한다. 실제 content에서 쓰려면 Dialogue ID 등록과 audio/screen/module/skill runner service 주입 경로가 필요하다.
 - `dialogue.wait`의 runtime content binding 경로를 추가했다.
   - `BattleScenarioData.Dialogues`는 전투 시나리오별 `DialogueId -> DialogueData` 참조 목록이다.
   - `ScenarioDialogueRegistry`는 이 목록을 검증/정리한 뒤 `DialogueManagerRunner`에 등록한다. 빈 ID, null reference는 무시하고, 중복 ID는 뒤쪽 유효 참조가 이긴다.
@@ -128,6 +128,11 @@ flowchart LR
   - 이 adapter들은 실제 싱글톤이나 씬 오브젝트를 직접 찾지 않는다. 따라서 기존 `AudioManager`, fade UI, 전투 Game Module runner는 후속 concrete runner로 붙이면 된다.
   - `module.switch`와 `module.start`는 완료 후 `ActionExecutionContext.ModuleId`를 갱신한다.
   - 기본 battle scenario `ActionAdapterRegistry`에는 네 command adapter를 등록했지만, 실제 battle content에서 사용하려면 runner service 주입이 필요하다.
+- 기존 SkillData timeline compatibility adapter의 첫 seam을 추가했다.
+  - `battle.skill.timeline`은 기존 `SkillData.ActionTimeline` / `SkillActionBlock` 기반 QTE/스킬 흐름을 새 Action Sequence에서 호출하기 위한 action이다.
+  - 실행은 `ISkillTimelineRunner` seam으로 위임한다. Action adapter는 stable `skill`, `actor`, optional `targets` ID를 넘기고, concrete runner가 나중에 `SkillData`, `CharacterBase`, `SkillContext`로 resolve한다.
+  - 이 작업은 기존 스킬 시스템을 새 전역 문법으로 갈아엎는 것이 아니라, 기존 기능을 상위 Scenario/Action architecture 안에서 호출 가능하게 만드는 호환 계층이다.
+  - 전체 전투 phase 전환, 대사, 음악, 모듈 교체 같은 흐름은 여전히 `Battle Event Rule -> Action Sequence`가 소유하고, SkillData는 개별 스킬 연출/판정의 legacy timeline으로 유지한다.
 - 1차 push 전 검증 강화를 위해 `BattleScenarioRuntimeTests`를 추가했다.
   - `AfterCurrentSkill` timing은 스킬 중 발생한 HP crossing을 즉시 실행하지 않고 flush 시점에 발화한다.
   - `Immediate` timing은 publish 시점에 바로 발화하고, 이후 flush에서 중복 발화하지 않는다.
@@ -153,7 +158,10 @@ flowchart LR
 - `ScenarioDialogueRegistryTests`와 `BattleScenarioActionContextFactoryTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 55개 통과, 실패 0개다.
 - `BattleScenarioValidationTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 59개 통과, 실패 0개다.
 - `ScenarioPresentationCommandAdapterTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 63개 통과, 실패 0개다.
-- `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 기존 `System.Net.Http`/`System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고는 남아 있다. Unity 콘솔에는 테스트/컴파일 실패가 아닌 기존 MCP disposed client handler 로그가 1개 남았다.
+- `ScenarioSkillTimelineAdapterTests`를 추가했다. `battle.skill.timeline` runner 호출/대기, runner 누락, `skill` 누락, 잘못된 `targets` 타입 실패를 검증한다.
+- 최초 검증에서 `scope=scripts` refresh가 새 script file import를 잡지 못해 `BattleSkillTimelineActionAdapter` 타입 부재 컴파일 오류가 났다. 이후 비강제 `refresh_unity mode=if_dirty scope=all compile=request`로 새 파일이 project에 편입됐고 오류가 해소됐다.
+- `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 기존 `System.Net.Http`/`System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고는 남아 있다.
+- 최신 Unity MCP EditMode 전체 테스트는 67개 통과, 실패 0개다. Unity 콘솔에는 테스트 실패가 아닌 MCP disposed client handler 로그 2개와 TestResults.xml 저장 로그가 남았다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
@@ -162,5 +170,5 @@ flowchart LR
 2. Scenario Source/importer/editor에서 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화
 3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
 4. Audio/Screen/Module 전환용 presentation service seam 설계
-5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
+5. `ISkillTimelineRunner` concrete battle runner를 구현해 기존 QTE 스킬 하나를 실제 `SkillData`/actor/target resolve로 실행하는 수직 검증
 6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

@@ -39,7 +39,7 @@
 - [x] Add waitable `dialogue.wait` adapter using a testable dialogue runner seam.
 - [x] Add scenario dialogue reference registration so `BattleScenarioData.Dialogues` can resolve `dialogue.wait` IDs into `DialogueData`.
 - [x] Add starter adapters and runner seams for audio/screen/module commands.
-- [ ] Add legacy SkillData timeline adapter plan or first wrapper.
+- [x] Add legacy SkillData timeline adapter plan or first wrapper.
 - [x] Commit presentation adapters.
 
 ## Phase 5 - Battle Scenario Runner

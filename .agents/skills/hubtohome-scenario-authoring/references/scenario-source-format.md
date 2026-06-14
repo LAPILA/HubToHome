@@ -91,6 +91,7 @@ sequences:
 - Keep dialogue as a waitable action, not a child of battle modules.
 - Keep save-bound facts in Encounter Memory, not in in-progress Battle Session State.
 - Runtime `flow.parallel` currently maps to `ActionDirector.ParallelActionId` and is handled as a director-level group action.
+- Use `battle.skill.timeline` only as a compatibility call into existing `SkillData.ActionTimeline` / `SkillActionBlock` behavior. Whole-battle phase flow still belongs in Battle Event Rules plus Action Sequences.
 
 ## Validation Expectations
 
@@ -98,6 +99,7 @@ Reject or warn on:
 
 - Unknown action IDs.
 - Unknown actors, modules, dialogue IDs, clips, positions, or UI targets.
+- Unknown skill IDs used by `battle.skill.timeline`.
 - `dialogue.wait` IDs that do not resolve through `BattleScenarioData.Dialogues` / `ScenarioDialogueRegistry`.
 - Missing `once` on HP threshold rules unless repeat is intentional.
 - Module switch without a matching module start/ready rule.
