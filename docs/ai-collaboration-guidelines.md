@@ -81,6 +81,7 @@ Also update:
 
 - Commit a coherent unit of work.
 - Use a message that states the kind of work and intent.
+- The short subject may use English conventional prefixes such as `feat:` or `test:`, but the explanatory body should be Korean and include intent, verification, and follow-up when useful.
 - Do not push without human approval.
 
 ## Conflict Prevention Rules

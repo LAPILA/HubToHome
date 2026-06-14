@@ -38,6 +38,7 @@ If a task touches a system with a design document or previous feedback HTML, rea
 
 - Work on a branch. Use the `codex/` prefix for AI-created branches unless the human asks otherwise.
 - Commit meaningful units of work.
+- Commit subjects may use conventional English prefixes such as `feat:` or `test:`, but explanatory commit bodies must be written in Korean so human teammates can review intent and verification quickly.
 - Do not push without explicit human approval for the target remote and branch.
 - Do not revert or overwrite changes you did not make.
 - If the worktree contains unrelated changes, leave them alone and mention them only if they affect the task.
