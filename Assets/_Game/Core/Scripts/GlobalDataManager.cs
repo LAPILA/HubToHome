@@ -30,6 +30,7 @@ public class GlobalDataManager : MonoBehaviour
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
     public AudioClip PendingBattleBGM { get; set; }
+    public BattleScenarioData PendingBattleScenario { get; set; }
     public string CurrentEncounterEnemyId { get; private set; }
     public bool CurrentEncounterDefeatsOnVictory { get; private set; }
     

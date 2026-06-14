@@ -66,6 +66,7 @@ Treat scenario YAML as the authoring source of truth and ScriptableObject assets
 - `BattleScenarioRuleRunner` owns the bridge from `BattleScenarioData.Rules` to fired `BattleScenarioTrigger` objects and resolves trigger `SequenceId` values against `BattleScenarioData.Sequences`.
 - `BattleScenarioEventRouter` decides whether a battle event is evaluated immediately or deferred until a timing flush such as `AfterCurrentSkill`. Use it for phase beats that must wait until the current skill/action/module presentation finishes.
 - `BattleScenarioSubjectResolver` resolves runtime subjects to Scenario Subject IDs. Enemy battle rules should match `EnemyData.EnemyId`; fallback to asset/display names is migration support only.
+- Existing battle code now exposes a narrow scenario hook: `BattleEncounterService.StartEncounter(..., BattleScenarioData battleScenarioData = null)` can pass per-encounter scenario data, `GlobalDataManager.PendingBattleScenario` carries it across dedicated battle scene loads without saving it, and `BattleManager.OnBattleScenarioTriggersReady` publishes fired triggers after damage/action/skill timing. The current hook emits triggers only; a separate bridge should execute trigger sequences through `ActionDirector`.
 - Disabled actions are skipped at execution time but should still stay visible in authoring tools.
 - Unknown action IDs must fail the current handle instead of silently continuing.
 

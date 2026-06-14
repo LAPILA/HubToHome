@@ -47,11 +47,12 @@
 - [x] Add BattleScenarioData rule runner and sequence resolver.
 - [x] Add BattleScenarioEventRouter for immediate vs deferred timing.
 - [x] Add Scenario Subject ID resolution for battle enemies.
-- [ ] Add minimal hook from existing battle damage/skill-end points.
+- [x] Add minimal hook from existing battle damage/skill-end points.
 - [x] Add tests for HP threshold after current skill.
 - [x] Commit pure battle rule runner.
 - [x] Commit scenario rule runner.
 - [x] Commit event router.
+- [ ] Add ActionDirector bridge for `BattleScenarioTrigger` sequence execution.
 - [ ] Commit BattleManager hook.
 
 ## Phase 6 - Korean Scenario Authoring Editor

@@ -166,8 +166,9 @@ public class Action_Damage : SkillActionBlock
         {
             if (!target.IsAlive) continue;
             
+            int previousHp = target.CurrentHP;
             int dmg = target.TakeDamage(finalDamage);
-            BattleManager.Instance.InvokeDamageEvent(target, dmg, context.IsPerfectQTE); 
+            BattleManager.Instance.InvokeDamageEvent(target, dmg, context.IsPerfectQTE, previousHp);
             
             if (ShakeCamera) 
                 CameraController.Instance?.PlayHeavySlam(Vector3.right, context.IsPerfectQTE ? 1.2f : 0.6f, true);
@@ -503,8 +504,9 @@ public class Action_Projectile : SkillActionBlock
         }
         
         int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
-        context.MainTarget.TakeDamage(dmg);
-        BattleManager.Instance.InvokeDamageEvent(context.MainTarget, dmg, context.IsPerfectQTE);
+        int previousHp = context.MainTarget.CurrentHP;
+        int dealt = context.MainTarget.TakeDamage(dmg);
+        BattleManager.Instance.InvokeDamageEvent(context.MainTarget, dealt, context.IsPerfectQTE, previousHp);
 
         context.CurrentDamageMultiplier = 1.0f; 
     }
@@ -559,8 +561,9 @@ public class Action_SequentialMelee : SkillActionBlock
             }
             
             int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
-            target.TakeDamage(dmg);
-            BattleManager.Instance.InvokeDamageEvent(target, dmg, context.IsPerfectQTE);
+            int previousHp = target.CurrentHP;
+            int dealt = target.TakeDamage(dmg);
+            BattleManager.Instance.InvokeDamageEvent(target, dealt, context.IsPerfectQTE, previousHp);
             CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.4f, true);
 
             yield return new WaitForSeconds(0.2f); 

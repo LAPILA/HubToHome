@@ -104,12 +104,24 @@ flowchart LR
   - `BattleScenarioSubjectResolver`는 `EnemyData.EnemyId`를 우선 사용하고, 기존 에셋 마이그레이션 전에는 asset name / display name fallback을 제공한다.
   - `EnemyName`은 표시명에 가까우므로 장기적인 Scenario Source ID로 사용하지 않는다.
 - `docs/plans/2026-06-14-battle-scenario-subject-id-implementation.md`에 subject ID와 후속 BattleManager hook 계획을 따로 남겼다.
+- 기존 QTE 전투에서 Battle Scenario Event를 발행하는 최소 hook을 추가했다.
+  - `BattleEncounterService.StartEncounter(..., BattleScenarioData battleScenarioData = null)`로 encounter별 scenario data를 넘길 수 있다. 기존 호출자는 옵션 파라미터 때문에 깨지지 않는다.
+  - 전용 BattleScene 로드처럼 씬을 건너가는 경우에는 `GlobalDataManager.PendingBattleScenario`로 scenario data를 임시 전달한다. 이 값은 세이브 데이터가 아니라 전투 진입용 런타임 handoff다.
+  - `BattleManager`는 전투 시작 시 resolved scenario로 `BattleScenarioEventRouter`를 만들고, 적에게 피해가 들어간 뒤 `EnemyHpCrossedBelow` 이벤트를 발행한다.
+  - `SkillActionBlocks`는 데미지 전 HP를 같이 넘기므로, 50% threshold 같은 규칙은 실제 피해 전/후 비율로 crossing을 판단한다.
+  - 발화된 `BattleScenarioTrigger`는 `BattleManager.OnBattleScenarioTriggersReady` 이벤트로만 나온다. 아직 여기서 ActionDirector 실행을 하지 않는 이유는, BGM/대사/페이드/모듈 전환 정책을 BattleManager에 다시 넣지 않기 위해서다.
+
+## 검증 메모
+
+- `dotnet build HubToHome.sln --no-restore`는 현재 ignored/stale Unity 생성 csproj가 새 Scenario 파일을 포함하지 않아 실패할 수 있다. 이 실패는 `BattleManager`가 새 Scenario 타입을 참조하기 시작하면서 드러난 프로젝트 파일 갱신 문제다.
+- 실제 컴파일 검증은 임시 `Assembly-CSharp.codex-validation.csproj`에 Scenario production 스크립트를 포함시켜 수행했고, 오류 0개로 통과했다.
+- Unity Editor refresh/reimport, Play Mode, 씬 저장은 하지 않았다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. 기존 `BattleManager` 데미지 지점에서 `BattleScenarioSubjectResolver`로 subject ID를 얻고 `BattleScenarioEventRouter.Publish(...)`를 호출하는 최소 hook 작성
-3. 스킬/액션/모듈 종료 지점에서 `BattleScenarioEventRouter.Flush(...)`를 호출하고, 반환된 trigger를 `ActionDirector` 실행 요청으로 넘기는 runtime bridge 작성
+2. `BattleManager.OnBattleScenarioTriggersReady`를 구독해 `BattleScenarioTrigger.Sequence`를 `ActionDirector` 실행 요청으로 넘기는 runtime bridge 작성
+3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
 4. Audio/Screen/Module 전환용 presentation service seam 설계
 5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
 6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

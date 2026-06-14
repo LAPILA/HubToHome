@@ -43,14 +43,20 @@ Rejected approaches:
 ## Task 2: BattleManager Hook
 
 **Files:**
-- Modify later: `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
+- Modify: `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
+- Modify: `Assets/_Game/Features/Battle/Scripts/BattleEncounterService.cs`
+- Modify: `Assets/_Game/Core/Scripts/GlobalDataManager.cs`
+- Modify: `Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs`
 
 **Steps:**
 
-1. Add a serialized optional `BattleScenarioData` reference or runtime injection seam.
-2. Build a `BattleScenarioEventRouter` from the scenario when battle starts.
-3. On damage events, publish `EnemyHpCrossedBelow` with resolver subject IDs.
-4. At skill end, flush `AfterCurrentSkill`.
-5. Execute returned sequences through `ActionDirector`.
+1. Add a serialized default `BattleScenarioData` reference and a runtime injection seam.
+2. Let `BattleEncounterService.StartEncounter(..., battleScenarioData)` pass a per-encounter scenario without changing existing callers.
+3. Carry dedicated scene scenario data through `GlobalDataManager.PendingBattleScenario` as runtime-only state, not save-bound state.
+4. Build a `BattleScenarioEventRouter` from the resolved scenario when battle starts.
+5. On damage events, publish `EnemyHpCrossedBelow` with resolver subject IDs and accurate previous/current HP ratios.
+6. Flush `AfterCurrentAction` after a basic attack and `AfterCurrentSkill` after the current skill finishes.
+7. Emit fired triggers through `BattleManager.OnBattleScenarioTriggersReady`.
+8. Execute returned sequences through `ActionDirector` in a later bridge commit.
 
-Do not implement this hook until the subject resolver is committed.
+Task 2 status: implemented through trigger emission. Sequence execution is intentionally left for the next `ActionDirector` bridge step so `BattleManager` does not own presentation/module transition policy.

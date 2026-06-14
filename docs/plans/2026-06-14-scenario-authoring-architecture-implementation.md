@@ -451,6 +451,9 @@ Preferred minimal hook:
 - Add an event from `InvokeDamageEvent` or a narrow adapter near it.
 - Do not move existing damage calculation yet.
 - Do not change SkillData serialized fields.
+- `BattleEncounterService.StartEncounter(..., BattleScenarioData battleScenarioData = null)` may provide a scenario for a concrete encounter while preserving existing call sites.
+- `GlobalDataManager.PendingBattleScenario` is runtime-only cross-scene handoff state; it is not saved.
+- `BattleManager.OnBattleScenarioTriggersReady` publishes fired triggers. A later bridge should consume this event and execute `ActionSequenceAsset` through `ActionDirector`.
 
 **Step 4: Commit**
 

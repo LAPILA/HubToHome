@@ -26,6 +26,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     public event Action<bool>                       OnBattleEnded;        
     public event Action<PlayerMenuAction>           OnTargetSelectionStarted;
     public event Action<BattleNarrationMessage>     OnBattleNarrationRequested;
+    public event Action<List<BattleScenarioTrigger>> OnBattleScenarioTriggersReady;
     #endregion
 
     #region [ Inspector Settings ]
@@ -84,6 +85,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     [SerializeField] private float _enemyCenterAdvanceDuration = 0.18f;
     [Header("Narration")]
     [SerializeField] private BattleNarrationConfig _battleNarrationConfig;
+    [Header("Scenario")]
+    [SerializeField] private BattleScenarioData _defaultBattleScenarioData;
     #endregion
 
     #region [ Internal State ]
@@ -109,9 +112,17 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private IEncounterSource _activeEncounterSource;
     private PlayerController _activeEncounterPlayer;
     private bool _isReadyToReveal = true;
+    private BattleScenarioData _pendingBattleScenarioData;
+    private BattleScenarioData _activeBattleScenarioData;
+    private BattleScenarioEventRouter _battleScenarioEventRouter;
     #endregion
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
+
+    public void SetBattleScenarioData(BattleScenarioData scenarioData)
+    {
+        _pendingBattleScenarioData = scenarioData;
+    }
 
     private struct EnemyQueuedAction
     {
@@ -265,6 +276,96 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         };
     }
 
+    private void InitializeBattleScenarioRuntime()
+    {
+        _activeBattleScenarioData = ResolveBattleScenarioData();
+        _pendingBattleScenarioData = null;
+
+        if (GlobalDataManager.Instance != null)
+        {
+            GlobalDataManager.Instance.PendingBattleScenario = null;
+        }
+
+        if (_activeBattleScenarioData == null)
+        {
+            _battleScenarioEventRouter = null;
+            return;
+        }
+
+        var session = new BattleScenarioSession(
+            _activeBattleScenarioData.ScenarioId,
+            _activeBattleScenarioData.MemoryKey);
+        var ruleRunner = new BattleScenarioRuleRunner(_activeBattleScenarioData, session);
+        _battleScenarioEventRouter = new BattleScenarioEventRouter(ruleRunner);
+    }
+
+    private BattleScenarioData ResolveBattleScenarioData()
+    {
+        if (_pendingBattleScenarioData != null)
+        {
+            return _pendingBattleScenarioData;
+        }
+
+        if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.PendingBattleScenario != null)
+        {
+            return GlobalDataManager.Instance.PendingBattleScenario;
+        }
+
+        return _defaultBattleScenarioData;
+    }
+
+    private void PublishEnemyHpScenarioEvent(
+        CharacterBase target,
+        int previousHp,
+        int currentHp,
+        int maxHp,
+        BattleRuleTiming timing)
+    {
+        if (_battleScenarioEventRouter == null || target == null || maxHp <= 0)
+        {
+            return;
+        }
+
+        if (!(target is EnemyCharacter))
+        {
+            return;
+        }
+
+        string subjectId = BattleScenarioSubjectResolver.ResolveSubjectId(target);
+        if (string.IsNullOrWhiteSpace(subjectId))
+        {
+            return;
+        }
+
+        BattleEventData battleEvent = BattleEventData.EnemyHpCrossedBelow(
+            subjectId,
+            Mathf.Clamp01((float)previousHp / maxHp),
+            Mathf.Clamp01((float)currentHp / maxHp),
+            timing);
+        DispatchBattleScenarioTriggers(_battleScenarioEventRouter.Publish(battleEvent));
+    }
+
+    private void DispatchBattleScenarioTriggers(List<BattleScenarioTrigger> triggers)
+    {
+        if (triggers == null || triggers.Count == 0)
+        {
+            return;
+        }
+
+        OnBattleScenarioTriggersReady?.Invoke(triggers);
+    }
+
+    private IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing)
+    {
+        if (_battleScenarioEventRouter == null)
+        {
+            yield break;
+        }
+
+        List<BattleScenarioTrigger> triggers = _battleScenarioEventRouter.Flush(timing);
+        DispatchBattleScenarioTriggers(triggers);
+    }
+
     #region [ Initialization ]
     private void Awake()
     {
@@ -396,6 +497,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         Canvas.ForceUpdateCanvases();
         CameraController.Instance?.ResetCamera(0f);
 
+        InitializeBattleScenarioRuntime();
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
@@ -515,6 +617,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         Canvas.ForceUpdateCanvases();
         CameraController.Instance?.ResetCamera(0f);
 
+        InitializeBattleScenarioRuntime();
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         Canvas.ForceUpdateCanvases();
         yield return null;
@@ -922,8 +1025,10 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         yield return new WaitForSeconds(_playerAttackHitDelay);
 
+        int previousHp = target.CurrentHP;
         int dmg = target.TakeDamage(actor.ATK);
         CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
+        PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
         OnDamageDealt?.Invoke(target, dmg, false);
         
         yield return new WaitForSeconds(_playerAttackRecoverDelay); 
@@ -941,6 +1046,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         CameraController.Instance?.ResetCamera(0.4f);
 
         yield return StartCoroutine(WaitForNarrationToFinish());
+        yield return StartCoroutine(FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentAction));
 
         EndAction();
     }
@@ -1000,6 +1106,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         CameraController.Instance?.ResetCamera(0.4f); 
         yield return StartCoroutine(WaitForNarrationToFinish());
+        yield return StartCoroutine(FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentSkill));
         
         EndAction();
     }
@@ -1417,6 +1524,22 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect)
     {
+        int previousHp = target != null ? Mathf.Clamp(target.CurrentHP + Mathf.Max(0, damage), 0, target.MaxHP) : 0;
+        InvokeDamageEvent(target, damage, isPerfect, previousHp);
+    }
+
+    public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect, int previousHp)
+    {
+        if (target != null)
+        {
+            PublishEnemyHpScenarioEvent(
+                target,
+                previousHp,
+                target.CurrentHP,
+                target.MaxHP,
+                BattleRuleTiming.AfterCurrentSkill);
+        }
+
         OnDamageDealt?.Invoke(target, damage, isPerfect);
     }
 
