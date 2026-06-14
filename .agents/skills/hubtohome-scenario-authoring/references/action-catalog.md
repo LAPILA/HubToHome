@@ -50,6 +50,49 @@ Start with these categories:
 - `flow`: wait, parallel, branch, cancel, marker.
 - `save`: set encounter memory, set flag, record outcome.
 
+## Starter Entries
+
+These entries are the first runtime-backed actions. Keep the actual YAML/catalog asset in sync with this reference when the importer/exporter becomes active.
+
+```yaml
+id: flow.wait
+category: flow
+displayNameKo: "기다리기"
+summaryKo: "지정한 시간 동안 현재 Action Sequence를 일시 정지합니다."
+runtimeAdapter: FlowWaitActionAdapter
+params:
+  duration:
+    type: Float
+    required: false
+    default: 0
+    validation: "0 이상. 음수는 런타임에서 0으로 보정합니다."
+examples:
+  - flow.wait:
+      duration: 0.5
+completion: "duration만큼 시간이 누적되면 완료됩니다."
+cancellation: "실행 핸들의 취소 요청이 들어오면 대기를 멈춥니다."
+scope: "Overworld와 Battle 모두에서 사용 가능합니다."
+```
+
+```yaml
+id: dialogue.wait
+category: dialogue
+displayNameKo: "대사 표시 후 대기"
+summaryKo: "등록된 DialogueData를 시작하고, 플레이어가 대사를 끝낼 때까지 Action Sequence를 멈춥니다."
+runtimeAdapter: DialogueWaitActionAdapter
+params:
+  id:
+    type: DialogueId
+    required: true
+    validation: "IDialogueRunner에 등록된 안정적인 대화 ID여야 합니다."
+examples:
+  - dialogue.wait:
+      id: zev.phase2_intro
+completion: "DialogueManagerRunner가 대화 완료 콜백을 받으면 완료됩니다."
+cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다. 실제 DialogueManager 중단은 별도 action으로 확장해야 합니다."
+scope: "Overworld, Battle, transition, cinematic에서 호출 가능한 Presentation action입니다."
+```
+
 ## Rules For New Actions
 
 - Prefer clear, specific actions over over-abstracted parameter bags.

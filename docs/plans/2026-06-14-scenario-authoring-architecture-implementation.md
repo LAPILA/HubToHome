@@ -40,7 +40,6 @@ Assets/_Game/Features/Scenario/
 │     ├─ IActionAdapter.cs
 │     └─ Adapters/
 │        ├─ FlowWaitActionAdapter.cs
-│        ├─ FlowParallelActionAdapter.cs
 │        └─ DialogueWaitActionAdapter.cs
 ├─ Editor/
 │  ├─ ScenarioSourceImporter.cs
@@ -384,7 +383,9 @@ git commit -m "feat: add scenario source sync"
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/DialogueWaitActionAdapter.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IDialogueRunner.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/DialogueManagerRunner.cs`
-- Test: `Assets/_Game/Features/Scenario/Tests/Editor/DialogueWaitActionAdapterTests.cs`
+- Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioPresentationAdapterTests.cs`
+
+Note: `flow.parallel` is not a normal adapter in the first implementation. It remains a director-level group action handled by `ActionDirector.ParallelActionId`.
 
 **Step 1: Add testable dialogue seam**
 

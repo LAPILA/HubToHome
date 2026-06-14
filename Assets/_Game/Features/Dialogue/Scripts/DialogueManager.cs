@@ -20,6 +20,11 @@ public class DialogueManager : MonoBehaviour
     private Action _onCompleteCallback;
     private DialogueEncounterContext _encounterContext;
 
+    public bool IsPlaying
+    {
+        get { return _isPlaying; }
+    }
+
     private void Awake() 
     { 
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
