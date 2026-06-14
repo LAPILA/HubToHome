@@ -198,6 +198,102 @@ public class BattleScenarioRuntimeTests
         Assert.That(runtime.SessionState.CurrentModuleId, Is.EqualTo(BattleTurnQteGameModuleRuntime.Id));
     }
 
+    [Test]
+    public void SessionStateStoresReadableParticipantSnapshots()
+    {
+        var runtime = new BattleScenarioRuntime(null);
+        var participants = new[]
+        {
+            new BattleParticipantSnapshot(
+                "player_001",
+                BattleParticipantKind.Player,
+                "플레이어",
+                75,
+                100,
+                20,
+                40,
+                true,
+                false,
+                false,
+                false,
+                false,
+                false),
+            new BattleParticipantSnapshot(
+                "zev",
+                BattleParticipantKind.Enemy,
+                "ZEV",
+                49,
+                100,
+                0,
+                0,
+                true,
+                false,
+                true,
+                false,
+                false,
+                false)
+        };
+
+        runtime.SessionState.SetParticipants(participants);
+
+        Assert.That(runtime.SessionState.Participants.Count, Is.EqualTo(2));
+        Assert.That(runtime.SessionState.TryGetParticipant("zev", out BattleParticipantSnapshot zev), Is.True);
+        Assert.That(zev.Kind, Is.EqualTo(BattleParticipantKind.Enemy));
+        Assert.That(zev.DisplayName, Is.EqualTo("ZEV"));
+        Assert.That(zev.HpRatio, Is.EqualTo(0.49f).Within(0.001f));
+        Assert.That(zev.IsStunned, Is.True);
+    }
+
+    [Test]
+    public void SessionStateReplacesParticipantsOnUpdate()
+    {
+        var runtime = new BattleScenarioRuntime(null);
+
+        runtime.SessionState.SetParticipants(new[]
+        {
+            new BattleParticipantSnapshot("zev", BattleParticipantKind.Enemy, "ZEV", 100, 100, 0, 0, true, false, false, false, false, false)
+        });
+        runtime.SessionState.SetParticipants(new[]
+        {
+            new BattleParticipantSnapshot("player_001", BattleParticipantKind.Player, "플레이어", 100, 100, 30, 30, true, false, false, false, false, false)
+        });
+
+        Assert.That(runtime.SessionState.Participants.Count, Is.EqualTo(1));
+        Assert.That(runtime.SessionState.TryGetParticipant("zev", out _), Is.False);
+        Assert.That(runtime.SessionState.TryGetParticipant("player_001", out BattleParticipantSnapshot player), Is.True);
+        Assert.That(player.MpRatio, Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void ParticipantSnapshotFromEnemyUsesScenarioSubjectId()
+    {
+        GameObject enemyObject = new GameObject("EnemyRuntimeObject");
+        EnemyCharacter enemy = enemyObject.AddComponent<EnemyCharacter>();
+        EnemyData data = ScriptableObject.CreateInstance<EnemyData>();
+        data.EnemyId = "zev";
+        data.EnemyName = "ZEV";
+        data.MaxHP = 200;
+
+        try
+        {
+            enemy.Setup(data);
+            enemy.TakePureDamage(50);
+            BattleParticipantSnapshot snapshot = BattleParticipantSnapshot.FromEnemy(enemy);
+
+            Assert.That(snapshot.SubjectId, Is.EqualTo("zev"));
+            Assert.That(snapshot.Kind, Is.EqualTo(BattleParticipantKind.Enemy));
+            Assert.That(snapshot.DisplayName, Is.EqualTo("ZEV"));
+            Assert.That(snapshot.CurrentHp, Is.EqualTo(150));
+            Assert.That(snapshot.MaxHp, Is.EqualTo(200));
+            Assert.That(snapshot.HpRatio, Is.EqualTo(0.75f).Within(0.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+            Object.DestroyImmediate(enemyObject);
+        }
+    }
+
     private static BattleScenarioData MakeScenario(BattleRuleTiming timing)
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();

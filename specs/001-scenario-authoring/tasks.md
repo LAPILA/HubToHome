@@ -65,6 +65,7 @@
 - [x] Move default battle module registration behind `BattleGameModuleRegistryFactory` so future modules are not registered directly inside `BattleManager`.
 - [x] Add first explicit `BattleSessionState` and `IGameModuleStateStore` seam for current Game Module continuity.
 - [x] Register `IBattleSessionStateReader` into battle `ActionExecutionContext` so Game Modules can read session state without `BattleManager` lookups.
+- [x] Expose read-only battle participant snapshots through `IBattleSessionStateReader` so Game Modules can inspect HP/MP/status without owning existing Character state.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

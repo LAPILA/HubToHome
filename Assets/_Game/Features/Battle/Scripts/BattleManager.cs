@@ -415,6 +415,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
     private ActionExecutionContext CreateBattleScenarioActionContext()
     {
+        RefreshBattleSessionParticipants();
         BattleScenarioData scenarioData = _battleScenarioRuntime != null ? _battleScenarioRuntime.ScenarioData : null;
         return BattleScenarioActionContextFactory.Create(
             scenarioData,
@@ -426,6 +427,35 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
                     new ResourcesAudioClipResolver())),
             screenTransitionRunner: new ScreenTransitionRunner(),
             battleSessionState: _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null);
+    }
+
+    private void RefreshBattleSessionParticipants()
+    {
+        if (_battleScenarioRuntime == null || _battleScenarioRuntime.SessionState == null)
+        {
+            return;
+        }
+
+        var participants = new List<BattleParticipantSnapshot>();
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            BattleParticipantSnapshot snapshot = BattleParticipantSnapshot.FromPlayer(_playerParty[i]);
+            if (snapshot != null)
+            {
+                participants.Add(snapshot);
+            }
+        }
+
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            BattleParticipantSnapshot snapshot = BattleParticipantSnapshot.FromEnemy(_enemies[i]);
+            if (snapshot != null)
+            {
+                participants.Add(snapshot);
+            }
+        }
+
+        _battleScenarioRuntime.SessionState.SetParticipants(participants);
     }
 
     private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(
@@ -569,6 +599,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         CameraController.Instance?.ResetCamera(0f);
 
         InitializeBattleScenarioRuntime();
+        RefreshBattleSessionParticipants();
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
@@ -689,6 +720,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         CameraController.Instance?.ResetCamera(0f);
 
         InitializeBattleScenarioRuntime();
+        RefreshBattleSessionParticipants();
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         Canvas.ForceUpdateCanvases();
         yield return null;
@@ -1618,11 +1650,13 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 BattleRuleTiming.AfterCurrentSkill);
         }
 
+        RefreshBattleSessionParticipants();
         OnDamageDealt?.Invoke(target, damage, isPerfect);
     }
 
     public void InvokeMPChangedEvent(PlayerCharacter player, int newMP)
     {
+        RefreshBattleSessionParticipants();
         OnMPChanged?.Invoke(player, newMP);
     }
 

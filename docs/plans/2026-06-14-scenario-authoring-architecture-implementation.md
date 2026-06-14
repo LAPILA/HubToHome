@@ -436,6 +436,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 continuation: `IBattleSessionStateReader` is now the read seam for battle-scoped state and is registered into `ActionExecutionContext` by `BattleScenarioActionContextFactory`. Game Modules and runtime actions can read scenario/module state from the context service instead of reaching back into `BattleManager`. The write side remains intentionally narrow through `IGameModuleStateStore` for current module updates.
 
+2026-06-15 participant snapshot continuation: `BattleSessionState` now also exposes read-only `BattleParticipantSnapshot` entries through `IBattleSessionStateReader.Participants` and `TryGetParticipant(...)`. `BattleManager` refreshes those snapshots from the current `_playerParty` / `_enemies` lists at battle setup, before creating battle scenario action contexts, and when the public HP/MP event bridge is invoked. This gives future Game Modules a stable way to inspect HP, MP, alive state, and common status flags without direct `BattleManager` lookups. It is deliberately a snapshot bridge, not HP/MP mutation ownership migration.
+
 **Step 5: Commit**
 
 ```powershell

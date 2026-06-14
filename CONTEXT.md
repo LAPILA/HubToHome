@@ -51,7 +51,7 @@ Globally callable systems for dialogue, cinematic, UI, camera, audio, and VFX. T
 _Avoid_: making dialogue or cinematic systems subordinate to a combat module.
 
 **Battle Session State**:
-The battle-scoped truth that persists while Game Modules switch, including party/enemy survival, resources, status, current Game Module, phase progress, and already-fired battle beats. The first concrete runtime class is `BattleSessionState`, currently focused on scenario identity, Primary Mode, opening module, and current module continuity. Runtime actions and Game Modules should read it through `IBattleSessionStateReader` from `ActionExecutionContext` rather than reaching back into `BattleManager`.
+The battle-scoped truth that persists while Game Modules switch, including party/enemy survival, resources, status, current Game Module, phase progress, and already-fired battle beats. The first concrete runtime class is `BattleSessionState`, currently focused on scenario identity, Primary Mode, opening/current module continuity, and read-only participant snapshots bridged from the current `CharacterBase` runtime objects. Runtime actions and Game Modules should read it through `IBattleSessionStateReader` from `ActionExecutionContext` rather than reaching back into `BattleManager`.
 _Avoid_: storing battle-wide facts inside a single combat module.
 
 **Save Scope**:
