@@ -64,6 +64,7 @@ Treat scenario YAML as the authoring source of truth and ScriptableObject assets
 - `BattleEventRuleEvaluator` is the pure When evaluator for battle scenario rules. Existing battle code should emit `BattleEventData` into this evaluator rather than hard-coding phase branches in `BattleManager`.
 - `BattleScenarioSession` tracks already-fired rules for `PerBattle` and `PerEncounterMemory`. In-progress battle state is not save-restored, but exported encounter-fired rule IDs are intended to flow into Encounter Memory later.
 - `BattleScenarioRuleRunner` owns the bridge from `BattleScenarioData.Rules` to fired `BattleScenarioTrigger` objects and resolves trigger `SequenceId` values against `BattleScenarioData.Sequences`.
+- `BattleScenarioEventRouter` decides whether a battle event is evaluated immediately or deferred until a timing flush such as `AfterCurrentSkill`. Use it for phase beats that must wait until the current skill/action/module presentation finishes.
 - Disabled actions are skipped at execution time but should still stay visible in authoring tools.
 - Unknown action IDs must fail the current handle instead of silently continuing.
 

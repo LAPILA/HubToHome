@@ -97,12 +97,14 @@ flowchart LR
 - 이 단계에서도 기존 `BattleManager`는 수정하지 않았다. 다음 작업은 데미지/스킬 종료 지점에서 `BattleEventData`를 발행하고, evaluator가 반환한 `BattleScenarioTrigger`를 `ActionDirector`에 넘기는 얇은 hook이다.
 - `BattleScenarioRuleRunner`를 추가해 `BattleScenarioData.Rules` 순서대로 event를 평가하고, 발화된 trigger의 `SequenceId`를 `BattleScenarioData.Sequences`에서 찾을 수 있게 했다.
 - 이 runner 덕분에 이후 `BattleManager` hook은 “전투 이벤트 발행 -> runner 평가 -> sequence 실행 요청”만 하면 된다. rule 탐색, once 처리, sequence id 해석이 BattleManager로 새어 나오지 않는다.
+- `BattleScenarioEventRouter`를 추가해 `Immediate` 이벤트는 바로 평가하고, `AfterCurrentSkill` 같은 이벤트는 queue에 보관했다가 해당 timing이 flush될 때 평가하도록 했다.
+- 이 구조가 사용자가 제시한 예시의 핵심이다. 적 HP가 스킬 중 50% 아래로 내려가도 전환 연출은 스킬 도중 끼어들지 않고, 현재 스킬이 완전히 끝난 뒤 `Flush(AfterCurrentSkill)`에서 BGM/대사/페이드/모듈 전환 sequence로 넘어가면 된다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. 기존 `BattleManager` 데미지/스킬 종료 지점에서 `BattleEventData`를 발행하는 최소 hook 작성
-3. `BattleScenarioRuleRunner`가 반환한 trigger의 `SequenceId`를 `ActionDirector` 실행 요청으로 넘기는 runtime bridge 작성
+2. 기존 `BattleManager` 데미지 지점에서 `BattleScenarioEventRouter.Publish(...)`를 호출하는 최소 hook 작성
+3. 스킬/액션/모듈 종료 지점에서 `BattleScenarioEventRouter.Flush(...)`를 호출하고, 반환된 trigger를 `ActionDirector` 실행 요청으로 넘기는 runtime bridge 작성
 4. Audio/Screen/Module 전환용 presentation service seam 설계
 5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
 6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

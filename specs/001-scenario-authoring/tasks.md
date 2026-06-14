@@ -45,10 +45,12 @@
 - [x] Add battle event model and rule evaluator.
 - [x] Add fired-rule tracking inside Battle Session State or a lightweight scenario session.
 - [x] Add BattleScenarioData rule runner and sequence resolver.
+- [x] Add BattleScenarioEventRouter for immediate vs deferred timing.
 - [ ] Add minimal hook from existing battle damage/skill-end points.
 - [x] Add tests for HP threshold after current skill.
 - [x] Commit pure battle rule runner.
 - [x] Commit scenario rule runner.
+- [x] Commit event router.
 - [ ] Commit BattleManager hook.
 
 ## Phase 6 - Korean Scenario Authoring Editor
