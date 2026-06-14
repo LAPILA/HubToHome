@@ -82,7 +82,7 @@ sequences:
 
 - Use stable IDs, not Unity GUIDs, in YAML.
 - Resolve IDs through catalogs or registries during import.
-- `memoryKey` maps to save-bound Encounter Memory in `GlobalDataManager` / `SaveData.EncounterMemory`. `PerEncounterMemory` rule IDs can be seeded into `BattleScenarioRuntime` from this memory and exported after rules fire.
+- `memoryKey` maps to save-bound Encounter Memory in `GlobalDataManager` / `SaveData.EncounterMemory`. `BattleEncounterMemoryRecorder` seeds `PerEncounterMemory` rule IDs into `BattleScenarioRuntime` at battle setup and exports newly fired rule IDs back to memory at battle result.
 - Enemy IDs in `participants.enemies` and battle rule `when.enemy` map to `EnemyData.EnemyId`. Asset name and display name fallback exists only for migration.
 - Dialogue IDs used by `dialogue.wait` must appear in the scenario `dialogues` mapping or an imported dialogue catalog. The synchronized runtime asset stores these as `BattleScenarioData.Dialogues`, where each `ScenarioDialogueReferenceData` maps one stable `DialogueId` to a `DialogueData` reference.
 - Keep `when` and `do` separate. `when` decides whether a beat fires; `do` names or inlines the Action Sequence.

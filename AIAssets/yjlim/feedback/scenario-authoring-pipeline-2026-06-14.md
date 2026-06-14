@@ -143,6 +143,11 @@ flowchart LR
   - `SaveData.EncounterMemory`와 `GlobalDataManager` encounter memory API가 현재 저장 경로다. write는 명시적인 mutation API를 쓰고, bulk 조회인 `GetEncounterMemory()`는 deep-copy snapshot을 반환한다.
   - `BattleScenarioRuntime`은 `PerEncounterMemory` rule을 위해 저장된 seen beat IDs를 import하고, 새로 발화된 encounter rule IDs를 export할 수 있다.
   - 이 구조는 전투 중 저장 복구가 아니다. 전투가 끝난 뒤 저장 가능한 조우 기억을 남기기 위한 기반이다.
+- Battle outro Encounter Memory hook을 추가했다.
+  - `BattleEncounterMemoryRecorder`가 전투 시작 시 saved beat IDs를 runtime에 seed하고 meet count를 증가시킨다.
+  - 전투 종료 시 runtime이 export한 fired rule IDs를 `GlobalDataManager.RememberEncounterBeatIds(...)`에 반영한다.
+  - 승리한 전투는 `GlobalDataManager.MarkEncounterDefeated(...)`로 기록한다.
+  - `BattleManager`는 저장 규칙을 직접 소유하지 않고 recorder Module만 호출한다.
 - 1차 push 전 검증 강화를 위해 `BattleScenarioRuntimeTests`를 추가했다.
   - `AfterCurrentSkill` timing은 스킬 중 발생한 HP crossing을 즉시 실행하지 않고 flush 시점에 발화한다.
   - `Immediate` timing은 publish 시점에 바로 발화하고, 이후 flush에서 중복 발화하지 않는다.
@@ -178,6 +183,9 @@ flowchart LR
 - `EncounterMemorySaveTests` 5개를 추가했고, save/load deep copy, bulk snapshot copy, remembered beat seed, fired beat export가 통과했다.
 - 최신 Unity MCP EditMode 전체 테스트는 78개 통과, 실패 0개다.
 - `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 남은 경고는 기존 계열인 `System.Net.Http` / `System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고다.
+- `BattleEncounterMemoryRecorderTests` 4개를 추가했고, meet count 증가, saved memory seed, victory defeated 기록, fallback encounter ID 기록이 통과했다.
+- 최신 Unity MCP EditMode 전체 테스트는 82개 통과, 실패 0개다.
+- `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 다시 통과했다. 남은 경고는 기존 계열 5개다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
@@ -185,7 +193,6 @@ flowchart LR
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
 2. Scenario Source/importer/editor에서 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화
 3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
-4. BattleManager battle outro에서 `BattleScenarioRuntime.ExportEncounterFiredRuleIds()`를 `GlobalDataManager.RememberEncounterBeatIds(...)`로 반영하는 결과 hook
-5. Audio/Screen/Module 전환용 concrete presentation runner 설계
-6. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
-7. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
+4. Audio/Screen/Module 전환용 concrete presentation runner 설계
+5. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
+6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

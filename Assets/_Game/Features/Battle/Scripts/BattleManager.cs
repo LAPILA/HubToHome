@@ -281,12 +281,16 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         BattleScenarioData scenarioData = ResolveBattleScenarioData();
         _pendingBattleScenarioData = null;
 
-        if (GlobalDataManager.Instance != null)
+        GlobalDataManager global = GlobalDataManager.Instance;
+        string fallbackEncounterId = global != null ? global.CurrentEncounterEnemyId : null;
+
+        if (global != null)
         {
-            GlobalDataManager.Instance.PendingBattleScenario = null;
+            global.PendingBattleScenario = null;
         }
 
-        _battleScenarioRuntime = scenarioData != null ? new BattleScenarioRuntime(scenarioData) : null;
+        BattleEncounterMemoryRecorder.RecordBattleStarted(scenarioData, global, fallbackEncounterId);
+        _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
         _battleScenarioActionBridge = _battleScenarioRuntime != null
             ? new BattleScenarioActionBridge(_battleScenarioRuntime, CreateBattleScenarioActionDirector())
             : null;
@@ -1438,6 +1442,13 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (global == null) return;
 
         string enemyId = global.CurrentEncounterEnemyId;
+        BattleEncounterMemoryRecorder.RecordBattleResult(
+            _battleScenarioRuntime != null ? _battleScenarioRuntime.ScenarioData : null,
+            _battleScenarioRuntime,
+            global,
+            enemyId,
+            isVictory);
+
         if (!string.IsNullOrWhiteSpace(enemyId))
         {
             string sceneName = global.LastOverworldScene;
