@@ -6,6 +6,7 @@
 - `PlayerCharacter`: level, EXP, equipment, skills, global party save bridge.
 - `EnemyCharacter`: `EnemyData` setup, AI action selection, hit/death presentation.
 - `StatusEffect`: burn, poison, freeze, bind, stun, berserk, stat modifier, and related effects.
+- `EnemyData.EnemyId`: stable scenario/battle-rule ID for enemies. Display name is not the scenario identity.
 
 ## Stats / Damage
 
@@ -19,6 +20,7 @@
 
 - Preserve existing animator trigger names unless a deliberate migration is documented.
 - New enemies should use `EnemyData` plus `EnemyCharacter.Setup()`.
+- New enemies that can appear in Scenario Source or Battle Event Rules must set `EnemyData.EnemyId`.
 - New player/ally data should preserve save compatibility.
 - Item and status-effect changes must stay aligned with `ItemData`, `InventoryManager`, `BattleManager.ExecuteItemEffect()`, and any future status factory.
 - If adding a new status effect, document creation path and application path.

@@ -89,3 +89,7 @@ _Avoid_: exposing raw GUIDs, fileIDs, or managed reference internals as the norm
 **Action Catalog**:
 The discoverable catalog of Action grammar, Korean labels, parameters, examples, validation expectations, and runtime adapter ownership.
 _Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.
+
+**Scenario Subject ID**:
+A stable authored ID used by Scenario Source and Battle Event Rules to refer to runtime subjects such as enemies, actors, modules, UI targets, and positions. Enemy rules should resolve against `EnemyData.EnemyId`, not display names.
+_Avoid_: using localized display names, Unity GUID/fileID values, or scene object names as the authored scenario identity.

@@ -46,6 +46,7 @@
 - [x] Add fired-rule tracking inside Battle Session State or a lightweight scenario session.
 - [x] Add BattleScenarioData rule runner and sequence resolver.
 - [x] Add BattleScenarioEventRouter for immediate vs deferred timing.
+- [x] Add Scenario Subject ID resolution for battle enemies.
 - [ ] Add minimal hook from existing battle damage/skill-end points.
 - [x] Add tests for HP threshold after current skill.
 - [x] Commit pure battle rule runner.

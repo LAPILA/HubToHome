@@ -76,6 +76,7 @@ sequences:
 
 - Use stable IDs, not Unity GUIDs, in YAML.
 - Resolve IDs through catalogs or registries during import.
+- Enemy IDs in `participants.enemies` and battle rule `when.enemy` map to `EnemyData.EnemyId`. Asset name and display name fallback exists only for migration.
 - Keep `when` and `do` separate. `when` decides whether a beat fires; `do` names or inlines the Action Sequence.
 - Use `once` explicitly for rules that must not repeat.
 - Use `timing` explicitly when execution must wait for a skill, action, module, dialogue, or frame transition.

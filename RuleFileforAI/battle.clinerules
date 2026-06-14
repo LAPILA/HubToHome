@@ -18,6 +18,7 @@
 - Future flexible combat should run through Primary Mode / Game Module / Action Sequence concepts from `CONTEXT.md`.
 - New battle modules should preserve `BattleSessionState`-like data such as HP, MP, status, enemies, party, and battle flags across module switches.
 - Scenario-level battle flow should be authored through Battle Scenario Data / Encounter Definition and the `.agents/skills/hubtohome-scenario-authoring/` rules, not by expanding one-off branches inside `BattleManager`.
+- Battle Event Rule subjects should use Scenario Subject IDs. Enemy rules resolve through `BattleScenarioSubjectResolver` and should primarily match `EnemyData.EnemyId`.
 
 ## Defense / QTE Intent
 
@@ -31,6 +32,7 @@
 - Be extremely careful when editing `BattleManager`; it has wide behavior coverage.
 - If adding a new enemy action, skill behavior, or defense rule, inspect both `BattleManager` and `SkillActionBlocks.cs` for duplicate policy.
 - If adding or changing battle scenario actions, Battle Event Rules, module switches, HP threshold beats, or encounter-specific flow, use `.agents/skills/hubtohome-scenario-authoring/SKILL.md` and update it when the grammar or workflow changes.
+- Do not match scenario rules directly against localized enemy display names inside `BattleManager`.
 - UI changes should go through `BattleUIController` or a future UI adapter rather than direct ad-hoc object search.
 - Movement should use `PositionManager` where battle positions are involved.
 - Do not rename animation triggers without checking `PlayerCharacter`, `EnemyCharacter`, animators, and existing assets.

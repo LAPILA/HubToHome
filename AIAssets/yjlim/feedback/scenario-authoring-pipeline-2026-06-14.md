@@ -99,11 +99,16 @@ flowchart LR
 - 이 runner 덕분에 이후 `BattleManager` hook은 “전투 이벤트 발행 -> runner 평가 -> sequence 실행 요청”만 하면 된다. rule 탐색, once 처리, sequence id 해석이 BattleManager로 새어 나오지 않는다.
 - `BattleScenarioEventRouter`를 추가해 `Immediate` 이벤트는 바로 평가하고, `AfterCurrentSkill` 같은 이벤트는 queue에 보관했다가 해당 timing이 flush될 때 평가하도록 했다.
 - 이 구조가 사용자가 제시한 예시의 핵심이다. 적 HP가 스킬 중 50% 아래로 내려가도 전환 연출은 스킬 도중 끼어들지 않고, 현재 스킬이 완전히 끝난 뒤 `Flush(AfterCurrentSkill)`에서 BGM/대사/페이드/모듈 전환 sequence로 넘어가면 된다.
+- Battle Event Rule의 subject ID 설계를 추가했다.
+  - 새 적 데이터는 `EnemyData.EnemyId`를 안정 ID로 가진다.
+  - `BattleScenarioSubjectResolver`는 `EnemyData.EnemyId`를 우선 사용하고, 기존 에셋 마이그레이션 전에는 asset name / display name fallback을 제공한다.
+  - `EnemyName`은 표시명에 가까우므로 장기적인 Scenario Source ID로 사용하지 않는다.
+- `docs/plans/2026-06-14-battle-scenario-subject-id-implementation.md`에 subject ID와 후속 BattleManager hook 계획을 따로 남겼다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. 기존 `BattleManager` 데미지 지점에서 `BattleScenarioEventRouter.Publish(...)`를 호출하는 최소 hook 작성
+2. 기존 `BattleManager` 데미지 지점에서 `BattleScenarioSubjectResolver`로 subject ID를 얻고 `BattleScenarioEventRouter.Publish(...)`를 호출하는 최소 hook 작성
 3. 스킬/액션/모듈 종료 지점에서 `BattleScenarioEventRouter.Flush(...)`를 호출하고, 반환된 trigger를 `ActionDirector` 실행 요청으로 넘기는 runtime bridge 작성
 4. Audio/Screen/Module 전환용 presentation service seam 설계
 5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
