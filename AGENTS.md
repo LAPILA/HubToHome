@@ -17,19 +17,20 @@ Before meaningful work, read these in order:
 1. `README.md`
 2. `AGENTS.md`
 3. `CONTEXT.md`
-4. `AIAssets/index.md`
-5. `AIAssets/context-briefing.md`
-6. `AIAssets/architecture.md`
-7. `AIAssets/todo.md`
-8. Latest `AIAssets/YYYY-MM-DD-update.md`
-9. `RuleFileforAI/mainrule.clinerules`
-10. Relevant domain rules in `RuleFileforAI/`
+4. If the work touches Encounter Definition, Battle Scenario Data, Action Sequence, Action Catalog, scenario YAML, generated scenario ScriptableObjects, or the scenario editor, read `.agents/skills/hubtohome-scenario-authoring/SKILL.md` and its relevant `references/` file.
+5. `AIAssets/index.md`
+6. `AIAssets/context-briefing.md`
+7. `AIAssets/architecture.md`
+8. `AIAssets/todo.md`
+9. Latest `AIAssets/YYYY-MM-DD-update.md`
+10. `RuleFileforAI/mainrule.clinerules`
+11. Relevant domain rules in `RuleFileforAI/`
     - `core.clinerules`
     - `battle.clinerules`
     - `overworld.clinerules`
     - `dialogue.clinerules`
     - `characters.clinerules`
-11. Relevant plans or design notes under `docs/`
+12. Relevant plans or design notes under `docs/`
 
 If a task touches a system with a design document or previous feedback HTML, read that document before editing code.
 
@@ -57,6 +58,7 @@ Every meaningful change must leave durable context.
 - If terminology or architecture language changes, update `CONTEXT.md`.
 - If system ownership or usage rules change, update the relevant file in `RuleFileforAI/`.
 - If the change implements or changes a planned architecture, update the relevant `docs/` design or implementation plan.
+- If the change touches the scenario authoring pipeline, update `.agents/skills/hubtohome-scenario-authoring/` in the same change so future AI agents do not use stale scenario rules.
 
 Do not leave important decisions only in chat.
 
@@ -112,6 +114,16 @@ Use `CONTEXT.md` terms consistently.
 - `Action Sequence`: authored sequence of gameplay/presentation actions.
 - `Action Director`: global runtime that executes Action Sequences.
 - `Presentation Service`: dialogue, UI, camera, audio, and VFX services callable from any Primary Mode or Game Module.
+- `Scenario Source`: human/AI-readable YAML authoring source for Encounter Definition, Battle Scenario Data, Battle Event Rules, and Action Sequences.
+- `Scenario Runtime Asset`: generated or synchronized Unity ScriptableObject representation used by runtime systems.
+- `Action Catalog`: discoverable contract for scenario action grammar, Korean editor labels, parameters, examples, validation, and runtime adapters.
+
+## Scenario Authoring Skill
+
+- Use `.agents/skills/hubtohome-scenario-authoring/SKILL.md` for any work that changes scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, scenario import/export, generated ScriptableObjects, or the custom scenario editor.
+- Keep the skill current while working. If a new action, YAML field, validation rule, editor behavior, runtime adapter, or synchronization rule is introduced, update the skill or its references before finishing.
+- Scenario YAML is the authoring source of truth; ScriptableObjects are the Unity runtime representation; the custom editor is the Korean human-facing editing surface.
+- Humans should not need to directly edit Unity `.asset` YAML or managed-reference data for scenario flow.
 
 ## Security and Local Machine Rules
 

@@ -16,6 +16,7 @@ Every non-trivial change must answer three questions in durable text:
 
 - Read `AGENTS.md`.
 - Read `CONTEXT.md`.
+- If the task touches scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, generated scenario ScriptableObjects, or the scenario editor, read `.agents/skills/hubtohome-scenario-authoring/SKILL.md` and the relevant reference file.
 - Read `AIAssets/index.md`.
 - Read the relevant `RuleFileforAI` file.
 - Search existing code before proposing new code.
@@ -44,6 +45,7 @@ For architecture work, also identify:
 - Preserve serialized references unless the task is explicitly about migration.
 - Do not hide broad refactors inside feature changes.
 - Do not leave temporary debug code unless it is clearly documented and requested.
+- Keep shared skills current. If a task changes the scenario authoring pipeline, update `.agents/skills/hubtohome-scenario-authoring/` before handoff.
 
 ### 4. Verify
 
@@ -71,6 +73,7 @@ Also update:
 
 - `CONTEXT.md` for terminology
 - `RuleFileforAI/` for coding rules or system usage
+- `.agents/skills/` for reusable AI work procedures and scenario authoring workflow rules
 - `docs/` for design or implementation plans
 - `AIAssets/yjlim/feedback/` for readable reviews or architecture handoffs
 
@@ -107,6 +110,7 @@ Docs:
 
 - Stable terminology: `CONTEXT.md`
 - AI operating rules: `AGENTS.md`
+- Shared AI skills: `.agents/skills/`
 - Domain-specific coding rules: `RuleFileforAI/`
 - Work history: `AIAssets/YYYY-MM-DD-update.md`
 - Human-readable analysis: `AIAssets/yjlim/feedback/`

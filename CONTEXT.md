@@ -45,3 +45,47 @@ _Avoid_: forcing all actions into a tiny shared abstraction when author discover
 **Presentation Service**:
 Globally callable systems for dialogue, cinematic, UI, camera, audio, and VFX. These may be invoked by any Primary Mode, Game Module, or Action Sequence.
 _Avoid_: making dialogue or cinematic systems subordinate to a combat module.
+
+**Battle Session State**:
+The battle-scoped truth that persists while Game Modules switch, including party/enemy survival, resources, status, phase progress, and already-fired battle beats.
+_Avoid_: storing battle-wide facts inside a single combat module.
+
+**Save Scope**:
+The game's save/load scope. Current planning saves outside battle only; battle results and Encounter Memory may persist, but an in-progress Battle Session State is not restored from a save.
+_Avoid_: treating mid-battle state as save-bound.
+
+**Battle Event Rule**:
+An authored rule owned primarily by an Encounter Definition or Battle Scenario Data, deciding when a Battle Event should trigger from Battle Session State, Encounter Memory, or Game Module outcomes.
+_Avoid_: embedding enemy phase changes inside one skill timeline or hard-coding them inside a specific combat module.
+
+**Battle Event**:
+A named gameplay beat emitted during battle, such as crossing an HP threshold, completing a skill, changing phase, defeating an enemy, or ending a Game Module.
+_Avoid_: treating battle events as only C# callbacks or only UI narration.
+
+**Encounter Memory**:
+The save-bound remembered history of a specific encounter, enemy, or meeting context, used to vary dialogue, rules, and outcomes across first meetings, rematches, escapes, victories, and prior phase changes.
+_Avoid_: treating every encounter with the same enemy data as stateless.
+
+**Encounter Definition**:
+The authored definition of a concrete battle or meeting context, including participants, opening module, presentation setup, Battle Event Rules, and outcome handling.
+_Avoid_: putting one-off encounter flow entirely in Enemy Data or inside a combat module.
+
+**Battle Scenario Data**:
+The authored scenario layer for a battle sequence, especially when the battle changes modules, phases, backgrounds, dialogue, music, or victory return behavior.
+_Avoid_: using Skill Data as the owner of whole-battle story progression.
+
+**Scenario Source**:
+The human/AI-readable authoring source for Encounter Definitions, Battle Scenario Data, Battle Event Rules, and Action Sequences.
+_Avoid_: treating generated Unity asset serialization as the primary authored scenario text.
+
+**Scenario Runtime Asset**:
+The Unity-facing runtime representation synchronized from Scenario Source and consumed by game systems.
+_Avoid_: making humans edit runtime asset serialization directly to author scenario flow.
+
+**Scenario Authoring Editor**:
+The Korean human-facing Unity editor surface for viewing, validating, reordering, inserting, and lightly editing Scenario Source-backed flow.
+_Avoid_: exposing raw GUIDs, fileIDs, or managed reference internals as the normal editing experience.
+
+**Action Catalog**:
+The discoverable catalog of Action grammar, Korean labels, parameters, examples, validation expectations, and runtime adapter ownership.
+_Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.

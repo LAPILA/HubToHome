@@ -8,9 +8,10 @@ AI나 자동화 도구가 이 저장소에서 작업할 때는 먼저 아래 문
 
 1. `AGENTS.md`
 2. `CONTEXT.md`
-3. `AIAssets/index.md`
-4. `RuleFileforAI/mainrule.clinerules`
-5. 작업 영역에 맞는 `RuleFileforAI/*.clinerules`
+3. 시나리오/전투 플로우/Action Sequence 작업이면 `.agents/skills/hubtohome-scenario-authoring/SKILL.md`
+4. `AIAssets/index.md`
+5. `RuleFileforAI/mainrule.clinerules`
+6. 작업 영역에 맞는 `RuleFileforAI/*.clinerules`
 
 작업 후에는 `AIAssets/YYYY-MM-DD-update.md`에 의도, 변경점, 검증, 후속 위험을 남깁니다. 사람이 읽을 리뷰/분석 문서는 `AIAssets/yjlim/feedback/`에 둡니다.
 
@@ -25,6 +26,7 @@ Assets/_Game/
 └─ Shared        # 공용 유틸리티와 테스트
 
 AIAssets/        # AI/사람 공용 작업 기록, 분석, 업데이트 노트
+.agents/         # 공유 AI 스킬과 작업 절차
 RuleFileforAI/   # 도메인별 AI 작업 규칙
 docs/            # 설계 문서와 구현 계획
 ```

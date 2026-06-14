@@ -12,6 +12,7 @@ Before work:
 4. Read `todo.md`.
 5. Read the latest `YYYY-MM-DD-update.md`.
 6. Read any relevant feedback or patchnote under `yjlim/`.
+7. If touching scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, generated scenario ScriptableObjects, or the scenario editor, read `../.agents/skills/hubtohome-scenario-authoring/SKILL.md`.
 
 After work:
 
@@ -20,6 +21,7 @@ After work:
 3. Add a human-readable document under `yjlim/Patchnote/` when the work is a patch-note style summary.
 4. Update `CONTEXT.md` if terminology changed.
 5. Update `RuleFileforAI/` if coding or system-ownership rules changed.
+6. Update `../.agents/skills/hubtohome-scenario-authoring/` if scenario authoring rules, YAML fields, actions, validation, editor UX, import/export, or runtime adapters changed.
 
 ## Update Note Template
 
@@ -59,5 +61,6 @@ Use this structure for `AIAssets/YYYY-MM-DD-update.md`.
 - `todo.md`: central task and risk list.
 - `milestones.md`: broad milestone tracking.
 - `../docs/ai-collaboration-guidelines.md`: shared human/AI workflow for conflict prevention and handoff.
+- `../.agents/skills/hubtohome-scenario-authoring/`: shared AI skill for scenario authoring and sync rules.
 - `yjlim/feedback/`: readable analysis and review documents.
 - `yjlim/Patchnote/`: readable patch-note summaries.

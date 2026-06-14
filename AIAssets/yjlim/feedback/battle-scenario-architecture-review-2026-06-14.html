@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HubToHome Battle Scenario Architecture Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "base",
+        securityLevel: "loose",
+        themeVariables: {
+          primaryColor: "#f8fafc",
+          primaryTextColor: "#0f172a",
+          primaryBorderColor: "#334155",
+          lineColor: "#475569",
+          tertiaryColor: "#ecfeff",
+          fontFamily: "Georgia, 'Times New Roman', serif"
+        }
+      });
+    </script>
+    <style>
+      :root {
+        --ink: #111827;
+        --paper: #f5f1e8;
+        --card: #fffaf0;
+        --rule: #1f2937;
+        --red: #b91c1c;
+        --blue: #0f766e;
+        --amber: #b45309;
+      }
+      body {
+        background:
+          linear-gradient(90deg, rgba(17,24,39,.045) 1px, transparent 1px),
+          linear-gradient(rgba(17,24,39,.04) 1px, transparent 1px),
+          radial-gradient(circle at top left, rgba(15,118,110,.16), transparent 34rem),
+          var(--paper);
+        background-size: 28px 28px, 28px 28px, auto;
+        color: var(--ink);
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .sans { font-family: "Segoe UI", "Noto Sans KR", sans-serif; }
+      .card { background: rgba(255,250,240,.94); border: 1px solid rgba(31,41,55,.26); box-shadow: 8px 8px 0 rgba(31,41,55,.14); }
+      .mini { background: rgba(255,255,255,.68); border: 1px solid rgba(31,41,55,.18); }
+      .badge { border: 1px solid rgba(31,41,55,.26); letter-spacing: .12em; }
+      .deep { background: #111827; color: #f8fafc; }
+      .seam { border-top: 2px dashed rgba(31,41,55,.55); }
+      .leak { color: var(--red); }
+      .module-box { border: 1px solid rgba(31,41,55,.38); background: rgba(255,255,255,.78); }
+      .module-box.dark { background: #111827; color: white; }
+      .module-box.teal { background: #ecfeff; border-color: rgba(15,118,110,.6); }
+      .mass-small { height: 18px; background: #99f6e4; border: 1px solid #0f766e; }
+      .mass-large { height: 118px; background: #134e4a; }
+    </style>
+  </head>
+  <body>
+    <main class="max-w-7xl mx-auto px-5 py-10 space-y-10">
+      <header class="card p-7">
+        <div class="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p class="sans text-xs uppercase tracking-[.22em] text-slate-600">HubToHome architecture review</p>
+            <h1 class="mt-2 text-4xl md:text-6xl leading-none font-bold">When / Do Battle Scenario Spine</h1>
+          </div>
+          <div class="sans text-sm text-slate-700">
+            <div>2026-06-14</div>
+            <div>C:\Main\Unity\HubToHome</div>
+          </div>
+        </div>
+        <div class="mt-6 grid md:grid-cols-4 gap-3 sans text-sm">
+          <div class="mini p-3"><b>solid box</b><br />module</div>
+          <div class="mini p-3"><b>dashed line</b><br />seam</div>
+          <div class="mini p-3"><b class="leak">red mark</b><br />leakage</div>
+          <div class="mini p-3"><b>dark mass</b><br />deep module</div>
+        </div>
+      </header>
+
+      <section class="card p-7">
+        <div class="grid lg:grid-cols-[1.2fr_.8fr] gap-6 items-stretch">
+          <div>
+            <h2 class="text-3xl font-bold">Accepted spine</h2>
+            <p class="mt-3 sans text-slate-700 max-w-3xl">
+              Encounter Definition / Battle Scenario Data owns Battle Event Rules. Battle Event Rules decide When. Action Sequences execute Do. Game Modules share Battle Session State. Encounter Memory is save-bound; in-progress Battle Session State is not.
+            </p>
+          </div>
+          <div class="mini p-4 sans text-sm space-y-2">
+            <div><b>Save Scope</b>: outside battle only</div>
+            <div><b>AI authoring model</b>: human describes flow, AI writes rules and actions</div>
+            <div><b>Risk to avoid</b>: `BattleManager` becoming the scenario authoring surface</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="candidates" class="space-y-9">
+        <article id="candidate-1" class="card p-7">
+          <div class="flex flex-wrap items-center gap-2 sans">
+            <span class="badge bg-emerald-100 text-emerald-900 px-3 py-1 text-xs uppercase">Strong</span>
+            <span class="badge bg-stone-100 px-3 py-1 text-xs uppercase">in-process</span>
+            <span class="badge bg-cyan-100 text-cyan-950 px-3 py-1 text-xs uppercase">top recommendation</span>
+          </div>
+          <h2 class="mt-4 text-3xl font-bold">Deepen Battle Scenario Data</h2>
+          <div class="mt-3 sans text-sm text-slate-700 grid md:grid-cols-2 gap-2">
+            <code>Assets/_Game/Features/Characters/Data/Scripts/EnemyData.cs</code>
+            <code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs</code>
+            <code>Assets/_Game/Core/Scripts/GlobalDataManager.cs</code>
+            <code>Assets/_Game/Features/Battle/Scripts/BattleEncounterService.cs</code>
+          </div>
+          <div class="mt-6 grid lg:grid-cols-2 gap-5">
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">Before</h3>
+              <div class="relative mt-4 h-[310px]">
+                <div class="module-box absolute left-0 top-0 w-[46%] p-3 sans text-sm">EnemyData<br /><span class="text-xs text-slate-500">stats, skills, flags</span></div>
+                <div class="module-box absolute right-0 top-5 w-[46%] p-3 sans text-sm">BattleManager<br /><span class="text-xs text-slate-500">flow, HP checks, outro</span></div>
+                <div class="module-box absolute left-[18%] top-[120px] w-[42%] p-3 sans text-sm">GlobalDataManager<br /><span class="text-xs text-slate-500">flags, encounter id</span></div>
+                <div class="module-box absolute right-[5%] bottom-0 w-[48%] p-3 sans text-sm">SkillData<br /><span class="text-xs text-slate-500">timeline, QTE, damage</span></div>
+                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 600 310">
+                  <path d="M120 70 C250 30 300 55 450 72" fill="none" stroke="#b91c1c" stroke-width="3" stroke-dasharray="5 5"/>
+                  <path d="M420 96 C345 150 340 195 448 242" fill="none" stroke="#b91c1c" stroke-width="3" stroke-dasharray="5 5"/>
+                  <path d="M210 150 C285 190 305 245 405 258" fill="none" stroke="#b91c1c" stroke-width="3" stroke-dasharray="5 5"/>
+                </svg>
+                <div class="absolute left-4 bottom-4 sans text-xs leak">scenario rules leak across modules</div>
+              </div>
+            </div>
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">After</h3>
+              <div class="mt-4 h-[310px] flex flex-col justify-center gap-3">
+                <div class="module-box dark p-5">
+                  <div class="sans text-xs uppercase tracking-widest text-slate-300">deep module</div>
+                  <div class="text-2xl font-bold mt-1">Battle Scenario Data</div>
+                  <div class="mt-3 grid grid-cols-2 gap-2 sans text-sm">
+                    <div class="bg-white/10 p-2">participants</div>
+                    <div class="bg-white/10 p-2">opening module</div>
+                    <div class="bg-white/10 p-2">Battle Event Rules</div>
+                    <div class="bg-white/10 p-2">outcome handling</div>
+                  </div>
+                </div>
+                <div class="seam"></div>
+                <div class="grid grid-cols-3 gap-2 sans text-sm">
+                  <div class="module-box p-2">EnemyData</div>
+                  <div class="module-box p-2">BattleSessionState</div>
+                  <div class="module-box p-2">EncounterMemory</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 grid md:grid-cols-3 gap-4 sans text-sm">
+            <div><b>Problem</b><br />Scenario rules are shallow and scattered.</div>
+            <div><b>Solution</b><br />One interface owns battle-specific rule authoring.</div>
+            <div><b>Wins</b><br />locality: rules concentrate<br />leverage: one authoring surface<br />tests hit one interface</div>
+          </div>
+        </article>
+
+        <article id="candidate-2" class="card p-7">
+          <div class="flex flex-wrap items-center gap-2 sans">
+            <span class="badge bg-emerald-100 text-emerald-900 px-3 py-1 text-xs uppercase">Strong</span>
+            <span class="badge bg-stone-100 px-3 py-1 text-xs uppercase">local-substitutable</span>
+          </div>
+          <h2 class="mt-4 text-3xl font-bold">Split When from Do</h2>
+          <div class="mt-3 sans text-sm text-slate-700 grid md:grid-cols-2 gap-2">
+            <code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs</code>
+            <code>Assets/_Game/Features/Dialogue/Scripts/DialogueManager.cs</code>
+            <code>Assets/_Game/Core/Scripts/AudioManager.cs</code>
+            <code>Assets/_Game/Core/Scripts/SceneLoader.cs</code>
+          </div>
+          <div class="mt-6 grid lg:grid-cols-2 gap-5">
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">Before</h3>
+              <pre class="mermaid">
+flowchart TD
+  BM["BattleManager"] --> HP["HP check"]
+  BM --> Dialogue["DialogueManager"]
+  BM --> Audio["AudioManager"]
+  BM --> Fade["SceneLoader / Fade"]
+  BM --> UI["BattleUIController"]
+  BM --> Module["implicit combat flow"]
+  HP -. leakage .-> Dialogue
+  HP -. leakage .-> Module
+              </pre>
+            </div>
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">After</h3>
+              <pre class="mermaid">
+flowchart TD
+  Rule["Battle Event Rule Module\nWHEN"] --> Event["Battle Event"]
+  Event --> Director["Action Director\nDO"]
+  Director --> Dialogue["Dialogue Adapter"]
+  Director --> Audio["Audio Adapter"]
+  Director --> Fade["Fade Adapter"]
+  Director --> UI["UI Adapter"]
+  Director --> Host["GameModuleHost"]
+              </pre>
+            </div>
+          </div>
+          <div class="mt-5 grid md:grid-cols-3 gap-4 sans text-sm">
+            <div><b>Problem</b><br />Triggering and presentation share one shallow interface.</div>
+            <div><b>Solution</b><br />When emits Battle Events; Do runs Action Sequences.</div>
+            <div><b>Wins</b><br />locality: timing bugs concentrate<br />leverage: actions reused<br />interface separates authoring</div>
+          </div>
+        </article>
+
+        <article id="candidate-3" class="card p-7">
+          <div class="flex flex-wrap items-center gap-2 sans">
+            <span class="badge bg-emerald-100 text-emerald-900 px-3 py-1 text-xs uppercase">Strong</span>
+            <span class="badge bg-stone-100 px-3 py-1 text-xs uppercase">in-process</span>
+          </div>
+          <h2 class="mt-4 text-3xl font-bold">Absorb QTE into TurnQTECombatModule</h2>
+          <div class="mt-3 sans text-sm text-slate-700 grid md:grid-cols-2 gap-2">
+            <code>Assets/_Game/Features/Battle/Data/Scripts/SkillData.cs</code>
+            <code>Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs</code>
+            <code>Assets/_Game/Presentation/UI/Scripts/QTEManager.cs</code>
+            <code>Assets/_Game/Features/Overworld/Scripts/PlayerController.cs</code>
+          </div>
+          <div class="mt-6 grid lg:grid-cols-2 gap-5">
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">Before mass</h3>
+              <div class="mt-4 space-y-3 sans">
+                <div>
+                  <div class="text-xs uppercase tracking-widest">Interface</div>
+                  <div class="h-24 bg-red-100 border border-red-700 p-3">Call BattleManager, QTEManager, PositionManager, CameraController, PlayerController in order</div>
+                </div>
+                <div>
+                  <div class="text-xs uppercase tracking-widest">Implementation</div>
+                  <div class="h-28 bg-slate-200 border border-slate-700 p-3">SkillActionBlock execution, QTE, damage, defense, movement</div>
+                </div>
+              </div>
+            </div>
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">After mass</h3>
+              <div class="mt-4 space-y-3 sans">
+                <div>
+                  <div class="text-xs uppercase tracking-widest">Interface</div>
+                  <div class="mass-small px-2 text-xs flex items-center">Enter, Tick, Exit, EmitBattleEvent</div>
+                </div>
+                <div>
+                  <div class="text-xs uppercase tracking-widest">Implementation</div>
+                  <div class="mass-large text-white p-3">SkillSequenceRunner absorbs current ActionTimeline, QTE, DefenseWindow, damage, and turn menu flow.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 grid md:grid-cols-3 gap-4 sans text-sm">
+            <div><b>Problem</b><br />QTE combat has a wide accidental interface.</div>
+            <div><b>Solution</b><br />TurnQTECombatModule hides the current implementation.</div>
+            <div><b>Wins</b><br />locality: QTE bugs concentrate<br />leverage: module swaps<br />tests hit module interface</div>
+          </div>
+        </article>
+
+        <article id="candidate-4" class="card p-7">
+          <div class="flex flex-wrap items-center gap-2 sans">
+            <span class="badge bg-emerald-100 text-emerald-900 px-3 py-1 text-xs uppercase">Strong</span>
+            <span class="badge bg-stone-100 px-3 py-1 text-xs uppercase">ports & adapters</span>
+          </div>
+          <h2 class="mt-4 text-3xl font-bold">Make Encounter Memory save-bound</h2>
+          <div class="mt-3 sans text-sm text-slate-700 grid md:grid-cols-2 gap-2">
+            <code>Assets/_Game/Core/Scripts/GlobalDataManager.cs</code>
+            <code>Assets/_Game/Core/Scripts/SaveData.cs</code>
+            <code>Assets/_Game/Features/Overworld/Scripts/OverworldEnemy.cs</code>
+            <code>Assets/_Game/Features/Battle/Scripts/BattleManager.cs</code>
+          </div>
+          <div class="mt-6 grid lg:grid-cols-2 gap-5">
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">Before</h3>
+              <pre class="mermaid">
+flowchart LR
+  Save["SaveData"] --> Flags["eventFlags"]
+  Global["GlobalDataManager"] --> EnemyState["OverworldEnemyRuntimeState"]
+  Battle["BattleManager"] --> Result["defeat / escape"]
+  Result --> EnemyState
+  Flags -. partial .-> Dialogue["dialogue variation"]
+              </pre>
+            </div>
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">After</h3>
+              <pre class="mermaid">
+flowchart LR
+  Save["SaveData"] --> Memory["Encounter Memory Map"]
+  Memory --> First["meet count"]
+  Memory --> Seen["seen beats"]
+  Memory --> Outcome["defeated / corpse / escaped"]
+  Scenario["Battle Scenario Data"] --> Memory
+  Rule["Battle Event Rule Module"] --> Memory
+              </pre>
+            </div>
+          </div>
+          <div class="mt-5 grid md:grid-cols-3 gap-4 sans text-sm">
+            <div><b>Problem</b><br />Encounter history is too narrow for scenario rules.</div>
+            <div><b>Solution</b><br />Save Encounter Memory, not Battle Session State.</div>
+            <div><b>Wins</b><br />locality: save facts concentrate<br />leverage: rematch rules<br />interface excludes mid-battle saves</div>
+          </div>
+        </article>
+
+        <article id="candidate-5" class="card p-7">
+          <div class="flex flex-wrap items-center gap-2 sans">
+            <span class="badge bg-amber-100 text-amber-900 px-3 py-1 text-xs uppercase">Worth exploring</span>
+            <span class="badge bg-stone-100 px-3 py-1 text-xs uppercase">local-substitutable</span>
+          </div>
+          <h2 class="mt-4 text-3xl font-bold">Keep Presentation behind adapters</h2>
+          <div class="mt-3 sans text-sm text-slate-700 grid md:grid-cols-2 gap-2">
+            <code>Assets/_Game/Features/Dialogue/Scripts/DialogueManager.cs</code>
+            <code>Assets/_Game/Core/Scripts/AudioManager.cs</code>
+            <code>Assets/_Game/Core/Scripts/SceneLoader.cs</code>
+            <code>Assets/_Game/Presentation/UI/Scripts/BattleUIController.cs</code>
+          </div>
+          <div class="mt-6 grid lg:grid-cols-2 gap-5">
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">Before</h3>
+              <div class="mt-4 grid grid-cols-2 gap-3 sans text-sm">
+                <div class="module-box p-3">BattleManager -> DialogueManager</div>
+                <div class="module-box p-3">SkillActionBlock -> CameraController</div>
+                <div class="module-box p-3">QTEManager -> BattleUIController</div>
+                <div class="module-box p-3">SceneLoader -> global fade</div>
+              </div>
+            </div>
+            <div class="mini p-4">
+              <h3 class="sans text-xs uppercase tracking-widest text-slate-500">After</h3>
+              <div class="mt-4">
+                <div class="module-box dark p-4 text-center">Action Director</div>
+                <div class="seam my-4"></div>
+                <div class="grid grid-cols-2 gap-3 sans text-sm">
+                  <div class="module-box teal p-3">Dialogue Adapter</div>
+                  <div class="module-box teal p-3">Audio Adapter</div>
+                  <div class="module-box teal p-3">Fade Adapter</div>
+                  <div class="module-box teal p-3">UI Adapter</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 grid md:grid-cols-3 gap-4 sans text-sm">
+            <div><b>Problem</b><br />Presentation modules leak into combat implementation.</div>
+            <div><b>Solution</b><br />Action Director uses presentation adapters.</div>
+            <div><b>Wins</b><br />locality: presentation changes concentrate<br />leverage: actions reused<br />seam justified by adapters</div>
+          </div>
+        </article>
+      </section>
+
+      <section id="top-recommendation" class="card p-7">
+        <div class="sans text-xs uppercase tracking-[.22em] text-slate-600">Top recommendation</div>
+        <h2 class="mt-2 text-4xl font-bold">Start with Battle Scenario Data</h2>
+        <p class="mt-3 sans text-slate-700 max-w-4xl">
+          It creates the deepest interface first: one authoring surface for When rules, Do sequences, module switching, save-bound Encounter Memory, and battle outcomes. Without it, Action Director and GameModuleHost become powerful tools with no stable scenario owner.
+        </p>
+        <a href="#candidate-1" class="inline-block mt-5 sans text-sm border border-slate-800 px-4 py-2 bg-slate-900 text-white">Jump to candidate 1</a>
+      </section>
+    </main>
+  </body>
+</html>

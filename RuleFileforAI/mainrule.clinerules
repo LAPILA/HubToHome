@@ -12,11 +12,12 @@ Before code work, read:
 
 1. `AGENTS.md`
 2. `CONTEXT.md`
-3. `AIAssets/index.md`
-4. `AIAssets/context-briefing.md`
-5. `AIAssets/architecture.md`
-6. `AIAssets/todo.md`
-7. Relevant domain rule in `RuleFileforAI/`
+3. `.agents/skills/hubtohome-scenario-authoring/SKILL.md` when touching scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, generated scenario ScriptableObjects, or the scenario editor
+4. `AIAssets/index.md`
+5. `AIAssets/context-briefing.md`
+6. `AIAssets/architecture.md`
+7. `AIAssets/todo.md`
+8. Relevant domain rule in `RuleFileforAI/`
 
 ## Work Principles
 
@@ -31,6 +32,7 @@ Before code work, read:
 - Explain the impact range for scene, prefab, and ScriptableObject changes.
 - Prefer incremental adapters over replacing large working systems in one step.
 - Record meaningful decisions in `AIAssets` and, when terminology changes, in `CONTEXT.md`.
+- Keep `.agents/skills/hubtohome-scenario-authoring/` synchronized with scenario authoring work. A new scenario action, YAML field, validation rule, editor behavior, runtime adapter, or sync rule must update the skill or its references.
 
 ## Coding Standards
 
@@ -48,6 +50,7 @@ Before code work, read:
 - Dialogue: `DialogueData`, `DialogueManager`, `DialogueUI`, `SpeakerData`.
 - Battle: `BattleManager`, `BattleEncounterService`, `BattleUIController`, `QTEManager`, `SkillData`, `SkillActionBlock`.
 - Characters: `CharacterBase`, `PlayerCharacter`, `EnemyCharacter`, `StatusEffect`.
+- Scenario authoring: `.agents/skills/hubtohome-scenario-authoring/`, `Encounter Definition`, `Battle Scenario Data`, `Battle Event Rule`, `Action Sequence`, `Action Catalog`, scenario YAML source, synchronized ScriptableObject runtime assets.
 
 ## Recording Rule
 

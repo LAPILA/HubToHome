@@ -1,0 +1,7 @@
+interface:
+  display_name: "HubToHome Scenario Authoring"
+  short_description: "HubToHome 시나리오 저작 파이프라인 관리"
+  default_prompt: "Use $hubtohome-scenario-authoring to design or update HubToHome scenario YAML, Action Sequences, and editor-facing authoring rules."
+
+policy:
+  allow_implicit_invocation: true
