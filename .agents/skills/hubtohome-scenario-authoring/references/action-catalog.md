@@ -116,6 +116,7 @@ examples:
       duration: 0.8
 completion: "IAudioActionRunner가 반환한 routine이 완료되면 완료됩니다."
 cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다."
+runtimeBinding: "Battle context는 `AudioManagerActionRunner`를 주입합니다. 현재 기본 clip 해석은 `ResourcesAudioClipResolver`이며, `Resources.Load<AudioClip>`로 찾을 수 있는 경로 또는 ID만 성공합니다. 향후 Scenario Source 오디오 참조 테이블이 추가되면 resolver를 교체합니다."
 scope: "Overworld, Battle, transition, cinematic에서 호출 가능한 Presentation action입니다."
 ```
 
@@ -145,6 +146,7 @@ examples:
       duration: 0.4
 completion: "IScreenTransitionRunner가 반환한 routine이 완료되면 완료됩니다."
 cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다."
+runtimeBinding: "Battle context는 `ScreenTransitionRunner`를 주입합니다. 이 runner는 씬/프리팹을 수정하지 않고 런타임 전용 full-screen overlay를 생성해 `out/to/cover`와 `in/from/reveal` 모드를 처리합니다."
 scope: "Overworld, Battle, transition, cinematic에서 호출 가능한 Presentation action입니다."
 ```
 

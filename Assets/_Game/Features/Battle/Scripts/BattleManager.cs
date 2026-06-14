@@ -414,9 +414,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         BattleScenarioData scenarioData = _battleScenarioRuntime != null ? _battleScenarioRuntime.ScenarioData : null;
         return BattleScenarioActionContextFactory.Create(
             scenarioData,
-            null,
-            new BattleSkillTimelineRunner(this),
-            CreateBattleGameModuleActionRunner(scenarioData));
+            skillTimelineRunner: new BattleSkillTimelineRunner(this),
+            gameModuleActionRunner: CreateBattleGameModuleActionRunner(scenarioData),
+            audioActionRunner: new AudioManagerActionRunner(),
+            screenTransitionRunner: new ScreenTransitionRunner());
     }
 
     private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(BattleScenarioData scenarioData)

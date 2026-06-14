@@ -77,6 +77,21 @@ public class BattleScenarioActionContextFactoryTests
         Assert.That(context.GetService<IGameModuleActionRunner>(), Is.SameAs(runner));
     }
 
+    [Test]
+    public void RegistersAudioAndScreenRunnersWhenProvided()
+    {
+        var audioRunner = new FakeAudioActionRunner();
+        var screenRunner = new FakeScreenTransitionRunner();
+
+        ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+            null,
+            audioActionRunner: audioRunner,
+            screenTransitionRunner: screenRunner);
+
+        Assert.That(context.GetService<IAudioActionRunner>(), Is.SameAs(audioRunner));
+        Assert.That(context.GetService<IScreenTransitionRunner>(), Is.SameAs(screenRunner));
+    }
+
     private static DialogueData MakeDialogue()
     {
         DialogueData dialogue = ScriptableObject.CreateInstance<DialogueData>();
@@ -104,6 +119,29 @@ public class BattleScenarioActionContextFactoryTests
         }
 
         public System.Collections.IEnumerator Start(string moduleId, ActionExecutionContext context)
+        {
+            yield break;
+        }
+    }
+
+    private sealed class FakeAudioActionRunner : IAudioActionRunner
+    {
+        public System.Collections.IEnumerator CrossfadeBgm(
+            string clipId,
+            float duration,
+            ActionExecutionHandle handle)
+        {
+            yield break;
+        }
+    }
+
+    private sealed class FakeScreenTransitionRunner : IScreenTransitionRunner
+    {
+        public System.Collections.IEnumerator Fade(
+            string mode,
+            string color,
+            float duration,
+            ActionExecutionHandle handle)
         {
             yield break;
         }

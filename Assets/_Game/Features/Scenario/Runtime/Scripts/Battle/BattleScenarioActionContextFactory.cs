@@ -4,7 +4,9 @@ public static class BattleScenarioActionContextFactory
         BattleScenarioData scenarioData,
         DialogueManager dialogueManager = null,
         ISkillTimelineRunner skillTimelineRunner = null,
-        IGameModuleActionRunner gameModuleActionRunner = null)
+        IGameModuleActionRunner gameModuleActionRunner = null,
+        IAudioActionRunner audioActionRunner = null,
+        IScreenTransitionRunner screenTransitionRunner = null)
     {
         var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
         context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
@@ -26,6 +28,16 @@ public static class BattleScenarioActionContextFactory
         if (gameModuleActionRunner != null)
         {
             context.SetService<IGameModuleActionRunner>(gameModuleActionRunner);
+        }
+
+        if (audioActionRunner != null)
+        {
+            context.SetService<IAudioActionRunner>(audioActionRunner);
+        }
+
+        if (screenTransitionRunner != null)
+        {
+            context.SetService<IScreenTransitionRunner>(screenTransitionRunner);
         }
 
         return context;
