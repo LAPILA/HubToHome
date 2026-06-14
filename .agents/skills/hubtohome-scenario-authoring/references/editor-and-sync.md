@@ -45,7 +45,7 @@ When adding or changing the pipeline:
 - Update editor display and validation together.
 - Update runtime adapter only after the data shape is stable.
 - Record whether existing assets require migration.
-- Dialogue mappings import from Source `dialogues` into `BattleScenarioData.Dialogues` through `IScenarioDialogueReferenceResolver`; the editor/export path still needs to preserve the same `DialogueId -> DialogueDataId` mapping without exposing Unity GUIDs in the normal view.
+- Dialogue mappings import from Source `dialogues` into `BattleScenarioData.Dialogues` through `IScenarioDialogueReferenceResolver`. The default editor-side resolver is `AssetDatabaseScenarioDialogueReferenceResolver`, which resolves `dialogueData` by `DialogueData` asset name or `Assets/...` path, honors optional search folders, and treats duplicate name matches as unresolved. The editor/export path still needs to preserve the same `DialogueId -> DialogueDataId` mapping without exposing Unity GUIDs in the normal view.
 
 ## Staleness Rules
 

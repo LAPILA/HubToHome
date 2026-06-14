@@ -119,6 +119,7 @@ flowchart LR
   - `ScenarioDialogueRegistry`는 이 목록을 검증/정리한 뒤 `DialogueManagerRunner`에 등록한다. 빈 ID, null reference는 무시하고, 중복 ID는 뒤쪽 유효 참조가 이긴다.
   - `BattleScenarioActionContextFactory`는 scenario ID, Primary Mode, Game Module, `IDialogueRunner` service를 조립한다. 따라서 `BattleManager`는 더 이상 dialogue runner 등록 규칙을 직접 알 필요가 없다.
   - Scenario Source importer 1차가 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화한다. Source의 `DialogueDataId`는 `IScenarioDialogueReferenceResolver`를 통해 실제 `DialogueData`로 해석된다.
+  - `AssetDatabaseScenarioDialogueReferenceResolver`가 에디터 기본 resolver다. YAML의 `dialogueData`는 `DialogueData` 에셋 이름 또는 `Assets/...` 경로로 쓸 수 있고, 중복 이름은 잘못된 대화 재생을 막기 위해 unresolved로 실패한다.
 - `ScenarioCatalogValidator.ValidateBattleScenario(...)`를 추가해 `dialogue.wait` ID 검증을 저작 단계에서 잡을 수 있게 했다.
   - 단일 `ValidateSequence(...)`는 action ID만 볼 수 있으므로 scenario-level registry가 필요한 검증에는 부족하다.
   - battle scenario 전체 검증은 catalog 검증, sequence action 검증, `BattleScenarioData.Dialogues` 기반 dialogue ID 검증을 함께 수행한다.
@@ -189,6 +190,9 @@ flowchart LR
 - `ScenarioSourceSyncTests` 2개를 보강했고, source `dialogues` import와 unresolved `DialogueDataId` validation이 통과했다.
 - 최신 Unity MCP EditMode 전체 테스트는 84개 통과, 실패 0개다.
 - `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 남은 것은 기존 계열 경고 5개와 MCP disposed 로그 1개다.
+- `AssetDatabaseScenarioDialogueReferenceResolverTests` 4개를 추가했다. 에셋 이름 resolve, `Assets/...` 경로 resolve, 중복 이름 실패, 잘못된 search folder가 전체 검색으로 넓어지지 않는 정책을 검증한다.
+- C# LSP diagnostics와 `dotnet build HubToHome.sln --no-restore`로 새 resolver/test의 컴파일 안정성을 확인했다.
+- Unity MCP targeted EditMode 테스트는 `AssetDatabaseScenarioDialogueReferenceResolverTests` 4개 통과, 전체 EditMode 테스트는 88개 통과, 실패 0개다. 콘솔에는 테스트 실패가 아닌 기존 MCP disposed client handler 로그와 PerformanceTesting setup/cleanup 로그만 남았다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
