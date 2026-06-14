@@ -61,6 +61,8 @@ Treat scenario YAML as the authoring source of truth and ScriptableObject assets
 - `flow.parallel` is currently a director-level group action. It runs child actions concurrently through the director rather than through a normal runtime adapter.
 - Presentation adapters must expose narrow seams for existing global systems. Current examples are `IActionClock` for `flow.wait` and `IDialogueRunner` / `DialogueManagerRunner` for `dialogue.wait`.
 - A waitable presentation action must fail clearly when its required seam is missing, busy, or cannot start. Do not let a sequence wait forever because an existing manager ignored a request.
+- `BattleEventRuleEvaluator` is the pure When evaluator for battle scenario rules. Existing battle code should emit `BattleEventData` into this evaluator rather than hard-coding phase branches in `BattleManager`.
+- `BattleScenarioSession` tracks already-fired rules for `PerBattle` and `PerEncounterMemory`. In-progress battle state is not save-restored, but exported encounter-fired rule IDs are intended to flow into Encounter Memory later.
 - Disabled actions are skipped at execution time but should still stay visible in authoring tools.
 - Unknown action IDs must fail the current handle instead of silently continuing.
 

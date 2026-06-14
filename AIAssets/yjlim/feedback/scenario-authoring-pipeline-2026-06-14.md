@@ -87,12 +87,20 @@ flowchart LR
 - `DialogueManager`에는 기존 동작을 바꾸지 않는 읽기 전용 `IsPlaying`만 추가했다. 이 값은 scenario adapter가 기존 대화 시스템의 busy 상태를 안전하게 감지하기 위한 최소 seam이다.
 - `Action Catalog` reference에 `flow.wait`, `dialogue.wait`의 한국어 표시명, 파라미터, 완료 조건, 취소 조건을 추가했다.
 - Presentation adapter까지 포함한 Scenario production 스크립트는 별도 `csc` 컴파일로 오류가 없음을 확인했다. Unity Test Runner 실행은 에디터 refresh/reimport를 피하기 위해 아직 보류했다.
+- Battle Event Rule Runner의 1차 순수 모듈을 추가했다.
+  - `BattleEventData`: 전투 중 관측된 사건이다. 현재는 `EnemyHpCrossedBelow`와 HP 이전/현재 비율, 발화 timing, subject ID를 담는다.
+  - `BattleScenarioSession`: 전투 안에서 이미 발화된 규칙과 Encounter Memory로 이어질 발화 기록을 추적한다.
+  - `BattleScenarioTrigger`: evaluator가 발화시킨 `RuleId`, `SequenceId`, timing, source event를 담는다.
+  - `BattleEventRuleEvaluator`: `BattleEventRuleData + BattleEventData + BattleScenarioSession`을 받아 발화 여부를 판단한다.
+- HP threshold 규칙은 `previousHpRatio > threshold && currentHpRatio <= threshold`일 때만 발화한다. 이미 threshold 아래인 상태에서 추가로 피해를 받은 경우는 crossing이 아니므로 재발화하지 않는다.
+- `PerEncounterMemory` once 규칙은 아직 저장 데이터에 연결하지 않았지만, 세션에서 import/export할 수 있게 해 이후 `Encounter Memory` 저장 경로와 연결할 수 있도록 했다.
+- 이 단계에서도 기존 `BattleManager`는 수정하지 않았다. 다음 작업은 데미지/스킬 종료 지점에서 `BattleEventData`를 발행하고, evaluator가 반환한 `BattleScenarioTrigger`를 `ActionDirector`에 넘기는 얇은 hook이다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. Battle Event Rule runner와 `BattleScenarioSession` 작성
-3. `enemy.hp_crossed_below` / `after_current_skill`를 표현하는 이벤트 모델 작성
+2. 기존 `BattleManager` 데미지/스킬 종료 지점에서 `BattleEventData`를 발행하는 최소 hook 작성
+3. evaluator가 반환한 `BattleScenarioTrigger.SequenceId`를 `ActionDirector` 실행 요청으로 넘기는 session runner 작성
 4. Audio/Screen/Module 전환용 presentation service seam 설계
 5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
 6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

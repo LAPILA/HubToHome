@@ -42,11 +42,12 @@
 
 ## Phase 5 - Battle Scenario Runner
 
-- [ ] Add battle event model and rule evaluator.
-- [ ] Add fired-rule tracking inside Battle Session State or a lightweight scenario session.
+- [x] Add battle event model and rule evaluator.
+- [x] Add fired-rule tracking inside Battle Session State or a lightweight scenario session.
 - [ ] Add minimal hook from existing battle damage/skill-end points.
-- [ ] Add tests for HP threshold after current skill.
-- [ ] Commit battle rule runner.
+- [x] Add tests for HP threshold after current skill.
+- [x] Commit pure battle rule runner.
+- [ ] Commit BattleManager hook.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 
