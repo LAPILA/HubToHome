@@ -1,16 +1,29 @@
-# Core 규칙
+# Core Rules
 
-## 핵심 클래스
-- `GameStateManager`: Exploration, Dialogue, Battle, Cutscene, Paused 상태 관리.
-- `GlobalDataManager`: 플레이어 이름, 파티, 인벤토리, 플래그, 스폰 정보, 전투 대기 적 보관.
-- `SaveManager` / `SaveData`: JSON 저장/로드.
-- `SceneLoader`: 씬 전환.
-- `ObjectPoolManager`: 반복 생성 오브젝트 관리.
-- `LocalizationManager`: 언어별 텍스트 조회.
+## Key Modules
 
-## 작업 규칙
-- 플레이어 입력 잠금은 `GameStateManager.CanPlayerMove`를 우선 확인한다.
-- 씬 이동 전 위치/방향은 `GlobalDataManager`에 저장한다.
-- 저장 데이터에는 플레이어 이름, 씬, 좌표, 방향, 파티, 인벤토리, 이벤트 플래그가 포함된다.
-- 반복 생성되는 VFX/투사체/팝업은 풀링을 우선한다.
-- 외부 에셋 원본 코드는 수정하지 않는다.
+- `GameBootstrap`: global singleton prefab bootstrap.
+- `GameStateManager`: broad game state.
+- `GlobalDataManager`: cross-scene runtime and save-bound data.
+- `GameInput`: input facade and key-binding bridge.
+- `SaveManager` / `SaveData`: JSON save/load.
+- `SceneLoader`: scene transition.
+- `UIManager` / `UIPanel`: registered panel stack and panel lifecycle.
+- `AudioManager`: BGM/SFX/voice.
+- `ObjectPoolManager`: pooled repeated runtime objects.
+- `LocalizationManager`: localized text lookup.
+
+## Work Rules
+
+- Check `GameStateManager` before allowing player movement or interaction.
+- Save scene/position/facing/party/world state through `GlobalDataManager` where applicable.
+- Do not create new global singletons casually. Prefer extending an existing core module or creating a narrow adapter.
+- Use `ObjectPoolManager` for repeated spawned objects.
+- Keep UI panel stack behavior consistent with `UIManager`.
+- Input should go through `GameInput` unless there is a documented reason.
+- Do not modify third-party package source without explicit approval.
+
+## Save/Load Notes
+
+- Save data should include enough state to restore scene, position, facing, party, inventory, money, flags, and relevant room/encounter context.
+- If a feature creates new persistent state, update `SaveData`, `GlobalDataManager`, and the update note together.

@@ -1,25 +1,32 @@
-# Overworld 규칙
+# Overworld Rules
 
-## 현재 구조
-- `PlayerController`: 이동, 입력, 바라보는 방향, 전투 애니메이션 연출 일부 담당.
-- `InteractionSystem`: 플레이어 전방 상호작용 대상 캐싱.
-- `IInteractable` / `InteractableBase`: 상호작용 대상 공통 규약.
-- `AreaTrigger`: 씬 전환, 자동 대화, 전투 조우 처리.
+## Current Structure
 
-## 조작
-- 이동: 방향키/WASD.
-- 확인/상호작용: Z.
-- 취소: X.
-- 메뉴: C.
-- 방향값: 0 Down, 1 Up, 2 Left, 3 Right.
+- `PlayerController`: movement, facing, sorting, battle mode, defense visual reactions, position save/load.
+- `InteractionSystem`: detects interactables in front of the player.
+- `IInteractable` / `InteractableBase`: shared interaction contract.
+- `AreaTrigger`: scene transition, auto event, battle encounter.
+- `MapTransitionService`: scene and room transition orchestration.
+- `RoomDefinition`, `RoomInstance`, `RoomContainer`, `DoorTransition`, `SpawnPoint`: room-based map workflow.
 
-## 작업 규칙
-- 이동 가능 여부는 `GameStateManager.CanPlayerMove`를 확인한다.
-- 전투 중에는 `PlayerController.SetBattleMode(true)`로 이동을 잠근다.
-- 상호작용 대상은 `IInteractable` 구현 또는 `InteractableBase` 상속을 우선한다.
-- `AreaTrigger`의 AutoEvent는 `DialogueData` 에셋을 직접 받는다.
-- 씬 전환 전 위치/방향 저장을 잊지 않는다.
+## Input
 
-## 주의점
-- `InteractionSystem`은 현재 `FindFirstObjectByType<PlayerController>()`를 매 프레임 호출하므로, 나중에 캐싱 개선 여지가 있다.
-- `AreaTrigger`의 `DestroyOnVictory`는 현재 전투 시작 직후 Destroy되는 구조라 이름과 실제 동작 차이가 있다.
+- Move: arrow keys / WASD.
+- Confirm / interact: project key binding through `GameInput`.
+- Cancel and menu should also go through `GameInput`.
+- Facing direction convention: 0 Down, 1 Up, 2 Left, 3 Right.
+
+## Work Rules
+
+- Movement and interaction must respect `GameStateManager.CanPlayerMove`.
+- Battle entry should use `BattleEncounterService` rather than duplicating setup.
+- Scene/room transitions should use `MapTransitionService` or `SceneLoader` as appropriate.
+- Before scene transition, preserve position/facing/room state through `GlobalDataManager`.
+- New interactables should implement `IInteractable` or inherit `InteractableBase`.
+- Do not hard-code scene object names when a registry, serialized reference, or existing service is available.
+
+## Caution Points
+
+- Overworld and battle currently share some player presentation logic through `PlayerController`.
+- If an Action Sequence moves actors in the overworld, it should go through a future actor/motor adapter rather than bypassing existing state gates.
+- Room-based map work should preserve `RoomDefinition` and `SpawnPointId` conventions.

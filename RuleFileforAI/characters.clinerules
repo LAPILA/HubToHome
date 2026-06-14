@@ -1,19 +1,24 @@
-# Characters 규칙
+# Characters Rules
 
-## 현재 구조
-- `CharacterBase`: 공통 스탯, HP/MP, 데미지, 회복, 상태이상, 루프 VFX.
-- `PlayerCharacter`: 레벨/EXP/장비/스킬/글로벌 파티 데이터 연동.
-- `EnemyCharacter`: `EnemyData` 기반 세팅, AI 행동 결정, 피격/사망 연출.
-- `StatusEffect`: 화상/독/빙결/속박/기절 등 상태이상 기반.
+## Current Structure
 
-## 스탯/피해
-- 기본 스탯: MaxHP, MaxMP, ATK, DEF, SPD.
-- 일반 피해는 `TakeDamage`, 방어력 무시 피해는 `TakePureDamage`.
-- 상태이상은 `ProcessEffects()`에서 턴 단위로 처리한다.
-- 장비 보너스는 `PlayerCharacter.GetFlatStatBonus()` 흐름을 따른다.
+- `CharacterBase`: common stats, HP/MP, damage, healing, status effects, loop VFX.
+- `PlayerCharacter`: level, EXP, equipment, skills, global party save bridge.
+- `EnemyCharacter`: `EnemyData` setup, AI action selection, hit/death presentation.
+- `StatusEffect`: burn, poison, freeze, bind, stun, berserk, stat modifier, and related effects.
 
-## 작업 규칙
-- Animator 트리거 이름은 기존 값을 유지한다.
-- 플레이어 데이터 저장/복원은 `CharacterSaveData`와 `GlobalDataManager.Party`를 기준으로 한다.
-- 새 적은 `EnemyData` ScriptableObject + `EnemyCharacter.Setup()` 흐름을 사용한다.
-- 아이템 효과와 상태이상 추가는 `ItemData`, `BattleManager.ExecuteItemEffect()`와 맞춘다.
+## Stats / Damage
+
+- Base stats: MaxHP, MaxMP, ATK, DEF, SPD.
+- Normal damage uses `TakeDamage`.
+- Defense-ignoring damage uses `TakePureDamage`.
+- Status effects process through `ProcessEffects()`.
+- Player save/restore uses `CharacterSaveData` and `GlobalDataManager.Party`.
+
+## Work Rules
+
+- Preserve existing animator trigger names unless a deliberate migration is documented.
+- New enemies should use `EnemyData` plus `EnemyCharacter.Setup()`.
+- New player/ally data should preserve save compatibility.
+- Item and status-effect changes must stay aligned with `ItemData`, `InventoryManager`, `BattleManager.ExecuteItemEffect()`, and any future status factory.
+- If adding a new status effect, document creation path and application path.
