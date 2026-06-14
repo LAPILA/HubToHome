@@ -63,9 +63,58 @@ public class ScenarioSourceSyncTests
         Assert.That(result.Success, Is.True);
         Assert.That(result.Scenario.Dialogues.Count, Is.EqualTo(1));
         Assert.That(result.Scenario.Dialogues[0].DialogueId, Is.EqualTo("zev.phase2"));
+        Assert.That(result.Scenario.Dialogues[0].DialogueDataId, Is.EqualTo("dlg_zev_phase2"));
         Assert.That(result.Scenario.Dialogues[0].Dialogue, Is.SameAs(dialogue));
 
         DestroyScenario(result.Scenario);
+        UnityEngine.Object.DestroyImmediate(dialogue);
+    }
+
+    [Test]
+    public void ExporterPreservesDialogueDataIdsForScenarioSource()
+    {
+        BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
+            MakeDocument(),
+            "id: test_battle\n",
+            "Assets/_Game/Features/Scenario/Source/test.scenario.yaml");
+        scenario.Dialogues.Add(new ScenarioDialogueReferenceData
+        {
+            DialogueId = "zev.phase2",
+            DialogueDataId = "dlg_zev_phase2"
+        });
+
+        ScenarioSourceExportResult result = new ScenarioSourceExporter().Export(scenario);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Document.Dialogues.Count, Is.EqualTo(1));
+        Assert.That(result.Document.Dialogues[0].DialogueId, Is.EqualTo("zev.phase2"));
+        Assert.That(result.Document.Dialogues[0].DialogueDataId, Is.EqualTo("dlg_zev_phase2"));
+
+        DestroyScenario(scenario);
+    }
+
+    [Test]
+    public void ExporterCanRecoverDialogueDataIdFromProvider()
+    {
+        DialogueData dialogue = ScriptableObject.CreateInstance<DialogueData>();
+        BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
+            MakeDocument(),
+            "id: test_battle\n",
+            "Assets/_Game/Features/Scenario/Source/test.scenario.yaml");
+        scenario.Dialogues.Add(new ScenarioDialogueReferenceData
+        {
+            DialogueId = "zev.phase2",
+            Dialogue = dialogue
+        });
+
+        var exporter = new ScenarioSourceExporter(new FakeDialogueReferenceIdProvider(dialogue, "Assets/Dialogues/dlg_zev_phase2.asset"));
+
+        ScenarioSourceExportResult result = exporter.Export(scenario);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Document.Dialogues[0].DialogueDataId, Is.EqualTo("Assets/Dialogues/dlg_zev_phase2.asset"));
+
+        DestroyScenario(scenario);
         UnityEngine.Object.DestroyImmediate(dialogue);
     }
 
@@ -190,6 +239,30 @@ public class ScenarioSourceSyncTests
             }
 
             dialogue = null;
+            return false;
+        }
+    }
+
+    private sealed class FakeDialogueReferenceIdProvider : IScenarioDialogueReferenceIdProvider
+    {
+        private readonly DialogueData _expectedDialogue;
+        private readonly string _dialogueDataId;
+
+        public FakeDialogueReferenceIdProvider(DialogueData expectedDialogue, string dialogueDataId)
+        {
+            _expectedDialogue = expectedDialogue;
+            _dialogueDataId = dialogueDataId;
+        }
+
+        public bool TryGetDialogueDataId(DialogueData dialogue, out string dialogueDataId)
+        {
+            if (dialogue == _expectedDialogue)
+            {
+                dialogueDataId = _dialogueDataId;
+                return true;
+            }
+
+            dialogueDataId = string.Empty;
             return false;
         }
     }

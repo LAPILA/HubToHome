@@ -187,6 +187,7 @@ public sealed class ScenarioSourceImporter
             scenario.Dialogues.Add(new ScenarioDialogueReferenceData
             {
                 DialogueId = dialogueId,
+                DialogueDataId = dialogueDataId,
                 Dialogue = dialogue
             });
         }

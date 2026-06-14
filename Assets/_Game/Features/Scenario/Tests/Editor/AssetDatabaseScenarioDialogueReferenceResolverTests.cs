@@ -63,6 +63,32 @@ public class AssetDatabaseScenarioDialogueReferenceResolverTests
         Assert.That(result, Is.Null);
     }
 
+    [Test]
+    public void ProvidesAssetNameForUniqueDialogueAsset()
+    {
+        DialogueData dialogue = CreateDialogueAsset("UniqueProviderName");
+        var resolver = new AssetDatabaseScenarioDialogueReferenceResolver(new[] { TempRoot });
+
+        bool resolved = resolver.TryGetDialogueDataId(dialogue, out string dialogueDataId);
+
+        Assert.That(resolved, Is.True);
+        Assert.That(dialogueDataId, Is.EqualTo("UniqueProviderName"));
+    }
+
+    [Test]
+    public void ProvidesAssetPathForDuplicateDialogueAssetNames()
+    {
+        DialogueData dialogue = CreateDialogueAsset("SharedProviderName", "A");
+        CreateDialogueAsset("SharedProviderName", "B");
+        string expectedPath = AssetDatabase.GetAssetPath(dialogue);
+        var resolver = new AssetDatabaseScenarioDialogueReferenceResolver(new[] { TempRoot });
+
+        bool resolved = resolver.TryGetDialogueDataId(dialogue, out string dialogueDataId);
+
+        Assert.That(resolved, Is.True);
+        Assert.That(dialogueDataId, Is.EqualTo(expectedPath));
+    }
+
     private static DialogueData CreateDialogueAsset(string assetName, string subFolder = "")
     {
         EnsureFolder(TempRoot);

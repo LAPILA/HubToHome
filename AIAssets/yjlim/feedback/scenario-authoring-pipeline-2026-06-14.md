@@ -120,6 +120,7 @@ flowchart LR
   - `BattleScenarioActionContextFactory`는 scenario ID, Primary Mode, Game Module, `IDialogueRunner` service를 조립한다. 따라서 `BattleManager`는 더 이상 dialogue runner 등록 규칙을 직접 알 필요가 없다.
   - Scenario Source importer 1차가 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화한다. Source의 `DialogueDataId`는 `IScenarioDialogueReferenceResolver`를 통해 실제 `DialogueData`로 해석된다.
   - `AssetDatabaseScenarioDialogueReferenceResolver`가 에디터 기본 resolver다. YAML의 `dialogueData`는 `DialogueData` 에셋 이름 또는 `Assets/...` 경로로 쓸 수 있고, 중복 이름은 잘못된 대화 재생을 막기 위해 unresolved로 실패한다.
+  - `ScenarioDialogueReferenceData.DialogueDataId`가 원본 `dialogueData` 값을 보존하고, `ScenarioSourceExporter`가 `BattleScenarioData`를 다시 `ScenarioSourceDocument`로 export한다. 아직 YAML text writer는 아니며, 다음 writer/editor 작업의 입력 문서다.
 - `ScenarioCatalogValidator.ValidateBattleScenario(...)`를 추가해 `dialogue.wait` ID 검증을 저작 단계에서 잡을 수 있게 했다.
   - 단일 `ValidateSequence(...)`는 action ID만 볼 수 있으므로 scenario-level registry가 필요한 검증에는 부족하다.
   - battle scenario 전체 검증은 catalog 검증, sequence action 검증, `BattleScenarioData.Dialogues` 기반 dialogue ID 검증을 함께 수행한다.
@@ -190,15 +191,17 @@ flowchart LR
 - `ScenarioSourceSyncTests` 2개를 보강했고, source `dialogues` import와 unresolved `DialogueDataId` validation이 통과했다.
 - 최신 Unity MCP EditMode 전체 테스트는 84개 통과, 실패 0개다.
 - `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 남은 것은 기존 계열 경고 5개와 MCP disposed 로그 1개다.
-- `AssetDatabaseScenarioDialogueReferenceResolverTests` 4개를 추가했다. 에셋 이름 resolve, `Assets/...` 경로 resolve, 중복 이름 실패, 잘못된 search folder가 전체 검색으로 넓어지지 않는 정책을 검증한다.
+- `AssetDatabaseScenarioDialogueReferenceResolverTests` 6개를 추가했다. 에셋 이름 resolve, `Assets/...` 경로 resolve, 중복 이름 실패, 잘못된 search folder가 전체 검색으로 넓어지지 않는 정책, export용 asset name/path provider 정책을 검증한다.
 - C# LSP diagnostics와 `dotnet build HubToHome.sln --no-restore`로 새 resolver/test의 컴파일 안정성을 확인했다.
-- Unity MCP targeted EditMode 테스트는 `AssetDatabaseScenarioDialogueReferenceResolverTests` 4개 통과, 전체 EditMode 테스트는 88개 통과, 실패 0개다. 콘솔에는 테스트 실패가 아닌 기존 MCP disposed client handler 로그와 PerformanceTesting setup/cleanup 로그만 남았다.
+- Unity MCP targeted EditMode 테스트와 전체 EditMode 테스트는 후속 export 검증까지 포함해 최신 92개 통과, 실패 0개다. 콘솔에는 테스트 실패가 아닌 기존 MCP disposed client handler 로그와 PerformanceTesting setup/cleanup 로그만 남았다.
+- Source export TDD RED에서 `IScenarioDialogueReferenceIdProvider` 부재로 빌드 실패를 확인했고, `ScenarioSourceExporter` / `DialogueDataId` 보존 / provider 구현 뒤 GREEN으로 전환했다.
+- 최신 Unity MCP targeted EditMode 테스트는 `ScenarioSourceSyncTests`와 `AssetDatabaseScenarioDialogueReferenceResolverTests` 합산 13개 통과, 전체 EditMode 테스트는 92개 통과, 실패 0개다. 콘솔에는 테스트 실패가 아닌 기존 MCP disposed client handler 로그와 PerformanceTesting setup/cleanup 로그만 남았다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. Scenario Source editor/export에서 `dialogues` 매핑을 다시 source로 보존하는 경로 구현
+2. Scenario Source YAML text writer와 editor UI에서 `dialogues` 매핑을 source로 저장하는 경로 구현
 3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
 4. Audio/Screen/Module 전환용 concrete presentation runner 설계
 5. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성

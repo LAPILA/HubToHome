@@ -418,7 +418,7 @@ public interface IDialogueRunner
 
 `DialogueWaitActionAdapter` starts dialogue through `IDialogueRunner`. Runtime battle scenarios resolve `DialogueData` through `BattleScenarioData.Dialogues`, `ScenarioDialogueRegistry`, and `BattleScenarioActionContextFactory`. Source import now represents `dialogues` as `ScenarioSourceDialogueDocument` and resolves `DialogueDataId` through `IScenarioDialogueReferenceResolver`.
 
-Current implementation note: `AssetDatabaseScenarioDialogueReferenceResolver` is the editor-side resolver for this seam. It resolves `dialogueData` by `DialogueData` asset name, full `Assets/...` path, or path without `.asset`; scoped imports can pass search folders; duplicate name matches fail rather than choosing an arbitrary asset. Editor/export preservation for this mapping remains a follow-up.
+Current implementation note: `AssetDatabaseScenarioDialogueReferenceResolver` is the editor-side resolver/provider for this seam. It resolves `dialogueData` by `DialogueData` asset name, full `Assets/...` path, or path without `.asset`; scoped imports can pass search folders; duplicate name matches fail rather than choosing an arbitrary asset. `ScenarioDialogueReferenceData.DialogueDataId` preserves the source value, and `ScenarioSourceExporter` can export `BattleScenarioData` back to `ScenarioSourceDocument`. The remaining follow-up is writing that document back to YAML text through the chosen parser/writer and surfacing it in the editor.
 
 **Step 3: Validate busy behavior**
 

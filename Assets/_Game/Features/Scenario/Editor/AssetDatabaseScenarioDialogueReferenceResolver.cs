@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 
-public sealed class AssetDatabaseScenarioDialogueReferenceResolver : IScenarioDialogueReferenceResolver
+public sealed class AssetDatabaseScenarioDialogueReferenceResolver :
+    IScenarioDialogueReferenceResolver,
+    IScenarioDialogueReferenceIdProvider
 {
     private readonly bool _hasExplicitSearchFolders;
     private readonly string[] _searchFolders;
@@ -54,6 +56,25 @@ public sealed class AssetDatabaseScenarioDialogueReferenceResolver : IScenarioDi
         return dialogue != null;
     }
 
+    public bool TryGetDialogueDataId(DialogueData dialogue, out string dialogueDataId)
+    {
+        dialogueDataId = string.Empty;
+        if (dialogue == null)
+        {
+            return false;
+        }
+
+        string assetPath = NormalizePath(AssetDatabase.GetAssetPath(dialogue));
+        if (string.IsNullOrEmpty(assetPath))
+        {
+            return false;
+        }
+
+        string assetName = Path.GetFileNameWithoutExtension(assetPath);
+        dialogueDataId = IsUniqueAssetName(assetName, dialogue) ? assetName : assetPath;
+        return true;
+    }
+
     private static bool TryLoadDirectPath(string dialogueDataId, out DialogueData dialogue)
     {
         dialogue = null;
@@ -85,6 +106,41 @@ public sealed class AssetDatabaseScenarioDialogueReferenceResolver : IScenarioDi
         }
 
         return _hasExplicitSearchFolders ? Array.Empty<string>() : AssetDatabase.FindAssets("t:DialogueData");
+    }
+
+    private bool IsUniqueAssetName(string assetName, DialogueData dialogue)
+    {
+        if (string.IsNullOrEmpty(assetName))
+        {
+            return false;
+        }
+
+        DialogueData match = null;
+        string[] guids = FindDialogueAssetGuids();
+        Array.Sort(guids, StringComparer.Ordinal);
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string assetPath = NormalizePath(AssetDatabase.GUIDToAssetPath(guids[i]));
+            if (!string.Equals(Path.GetFileNameWithoutExtension(assetPath), assetName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            DialogueData candidate = AssetDatabase.LoadAssetAtPath<DialogueData>(assetPath);
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            if (match != null && match != candidate)
+            {
+                return false;
+            }
+
+            match = candidate;
+        }
+
+        return match == dialogue;
     }
 
     private static bool Matches(string dialogueDataId, string assetPath, DialogueData candidate)
