@@ -168,6 +168,36 @@ public class BattleScenarioRuntimeTests
         Assert.That(sequence, Is.Null);
     }
 
+    [Test]
+    public void CreatesBattleSessionStateFromScenarioOpeningModule()
+    {
+        BattleScenarioData scenario = MakeScenario(BattleRuleTiming.Immediate);
+        scenario.OpeningModule = "aim_shooter";
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            Assert.That(runtime.SessionState.ScenarioId, Is.EqualTo("zev_first_battle"));
+            Assert.That(runtime.SessionState.PrimaryMode, Is.EqualTo("battle"));
+            Assert.That(runtime.SessionState.OpeningModule, Is.EqualTo("aim_shooter"));
+            Assert.That(runtime.SessionState.CurrentModuleId, Is.EqualTo("aim_shooter"));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void NullScenarioSessionStateDefaultsToTurnQte()
+    {
+        var runtime = new BattleScenarioRuntime(null);
+
+        Assert.That(runtime.SessionState.PrimaryMode, Is.EqualTo("battle"));
+        Assert.That(runtime.SessionState.OpeningModule, Is.EqualTo(BattleTurnQteGameModuleRuntime.Id));
+        Assert.That(runtime.SessionState.CurrentModuleId, Is.EqualTo(BattleTurnQteGameModuleRuntime.Id));
+    }
+
     private static BattleScenarioData MakeScenario(BattleRuleTiming timing)
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();

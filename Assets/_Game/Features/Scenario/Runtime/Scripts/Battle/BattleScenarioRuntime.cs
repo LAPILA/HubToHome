@@ -11,6 +11,7 @@ public sealed class BattleScenarioRuntime
         IEnumerable<string> encounterFiredRuleIds = null)
     {
         ScenarioData = scenarioData;
+        SessionState = BattleSessionState.Create(scenarioData);
         if (scenarioData == null)
         {
             return;
@@ -26,6 +27,8 @@ public sealed class BattleScenarioRuntime
     }
 
     public BattleScenarioData ScenarioData { get; }
+
+    public BattleSessionState SessionState { get; }
 
     public bool HasScenario
     {
@@ -72,5 +75,51 @@ public sealed class BattleScenarioRuntime
     public string[] ExportEncounterFiredRuleIds()
     {
         return _session != null ? _session.ExportEncounterFiredRuleIds() : new string[0];
+    }
+}
+
+public sealed class BattleSessionState : IGameModuleStateStore
+{
+    private BattleSessionState(
+        string scenarioId,
+        string primaryMode,
+        string openingModule)
+    {
+        ScenarioId = Normalize(scenarioId);
+        PrimaryMode = string.IsNullOrWhiteSpace(primaryMode) ? "battle" : primaryMode.Trim();
+        OpeningModule = Normalize(openingModule);
+        CurrentModuleId = OpeningModule;
+    }
+
+    public string ScenarioId { get; }
+    public string PrimaryMode { get; }
+    public string OpeningModule { get; }
+    public string CurrentModuleId { get; private set; }
+
+    public static BattleSessionState Create(BattleScenarioData scenarioData)
+    {
+        if (scenarioData == null)
+        {
+            return new BattleSessionState(string.Empty, "battle", BattleTurnQteGameModuleRuntime.Id);
+        }
+
+        string openingModule = string.IsNullOrWhiteSpace(scenarioData.OpeningModule)
+            ? BattleTurnQteGameModuleRuntime.Id
+            : scenarioData.OpeningModule;
+
+        return new BattleSessionState(
+            scenarioData.ScenarioId,
+            scenarioData.PrimaryMode,
+            openingModule);
+    }
+
+    public void SetCurrentModuleId(string moduleId)
+    {
+        CurrentModuleId = Normalize(moduleId);
+    }
+
+    private static string Normalize(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     }
 }

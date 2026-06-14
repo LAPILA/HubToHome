@@ -3,14 +3,31 @@ using System.Collections;
 public sealed class GameModuleActionRunner : IGameModuleActionRunner
 {
     private readonly GameModuleRegistry _registry;
+    private readonly IGameModuleStateStore _stateStore;
+    private string _currentModuleId;
 
-    public GameModuleActionRunner(GameModuleRegistry registry, string currentModuleId = "")
+    public GameModuleActionRunner(
+        GameModuleRegistry registry,
+        string currentModuleId = "",
+        IGameModuleStateStore stateStore = null)
     {
         _registry = registry ?? new GameModuleRegistry();
-        CurrentModuleId = Normalize(currentModuleId);
+        _stateStore = stateStore;
+        _currentModuleId = Normalize(currentModuleId);
+        if (_stateStore != null && string.IsNullOrEmpty(_stateStore.CurrentModuleId))
+        {
+            _stateStore.SetCurrentModuleId(_currentModuleId);
+        }
     }
 
-    public string CurrentModuleId { get; private set; }
+    public string CurrentModuleId
+    {
+        get
+        {
+            string storedModuleId = _stateStore != null ? Normalize(_stateStore.CurrentModuleId) : string.Empty;
+            return !string.IsNullOrEmpty(storedModuleId) ? storedModuleId : _currentModuleId;
+        }
+    }
 
     public IEnumerator SwitchTo(string moduleId, ActionExecutionContext context)
     {
@@ -111,10 +128,15 @@ public sealed class GameModuleActionRunner : IGameModuleActionRunner
 
     private void SetCurrentModule(string moduleId, ActionExecutionContext context)
     {
-        CurrentModuleId = Normalize(moduleId);
+        _currentModuleId = Normalize(moduleId);
+        if (_stateStore != null)
+        {
+            _stateStore.SetCurrentModuleId(_currentModuleId);
+        }
+
         if (context != null)
         {
-            context.ModuleId = CurrentModuleId;
+            context.ModuleId = _currentModuleId;
         }
     }
 

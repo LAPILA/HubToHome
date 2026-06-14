@@ -63,6 +63,7 @@
 - [x] Register a first compatibility `turn_qte` Game Module in battle scenario contexts.
 - [x] Persist the battle-scoped `IGameModuleActionRunner` across scenario trigger batches so `CurrentModuleId` survives separate Action Sequences.
 - [x] Move default battle module registration behind `BattleGameModuleRegistryFactory` so future modules are not registered directly inside `BattleManager`.
+- [x] Add first explicit `BattleSessionState` and `IGameModuleStateStore` seam for current Game Module continuity.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

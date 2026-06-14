@@ -292,7 +292,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
         BattleEncounterMemoryRecorder.RecordBattleStarted(scenarioData, global, fallbackEncounterId);
         _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
-        _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(scenarioData);
+        _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(
+            scenarioData,
+            _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null);
         _battleScenarioExecutionGate = CreateBattleScenarioExecutionGate(_battleScenarioRuntime);
     }
 
@@ -425,11 +427,13 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             screenTransitionRunner: new ScreenTransitionRunner());
     }
 
-    private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(BattleScenarioData scenarioData)
+    private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(
+        BattleScenarioData scenarioData,
+        IGameModuleStateStore moduleStateStore)
     {
         var registry = BattleGameModuleRegistryFactory.CreateDefault();
         string currentModuleId = scenarioData != null ? scenarioData.OpeningModule : BattleTurnQteGameModuleRuntime.Id;
-        return new GameModuleActionRunner(registry, currentModuleId);
+        return new GameModuleActionRunner(registry, currentModuleId, moduleStateStore);
     }
 
     #region [ Initialization ]

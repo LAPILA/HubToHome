@@ -432,6 +432,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 update: Battle now creates one battle-scoped `GameModuleActionRunner` during scenario runtime initialization and reuses it for later scenario action contexts. `IGameModuleActionRunner.CurrentModuleId` is part of the interface, and `BattleScenarioActionContextFactory` prefers that current module over `BattleScenarioData.OpeningModule` when creating a new `ActionExecutionContext`. This prevents separate trigger batches from losing a prior `module.switch`. Default battle module registration moved behind `BattleGameModuleRegistryFactory`, currently registering only the compatibility `turn_qte` module.
 
+2026-06-15 follow-up: `BattleScenarioRuntime` now exposes `BattleSessionState`, the first explicit battle-scoped state object for scenario identity, Primary Mode, opening module, and current Game Module continuity. `GameModuleActionRunner` can receive an `IGameModuleStateStore`, so module switches update both the action context and the battle session state. This is intentionally narrow; HP/MP/status/participant ownership remains in existing battle character systems until a later migration step.
+
 **Step 5: Commit**
 
 ```powershell

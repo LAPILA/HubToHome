@@ -8,3 +8,10 @@ public interface IGameModuleActionRunner
 
     IEnumerator Start(string moduleId, ActionExecutionContext context);
 }
+
+public interface IGameModuleStateStore
+{
+    string CurrentModuleId { get; }
+
+    void SetCurrentModuleId(string moduleId);
+}

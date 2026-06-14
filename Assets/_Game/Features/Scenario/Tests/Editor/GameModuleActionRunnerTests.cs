@@ -90,6 +90,24 @@ public class GameModuleActionRunnerTests
         Assert.That(module, Is.TypeOf<BattleTurnQteGameModuleRuntime>());
     }
 
+    [Test]
+    public void SwitchToUpdatesInjectedModuleStateStore()
+    {
+        var log = new List<string>();
+        var registry = new GameModuleRegistry();
+        registry.Register(new LoggingGameModule("turn_qte", log));
+        registry.Register(new LoggingGameModule("aim_shooter", log));
+        var stateStore = new FakeModuleStateStore();
+        var context = new ActionExecutionContext();
+        var runner = new GameModuleActionRunner(registry, "turn_qte", stateStore);
+
+        RunToCompletion(runner.SwitchTo("aim_shooter", context));
+
+        Assert.That(stateStore.CurrentModuleId, Is.EqualTo("aim_shooter"));
+        Assert.That(runner.CurrentModuleId, Is.EqualTo("aim_shooter"));
+        Assert.That(context.ModuleId, Is.EqualTo("aim_shooter"));
+    }
+
     private static void RunToCompletion(IEnumerator routine, int maxSteps = 100)
     {
         int steps = 0;
@@ -131,6 +149,16 @@ public class GameModuleActionRunnerTests
         {
             yield return null;
             _log.Add("start:" + ModuleId);
+        }
+    }
+
+    private sealed class FakeModuleStateStore : IGameModuleStateStore
+    {
+        public string CurrentModuleId { get; private set; } = string.Empty;
+
+        public void SetCurrentModuleId(string moduleId)
+        {
+            CurrentModuleId = moduleId;
         }
     }
 }

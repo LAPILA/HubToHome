@@ -26,17 +26,21 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - `BattleManager`는 battle-scoped `GameModuleActionRunner`를 전투 시작 시 한 번 만들고 재사용합니다.
 - `BattleScenarioActionContextFactory`는 runner의 현재 모듈 ID가 있으면 `BattleScenarioData.OpeningModule`보다 우선합니다.
 - 기본 Battle Game Module 등록은 `BattleGameModuleRegistryFactory`로 옮겼습니다.
+- `BattleScenarioRuntime`에 `BattleSessionState`를 추가했습니다.
+- `GameModuleActionRunner`는 `IGameModuleStateStore`를 받을 수 있고, 모듈 전환 시 current module을 battle-scoped state에 반영합니다.
 
 ## 효과
 
 - `module.switch` 이후 현재 모듈이 다음 Action Sequence에도 이어집니다.
+- 현재 모듈이 runner 내부 임시 필드에만 남지 않고 `BattleSessionState`에서도 보입니다.
 - `BattleManager`가 concrete module 목록을 직접 품는 일을 줄였습니다.
 - 이후 `aim_shooter`, `boxing`, `bullet_hell` 같은 모듈을 추가할 때 Action Adapter나 BattleManager 분기를 늘리는 대신 registry/factory 계층을 확장하는 경로가 생겼습니다.
 
 ## 남은 핵심 작업
 
 - `Battle Session State` 명시화
-  - HP, MP, 상태이상, 참가자, 승패, 현재 모듈, phase flag를 Game Module 전환과 별개로 유지하는 공통 상태가 필요합니다.
+  - 현재는 scenario identity, Primary Mode, opening/current module만 들어왔습니다.
+  - 다음에는 HP, MP, 상태이상, 참가자, 승패, phase flag를 기존 Character/BattleManager 상태와 어떻게 연결할지 정해야 합니다.
 - concrete module 추가
   - 현재는 `turn_qte` compatibility module만 있습니다.
 - QTE 전투 추출
