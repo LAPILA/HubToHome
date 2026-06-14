@@ -119,6 +119,10 @@ flowchart LR
   - `ScenarioDialogueRegistry`는 이 목록을 검증/정리한 뒤 `DialogueManagerRunner`에 등록한다. 빈 ID, null reference는 무시하고, 중복 ID는 뒤쪽 유효 참조가 이긴다.
   - `BattleScenarioActionContextFactory`는 scenario ID, Primary Mode, Game Module, `IDialogueRunner` service를 조립한다. 따라서 `BattleManager`는 더 이상 dialogue runner 등록 규칙을 직접 알 필요가 없다.
   - 아직 YAML importer/editor가 이 필드를 자동 동기화하지는 않는다. 후속 작업은 Scenario Source의 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 import/export하는 것이다.
+- `ScenarioCatalogValidator.ValidateBattleScenario(...)`를 추가해 `dialogue.wait` ID 검증을 저작 단계에서 잡을 수 있게 했다.
+  - 단일 `ValidateSequence(...)`는 action ID만 볼 수 있으므로 scenario-level registry가 필요한 검증에는 부족하다.
+  - battle scenario 전체 검증은 catalog 검증, sequence action 검증, `BattleScenarioData.Dialogues` 기반 dialogue ID 검증을 함께 수행한다.
+  - `flow.parallel` children에 들어간 중첩 `dialogue.wait`도 재귀적으로 검증한다.
 - 1차 push 전 검증 강화를 위해 `BattleScenarioRuntimeTests`를 추가했다.
   - `AfterCurrentSkill` timing은 스킬 중 발생한 HP crossing을 즉시 실행하지 않고 flush 시점에 발화한다.
   - `Immediate` timing은 publish 시점에 바로 발화하고, 이후 flush에서 중복 발화하지 않는다.
@@ -142,6 +146,7 @@ flowchart LR
   - invalid HP, wrong subject, already-below-threshold, missing sequence, null scenario는 모두 safe no-op 또는 명확한 실패로 처리된다.
 - 최신 Unity MCP EditMode 전체 테스트는 50개 통과, 실패 0개다.
 - `ScenarioDialogueRegistryTests`와 `BattleScenarioActionContextFactoryTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 55개 통과, 실패 0개다.
+- `BattleScenarioValidationTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 59개 통과, 실패 0개다.
 - `dotnet build HubToHome.sln --no-restore`는 통과했다. 기존 `System.Net.Http`/`System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고는 남아 있다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 

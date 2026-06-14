@@ -2,6 +2,8 @@ using System.Collections.Generic;
 
 public static class ScenarioCatalogValidator
 {
+    private const string DialogueWaitActionId = "dialogue.wait";
+
     public static ScenarioValidationResult Validate(ActionCatalogAsset catalog)
     {
         var result = new ScenarioValidationResult();
@@ -22,6 +24,47 @@ public static class ScenarioCatalogValidator
         for (int i = 0; i < catalog.Entries.Count; i++)
         {
             ValidateEntry(catalog.Entries[i], i, seenIds, result);
+        }
+
+        return result;
+    }
+
+    public static ScenarioValidationResult ValidateBattleScenario(
+        BattleScenarioData scenario,
+        ActionCatalogAsset catalog)
+    {
+        ScenarioValidationResult result = Validate(catalog);
+
+        if (scenario == null)
+        {
+            result.AddError("scenario.missing", "Battle Scenario Data is missing.");
+            return result;
+        }
+
+        HashSet<string> knownIds = BuildKnownActionIds(catalog);
+        var dialogueRegistry = new ScenarioDialogueRegistry(scenario.Dialogues);
+        if (scenario.Sequences == null)
+        {
+            result.AddError(
+                "scenario.sequences.missing",
+                "Battle Scenario sequences list is missing.",
+                scenario.ScenarioId);
+            return result;
+        }
+
+        for (int i = 0; i < scenario.Sequences.Count; i++)
+        {
+            ActionSequenceAsset sequence = scenario.Sequences[i];
+            if (sequence == null)
+            {
+                result.AddError(
+                    "scenario.sequence.null",
+                    "Battle Scenario sequence is null.",
+                    scenario.ScenarioId + ".sequences[" + i + "]");
+                continue;
+            }
+
+            ValidateSequenceActions(sequence, knownIds, dialogueRegistry, result);
         }
 
         return result;
@@ -48,7 +91,7 @@ public static class ScenarioCatalogValidator
 
         for (int i = 0; i < sequence.Actions.Count; i++)
         {
-            ValidateAction(sequence.Actions[i], knownIds, result, sequence.SequenceId, i);
+            ValidateAction(sequence.Actions[i], knownIds, null, result, sequence.SequenceId, i);
         }
 
         return result;
@@ -101,6 +144,7 @@ public static class ScenarioCatalogValidator
     private static void ValidateAction(
         ScenarioActionData action,
         HashSet<string> knownIds,
+        ScenarioDialogueRegistry dialogueRegistry,
         ScenarioValidationResult result,
         string sequenceId,
         int index)
@@ -121,6 +165,10 @@ public static class ScenarioCatalogValidator
         {
             result.AddError("sequence.action.unknown", "Unknown action id: " + actionId, objectId);
         }
+        else if (actionId == DialogueWaitActionId)
+        {
+            ValidateDialogueWaitAction(action, dialogueRegistry, result, objectId);
+        }
 
         if (action.Children == null)
         {
@@ -129,7 +177,52 @@ public static class ScenarioCatalogValidator
 
         for (int i = 0; i < action.Children.Count; i++)
         {
-            ValidateAction(action.Children[i], knownIds, result, objectId, i);
+            ValidateAction(action.Children[i], knownIds, dialogueRegistry, result, objectId, i);
+        }
+    }
+
+    private static void ValidateSequenceActions(
+        ActionSequenceAsset sequence,
+        HashSet<string> knownIds,
+        ScenarioDialogueRegistry dialogueRegistry,
+        ScenarioValidationResult result)
+    {
+        if (sequence.Actions == null)
+        {
+            result.AddError("sequence.actions.missing", "Action Sequence actions list is missing.", sequence.SequenceId);
+            return;
+        }
+
+        for (int i = 0; i < sequence.Actions.Count; i++)
+        {
+            ValidateAction(sequence.Actions[i], knownIds, dialogueRegistry, result, sequence.SequenceId, i);
+        }
+    }
+
+    private static void ValidateDialogueWaitAction(
+        ScenarioActionData action,
+        ScenarioDialogueRegistry dialogueRegistry,
+        ScenarioValidationResult result,
+        string objectId)
+    {
+        string dialogueId;
+        string error;
+        if (!ScenarioActionParameterReader.TryGetString(action, "id", out dialogueId, out error))
+        {
+            result.AddError("scenario.action.parameters.invalid", error, objectId);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(dialogueId))
+        {
+            result.AddError("scenario.dialogue.id.required", "dialogue.wait requires parameter 'id'.", objectId);
+            return;
+        }
+
+        DialogueData dialogue;
+        if (dialogueRegistry != null && !dialogueRegistry.TryResolve(dialogueId, out dialogue))
+        {
+            result.AddError("scenario.dialogue.unknown", "Unknown dialogue id: " + dialogueId.Trim(), objectId);
         }
     }
 

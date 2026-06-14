@@ -14,6 +14,7 @@
 - [x] Create `ActionCatalogAsset`.
 - [x] Add EditMode tests for required action catalog fields.
 - [x] Add EditMode tests for missing/unknown action validation.
+- [x] Add battle scenario validation for `dialogue.wait` IDs against `BattleScenarioData.Dialogues`.
 - [x] Commit data model and catalog.
 
 ## Phase 2 - Action Director Core

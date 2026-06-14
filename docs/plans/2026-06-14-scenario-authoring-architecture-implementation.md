@@ -254,6 +254,10 @@ Unity.exe -batchmode -projectPath "C:\Main\Unity\HubToHome" -runTests -testPlatf
 
 Expected: EditMode tests pass after implementation.
 
+**Current validation note**
+
+`ScenarioCatalogValidator.ValidateBattleScenario(...)` now performs full battle scenario validation, including `dialogue.wait` ID checks against `BattleScenarioData.Dialogues`. Use this Interface from importer/editor validation when scenario-level registries are required.
+
 **Step 4: Commit**
 
 ```powershell

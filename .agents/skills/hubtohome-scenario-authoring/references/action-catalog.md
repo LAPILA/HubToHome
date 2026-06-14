@@ -129,4 +129,4 @@ The first runtime representation is `ActionCatalogAsset`.
 - YAML `params` maps to `ActionCatalogEntry.Parameters`.
 - YAML `examples` maps to `ActionCatalogEntry.ExampleYaml`.
 
-`ScenarioCatalogValidator` must reject missing required catalog fields, duplicate action IDs, and sequence actions whose `ActionId` is not present in the enabled catalog entries. Keep this validator available to both import/sync code and the Korean editor validation panel.
+`ScenarioCatalogValidator` must reject missing required catalog fields, duplicate action IDs, and sequence actions whose `ActionId` is not present in the enabled catalog entries. Use `ValidateBattleScenario(...)` for full battle scenarios so `dialogue.wait` IDs are also checked against `BattleScenarioData.Dialogues` / `ScenarioDialogueRegistry`. Keep this validator available to both import/sync code and the Korean editor validation panel.

@@ -104,3 +104,5 @@ Reject or warn on:
 - Dialogue action that cannot wait for completion.
 - Parallel group with actions that fight over the same target transform unless explicitly allowed.
 - YAML source newer than the synchronized ScriptableObject asset.
+
+Full battle scenario validation should run through `ScenarioCatalogValidator.ValidateBattleScenario(...)`; single sequence validation is not enough when action parameters depend on scenario-level registries such as `dialogues`.
