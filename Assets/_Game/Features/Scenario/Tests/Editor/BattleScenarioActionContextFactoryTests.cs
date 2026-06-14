@@ -78,6 +78,30 @@ public class BattleScenarioActionContextFactoryTests
     }
 
     [Test]
+    public void UsesCurrentGameModuleRunnerIdBeforeScenarioOpeningModule()
+    {
+        BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
+        scenario.OpeningModule = "turn_qte";
+        var runner = new FakeGameModuleActionRunner
+        {
+            CurrentModuleId = "aim_shooter"
+        };
+
+        try
+        {
+            ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+                scenario,
+                gameModuleActionRunner: runner);
+
+            Assert.That(context.ModuleId, Is.EqualTo("aim_shooter"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(scenario);
+        }
+    }
+
+    [Test]
     public void RegistersAudioAndScreenRunnersWhenProvided()
     {
         var audioRunner = new FakeAudioActionRunner();
@@ -113,6 +137,8 @@ public class BattleScenarioActionContextFactoryTests
 
     private sealed class FakeGameModuleActionRunner : IGameModuleActionRunner
     {
+        public string CurrentModuleId { get; set; } = string.Empty;
+
         public System.Collections.IEnumerator SwitchTo(string moduleId, ActionExecutionContext context)
         {
             yield break;

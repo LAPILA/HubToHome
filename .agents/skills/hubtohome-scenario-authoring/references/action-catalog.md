@@ -166,7 +166,7 @@ examples:
 completion: "IGameModuleActionRunner.SwitchTo routine이 완료되면 완료되고 ActionExecutionContext.ModuleId가 갱신됩니다."
 cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다."
 scope: "Battle Primary Mode 안의 Game Module 전환에 우선 사용합니다. Overworld module 전환은 runner 구현 후 확장합니다."
-runtimeBinding: "`GameModuleActionRunner`가 `GameModuleRegistry`에서 `IGameModuleRuntime`을 찾아 실행합니다. QTE, shooter, boxing 같은 concrete module 분기는 action adapter가 아니라 registry/provider 계층에 둡니다."
+runtimeBinding: "`GameModuleActionRunner`가 `GameModuleRegistry`에서 `IGameModuleRuntime`을 찾아 실행합니다. Battle에서는 battle-scoped runner를 재사용해 `CurrentModuleId`가 여러 Action Sequence 사이에서도 유지되어야 합니다. QTE, shooter, boxing 같은 concrete module 분기는 action adapter가 아니라 registry/provider 계층에 둡니다."
 ```
 
 ```yaml
@@ -185,7 +185,7 @@ examples:
 completion: "IGameModuleActionRunner.Start routine이 완료되면 완료되고 ActionExecutionContext.ModuleId가 갱신됩니다."
 cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다."
 scope: "Battle Primary Mode 안의 Game Module 시작에 우선 사용합니다. Overworld module 시작은 runner 구현 후 확장합니다."
-runtimeBinding: "`GameModuleActionRunner`가 등록된 `IGameModuleRuntime.Start`를 호출합니다. concrete module setup은 `ModuleStartActionAdapter`가 아니라 context에 주입되는 runner/registry에서 담당합니다."
+runtimeBinding: "`GameModuleActionRunner`가 등록된 `IGameModuleRuntime.Start`를 호출합니다. Battle에서는 battle-scoped runner를 재사용해 `CurrentModuleId`가 여러 Action Sequence 사이에서도 유지되어야 합니다. concrete module setup은 `ModuleStartActionAdapter`가 아니라 context에 주입되는 runner/registry에서 담당합니다."
 ```
 
 ```yaml

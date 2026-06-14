@@ -115,6 +115,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private BattleScenarioData _pendingBattleScenarioData;
     private BattleScenarioRuntime _battleScenarioRuntime;
     private BattleScenarioExecutionGate _battleScenarioExecutionGate;
+    private IGameModuleActionRunner _battleGameModuleActionRunner;
     #endregion
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
@@ -291,6 +292,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
         BattleEncounterMemoryRecorder.RecordBattleStarted(scenarioData, global, fallbackEncounterId);
         _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
+        _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(scenarioData);
         _battleScenarioExecutionGate = CreateBattleScenarioExecutionGate(_battleScenarioRuntime);
     }
 
@@ -415,7 +417,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         return BattleScenarioActionContextFactory.Create(
             scenarioData,
             skillTimelineRunner: new BattleSkillTimelineRunner(this),
-            gameModuleActionRunner: CreateBattleGameModuleActionRunner(scenarioData),
+            gameModuleActionRunner: _battleGameModuleActionRunner,
             audioActionRunner: new AudioManagerActionRunner(
                 new ScenarioAudioClipResolver(
                     scenarioData != null ? scenarioData.AudioClips : null,
@@ -425,9 +427,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
     private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(BattleScenarioData scenarioData)
     {
-        var registry = new GameModuleRegistry();
-        registry.Register(new BattleTurnQteGameModuleRuntime());
-
+        var registry = BattleGameModuleRegistryFactory.CreateDefault();
         string currentModuleId = scenarioData != null ? scenarioData.OpeningModule : BattleTurnQteGameModuleRuntime.Id;
         return new GameModuleActionRunner(registry, currentModuleId);
     }

@@ -81,6 +81,15 @@ public class GameModuleActionRunnerTests
         Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.NotStarted));
     }
 
+    [Test]
+    public void BattleDefaultRegistryContainsTurnQteCompatibilityModule()
+    {
+        GameModuleRegistry registry = BattleGameModuleRegistryFactory.CreateDefault();
+
+        Assert.That(registry.TryGet(BattleTurnQteGameModuleRuntime.Id, out IGameModuleRuntime module), Is.True);
+        Assert.That(module, Is.TypeOf<BattleTurnQteGameModuleRuntime>());
+    }
+
     private static void RunToCompletion(IEnumerator routine, int maxSteps = 100)
     {
         int steps = 0;

@@ -16,6 +16,6 @@
 
 Active feature: `001-scenario-authoring`
 
-Current phase: `plan`
+Current phase: `implement`
 
 Primary plan: `docs/plans/2026-06-14-scenario-authoring-architecture-implementation.md`

@@ -163,16 +163,20 @@ public class ScenarioPresentationCommandAdapterTests
             _log = log;
         }
 
+        public string CurrentModuleId { get; private set; } = string.Empty;
+
         public IEnumerator SwitchTo(string moduleId, ActionExecutionContext context)
         {
             yield return null;
             _log.Add("switch:" + moduleId);
+            CurrentModuleId = moduleId;
         }
 
         public IEnumerator Start(string moduleId, ActionExecutionContext context)
         {
             yield return null;
             _log.Add("start:" + moduleId);
+            CurrentModuleId = moduleId;
         }
     }
 }

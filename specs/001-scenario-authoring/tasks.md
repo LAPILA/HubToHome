@@ -61,11 +61,13 @@
 - [x] Add scenario architecture test matrix and 12 EditMode safety tests for runtime/bridge flexibility.
 - [x] Add reusable Game Module runtime seam: `IGameModuleRuntime`, `GameModuleRegistry`, `GameModuleActionRunner`, context factory injection, and EditMode coverage.
 - [x] Register a first compatibility `turn_qte` Game Module in battle scenario contexts.
+- [x] Persist the battle-scoped `IGameModuleActionRunner` across scenario trigger batches so `CurrentModuleId` survives separate Action Sequences.
+- [x] Move default battle module registration behind `BattleGameModuleRegistryFactory` so future modules are not registered directly inside `BattleManager`.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 
-- [ ] Create UI Toolkit EditorWindow.
-- [ ] Add overview/rules/sequences/catalog/validation/sync sections.
+- [x] Create UI Toolkit EditorWindow.
+- [x] Add overview/rules/sequences/catalog/validation/sync sections.
 - [ ] Add reorder/insert disabled-state prototype.
 - [ ] Add Korean labels from Action Catalog.
 - [ ] Add editor validation smoke tests where practical.

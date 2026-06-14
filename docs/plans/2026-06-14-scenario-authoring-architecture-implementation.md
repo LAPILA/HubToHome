@@ -430,6 +430,8 @@ Add starter adapters for `bgm.crossfade`, `screen.fade`, `module.switch`, `modul
 
 Current implementation note: `module.switch` / `module.start` now have a reusable Game Module runner layer. `IGameModuleRuntime` defines `Enter`, `Exit`, and `Start`; `GameModuleRegistry` registers stable module IDs; `GameModuleActionRunner` implements `IGameModuleActionRunner` and can be injected into `BattleScenarioActionContextFactory`. Concrete modules such as the current QTE flow, aim shooter, boxing, or overworld minigames should plug into this layer instead of expanding `BattleManager` branches.
 
+2026-06-15 update: Battle now creates one battle-scoped `GameModuleActionRunner` during scenario runtime initialization and reuses it for later scenario action contexts. `IGameModuleActionRunner.CurrentModuleId` is part of the interface, and `BattleScenarioActionContextFactory` prefers that current module over `BattleScenarioData.OpeningModule` when creating a new `ActionExecutionContext`. This prevents separate trigger batches from losing a prior `module.switch`. Default battle module registration moved behind `BattleGameModuleRegistryFactory`, currently registering only the compatibility `turn_qte` module.
+
 **Step 5: Commit**
 
 ```powershell

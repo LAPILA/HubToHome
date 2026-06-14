@@ -31,7 +31,7 @@ A replaceable rule/input/UI package that runs inside a Primary Mode. Examples in
 _Avoid_: assuming all Game Modules are turn-based or battle-only.
 
 **Game Module Runner**:
-The runtime seam used by Action Sequences to switch, enter, exit, and start Game Modules through stable module IDs. `GameModuleRegistry` maps IDs to `IGameModuleRuntime`, and `GameModuleActionRunner` implements `IGameModuleActionRunner` for `module.switch` / `module.start`.
+The runtime seam used by Action Sequences to switch, enter, exit, and start Game Modules through stable module IDs. `GameModuleRegistry` maps IDs to `IGameModuleRuntime`, and `GameModuleActionRunner` implements `IGameModuleActionRunner` for `module.switch` / `module.start`. In Battle, the runner instance must persist for the whole battle so `CurrentModuleId` survives across separate Action Sequence triggers.
 _Avoid_: hard-coding QTE, shooter, boxing, or minigame transition branches inside `BattleManager` or inside one action adapter.
 
 **Action Sequence**:

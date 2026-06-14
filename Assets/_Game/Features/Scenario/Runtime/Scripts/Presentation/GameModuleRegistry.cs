@@ -38,3 +38,13 @@ public sealed class GameModuleRegistry
         return string.IsNullOrWhiteSpace(moduleId) ? string.Empty : moduleId.Trim();
     }
 }
+
+public static class BattleGameModuleRegistryFactory
+{
+    public static GameModuleRegistry CreateDefault()
+    {
+        var registry = new GameModuleRegistry();
+        registry.Register(new BattleTurnQteGameModuleRuntime());
+        return registry;
+    }
+}

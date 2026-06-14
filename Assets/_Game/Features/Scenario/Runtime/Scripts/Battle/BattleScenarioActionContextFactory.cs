@@ -11,7 +11,7 @@ public static class BattleScenarioActionContextFactory
         var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
         context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
         context.PrimaryMode = scenarioData != null ? scenarioData.PrimaryMode : "battle";
-        context.ModuleId = scenarioData != null ? scenarioData.OpeningModule : string.Empty;
+        context.ModuleId = ResolveModuleId(scenarioData, gameModuleActionRunner);
 
         var dialogueRunner = new DialogueManagerRunner(dialogueManager);
         if (scenarioData != null)
@@ -41,5 +41,17 @@ public static class BattleScenarioActionContextFactory
         }
 
         return context;
+    }
+
+    private static string ResolveModuleId(
+        BattleScenarioData scenarioData,
+        IGameModuleActionRunner gameModuleActionRunner)
+    {
+        if (gameModuleActionRunner != null && !string.IsNullOrWhiteSpace(gameModuleActionRunner.CurrentModuleId))
+        {
+            return gameModuleActionRunner.CurrentModuleId.Trim();
+        }
+
+        return scenarioData != null ? scenarioData.OpeningModule : string.Empty;
     }
 }
