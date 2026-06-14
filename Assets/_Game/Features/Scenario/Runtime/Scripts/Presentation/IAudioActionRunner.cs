@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public interface IAudioActionRunner
@@ -106,5 +107,45 @@ public sealed class AudioManagerActionRunner : IAudioActionRunner
             elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
+    }
+}
+
+public sealed class ScenarioAudioClipResolver : IAudioClipResolver
+{
+    private readonly Dictionary<string, AudioClip> _clips =
+        new Dictionary<string, AudioClip>(System.StringComparer.Ordinal);
+    private readonly IAudioClipResolver _fallback;
+
+    public ScenarioAudioClipResolver(
+        IEnumerable<ScenarioAudioReferenceData> references,
+        IAudioClipResolver fallback = null)
+    {
+        _fallback = fallback;
+        if (references == null)
+        {
+            return;
+        }
+
+        foreach (ScenarioAudioReferenceData reference in references)
+        {
+            if (reference == null || reference.Clip == null || string.IsNullOrWhiteSpace(reference.AudioId))
+            {
+                continue;
+            }
+
+            _clips[reference.AudioId.Trim()] = reference.Clip;
+        }
+    }
+
+    public bool TryResolveBgmClip(string clipId, out AudioClip clip)
+    {
+        clip = null;
+        string normalizedId = string.IsNullOrWhiteSpace(clipId) ? string.Empty : clipId.Trim();
+        if (!string.IsNullOrEmpty(normalizedId) && _clips.TryGetValue(normalizedId, out clip) && clip != null)
+        {
+            return true;
+        }
+
+        return _fallback != null && _fallback.TryResolveBgmClip(clipId, out clip);
     }
 }

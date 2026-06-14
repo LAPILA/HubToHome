@@ -35,4 +35,7 @@ public sealed class BattleScenarioData : ScriptableObject
 
     [Tooltip("이 전투 시나리오에서 dialogue.wait가 참조할 Dialogue ID 매핑입니다.")]
     public List<ScenarioDialogueReferenceData> Dialogues = new List<ScenarioDialogueReferenceData>();
+
+    [Tooltip("이 전투 시나리오에서 bgm.crossfade가 참조할 Audio ID 매핑입니다.")]
+    public List<ScenarioAudioReferenceData> AudioClips = new List<ScenarioAudioReferenceData>();
 }

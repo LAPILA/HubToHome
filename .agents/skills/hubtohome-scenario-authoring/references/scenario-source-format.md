@@ -36,6 +36,12 @@ dialogues:
   - id: zev.shooter_start
     dialogueData: dlg_zev_shooter_start
 
+audioClips:
+  - id: zev_phase2
+    audioClip: bgm_zev_phase2
+  - id: zev_shooter_loop
+    audioClip: bgm_zev_shooter_loop
+
 rules:
   - id: enter_phase2
     when:
@@ -86,6 +92,8 @@ sequences:
 - Enemy IDs in `participants.enemies` and battle rule `when.enemy` map to `EnemyData.EnemyId`. Asset name and display name fallback exists only for migration.
 - Dialogue IDs used by `dialogue.wait` must appear in the scenario `dialogues` mapping or an imported dialogue catalog. The source document stores this as `ScenarioSourceDialogueDocument.DialogueId` plus `DialogueDataId`; `ScenarioSourceImporter` resolves `DialogueDataId` through `IScenarioDialogueReferenceResolver` and writes `BattleScenarioData.Dialogues`, where each `ScenarioDialogueReferenceData` maps one stable `DialogueId` to a `DialogueData` reference and preserves the source `DialogueDataId` for export.
 - In editor import/export, use `AssetDatabaseScenarioDialogueReferenceResolver` unless a narrower resolver is required by a tool. `dialogueData` may be a `DialogueData` asset name such as `dlg_zev_phase2_intro`, an `Assets/.../Name.asset` path, or the same path without `.asset`. If search folders are supplied, name lookup must stay inside those folders. Duplicate asset-name matches are invalid because the importer must not guess which conversation should play. When exporting from `DialogueData`, prefer the unique asset name; if the name is duplicated, write the `Assets/...` path instead.
+- BGM IDs used by `bgm.crossfade.clip` should appear in the scenario `audioClips` mapping when they are scenario-specific. The source document stores this as `ScenarioSourceAudioDocument.AudioId` plus `AudioClipId`; `ScenarioSourceImporter` resolves `AudioClipId` through `IScenarioAudioReferenceResolver` and writes `BattleScenarioData.AudioClips`, where each `ScenarioAudioReferenceData` maps one stable `AudioId` to an `AudioClip` reference and preserves the source `AudioClipId` for export.
+- In editor import/export, the current `AssetDatabaseScenarioDialogueReferenceResolver` also implements audio reference resolving/provider behavior. `audioClip` may be a unique AudioClip asset name, an `Assets/...` path with extension, or the same path without extension. If scenario runtime execution cannot find an ID in `BattleScenarioData.AudioClips`, `ResourcesAudioClipResolver` is used as a fallback.
 - `ScenarioSourceExporter` currently exports to `ScenarioSourceDocument`, not YAML text. The future YAML writer should serialize this document without Unity GUIDs, fileIDs, or managed-reference implementation names.
 - Keep `when` and `do` separate. `when` decides whether a beat fires; `do` names or inlines the Action Sequence.
 - Use `once` explicitly for rules that must not repeat.
@@ -105,6 +113,7 @@ Reject or warn on:
 - Unknown skill IDs used by `battle.skill.timeline`.
 - `dialogue.wait` IDs that do not resolve through `BattleScenarioData.Dialogues` / `ScenarioDialogueRegistry`.
 - `dialogues` entries whose `dialogueData` / `DialogueDataId` cannot resolve unambiguously through `IScenarioDialogueReferenceResolver`; importer error code is `scenario.dialogue.unresolved`.
+- `audioClips` entries whose `audioClip` / `AudioClipId` cannot resolve unambiguously through `IScenarioAudioReferenceResolver`; importer error code is `scenario.audio.unresolved`.
 - Missing `once` on HP threshold rules unless repeat is intentional.
 - Module switch without a matching module start/ready rule.
 - Dialogue action that cannot wait for completion.

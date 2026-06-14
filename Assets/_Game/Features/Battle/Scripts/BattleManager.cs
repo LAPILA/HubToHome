@@ -416,7 +416,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             scenarioData,
             skillTimelineRunner: new BattleSkillTimelineRunner(this),
             gameModuleActionRunner: CreateBattleGameModuleActionRunner(scenarioData),
-            audioActionRunner: new AudioManagerActionRunner(),
+            audioActionRunner: new AudioManagerActionRunner(
+                new ScenarioAudioClipResolver(
+                    scenarioData != null ? scenarioData.AudioClips : null,
+                    new ResourcesAudioClipResolver())),
             screenTransitionRunner: new ScreenTransitionRunner());
     }
 

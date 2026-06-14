@@ -1,22 +1,27 @@
 public sealed class ScenarioSourceExporter
 {
     private readonly IScenarioDialogueReferenceIdProvider _dialogueIdProvider;
+    private readonly IScenarioAudioReferenceIdProvider _audioIdProvider;
 
-    public ScenarioSourceExporter(IScenarioDialogueReferenceIdProvider dialogueIdProvider = null)
+    public ScenarioSourceExporter(
+        IScenarioDialogueReferenceIdProvider dialogueIdProvider = null,
+        IScenarioAudioReferenceIdProvider audioIdProvider = null)
     {
         _dialogueIdProvider = dialogueIdProvider ?? new MissingScenarioDialogueReferenceIdProvider();
+        _audioIdProvider = audioIdProvider ?? new MissingScenarioAudioReferenceIdProvider();
     }
 
     public ScenarioSourceExportResult Export(BattleScenarioData scenario)
     {
         var result = new ScenarioSourceExportResult();
-        result.Document = CreateDocument(scenario, _dialogueIdProvider, result.Validation);
+        result.Document = CreateDocument(scenario, _dialogueIdProvider, _audioIdProvider, result.Validation);
         return result;
     }
 
     public static ScenarioSourceDocument CreateDocument(
         BattleScenarioData scenario,
         IScenarioDialogueReferenceIdProvider dialogueIdProvider = null,
+        IScenarioAudioReferenceIdProvider audioIdProvider = null,
         ScenarioValidationResult validation = null)
     {
         if (scenario == null)
@@ -40,6 +45,7 @@ public sealed class ScenarioSourceExporter
         CopyStrings(scenario.PartyIds, document.PartyIds);
         CopyStrings(scenario.EnemyIds, document.EnemyIds);
         CopyDialogues(scenario, document, dialogueIdProvider, validation);
+        CopyAudioClips(scenario, document, audioIdProvider, validation);
         CopyRules(scenario, document);
         CopySequences(scenario, document);
 
@@ -114,6 +120,63 @@ public sealed class ScenarioSourceExporter
             {
                 DialogueId = dialogueId,
                 DialogueDataId = dialogueDataId
+            });
+        }
+    }
+
+    private static void CopyAudioClips(
+        BattleScenarioData scenario,
+        ScenarioSourceDocument document,
+        IScenarioAudioReferenceIdProvider audioIdProvider,
+        ScenarioValidationResult validation)
+    {
+        if (scenario.AudioClips == null)
+        {
+            return;
+        }
+
+        IScenarioAudioReferenceIdProvider provider =
+            audioIdProvider ?? new MissingScenarioAudioReferenceIdProvider();
+
+        for (int i = 0; i < scenario.AudioClips.Count; i++)
+        {
+            ScenarioAudioReferenceData reference = scenario.AudioClips[i];
+            if (reference == null)
+            {
+                continue;
+            }
+
+            string audioId = NormalizeId(reference.AudioId);
+            if (string.IsNullOrEmpty(audioId))
+            {
+                validation?.AddError(
+                    "scenario.audio.id.required",
+                    "Scenario audio mapping requires an audio id.",
+                    string.Empty);
+                continue;
+            }
+
+            string audioClipId = NormalizeId(reference.AudioClipId);
+            if (string.IsNullOrEmpty(audioClipId) &&
+                reference.Clip != null &&
+                provider.TryGetAudioClipId(reference.Clip, out string resolvedAudioClipId))
+            {
+                audioClipId = NormalizeId(resolvedAudioClipId);
+            }
+
+            if (string.IsNullOrEmpty(audioClipId))
+            {
+                validation?.AddError(
+                    "scenario.audio.reference.required",
+                    "Scenario audio mapping requires an AudioClip id.",
+                    audioId);
+                continue;
+            }
+
+            document.AudioClips.Add(new ScenarioSourceAudioDocument
+            {
+                AudioId = audioId,
+                AudioClipId = audioClipId
             });
         }
     }

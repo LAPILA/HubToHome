@@ -5,13 +5,16 @@ public sealed class ScenarioSourceImporter
 {
     private readonly IScenarioSourceParser _parser;
     private readonly IScenarioDialogueReferenceResolver _dialogueResolver;
+    private readonly IScenarioAudioReferenceResolver _audioResolver;
 
     public ScenarioSourceImporter(
         IScenarioSourceParser parser,
-        IScenarioDialogueReferenceResolver dialogueResolver = null)
+        IScenarioDialogueReferenceResolver dialogueResolver = null,
+        IScenarioAudioReferenceResolver audioResolver = null)
     {
         _parser = parser ?? new MissingYamlScenarioSourceParser();
         _dialogueResolver = dialogueResolver ?? new MissingScenarioDialogueReferenceResolver();
+        _audioResolver = audioResolver ?? new MissingScenarioAudioReferenceResolver();
     }
 
     public ScenarioSourceSyncResult Import(
@@ -34,6 +37,7 @@ public sealed class ScenarioSourceImporter
             sourcePath,
             importedAtUtc,
             _dialogueResolver,
+            _audioResolver,
             result.Validation);
         return result;
     }
@@ -44,6 +48,7 @@ public sealed class ScenarioSourceImporter
         string sourcePath,
         DateTime? importedAtUtc = null,
         IScenarioDialogueReferenceResolver dialogueResolver = null,
+        IScenarioAudioReferenceResolver audioResolver = null,
         ScenarioValidationResult validation = null)
     {
         if (document == null)
@@ -63,6 +68,7 @@ public sealed class ScenarioSourceImporter
         CopyStrings(document.PartyIds, scenario.PartyIds);
         CopyStrings(document.EnemyIds, scenario.EnemyIds);
         CopyDialogues(document, scenario, dialogueResolver, validation);
+        CopyAudioClips(document, scenario, audioResolver, validation);
         CopyRules(document, scenario);
         CopySequences(document, scenario, metadata);
 
@@ -189,6 +195,65 @@ public sealed class ScenarioSourceImporter
                 DialogueId = dialogueId,
                 DialogueDataId = dialogueDataId,
                 Dialogue = dialogue
+            });
+        }
+    }
+
+    private static void CopyAudioClips(
+        ScenarioSourceDocument document,
+        BattleScenarioData scenario,
+        IScenarioAudioReferenceResolver audioResolver,
+        ScenarioValidationResult validation)
+    {
+        scenario.AudioClips.Clear();
+        if (document.AudioClips == null)
+        {
+            return;
+        }
+
+        IScenarioAudioReferenceResolver resolver = audioResolver ?? new MissingScenarioAudioReferenceResolver();
+        for (int i = 0; i < document.AudioClips.Count; i++)
+        {
+            ScenarioSourceAudioDocument sourceAudio = document.AudioClips[i];
+            if (sourceAudio == null)
+            {
+                continue;
+            }
+
+            string audioId = NormalizeId(sourceAudio.AudioId);
+            string audioClipId = NormalizeId(sourceAudio.AudioClipId);
+            if (string.IsNullOrEmpty(audioId))
+            {
+                validation?.AddError(
+                    "scenario.audio.id.required",
+                    "Scenario audio mapping requires an audio id.",
+                    audioClipId);
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(audioClipId))
+            {
+                validation?.AddError(
+                    "scenario.audio.reference.required",
+                    "Scenario audio mapping requires an AudioClip id.",
+                    audioId);
+                continue;
+            }
+
+            if (!resolver.TryResolveAudioClip(audioClipId, out AudioClip clip) || clip == null)
+            {
+                validation?.AddError(
+                    "scenario.audio.unresolved",
+                    $"AudioClip id '{audioClipId}' could not be resolved for audio '{audioId}'.",
+                    audioId);
+                continue;
+            }
+
+            scenario.AudioClips.Add(new ScenarioAudioReferenceData
+            {
+                AudioId = audioId,
+                AudioClipId = audioClipId,
+                Clip = clip
             });
         }
     }

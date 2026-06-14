@@ -10,6 +10,7 @@ public sealed class ScenarioSourceDocument
     public List<string> PartyIds = new List<string>();
     public List<string> EnemyIds = new List<string>();
     public List<ScenarioSourceDialogueDocument> Dialogues = new List<ScenarioSourceDialogueDocument>();
+    public List<ScenarioSourceAudioDocument> AudioClips = new List<ScenarioSourceAudioDocument>();
     public List<ScenarioSourceRuleDocument> Rules = new List<ScenarioSourceRuleDocument>();
     public List<ScenarioSourceSequenceDocument> Sequences = new List<ScenarioSourceSequenceDocument>();
 }
@@ -18,6 +19,12 @@ public sealed class ScenarioSourceDialogueDocument
 {
     public string DialogueId = string.Empty;
     public string DialogueDataId = string.Empty;
+}
+
+public sealed class ScenarioSourceAudioDocument
+{
+    public string AudioId = string.Empty;
+    public string AudioClipId = string.Empty;
 }
 
 public sealed class ScenarioSourceRuleDocument

@@ -71,6 +71,35 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void ImporterCreatesAudioReferencesThroughResolver()
+    {
+        const string sourceText = "id: test_battle\n";
+        const string sourcePath = "Assets/_Game/Features/Scenario/Source/test.scenario.yaml";
+        AudioClip clip = AudioClip.Create("zev_phase2_clip", 1, 1, 44100, false);
+        ScenarioSourceDocument document = MakeDocument();
+        document.AudioClips.Add(new ScenarioSourceAudioDocument
+        {
+            AudioId = "zev_phase2",
+            AudioClipId = "audio/zev_phase2"
+        });
+
+        var importer = new ScenarioSourceImporter(
+            new FakeScenarioSourceParser(document),
+            audioResolver: new FakeAudioReferenceResolver("audio/zev_phase2", clip));
+
+        ScenarioSourceSyncResult result = importer.Import(sourceText, sourcePath);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Scenario.AudioClips.Count, Is.EqualTo(1));
+        Assert.That(result.Scenario.AudioClips[0].AudioId, Is.EqualTo("zev_phase2"));
+        Assert.That(result.Scenario.AudioClips[0].AudioClipId, Is.EqualTo("audio/zev_phase2"));
+        Assert.That(result.Scenario.AudioClips[0].Clip, Is.SameAs(clip));
+
+        DestroyScenario(result.Scenario);
+        UnityEngine.Object.DestroyImmediate(clip);
+    }
+
+    [Test]
     public void ExporterPreservesDialogueDataIdsForScenarioSource()
     {
         BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
@@ -89,6 +118,29 @@ public class ScenarioSourceSyncTests
         Assert.That(result.Document.Dialogues.Count, Is.EqualTo(1));
         Assert.That(result.Document.Dialogues[0].DialogueId, Is.EqualTo("zev.phase2"));
         Assert.That(result.Document.Dialogues[0].DialogueDataId, Is.EqualTo("dlg_zev_phase2"));
+
+        DestroyScenario(scenario);
+    }
+
+    [Test]
+    public void ExporterPreservesAudioClipIdsForScenarioSource()
+    {
+        BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
+            MakeDocument(),
+            "id: test_battle\n",
+            "Assets/_Game/Features/Scenario/Source/test.scenario.yaml");
+        scenario.AudioClips.Add(new ScenarioAudioReferenceData
+        {
+            AudioId = "zev_phase2",
+            AudioClipId = "audio/zev_phase2"
+        });
+
+        ScenarioSourceExportResult result = new ScenarioSourceExporter().Export(scenario);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Document.AudioClips.Count, Is.EqualTo(1));
+        Assert.That(result.Document.AudioClips[0].AudioId, Is.EqualTo("zev_phase2"));
+        Assert.That(result.Document.AudioClips[0].AudioClipId, Is.EqualTo("audio/zev_phase2"));
 
         DestroyScenario(scenario);
     }
@@ -135,6 +187,26 @@ public class ScenarioSourceSyncTests
 
         Assert.That(result.Success, Is.False);
         Assert.That(result.Validation.Messages.Exists(message => message.Code == "scenario.dialogue.unresolved"), Is.True);
+        DestroyScenario(result.Scenario);
+    }
+
+    [Test]
+    public void ImporterReportsUnresolvedAudioReferences()
+    {
+        ScenarioSourceDocument document = MakeDocument();
+        document.AudioClips.Add(new ScenarioSourceAudioDocument
+        {
+            AudioId = "zev_phase2",
+            AudioClipId = "missing_audio"
+        });
+        var importer = new ScenarioSourceImporter(
+            new FakeScenarioSourceParser(document),
+            audioResolver: new FakeAudioReferenceResolver("other_audio", null));
+
+        ScenarioSourceSyncResult result = importer.Import("id: test_battle\n", "Assets/test.scenario.yaml");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Validation.Messages.Exists(message => message.Code == "scenario.audio.unresolved"), Is.True);
         DestroyScenario(result.Scenario);
     }
 
@@ -263,6 +335,30 @@ public class ScenarioSourceSyncTests
             }
 
             dialogueDataId = string.Empty;
+            return false;
+        }
+    }
+
+    private sealed class FakeAudioReferenceResolver : IScenarioAudioReferenceResolver
+    {
+        private readonly string _expectedAudioClipId;
+        private readonly AudioClip _clip;
+
+        public FakeAudioReferenceResolver(string expectedAudioClipId, AudioClip clip)
+        {
+            _expectedAudioClipId = expectedAudioClipId;
+            _clip = clip;
+        }
+
+        public bool TryResolveAudioClip(string audioClipId, out AudioClip clip)
+        {
+            if (audioClipId == _expectedAudioClipId && _clip != null)
+            {
+                clip = _clip;
+                return true;
+            }
+
+            clip = null;
             return false;
         }
     }

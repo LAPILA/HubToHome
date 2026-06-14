@@ -114,7 +114,7 @@ flowchart LR
   - `BattleScenarioActionBridge`는 trigger의 `SequenceId`를 runtime sequence로 해석하고, 각 trigger마다 child `ActionExecutionHandle`을 만들어 순차 실행한다.
   - `BattleScenarioExecutionGate`는 ready trigger queue, deferred flush checkpoint, trigger emission, bridge 호출, 실행 결과 handle 보관을 맡는다.
   - `BattleManager`는 scenario event를 gate에 publish하고 flush checkpoint에서 gate를 기다릴 뿐이며, rule ID를 해석하거나 BGM/대사/페이드/모듈 전환 정책을 직접 갖지 않는다.
-  - 현재 기본 registry는 `flow.wait`, `dialogue.wait`, `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, `battle.skill.timeline`을 등록한다. 이후 추가 구현으로 battle context에는 dialogue/audio/screen/module/skill runner service가 주입된다. 단 BGM clip ID는 아직 `Resources` 기반 해석이다.
+  - 현재 기본 registry는 `flow.wait`, `dialogue.wait`, `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, `battle.skill.timeline`을 등록한다. 이후 추가 구현으로 battle context에는 dialogue/audio/screen/module/skill runner service가 주입된다. BGM clip ID는 `BattleScenarioData.AudioClips` 매핑 우선, `Resources` fallback 순서로 해석된다.
 - `dialogue.wait`의 runtime content binding 경로를 추가했다.
   - `BattleScenarioData.Dialogues`는 전투 시나리오별 `DialogueId -> DialogueData` 참조 목록이다.
   - `ScenarioDialogueRegistry`는 이 목록을 검증/정리한 뒤 `DialogueManagerRunner`에 등록한다. 빈 ID, null reference는 무시하고, 중복 ID는 뒤쪽 유효 참조가 이긴다.
@@ -129,7 +129,7 @@ flowchart LR
 - Audio/Screen/Module command action adapter의 첫 seam을 추가했다.
   - `bgm.crossfade`는 `IAudioActionRunner`, `screen.fade`는 `IScreenTransitionRunner`, `module.switch` / `module.start`는 `IGameModuleActionRunner`를 통해 실행된다.
   - 이 adapter들은 실제 싱글톤이나 씬 오브젝트를 직접 찾지 않는다. Battle context에서는 현재 `AudioManagerActionRunner`, `ScreenTransitionRunner`, `GameModuleActionRunner`가 concrete runner로 주입된다.
-  - `AudioManagerActionRunner`는 현 단계에서 `ResourcesAudioClipResolver`를 사용하므로, BGM clip ID는 `Resources.Load<AudioClip>`로 해석 가능한 경로/ID여야 한다. 더 좋은 장기 구조는 Scenario Source에 audio reference mapping을 추가해 resolver를 교체하는 것이다.
+  - `AudioManagerActionRunner`는 `ScenarioAudioClipResolver`를 먼저 사용하고, 매핑이 없을 때 `ResourcesAudioClipResolver`로 후퇴한다. Scenario Source에는 `audioClips` 매핑을 추가해 stable audio ID와 실제 AudioClip 참조 ID를 분리했다.
   - `module.switch`와 `module.start`는 완료 후 `ActionExecutionContext.ModuleId`를 갱신한다.
   - 기본 battle scenario `ActionAdapterRegistry`에는 네 command adapter를 등록했지만, 실제 battle content에서 사용하려면 runner service 주입이 필요하다.
 - 기존 SkillData timeline compatibility adapter의 첫 seam을 추가했다.
@@ -226,6 +226,6 @@ flowchart LR
 2. Scenario Source YAML text writer와 editor UI에서 `dialogues` 매핑을 source로 저장하는 경로 구현
 3. 현재 QTE 전투의 턴/행동 선택/적 행동 상태를 단계적으로 `IGameModuleRuntime` 뒤로 옮기는 `turn_qte` concrete module 심화
 4. Battle Scenario Execution Gate의 module-transition 중 턴 진행 차단을 실제 sample scenario로 검증
-5. Audio/Screen concrete presentation runner 설계
+5. Scenario Source YAML text writer와 editor UI에서 `audioClips` 매핑을 저장/편집하는 경로 구현
 6. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
 7. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
