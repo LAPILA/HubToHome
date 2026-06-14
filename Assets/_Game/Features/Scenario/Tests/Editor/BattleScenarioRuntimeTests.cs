@@ -59,6 +59,115 @@ public class BattleScenarioRuntimeTests
         }
     }
 
+    [Test]
+    public void InvalidMaxHpDoesNotPublishTriggers()
+    {
+        BattleScenarioData scenario = MakeScenario(BattleRuleTiming.Immediate);
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            List<BattleScenarioTrigger> triggers = runtime.PublishEnemyHpCrossedBelow(
+                "zev",
+                51,
+                49,
+                0,
+                BattleRuleTiming.Immediate);
+
+            Assert.That(triggers, Is.Empty);
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void WrongSubjectDoesNotPublishTriggers()
+    {
+        BattleScenarioData scenario = MakeScenario(BattleRuleTiming.Immediate);
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            List<BattleScenarioTrigger> triggers = runtime.PublishEnemyHpCrossedBelow(
+                "other_enemy",
+                51,
+                49,
+                100,
+                BattleRuleTiming.Immediate);
+
+            Assert.That(triggers, Is.Empty);
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void AlreadyBelowThresholdDoesNotPublishTriggers()
+    {
+        BattleScenarioData scenario = MakeScenario(BattleRuleTiming.Immediate);
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            List<BattleScenarioTrigger> triggers = runtime.PublishEnemyHpCrossedBelow(
+                "zev",
+                49,
+                40,
+                100,
+                BattleRuleTiming.Immediate);
+
+            Assert.That(triggers, Is.Empty);
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void TryResolveSequenceReturnsFalseWhenMissing()
+    {
+        BattleScenarioData scenario = MakeScenario(BattleRuleTiming.Immediate);
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            bool found = runtime.TryResolveSequence("missing_sequence", out ActionSequenceAsset sequence);
+
+            Assert.That(found, Is.False);
+            Assert.That(sequence, Is.Null);
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void NullScenarioIsSafeNoOp()
+    {
+        var runtime = new BattleScenarioRuntime(null);
+
+        List<BattleScenarioTrigger> immediate = runtime.PublishEnemyHpCrossedBelow(
+            "zev",
+            51,
+            49,
+            100,
+            BattleRuleTiming.Immediate);
+        List<BattleScenarioTrigger> flushed = runtime.Flush(BattleRuleTiming.Immediate);
+        bool found = runtime.TryResolveSequence("zev_phase2", out ActionSequenceAsset sequence);
+
+        Assert.That(runtime.HasScenario, Is.False);
+        Assert.That(immediate, Is.Empty);
+        Assert.That(flushed, Is.Empty);
+        Assert.That(found, Is.False);
+        Assert.That(sequence, Is.Null);
+    }
+
     private static BattleScenarioData MakeScenario(BattleRuleTiming timing)
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();

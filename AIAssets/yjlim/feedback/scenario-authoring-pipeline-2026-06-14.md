@@ -129,6 +129,13 @@ flowchart LR
 - 테스트 cleanup 보강 후 `BattleScenarioRuntimeTests`만 다시 실행했고 2개 통과, 실패 0개였다.
 - `BattleScenarioActionBridgeTests`는 RED에서 타입 부재 컴파일 오류를 확인한 뒤 구현했고, 최종 2개 통과, 실패 0개였다.
 - 최종 Unity MCP EditMode 전체 테스트는 38개 통과, 실패 0개였다.
+- 이후 아키텍처 유연성 검증을 위해 `docs/plans/2026-06-14-scenario-architecture-test-matrix.md`를 추가하고 실제 EditMode 테스트 12개를 보강했다.
+  - trigger 목록이 비어 있거나 null entry가 섞여도 안전하다.
+  - 여러 trigger는 순서대로 실행된다.
+  - child action 실패와 parent cancellation이 명확히 전파된다.
+  - child context에는 scenario / Primary Mode / Game Module 정보가 유지된다.
+  - invalid HP, wrong subject, already-below-threshold, missing sequence, null scenario는 모두 safe no-op 또는 명확한 실패로 처리된다.
+- 최신 Unity MCP EditMode 전체 테스트는 50개 통과, 실패 0개다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보

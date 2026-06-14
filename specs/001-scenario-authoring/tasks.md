@@ -55,6 +55,7 @@
 - [x] Commit event router.
 - [x] Commit BattleManager hook.
 - [x] Add ActionDirector bridge for `BattleScenarioTrigger` sequence execution.
+- [x] Add scenario architecture test matrix and 12 EditMode safety tests for runtime/bridge flexibility.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 
