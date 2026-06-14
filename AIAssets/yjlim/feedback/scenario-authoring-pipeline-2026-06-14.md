@@ -121,7 +121,10 @@ flowchart LR
   - `BattleScenarioActionContextFactory`는 scenario ID, Primary Mode, Game Module, `IDialogueRunner` service를 조립한다. 따라서 `BattleManager`는 더 이상 dialogue runner 등록 규칙을 직접 알 필요가 없다.
   - Scenario Source importer 1차가 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화한다. Source의 `DialogueDataId`는 `IScenarioDialogueReferenceResolver`를 통해 실제 `DialogueData`로 해석된다.
   - `AssetDatabaseScenarioDialogueReferenceResolver`가 에디터 기본 resolver다. YAML의 `dialogueData`는 `DialogueData` 에셋 이름 또는 `Assets/...` 경로로 쓸 수 있고, 중복 이름은 잘못된 대화 재생을 막기 위해 unresolved로 실패한다.
-  - `ScenarioDialogueReferenceData.DialogueDataId`가 원본 `dialogueData` 값을 보존하고, `ScenarioSourceExporter`가 `BattleScenarioData`를 다시 `ScenarioSourceDocument`로 export한다. 아직 YAML text writer는 아니며, 다음 writer/editor 작업의 입력 문서다.
+  - `ScenarioDialogueReferenceData.DialogueDataId`가 원본 `dialogueData` 값을 보존하고, `ScenarioSourceExporter`가 `BattleScenarioData`를 다시 `ScenarioSourceDocument`로 export한다.
+  - `ScenarioSourceYamlWriter`가 이 document를 deterministic `.scenario.yaml` text로 직렬화한다. 현재 범위는 header, participants, `dialogues`, `audioClips`, `rules`, `sequences`, `flow.parallel`, action `ParametersJson`이다.
+  - `ScenarioSourceYamlExportCommand`가 editor UI에서 호출할 text/file export 경로를 제공한다. 이 command는 `ScenarioSourceExporter -> ScenarioSourceYamlWriter`를 재사용하고, 런타임 asset metadata는 직접 mutate하지 않는다.
+  - 아직 YamlDotNet parser round-trip, Korean Scenario Authoring Editor save/export UI는 연결하지 않았다. 에디터 저장 경로를 만들 때는 별도 writer/file save path를 만들지 말고 `ScenarioSourceYamlExportCommand`를 호출해야 한다.
 - `ScenarioCatalogValidator.ValidateBattleScenario(...)`를 추가해 `dialogue.wait` ID 검증을 저작 단계에서 잡을 수 있게 했다.
   - 단일 `ValidateSequence(...)`는 action ID만 볼 수 있으므로 scenario-level registry가 필요한 검증에는 부족하다.
   - battle scenario 전체 검증은 catalog 검증, sequence action 검증, `BattleScenarioData.Dialogues` 기반 dialogue ID 검증을 함께 수행한다.
@@ -190,6 +193,9 @@ flowchart LR
 - `BattleEncounterMemoryRecorderTests` 4개를 추가했고, meet count 증가, saved memory seed, victory defeated 기록, fallback encounter ID 기록이 통과했다.
 - 최신 Unity MCP EditMode 전체 테스트는 82개 통과, 실패 0개다.
 - `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 다시 통과했다. 남은 경고는 기존 계열 5개다.
+- `ScenarioSourceSyncTests`에 YAML writer 2개 테스트를 추가했다. readable `.scenario.yaml` text export, `dialogues`, `audioClips`, `rules`, `flow.parallel`, primitive array, quoted string parameter, invalid action JSON validation을 검증한다.
+- `ScenarioSourceSyncTests`에 YAML export command 2개 테스트를 추가했다. target path 파일 쓰기와 missing target path validation을 검증한다.
+- 최신 검증에서 `dotnet build HubToHome.sln --no-restore`, `git diff --check`, C# LSP diagnostics는 통과했다. Unity MCP targeted EditMode 테스트는 `ScenarioSourceSyncTests` job 시작 후 결과 조회 시점에 `No Unity Editor instances found`로 브리지가 끊겨 완료 결과를 회수하지 못했다.
 - `ScenarioSourceSyncTests` 2개를 보강했고, source `dialogues` import와 unresolved `DialogueDataId` validation이 통과했다.
 - 최신 Unity MCP EditMode 전체 테스트는 84개 통과, 실패 0개다.
 - `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 남은 것은 기존 계열 경고 5개와 MCP disposed 로그 1개다.
@@ -223,9 +229,9 @@ flowchart LR
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. Scenario Source YAML text writer와 editor UI에서 `dialogues` 매핑을 source로 저장하는 경로 구현
+2. Scenario Source YAML export command를 Korean Scenario Authoring Editor save/export 버튼에 연결하고 `dialogues` 매핑을 source로 저장하는 경로 구현
 3. 현재 QTE 전투의 턴/행동 선택/적 행동 상태를 단계적으로 `IGameModuleRuntime` 뒤로 옮기는 `turn_qte` concrete module 심화
 4. Battle Scenario Execution Gate의 module-transition 중 턴 진행 차단을 실제 sample scenario로 검증
-5. Scenario Source YAML text writer와 editor UI에서 `audioClips` 매핑을 저장/편집하는 경로 구현
+5. Scenario Source YAML export command를 Korean Scenario Authoring Editor save/export 버튼에 연결하고 `audioClips` 매핑을 저장/편집하는 경로 구현
 6. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
 7. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

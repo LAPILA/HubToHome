@@ -211,6 +211,113 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void YamlWriterSerializesReadableScenarioSource()
+    {
+        ScenarioSourceDocument document = MakeDocument();
+        document.Dialogues.Add(new ScenarioSourceDialogueDocument
+        {
+            DialogueId = "zev.phase2",
+            DialogueDataId = "dlg_zev_phase2"
+        });
+        document.AudioClips.Add(new ScenarioSourceAudioDocument
+        {
+            AudioId = "zev_phase2",
+            AudioClipId = "bgm_zev_phase2"
+        });
+        document.Sequences[0].Actions.Add(new ScenarioActionData
+        {
+            ActionId = "bgm.crossfade",
+            ParametersJson = "{\"clip\":\"zev_phase2\",\"duration\":0.8,\"label\":\"phase two\"}"
+        });
+        var parallel = new ScenarioActionData { ActionId = ActionDirector.ParallelActionId };
+        parallel.Children.Add(new ScenarioActionData
+        {
+            ActionId = "battle.skill.timeline",
+            ParametersJson = "{\"skill\":\"zev_crosscut\",\"actor\":\"zev\",\"targets\":[\"player\",\"ally\"]}"
+        });
+        document.Sequences[0].Actions.Add(parallel);
+
+        ScenarioSourceYamlWriteResult result = new ScenarioSourceYamlWriter().Write(document);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Text, Does.Contain("title: \"테스트 전투\""));
+        Assert.That(result.Text, Does.Contain("party: [player]"));
+        Assert.That(result.Text, Does.Contain("dialogueData: dlg_zev_phase2"));
+        Assert.That(result.Text, Does.Contain("audioClip: bgm_zev_phase2"));
+        Assert.That(result.Text, Does.Contain("event: enemy.hp_crossed_below"));
+        Assert.That(result.Text, Does.Contain("timing: after_current_skill"));
+        Assert.That(result.Text, Does.Contain("- bgm.crossfade:"));
+        Assert.That(result.Text, Does.Contain("duration: 0.8"));
+        Assert.That(result.Text, Does.Contain("label: \"phase two\""));
+        Assert.That(result.Text, Does.Not.Contain("label: \"\\\"phase two\\\"\""));
+        Assert.That(result.Text, Does.Contain("- parallel:"));
+        Assert.That(result.Text, Does.Contain("targets: [player, ally]"));
+    }
+
+    [Test]
+    public void YamlWriterReportsInvalidActionParameterJson()
+    {
+        ScenarioSourceDocument document = MakeDocument();
+        document.Sequences[0].Actions.Add(new ScenarioActionData
+        {
+            ActionId = "flow.wait",
+            ParametersJson = "{not json"
+        });
+
+        ScenarioSourceYamlWriteResult result = new ScenarioSourceYamlWriter().Write(document);
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Validation.Messages.Exists(
+            message => message.Code == "scenario.yaml.action.parameters.invalid"), Is.True);
+    }
+
+    [Test]
+    public void YamlExportCommandWritesScenarioToTargetPath()
+    {
+        BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
+            MakeDocument(),
+            "id: test_battle\n",
+            "Assets/_Game/Features/Scenario/Source/test.scenario.yaml");
+        var fileWriter = new FakeScenarioSourceTextFileWriter();
+        var command = new ScenarioSourceYamlExportCommand(
+            new ScenarioSourceExporter(),
+            new ScenarioSourceYamlWriter(),
+            fileWriter);
+
+        ScenarioSourceYamlExportResult result = command.ExportToFile(
+            scenario,
+            "Assets/_Game/Features/Scenario/Source/exported.scenario.yaml");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(fileWriter.Path, Is.EqualTo("Assets/_Game/Features/Scenario/Source/exported.scenario.yaml"));
+        Assert.That(fileWriter.Text, Does.Contain("id: test_battle"));
+        Assert.That(fileWriter.Text, Does.Contain("sequences:"));
+        DestroyScenario(scenario);
+    }
+
+    [Test]
+    public void YamlExportCommandRequiresTargetPathBeforeWriting()
+    {
+        BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
+            MakeDocument(),
+            "id: test_battle\n",
+            string.Empty);
+        var fileWriter = new FakeScenarioSourceTextFileWriter();
+        var command = new ScenarioSourceYamlExportCommand(
+            new ScenarioSourceExporter(),
+            new ScenarioSourceYamlWriter(),
+            fileWriter);
+
+        ScenarioSourceYamlExportResult result = command.ExportToFile(scenario, " ");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(fileWriter.WriteCount, Is.EqualTo(0));
+        Assert.That(result.Validation.Messages.Exists(
+            message => message.Code == "scenario.yaml.export.path.required"), Is.True);
+        DestroyScenario(scenario);
+    }
+
+    [Test]
     public void SourceHashDetectsStaleRuntimeAsset()
     {
         var metadata = new ScenarioSourceMetadata
@@ -360,6 +467,20 @@ public class ScenarioSourceSyncTests
 
             clip = null;
             return false;
+        }
+    }
+
+    private sealed class FakeScenarioSourceTextFileWriter : IScenarioSourceTextFileWriter
+    {
+        public string Path = string.Empty;
+        public string Text = string.Empty;
+        public int WriteCount;
+
+        public void WriteAllText(string path, string text)
+        {
+            WriteCount++;
+            Path = path;
+            Text = text;
         }
     }
 }
