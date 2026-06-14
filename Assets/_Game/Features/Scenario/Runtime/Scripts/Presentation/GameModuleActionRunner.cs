@@ -137,3 +137,32 @@ public sealed class GameModuleActionRunner : IGameModuleActionRunner
         return string.IsNullOrWhiteSpace(moduleId) ? string.Empty : moduleId.Trim();
     }
 }
+
+public sealed class BattleTurnQteGameModuleRuntime : IGameModuleRuntime
+{
+    public const string Id = "turn_qte";
+
+    public string ModuleId
+    {
+        get { return Id; }
+    }
+
+    public IEnumerator Enter(ActionExecutionContext context)
+    {
+        BattleUIController.Instance?.NormalizeForCurrentResolution();
+        yield break;
+    }
+
+    public IEnumerator Exit(ActionExecutionContext context)
+    {
+        QTEManager.Instance?.ForceStop();
+        BattleUIController.Instance?.HideSkillQTE();
+        yield break;
+    }
+
+    public IEnumerator Start(ActionExecutionContext context)
+    {
+        BattleUIController.Instance?.NormalizeForCurrentResolution();
+        yield break;
+    }
+}

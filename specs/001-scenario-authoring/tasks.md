@@ -60,6 +60,7 @@
 - [x] Add `BattleScenarioExecutionGate` so BattleManager queues/drains scenario triggers through one battle-flow gate instead of starting trigger coroutines directly.
 - [x] Add scenario architecture test matrix and 12 EditMode safety tests for runtime/bridge flexibility.
 - [x] Add reusable Game Module runtime seam: `IGameModuleRuntime`, `GameModuleRegistry`, `GameModuleActionRunner`, context factory injection, and EditMode coverage.
+- [x] Register a first compatibility `turn_qte` Game Module in battle scenario contexts.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

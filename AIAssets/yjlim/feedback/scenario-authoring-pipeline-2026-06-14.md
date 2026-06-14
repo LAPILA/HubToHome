@@ -210,6 +210,11 @@ flowchart LR
   - 이 단계는 QTE/슈팅/권투 모듈 자체 구현이 아니라, 해당 모듈들을 `BattleManager` 분기 없이 꽂기 위한 runtime contract 정리다.
   - `dotnet build HubToHome.sln --no-restore`, `git diff --check`, C# LSP diagnostics는 통과했다.
   - Unity MCP `refresh_unity if_dirty`로 새 스크립트의 `.meta` 생성은 확인했다. targeted EditMode 테스트 잡은 시작됐지만, 결과 조회 시 MCP 브리지가 `No Unity Editor instances found` 상태로 끊겨 최종 테스트 결과를 회수하지 못했다.
+- `turn_qte` compatibility module을 battle context에 연결했다.
+  - `BattleManager`가 `BattleScenarioActionContextFactory`를 호출할 때 `GameModuleActionRunner`를 함께 주입한다.
+  - 현재 registry에는 `BattleTurnQteGameModuleRuntime` 하나가 `turn_qte` ID로 등록된다.
+  - 이 module은 QTE/skill QTE UI 정리와 battle UI 정규화만 담당한다. 아직 턴 계산, 플레이어 행동 선택, 적 행동, Battle Session State를 `BattleManager` 밖으로 꺼낸 것은 아니다.
+  - 추가 변경 후 `dotnet build HubToHome.sln --no-restore`, `git diff --check`, C# LSP diagnostics가 통과했다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보

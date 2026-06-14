@@ -51,6 +51,7 @@
 - Dialogue runtime service and legacy skill timeline runner setup flow through `BattleScenarioActionContextFactory`.
 - Game Module runtime setup flows through `BattleScenarioActionContextFactory` as an optional `IGameModuleActionRunner`. The reusable implementation is `GameModuleActionRunner`, backed by `GameModuleRegistry` and `IGameModuleRuntime` entries.
 - Do not put QTE/shooter/boxing branch logic into `ModuleSwitchActionAdapter`; the adapter only calls the runner seam.
+- Current implementation registers the compatibility `BattleTurnQteGameModuleRuntime` as `turn_qte` in battle contexts. It only performs safe QTE/UI cleanup and UI normalization; future work must extract fuller QTE, shooter, and boxing rule/input/UI modules behind `IGameModuleRuntime`.
 
 ## Task 4: Verification
 

@@ -415,7 +415,17 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         return BattleScenarioActionContextFactory.Create(
             scenarioData,
             null,
-            new BattleSkillTimelineRunner(this));
+            new BattleSkillTimelineRunner(this),
+            CreateBattleGameModuleActionRunner(scenarioData));
+    }
+
+    private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(BattleScenarioData scenarioData)
+    {
+        var registry = new GameModuleRegistry();
+        registry.Register(new BattleTurnQteGameModuleRuntime());
+
+        string currentModuleId = scenarioData != null ? scenarioData.OpeningModule : BattleTurnQteGameModuleRuntime.Id;
+        return new GameModuleActionRunner(registry, currentModuleId);
     }
 
     #region [ Initialization ]

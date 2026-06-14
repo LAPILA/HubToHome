@@ -60,6 +60,27 @@ public class GameModuleActionRunnerTests
         Assert.That(registry.Register(new LoggingGameModule("turn_qte", new List<string>())), Is.False);
     }
 
+    [Test]
+    public void BattleTurnQteModuleUsesStableModuleId()
+    {
+        var module = new BattleTurnQteGameModuleRuntime();
+
+        Assert.That(module.ModuleId, Is.EqualTo("turn_qte"));
+    }
+
+    [Test]
+    public void BattleTurnQteModuleIsSafeWhenBattleSingletonsAreMissing()
+    {
+        var module = new BattleTurnQteGameModuleRuntime();
+        var context = new ActionExecutionContext();
+
+        RunToCompletion(module.Enter(context));
+        RunToCompletion(module.Exit(context));
+        RunToCompletion(module.Start(context));
+
+        Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.NotStarted));
+    }
+
     private static void RunToCompletion(IEnumerator routine, int maxSteps = 100)
     {
         int steps = 0;

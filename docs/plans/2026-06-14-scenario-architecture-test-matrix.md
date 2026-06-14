@@ -29,13 +29,14 @@ These cases were added after the first bridge implementation to cover more than 
 15. `GameModuleActionRunner` starts a registered module and updates the active module ID.
 16. Unknown Game Module IDs fail the action handle clearly.
 17. Duplicate Game Module registration is rejected.
+18. `BattleTurnQteGameModuleRuntime` has stable `turn_qte` ID and is safe when battle singletons are missing.
 
 ## Next High-Value Cases
 
 1. `dialogue.wait` can resolve `DialogueId` from Battle Scenario Data without manual registration.
 2. Dialogue action pauses a trigger sequence until completion and then continues to the next action.
 3. Screen/audio placeholder adapters fail clearly until their concrete seams exist.
-4. A concrete QTE `IGameModuleRuntime` can suspend current QTE UI/input and hand off to shooter/boxing without losing Battle Session State.
+4. A fuller QTE `IGameModuleRuntime` can suspend player action selection, target selection, and QTE input while handing off to shooter/boxing without losing Battle Session State.
 5. Encounter Memory import/export suppresses `PerEncounterMemory` rules after save-bound memory is restored.
 6. YAML Scenario Source import rejects unknown dialogue, module, actor, audio, and UI target IDs.
 7. Korean Scenario Authoring Editor can reorder or insert a sequence action while preserving source/runtime sync metadata.
