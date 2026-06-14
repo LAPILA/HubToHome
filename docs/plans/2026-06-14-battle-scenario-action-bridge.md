@@ -1,0 +1,55 @@
+# Battle Scenario Action Bridge Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use TDD vertical slices. Do not expand `BattleManager` with sequence execution policy.
+
+**Goal:** Execute fired `BattleScenarioTrigger` sequences through `ActionDirector` after battle event rules fire.
+
+**Architecture:** `BattleManager` stays an Adapter that publishes battle facts and starts one bridge coroutine. `BattleScenarioActionBridge` owns trigger-to-sequence resolution, per-trigger ActionExecutionContext creation, sequential execution, and clear failure when a sequence is missing or an action fails.
+
+**Tech Stack:** Unity 6, C#, ScriptableObject scenario data, `ActionDirector`, NUnit EditMode tests, Unity MCP EditMode validation.
+
+---
+
+## Task 1: RED Bridge Test
+
+**Files:**
+- Create: `Assets/_Game/Features/Scenario/Tests/Editor/BattleScenarioActionBridgeTests.cs`
+- Create later: `Assets/_Game/Features/Scenario/Runtime/Scripts/Battle/BattleScenarioActionBridge.cs`
+
+**Behavior:**
+
+- Given a `BattleScenarioRuntime` with a sequence referenced by a fired trigger.
+- When `BattleScenarioActionBridge.PlayTriggers` runs.
+- Then the sequence is executed through `ActionDirector`.
+- And the parent handle succeeds.
+
+## Task 2: Implement Bridge Module
+
+**Interface:**
+
+- `BattleScenarioActionBridge(BattleScenarioRuntime runtime, ActionDirector director)`
+- `IEnumerator PlayTriggers(IReadOnlyList<BattleScenarioTrigger> triggers, ActionExecutionContext context)`
+
+**Rules:**
+
+- Empty trigger lists are successful no-ops.
+- Missing runtime or missing sequence fails the parent handle clearly.
+- Each trigger sequence runs with its own child handle so multiple triggers can execute sequentially.
+- Child failure/cancel propagates to the parent handle.
+
+## Task 3: BattleManager Adapter Connection
+
+**Rules:**
+
+- `BattleManager` creates a bridge only when scenario data exists.
+- `BattleManager` starts bridge execution from the existing trigger emission point.
+- `BattleManager` must not inspect `SequenceId`, branch by rule ID, or own module transition policy.
+- The default registry only registers currently implemented adapters: `flow.wait` and `dialogue.wait`.
+- Dialogue runtime service is injected as `DialogueManagerRunner`; dialogue IDs still need a later authoring/import registration path.
+
+## Task 4: Verification
+
+- `git diff --check`
+- `dotnet build HubToHome.sln --no-restore`
+- Unity MCP EditMode tests for `BattleScenarioActionBridgeTests`
+- Update `AIAssets/2026-06-14-update.md`, `AIAssets/yjlim/feedback/scenario-authoring-pipeline-2026-06-14.md`, `RuleFileforAI/battle.clinerules`, `.agents/skills/hubtohome-scenario-authoring/SKILL.md`, and `specs/001-scenario-authoring/tasks.md`.

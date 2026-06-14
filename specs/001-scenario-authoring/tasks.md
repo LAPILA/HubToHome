@@ -54,7 +54,7 @@
 - [x] Commit scenario rule runner.
 - [x] Commit event router.
 - [x] Commit BattleManager hook.
-- [ ] Add ActionDirector bridge for `BattleScenarioTrigger` sequence execution.
+- [x] Add ActionDirector bridge for `BattleScenarioTrigger` sequence execution.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

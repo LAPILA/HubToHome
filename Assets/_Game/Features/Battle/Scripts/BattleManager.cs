@@ -114,6 +114,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private bool _isReadyToReveal = true;
     private BattleScenarioData _pendingBattleScenarioData;
     private BattleScenarioRuntime _battleScenarioRuntime;
+    private BattleScenarioActionBridge _battleScenarioActionBridge;
     #endregion
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
@@ -286,6 +287,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         }
 
         _battleScenarioRuntime = scenarioData != null ? new BattleScenarioRuntime(scenarioData) : null;
+        _battleScenarioActionBridge = _battleScenarioRuntime != null
+            ? new BattleScenarioActionBridge(_battleScenarioRuntime, CreateBattleScenarioActionDirector())
+            : null;
     }
 
     private BattleScenarioData ResolveBattleScenarioData()
@@ -341,7 +345,34 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             return;
         }
 
+        StartCoroutine(DispatchBattleScenarioTriggersRoutine(triggers));
+    }
+
+    private IEnumerator DispatchBattleScenarioTriggersRoutine(List<BattleScenarioTrigger> triggers)
+    {
+        if (triggers == null || triggers.Count == 0)
+        {
+            yield break;
+        }
+
         OnBattleScenarioTriggersReady?.Invoke(triggers);
+
+        if (_battleScenarioActionBridge == null)
+        {
+            yield break;
+        }
+
+        ActionExecutionContext context = CreateBattleScenarioActionContext();
+        yield return StartCoroutine(_battleScenarioActionBridge.PlayTriggers(triggers, context));
+
+        if (context.Handle.Status == ActionExecutionStatus.Failed)
+        {
+            Debug.LogError("[BattleManager] Battle scenario action sequence failed: " + context.Handle.Result.Message, this);
+        }
+        else if (context.Handle.Status == ActionExecutionStatus.Canceled)
+        {
+            Debug.LogWarning("[BattleManager] Battle scenario action sequence canceled: " + context.Handle.Result.Message, this);
+        }
     }
 
     private IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing)
@@ -352,7 +383,28 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         }
 
         List<BattleScenarioTrigger> triggers = _battleScenarioRuntime.Flush(timing);
-        DispatchBattleScenarioTriggers(triggers);
+        yield return StartCoroutine(DispatchBattleScenarioTriggersRoutine(triggers));
+    }
+
+    private static ActionDirector CreateBattleScenarioActionDirector()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new FlowWaitActionAdapter());
+        registry.Register(new DialogueWaitActionAdapter());
+        return new ActionDirector(registry);
+    }
+
+    private ActionExecutionContext CreateBattleScenarioActionContext()
+    {
+        var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
+        BattleScenarioData scenarioData = _battleScenarioRuntime != null ? _battleScenarioRuntime.ScenarioData : null;
+
+        context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
+        context.PrimaryMode = scenarioData != null ? scenarioData.PrimaryMode : "battle";
+        context.ModuleId = scenarioData != null ? scenarioData.OpeningModule : string.Empty;
+        context.SetService<IDialogueRunner>(new DialogueManagerRunner());
+
+        return context;
     }
 
     #region [ Initialization ]

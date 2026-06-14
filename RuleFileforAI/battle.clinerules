@@ -21,7 +21,8 @@
 - Battle Event Rule subjects should use Scenario Subject IDs. Enemy rules resolve through `BattleScenarioSubjectResolver` and should primarily match `EnemyData.EnemyId`.
 - Per-encounter battle scenarios can be passed through `BattleEncounterService.StartEncounter(..., battleScenarioData)` or assigned as the BattleManager default scenario. Dedicated battle scene transitions use `GlobalDataManager.PendingBattleScenario` as a runtime-only handoff.
 - Battle event publication should go through `BattleScenarioRuntime`, not direct `BattleScenarioRuleRunner` / `BattleScenarioEventRouter` ownership inside `BattleManager`.
-- `BattleManager.OnBattleScenarioTriggersReady` is an emission seam for fired scenario triggers. Do not put sequence execution policy, module switching, or phase-specific branches directly in `BattleManager`; connect this event to an ActionDirector bridge instead.
+- `BattleManager.OnBattleScenarioTriggersReady` is an emission seam for fired scenario triggers. Do not put sequence execution policy, module switching, or phase-specific branches directly in `BattleManager`; trigger sequences run through `BattleScenarioActionBridge` and `ActionDirector`.
+- `BattleScenarioActionBridge` is responsible for trigger-to-sequence lookup, child ActionExecutionHandle creation, sequential trigger execution, and failure propagation. Keep that logic out of `BattleManager`.
 
 ## Defense / QTE Intent
 

@@ -110,7 +110,10 @@ flowchart LR
   - `BattleManager`는 전투 시작 시 `BattleScenarioRuntime`을 만들고, 적에게 피해가 들어간 뒤 subject ID, HP 전/후값, timing만 넘기는 adapter 역할을 한다.
   - `BattleScenarioRuntime`은 `BattleScenarioData`를 받아 HP 정수값을 ratio 이벤트로 변환하고, `BattleScenarioEventRouter` publish/flush와 sequence lookup을 감싼다.
   - `SkillActionBlocks`는 데미지 전 HP를 같이 넘기므로, 50% threshold 같은 규칙은 실제 피해 전/후 비율로 crossing을 판단한다.
-  - 발화된 `BattleScenarioTrigger`는 `BattleManager.OnBattleScenarioTriggersReady` 이벤트로만 나온다. 아직 여기서 ActionDirector 실행을 하지 않는 이유는, BGM/대사/페이드/모듈 전환 정책을 BattleManager에 다시 넣지 않기 위해서다.
+  - 발화된 `BattleScenarioTrigger`는 `BattleManager.OnBattleScenarioTriggersReady` 이벤트로 외부에 알리고, 내부 실행은 `BattleScenarioActionBridge`가 `ActionDirector`로 넘긴다.
+  - `BattleScenarioActionBridge`는 trigger의 `SequenceId`를 runtime sequence로 해석하고, 각 trigger마다 child `ActionExecutionHandle`을 만들어 순차 실행한다.
+  - `BattleManager`는 bridge coroutine을 시작하거나 flush 시점에 기다릴 뿐이며, rule ID를 해석하거나 BGM/대사/페이드/모듈 전환 정책을 직접 갖지 않는다.
+  - 현재 기본 registry는 `flow.wait`, `dialogue.wait`만 등록한다. 실제 대사 content를 쓰려면 Dialogue ID를 `DialogueData`에 등록하는 authoring/import 경로가 다음 단계로 필요하다.
 - 1차 push 전 검증 강화를 위해 `BattleScenarioRuntimeTests`를 추가했다.
   - `AfterCurrentSkill` timing은 스킬 중 발생한 HP crossing을 즉시 실행하지 않고 flush 시점에 발화한다.
   - `Immediate` timing은 publish 시점에 바로 발화하고, 이후 flush에서 중복 발화하지 않는다.
@@ -124,12 +127,14 @@ flowchart LR
 - Unity MCP EditMode 테스트를 실행했고, 새 `BattleScenarioRuntimeTests` 포함 총 36개 테스트가 모두 통과했다.
 - 첫 Test Runner 실행에는 Unity import 타이밍 때문에 cleanup verification 로그가 남았다. 두 번째 실행에서 테스트 결과는 36개 통과, 실패 0개였다.
 - 테스트 cleanup 보강 후 `BattleScenarioRuntimeTests`만 다시 실행했고 2개 통과, 실패 0개였다.
+- `BattleScenarioActionBridgeTests`는 RED에서 타입 부재 컴파일 오류를 확인한 뒤 구현했고, 최종 2개 통과, 실패 0개였다.
+- 최종 Unity MCP EditMode 전체 테스트는 38개 통과, 실패 0개였다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. `BattleManager.OnBattleScenarioTriggersReady`를 구독해 `BattleScenarioTrigger.Sequence`를 `ActionDirector` 실행 요청으로 넘기는 runtime bridge 작성
+2. Dialogue ID -> `DialogueData` 등록 경로를 Scenario Source/import/runtime asset에 추가
 3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
 4. Audio/Screen/Module 전환용 presentation service seam 설계
 5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
