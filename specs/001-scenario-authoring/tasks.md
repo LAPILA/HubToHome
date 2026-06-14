@@ -9,8 +9,9 @@
 ## Phase 1 - Data Model and Catalog
 
 - [x] Decide YAML parser packaging and record ADR if non-obvious.
-- [ ] Create `Assets/_Game/Features/Scenario/Data/Scripts/ScenarioActionData.cs`.
-- [ ] Create `ActionSequenceAsset`, `BattleScenarioData`, `BattleEventRuleData`, and `ActionCatalogAsset`.
+- [x] Create `Assets/_Game/Features/Scenario/Data/Scripts/ScenarioActionData.cs`.
+- [x] Create `ActionSequenceAsset`, `BattleScenarioData`, and `BattleEventRuleData`.
+- [ ] Create `ActionCatalogAsset`.
 - [ ] Add EditMode tests for required action catalog fields.
 - [ ] Add EditMode tests for missing/unknown action validation.
 - [ ] Commit data model and catalog.
