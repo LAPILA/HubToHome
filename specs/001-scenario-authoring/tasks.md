@@ -8,6 +8,7 @@
 
 ## Phase 1 - Data Model and Catalog
 
+- [x] Decide YAML parser packaging and record ADR if non-obvious.
 - [ ] Create `Assets/_Game/Features/Scenario/Data/Scripts/ScenarioActionData.cs`.
 - [ ] Create `ActionSequenceAsset`, `BattleScenarioData`, `BattleEventRuleData`, and `ActionCatalogAsset`.
 - [ ] Add EditMode tests for required action catalog fields.
@@ -24,7 +25,6 @@
 
 ## Phase 3 - Source Sync
 
-- [ ] Decide YAML parser packaging and record ADR if non-obvious.
 - [ ] Create scenario source parser adapter.
 - [ ] Add source hash/stale metadata.
 - [ ] Add import/export tests with a small scenario source sample.

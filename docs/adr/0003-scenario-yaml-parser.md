@@ -1,0 +1,3 @@
+# Scenario source YAML parser stays behind an adapter
+
+HubToHome will use YamlDotNet as the preferred parser for Scenario Source YAML, but all parser-specific calls must stay behind a `ScenarioSourceParser` adapter and the first runtime data/model work must not depend directly on YamlDotNet types. This keeps the authoring format YAML while avoiding a hard dependency on a Unity package shape: the official project and NuGet package support netstandard runtimes, but the upstream Unity package request is still tracked separately, so the exact install path can be chosen at the Source Sync implementation phase.
