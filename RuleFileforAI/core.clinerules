@@ -28,3 +28,4 @@
 - Save data should include enough state to restore scene, position, facing, party, inventory, money, flags, and relevant room/encounter context.
 - If a feature creates new persistent state, update `SaveData`, `GlobalDataManager`, and the update note together.
 - `GlobalDataManager.PendingBattleScenario` is runtime-only battle entry handoff state, not save-bound state. Encounter Memory or battle results must be added to `SaveData` separately when persistence is needed.
+- Encounter Memory is now stored through `SaveData.EncounterMemory` and `GlobalDataManager` encounter memory APIs. It is for out-of-battle remembered facts such as meet count, defeated state, and seen battle beat IDs; it is not a mid-battle save snapshot. Use explicit mutation APIs for writes because bulk `GetEncounterMemory()` returns a deep-copy snapshot.

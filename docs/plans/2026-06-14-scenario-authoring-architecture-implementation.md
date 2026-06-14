@@ -514,6 +514,8 @@ public Dictionary<string, EncounterMemorySaveData> EncounterMemory = new Diction
 
 Add explicit copy in `ToSaveData()` and `FromSaveData()`.
 
+Current implementation note: `EncounterMemorySaveData` now stores `EncounterId`, `MeetCount`, `Defeated`, and `SeenBeatIds`. `SaveData.EncounterMemory` persists this dictionary, `GlobalDataManager` owns runtime APIs and deep-copy save/load, and `GetEncounterMemory()` returns a deep-copy snapshot for bulk reads. `BattleScenarioRuntime` can import/export encounter-fired rule IDs for `PerEncounterMemory` rules. The actual BattleManager victory/escape hook that writes encounter memory at battle outro remains a follow-up.
+
 **Step 4: Commit**
 
 ```powershell

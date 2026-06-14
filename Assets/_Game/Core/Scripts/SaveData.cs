@@ -40,6 +40,7 @@ public class SaveData
     // ── 3. 소지품 및 플래그 ──
     public Dictionary<string, int> InventoryDict = new Dictionary<string, int>();
     public Dictionary<string, int> eventFlags = new Dictionary<string, int>();
+    public Dictionary<string, EncounterMemorySaveData> EncounterMemory = new Dictionary<string, EncounterMemorySaveData>();
     public int Money = 0;
 
     // ── 4. 메타 데이터 ──

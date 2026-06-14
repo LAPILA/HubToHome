@@ -4,8 +4,11 @@ using UnityEngine;
 public sealed class BattleScenarioRuntime
 {
     private readonly BattleScenarioEventRouter _eventRouter;
+    private readonly BattleScenarioSession _session;
 
-    public BattleScenarioRuntime(BattleScenarioData scenarioData)
+    public BattleScenarioRuntime(
+        BattleScenarioData scenarioData,
+        IEnumerable<string> encounterFiredRuleIds = null)
     {
         ScenarioData = scenarioData;
         if (scenarioData == null)
@@ -13,10 +16,12 @@ public sealed class BattleScenarioRuntime
             return;
         }
 
-        var session = new BattleScenarioSession(
+        _session = new BattleScenarioSession(
             scenarioData.ScenarioId,
             scenarioData.MemoryKey);
-        var ruleRunner = new BattleScenarioRuleRunner(scenarioData, session);
+        _session.ImportEncounterFiredRuleIds(encounterFiredRuleIds);
+
+        var ruleRunner = new BattleScenarioRuleRunner(scenarioData, _session);
         _eventRouter = new BattleScenarioEventRouter(ruleRunner);
     }
 
@@ -62,5 +67,10 @@ public sealed class BattleScenarioRuntime
     {
         sequence = null;
         return HasScenario && _eventRouter.TryResolveSequence(sequenceId, out sequence);
+    }
+
+    public string[] ExportEncounterFiredRuleIds()
+    {
+        return _session != null ? _session.ExportEncounterFiredRuleIds() : new string[0];
     }
 }

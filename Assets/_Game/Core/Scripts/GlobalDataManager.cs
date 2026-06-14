@@ -26,6 +26,7 @@ public class GlobalDataManager : MonoBehaviour
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
     private readonly Dictionary<string, OverworldEnemyRuntimeState> _overworldEnemyStates = new Dictionary<string, OverworldEnemyRuntimeState>();
+    private readonly Dictionary<string, EncounterMemorySaveData> _encounterMemory = new Dictionary<string, EncounterMemorySaveData>();
     public int Money { get; private set; } = 0;
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
@@ -62,6 +63,7 @@ public class GlobalDataManager : MonoBehaviour
     {
         _eventFlags.Clear();
         _inventoryDict.Clear();
+        _encounterMemory.Clear();
         Party.Clear(); // 기존 더미 데이터 추가 로직 삭제
     }
 
@@ -139,6 +141,101 @@ public class GlobalDataManager : MonoBehaviour
 
         Money -= amount;
         return true;
+    }
+    #endregion
+
+    #region [ Encounter Memory API ]
+    public EncounterMemorySaveData GetOrCreateEncounterMemory(string encounterId)
+    {
+        string normalizedId = NormalizeEncounterId(encounterId);
+        if (string.IsNullOrEmpty(normalizedId))
+        {
+            return null;
+        }
+
+        if (!_encounterMemory.TryGetValue(normalizedId, out EncounterMemorySaveData memory) || memory == null)
+        {
+            memory = new EncounterMemorySaveData
+            {
+                EncounterId = normalizedId
+            };
+            _encounterMemory[normalizedId] = memory;
+        }
+
+        memory.EncounterId = normalizedId;
+        if (memory.SeenBeatIds == null)
+        {
+            memory.SeenBeatIds = new List<string>();
+        }
+
+        return memory;
+    }
+
+    public bool TryGetEncounterMemory(string encounterId, out EncounterMemorySaveData memory)
+    {
+        string normalizedId = NormalizeEncounterId(encounterId);
+        if (string.IsNullOrEmpty(normalizedId))
+        {
+            memory = null;
+            return false;
+        }
+
+        return _encounterMemory.TryGetValue(normalizedId, out memory) && memory != null;
+    }
+
+    public IReadOnlyDictionary<string, EncounterMemorySaveData> GetEncounterMemory()
+    {
+        return CloneEncounterMemoryDictionary(_encounterMemory);
+    }
+
+    public int IncrementEncounterMeetCount(string encounterId)
+    {
+        EncounterMemorySaveData memory = GetOrCreateEncounterMemory(encounterId);
+        if (memory == null)
+        {
+            return 0;
+        }
+
+        memory.MeetCount = Mathf.Max(0, memory.MeetCount) + 1;
+        return memory.MeetCount;
+    }
+
+    public void MarkEncounterDefeated(string encounterId)
+    {
+        EncounterMemorySaveData memory = GetOrCreateEncounterMemory(encounterId);
+        if (memory != null)
+        {
+            memory.Defeated = true;
+        }
+    }
+
+    public void RememberEncounterBeatIds(string encounterId, IEnumerable<string> beatIds)
+    {
+        if (beatIds == null)
+        {
+            return;
+        }
+
+        EncounterMemorySaveData memory = GetOrCreateEncounterMemory(encounterId);
+        if (memory == null)
+        {
+            return;
+        }
+
+        foreach (string beatId in beatIds)
+        {
+            AddUniqueSeenBeatId(memory, beatId);
+        }
+    }
+
+    public string[] GetEncounterSeenBeatIds(string encounterId)
+    {
+        if (!TryGetEncounterMemory(encounterId, out EncounterMemorySaveData memory) || memory.SeenBeatIds == null)
+        {
+            return new string[0];
+        }
+
+        return memory.SeenBeatIds.ToArray();
     }
     #endregion
 
@@ -242,6 +339,7 @@ public class GlobalDataManager : MonoBehaviour
             // 안전한 깊은 복사(Deep Copy)
             InventoryDict = new Dictionary<string, int>(_inventoryDict),
             eventFlags    = new Dictionary<string, int>(_eventFlags),
+            EncounterMemory = CloneEncounterMemoryDictionary(_encounterMemory),
             PartyData     = new List<CharacterSaveData>(Party),
             Money         = Money
         };
@@ -264,8 +362,93 @@ public class GlobalDataManager : MonoBehaviour
         _eventFlags.Clear();
         foreach (var kv in data.eventFlags) _eventFlags[kv.Key] = kv.Value;
 
+        _encounterMemory.Clear();
+        if (data.EncounterMemory != null)
+        {
+            foreach (var kv in data.EncounterMemory)
+            {
+                string encounterId = NormalizeEncounterId(kv.Key);
+                if (string.IsNullOrEmpty(encounterId))
+                {
+                    continue;
+                }
+
+                _encounterMemory[encounterId] = CloneEncounterMemory(kv.Value, encounterId);
+            }
+        }
+
         Party = new List<CharacterSaveData>(data.PartyData);
         Money = Mathf.Max(0, data.Money);
+    }
+
+    private static Dictionary<string, EncounterMemorySaveData> CloneEncounterMemoryDictionary(
+        Dictionary<string, EncounterMemorySaveData> source)
+    {
+        var clone = new Dictionary<string, EncounterMemorySaveData>();
+        if (source == null)
+        {
+            return clone;
+        }
+
+        foreach (var kv in source)
+        {
+            string encounterId = NormalizeEncounterId(kv.Key);
+            if (string.IsNullOrEmpty(encounterId))
+            {
+                continue;
+            }
+
+            clone[encounterId] = CloneEncounterMemory(kv.Value, encounterId);
+        }
+
+        return clone;
+    }
+
+    private static EncounterMemorySaveData CloneEncounterMemory(
+        EncounterMemorySaveData source,
+        string fallbackEncounterId)
+    {
+        var clone = new EncounterMemorySaveData
+        {
+            EncounterId = NormalizeEncounterId(fallbackEncounterId),
+            MeetCount = source != null ? Mathf.Max(0, source.MeetCount) : 0,
+            Defeated = source != null && source.Defeated,
+            SeenBeatIds = new List<string>()
+        };
+
+        if (source != null && source.SeenBeatIds != null)
+        {
+            for (int i = 0; i < source.SeenBeatIds.Count; i++)
+            {
+                AddUniqueSeenBeatId(clone, source.SeenBeatIds[i]);
+            }
+        }
+
+        return clone;
+    }
+
+    private static void AddUniqueSeenBeatId(EncounterMemorySaveData memory, string beatId)
+    {
+        if (memory == null || string.IsNullOrWhiteSpace(beatId))
+        {
+            return;
+        }
+
+        if (memory.SeenBeatIds == null)
+        {
+            memory.SeenBeatIds = new List<string>();
+        }
+
+        string normalizedBeatId = beatId.Trim();
+        if (!memory.SeenBeatIds.Contains(normalizedBeatId))
+        {
+            memory.SeenBeatIds.Add(normalizedBeatId);
+        }
+    }
+
+    private static string NormalizeEncounterId(string encounterId)
+    {
+        return string.IsNullOrWhiteSpace(encounterId) ? string.Empty : encounterId.Trim();
     }
     #endregion
 }
