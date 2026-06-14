@@ -45,11 +45,32 @@ flowchart LR
 - 커스텀 에디터는 자연스러운 한국어 화면이어야 하며, 사람이 최소한 순서 변경과 중간 삽입은 안전하게 할 수 있어야 한다.
 - 기존 `SkillData.ActionTimeline`과 `SkillActionBlock`은 전역 시나리오 문법의 루트가 아니라, QTE/스킬 실행을 새 Action Sequence 체계에 연결하기 위한 레거시/adapter 대상으로 본다.
 
+## 2026-06-14 구현 진행 로그
+
+- 최소 Spec Kit 산출물과 단계별 실행 계획을 추가했다.
+- YAML parser는 YamlDotNet을 우선 후보로 두되, 실제 parser 호출은 `ScenarioSourceParser` adapter 뒤에 숨기기로 했다.
+- 첫 Runtime Asset 데이터 모델을 추가했다.
+  - `ScenarioActionData`
+  - `ActionSequenceAsset`
+  - `BattleEventRuleData`
+  - `BattleScenarioData`
+  - `ScenarioSourceMetadata`
+- 첫 Action Catalog 데이터와 검증기를 추가했다.
+  - `ActionCatalogAsset`
+  - `ActionCatalogEntry`
+  - `ActionCatalogParameter`
+  - `ScenarioCatalogValidator`
+  - `ScenarioValidationResult`
+- 검증기 1차 범위는 필수 카탈로그 필드 누락, 중복 action id, 시퀀스의 미등록 action id 탐지다.
+- Unity Editor 강제 refresh/reimport는 하지 않았다. 새 Scenario 파일은 현재 `.csproj`에 아직 포함되지 않았으므로, `dotnet build`만으로 새 파일 전체 검증이 됐다고 보면 안 된다.
+- 대신 Unity 6 NetStandard reference assembly와 `UnityEngine.CoreModule`을 직접 참조하는 별도 `csc` 컴파일로 Runtime Data/Catalog/Validator 스크립트의 문법과 참조 오류가 없음을 확인했다.
+- NUnit EditMode 테스트는 초안 파일을 추가했지만, 실제 실행은 Unity Test Runner에서 별도 검증해야 한다.
+
 ## 다음 구현 후보
 
-1. `Scenario Source` YAML 스키마 초안 작성
-2. `Action Catalog` 최소 세트 작성
-3. `BattleScenarioData` / `ActionSequenceAsset` 런타임 에셋 설계
+1. `ActionDirector` 실행 컨텍스트와 adapter registry 작성
+2. 순차/병렬 Action Sequence 실행 테스트 작성
+3. `flow.wait` / `flow.parallel` 최소 adapter 작성
 4. YAML import 검증기 작성
 5. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
 6. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증

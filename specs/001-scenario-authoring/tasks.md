@@ -11,10 +11,10 @@
 - [x] Decide YAML parser packaging and record ADR if non-obvious.
 - [x] Create `Assets/_Game/Features/Scenario/Data/Scripts/ScenarioActionData.cs`.
 - [x] Create `ActionSequenceAsset`, `BattleScenarioData`, and `BattleEventRuleData`.
-- [ ] Create `ActionCatalogAsset`.
-- [ ] Add EditMode tests for required action catalog fields.
-- [ ] Add EditMode tests for missing/unknown action validation.
-- [ ] Commit data model and catalog.
+- [x] Create `ActionCatalogAsset`.
+- [x] Add EditMode tests for required action catalog fields.
+- [x] Add EditMode tests for missing/unknown action validation.
+- [x] Commit data model and catalog.
 
 ## Phase 2 - Action Director Core
 

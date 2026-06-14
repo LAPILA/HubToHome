@@ -72,3 +72,17 @@ Existing `SkillActionBlock` classes are not the global grammar, but they are use
 - `Action_DefenseWindow` -> QTE/defense module adapter action
 
 Do not rename or move existing serialized action classes during initial migration unless a migration plan exists.
+
+## Runtime Asset Mapping
+
+The first runtime representation is `ActionCatalogAsset`.
+
+- YAML `id` maps to `ActionCatalogEntry.ActionId`.
+- YAML `category` maps to `ActionCatalogEntry.Category`.
+- YAML `displayNameKo` maps to `ActionCatalogEntry.DisplayNameKo`.
+- YAML `summaryKo` maps to `ActionCatalogEntry.DescriptionKo`.
+- YAML `runtimeAdapter` maps to `ActionCatalogEntry.RuntimeAdapterId`.
+- YAML `params` maps to `ActionCatalogEntry.Parameters`.
+- YAML `examples` maps to `ActionCatalogEntry.ExampleYaml`.
+
+`ScenarioCatalogValidator` must reject missing required catalog fields, duplicate action IDs, and sequence actions whose `ActionId` is not present in the enabled catalog entries. Keep this validator available to both import/sync code and the Korean editor validation panel.
