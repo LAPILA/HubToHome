@@ -91,7 +91,7 @@ The discoverable catalog of Action grammar, Korean labels, parameters, examples,
 _Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.
 
 **Skill Timeline Adapter**:
-A compatibility Action adapter that invokes an existing `SkillData.ActionTimeline` through a narrow runner seam. It allows current QTE/skill blocks to be called from an Action Sequence without making Skill Data the owner of whole-battle scenario flow.
+A compatibility Action adapter that invokes an existing `SkillData.ActionTimeline` through a narrow runner seam. `BattleSkillTimelineRunner` is the current battle-side adapter: it resolves scenario `skill` / `actor` / `targets` IDs against the active `BattleManager`, builds a `SkillContext`, and executes existing `SkillActionBlock` entries. It allows current QTE/skill blocks to be called from an Action Sequence without making Skill Data the owner of whole-battle scenario flow.
 _Avoid_: rewriting or renaming existing `SkillActionBlock` classes just to connect them to Scenario Source.
 
 **Scenario Subject ID**:

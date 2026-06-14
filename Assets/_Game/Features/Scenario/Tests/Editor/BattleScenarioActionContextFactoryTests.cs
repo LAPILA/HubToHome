@@ -50,10 +50,35 @@ public class BattleScenarioActionContextFactoryTests
         Assert.That(context.GetService<IDialogueRunner>(), Is.TypeOf<DialogueManagerRunner>());
     }
 
+    [Test]
+    public void RegistersSkillTimelineRunnerWhenProvided()
+    {
+        var runner = new FakeSkillTimelineRunner();
+
+        ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+            null,
+            null,
+            runner);
+
+        Assert.That(context.GetService<ISkillTimelineRunner>(), Is.SameAs(runner));
+    }
+
     private static DialogueData MakeDialogue()
     {
         DialogueData dialogue = ScriptableObject.CreateInstance<DialogueData>();
         dialogue.Nodes.Add(new DialogueNode { DefaultText = "테스트 대사" });
         return dialogue;
+    }
+
+    private sealed class FakeSkillTimelineRunner : ISkillTimelineRunner
+    {
+        public System.Collections.IEnumerator PlaySkillTimeline(
+            string skillId,
+            string actorId,
+            System.Collections.Generic.IReadOnlyList<string> targetIds,
+            ActionExecutionContext context)
+        {
+            yield break;
+        }
     }
 }

@@ -2,7 +2,8 @@ public static class BattleScenarioActionContextFactory
 {
     public static ActionExecutionContext Create(
         BattleScenarioData scenarioData,
-        DialogueManager dialogueManager = null)
+        DialogueManager dialogueManager = null,
+        ISkillTimelineRunner skillTimelineRunner = null)
     {
         var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
         context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
@@ -16,6 +17,11 @@ public static class BattleScenarioActionContextFactory
         }
 
         context.SetService<IDialogueRunner>(dialogueRunner);
+        if (skillTimelineRunner != null)
+        {
+            context.SetService<ISkillTimelineRunner>(skillTimelineRunner);
+        }
+
         return context;
     }
 }

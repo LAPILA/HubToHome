@@ -91,7 +91,7 @@ sequences:
 - Keep dialogue as a waitable action, not a child of battle modules.
 - Keep save-bound facts in Encounter Memory, not in in-progress Battle Session State.
 - Runtime `flow.parallel` currently maps to `ActionDirector.ParallelActionId` and is handled as a director-level group action.
-- Use `battle.skill.timeline` only as a compatibility call into existing `SkillData.ActionTimeline` / `SkillActionBlock` behavior. Whole-battle phase flow still belongs in Battle Event Rules plus Action Sequences.
+- Use `battle.skill.timeline` only as a compatibility call into existing `SkillData.ActionTimeline` / `SkillActionBlock` behavior. `targets` may be omitted when the battle runner should choose the skill's default alive target set from `SkillData.TargetType` / `IsAoE`; use explicit stable actor IDs when a sequence needs a specific target. Whole-battle phase flow still belongs in Battle Event Rules plus Action Sequences.
 
 ## Validation Expectations
 

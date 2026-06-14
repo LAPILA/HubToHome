@@ -402,7 +402,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private ActionExecutionContext CreateBattleScenarioActionContext()
     {
         BattleScenarioData scenarioData = _battleScenarioRuntime != null ? _battleScenarioRuntime.ScenarioData : null;
-        return BattleScenarioActionContextFactory.Create(scenarioData);
+        return BattleScenarioActionContextFactory.Create(
+            scenarioData,
+            null,
+            new BattleSkillTimelineRunner(this));
     }
 
     #region [ Initialization ]

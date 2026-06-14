@@ -212,7 +212,7 @@ examples:
 completion: "ISkillTimelineRunner가 기존 SkillActionBlock timeline routine을 모두 완료하면 완료됩니다."
 cancellation: "실행 핸들의 취소 요청이 들어오면 대기 루프를 빠져나옵니다. 진행 중 SkillActionBlock 중단 정책은 concrete runner에서 보강해야 합니다."
 scope: "Battle Primary Mode에서 기존 QTE/스킬 시스템을 Action Sequence에 연결하기 위한 compatibility action입니다."
-runtimeBinding: "초기 adapter는 ID와 target 목록을 runner seam으로 전달합니다. 실제 SkillData/Actor/Target resolve와 SkillContext 구성은 concrete battle runner가 담당합니다."
+runtimeBinding: "`BattleManager`가 `BattleScenarioActionContextFactory`에 `BattleSkillTimelineRunner`를 주입합니다. Runner는 현재 battle actor/target/SkillData를 해석하고 `SkillContext`를 구성해 기존 `SkillActionBlock`들을 실행합니다. 스킬 종료 후 위치/카메라/턴 정리는 이 action이 아니라 주변 battle flow 또는 Action Sequence가 맡습니다."
 ```
 
 ## Rules For New Actions

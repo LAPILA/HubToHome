@@ -424,7 +424,7 @@ If dialogue is already playing, adapter should fail or wait according to a docum
 
 **Step 4: Add command seams**
 
-Add starter adapters for `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, and `battle.skill.timeline`. These adapters must call injected runner seams and fail clearly when the seam is missing. Concrete `AudioManager`, fade UI, Game Module runner, and SkillData timeline runner implementations can be added later without changing the Action grammar.
+Add starter adapters for `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, and `battle.skill.timeline`. These adapters must call injected runner seams and fail clearly when the seam is missing. Concrete `AudioManager`, fade UI, and Game Module runner implementations can be added later without changing the Action grammar. `battle.skill.timeline` now has a concrete battle-side runner through `BattleSkillTimelineRunner`.
 
 **Step 5: Commit**
 
@@ -573,7 +573,9 @@ git commit -m "feat: add scenario authoring editor"
 **Files:**
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/BattleSkillTimelineActionAdapter.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/ISkillTimelineRunner.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/BattleSkillTimelineRunner.cs`
 - Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioSkillTimelineAdapterTests.cs`
+- Test: `Assets/_Game/Features/Scenario/Tests/Editor/BattleSkillTimelineRunnerTests.cs`
 - Read only before editing: `Assets/_Game/Features/Battle/Data/Scripts/SkillActionBlocks.cs`
 - Read only before editing: `Assets/_Game/Features/Battle/Scripts/BattleManager.cs`
 
@@ -584,6 +586,8 @@ Do not rename `SkillActionBlock` or existing `Action_*` classes.
 **Step 2: Wrap execution**
 
 Adapter receives stable `skill`, `actor`, and optional `targets` IDs and calls `ISkillTimelineRunner`. The concrete battle runner resolves those IDs into `SkillData`, `CharacterBase`, target list, and `SkillContext`.
+
+Current implementation note: `BattleSkillTimelineRunner` resolves players by `CharacterID` / display name / object name and enemies by `EnemyData.EnemyId` via `BattleScenarioSubjectResolver`, enemy display name, or object name. It searches player skill lists and enemy normal/strong skill lists, runs legacy `SkillActionBlock` entries, and fails the handle clearly when actor, target, or skill IDs cannot be resolved.
 
 **Step 3: Keep first bridge narrow**
 

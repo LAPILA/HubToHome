@@ -130,9 +130,14 @@ flowchart LR
   - 기본 battle scenario `ActionAdapterRegistry`에는 네 command adapter를 등록했지만, 실제 battle content에서 사용하려면 runner service 주입이 필요하다.
 - 기존 SkillData timeline compatibility adapter의 첫 seam을 추가했다.
   - `battle.skill.timeline`은 기존 `SkillData.ActionTimeline` / `SkillActionBlock` 기반 QTE/스킬 흐름을 새 Action Sequence에서 호출하기 위한 action이다.
-  - 실행은 `ISkillTimelineRunner` seam으로 위임한다. Action adapter는 stable `skill`, `actor`, optional `targets` ID를 넘기고, concrete runner가 나중에 `SkillData`, `CharacterBase`, `SkillContext`로 resolve한다.
+  - 실행은 `ISkillTimelineRunner` seam으로 위임한다. Action adapter는 stable `skill`, `actor`, optional `targets` ID를 넘기고, 현재 concrete runner인 `BattleSkillTimelineRunner`가 `SkillData`, `CharacterBase`, `SkillContext`로 resolve한다.
   - 이 작업은 기존 스킬 시스템을 새 전역 문법으로 갈아엎는 것이 아니라, 기존 기능을 상위 Scenario/Action architecture 안에서 호출 가능하게 만드는 호환 계층이다.
   - 전체 전투 phase 전환, 대사, 음악, 모듈 교체 같은 흐름은 여전히 `Battle Event Rule -> Action Sequence`가 소유하고, SkillData는 개별 스킬 연출/판정의 legacy timeline으로 유지한다.
+- `BattleSkillTimelineRunner` concrete bridge를 추가했다.
+  - `BattleManager`가 `BattleScenarioActionContextFactory`에 runner를 주입한다.
+  - runner는 player를 `CharacterID` / display name / object name으로, enemy를 `EnemyData.EnemyId` / enemy name / object name으로 찾는다.
+  - player skill list와 enemy normal/strong skill list에서 `SkillData`를 찾고, explicit `targets`가 없으면 `SkillData.TargetType` / `IsAoE` 기준으로 살아있는 기본 대상을 고른다.
+  - 이 runner는 legacy `SkillActionBlock` 실행까지만 담당한다. 위치 복귀, 카메라 복구, 나레이션 대기, 턴 종료, phase/module transition은 주변 battle flow 또는 Action Sequence 책임이다.
 - 1차 push 전 검증 강화를 위해 `BattleScenarioRuntimeTests`를 추가했다.
   - `AfterCurrentSkill` timing은 스킬 중 발생한 HP crossing을 즉시 실행하지 않고 flush 시점에 발화한다.
   - `Immediate` timing은 publish 시점에 바로 발화하고, 이후 flush에서 중복 발화하지 않는다.
@@ -162,6 +167,9 @@ flowchart LR
 - 최초 검증에서 `scope=scripts` refresh가 새 script file import를 잡지 못해 `BattleSkillTimelineActionAdapter` 타입 부재 컴파일 오류가 났다. 이후 비강제 `refresh_unity mode=if_dirty scope=all compile=request`로 새 파일이 project에 편입됐고 오류가 해소됐다.
 - `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 기존 `System.Net.Http`/`System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고는 남아 있다.
 - 최신 Unity MCP EditMode 전체 테스트는 67개 통과, 실패 0개다. Unity 콘솔에는 테스트 실패가 아닌 MCP disposed client handler 로그 2개와 TestResults.xml 저장 로그가 남았다.
+- `BattleSkillTimelineRunnerTests`를 추가했고, actor/target/skill resolve 성공과 실패 경로를 검증했다.
+- EditMode 테스트에서 `PlayerCharacter.Awake`가 보장되지 않아 테스트 fixture의 player HP가 0이 되는 문제를 발견했고, fixture에서 HP/MP를 명시 초기화하도록 보정했다. 이는 런타임 버그가 아니라 EditMode 하네스 초기화 차이다.
+- 최신 Unity MCP EditMode 전체 테스트는 73개 통과, 실패 0개다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
@@ -169,6 +177,6 @@ flowchart LR
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
 2. Scenario Source/importer/editor에서 `dialogues` 매핑을 `BattleScenarioData.Dialogues`로 동기화
 3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
-4. Audio/Screen/Module 전환용 presentation service seam 설계
-5. `ISkillTimelineRunner` concrete battle runner를 구현해 기존 QTE 스킬 하나를 실제 `SkillData`/actor/target resolve로 실행하는 수직 검증
+4. Audio/Screen/Module 전환용 concrete presentation runner 설계
+5. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
 6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
