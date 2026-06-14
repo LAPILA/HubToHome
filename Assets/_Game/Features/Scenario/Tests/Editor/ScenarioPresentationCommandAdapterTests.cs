@@ -118,6 +118,113 @@ public class ScenarioPresentationCommandAdapterTests
         }
     }
 
+    [Test]
+    public void BattleParticipantDamageUsesCommandRunner()
+    {
+        var log = new List<string>();
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleParticipantDamageActionAdapter());
+
+        var context = new ActionExecutionContext();
+        context.SetService<IBattleParticipantCommandRunner>(new LoggingBattleParticipantCommandRunner(log));
+
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleParticipantDamageActionAdapter.Id,
+            ParametersJson = "{\"subject\":\"zev\",\"amount\":25}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(log, Is.EqualTo(new[] { "damage:zev:25" }));
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
+    [Test]
+    public void BattleParticipantHealHpFailsWhenRunnerIsMissing()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleParticipantHealHpActionAdapter());
+        var context = new ActionExecutionContext();
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleParticipantHealHpActionAdapter.Id,
+            ParametersJson = "{\"subject\":\"player\",\"amount\":10}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Failed));
+            Assert.That(context.Handle.Result.Message, Does.Contain("IBattleParticipantCommandRunner is missing"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
+    [Test]
+    public void BattleParticipantCommandRequiresPositiveIntegerAmount()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleParticipantConsumeMpActionAdapter());
+        var context = new ActionExecutionContext();
+        context.SetService<IBattleParticipantCommandRunner>(new LoggingBattleParticipantCommandRunner(new List<string>()));
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleParticipantConsumeMpActionAdapter.Id,
+            ParametersJson = "{\"subject\":\"player\",\"amount\":0}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Failed));
+            Assert.That(context.Handle.Result.Message, Does.Contain("amount"));
+            Assert.That(context.Handle.Result.Message, Does.Contain("greater than zero"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
+    [Test]
+    public void BattleParticipantCommandPropagatesRunnerFailure()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleParticipantHealMpActionAdapter());
+        var context = new ActionExecutionContext();
+        context.SetService<IBattleParticipantCommandRunner>(new FailingBattleParticipantCommandRunner());
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleParticipantHealMpActionAdapter.Id,
+            ParametersJson = "{\"subject\":\"missing\",\"amount\":10}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Failed));
+            Assert.That(context.Handle.Result.Message, Does.Contain("not found"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
     private static ActionSequenceAsset MakeSequence(ScenarioActionData action)
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
@@ -177,6 +284,87 @@ public class ScenarioPresentationCommandAdapterTests
             yield return null;
             _log.Add("start:" + moduleId);
             CurrentModuleId = moduleId;
+        }
+    }
+
+    private sealed class LoggingBattleParticipantCommandRunner : IBattleParticipantCommandRunner
+    {
+        private readonly List<string> _log;
+
+        public LoggingBattleParticipantCommandRunner(List<string> log)
+        {
+            _log = log;
+        }
+
+        public BattleParticipantCommandResult ApplyPureDamage(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            _log.Add("damage:" + subjectId + ":" + amount);
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 100, 100 - amount);
+        }
+
+        public BattleParticipantCommandResult HealHp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            _log.Add("heal_hp:" + subjectId + ":" + amount);
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 50, 50 + amount);
+        }
+
+        public BattleParticipantCommandResult HealMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            _log.Add("heal_mp:" + subjectId + ":" + amount);
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 0, amount);
+        }
+
+        public BattleParticipantCommandResult ConsumeMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            _log.Add("consume_mp:" + subjectId + ":" + amount);
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, amount, 0);
+        }
+    }
+
+    private sealed class FailingBattleParticipantCommandRunner : IBattleParticipantCommandRunner
+    {
+        public BattleParticipantCommandResult ApplyPureDamage(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found.");
+        }
+
+        public BattleParticipantCommandResult HealHp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found.");
+        }
+
+        public BattleParticipantCommandResult HealMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found.");
+        }
+
+        public BattleParticipantCommandResult ConsumeMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found.");
         }
     }
 }

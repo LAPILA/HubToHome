@@ -35,6 +35,12 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - `IBattleParticipantCommandRunner`를 추가해 미래 Game Module이 HP/MP 변경을 요청할 통로를 열었습니다.
   - 현재 명령: pure damage, HP heal, MP heal, MP consume
   - 첫 구현은 `BattleManager` 내부 adapter이며, 기존 `CharacterBase`와 전투 UI/scenario event bridge를 그대로 경유합니다.
+- 이 명령 통로를 Action Sequence grammar로 노출했습니다.
+  - `battle.participant.damage`
+  - `battle.participant.heal_hp`
+  - `battle.participant.heal_mp`
+  - `battle.participant.consume_mp`
+  - 모두 `subject`와 1 이상의 정수 `amount`를 받습니다.
 
 ## 효과
 
@@ -43,6 +49,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - 다음 Game Module은 `BattleManager.Instance`를 직접 참조하지 않고 `ActionExecutionContext.GetService<IBattleSessionStateReader>()`로 현재 scenario/module 상태를 읽을 수 있습니다.
 - 다음 Game Module은 같은 reader로 현재 파티/적 HP, MP, 생존 여부, 주요 상태 플래그도 읽을 수 있습니다.
 - 다음 Game Module은 `IBattleParticipantCommandRunner`로 데미지/회복/MP 변경을 요청할 수 있습니다.
+- 시나리오 Action Sequence도 `battle.participant.*` action으로 같은 명령 통로를 사용할 수 있습니다.
 - `BattleManager`가 concrete module 목록을 직접 품는 일을 줄였습니다.
 - 이후 `aim_shooter`, `boxing`, `bullet_hell` 같은 모듈을 추가할 때 Action Adapter나 BattleManager 분기를 늘리는 대신 registry/factory 계층을 확장하는 경로가 생겼습니다.
 
@@ -50,6 +57,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 
 - 참가자 스냅샷은 아직 상태 소유자가 아닙니다. 실제 HP/MP 변경은 기존 `CharacterBase`, `BattleManager`, `SkillActionBlock` 흐름이 계속 처리합니다.
 - `IBattleParticipantCommandRunner`도 기존 변경 경로를 감싼 Adapter입니다. HP/MP mutation의 최종 소유권을 Battle Session State로 옮긴 것은 아닙니다.
+- `battle.participant.damage`는 현재 순수 피해 경로입니다. 방어/속성/공식 계산이 필요한 일반 피해 action은 별도 grammar로 추가해야 합니다.
 - 상태이상 추가/제거, 승패 확정, phase flag 변경은 아직 명령 seam에 포함하지 않았습니다.
 
 ## 이번 검증
@@ -58,12 +66,14 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - Unity MCP EditMode `BattleScenarioRuntimeTests` + `BattleScenarioActionContextFactoryTests` 23개 통과
 - C# LSP diagnostics 통과
 - Unity MCP script validation 통과: `BattleScenarioRuntime.cs`, `BattleScenarioActionContextFactory.cs`, `BattleManager.cs`
+- `battle.participant.*` adapter 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
+- 이 시점 Unity MCP는 인스턴스를 찾지 못해 추가 EditMode 실행은 못 했습니다.
 
 ## 남은 핵심 작업
 
 - `Battle Session State` 명시화
   - 현재는 scenario identity, Primary Mode, opening/current module, 읽기 전용 참가자 스냅샷까지 들어왔습니다.
-  - 데미지/회복/MP 변경 요청은 `IBattleParticipantCommandRunner`로 첫 통로가 열렸습니다.
+  - 데미지/회복/MP 변경 요청은 `IBattleParticipantCommandRunner`와 `battle.participant.*` action으로 첫 통로가 열렸습니다.
   - 다음에는 상태이상/승패/phase flag 변경 명령을 기존 Character/BattleManager 상태와 어떻게 연결할지 정해야 합니다.
 - concrete module 추가
   - 현재는 `turn_qte` compatibility module만 있습니다.

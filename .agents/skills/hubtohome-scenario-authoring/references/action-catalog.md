@@ -219,6 +219,103 @@ scope: "Battle Primary Mode에서 기존 QTE/스킬 시스템을 Action Sequence
 runtimeBinding: "`BattleManager`가 `BattleScenarioActionContextFactory`에 `BattleSkillTimelineRunner`를 주입합니다. Runner는 현재 battle actor/target/SkillData를 해석하고 `SkillContext`를 구성해 기존 `SkillActionBlock`들을 실행합니다. 스킬 종료 후 위치/카메라/턴 정리는 이 action이 아니라 주변 battle flow 또는 Action Sequence가 맡습니다."
 ```
 
+```yaml
+id: battle.participant.damage
+category: battle
+displayNameKo: "전투 참가자 피해"
+summaryKo: "지정한 전투 참가자에게 방어 계산 없는 순수 피해를 요청합니다."
+runtimeAdapter: BattleParticipantDamageActionAdapter
+params:
+  subject:
+    type: ActorId
+    required: true
+    validation: "현재 Battle Session에서 해석 가능한 Scenario Subject ID여야 합니다."
+  amount:
+    type: Integer
+    required: true
+    validation: "1 이상의 정수여야 합니다."
+examples:
+  - battle.participant.damage:
+      subject: zev
+      amount: 25
+completion: "IBattleParticipantCommandRunner.ApplyPureDamage가 성공 결과를 반환하면 완료됩니다."
+cancellation: "즉시 명령형 action이므로 실행 전 취소된 경우에만 중단됩니다."
+scope: "Battle Primary Mode 전용 action입니다."
+runtimeBinding: "`BattleScenarioActionContextFactory`가 `IBattleParticipantCommandRunner`를 주입합니다. 현재 concrete runner는 `BattleManager` adapter이며 기존 CharacterBase HP 변경, UI 이벤트, scenario HP 이벤트, participant snapshot refresh를 경유합니다."
+```
+
+```yaml
+id: battle.participant.heal_hp
+category: battle
+displayNameKo: "전투 참가자 HP 회복"
+summaryKo: "지정한 전투 참가자의 HP 회복을 요청합니다."
+runtimeAdapter: BattleParticipantHealHpActionAdapter
+params:
+  subject:
+    type: ActorId
+    required: true
+  amount:
+    type: Integer
+    required: true
+    validation: "1 이상의 정수여야 합니다."
+examples:
+  - battle.participant.heal_hp:
+      subject: player
+      amount: 20
+completion: "IBattleParticipantCommandRunner.HealHp가 성공 결과를 반환하면 완료됩니다."
+cancellation: "즉시 명령형 action이므로 실행 전 취소된 경우에만 중단됩니다."
+scope: "Battle Primary Mode 전용 action입니다."
+runtimeBinding: "`BattleManager` adapter가 기존 CharacterBase.HealHP와 battle UI event bridge를 경유합니다."
+```
+
+```yaml
+id: battle.participant.heal_mp
+category: battle
+displayNameKo: "전투 참가자 MP 회복"
+summaryKo: "지정한 전투 참가자의 MP 회복을 요청합니다."
+runtimeAdapter: BattleParticipantHealMpActionAdapter
+params:
+  subject:
+    type: ActorId
+    required: true
+  amount:
+    type: Integer
+    required: true
+    validation: "1 이상의 정수여야 합니다."
+examples:
+  - battle.participant.heal_mp:
+      subject: player
+      amount: 10
+completion: "IBattleParticipantCommandRunner.HealMp가 성공 결과를 반환하면 완료됩니다."
+cancellation: "즉시 명령형 action이므로 실행 전 취소된 경우에만 중단됩니다."
+scope: "Battle Primary Mode 전용 action입니다."
+runtimeBinding: "`BattleManager` adapter가 기존 CharacterBase.HealMP와 player MP UI event bridge를 경유합니다."
+```
+
+```yaml
+id: battle.participant.consume_mp
+category: battle
+displayNameKo: "전투 참가자 MP 소비"
+summaryKo: "지정한 전투 참가자의 MP 소비를 요청합니다."
+runtimeAdapter: BattleParticipantConsumeMpActionAdapter
+params:
+  subject:
+    type: ActorId
+    required: true
+  amount:
+    type: Integer
+    required: true
+    validation: "1 이상의 정수여야 합니다."
+examples:
+  - battle.participant.consume_mp:
+      subject: player
+      amount: 5
+completion: "IBattleParticipantCommandRunner.ConsumeMp가 성공 결과를 반환하면 완료됩니다."
+cancellation: "즉시 명령형 action이므로 실행 전 취소된 경우에만 중단됩니다."
+scope: "Battle Primary Mode 전용 action입니다."
+runtimeBinding: "`BattleManager` adapter가 기존 CharacterBase.ConsumeMP와 player MP UI event bridge를 경유합니다."
+```
+
 ## Rules For New Actions
 
 - Prefer clear, specific actions over over-abstracted parameter bags.
@@ -236,7 +333,7 @@ Existing `SkillActionBlock` classes are not the global grammar, but they are use
 - `Action_Wait` -> `flow.wait`
 - `Action_Move` -> `actor.move`
 - `Action_PlayAnim` -> `actor.animation`
-- `Action_Damage` -> `battle.damage`
+- `Action_Damage` -> `battle.participant.damage` for scenario-level participant damage; legacy skill timelines may still keep local `Action_Damage` blocks behind `battle.skill.timeline`.
 - `Action_QTE` -> QTE module-specific adapter action
 - `Action_DefenseWindow` -> QTE/defense module adapter action
 

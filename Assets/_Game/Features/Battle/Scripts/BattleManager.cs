@@ -410,6 +410,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         registry.Register(new ModuleSwitchActionAdapter());
         registry.Register(new ModuleStartActionAdapter());
         registry.Register(new BattleSkillTimelineActionAdapter());
+        registry.Register(new BattleParticipantDamageActionAdapter());
+        registry.Register(new BattleParticipantHealHpActionAdapter());
+        registry.Register(new BattleParticipantHealMpActionAdapter());
+        registry.Register(new BattleParticipantConsumeMpActionAdapter());
         return new ActionDirector(registry);
     }
 

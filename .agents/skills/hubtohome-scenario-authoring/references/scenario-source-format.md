@@ -82,6 +82,9 @@ sequences:
         duration: 0.8
     - module.start:
         module: aim_shooter
+    - battle.participant.damage:
+        subject: zev
+        amount: 25
 ```
 
 ## Authoring Rules
@@ -106,6 +109,7 @@ sequences:
 - Keep save-bound facts in Encounter Memory, not in in-progress Battle Session State.
 - Runtime `flow.parallel` currently maps to `ActionDirector.ParallelActionId` and is handled as a director-level group action.
 - Use `battle.skill.timeline` only as a compatibility call into existing `SkillData.ActionTimeline` / `SkillActionBlock` behavior. `targets` may be omitted when the battle runner should choose the skill's default alive target set from `SkillData.TargetType` / `IsAoE`; use explicit stable actor IDs when a sequence needs a specific target. Whole-battle phase flow still belongs in Battle Event Rules plus Action Sequences.
+- Use `battle.participant.damage`, `battle.participant.heal_hp`, `battle.participant.heal_mp`, and `battle.participant.consume_mp` when a scenario or Game Module needs to request HP/MP changes outside legacy SkillData timelines. These actions require `subject` and positive integer `amount`, and runtime must route them through `IBattleParticipantCommandRunner`.
 
 ## Validation Expectations
 
@@ -114,6 +118,7 @@ Reject or warn on:
 - Unknown action IDs.
 - Unknown actors, modules, dialogue IDs, clips, positions, or UI targets.
 - Unknown skill IDs used by `battle.skill.timeline`.
+- Missing or invalid `subject` / non-positive integer `amount` on `battle.participant.*` actions.
 - `dialogue.wait` IDs that do not resolve through `BattleScenarioData.Dialogues` / `ScenarioDialogueRegistry`.
 - `dialogues` entries whose `dialogueData` / `DialogueDataId` cannot resolve unambiguously through `IScenarioDialogueReferenceResolver`; importer error code is `scenario.dialogue.unresolved`.
 - `audioClips` entries whose `audioClip` / `AudioClipId` cannot resolve unambiguously through `IScenarioAudioReferenceResolver`; importer error code is `scenario.audio.unresolved`.

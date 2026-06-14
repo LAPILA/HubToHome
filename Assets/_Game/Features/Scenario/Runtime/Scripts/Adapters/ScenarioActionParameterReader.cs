@@ -34,6 +34,37 @@ public static class ScenarioActionParameterReader
         return false;
     }
 
+    public static bool TryGetInt(
+        ScenarioActionData action,
+        string name,
+        int defaultValue,
+        out int value,
+        out string error)
+    {
+        value = defaultValue;
+        error = string.Empty;
+
+        JObject root;
+        if (!TryParse(action, out root, out error))
+        {
+            return false;
+        }
+
+        if (root == null || !root.TryGetValue(name, out JToken token) || token.Type == JTokenType.Null)
+        {
+            return true;
+        }
+
+        if (token.Type == JTokenType.Integer)
+        {
+            value = token.Value<int>();
+            return true;
+        }
+
+        error = "Parameter '" + name + "' must be an integer.";
+        return false;
+    }
+
     public static bool TryGetString(
         ScenarioActionData action,
         string name,

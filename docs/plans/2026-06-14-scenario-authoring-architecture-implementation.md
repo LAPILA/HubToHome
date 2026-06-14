@@ -440,6 +440,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 command seam continuation: `IBattleParticipantCommandRunner` is now available through battle scenario `ActionExecutionContext` for HP/MP mutation requests. The first concrete adapter remains inside `BattleManager` and forwards to existing `CharacterBase` mutation, UI events, scenario HP publication, and participant snapshot refresh. This keeps current QTE/skill behavior stable while giving future shooter, boxing, and other Game Modules a single command seam for damage, healing, MP gain, and MP consumption.
 
+2026-06-15 action grammar continuation: The command seam is now exposed as runtime-backed Action adapters: `battle.participant.damage`, `battle.participant.heal_hp`, `battle.participant.heal_mp`, and `battle.participant.consume_mp`. These actions parse `subject` and positive integer `amount`, fail clearly when `IBattleParticipantCommandRunner` is missing or the runner rejects the command, and are registered in the default battle scenario ActionDirector. This turns the command seam from a code-only service into authorable Action Sequence grammar.
+
 **Step 5: Commit**
 
 ```powershell
