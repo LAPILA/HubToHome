@@ -32,6 +32,9 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - `BattleSessionState`가 `BattleParticipantSnapshot` 목록을 읽기 전용으로 제공하게 했습니다.
   - 포함 정보: subject id, player/enemy 구분, 표시명, HP/MP, 생존 여부, bind/stun/berserk/defend/invincible 플래그
   - 갱신 위치: 전투 시작 직후, battle scenario Action Context 생성 직전, public HP/MP 이벤트 브리지 호출 시점
+- `IBattleParticipantCommandRunner`를 추가해 미래 Game Module이 HP/MP 변경을 요청할 통로를 열었습니다.
+  - 현재 명령: pure damage, HP heal, MP heal, MP consume
+  - 첫 구현은 `BattleManager` 내부 adapter이며, 기존 `CharacterBase`와 전투 UI/scenario event bridge를 그대로 경유합니다.
 
 ## 효과
 
@@ -39,26 +42,29 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - 현재 모듈이 runner 내부 임시 필드에만 남지 않고 `BattleSessionState`에서도 보입니다.
 - 다음 Game Module은 `BattleManager.Instance`를 직접 참조하지 않고 `ActionExecutionContext.GetService<IBattleSessionStateReader>()`로 현재 scenario/module 상태를 읽을 수 있습니다.
 - 다음 Game Module은 같은 reader로 현재 파티/적 HP, MP, 생존 여부, 주요 상태 플래그도 읽을 수 있습니다.
+- 다음 Game Module은 `IBattleParticipantCommandRunner`로 데미지/회복/MP 변경을 요청할 수 있습니다.
 - `BattleManager`가 concrete module 목록을 직접 품는 일을 줄였습니다.
 - 이후 `aim_shooter`, `boxing`, `bullet_hell` 같은 모듈을 추가할 때 Action Adapter나 BattleManager 분기를 늘리는 대신 registry/factory 계층을 확장하는 경로가 생겼습니다.
 
 ## 주의할 점
 
 - 참가자 스냅샷은 아직 상태 소유자가 아닙니다. 실제 HP/MP 변경은 기존 `CharacterBase`, `BattleManager`, `SkillActionBlock` 흐름이 계속 처리합니다.
-- 이 방식은 “새 Game Module이 상태를 읽는 경로”를 먼저 표준화한 것입니다. 이후 “새 Game Module이 데미지/회복/상태이상 변경을 요청하는 명령 경로”는 별도 전투 명령 seam으로 설계해야 합니다.
+- `IBattleParticipantCommandRunner`도 기존 변경 경로를 감싼 Adapter입니다. HP/MP mutation의 최종 소유권을 Battle Session State로 옮긴 것은 아닙니다.
+- 상태이상 추가/제거, 승패 확정, phase flag 변경은 아직 명령 seam에 포함하지 않았습니다.
 
 ## 이번 검증
 
 - `dotnet build HubToHome.sln --no-restore` 통과
-- Unity MCP EditMode `BattleScenarioRuntimeTests` 12개 통과
+- Unity MCP EditMode `BattleScenarioRuntimeTests` + `BattleScenarioActionContextFactoryTests` 23개 통과
 - C# LSP diagnostics 통과
-- Unity MCP script validation 통과: `BattleScenarioRuntime.cs`, `BattleManager.cs`
+- Unity MCP script validation 통과: `BattleScenarioRuntime.cs`, `BattleScenarioActionContextFactory.cs`, `BattleManager.cs`
 
 ## 남은 핵심 작업
 
 - `Battle Session State` 명시화
   - 현재는 scenario identity, Primary Mode, opening/current module, 읽기 전용 참가자 스냅샷까지 들어왔습니다.
-  - 다음에는 데미지/회복/상태이상/승패/phase flag의 변경 명령을 기존 Character/BattleManager 상태와 어떻게 연결할지 정해야 합니다.
+  - 데미지/회복/MP 변경 요청은 `IBattleParticipantCommandRunner`로 첫 통로가 열렸습니다.
+  - 다음에는 상태이상/승패/phase flag 변경 명령을 기존 Character/BattleManager 상태와 어떻게 연결할지 정해야 합니다.
 - concrete module 추가
   - 현재는 `turn_qte` compatibility module만 있습니다.
 - QTE 전투 추출

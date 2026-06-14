@@ -126,6 +126,18 @@ public class BattleScenarioActionContextFactoryTests
     }
 
     [Test]
+    public void RegistersBattleParticipantCommandRunnerWhenProvided()
+    {
+        var runner = new FakeBattleParticipantCommandRunner();
+
+        ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+            null,
+            battleParticipantCommandRunner: runner);
+
+        Assert.That(context.GetService<IBattleParticipantCommandRunner>(), Is.SameAs(runner));
+    }
+
+    [Test]
     public void RunnerCurrentModuleOverridesBattleSessionState()
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
@@ -221,6 +233,41 @@ public class BattleScenarioActionContextFactoryTests
             ActionExecutionHandle handle)
         {
             yield break;
+        }
+    }
+
+    private sealed class FakeBattleParticipantCommandRunner : IBattleParticipantCommandRunner
+    {
+        public BattleParticipantCommandResult ApplyPureDamage(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 0);
+        }
+
+        public BattleParticipantCommandResult HealHp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 0, 10);
+        }
+
+        public BattleParticipantCommandResult HealMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 0, 10);
+        }
+
+        public BattleParticipantCommandResult ConsumeMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 0);
         }
     }
 }

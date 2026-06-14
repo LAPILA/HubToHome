@@ -426,7 +426,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
                     scenarioData != null ? scenarioData.AudioClips : null,
                     new ResourcesAudioClipResolver())),
             screenTransitionRunner: new ScreenTransitionRunner(),
-            battleSessionState: _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null);
+            battleSessionState: _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null,
+            battleParticipantCommandRunner: new BattleParticipantCommandRunner(this));
     }
 
     private void RefreshBattleSessionParticipants()
@@ -456,6 +457,226 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         }
 
         _battleScenarioRuntime.SessionState.SetParticipants(participants);
+    }
+
+    private BattleParticipantCommandResult ApplyPureDamageToParticipant(string subjectId, int amount)
+    {
+        if (amount <= 0)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Damage amount must be greater than zero.");
+        }
+
+        CharacterBase target = FindBattleParticipant(subjectId);
+        if (target == null)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
+        }
+
+        int previousHp = target.CurrentHP;
+        int appliedDamage = target.TakePureDamage(amount);
+        InvokeDamageEvent(target, appliedDamage, false, previousHp);
+        return BattleParticipantCommandResult.Succeeded(
+            ResolveCommandSubjectId(target, subjectId),
+            amount,
+            appliedDamage,
+            previousHp,
+            target.CurrentHP);
+    }
+
+    private BattleParticipantCommandResult HealHpParticipant(string subjectId, int amount)
+    {
+        if (amount <= 0)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Heal amount must be greater than zero.");
+        }
+
+        CharacterBase target = FindBattleParticipant(subjectId);
+        if (target == null)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
+        }
+
+        int previousHp = target.CurrentHP;
+        target.HealHP(amount);
+        int healedAmount = Mathf.Max(0, target.CurrentHP - previousHp);
+        RefreshBattleSessionParticipants();
+        OnDamageDealt?.Invoke(target, -healedAmount, false);
+        return BattleParticipantCommandResult.Succeeded(
+            ResolveCommandSubjectId(target, subjectId),
+            amount,
+            healedAmount,
+            previousHp,
+            target.CurrentHP);
+    }
+
+    private BattleParticipantCommandResult HealMpParticipant(string subjectId, int amount)
+    {
+        if (amount <= 0)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "MP heal amount must be greater than zero.");
+        }
+
+        CharacterBase target = FindBattleParticipant(subjectId);
+        if (target == null)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
+        }
+
+        int previousMp = target.CurrentMP;
+        target.HealMP(amount);
+        int healedAmount = Mathf.Max(0, target.CurrentMP - previousMp);
+        RefreshBattleSessionParticipants();
+        PlayerCharacter player = target as PlayerCharacter;
+        if (player != null)
+        {
+            OnMPChanged?.Invoke(player, player.CurrentMP);
+        }
+
+        return BattleParticipantCommandResult.Succeeded(
+            ResolveCommandSubjectId(target, subjectId),
+            amount,
+            healedAmount,
+            previousMp,
+            target.CurrentMP);
+    }
+
+    private BattleParticipantCommandResult ConsumeMpParticipant(string subjectId, int amount)
+    {
+        if (amount <= 0)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "MP consume amount must be greater than zero.");
+        }
+
+        CharacterBase target = FindBattleParticipant(subjectId);
+        if (target == null)
+        {
+            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
+        }
+
+        int previousMp = target.CurrentMP;
+        target.ConsumeMP(amount);
+        int consumedAmount = Mathf.Max(0, previousMp - target.CurrentMP);
+        RefreshBattleSessionParticipants();
+        PlayerCharacter player = target as PlayerCharacter;
+        if (player != null)
+        {
+            OnMPChanged?.Invoke(player, player.CurrentMP);
+        }
+
+        return BattleParticipantCommandResult.Succeeded(
+            ResolveCommandSubjectId(target, subjectId),
+            amount,
+            consumedAmount,
+            previousMp,
+            target.CurrentMP);
+    }
+
+    private CharacterBase FindBattleParticipant(string subjectId)
+    {
+        if (string.IsNullOrWhiteSpace(subjectId))
+        {
+            return null;
+        }
+
+        string normalized = subjectId.Trim();
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player == null)
+            {
+                continue;
+            }
+
+            if ((i == 0 && string.Equals(normalized, "player", StringComparison.OrdinalIgnoreCase))
+                || SubjectMatches(normalized, player.CharacterID)
+                || SubjectMatches(normalized, player.DisplayName)
+                || SubjectMatches(normalized, player.name))
+            {
+                return player;
+            }
+        }
+
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            EnemyCharacter enemy = _enemies[i];
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            string enemySubjectId = BattleScenarioSubjectResolver.ResolveEnemySubjectId(enemy);
+            string enemyDisplayName = enemy.Data != null ? enemy.Data.EnemyName : string.Empty;
+            if (SubjectMatches(normalized, enemySubjectId)
+                || SubjectMatches(normalized, enemyDisplayName)
+                || SubjectMatches(normalized, enemy.name))
+            {
+                return enemy;
+            }
+        }
+
+        return null;
+    }
+
+    private static string ResolveCommandSubjectId(CharacterBase target, string fallbackSubjectId)
+    {
+        string subjectId = BattleScenarioSubjectResolver.ResolveSubjectId(target);
+        return string.IsNullOrWhiteSpace(subjectId) ? fallbackSubjectId : subjectId;
+    }
+
+    private static bool SubjectMatches(string normalizedSubjectId, string candidate)
+    {
+        return !string.IsNullOrWhiteSpace(candidate)
+            && string.Equals(normalizedSubjectId, candidate.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class BattleParticipantCommandRunner : IBattleParticipantCommandRunner
+    {
+        private readonly BattleManager _battleManager;
+
+        public BattleParticipantCommandRunner(BattleManager battleManager)
+        {
+            _battleManager = battleManager;
+        }
+
+        public BattleParticipantCommandResult ApplyPureDamage(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return _battleManager != null
+                ? _battleManager.ApplyPureDamageToParticipant(subjectId, amount)
+                : BattleParticipantCommandResult.Failed(subjectId, "BattleManager is missing.");
+        }
+
+        public BattleParticipantCommandResult HealHp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return _battleManager != null
+                ? _battleManager.HealHpParticipant(subjectId, amount)
+                : BattleParticipantCommandResult.Failed(subjectId, "BattleManager is missing.");
+        }
+
+        public BattleParticipantCommandResult HealMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return _battleManager != null
+                ? _battleManager.HealMpParticipant(subjectId, amount)
+                : BattleParticipantCommandResult.Failed(subjectId, "BattleManager is missing.");
+        }
+
+        public BattleParticipantCommandResult ConsumeMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return _battleManager != null
+                ? _battleManager.ConsumeMpParticipant(subjectId, amount)
+                : BattleParticipantCommandResult.Failed(subjectId, "BattleManager is missing.");
+        }
     }
 
     private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(

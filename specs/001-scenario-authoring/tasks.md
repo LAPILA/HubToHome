@@ -66,6 +66,7 @@
 - [x] Add first explicit `BattleSessionState` and `IGameModuleStateStore` seam for current Game Module continuity.
 - [x] Register `IBattleSessionStateReader` into battle `ActionExecutionContext` so Game Modules can read session state without `BattleManager` lookups.
 - [x] Expose read-only battle participant snapshots through `IBattleSessionStateReader` so Game Modules can inspect HP/MP/status without owning existing Character state.
+- [x] Register `IBattleParticipantCommandRunner` into battle `ActionExecutionContext` so future Game Modules can request HP/MP mutations through one battle adapter.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

@@ -294,6 +294,36 @@ public class BattleScenarioRuntimeTests
         }
     }
 
+    [Test]
+    public void BattleParticipantCommandResultKeepsAppliedAmountAndValues()
+    {
+        BattleParticipantCommandResult result = BattleParticipantCommandResult.Succeeded(
+            "zev",
+            30,
+            25,
+            100,
+            75);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.SubjectId, Is.EqualTo("zev"));
+        Assert.That(result.RequestedAmount, Is.EqualTo(30));
+        Assert.That(result.AppliedAmount, Is.EqualTo(25));
+        Assert.That(result.PreviousValue, Is.EqualTo(100));
+        Assert.That(result.CurrentValue, Is.EqualTo(75));
+    }
+
+    [Test]
+    public void BattleParticipantCommandResultFailureKeepsMessage()
+    {
+        BattleParticipantCommandResult result = BattleParticipantCommandResult.Failed(
+            "missing",
+            "Battle participant was not found.");
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.SubjectId, Is.EqualTo("missing"));
+        Assert.That(result.Message, Is.EqualTo("Battle participant was not found."));
+    }
+
     private static BattleScenarioData MakeScenario(BattleRuleTiming timing)
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();

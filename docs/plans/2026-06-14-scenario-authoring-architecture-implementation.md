@@ -438,6 +438,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 participant snapshot continuation: `BattleSessionState` now also exposes read-only `BattleParticipantSnapshot` entries through `IBattleSessionStateReader.Participants` and `TryGetParticipant(...)`. `BattleManager` refreshes those snapshots from the current `_playerParty` / `_enemies` lists at battle setup, before creating battle scenario action contexts, and when the public HP/MP event bridge is invoked. This gives future Game Modules a stable way to inspect HP, MP, alive state, and common status flags without direct `BattleManager` lookups. It is deliberately a snapshot bridge, not HP/MP mutation ownership migration.
 
+2026-06-15 command seam continuation: `IBattleParticipantCommandRunner` is now available through battle scenario `ActionExecutionContext` for HP/MP mutation requests. The first concrete adapter remains inside `BattleManager` and forwards to existing `CharacterBase` mutation, UI events, scenario HP publication, and participant snapshot refresh. This keeps current QTE/skill behavior stable while giving future shooter, boxing, and other Game Modules a single command seam for damage, healing, MP gain, and MP consumption.
+
 **Step 5: Commit**
 
 ```powershell

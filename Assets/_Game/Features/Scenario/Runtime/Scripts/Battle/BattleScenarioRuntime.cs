@@ -11,6 +11,80 @@ public interface IBattleSessionStateReader
     bool TryGetParticipant(string subjectId, out BattleParticipantSnapshot participant);
 }
 
+public interface IBattleParticipantCommandRunner
+{
+    BattleParticipantCommandResult ApplyPureDamage(string subjectId, int amount, ActionExecutionContext context);
+
+    BattleParticipantCommandResult HealHp(string subjectId, int amount, ActionExecutionContext context);
+
+    BattleParticipantCommandResult HealMp(string subjectId, int amount, ActionExecutionContext context);
+
+    BattleParticipantCommandResult ConsumeMp(string subjectId, int amount, ActionExecutionContext context);
+}
+
+public sealed class BattleParticipantCommandResult
+{
+    private BattleParticipantCommandResult(
+        bool success,
+        string subjectId,
+        int requestedAmount,
+        int appliedAmount,
+        int previousValue,
+        int currentValue,
+        string message)
+    {
+        Success = success;
+        SubjectId = Normalize(subjectId);
+        RequestedAmount = Mathf.Max(0, requestedAmount);
+        AppliedAmount = Mathf.Max(0, appliedAmount);
+        PreviousValue = Mathf.Max(0, previousValue);
+        CurrentValue = Mathf.Max(0, currentValue);
+        Message = message ?? string.Empty;
+    }
+
+    public bool Success { get; }
+    public string SubjectId { get; }
+    public int RequestedAmount { get; }
+    public int AppliedAmount { get; }
+    public int PreviousValue { get; }
+    public int CurrentValue { get; }
+    public string Message { get; }
+
+    public static BattleParticipantCommandResult Succeeded(
+        string subjectId,
+        int requestedAmount,
+        int appliedAmount,
+        int previousValue,
+        int currentValue)
+    {
+        return new BattleParticipantCommandResult(
+            true,
+            subjectId,
+            requestedAmount,
+            appliedAmount,
+            previousValue,
+            currentValue,
+            string.Empty);
+    }
+
+    public static BattleParticipantCommandResult Failed(string subjectId, string message)
+    {
+        return new BattleParticipantCommandResult(
+            false,
+            subjectId,
+            0,
+            0,
+            0,
+            0,
+            message);
+    }
+
+    private static string Normalize(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
+}
+
 public enum BattleParticipantKind
 {
     Player,

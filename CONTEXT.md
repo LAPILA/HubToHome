@@ -54,6 +54,10 @@ _Avoid_: making dialogue or cinematic systems subordinate to a combat module.
 The battle-scoped truth that persists while Game Modules switch, including party/enemy survival, resources, status, current Game Module, phase progress, and already-fired battle beats. The first concrete runtime class is `BattleSessionState`, currently focused on scenario identity, Primary Mode, opening/current module continuity, and read-only participant snapshots bridged from the current `CharacterBase` runtime objects. Runtime actions and Game Modules should read it through `IBattleSessionStateReader` from `ActionExecutionContext` rather than reaching back into `BattleManager`.
 _Avoid_: storing battle-wide facts inside a single combat module.
 
+**Battle Participant Command Runner**:
+The narrow command seam exposed to runtime actions and Game Modules for requesting battle participant HP/MP changes. The first concrete adapter is owned by `BattleManager` because `CharacterBase` and existing battle events still own mutation; callers should resolve `IBattleParticipantCommandRunner` from `ActionExecutionContext` instead of touching `BattleManager.Instance`.
+_Avoid_: letting shooter, boxing, QTE, or one-off Action adapters apply damage/heal/MP changes through their own private BattleManager branches.
+
 **Save Scope**:
 The game's save/load scope. Current planning saves outside battle only; battle results and Encounter Memory may persist, but an in-progress Battle Session State is not restored from a save.
 _Avoid_: treating mid-battle state as save-bound.
