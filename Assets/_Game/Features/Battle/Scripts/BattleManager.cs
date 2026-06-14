@@ -113,8 +113,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private PlayerController _activeEncounterPlayer;
     private bool _isReadyToReveal = true;
     private BattleScenarioData _pendingBattleScenarioData;
-    private BattleScenarioData _activeBattleScenarioData;
-    private BattleScenarioEventRouter _battleScenarioEventRouter;
+    private BattleScenarioRuntime _battleScenarioRuntime;
     #endregion
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
@@ -278,7 +277,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
     private void InitializeBattleScenarioRuntime()
     {
-        _activeBattleScenarioData = ResolveBattleScenarioData();
+        BattleScenarioData scenarioData = ResolveBattleScenarioData();
         _pendingBattleScenarioData = null;
 
         if (GlobalDataManager.Instance != null)
@@ -286,17 +285,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             GlobalDataManager.Instance.PendingBattleScenario = null;
         }
 
-        if (_activeBattleScenarioData == null)
-        {
-            _battleScenarioEventRouter = null;
-            return;
-        }
-
-        var session = new BattleScenarioSession(
-            _activeBattleScenarioData.ScenarioId,
-            _activeBattleScenarioData.MemoryKey);
-        var ruleRunner = new BattleScenarioRuleRunner(_activeBattleScenarioData, session);
-        _battleScenarioEventRouter = new BattleScenarioEventRouter(ruleRunner);
+        _battleScenarioRuntime = scenarioData != null ? new BattleScenarioRuntime(scenarioData) : null;
     }
 
     private BattleScenarioData ResolveBattleScenarioData()
@@ -321,7 +310,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         int maxHp,
         BattleRuleTiming timing)
     {
-        if (_battleScenarioEventRouter == null || target == null || maxHp <= 0)
+        if (_battleScenarioRuntime == null || target == null)
         {
             return;
         }
@@ -337,12 +326,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             return;
         }
 
-        BattleEventData battleEvent = BattleEventData.EnemyHpCrossedBelow(
+        DispatchBattleScenarioTriggers(_battleScenarioRuntime.PublishEnemyHpCrossedBelow(
             subjectId,
-            Mathf.Clamp01((float)previousHp / maxHp),
-            Mathf.Clamp01((float)currentHp / maxHp),
-            timing);
-        DispatchBattleScenarioTriggers(_battleScenarioEventRouter.Publish(battleEvent));
+            previousHp,
+            currentHp,
+            maxHp,
+            timing));
     }
 
     private void DispatchBattleScenarioTriggers(List<BattleScenarioTrigger> triggers)
@@ -357,12 +346,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
     private IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing)
     {
-        if (_battleScenarioEventRouter == null)
+        if (_battleScenarioRuntime == null)
         {
             yield break;
         }
 
-        List<BattleScenarioTrigger> triggers = _battleScenarioEventRouter.Flush(timing);
+        List<BattleScenarioTrigger> triggers = _battleScenarioRuntime.Flush(timing);
         DispatchBattleScenarioTriggers(triggers);
     }
 

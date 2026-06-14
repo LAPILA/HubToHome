@@ -59,4 +59,4 @@ Rejected approaches:
 7. Emit fired triggers through `BattleManager.OnBattleScenarioTriggersReady`.
 8. Execute returned sequences through `ActionDirector` in a later bridge commit.
 
-Task 2 status: implemented through trigger emission. Sequence execution is intentionally left for the next `ActionDirector` bridge step so `BattleManager` does not own presentation/module transition policy.
+Task 2 status: implemented through trigger emission and then hardened behind `BattleScenarioRuntime`. `BattleManager` now resolves the subject and passes HP/timing facts to the runtime Module; sequence execution is intentionally left for the next `ActionDirector` bridge step so `BattleManager` does not own presentation/module transition policy.

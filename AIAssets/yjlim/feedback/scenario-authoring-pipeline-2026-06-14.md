@@ -107,15 +107,24 @@ flowchart LR
 - 기존 QTE 전투에서 Battle Scenario Event를 발행하는 최소 hook을 추가했다.
   - `BattleEncounterService.StartEncounter(..., BattleScenarioData battleScenarioData = null)`로 encounter별 scenario data를 넘길 수 있다. 기존 호출자는 옵션 파라미터 때문에 깨지지 않는다.
   - 전용 BattleScene 로드처럼 씬을 건너가는 경우에는 `GlobalDataManager.PendingBattleScenario`로 scenario data를 임시 전달한다. 이 값은 세이브 데이터가 아니라 전투 진입용 런타임 handoff다.
-  - `BattleManager`는 전투 시작 시 resolved scenario로 `BattleScenarioEventRouter`를 만들고, 적에게 피해가 들어간 뒤 `EnemyHpCrossedBelow` 이벤트를 발행한다.
+  - `BattleManager`는 전투 시작 시 `BattleScenarioRuntime`을 만들고, 적에게 피해가 들어간 뒤 subject ID, HP 전/후값, timing만 넘기는 adapter 역할을 한다.
+  - `BattleScenarioRuntime`은 `BattleScenarioData`를 받아 HP 정수값을 ratio 이벤트로 변환하고, `BattleScenarioEventRouter` publish/flush와 sequence lookup을 감싼다.
   - `SkillActionBlocks`는 데미지 전 HP를 같이 넘기므로, 50% threshold 같은 규칙은 실제 피해 전/후 비율로 crossing을 판단한다.
   - 발화된 `BattleScenarioTrigger`는 `BattleManager.OnBattleScenarioTriggersReady` 이벤트로만 나온다. 아직 여기서 ActionDirector 실행을 하지 않는 이유는, BGM/대사/페이드/모듈 전환 정책을 BattleManager에 다시 넣지 않기 위해서다.
+- 1차 push 전 검증 강화를 위해 `BattleScenarioRuntimeTests`를 추가했다.
+  - `AfterCurrentSkill` timing은 스킬 중 발생한 HP crossing을 즉시 실행하지 않고 flush 시점에 발화한다.
+  - `Immediate` timing은 publish 시점에 바로 발화하고, 이후 flush에서 중복 발화하지 않는다.
+  - 이 테스트는 BattleManager private helper가 아니라 public runtime Module을 검증하므로, 이후 battle adapter가 바뀌어도 핵심 규칙은 유지하기 쉽다.
+  - 테스트 임시 `ScriptableObject`는 assertion 실패 시에도 정리되도록 `try/finally`로 감쌌다.
 
 ## 검증 메모
 
-- `dotnet build HubToHome.sln --no-restore`는 현재 ignored/stale Unity 생성 csproj가 새 Scenario 파일을 포함하지 않아 실패할 수 있다. 이 실패는 `BattleManager`가 새 Scenario 타입을 참조하기 시작하면서 드러난 프로젝트 파일 갱신 문제다.
-- 실제 컴파일 검증은 임시 `Assembly-CSharp.codex-validation.csproj`에 Scenario production 스크립트를 포함시켜 수행했고, 오류 0개로 통과했다.
-- Unity Editor refresh/reimport, Play Mode, 씬 저장은 하지 않았다.
+- 임시 validation csproj로 TDD RED를 먼저 확인했다. `BattleScenarioRuntimeTests`가 없는 타입을 참조해 실패했고, 이후 runtime Module 구현 뒤 같은 validation build가 오류 0개로 통과했다.
+- `dotnet build HubToHome.sln --no-restore`는 Unity 생성 csproj가 갱신된 뒤 통과했다. 이전 전체 실행에서는 기존 계열 경고인 `System.Net.Http`/`System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고가 있었고, 테스트 cleanup 보강 후 재실행에서는 `System.Net.Http`/`System.IO.Compression` 버전 충돌 4개만 남았다.
+- Unity MCP EditMode 테스트를 실행했고, 새 `BattleScenarioRuntimeTests` 포함 총 36개 테스트가 모두 통과했다.
+- 첫 Test Runner 실행에는 Unity import 타이밍 때문에 cleanup verification 로그가 남았다. 두 번째 실행에서 테스트 결과는 36개 통과, 실패 0개였다.
+- 테스트 cleanup 보강 후 `BattleScenarioRuntimeTests`만 다시 실행했고 2개 통과, 실패 0개였다.
+- Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
 
