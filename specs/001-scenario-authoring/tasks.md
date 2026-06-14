@@ -26,10 +26,11 @@
 
 ## Phase 3 - Source Sync
 
-- [ ] Create scenario source parser adapter.
-- [ ] Add source hash/stale metadata.
-- [ ] Add import/export tests with a small scenario source sample.
-- [ ] Commit source sync.
+- [x] Create scenario source parser adapter.
+- [x] Add source hash/stale metadata.
+- [x] Add source sync tests with a small source sample and fake parser.
+- [ ] Add export tests after YAML writer/parser package implementation.
+- [x] Commit source sync foundation.
 
 ## Phase 4 - Presentation and Legacy Adapters
 

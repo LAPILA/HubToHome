@@ -9,6 +9,14 @@ Use YAML as HubToHome's authoring source for scenario flow. Runtime ScriptableOb
 - `*.catalog.yaml`: stable IDs for actions, modules, actors, dialogue, audio, VFX, backgrounds, UI targets, and positions.
 - Unity `.asset`: generated or synchronized runtime representation.
 
+## Parser Boundary
+
+Runtime and editor code must depend on `IScenarioSourceParser`, not directly on a concrete YAML package.
+
+- Until a YamlDotNet-backed parser is installed, `MissingYamlScenarioSourceParser` must fail with a clear validation error.
+- `ScenarioSourceImporter` can be tested with a fake parser by feeding it a `ScenarioSourceDocument`.
+- Source hash and stale-state checks are handled by `ScenarioSourceHash` and `ScenarioSourceMetadata`, independent of the concrete YAML parser.
+
 ## Core Shape
 
 ```yaml
