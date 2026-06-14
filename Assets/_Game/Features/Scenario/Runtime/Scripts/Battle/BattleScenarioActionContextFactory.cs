@@ -6,12 +6,13 @@ public static class BattleScenarioActionContextFactory
         ISkillTimelineRunner skillTimelineRunner = null,
         IGameModuleActionRunner gameModuleActionRunner = null,
         IAudioActionRunner audioActionRunner = null,
-        IScreenTransitionRunner screenTransitionRunner = null)
+        IScreenTransitionRunner screenTransitionRunner = null,
+        IBattleSessionStateReader battleSessionState = null)
     {
         var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
         context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
         context.PrimaryMode = scenarioData != null ? scenarioData.PrimaryMode : "battle";
-        context.ModuleId = ResolveModuleId(scenarioData, gameModuleActionRunner);
+        context.ModuleId = ResolveModuleId(scenarioData, gameModuleActionRunner, battleSessionState);
 
         var dialogueRunner = new DialogueManagerRunner(dialogueManager);
         if (scenarioData != null)
@@ -40,16 +41,27 @@ public static class BattleScenarioActionContextFactory
             context.SetService<IScreenTransitionRunner>(screenTransitionRunner);
         }
 
+        if (battleSessionState != null)
+        {
+            context.SetService<IBattleSessionStateReader>(battleSessionState);
+        }
+
         return context;
     }
 
     private static string ResolveModuleId(
         BattleScenarioData scenarioData,
-        IGameModuleActionRunner gameModuleActionRunner)
+        IGameModuleActionRunner gameModuleActionRunner,
+        IBattleSessionStateReader battleSessionState)
     {
         if (gameModuleActionRunner != null && !string.IsNullOrWhiteSpace(gameModuleActionRunner.CurrentModuleId))
         {
             return gameModuleActionRunner.CurrentModuleId.Trim();
+        }
+
+        if (battleSessionState != null && !string.IsNullOrWhiteSpace(battleSessionState.CurrentModuleId))
+        {
+            return battleSessionState.CurrentModuleId.Trim();
         }
 
         return scenarioData != null ? scenarioData.OpeningModule : string.Empty;

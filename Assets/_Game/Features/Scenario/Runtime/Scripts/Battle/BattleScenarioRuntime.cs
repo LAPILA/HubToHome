@@ -1,6 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public interface IBattleSessionStateReader
+{
+    string ScenarioId { get; }
+    string PrimaryMode { get; }
+    string OpeningModule { get; }
+    string CurrentModuleId { get; }
+}
+
 public sealed class BattleScenarioRuntime
 {
     private readonly BattleScenarioEventRouter _eventRouter;
@@ -78,7 +86,7 @@ public sealed class BattleScenarioRuntime
     }
 }
 
-public sealed class BattleSessionState : IGameModuleStateStore
+public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleStateStore
 {
     private BattleSessionState(
         string scenarioId,

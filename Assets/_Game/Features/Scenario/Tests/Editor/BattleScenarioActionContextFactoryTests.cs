@@ -102,6 +102,57 @@ public class BattleScenarioActionContextFactoryTests
     }
 
     [Test]
+    public void RegistersBattleSessionStateReaderWhenProvided()
+    {
+        BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
+        scenario.ScenarioId = "zev_first_battle";
+        scenario.OpeningModule = "turn_qte";
+        BattleSessionState sessionState = BattleSessionState.Create(scenario);
+        sessionState.SetCurrentModuleId("aim_shooter");
+
+        try
+        {
+            ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+                scenario,
+                battleSessionState: sessionState);
+
+            Assert.That(context.ModuleId, Is.EqualTo("aim_shooter"));
+            Assert.That(context.GetService<IBattleSessionStateReader>(), Is.SameAs(sessionState));
+        }
+        finally
+        {
+            Object.DestroyImmediate(scenario);
+        }
+    }
+
+    [Test]
+    public void RunnerCurrentModuleOverridesBattleSessionState()
+    {
+        BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
+        scenario.OpeningModule = "turn_qte";
+        BattleSessionState sessionState = BattleSessionState.Create(scenario);
+        sessionState.SetCurrentModuleId("aim_shooter");
+        var runner = new FakeGameModuleActionRunner
+        {
+            CurrentModuleId = "boxing"
+        };
+
+        try
+        {
+            ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+                scenario,
+                gameModuleActionRunner: runner,
+                battleSessionState: sessionState);
+
+            Assert.That(context.ModuleId, Is.EqualTo("boxing"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(scenario);
+        }
+    }
+
+    [Test]
     public void RegistersAudioAndScreenRunnersWhenProvided()
     {
         var audioRunner = new FakeAudioActionRunner();

@@ -64,6 +64,7 @@
 - [x] Persist the battle-scoped `IGameModuleActionRunner` across scenario trigger batches so `CurrentModuleId` survives separate Action Sequences.
 - [x] Move default battle module registration behind `BattleGameModuleRegistryFactory` so future modules are not registered directly inside `BattleManager`.
 - [x] Add first explicit `BattleSessionState` and `IGameModuleStateStore` seam for current Game Module continuity.
+- [x] Register `IBattleSessionStateReader` into battle `ActionExecutionContext` so Game Modules can read session state without `BattleManager` lookups.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

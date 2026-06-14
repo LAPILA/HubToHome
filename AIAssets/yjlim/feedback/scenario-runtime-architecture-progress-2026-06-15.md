@@ -28,11 +28,13 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - 기본 Battle Game Module 등록은 `BattleGameModuleRegistryFactory`로 옮겼습니다.
 - `BattleScenarioRuntime`에 `BattleSessionState`를 추가했습니다.
 - `GameModuleActionRunner`는 `IGameModuleStateStore`를 받을 수 있고, 모듈 전환 시 current module을 battle-scoped state에 반영합니다.
+- `IBattleSessionStateReader`를 Action Context service로 등록해 runtime action과 Game Module이 전투 세션 상태를 읽을 수 있게 했습니다.
 
 ## 효과
 
 - `module.switch` 이후 현재 모듈이 다음 Action Sequence에도 이어집니다.
 - 현재 모듈이 runner 내부 임시 필드에만 남지 않고 `BattleSessionState`에서도 보입니다.
+- 다음 Game Module은 `BattleManager.Instance`를 직접 참조하지 않고 `ActionExecutionContext.GetService<IBattleSessionStateReader>()`로 현재 scenario/module 상태를 읽을 수 있습니다.
 - `BattleManager`가 concrete module 목록을 직접 품는 일을 줄였습니다.
 - 이후 `aim_shooter`, `boxing`, `bullet_hell` 같은 모듈을 추가할 때 Action Adapter나 BattleManager 분기를 늘리는 대신 registry/factory 계층을 확장하는 경로가 생겼습니다.
 

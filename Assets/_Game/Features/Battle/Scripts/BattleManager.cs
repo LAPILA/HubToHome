@@ -424,7 +424,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
                 new ScenarioAudioClipResolver(
                     scenarioData != null ? scenarioData.AudioClips : null,
                     new ResourcesAudioClipResolver())),
-            screenTransitionRunner: new ScreenTransitionRunner());
+            screenTransitionRunner: new ScreenTransitionRunner(),
+            battleSessionState: _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null);
     }
 
     private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(

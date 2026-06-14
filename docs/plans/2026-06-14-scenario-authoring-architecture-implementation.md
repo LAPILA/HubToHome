@@ -434,6 +434,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 follow-up: `BattleScenarioRuntime` now exposes `BattleSessionState`, the first explicit battle-scoped state object for scenario identity, Primary Mode, opening module, and current Game Module continuity. `GameModuleActionRunner` can receive an `IGameModuleStateStore`, so module switches update both the action context and the battle session state. This is intentionally narrow; HP/MP/status/participant ownership remains in existing battle character systems until a later migration step.
 
+2026-06-15 continuation: `IBattleSessionStateReader` is now the read seam for battle-scoped state and is registered into `ActionExecutionContext` by `BattleScenarioActionContextFactory`. Game Modules and runtime actions can read scenario/module state from the context service instead of reaching back into `BattleManager`. The write side remains intentionally narrow through `IGameModuleStateStore` for current module updates.
+
 **Step 5: Commit**
 
 ```powershell
