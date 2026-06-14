@@ -385,9 +385,17 @@ git commit -m "feat: add scenario source sync"
 **Files:**
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/FlowWaitActionAdapter.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/DialogueWaitActionAdapter.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/BgmCrossfadeActionAdapter.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/ScreenFadeActionAdapter.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/ModuleSwitchActionAdapter.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters/ModuleStartActionAdapter.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IDialogueRunner.cs`
 - Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/DialogueManagerRunner.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IAudioActionRunner.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IScreenTransitionRunner.cs`
+- Create: `Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation/IGameModuleActionRunner.cs`
 - Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioPresentationAdapterTests.cs`
+- Test: `Assets/_Game/Features/Scenario/Tests/Editor/ScenarioPresentationCommandAdapterTests.cs`
 
 Note: `flow.parallel` is not a normal adapter in the first implementation. It remains a director-level group action handled by `ActionDirector.ParallelActionId`.
 
@@ -411,7 +419,11 @@ public interface IDialogueRunner
 
 If dialogue is already playing, adapter should fail or wait according to a documented rule. Do not silently continue.
 
-**Step 4: Commit**
+**Step 4: Add command seams**
+
+Add starter adapters for `bgm.crossfade`, `screen.fade`, `module.switch`, and `module.start`. These adapters must call injected runner seams and fail clearly when the seam is missing. Concrete `AudioManager`, fade UI, and Game Module runner implementations can be added later without changing the Action grammar.
+
+**Step 5: Commit**
 
 ```powershell
 git add Assets/_Game/Features/Scenario/Runtime/Scripts/Adapters Assets/_Game/Features/Scenario/Runtime/Scripts/Presentation Assets/_Game/Features/Scenario/Tests/Editor

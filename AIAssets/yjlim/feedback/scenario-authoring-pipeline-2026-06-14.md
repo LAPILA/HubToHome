@@ -123,6 +123,11 @@ flowchart LR
   - 단일 `ValidateSequence(...)`는 action ID만 볼 수 있으므로 scenario-level registry가 필요한 검증에는 부족하다.
   - battle scenario 전체 검증은 catalog 검증, sequence action 검증, `BattleScenarioData.Dialogues` 기반 dialogue ID 검증을 함께 수행한다.
   - `flow.parallel` children에 들어간 중첩 `dialogue.wait`도 재귀적으로 검증한다.
+- Audio/Screen/Module command action adapter의 첫 seam을 추가했다.
+  - `bgm.crossfade`는 `IAudioActionRunner`, `screen.fade`는 `IScreenTransitionRunner`, `module.switch` / `module.start`는 `IGameModuleActionRunner`를 통해 실행된다.
+  - 이 adapter들은 실제 싱글톤이나 씬 오브젝트를 직접 찾지 않는다. 따라서 기존 `AudioManager`, fade UI, 전투 Game Module runner는 후속 concrete runner로 붙이면 된다.
+  - `module.switch`와 `module.start`는 완료 후 `ActionExecutionContext.ModuleId`를 갱신한다.
+  - 기본 battle scenario `ActionAdapterRegistry`에는 네 command adapter를 등록했지만, 실제 battle content에서 사용하려면 runner service 주입이 필요하다.
 - 1차 push 전 검증 강화를 위해 `BattleScenarioRuntimeTests`를 추가했다.
   - `AfterCurrentSkill` timing은 스킬 중 발생한 HP crossing을 즉시 실행하지 않고 flush 시점에 발화한다.
   - `Immediate` timing은 publish 시점에 바로 발화하고, 이후 flush에서 중복 발화하지 않는다.
@@ -147,7 +152,8 @@ flowchart LR
 - 최신 Unity MCP EditMode 전체 테스트는 50개 통과, 실패 0개다.
 - `ScenarioDialogueRegistryTests`와 `BattleScenarioActionContextFactoryTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 55개 통과, 실패 0개다.
 - `BattleScenarioValidationTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 59개 통과, 실패 0개다.
-- `dotnet build HubToHome.sln --no-restore`는 통과했다. 기존 `System.Net.Http`/`System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고는 남아 있다.
+- `ScenarioPresentationCommandAdapterTests`를 추가했고, 최신 Unity MCP EditMode 전체 테스트는 63개 통과, 실패 0개다.
+- `dotnet build HubToHome.sln --no-restore`와 `git diff --check`는 통과했다. 기존 `System.Net.Http`/`System.IO.Compression` 버전 충돌과 `PlayerController._defenseReactionLocked` 미사용 경고는 남아 있다. Unity 콘솔에는 테스트/컴파일 실패가 아닌 기존 MCP disposed client handler 로그가 1개 남았다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보

@@ -391,6 +391,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         var registry = new ActionAdapterRegistry();
         registry.Register(new FlowWaitActionAdapter());
         registry.Register(new DialogueWaitActionAdapter());
+        registry.Register(new BgmCrossfadeActionAdapter());
+        registry.Register(new ScreenFadeActionAdapter());
+        registry.Register(new ModuleSwitchActionAdapter());
+        registry.Register(new ModuleStartActionAdapter());
         return new ActionDirector(registry);
     }
 
