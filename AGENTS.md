@@ -40,7 +40,6 @@ If a task touches a system with a design document or previous feedback HTML, rea
 - Do not push without explicit human approval for the target remote and branch.
 - Do not revert or overwrite changes you did not make.
 - If the worktree contains unrelated changes, leave them alone and mention them only if they affect the task.
-- Fork is the preferred GUI for reviewing version-control state, but command-line git may be used for exact inspection and commits.
 
 ## Documentation Rules
 
