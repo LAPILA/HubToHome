@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HubToHome Action Sequence Migration Review</title>
+  <style>
+    :root {
+      --ink: #151a1f;
+      --muted: #607080;
+      --paper: #f6f1e7;
+      --panel: #fffaf0;
+      --line: #2e3b46;
+      --red: #c9473d;
+      --amber: #cc8b22;
+      --green: #2f8f68;
+      --blue: #2d6fb3;
+      --violet: #7c589c;
+      --shadow: 0 14px 32px rgba(30, 35, 42, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(21,26,31,.04) 1px, transparent 1px),
+        linear-gradient(rgba(21,26,31,.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 24px 24px;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      line-height: 1.62;
+    }
+    header {
+      padding: 34px 44px 26px;
+      border-bottom: 4px solid var(--line);
+      background: #fff6df;
+    }
+    .kicker {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      color: var(--red);
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 1060px;
+      margin: 8px 0 10px;
+      font-size: clamp(32px, 5vw, 66px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+    .lead {
+      max-width: 980px;
+      margin: 0;
+      font-size: 18px;
+      color: #33404b;
+    }
+    main { padding: 28px 44px 80px; }
+    section {
+      max-width: 1320px;
+      margin: 0 auto 28px;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 26px;
+      line-height: 1.15;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    p { margin: 0 0 10px; }
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      background: var(--panel);
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .flat {
+      background: rgba(255, 250, 240, .68);
+      border: 2px solid rgba(46, 59, 70, .38);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .stamp {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border: 2px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .strong { color: var(--green); }
+    .warning { color: var(--amber); }
+    .danger { color: var(--red); }
+    .blue { color: var(--blue); }
+    .violet { color: var(--violet); }
+    .decision {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      border: 3px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .decision .label {
+      padding: 18px;
+      color: #fff;
+      background: var(--line);
+      font-size: 22px;
+      font-weight: 900;
+    }
+    .decision .body {
+      padding: 18px 20px;
+      font-size: 19px;
+      font-weight: 800;
+    }
+    .lane {
+      position: relative;
+      min-height: 120px;
+      padding: 14px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fffdf7;
+    }
+    .lane-title {
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+    .node {
+      display: inline-block;
+      margin: 4px;
+      padding: 8px 10px;
+      border: 2px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      vertical-align: top;
+    }
+    .node.red { border-color: var(--red); background: #fff0ed; }
+    .node.amber { border-color: var(--amber); background: #fff4df; }
+    .node.green { border-color: var(--green); background: #eefbf3; }
+    .node.blue { border-color: var(--blue); background: #edf6ff; }
+    .node.violet { border-color: var(--violet); background: #f6edff; }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .arrow {
+      font-weight: 900;
+      color: var(--line);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fffdf8;
+      border: 2px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    th, td {
+      padding: 10px 12px;
+      border: 1px solid rgba(46, 59, 70, .28);
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: var(--line);
+      color: white;
+      font-size: 13px;
+    }
+    code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(21,26,31,.08);
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: .92em;
+    }
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .matrix .card { min-height: 270px; }
+    ul { margin: 8px 0 0; padding-left: 20px; }
+    li { margin: 5px 0; }
+    .timeline {
+      counter-reset: step;
+      display: grid;
+      gap: 12px;
+    }
+    .step {
+      position: relative;
+      padding: 14px 16px 14px 58px;
+      border: 2px solid var(--line);
+      background: #fffdf7;
+      border-radius: 8px;
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--line);
+      color: #fff;
+      font-weight: 900;
+    }
+    .mini {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .svg-wrap {
+      overflow-x: auto;
+      padding: 8px;
+      border: 2px solid rgba(46,59,70,.25);
+      background: #fffdf8;
+      border-radius: 8px;
+    }
+    svg { max-width: 100%; height: auto; }
+    @media (max-width: 980px) {
+      header, main { padding-left: 20px; padding-right: 20px; }
+      .cols-2, .cols-3, .cols-4, .matrix { grid-template-columns: 1fr; }
+      .decision { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="kicker">HubToHome Architecture Review · 2026-06-14</div>
+    <h1>Action Director 도입 전 기존 시스템 해부와 이관 지도</h1>
+    <p class="lead">목표는 Deltarune식 Overworld/Battle 전환, 전투 중 모듈 교체, 미니게임, 대화, 시네마틱, UI 전환을 한 실행 문법으로 다룰 수 있는 기반을 세우는 것이다. 결론은 기존 전투를 즉시 갈아엎지 않고, 새 Action/Sequence 계층을 위에 얹은 뒤 기존 시스템을 Adapter로 감싸 점진 이관하는 쪽이다.</p>
+  </header>
+
+  <main>
+    <section>
+      <div class="decision">
+        <div class="label">Top Decision</div>
+        <div class="body">새 구조를 먼저 만들고, 기존 전투/대화/UI/스킬 시스템은 Adapter로 감싸서 현재처럼 동작하게 만든다. 이후 새 연출과 새 Game Module은 Action Director 위에서만 작성한다.</div>
+      </div>
+    </section>
+
+    <section class="grid cols-4">
+      <div class="card">
+        <span class="stamp strong">Keep</span>
+        <h3>유지할 것</h3>
+        <p>이미 역할이 선명하거나 데이터 자산 가치가 큰 모듈.</p>
+        <ul>
+          <li><code>BattleEncounterService</code></li>
+          <li><code>SceneLoader</code>, <code>MapTransitionService</code></li>
+          <li><code>DialogueData</code>, <code>DialogueManager</code>의 출력 기능</li>
+          <li><code>UIManager</code>, <code>UIPanel</code>의 패널 스택</li>
+          <li><code>SkillData</code>와 현재 스킬 에셋</li>
+          <li><code>CharacterBase</code>, <code>PlayerCharacter</code>, <code>EnemyCharacter</code></li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="stamp warning">Adapter</span>
+        <h3>감싸서 쓸 것</h3>
+        <p>현재 동작은 살리되, 새 계층이 직접 의존하지 않도록 감쌀 모듈.</p>
+        <ul>
+          <li><code>BattleManager</code> → Legacy Battle Primary Adapter</li>
+          <li><code>SkillActionBlock</code> → Legacy Skill Timeline Action</li>
+          <li><code>QTEManager</code> → QTE Presentation/Rule Adapter</li>
+          <li><code>BattleUIController</code> → Battle UI Registry Adapter</li>
+          <li><code>PlayerController</code> → Actor Motor Adapter</li>
+          <li><code>CameraController</code> → Camera Presentation Adapter</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="stamp blue">New</span>
+        <h3>새로 만들 것</h3>
+        <p>Town/Battle을 가리지 않고 공통으로 필요한 실행 기반.</p>
+        <ul>
+          <li><code>ActionDirector</code></li>
+          <li><code>ActionSequenceAsset</code></li>
+          <li><code>ActionExecutionContext</code></li>
+          <li><code>ActorRegistry</code>, <code>UIRegistry</code></li>
+          <li><code>TargetResolver</code></li>
+          <li><code>PrimaryModeController</code></li>
+          <li><code>GameModuleRunner</code></li>
+          <li>Sequence Authoring Editor</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="stamp danger">Retire Later</span>
+        <h3>나중에 줄일 것</h3>
+        <p>새 계층이 검증된 뒤 제거하거나 얇게 만들 부분.</p>
+        <ul>
+          <li><code>BattleManager</code>의 행동 실행/방어 판정/종료 처리 집중</li>
+          <li>액션 내부의 <code>BattleManager.Instance</code> 직접 접근</li>
+          <li>전투 카메라가 TMP 샘플 폴더에 있는 구조</li>
+          <li><code>BattleStateMachine.cs</code> 이름과 실제 책임 불일치</li>
+          <li>UI/입력의 전투 전용 직접 호출</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>1. 현재 구조 지도</h2>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 1280 520" role="img" aria-label="Current architecture map">
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#2e3b46"></path>
+            </marker>
+            <style>
+              .box{fill:#fffdf8;stroke:#2e3b46;stroke-width:3;rx:8}
+              .hot{fill:#fff0ed;stroke:#c9473d}
+              .good{fill:#eefbf3;stroke:#2f8f68}
+              .warn{fill:#fff4df;stroke:#cc8b22}
+              .new{fill:#edf6ff;stroke:#2d6fb3}
+              .txt{font:700 18px Malgun Gothic, sans-serif;fill:#151a1f}
+              .sub{font:500 13px Malgun Gothic, sans-serif;fill:#607080}
+              .edge{stroke:#2e3b46;stroke-width:3;fill:none;marker-end:url(#arrow)}
+            </style>
+          </defs>
+          <rect x="35" y="40" width="210" height="82" class="box good"></rect>
+          <text x="55" y="74" class="txt">Overworld</text>
+          <text x="55" y="98" class="sub">PlayerController · NPC · AreaTrigger</text>
+
+          <rect x="35" y="162" width="210" height="82" class="box good"></rect>
+          <text x="55" y="196" class="txt">Dialogue</text>
+          <text x="55" y="220" class="sub">DialogueData · DialogueManager</text>
+
+          <rect x="305" y="102" width="230" height="94" class="box good"></rect>
+          <text x="325" y="140" class="txt">BattleEncounterService</text>
+          <text x="325" y="164" class="sub">전투 진입 공통화는 이미 좋은 방향</text>
+
+          <rect x="605" y="58" width="275" height="150" class="box hot"></rect>
+          <text x="628" y="94" class="txt">BattleManager</text>
+          <text x="628" y="120" class="sub">1435 lines</text>
+          <text x="628" y="144" class="sub">상태 전이 · 유닛 생성 · 턴 · 행동 실행</text>
+          <text x="628" y="168" class="sub">QTE · 스킬 · 종료 · 복귀까지 집중</text>
+
+          <rect x="955" y="30" width="250" height="78" class="box warn"></rect>
+          <text x="975" y="63" class="txt">SkillActionBlock</text>
+          <text x="975" y="87" class="sub">데이터 액션은 좋지만 battle-only</text>
+
+          <rect x="955" y="132" width="250" height="78" class="box warn"></rect>
+          <text x="975" y="165" class="txt">QTEManager</text>
+          <text x="975" y="189" class="sub">QTE 규칙 + UI 호출 결합</text>
+
+          <rect x="955" y="234" width="250" height="78" class="box warn"></rect>
+          <text x="975" y="267" class="txt">BattleUIController</text>
+          <text x="975" y="291" class="sub">BattleManager 이벤트와 직접 연결</text>
+
+          <rect x="605" y="298" width="275" height="82" class="box good"></rect>
+          <text x="628" y="332" class="txt">GlobalDataManager</text>
+          <text x="628" y="356" class="sub">월드/파티/조우 상태의 임시 SSOT</text>
+
+          <rect x="305" y="304" width="230" height="82" class="box good"></rect>
+          <text x="325" y="338" class="txt">Scene / Room Transition</text>
+          <text x="325" y="362" class="sub">SceneLoader · MapTransitionService</text>
+
+          <rect x="35" y="326" width="210" height="82" class="box good"></rect>
+          <text x="55" y="360" class="txt">UIManager</text>
+          <text x="55" y="384" class="sub">panel stack · registered panels</text>
+
+          <path d="M245 82 C275 82 275 130 305 130" class="edge"></path>
+          <path d="M245 202 C276 202 276 166 305 166" class="edge"></path>
+          <path d="M535 149 C570 149 570 133 605 133" class="edge"></path>
+          <path d="M880 116 C920 92 920 70 955 70" class="edge"></path>
+          <path d="M880 145 C922 145 922 170 955 170" class="edge"></path>
+          <path d="M880 174 C922 204 922 272 955 272" class="edge"></path>
+          <path d="M743 208 L743 298" class="edge"></path>
+          <path d="M535 345 L605 345" class="edge"></path>
+          <path d="M245 367 L305 367" class="edge"></path>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. 목표 구조 지도</h2>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>핵심 원칙</h3>
+          <ul>
+            <li><code>Primary Mode</code>는 Overworld/Battle 두 개만 둔다.</li>
+            <li>QTE, Shooter, Boxing, 미니게임은 <code>Game Module</code>로 취급한다.</li>
+            <li>대사, UI, 카메라, 사운드, VFX는 모듈 소유가 아니라 <code>Presentation Service</code>다.</li>
+            <li>연출 흐름은 <code>ActionDirector</code>가 실행한다.</li>
+            <li>기존 시스템은 한 번에 삭제하지 않고 <code>Adapter</code>로 연결한다.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>한 줄 구조</h3>
+          <div class="flow">
+            <span class="node green">Overworld / Battle</span>
+            <span class="arrow">→</span>
+            <span class="node blue">GameModuleRunner</span>
+            <span class="arrow">↔</span>
+            <span class="node blue">ActionDirector</span>
+            <span class="arrow">→</span>
+            <span class="node violet">Presentation Services</span>
+            <span class="arrow">→</span>
+            <span class="node amber">Legacy Adapters</span>
+          </div>
+        </div>
+      </div>
+      <div class="svg-wrap" style="margin-top:16px">
+        <svg viewBox="0 0 1280 620" role="img" aria-label="Target architecture map">
+          <defs>
+            <marker id="arrow2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#2e3b46"></path>
+            </marker>
+            <style>
+              .b{fill:#fffdf8;stroke:#2e3b46;stroke-width:3;rx:8}
+              .g{fill:#eefbf3;stroke:#2f8f68}
+              .bl{fill:#edf6ff;stroke:#2d6fb3}
+              .v{fill:#f6edff;stroke:#7c589c}
+              .a{fill:#fff4df;stroke:#cc8b22}
+              .r{fill:#fff0ed;stroke:#c9473d}
+              .t{font:800 18px Malgun Gothic, sans-serif;fill:#151a1f}
+              .s{font:500 13px Malgun Gothic, sans-serif;fill:#607080}
+              .e{stroke:#2e3b46;stroke-width:3;fill:none;marker-end:url(#arrow2)}
+            </style>
+          </defs>
+          <rect x="40" y="52" width="250" height="96" class="b g"></rect>
+          <text x="62" y="91" class="t">PrimaryModeController</text>
+          <text x="62" y="116" class="s">OverworldPrimary · BattlePrimary</text>
+
+          <rect x="40" y="214" width="250" height="116" class="b bl"></rect>
+          <text x="62" y="254" class="t">GameModuleRunner</text>
+          <text x="62" y="279" class="s">QTE · Shooter · Boxing · Minigame</text>
+          <text x="62" y="303" class="s">모듈 시작/종료/교체</text>
+
+          <rect x="365" y="102" width="280" height="170" class="b bl"></rect>
+          <text x="392" y="144" class="t">ActionDirector</text>
+          <text x="392" y="170" class="s">Sequence 실행 · 병렬 · 취소 · 대기</text>
+          <text x="392" y="194" class="s">Dialogue wait · Timeline clip · Module switch</text>
+          <text x="392" y="218" class="s">Town/Battle 공통</text>
+
+          <rect x="365" y="338" width="280" height="120" class="b v"></rect>
+          <text x="392" y="378" class="t">Execution Context</text>
+          <text x="392" y="403" class="s">ActorRegistry · UIRegistry</text>
+          <text x="392" y="427" class="s">TargetResolver · SessionState</text>
+
+          <rect x="730" y="42" width="240" height="95" class="b v"></rect>
+          <text x="752" y="80" class="t">Dialogue Service</text>
+          <text x="752" y="105" class="s">ShowAndWait</text>
+
+          <rect x="730" y="157" width="240" height="95" class="b v"></rect>
+          <text x="752" y="195" class="t">UI Service</text>
+          <text x="752" y="220" class="s">Show/Hide/Fade/Layout</text>
+
+          <rect x="730" y="272" width="240" height="95" class="b v"></rect>
+          <text x="752" y="310" class="t">Camera/Audio/VFX</text>
+          <text x="752" y="335" class="s">Presentation only</text>
+
+          <rect x="1030" y="46" width="210" height="90" class="b a"></rect>
+          <text x="1050" y="82" class="t">Legacy Dialogue</text>
+          <text x="1050" y="107" class="s">DialogueManager adapter</text>
+
+          <rect x="1030" y="162" width="210" height="90" class="b a"></rect>
+          <text x="1050" y="198" class="t">Legacy Battle</text>
+          <text x="1050" y="223" class="s">BattleManager adapter</text>
+
+          <rect x="1030" y="278" width="210" height="90" class="b a"></rect>
+          <text x="1050" y="314" class="t">Legacy Skill/QTE</text>
+          <text x="1050" y="339" class="s">SkillActionBlock · QTE</text>
+
+          <rect x="730" y="438" width="510" height="92" class="b r"></rect>
+          <text x="752" y="476" class="t">나중에 얇아질 구역</text>
+          <text x="752" y="501" class="s">BattleManager의 행동 실행/방어 판정/UI 직접 제어는 단계적으로 Action/Module 쪽으로 이동</text>
+
+          <path d="M290 100 C326 100 326 160 365 160" class="e"></path>
+          <path d="M290 270 C326 270 326 214 365 214" class="e"></path>
+          <path d="M505 272 L505 338" class="e"></path>
+          <path d="M645 154 C690 154 690 90 730 90" class="e"></path>
+          <path d="M645 188 C690 188 690 205 730 205" class="e"></path>
+          <path d="M645 224 C690 224 690 320 730 320" class="e"></path>
+          <path d="M970 90 L1030 90" class="e"></path>
+          <path d="M970 205 L1030 205" class="e"></path>
+          <path d="M970 320 L1030 320" class="e"></path>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. 기존 시스템별 판단표</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>영역</th>
+            <th>현재 상태</th>
+            <th>판단</th>
+            <th>이관 방식</th>
+            <th>주의점</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>BattleManager</code></td>
+            <td>1435줄. 상태 전이, 유닛 생성, 턴, 플레이어 행동, 적 행동, QTE, 스킬, 종료/복귀까지 집중.</td>
+            <td><strong>Adapter 후 단계 분리</strong></td>
+            <td>처음에는 <code>LegacyBattlePrimaryAdapter</code>로 감싼다. 새 모듈이 검증된 뒤 행동 실행/방어 판정/종료 처리부터 빼낸다.</td>
+            <td>가장 위험한 파일. 첫 단계에서 직접 분해하면 회귀 위험이 크다.</td>
+          </tr>
+          <tr>
+            <td><code>SkillActionBlock</code></td>
+            <td>이미 데이터 기반 액션 목록이 있다. 하지만 <code>SkillContext</code>가 전투 캐릭터와 <code>BattleManager.Instance</code>에 묶여 있다.</td>
+            <td><strong>유지 + Adapter</strong></td>
+            <td><code>RunLegacySkillTimelineAction</code>으로 실행 가능하게 감싼다. 새 액션 시스템의 설계 참고자료로 쓴다.</td>
+            <td>전역 Action의 부모 클래스로 승격하지 않는다.</td>
+          </tr>
+          <tr>
+            <td><code>BattleEncounterService</code></td>
+            <td>오버월드/대화/지역 트리거에서 전투 진입을 공통 처리한다.</td>
+            <td><strong>유지</strong></td>
+            <td>나중에 <code>BattlePrimary.Enter</code> 또는 <code>EncounterAction</code>에서 호출한다.</td>
+            <td>현재 구조에서 제일 좋은 진입 seam 중 하나다.</td>
+          </tr>
+          <tr>
+            <td><code>DialogueManager</code></td>
+            <td>대사 출력, 선택지, 이름 입력, 선택지 전투 시작까지 처리한다.</td>
+            <td><strong>Adapter</strong></td>
+            <td><code>DialogueService.ShowAndWait</code>가 내부에서 기존 <code>StartDialogue</code>를 감싼다.</td>
+            <td>대사는 Game Module 소유가 아니다. 어디서든 호출 가능해야 한다.</td>
+          </tr>
+          <tr>
+            <td><code>UIManager</code>/<code>UIPanel</code></td>
+            <td>패널 등록, 패널 스택, 취소 입력 처리, PPC safe area 지원.</td>
+            <td><strong>유지 + 확장</strong></td>
+            <td><code>UIRegistry</code>를 추가하고 panel ID를 안정화한다. Action은 ID로 UI를 제어한다.</td>
+            <td>전투 UI는 별도 Adapter가 필요하다.</td>
+          </tr>
+          <tr>
+            <td><code>QTEManager</code></td>
+            <td>방어 QTE와 스킬 QTE를 실행하고 BattleUI를 직접 호출한다.</td>
+            <td><strong>Adapter</strong></td>
+            <td><code>QteAction</code>, <code>DefenseWindowAction</code>에서 호출. 이후 규칙과 UI 표현을 분리한다.</td>
+            <td>Shooter/Boxing 같은 새 모듈은 QTEManager를 통하지 않아야 한다.</td>
+          </tr>
+          <tr>
+            <td><code>PlayerController</code></td>
+            <td>오버월드 이동, 전투 모드, 방어 입력/연출, Y정렬, 저장 위치까지 담당.</td>
+            <td><strong>Adapter 후 역할 분리</strong></td>
+            <td><code>ActorMotorAdapter</code>가 이동/넛지/방어 연출을 호출한다. 입력 소유권은 나중에 Input Router로 이동한다.</td>
+            <td>Town 액션과 Battle 액션이 모두 플레이어를 움직일 수 있어 registry가 필요하다.</td>
+          </tr>
+          <tr>
+            <td><code>MapTransitionService</code></td>
+            <td>Scene/Room 전환을 통합한다. RoomDefinition 기반 제작 흐름이 있다.</td>
+            <td><strong>유지</strong></td>
+            <td><code>ChangeRoomAction</code>, <code>ChangeSceneAction</code>으로 감싼다.</td>
+            <td>씬 합치기 여부와 독립적으로 Action Sequence와 잘 맞는다.</td>
+          </tr>
+          <tr>
+            <td><code>GlobalDataManager</code></td>
+            <td>파티/월드/조우/저장 복구 데이터를 한 곳에 둔다.</td>
+            <td><strong>유지하되 세분화 후보</strong></td>
+            <td>초기에는 SessionState 제공자. 나중에 BattleSessionState, WorldSessionState로 나눈다.</td>
+            <td>전투 중 모듈이 바뀌어도 HP/MP/status는 여기에 가까운 상태 계층이 보존해야 한다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>4. Action 문법 설계</h2>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3>Action 카테고리</h3>
+          <ul>
+            <li>Actor: 이동, 넛지, 애니메이션, 포즈, sorting boost</li>
+            <li>Dialogue: 대사 시작, 선택지 대기, 이름 입력</li>
+            <li>UI: 표시, 숨김, fade, layout preset, panel stack</li>
+            <li>Camera: follow, zoom, shake, target blend</li>
+            <li>Audio/VFX: BGM, SFX, VFX spawn/despawn</li>
+            <li>Flow: wait, branch, parallel, cancel, flag</li>
+            <li>Module: enter, exit, switch, handoff input</li>
+            <li>Legacy: old skill, old QTE, old battle routine</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>병렬 실행 문법</h3>
+          <p>병렬은 액션 하나의 옵션이 아니라 Sequence의 1급 문법이어야 한다.</p>
+          <div class="flat">
+            <code>ParallelGroup</code>
+            <ul>
+              <li><code>WaitAll</code>: 전부 끝날 때까지 대기</li>
+              <li><code>WaitAny</code>: 하나만 끝나도 다음으로 진행</li>
+              <li><code>FireAndForget</code>: 시작만 하고 다음으로 진행</li>
+              <li><code>Timeout</code>: n초 후 강제 진행/취소</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <h3>클래스 수에 대한 판단</h3>
+          <p>액션은 필요할 때마다 새 클래스를 만들어도 된다. 대신 공통으로 반복되는 선택/타겟/시간/취소/카테고리 메타데이터는 공유한다.</p>
+          <ul>
+            <li><code>MoveActorAction</code>은 공통화</li>
+            <li><code>DrawSwordAction</code>은 전용 액션 가능</li>
+            <li><code>BattleHudToShooterLayoutAction</code>도 전용 액션 가능</li>
+            <li>제작자 사용성이 추상화 순도보다 우선</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Target / UI / Actor 바인딩</h2>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3>ActorRegistry</h3>
+          <p>액션이 GameObject를 직접 들고 다니지 않도록, 런타임 Actor ID를 해석한다.</p>
+          <ul>
+            <li><code>Player(0)</code>, <code>Player(1)</code></li>
+            <li><code>MainEnemy</code>, <code>EnemyById("zev")</code></li>
+            <li><code>NamedActor("npc_blacksmith")</code></li>
+            <li><code>CurrentSpeaker</code>, <code>CurrentTarget</code></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>TargetResolver</h3>
+          <p>위치도 ID로 찾는다. Battle과 Town에서 같은 액션을 쓰려면 이 계층이 필요하다.</p>
+          <ul>
+            <li><code>Marker("Center")</code></li>
+            <li><code>ActorPivot(target, "Front")</code></li>
+            <li><code>BattleSlot.Enemy(0)</code></li>
+            <li><code>RoomSpawn("door_left")</code></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>UIRegistry</h3>
+          <p>UI는 안정 ID로 제어한다. 씬 오브젝트 이름 검색은 Adapter 내부로 숨긴다.</p>
+          <ul>
+            <li><code>Battle.HUD.Root</code></li>
+            <li><code>Battle.HUD.QTE</code></li>
+            <li><code>Battle.HUD.Shooter</code></li>
+            <li><code>Dialogue.Main</code></li>
+            <li><code>Overworld.Menu</code></li>
+            <li><code>Overworld.InteractionPrompt</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>6. 예시: QTE 전투에서 조준 슈팅으로 전환</h2>
+      <div class="card">
+        <div class="flow">
+          <span class="node amber">QTECombatModule running</span>
+          <span class="arrow">→</span>
+          <span class="node violet">Dialogue: "그 방식은 질렸어."</span>
+          <span class="arrow">→</span>
+          <span class="node blue">Parallel: UI fade + actors move + camera</span>
+          <span class="arrow">→</span>
+          <span class="node blue">SwitchModule(AimShooter)</span>
+          <span class="arrow">→</span>
+          <span class="node green">BattleSessionState 유지</span>
+        </div>
+        <table style="margin-top:16px">
+          <thead>
+            <tr><th>Sequence 단계</th><th>실행 주체</th><th>상태 보존</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>QTE UI 숨김</td><td><code>UITransitionAction</code></td><td>HP/MP/status 불변</td></tr>
+            <tr><td>대사 출력 후 클릭 대기</td><td><code>ShowDialogueAction</code> → <code>DialogueService.ShowAndWait</code></td><td>Sequence는 대사 종료까지 정지</td></tr>
+            <tr><td>아군 3명과 적 동시 이동</td><td><code>ParallelGroup(WaitAll)</code></td><td>ActorRegistry가 대상 해석</td></tr>
+            <tr><td>카메라 중앙 이동, BGM 변주</td><td><code>CameraAction</code>, <code>AudioAction</code></td><td>Presentation Service 호출</td></tr>
+            <tr><td>모듈 교체</td><td><code>SwitchGameModuleAction</code></td><td><code>BattlePrimary</code>가 <code>BattleSessionState</code> 유지</td></tr>
+            <tr><td>Shooter UI 표시</td><td><code>UITransitionAction</code></td><td>입력 소유권이 AimShooter로 이동</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>7. 마이그레이션 순서</h2>
+      <div class="timeline">
+        <div class="step">
+          <h3>용어와 seam 고정</h3>
+          <p><code>CONTEXT.md</code>에 Primary Mode, Game Module, Action Sequence, Action Director, Presentation Service를 고정한다. 이 단계는 코드 변경보다 중요하다.</p>
+        </div>
+        <div class="step">
+          <h3>ActionDirector 최소 런타임 추가</h3>
+          <p>처음에는 <code>Wait</code>, <code>Log</code>, <code>Parallel</code>, <code>Cancel</code> 정도만 된다. 목표는 행동 완성이 아니라 실행 모델 검증이다.</p>
+        </div>
+        <div class="step">
+          <h3>Legacy Adapter 작성</h3>
+          <p><code>ShowDialogueAction</code>, <code>RunLegacySkillTimelineAction</code>, <code>RunLegacyDefenseQteAction</code>, <code>UIShowHideAction</code>으로 기존 시스템을 새 Sequence에서 호출하게 만든다.</p>
+        </div>
+        <div class="step">
+          <h3>첫 실제 전환 Sequence 제작</h3>
+          <p>새 전투 모듈을 크게 만들기 전에 QTE UI 숨김, 대사, 캐릭터 이동, 카메라, UI 복귀 같은 순수 전환 시퀀스를 하나 만든다.</p>
+        </div>
+        <div class="step">
+          <h3>GameModuleRunner 도입</h3>
+          <p>처음에는 <code>LegacyQteCombatModule</code> 하나만 등록해도 된다. 그 다음 <code>AimShooterPrototypeModule</code>을 붙여 모듈 교체를 검증한다.</p>
+        </div>
+        <div class="step">
+          <h3>BattleManager 분리 시작</h3>
+          <p>새 실행 계층이 실제로 돌아간 뒤, <code>EnemyActionRoutine</code>, 방어 판정, 종료 처리를 순서대로 BattleManager 밖으로 빼낸다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>8. 추천 우선순위</h2>
+      <div class="grid cols-3">
+        <div class="card">
+          <span class="stamp strong">Strong</span>
+          <h3>ActionDirector + SequenceRunner 최소판</h3>
+          <p>가장 먼저 해야 한다. 이게 있어야 기존 시스템을 감싸는 방향이 맞는지 검증할 수 있다.</p>
+        </div>
+        <div class="card">
+          <span class="stamp strong">Strong</span>
+          <h3>Registry 3종</h3>
+          <p><code>ActorRegistry</code>, <code>UIRegistry</code>, <code>TargetResolver</code>가 없으면 액션이 씬 오브젝트 참조와 문자열 검색으로 무너진다.</p>
+        </div>
+        <div class="card">
+          <span class="stamp warning">Worth Exploring</span>
+          <h3>커스텀 에디터</h3>
+          <p>Odin/SerializeReference 기반 리스트 에디터부터 시작하고, 노드 그래프는 나중에 제작량이 실제로 많아질 때 판단한다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>9. 검증 전략</h2>
+      <table>
+        <thead>
+          <tr><th>대상</th><th>테스트 방식</th><th>성공 기준</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>SequenceRunner</td><td>EditMode fake action 테스트</td><td>순차/병렬/취소/timeout 순서가 기록대로 나온다.</td></tr>
+          <tr><td>Dialogue wait</td><td>Fake DialogueService</td><td>대화 완료 전 다음 액션으로 넘어가지 않는다.</td></tr>
+          <tr><td>Registry</td><td>Actor/UI ID resolution 테스트</td><td>없는 ID는 명확한 실패를 반환하고, 액션은 직접 GameObject 검색을 하지 않는다.</td></tr>
+          <tr><td>Legacy adapter</td><td>기존 QTE/Skill 호출 smoke test</td><td>현재 스킬 에셋을 새 Sequence에서 실행해도 기존 전투 결과와 같다.</td></tr>
+          <tr><td>Module switch</td><td>QTE mock → Shooter mock 전환 테스트</td><td>이전 모듈 입력이 닫히고 새 모듈 입력만 열린다.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>10. 최종 권고</h2>
+      <div class="card">
+        <p><strong>기존 시스템을 새 구조로 먼저 리팩터링하지 말고, 새 구조를 별도 계층으로 만든 뒤 기존 시스템을 어댑터로 연결하는 Strangler 방식이 맞다.</strong></p>
+        <p>현재 프로젝트는 이미 플레이 가능한 수직 슬라이스가 있고, 전투/대화/조우/저장/룸 전환의 재료가 존재한다. 이 재료를 버리면 손실이 크다. 하지만 기존 <code>BattleManager</code>를 중심으로 확장하면 Shooter, Boxing, Town 미니게임, 시네마틱 전환까지 전투 중심 구조에 갇힌다.</p>
+        <p>따라서 첫 공사는 <code>ActionDirector</code>, <code>ActionSequenceAsset</code>, <code>ActionExecutionContext</code>, <code>ActorRegistry</code>, <code>UIRegistry</code>, <code>GameModuleRunner</code>의 최소판이다. 이 위에서 기존 전투를 그대로 한 번 돌려보고, 그 다음 새 전환 시퀀스와 새 모듈을 붙이는 순서가 가장 안전하다.</p>
+      </div>
+      <p class="mini">작성 범위: 정적 소스 분석 기준. Unity 씬 저장, PlayMode, asset reimport는 수행하지 않음.</p>
+    </section>
+  </main>
+</body>
+</html>
