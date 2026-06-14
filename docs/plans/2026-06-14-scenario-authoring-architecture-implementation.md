@@ -428,6 +428,8 @@ If dialogue is already playing, adapter should fail or wait according to a docum
 
 Add starter adapters for `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, and `battle.skill.timeline`. These adapters must call injected runner seams and fail clearly when the seam is missing. Concrete `AudioManager`, fade UI, and Game Module runner implementations can be added later without changing the Action grammar. `battle.skill.timeline` now has a concrete battle-side runner through `BattleSkillTimelineRunner`.
 
+Current implementation note: `module.switch` / `module.start` now have a reusable Game Module runner layer. `IGameModuleRuntime` defines `Enter`, `Exit`, and `Start`; `GameModuleRegistry` registers stable module IDs; `GameModuleActionRunner` implements `IGameModuleActionRunner` and can be injected into `BattleScenarioActionContextFactory`. Concrete modules such as the current QTE flow, aim shooter, boxing, or overworld minigames should plug into this layer instead of expanding `BattleManager` branches.
+
 **Step 5: Commit**
 
 ```powershell

@@ -202,13 +202,22 @@ flowchart LR
   - 이제는 gate가 ready trigger queue와 flush checkpoint 실행을 소유한다.
   - 이 구조는 이후 QTE 전투 외의 shooter/boxing Game Module에서도 같은 scenario execution 정책을 재사용하기 위한 준비다.
   - 이번 턴은 테스트 추가보다 아키텍처 정리에 집중했으므로, 신규 테스트 추가는 하지 않았다. 검증은 C# LSP diagnostics, `dotnet build HubToHome.sln --no-restore`, Unity MCP EditMode 전체 92개 통과로 수행했다.
+- `GameModuleActionRunner` 기반을 추가했다.
+  - `IGameModuleRuntime`은 각 Game Module이 `Enter`, `Exit`, `Start`를 구현하는 계약이다.
+  - `GameModuleRegistry`는 `turn_qte`, `aim_shooter`, `boxing` 같은 stable module ID를 runtime 구현에 매핑한다.
+  - `GameModuleActionRunner`는 `module.switch` / `module.start` 액션이 호출하는 공통 runner이며, 현재 모듈 exit, 대상 모듈 enter/start, active module ID 갱신을 담당한다.
+  - `BattleScenarioActionContextFactory`가 선택적으로 `IGameModuleActionRunner`를 주입받을 수 있게 되어, 이후 Battle 또는 Overworld context가 concrete module registry를 공급할 수 있다.
+  - 이 단계는 QTE/슈팅/권투 모듈 자체 구현이 아니라, 해당 모듈들을 `BattleManager` 분기 없이 꽂기 위한 runtime contract 정리다.
+  - `dotnet build HubToHome.sln --no-restore`, `git diff --check`, C# LSP diagnostics는 통과했다.
+  - Unity MCP `refresh_unity if_dirty`로 새 스크립트의 `.meta` 생성은 확인했다. targeted EditMode 테스트 잡은 시작됐지만, 결과 조회 시 MCP 브리지가 `No Unity Editor instances found` 상태로 끊겨 최종 테스트 결과를 회수하지 못했다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
 2. Scenario Source YAML text writer와 editor UI에서 `dialogues` 매핑을 source로 저장하는 경로 구현
-3. Battle Scenario Execution Gate의 module-transition 중 턴 진행 차단을 실제 sample scenario로 검증
-4. Audio/Screen/Module 전환용 concrete presentation runner 설계
-5. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
-6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
+3. 현재 QTE 전투를 `IGameModuleRuntime`으로 감싸는 `turn_qte` concrete module 설계
+4. Battle Scenario Execution Gate의 module-transition 중 턴 진행 차단을 실제 sample scenario로 검증
+5. Audio/Screen concrete presentation runner 설계
+6. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
+7. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

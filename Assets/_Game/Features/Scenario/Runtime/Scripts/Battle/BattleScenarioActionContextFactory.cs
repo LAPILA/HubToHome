@@ -3,7 +3,8 @@ public static class BattleScenarioActionContextFactory
     public static ActionExecutionContext Create(
         BattleScenarioData scenarioData,
         DialogueManager dialogueManager = null,
-        ISkillTimelineRunner skillTimelineRunner = null)
+        ISkillTimelineRunner skillTimelineRunner = null,
+        IGameModuleActionRunner gameModuleActionRunner = null)
     {
         var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
         context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
@@ -20,6 +21,11 @@ public static class BattleScenarioActionContextFactory
         if (skillTimelineRunner != null)
         {
             context.SetService<ISkillTimelineRunner>(skillTimelineRunner);
+        }
+
+        if (gameModuleActionRunner != null)
+        {
+            context.SetService<IGameModuleActionRunner>(gameModuleActionRunner);
         }
 
         return context;

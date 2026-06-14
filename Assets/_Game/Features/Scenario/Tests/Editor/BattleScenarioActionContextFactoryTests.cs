@@ -63,6 +63,20 @@ public class BattleScenarioActionContextFactoryTests
         Assert.That(context.GetService<ISkillTimelineRunner>(), Is.SameAs(runner));
     }
 
+    [Test]
+    public void RegistersGameModuleActionRunnerWhenProvided()
+    {
+        var runner = new FakeGameModuleActionRunner();
+
+        ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+            null,
+            null,
+            null,
+            runner);
+
+        Assert.That(context.GetService<IGameModuleActionRunner>(), Is.SameAs(runner));
+    }
+
     private static DialogueData MakeDialogue()
     {
         DialogueData dialogue = ScriptableObject.CreateInstance<DialogueData>();
@@ -77,6 +91,19 @@ public class BattleScenarioActionContextFactoryTests
             string actorId,
             System.Collections.Generic.IReadOnlyList<string> targetIds,
             ActionExecutionContext context)
+        {
+            yield break;
+        }
+    }
+
+    private sealed class FakeGameModuleActionRunner : IGameModuleActionRunner
+    {
+        public System.Collections.IEnumerator SwitchTo(string moduleId, ActionExecutionContext context)
+        {
+            yield break;
+        }
+
+        public System.Collections.IEnumerator Start(string moduleId, ActionExecutionContext context)
         {
             yield break;
         }

@@ -30,6 +30,10 @@ _Avoid_: treating QTE, shooter, boxing, dialogue, cinematic, menu, or minigame v
 A replaceable rule/input/UI package that runs inside a Primary Mode. Examples include QTE combat, aim-shooter combat, boxing combat, bullet-hell defense, and town minigame interactions.
 _Avoid_: assuming all Game Modules are turn-based or battle-only.
 
+**Game Module Runner**:
+The runtime seam used by Action Sequences to switch, enter, exit, and start Game Modules through stable module IDs. `GameModuleRegistry` maps IDs to `IGameModuleRuntime`, and `GameModuleActionRunner` implements `IGameModuleActionRunner` for `module.switch` / `module.start`.
+_Avoid_: hard-coding QTE, shooter, boxing, or minigame transition branches inside `BattleManager` or inside one action adapter.
+
 **Action Sequence**:
 An authored sequence of actions for transitions, interactions, presentation, and gameplay beats. It must support sequential actions, parallel groups, waits, dialogue pauses, cancellation, and reuse from both Overworld and Battle.
 _Avoid_: binding this concept only to skill execution or only to battle transitions.

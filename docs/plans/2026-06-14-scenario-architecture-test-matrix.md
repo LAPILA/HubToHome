@@ -25,13 +25,17 @@ These cases were added after the first bridge implementation to cover more than 
 11. Missing sequence lookup returns false/null.
 12. Null scenario runtime is a safe no-op for publish, flush, and sequence lookup.
 13. Battle Scenario Execution Gate queues ready triggers and drains them only at explicit scenario checkpoints.
+14. `GameModuleActionRunner` exits the current registered module and enters the requested registered module.
+15. `GameModuleActionRunner` starts a registered module and updates the active module ID.
+16. Unknown Game Module IDs fail the action handle clearly.
+17. Duplicate Game Module registration is rejected.
 
 ## Next High-Value Cases
 
 1. `dialogue.wait` can resolve `DialogueId` from Battle Scenario Data without manual registration.
 2. Dialogue action pauses a trigger sequence until completion and then continues to the next action.
-3. Screen/audio/module placeholder adapters fail clearly until their concrete seams exist.
-4. `module.switch` can suspend one Game Module and prepare the next without losing Battle Session State.
+3. Screen/audio placeholder adapters fail clearly until their concrete seams exist.
+4. A concrete QTE `IGameModuleRuntime` can suspend current QTE UI/input and hand off to shooter/boxing without losing Battle Session State.
 5. Encounter Memory import/export suppresses `PerEncounterMemory` rules after save-bound memory is restored.
 6. YAML Scenario Source import rejects unknown dialogue, module, actor, audio, and UI target IDs.
 7. Korean Scenario Authoring Editor can reorder or insert a sequence action while preserving source/runtime sync metadata.
