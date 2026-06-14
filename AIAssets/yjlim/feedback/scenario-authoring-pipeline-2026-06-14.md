@@ -95,12 +95,14 @@ flowchart LR
 - HP threshold 규칙은 `previousHpRatio > threshold && currentHpRatio <= threshold`일 때만 발화한다. 이미 threshold 아래인 상태에서 추가로 피해를 받은 경우는 crossing이 아니므로 재발화하지 않는다.
 - `PerEncounterMemory` once 규칙은 아직 저장 데이터에 연결하지 않았지만, 세션에서 import/export할 수 있게 해 이후 `Encounter Memory` 저장 경로와 연결할 수 있도록 했다.
 - 이 단계에서도 기존 `BattleManager`는 수정하지 않았다. 다음 작업은 데미지/스킬 종료 지점에서 `BattleEventData`를 발행하고, evaluator가 반환한 `BattleScenarioTrigger`를 `ActionDirector`에 넘기는 얇은 hook이다.
+- `BattleScenarioRuleRunner`를 추가해 `BattleScenarioData.Rules` 순서대로 event를 평가하고, 발화된 trigger의 `SequenceId`를 `BattleScenarioData.Sequences`에서 찾을 수 있게 했다.
+- 이 runner 덕분에 이후 `BattleManager` hook은 “전투 이벤트 발행 -> runner 평가 -> sequence 실행 요청”만 하면 된다. rule 탐색, once 처리, sequence id 해석이 BattleManager로 새어 나오지 않는다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
 2. 기존 `BattleManager` 데미지/스킬 종료 지점에서 `BattleEventData`를 발행하는 최소 hook 작성
-3. evaluator가 반환한 `BattleScenarioTrigger.SequenceId`를 `ActionDirector` 실행 요청으로 넘기는 session runner 작성
+3. `BattleScenarioRuleRunner`가 반환한 trigger의 `SequenceId`를 `ActionDirector` 실행 요청으로 넘기는 runtime bridge 작성
 4. Audio/Screen/Module 전환용 presentation service seam 설계
 5. 기존 QTE 스킬 하나를 adapter로 실행하는 수직 검증
 6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

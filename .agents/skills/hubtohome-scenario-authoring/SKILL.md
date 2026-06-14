@@ -63,6 +63,7 @@ Treat scenario YAML as the authoring source of truth and ScriptableObject assets
 - A waitable presentation action must fail clearly when its required seam is missing, busy, or cannot start. Do not let a sequence wait forever because an existing manager ignored a request.
 - `BattleEventRuleEvaluator` is the pure When evaluator for battle scenario rules. Existing battle code should emit `BattleEventData` into this evaluator rather than hard-coding phase branches in `BattleManager`.
 - `BattleScenarioSession` tracks already-fired rules for `PerBattle` and `PerEncounterMemory`. In-progress battle state is not save-restored, but exported encounter-fired rule IDs are intended to flow into Encounter Memory later.
+- `BattleScenarioRuleRunner` owns the bridge from `BattleScenarioData.Rules` to fired `BattleScenarioTrigger` objects and resolves trigger `SequenceId` values against `BattleScenarioData.Sequences`.
 - Disabled actions are skipped at execution time but should still stay visible in authoring tools.
 - Unknown action IDs must fail the current handle instead of silently continuing.
 
