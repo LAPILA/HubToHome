@@ -4,7 +4,7 @@
 
 **Goal:** Verify that Battle Scenario Rules, Action Sequences, trigger execution, and presentation seams remain flexible enough for module switches, dialogue pauses, minigames, and cinematic beats.
 
-**Architecture:** Public Module Interfaces are the test surface. Prefer `BattleScenarioRuntime`, `BattleScenarioActionBridge`, `ActionDirector`, `ScenarioCatalogValidator`, and presentation adapters over `BattleManager` private helpers.
+**Architecture:** Public Module Interfaces are the test surface. Prefer `BattleScenarioRuntime`, `BattleScenarioExecutionGate`, `BattleScenarioActionBridge`, `ActionDirector`, `ScenarioCatalogValidator`, and presentation adapters over `BattleManager` private helpers.
 
 ---
 
@@ -24,6 +24,7 @@ These cases were added after the first bridge implementation to cover more than 
 10. Already-below-threshold HP changes do not re-fire crossing triggers.
 11. Missing sequence lookup returns false/null.
 12. Null scenario runtime is a safe no-op for publish, flush, and sequence lookup.
+13. Battle Scenario Execution Gate queues ready triggers and drains them only at explicit scenario checkpoints.
 
 ## Next High-Value Cases
 
@@ -35,3 +36,4 @@ These cases were added after the first bridge implementation to cover more than 
 6. YAML Scenario Source import rejects unknown dialogue, module, actor, audio, and UI target IDs.
 7. Korean Scenario Authoring Editor can reorder or insert a sequence action while preserving source/runtime sync metadata.
 8. A sample ZEV phase transition scenario runs from HP threshold to dialogue wait to module-start placeholder in EditMode.
+9. Battle Scenario Execution Gate prevents turn advancement while a module-transition Action Sequence is still running.

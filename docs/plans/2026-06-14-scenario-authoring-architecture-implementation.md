@@ -518,6 +518,8 @@ Add explicit copy in `ToSaveData()` and `FromSaveData()`.
 
 Current implementation note: `EncounterMemorySaveData` now stores `EncounterId`, `MeetCount`, `Defeated`, and `SeenBeatIds`. `SaveData.EncounterMemory` persists this dictionary, `GlobalDataManager` owns runtime APIs and deep-copy save/load, and `GetEncounterMemory()` returns a deep-copy snapshot for bulk reads. `BattleScenarioRuntime` can import/export encounter-fired rule IDs for `PerEncounterMemory` rules. `BattleEncounterMemoryRecorder` now seeds runtime memory at battle setup, increments meet count, remembers exported fired rule IDs at battle result, and marks victory as defeated.
 
+Current execution gate note: `BattleScenarioExecutionGate` now sits between `BattleManager` and `BattleScenarioActionBridge`. `BattleManager` publishes battle facts into the gate and waits at explicit checkpoints such as `AfterCurrentAction` and `AfterCurrentSkill`; the gate owns ready trigger queueing, deferred flush, trigger emission, bridge invocation, and execution-result handle storage. This keeps trigger coroutine policy out of damage/turn methods and gives future Game Modules one reusable battle scenario execution checkpoint.
+
 **Step 4: Commit**
 
 ```powershell

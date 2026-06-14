@@ -4,7 +4,7 @@
 
 **Goal:** Execute fired `BattleScenarioTrigger` sequences through `ActionDirector` after battle event rules fire.
 
-**Architecture:** `BattleManager` stays an Adapter that publishes battle facts and starts one bridge coroutine. `BattleScenarioActionBridge` owns trigger-to-sequence resolution, per-trigger ActionExecutionContext creation, sequential execution, and clear failure when a sequence is missing or an action fails.
+**Architecture:** `BattleManager` stays an Adapter that publishes battle facts and waits at explicit scenario checkpoints. `BattleScenarioExecutionGate` owns ready-trigger queueing, deferred flush checkpoints, trigger emission, and battle-flow blocking. `BattleScenarioActionBridge` owns trigger-to-sequence resolution, per-trigger ActionExecutionContext creation, sequential execution, and clear failure when a sequence is missing or an action fails.
 
 **Tech Stack:** Unity 6, C#, ScriptableObject scenario data, `ActionDirector`, NUnit EditMode tests, Unity MCP EditMode validation.
 
@@ -29,6 +29,9 @@
 
 - `BattleScenarioActionBridge(BattleScenarioRuntime runtime, ActionDirector director)`
 - `IEnumerator PlayTriggers(IReadOnlyList<BattleScenarioTrigger> triggers, ActionExecutionContext context)`
+- `BattleScenarioExecutionGate(BattleScenarioRuntime runtime, BattleScenarioActionBridge bridge, Func<ActionExecutionContext> createContext)`
+- `void PublishEnemyHpCrossedBelow(...)`
+- `IEnumerator Flush(BattleRuleTiming timing)`
 
 **Rules:**
 
@@ -41,11 +44,11 @@
 
 **Rules:**
 
-- `BattleManager` creates a bridge only when scenario data exists.
-- `BattleManager` starts bridge execution from the existing trigger emission point.
+- `BattleManager` creates an execution gate only when scenario data exists.
+- `BattleManager` publishes battle facts into the gate and waits for the gate at flush checkpoints such as `AfterCurrentAction` and `AfterCurrentSkill`.
 - `BattleManager` must not inspect `SequenceId`, branch by rule ID, or own module transition policy.
-- The default registry only registers currently implemented adapters: `flow.wait` and `dialogue.wait`.
-- Dialogue runtime service is injected as `DialogueManagerRunner`; dialogue IDs still need a later authoring/import registration path.
+- The default registry registers currently implemented adapters: `flow.wait`, `dialogue.wait`, `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, and `battle.skill.timeline`.
+- Dialogue runtime service and legacy skill timeline runner setup flow through `BattleScenarioActionContextFactory`.
 
 ## Task 4: Verification
 

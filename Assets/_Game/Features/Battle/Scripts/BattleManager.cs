@@ -114,7 +114,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private bool _isReadyToReveal = true;
     private BattleScenarioData _pendingBattleScenarioData;
     private BattleScenarioRuntime _battleScenarioRuntime;
-    private BattleScenarioActionBridge _battleScenarioActionBridge;
+    private BattleScenarioExecutionGate _battleScenarioExecutionGate;
     #endregion
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
@@ -291,9 +291,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
         BattleEncounterMemoryRecorder.RecordBattleStarted(scenarioData, global, fallbackEncounterId);
         _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
-        _battleScenarioActionBridge = _battleScenarioRuntime != null
-            ? new BattleScenarioActionBridge(_battleScenarioRuntime, CreateBattleScenarioActionDirector())
-            : null;
+        _battleScenarioExecutionGate = CreateBattleScenarioExecutionGate(_battleScenarioRuntime);
     }
 
     private BattleScenarioData ResolveBattleScenarioData()
@@ -334,60 +332,68 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             return;
         }
 
-        DispatchBattleScenarioTriggers(_battleScenarioRuntime.PublishEnemyHpCrossedBelow(
+        if (_battleScenarioExecutionGate == null)
+        {
+            return;
+        }
+
+        _battleScenarioExecutionGate.PublishEnemyHpCrossedBelow(
             subjectId,
             previousHp,
             currentHp,
             maxHp,
-            timing));
+            timing);
     }
 
-    private void DispatchBattleScenarioTriggers(List<BattleScenarioTrigger> triggers)
+    private IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing)
+    {
+        if (_battleScenarioExecutionGate == null)
+        {
+            yield break;
+        }
+
+        yield return StartCoroutine(_battleScenarioExecutionGate.Flush(timing));
+        ReportBattleScenarioExecutionResult(_battleScenarioExecutionGate.LastHandle);
+    }
+
+    private BattleScenarioExecutionGate CreateBattleScenarioExecutionGate(BattleScenarioRuntime runtime)
+    {
+        if (runtime == null)
+        {
+            return null;
+        }
+
+        var bridge = new BattleScenarioActionBridge(runtime, CreateBattleScenarioActionDirector());
+        var gate = new BattleScenarioExecutionGate(runtime, bridge, CreateBattleScenarioActionContext);
+        gate.TriggersReady += HandleBattleScenarioTriggersReady;
+        return gate;
+    }
+
+    private void HandleBattleScenarioTriggersReady(IReadOnlyList<BattleScenarioTrigger> triggers)
     {
         if (triggers == null || triggers.Count == 0)
         {
             return;
         }
 
-        StartCoroutine(DispatchBattleScenarioTriggersRoutine(triggers));
+        OnBattleScenarioTriggersReady?.Invoke(new List<BattleScenarioTrigger>(triggers));
     }
 
-    private IEnumerator DispatchBattleScenarioTriggersRoutine(List<BattleScenarioTrigger> triggers)
+    private void ReportBattleScenarioExecutionResult(ActionExecutionHandle handle)
     {
-        if (triggers == null || triggers.Count == 0)
+        if (handle == null)
         {
-            yield break;
+            return;
         }
 
-        OnBattleScenarioTriggersReady?.Invoke(triggers);
-
-        if (_battleScenarioActionBridge == null)
+        if (handle.Status == ActionExecutionStatus.Failed)
         {
-            yield break;
+            Debug.LogError("[BattleManager] Battle scenario action sequence failed: " + handle.Result.Message, this);
         }
-
-        ActionExecutionContext context = CreateBattleScenarioActionContext();
-        yield return StartCoroutine(_battleScenarioActionBridge.PlayTriggers(triggers, context));
-
-        if (context.Handle.Status == ActionExecutionStatus.Failed)
+        else if (handle.Status == ActionExecutionStatus.Canceled)
         {
-            Debug.LogError("[BattleManager] Battle scenario action sequence failed: " + context.Handle.Result.Message, this);
+            Debug.LogWarning("[BattleManager] Battle scenario action sequence canceled: " + handle.Result.Message, this);
         }
-        else if (context.Handle.Status == ActionExecutionStatus.Canceled)
-        {
-            Debug.LogWarning("[BattleManager] Battle scenario action sequence canceled: " + context.Handle.Result.Message, this);
-        }
-    }
-
-    private IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing)
-    {
-        if (_battleScenarioRuntime == null)
-        {
-            yield break;
-        }
-
-        List<BattleScenarioTrigger> triggers = _battleScenarioRuntime.Flush(timing);
-        yield return StartCoroutine(DispatchBattleScenarioTriggersRoutine(triggers));
     }
 
     private static ActionDirector CreateBattleScenarioActionDirector()

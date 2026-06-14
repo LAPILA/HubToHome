@@ -112,7 +112,8 @@ flowchart LR
   - `SkillActionBlocks`는 데미지 전 HP를 같이 넘기므로, 50% threshold 같은 규칙은 실제 피해 전/후 비율로 crossing을 판단한다.
   - 발화된 `BattleScenarioTrigger`는 `BattleManager.OnBattleScenarioTriggersReady` 이벤트로 외부에 알리고, 내부 실행은 `BattleScenarioActionBridge`가 `ActionDirector`로 넘긴다.
   - `BattleScenarioActionBridge`는 trigger의 `SequenceId`를 runtime sequence로 해석하고, 각 trigger마다 child `ActionExecutionHandle`을 만들어 순차 실행한다.
-  - `BattleManager`는 bridge coroutine을 시작하거나 flush 시점에 기다릴 뿐이며, rule ID를 해석하거나 BGM/대사/페이드/모듈 전환 정책을 직접 갖지 않는다.
+  - `BattleScenarioExecutionGate`는 ready trigger queue, deferred flush checkpoint, trigger emission, bridge 호출, 실행 결과 handle 보관을 맡는다.
+  - `BattleManager`는 scenario event를 gate에 publish하고 flush checkpoint에서 gate를 기다릴 뿐이며, rule ID를 해석하거나 BGM/대사/페이드/모듈 전환 정책을 직접 갖지 않는다.
   - 현재 기본 registry는 `flow.wait`, `dialogue.wait`, `bgm.crossfade`, `screen.fade`, `module.switch`, `module.start`, `battle.skill.timeline`을 등록한다. 실제 content에서 쓰려면 Dialogue ID 등록과 audio/screen/module/skill runner service 주입 경로가 필요하다.
 - `dialogue.wait`의 runtime content binding 경로를 추가했다.
   - `BattleScenarioData.Dialogues`는 전투 시나리오별 `DialogueId -> DialogueData` 참조 목록이다.
@@ -196,13 +197,18 @@ flowchart LR
 - Unity MCP targeted EditMode 테스트와 전체 EditMode 테스트는 후속 export 검증까지 포함해 최신 92개 통과, 실패 0개다. 콘솔에는 테스트 실패가 아닌 기존 MCP disposed client handler 로그와 PerformanceTesting setup/cleanup 로그만 남았다.
 - Source export TDD RED에서 `IScenarioDialogueReferenceIdProvider` 부재로 빌드 실패를 확인했고, `ScenarioSourceExporter` / `DialogueDataId` 보존 / provider 구현 뒤 GREEN으로 전환했다.
 - 최신 Unity MCP targeted EditMode 테스트는 `ScenarioSourceSyncTests`와 `AssetDatabaseScenarioDialogueReferenceResolverTests` 합산 13개 통과, 전체 EditMode 테스트는 92개 통과, 실패 0개다. 콘솔에는 테스트 실패가 아닌 기존 MCP disposed client handler 로그와 PerformanceTesting setup/cleanup 로그만 남았다.
+- `BattleScenarioExecutionGate`를 추가해 trigger 실행 정책을 `BattleManager` 밖으로 더 빼냈다.
+  - 기존에는 발화 지점에서 bridge coroutine을 직접 시작하거나 flush에서 직접 bridge를 기다리는 형태였다.
+  - 이제는 gate가 ready trigger queue와 flush checkpoint 실행을 소유한다.
+  - 이 구조는 이후 QTE 전투 외의 shooter/boxing Game Module에서도 같은 scenario execution 정책을 재사용하기 위한 준비다.
+  - 이번 턴은 테스트 추가보다 아키텍처 정리에 집중했으므로, 신규 테스트 추가는 하지 않았다. 검증은 C# LSP diagnostics, `dotnet build HubToHome.sln --no-restore`, Unity MCP EditMode 전체 92개 통과로 수행했다.
 - Play Mode, 씬 저장, `.unity` 직접 편집은 하지 않았다.
 
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
 2. Scenario Source YAML text writer와 editor UI에서 `dialogues` 매핑을 source로 저장하는 경로 구현
-3. trigger sequence가 끝날 때까지 턴/모듈 진행을 어떻게 멈출지 정하는 Battle Scenario Execution Gate 설계
+3. Battle Scenario Execution Gate의 module-transition 중 턴 진행 차단을 실제 sample scenario로 검증
 4. Audio/Screen/Module 전환용 concrete presentation runner 설계
 5. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
 6. UI Toolkit 기반 Scenario Authoring Editor 1차 구현

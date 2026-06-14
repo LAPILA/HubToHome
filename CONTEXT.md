@@ -62,6 +62,10 @@ _Avoid_: embedding enemy phase changes inside one skill timeline or hard-coding 
 A named gameplay beat emitted during battle, such as crossing an HP threshold, completing a skill, changing phase, defeating an enemy, or ending a Game Module.
 _Avoid_: treating battle events as only C# callbacks or only UI narration.
 
+**Battle Scenario Execution Gate**:
+The battle-side Module that queues ready Battle Scenario Triggers, drains deferred triggers at explicit battle checkpoints, runs their Action Sequences through the Action Director, and blocks battle flow until those sequences succeed, fail, or cancel.
+_Avoid_: starting scenario trigger coroutines directly from scattered BattleManager call sites.
+
 **Encounter Memory**:
 The save-bound remembered history of a specific encounter, enemy, or meeting context, used to vary dialogue, rules, and outcomes across first meetings, rematches, escapes, victories, and prior phase changes. Current runtime storage is `GlobalDataManager` encounter memory, serialized through `SaveData.EncounterMemory` as `EncounterMemorySaveData`. Battle setup/result flow uses `BattleEncounterMemoryRecorder` to seed `PerEncounterMemory` rules, increment meet count, remember fired beat IDs, and mark victory as defeated.
 _Avoid_: treating every encounter with the same enemy data as stateless.
