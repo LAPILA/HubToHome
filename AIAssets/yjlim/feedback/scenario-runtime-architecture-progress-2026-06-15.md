@@ -63,6 +63,10 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - 현재 opening module은 기본적으로 `turn_qte`입니다.
   - `BattleTurnQteGameModuleRuntime`은 `IBattleTurnQteModuleController`를 통해 기존 `BattleManager` 턴 루프를 시작합니다.
   - 기존 Battle UI의 플레이어 행동/타겟 확정 콜백은 이제 `turn_qte`가 활성 모듈일 때만 처리됩니다.
+- QTE 전투 모듈화가 한 단계 더 진행됐습니다.
+  - `TurnCalc` / `EnemyAction` 상태 진입, 턴 진행, player turn begin, enemy turn begin, 플레이어 행동 선택, 스킬/아이템 하위 선택, 취소, 타겟 확정, 액션 완료가 `IBattleTurnQteModuleController` 뒤로 들어갔습니다.
+  - 다른 모듈로 전환된 뒤 기존 QTE `EndAction()`이 턴을 계속 넘기지 않도록 inactive-module guard를 추가했습니다.
+  - `turn_qte`를 빠져나갈 때는 QTE 타이머와 보류 중인 행동/스킬/아이템만 끊고, 캐릭터 위치/카메라 리셋은 정상 액션 완료 경로에만 남겼습니다. 전환 시퀀스가 캐릭터 위치와 카메라를 직접 연출할 수 있게 하기 위해서입니다.
 
 ## 효과
 
@@ -76,6 +80,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - 다음 Game Module은 `ModuleEvents`로 자기 내부 게임 결과를 보고할 수 있습니다. 예를 들어 `aim_shooter`가 `victory`, `timeout`, `failed` 같은 outcome을 발행하면, Battle Scenario Data가 그 결과에 맞춰 대사/페이드/다른 모듈/마을 복귀를 이어갈 수 있습니다.
 - QTE 전투도 이제 같은 Game Module Runner 경로에서 시작됩니다. 이 덕분에 “QTE를 하다가 다른 모듈로 갔다가 다시 QTE로 돌아오기”를 특수 케이스가 아니라 `module.switch` / `module.start` 흐름으로 다룰 수 있습니다.
 - 다른 모듈이 활성화됐을 때 기존 QTE 전투 입력 콜백이 공격/스킬/아이템 실행으로 새는 위험도 줄었습니다.
+- QTE 액션이 끝나는 순간에 이미 다른 모듈로 전환돼 있다면, 기존 QTE 턴 진행은 더 이상 이어지지 않습니다. 이것은 “스킬 종료 후 대사/페이드/슈팅 모듈 시작” 같은 시나리오에서 중요합니다.
 - 시나리오 Action Sequence도 `battle.participant.*` action으로 같은 명령 통로를 사용할 수 있습니다.
 - 시나리오 Action Sequence도 `battle.flag.set` / `battle.flag.clear`로 같은 플래그 통로를 사용할 수 있습니다.
 - `BattleManager`가 concrete module 목록을 직접 품는 일을 줄였습니다.
@@ -91,8 +96,8 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - Battle Session Flag는 저장되는 Encounter Memory가 아닙니다. 전투 밖에서 기억해야 하는 첫 만남/재전/승리 여부/본 적 있는 연출 같은 정보는 여전히 `GlobalDataManager` Encounter Memory로 보내야 합니다.
 - Game Module Outcome은 전투 안의 이벤트 보고입니다. “이 결과를 다음 세이브에서도 기억해야 하는가”는 별도로 Encounter Memory에 기록해야 합니다.
 - 아직 실제 `aim_shooter` / `boxing` 모듈은 없으므로, outcome id의 최종 목록은 각 concrete module을 만들 때 문서화해야 합니다.
-- QTE 모듈화는 아직 시작 단계입니다. `BattleManager`의 턴 계산, 플레이어 행동 선택, 적 행동, enemy defense QTE 처리 구현은 아직 대부분 그대로 남아 있습니다.
-- 입력 게이트는 콜백 처리 방어입니다. Battle UI 자체의 표시/비표시, 모듈별 UI ownership은 아직 다음 작업입니다.
+- QTE 모듈화는 entry/ownership 경로는 잡혔지만, 실제 애니메이션/스킬/적 공격/방어 QTE 판정 본문은 아직 `BattleManager` 안의 기존 루틴을 사용합니다.
+- Battle UI 자체의 표시/비표시, 모듈별 UI ownership은 아직 다음 작업입니다. 현재는 기존 QTE 입력 콜백이 다른 모듈로 새지 않게 막는 단계입니다.
 
 ## 이번 검증
 
@@ -107,6 +112,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - Scenario Source outcome 보존 추가 뒤에는 importer/exporter/YAML writer 테스트를 추가했습니다.
 - QTE 모듈화 시작 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - QTE 입력 게이트 추가 뒤에도 `dotnet build`와 LSP diagnostics 통과
+- QTE 턴/입력/종료 경로를 컨트롤러로 모은 뒤에도 `dotnet build`와 LSP diagnostics 통과
 - 이 시점 Unity MCP는 인스턴스를 찾지 못해 추가 EditMode 실행은 못 했습니다.
 
 ## 남은 핵심 작업
@@ -116,10 +122,12 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - 데미지/회복/MP 변경 요청은 `IBattleParticipantCommandRunner`와 `battle.participant.*` action으로 첫 통로가 열렸습니다.
   - 다음에는 상태이상/승패/phase flag 변경 명령을 기존 Character/BattleManager 상태와 어떻게 연결할지 정해야 합니다.
 - QTE 전투 모듈화
-  - 다음 작업은 `TurnCalcRoutine`, `AdvanceTurn`, `BeginPlayerTurnRoutine`, `BeginEnemyTurnRoutine`, `EnemyActionRoutine`을 `IBattleTurnQteModuleController` 뒤로 더 모으는 것입니다.
+  - 턴 계산, 턴 진행, player/enemy turn begin, 적 행동, 입력, 종료 entry는 `IBattleTurnQteModuleController` 뒤로 들어왔습니다.
+  - 남은 작업은 컨트롤러 구현을 별도 Module로 분리하고, `BattleManager` 안에 남은 실제 애니메이션/스킬/적 공격/QTE 판정 본문을 어떤 순서로 옮길지 결정하는 것입니다.
 - concrete module 추가
   - `aim_shooter`, `boxing` 같은 신규 모듈은 최후순위입니다.
 - QTE 전투 추출
-  - 지금 QTE module은 UI/input suspend/resume wrapper에 가깝고, 턴 계산/행동 선택/적 행동은 여전히 `BattleManager`에 있습니다.
+  - 지금 QTE module은 wrapper 단계를 넘어 턴/입력/종료 entry를 소유합니다.
+  - 그러나 실제 실행 본문은 아직 `BattleManager` 내부 레거시 루틴에 있으므로, 전체 클래스 분리는 별도 안전 단계로 남겨야 합니다.
 - editor/YAML round-trip
   - runtime contract가 더 안정된 뒤 진행하는 것이 좋습니다.

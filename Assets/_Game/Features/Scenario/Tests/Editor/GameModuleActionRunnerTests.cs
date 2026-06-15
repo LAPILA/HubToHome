@@ -99,6 +99,45 @@ public class GameModuleActionRunnerTests
     }
 
     [Test]
+    public void BattleTurnQteControllerOwnsTurnAndEnemyActionEntryPoints()
+    {
+        var log = new List<string>();
+        var controller = new FakeTurnQteModuleController(log);
+
+        RunToCompletion(controller.RunTurnCalculation());
+        controller.AdvanceTurn();
+        RunToCompletion(controller.BeginPlayerTurn(null));
+        RunToCompletion(controller.BeginEnemyTurn());
+        RunToCompletion(controller.RunEnemyAction());
+
+        Assert.That(log, Is.EqualTo(new[] { "turn_calc", "advance_turn", "player_turn", "enemy_turn", "enemy_action" }));
+    }
+
+    [Test]
+    public void BattleTurnQteControllerOwnsPlayerInputEntryPoints()
+    {
+        var log = new List<string>();
+        var controller = new FakeTurnQteModuleController(log);
+
+        controller.SelectPlayerAction(null, PlayerMenuAction.Attack);
+        controller.SelectSubMenuAction(null, PlayerMenuAction.Skill, null, null);
+        controller.CancelActionSelection();
+        controller.CancelTargetSelection();
+        controller.ConfirmTargetAndExecute(2);
+        controller.CompleteAction();
+
+        Assert.That(log, Is.EqualTo(new[]
+        {
+            "action:Attack",
+            "sub_action:Skill",
+            "cancel_action",
+            "cancel_target",
+            "target:2",
+            "complete_action"
+        }));
+    }
+
+    [Test]
     public void BattleDefaultRegistryContainsTurnQteCompatibilityModule()
     {
         GameModuleRegistry registry = BattleGameModuleRegistryFactory.CreateDefault();
@@ -322,6 +361,65 @@ public class GameModuleActionRunnerTests
         {
             _log.Add("start:" + context.TargetModuleId);
             yield break;
+        }
+
+        public IEnumerator RunTurnCalculation()
+        {
+            _log.Add("turn_calc");
+            yield break;
+        }
+
+        public void AdvanceTurn()
+        {
+            _log.Add("advance_turn");
+        }
+
+        public IEnumerator BeginPlayerTurn(PlayerCharacter player)
+        {
+            _log.Add("player_turn");
+            yield break;
+        }
+
+        public IEnumerator BeginEnemyTurn()
+        {
+            _log.Add("enemy_turn");
+            yield break;
+        }
+
+        public IEnumerator RunEnemyAction()
+        {
+            _log.Add("enemy_action");
+            yield break;
+        }
+
+        public void SelectPlayerAction(PlayerCharacter actor, PlayerMenuAction action)
+        {
+            _log.Add("action:" + action);
+        }
+
+        public void SelectSubMenuAction(PlayerCharacter actor, PlayerMenuAction action, SkillData skill, ItemData item)
+        {
+            _log.Add("sub_action:" + action);
+        }
+
+        public void CancelActionSelection()
+        {
+            _log.Add("cancel_action");
+        }
+
+        public void CancelTargetSelection()
+        {
+            _log.Add("cancel_target");
+        }
+
+        public void ConfirmTargetAndExecute(int targetIndex)
+        {
+            _log.Add("target:" + targetIndex);
+        }
+
+        public void CompleteAction()
+        {
+            _log.Add("complete_action");
         }
     }
 }

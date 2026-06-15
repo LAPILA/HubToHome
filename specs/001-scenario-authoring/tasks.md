@@ -73,6 +73,7 @@
 - [x] Add battle-scoped flag read/write seams and authorable `battle.flag.set` / `battle.flag.clear` actions over `BattleSessionState`.
 - [x] Add Game Module completion/outcome event seam so concrete modules can report `module.completed` and Battle Event Rules can react by module ID and optional outcome ID.
 - [x] Start QTE combat through the Game Module Runner and add `IBattleTurnQteModuleController` as the migration seam for existing turn/QTE internals.
+- [x] Route QTE turn calculation entry, turn advancement, player/enemy turn begin entry, enemy action entry, player input, target confirmation, action completion, inactive-module guards, and pending QTE cleanup through `IBattleTurnQteModuleController`.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

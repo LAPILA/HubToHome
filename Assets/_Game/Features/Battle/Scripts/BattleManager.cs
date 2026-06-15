@@ -116,6 +116,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private BattleScenarioRuntime _battleScenarioRuntime;
     private BattleScenarioExecutionGate _battleScenarioExecutionGate;
     private IGameModuleActionRunner _battleGameModuleActionRunner;
+    private IBattleTurnQteModuleController _turnQteModuleController;
     #endregion
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
@@ -292,10 +293,11 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
         BattleEncounterMemoryRecorder.RecordBattleStarted(scenarioData, global, fallbackEncounterId);
         _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
+        _turnQteModuleController = new BattleTurnQteModuleController(this);
         _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(
             scenarioData,
             _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null,
-            new BattleTurnQteModuleController(this));
+            _turnQteModuleController);
         _battleScenarioExecutionGate = CreateBattleScenarioExecutionGate(_battleScenarioRuntime);
     }
 
@@ -705,6 +707,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         public IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context)
         {
             QTEManager.Instance?.ForceStop();
+            _battleManager?.ClearTurnQtePendingActionState();
             BattleUIController.Instance?.SuspendBattleModuleInput();
             yield break;
         }
@@ -718,6 +721,73 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             }
 
             yield break;
+        }
+
+        public IEnumerator RunTurnCalculation()
+        {
+            if (_battleManager != null)
+            {
+                yield return _battleManager.TurnCalcRoutine();
+            }
+        }
+
+        public void AdvanceTurn()
+        {
+            _battleManager?.HandleTurnQteAdvanceTurn();
+        }
+
+        public IEnumerator BeginPlayerTurn(PlayerCharacter player)
+        {
+            if (_battleManager != null)
+            {
+                yield return _battleManager.HandleTurnQteBeginPlayerTurn(player);
+            }
+        }
+
+        public IEnumerator BeginEnemyTurn()
+        {
+            if (_battleManager != null)
+            {
+                yield return _battleManager.HandleTurnQteBeginEnemyTurn();
+            }
+        }
+
+        public IEnumerator RunEnemyAction()
+        {
+            if (_battleManager != null)
+            {
+                yield return _battleManager.EnemyActionRoutine();
+            }
+        }
+
+        public void SelectPlayerAction(PlayerCharacter actor, PlayerMenuAction action)
+        {
+            _battleManager?.HandleTurnQtePlayerActionSelected(actor, action);
+        }
+
+        public void SelectSubMenuAction(PlayerCharacter actor, PlayerMenuAction action, SkillData skill, ItemData item)
+        {
+            _battleManager?.HandleTurnQteSubMenuActionSelected(actor, action, skill, item);
+        }
+
+        public void CancelActionSelection()
+        {
+            _battleManager?.HandleTurnQteCancelActionSelection();
+        }
+
+        public void CancelTargetSelection()
+        {
+            _battleManager?.HandleTurnQteCancelTargetSelection();
+        }
+
+        public void ConfirmTargetAndExecute(int targetIndex)
+        {
+            _battleManager?.HandleTurnQteTargetConfirmed(targetIndex);
+        }
+
+        public void CompleteAction()
+        {
+            _battleManager?.HandleTurnQteActionCompleted();
         }
     }
 
@@ -755,10 +825,32 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
         switch (next)
         {
-            case BattleState.TurnCalc:    StartCoroutine(TurnCalcRoutine()); break;
-            case BattleState.EnemyAction: StartCoroutine(EnemyActionRoutine()); break;
+            case BattleState.TurnCalc:    StartCoroutine(RunTurnQteTurnCalculation()); break;
+            case BattleState.EnemyAction: StartCoroutine(RunTurnQteEnemyAction()); break;
             case BattleState.BattleEnd:   StartCoroutine(BattleEndRoutine()); break;
         }
+    }
+
+    private IEnumerator RunTurnQteTurnCalculation()
+    {
+        if (_turnQteModuleController != null)
+        {
+            yield return StartCoroutine(_turnQteModuleController.RunTurnCalculation());
+            yield break;
+        }
+
+        yield return StartCoroutine(TurnCalcRoutine());
+    }
+
+    private IEnumerator RunTurnQteEnemyAction()
+    {
+        if (_turnQteModuleController != null)
+        {
+            yield return StartCoroutine(_turnQteModuleController.RunEnemyAction());
+            yield break;
+        }
+
+        yield return StartCoroutine(EnemyActionRoutine());
     }
 
     private IEnumerator StartOpeningBattleGameModule()
@@ -1202,6 +1294,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     #region [ Turn Management ]
     private IEnumerator TurnCalcRoutine()
     {
+        if (!IsTurnQteCombatInputActive())
+        {
+            yield break;
+        }
+
         yield return null;
         _turnQueue.Clear();
 
@@ -1239,6 +1336,22 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private void AdvanceTurn()
     {
+        if (_turnQteModuleController != null)
+        {
+            _turnQteModuleController.AdvanceTurn();
+            return;
+        }
+
+        HandleTurnQteAdvanceTurn();
+    }
+
+    private void HandleTurnQteAdvanceTurn()
+    {
+        if (!IsTurnQteCombatInputActive())
+        {
+            return;
+        }
+
         // 큐를 다 소진했다면 다시 턴 계산
         if (_currentActorIndex >= _turnQueue.Count) { ChangeState(BattleState.TurnCalc); return; }
 
@@ -1253,16 +1366,38 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (actor is PlayerCharacter player)
         {
             _battleTurnCounter++;
-            StartCoroutine(BeginPlayerTurnRoutine(player));
+            if (_turnQteModuleController != null)
+                StartCoroutine(_turnQteModuleController.BeginPlayerTurn(player));
+            else
+                StartCoroutine(HandleTurnQteBeginPlayerTurn(player));
         }
         else if (actor is EnemyCharacter)
         {
-            StartCoroutine(BeginEnemyTurnRoutine());
+            if (_turnQteModuleController != null)
+                StartCoroutine(_turnQteModuleController.BeginEnemyTurn());
+            else
+                StartCoroutine(HandleTurnQteBeginEnemyTurn());
         }
     }
 
     private IEnumerator BeginPlayerTurnRoutine(PlayerCharacter player)
     {
+        if (_turnQteModuleController != null)
+        {
+            yield return StartCoroutine(_turnQteModuleController.BeginPlayerTurn(player));
+            yield break;
+        }
+
+        yield return StartCoroutine(HandleTurnQteBeginPlayerTurn(player));
+    }
+
+    private IEnumerator HandleTurnQteBeginPlayerTurn(PlayerCharacter player)
+    {
+        if (!IsTurnQteCombatInputActive())
+        {
+            yield break;
+        }
+
         ResetAllPlayerBattlePoses();
         player.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         player.HealMP(_mpPerTurn);
@@ -1278,6 +1413,22 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator BeginEnemyTurnRoutine()
     {
+        if (_turnQteModuleController != null)
+        {
+            yield return StartCoroutine(_turnQteModuleController.BeginEnemyTurn());
+            yield break;
+        }
+
+        yield return StartCoroutine(HandleTurnQteBeginEnemyTurn());
+    }
+
+    private IEnumerator HandleTurnQteBeginEnemyTurn()
+    {
+        if (!IsTurnQteCombatInputActive())
+        {
+            yield break;
+        }
+
         ResetAllPlayerBattlePoses();
         yield return StartCoroutine(WaitForNarrationToFinish());
         ChangeState(BattleState.EnemyAction);
@@ -1334,6 +1485,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             return;
         }
 
+        if (_turnQteModuleController != null)
+            _turnQteModuleController.SelectPlayerAction(actor, action);
+        else
+            HandleTurnQtePlayerActionSelected(actor, action);
+    }
+
+    private void HandleTurnQtePlayerActionSelected(PlayerCharacter actor, PlayerMenuAction action)
+    {
         _pendingActor = actor;
         _pendingAction = action;
 
@@ -1366,6 +1525,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             return;
         }
 
+        if (_turnQteModuleController != null)
+            _turnQteModuleController.SelectSubMenuAction(actor, action, skill, item);
+        else
+            HandleTurnQteSubMenuActionSelected(actor, action, skill, item);
+    }
+
+    private void HandleTurnQteSubMenuActionSelected(PlayerCharacter actor, PlayerMenuAction action, SkillData skill, ItemData item)
+    {
         _pendingActor = actor;
         _pendingAction = action;
         CurrentPendingSkill = skill; 
@@ -1384,6 +1551,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             return;
         }
 
+        if (_turnQteModuleController != null)
+            _turnQteModuleController.CancelActionSelection();
+        else
+            HandleTurnQteCancelActionSelection();
+    }
+
+    private void HandleTurnQteCancelActionSelection()
+    {
         _pendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         ChangeState(BattleState.PlayerActionSelect);
     }
@@ -1395,6 +1570,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             return;
         }
 
+        if (_turnQteModuleController != null)
+            _turnQteModuleController.CancelTargetSelection();
+        else
+            HandleTurnQteCancelTargetSelection();
+    }
+
+    private void HandleTurnQteCancelTargetSelection()
+    {
         _pendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         ChangeState(BattleState.PlayerActionSelect);
     }
@@ -1406,6 +1589,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             return;
         }
 
+        if (_turnQteModuleController != null)
+            _turnQteModuleController.ConfirmTargetAndExecute(targetIndex);
+        else
+            HandleTurnQteTargetConfirmed(targetIndex);
+    }
+
+    private void HandleTurnQteTargetConfirmed(int targetIndex)
+    {
         if (CurrentState == BattleState.ActionExecute) return;
         if (_pendingAction == PlayerMenuAction.Attack)
         {
@@ -1440,18 +1631,37 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     #region [ Action Executions ]
     private void EndAction()
     {
-        Time.timeScale = 1.0f;
-        QTEManager.Instance?.ForceStop();
+        if (_turnQteModuleController != null)
+            _turnQteModuleController.CompleteAction();
+        else
+            HandleTurnQteActionCompleted();
+    }
+
+    private void HandleTurnQteActionCompleted()
+    {
+        ClearTurnQtePendingActionState();
         ResetAllPlayerBattlePoses();
-        _pendingActor = null;
-        CurrentPendingSkill = null;
-        CurrentPendingItem = null;
         CameraController.Instance?.ResetCamera(0.4f);
 
         BroadcastVisibleTurnQueue();
 
+        if (!IsTurnQteCombatInputActive())
+        {
+            return;
+        }
+
         if (CheckVictory() || CheckDefeat()) ChangeState(BattleState.BattleEnd);
         else AdvanceTurn();
+    }
+
+    private void ClearTurnQtePendingActionState()
+    {
+        Time.timeScale = 1.0f;
+        QTEManager.Instance?.ForceStop();
+        _pendingActor = null;
+        _pendingAction = default;
+        CurrentPendingSkill = null;
+        CurrentPendingItem = null;
     }
 
     private IEnumerator ExecuteAttack(PlayerCharacter actor, int targetIndex)
@@ -1621,6 +1831,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     #region [ Enemy Action & QTE Handling ]
     private IEnumerator EnemyActionRoutine()
     {
+        if (!IsTurnQteCombatInputActive())
+        {
+            yield break;
+        }
+
         var enemy = _turnQueue[_currentActorIndex - 1] as EnemyCharacter;
         if (enemy == null) { EndAction(); yield break; }
 

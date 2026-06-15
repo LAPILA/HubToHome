@@ -115,8 +115,8 @@ The discoverable catalog of Action grammar, Korean labels, parameters, examples,
 _Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.
 
 **Turn QTE Combat Module**:
-The first migration target for the existing QTE/turn battle. `turn_qte` is still backed by `BattleManager` internals, but battle setup now starts it through the Game Module Runner, and `BattleTurnQteGameModuleRuntime` delegates lifecycle to `IBattleTurnQteModuleController`. Next migration steps should move turn calculation, action selection, enemy actions, and QTE-specific cleanup behind this controller instead of adding new branches directly to `BattleManager`.
-_Avoid_: claiming QTE extraction is complete while `BattleManager` still owns the turn loop implementation.
+The first migrated Game Module for the existing QTE/turn battle. `turn_qte` is still backed by `BattleManager` internals for the actual legacy animation, skill, and enemy attack routines, but its lifecycle, turn calculation entry, turn advancement, player/enemy turn begin entry, enemy action entry, player action input, target confirmation, action completion, inactive-module guards, and pending QTE cleanup are now routed through `IBattleTurnQteModuleController` and `BattleTurnQteGameModuleRuntime`. Battle setup starts it through the Game Module Runner rather than directly entering `BattleState.TurnCalc`.
+_Avoid_: adding new QTE state/input branches directly to battle setup or bypassing the controller when switching modules.
 
 **Skill Timeline Adapter**:
 A compatibility Action adapter that invokes an existing `SkillData.ActionTimeline` through a narrow runner seam. `BattleSkillTimelineRunner` is the current battle-side adapter: it resolves scenario `skill` / `actor` / `targets` IDs against the active `BattleManager`, builds a `SkillContext`, and executes existing `SkillActionBlock` entries. It allows current QTE/skill blocks to be called from an Action Sequence without making Skill Data the owner of whole-battle scenario flow.

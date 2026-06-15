@@ -248,4 +248,26 @@ public interface IBattleTurnQteModuleController
     IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context);
 
     IEnumerator StartTurnQteModule(GameModuleRuntimeContext context);
+
+    IEnumerator RunTurnCalculation();
+
+    void AdvanceTurn();
+
+    IEnumerator BeginPlayerTurn(PlayerCharacter player);
+
+    IEnumerator BeginEnemyTurn();
+
+    IEnumerator RunEnemyAction();
+
+    void SelectPlayerAction(PlayerCharacter actor, PlayerMenuAction action);
+
+    void SelectSubMenuAction(PlayerCharacter actor, PlayerMenuAction action, SkillData skill, ItemData item);
+
+    void CancelActionSelection();
+
+    void CancelTargetSelection();
+
+    void ConfirmTargetAndExecute(int targetIndex);
+
+    void CompleteAction();
 }
