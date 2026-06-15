@@ -454,6 +454,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-16 aim shooter controller seam: `BattleAimShooterGameModuleRuntime` now accepts `IBattleAimShooterModuleController`, so future shooter gameplay can grow behind the module lifecycle instead of inside `BattleManager`. The test seam verifies that injected controllers receive `GameModuleRuntimeContext` and can publish module completion outcomes through `GameModuleRuntimeContext.ModuleEvents`.
 
+2026-06-16 aim shooter combat session core: `BattleAimShooterCombatSession` is the first pure gameplay rule slice for `aim_shooter`. It validates targets against `IBattleSessionStateReader`, applies damage through `IBattleParticipantCommandRunner`, tracks shots/hits, and publishes victory/failure through `IGameModuleEventSink`. The Unity input/projectile/UI layer should call into this core rather than owning damage or outcome policy itself.
+
 **Step 5: Commit**
 
 ```powershell

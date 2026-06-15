@@ -78,6 +78,7 @@
 - [x] Register the first non-QTE battle module shell, `aim_shooter`, through the default battle `GameModuleRegistry`.
 - [x] Add `IBattleGameModulePresentationController` so non-QTE modules can disable legacy Turn QTE menu/targeting/defense input through `BattleUIController`.
 - [x] Add `IBattleAimShooterModuleController` so the future shooter loop can grow behind a module lifecycle seam and report outcomes through `GameModuleRuntimeContext.ModuleEvents`.
+- [x] Add pure `BattleAimShooterCombatSession` tests for target validation, damage command requests, shot counts, and module outcome reporting.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

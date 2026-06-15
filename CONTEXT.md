@@ -123,7 +123,7 @@ The migrated Game Module for the existing QTE/turn battle. `turn_qte` starts thr
 _Avoid_: adding new QTE state/input/action branches directly to battle setup or bypassing the controller when switching modules.
 
 **Aim Shooter Combat Module**:
-The first registered non-QTE battle Game Module ID, `aim_shooter`. The current implementation is a presentation and input-ownership shell: it can be entered or started through `module.switch` / `module.start`, disables legacy Turn QTE input through the Battle Game Module Presentation Controller, and proves the default battle registry can host more than QTE. It can also delegate lifecycle to `IBattleAimShooterModuleController`, which is where future mouse-aim input, projectile, damage, UI, and outcome reporting should grow. It is not yet the full mouse-aim shooting gameplay loop.
+The first registered non-QTE battle Game Module ID, `aim_shooter`. The current implementation is a presentation and input-ownership shell plus a testable combat-session core. It can be entered or started through `module.switch` / `module.start`, disables legacy Turn QTE input through the Battle Game Module Presentation Controller, and proves the default battle registry can host more than QTE. It can delegate lifecycle to `IBattleAimShooterModuleController`, and `BattleAimShooterCombatSession` handles the pure rule slice for target validation, participant damage requests, shot counts, and module outcome reporting. It is not yet the full mouse-aim input/projectile/VFX/UI gameplay loop.
 _Avoid_: treating `aim_shooter` as a complete shooter implementation until its input, target, projectile, damage, outcome, and UI contracts are implemented.
 
 **Skill Timeline Adapter**:
