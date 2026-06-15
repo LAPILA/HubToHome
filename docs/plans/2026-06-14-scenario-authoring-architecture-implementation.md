@@ -452,6 +452,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-16 non-QTE module shell: The default battle registry now also registers `aim_shooter` through `BattleAimShooterGameModuleRuntime`. This is intentionally a presentation/input-ownership shell, not the finished shooter gameplay. It proves that `module.switch` / `module.start` can enter a non-QTE module, disable legacy Turn QTE menu/targeting/defense input through `IBattleGameModulePresentationController`, and let the next module own its own UI state. The next architecture step is to add an actual shooter loop behind this module using `GameModuleRuntimeContext` seams for battle state, participant commands, battle flags, and module outcome reporting.
 
+2026-06-16 aim shooter controller seam: `BattleAimShooterGameModuleRuntime` now accepts `IBattleAimShooterModuleController`, so future shooter gameplay can grow behind the module lifecycle instead of inside `BattleManager`. The test seam verifies that injected controllers receive `GameModuleRuntimeContext` and can publish module completion outcomes through `GameModuleRuntimeContext.ModuleEvents`.
+
 **Step 5: Commit**
 
 ```powershell

@@ -77,6 +77,7 @@
 - [x] Move QTE turn loop, player action execution, enemy action execution, defense QTE resolution, and action completion bodies behind `IBattleTurnQteModuleController` while keeping the controller nested for serialized-field safety.
 - [x] Register the first non-QTE battle module shell, `aim_shooter`, through the default battle `GameModuleRegistry`.
 - [x] Add `IBattleGameModulePresentationController` so non-QTE modules can disable legacy Turn QTE menu/targeting/defense input through `BattleUIController`.
+- [x] Add `IBattleAimShooterModuleController` so the future shooter loop can grow behind a module lifecycle seam and report outcomes through `GameModuleRuntimeContext.ModuleEvents`.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

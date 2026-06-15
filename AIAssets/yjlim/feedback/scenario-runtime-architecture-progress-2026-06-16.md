@@ -16,6 +16,10 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
   - `IGameModuleRuntime` 구현체다.
   - `Enter` / `Start`에서 `IBattleGameModulePresentationController.ApplyGameModulePresentation("aim_shooter", false, "AIM SHOOTER")`를 호출한다.
   - `Exit`에서 자기 presentation state를 clear한다.
+- `IBattleAimShooterModuleController`
+  - 실제 슈팅 루프가 들어갈 lifecycle seam이다.
+  - controller가 주입되면 `BattleAimShooterGameModuleRuntime`은 `Enter` / `Start` / `Exit`를 controller에 위임한다.
+  - 테스트에서는 controller가 `GameModuleRuntimeContext.ModuleEvents`를 통해 `module.completed` outcome을 보고할 수 있음을 확인했다.
 - `IBattleGameModulePresentationController`
   - Battle Game Module이 UI/입력 소유권을 바꾸는 좁은 Interface다.
   - 현재 Adapter는 `BattleUIController`다.
@@ -28,6 +32,8 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
 이전까지는 QTE 모듈이 Game Module Runner로 시작되더라도, 실제 UI와 입력은 여전히 QTE 중심이었다. 그러면 `aim_shooter`, `boxing`, bullet-hell defense 같은 모듈을 추가할 때마다 `BattleManager`나 기존 `BattleUIController`가 QTE assumptions를 흘릴 위험이 있었다.
 
 이번 작업은 완성된 슈팅 모듈이 아니라, 비-QTE 모듈을 받을 첫 runway다. 다음 단계에서 shooter input/gameplay loop를 붙여도, 기존 QTE 입력이 몰래 실행되는 문제는 이 layer에서 먼저 막는다.
+
+추가로 `IBattleAimShooterModuleController`를 열어두었기 때문에, 실제 슈팅 구현은 `BattleManager`가 아니라 이 controller와 그 뒤의 작은 adapter들에서 커져야 한다. 이게 이번 단계의 핵심 아키텍처 가드레일이다.
 
 ## 아직 남은 일
 
@@ -46,4 +52,5 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
 - `dotnet build HubToHome.sln --no-restore` 통과
 - `git diff --check` 통과
 - C# LSP diagnostics 통과
+- `IBattleAimShooterModuleController` 주입/위임과 outcome 보고 테스트 추가
 - Unity MCP validate는 현재 Editor instance 미연결로 미실행

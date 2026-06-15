@@ -193,6 +193,56 @@ public class GameModuleActionRunnerTests
     }
 
     [Test]
+    public void BattleDefaultRegistryInjectsAimShooterController()
+    {
+        var log = new List<string>();
+        var controller = new FakeAimShooterModuleController(log);
+        GameModuleRegistry registry = BattleGameModuleRegistryFactory.CreateDefault(
+            null,
+            null,
+            controller);
+        registry.TryGet(BattleAimShooterGameModuleRuntime.Id, out IGameModuleRuntime module);
+        var context = new ActionExecutionContext();
+
+        RunToCompletion(module.Start(new GameModuleRuntimeContext(
+            context,
+            BattleTurnQteGameModuleRuntime.Id,
+            BattleAimShooterGameModuleRuntime.Id)));
+
+        Assert.That(log, Is.EqualTo(new[] { "start:aim_shooter" }));
+    }
+
+    [Test]
+    public void AimShooterModuleDelegatesLifecycleToInjectedController()
+    {
+        var log = new List<string>();
+        var controller = new FakeAimShooterModuleController(log);
+        var module = new BattleAimShooterGameModuleRuntime(null, controller);
+        var context = new ActionExecutionContext();
+        var events = new FakeGameModuleEventSink();
+        context.SetService<IGameModuleEventSink>(events);
+        var moduleContext = new GameModuleRuntimeContext(
+            context,
+            BattleTurnQteGameModuleRuntime.Id,
+            BattleAimShooterGameModuleRuntime.Id);
+
+        RunToCompletion(module.Enter(moduleContext));
+        RunToCompletion(module.Start(moduleContext));
+        RunToCompletion(module.Exit(moduleContext));
+
+        Assert.That(log, Is.EqualTo(new[]
+        {
+            "enter:aim_shooter",
+            "start:aim_shooter",
+            "exit:aim_shooter"
+        }));
+        Assert.That(events.Log, Is.EqualTo(new[]
+        {
+            "completed:aim_shooter:ready:AfterCurrentModule"
+        }));
+    }
+
+    [Test]
     public void SwitchToUpdatesInjectedModuleStateStore()
     {
         var log = new List<string>();
@@ -357,11 +407,14 @@ public class GameModuleActionRunnerTests
 
     private sealed class FakeGameModuleEventSink : IGameModuleEventSink
     {
+        public List<string> Log { get; } = new List<string>();
+
         public void PublishGameModuleCompleted(
             string moduleId,
             string outcomeId = "",
             BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
         {
+            Log.Add("completed:" + moduleId + ":" + outcomeId + ":" + timing);
         }
     }
 
@@ -377,6 +430,38 @@ public class GameModuleActionRunnerTests
         public void ClearGameModulePresentation(string moduleId)
         {
             Log.Add("clear:" + moduleId);
+        }
+    }
+
+    private sealed class FakeAimShooterModuleController : IBattleAimShooterModuleController
+    {
+        private readonly List<string> _log;
+
+        public FakeAimShooterModuleController(List<string> log)
+        {
+            _log = log;
+        }
+
+        public IEnumerator EnterAimShooterModule(GameModuleRuntimeContext context)
+        {
+            _log.Add("enter:" + context.TargetModuleId);
+            yield break;
+        }
+
+        public IEnumerator ExitAimShooterModule(GameModuleRuntimeContext context)
+        {
+            _log.Add("exit:" + context.TargetModuleId);
+            yield break;
+        }
+
+        public IEnumerator StartAimShooterModule(GameModuleRuntimeContext context)
+        {
+            _log.Add("start:" + context.TargetModuleId);
+            context.ModuleEvents?.PublishGameModuleCompleted(
+                BattleAimShooterGameModuleRuntime.Id,
+                "ready",
+                BattleRuleTiming.AfterCurrentModule);
+            yield break;
         }
     }
 

@@ -43,11 +43,12 @@ public static class BattleGameModuleRegistryFactory
 {
     public static GameModuleRegistry CreateDefault(
         IBattleTurnQteModuleController turnQteController = null,
-        IBattleGameModulePresentationController presentationController = null)
+        IBattleGameModulePresentationController presentationController = null,
+        IBattleAimShooterModuleController aimShooterController = null)
     {
         var registry = new GameModuleRegistry();
         registry.Register(new BattleTurnQteGameModuleRuntime(turnQteController));
-        registry.Register(new BattleAimShooterGameModuleRuntime(presentationController));
+        registry.Register(new BattleAimShooterGameModuleRuntime(presentationController, aimShooterController));
         return registry;
     }
 }

@@ -246,10 +246,14 @@ public sealed class BattleAimShooterGameModuleRuntime : IGameModuleRuntime
     public const string Id = "aim_shooter";
 
     private readonly IBattleGameModulePresentationController _presentation;
+    private readonly IBattleAimShooterModuleController _controller;
 
-    public BattleAimShooterGameModuleRuntime(IBattleGameModulePresentationController presentation = null)
+    public BattleAimShooterGameModuleRuntime(
+        IBattleGameModulePresentationController presentation = null,
+        IBattleAimShooterModuleController controller = null)
     {
         _presentation = presentation;
+        _controller = controller;
     }
 
     public string ModuleId
@@ -259,18 +263,51 @@ public sealed class BattleAimShooterGameModuleRuntime : IGameModuleRuntime
 
     public IEnumerator Enter(GameModuleRuntimeContext context)
     {
+        if (_controller != null)
+        {
+            IEnumerator routine = _controller.EnterAimShooterModule(context);
+            while (routine != null && routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+
+            yield break;
+        }
+
         ApplyPresentation("AIM SHOOTER");
         yield break;
     }
 
     public IEnumerator Exit(GameModuleRuntimeContext context)
     {
+        if (_controller != null)
+        {
+            IEnumerator routine = _controller.ExitAimShooterModule(context);
+            while (routine != null && routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+
+            yield break;
+        }
+
         ClearPresentation();
         yield break;
     }
 
     public IEnumerator Start(GameModuleRuntimeContext context)
     {
+        if (_controller != null)
+        {
+            IEnumerator routine = _controller.StartAimShooterModule(context);
+            while (routine != null && routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+
+            yield break;
+        }
+
         ApplyPresentation("AIM SHOOTER");
         yield break;
     }
@@ -303,6 +340,15 @@ public interface IBattleGameModulePresentationController
     void ApplyGameModulePresentation(string moduleId, bool acceptsTurnQteInput, string label);
 
     void ClearGameModulePresentation(string moduleId);
+}
+
+public interface IBattleAimShooterModuleController
+{
+    IEnumerator EnterAimShooterModule(GameModuleRuntimeContext context);
+
+    IEnumerator ExitAimShooterModule(GameModuleRuntimeContext context);
+
+    IEnumerator StartAimShooterModule(GameModuleRuntimeContext context);
 }
 
 public interface IBattleTurnQteModuleController
