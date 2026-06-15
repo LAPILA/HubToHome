@@ -54,6 +54,10 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - 모듈은 `GameModuleRuntimeContext.ModuleEvents.PublishGameModuleCompleted(...)`로 완료를 보고합니다.
   - 전투 규칙은 `GameModuleCompleted` 이벤트를 module id와 선택적 outcome id로 매칭합니다.
   - 실행은 기존 `BattleScenarioExecutionGate`를 지나므로, 즉시 실행과 `AfterCurrentModule` 같은 deferred timing을 같은 방식으로 처리할 수 있습니다.
+- Scenario Source sync도 이 결과 조건을 보존하게 했습니다.
+  - source document, importer, exporter, YAML writer가 `OutcomeId`를 잃지 않습니다.
+  - YAML 미리보기는 모듈 완료 규칙을 `event: module.completed`, `module`, `outcome` 형태로 보여줍니다.
+  - 한국어 시나리오 저작 창의 규칙 요약에도 모듈 결과가 표시됩니다.
 
 ## 효과
 
@@ -91,6 +95,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - `GameModuleRuntimeContext` 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - `battle.flag.*` adapter와 flag store 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - Game Module 완료/결과 이벤트 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
+- Scenario Source outcome 보존 추가 뒤에는 importer/exporter/YAML writer 테스트를 추가했습니다.
 - 이 시점 Unity MCP는 인스턴스를 찾지 못해 추가 EditMode 실행은 못 했습니다.
 
 ## 남은 핵심 작업

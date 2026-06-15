@@ -42,6 +42,25 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void ImporterPreservesGameModuleOutcomeRule()
+    {
+        var importer = new ScenarioSourceImporter(new FakeScenarioSourceParser(MakeModuleOutcomeDocument()));
+
+        ScenarioSourceSyncResult result = importer.Import(
+            "id: module_outcome\n",
+            "Assets/_Game/Features/Scenario/Source/module_outcome.scenario.yaml");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Scenario.Rules.Count, Is.EqualTo(1));
+        Assert.That(result.Scenario.Rules[0].EventType, Is.EqualTo(BattleEventType.GameModuleCompleted));
+        Assert.That(result.Scenario.Rules[0].SubjectId, Is.EqualTo("aim_shooter"));
+        Assert.That(result.Scenario.Rules[0].OutcomeId, Is.EqualTo("victory"));
+        Assert.That(result.Scenario.Rules[0].Timing, Is.EqualTo(BattleRuleTiming.AfterCurrentModule));
+
+        DestroyScenario(result.Scenario);
+    }
+
+    [Test]
     public void ImporterCreatesDialogueReferencesThroughResolver()
     {
         const string sourceText = "id: test_battle\n";
@@ -141,6 +160,26 @@ public class ScenarioSourceSyncTests
         Assert.That(result.Document.AudioClips.Count, Is.EqualTo(1));
         Assert.That(result.Document.AudioClips[0].AudioId, Is.EqualTo("zev_phase2"));
         Assert.That(result.Document.AudioClips[0].AudioClipId, Is.EqualTo("audio/zev_phase2"));
+
+        DestroyScenario(scenario);
+    }
+
+    [Test]
+    public void ExporterPreservesGameModuleOutcomeRule()
+    {
+        BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
+            MakeModuleOutcomeDocument(),
+            "id: module_outcome\n",
+            "Assets/_Game/Features/Scenario/Source/module_outcome.scenario.yaml");
+
+        ScenarioSourceExportResult result = new ScenarioSourceExporter().Export(scenario);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Document.Rules.Count, Is.EqualTo(1));
+        Assert.That(result.Document.Rules[0].EventType, Is.EqualTo(BattleEventType.GameModuleCompleted));
+        Assert.That(result.Document.Rules[0].SubjectId, Is.EqualTo("aim_shooter"));
+        Assert.That(result.Document.Rules[0].OutcomeId, Is.EqualTo("victory"));
+        Assert.That(result.Document.Rules[0].SequenceId, Is.EqualTo("after_shooter_victory"));
 
         DestroyScenario(scenario);
     }
@@ -255,6 +294,21 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void YamlWriterSerializesGameModuleOutcomeRule()
+    {
+        ScenarioSourceDocument document = MakeModuleOutcomeDocument();
+
+        ScenarioSourceYamlWriteResult result = new ScenarioSourceYamlWriter().Write(document);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Text, Does.Contain("event: module.completed"));
+        Assert.That(result.Text, Does.Contain("module: aim_shooter"));
+        Assert.That(result.Text, Does.Contain("outcome: victory"));
+        Assert.That(result.Text, Does.Contain("timing: after_current_module"));
+        Assert.That(result.Text, Does.Not.Contain("enemy: aim_shooter"));
+    }
+
+    [Test]
     public void YamlWriterReportsInvalidActionParameterJson()
     {
         ScenarioSourceDocument document = MakeDocument();
@@ -359,6 +413,42 @@ public class ScenarioSourceSyncTests
             Actions =
             {
                 new ScenarioActionData { ActionId = "dialogue.wait", ParametersJson = "{\"id\":\"zev.phase2\"}" }
+            }
+        });
+
+        return document;
+    }
+
+    private static ScenarioSourceDocument MakeModuleOutcomeDocument()
+    {
+        var document = new ScenarioSourceDocument
+        {
+            Id = "module_outcome",
+            TitleKo = "모듈 결과 테스트",
+            PrimaryMode = "battle",
+            OpeningModule = "turn_qte",
+            MemoryKey = "module_outcome"
+        };
+
+        document.PartyIds.Add("player");
+        document.EnemyIds.Add("zev");
+        document.Rules.Add(new ScenarioSourceRuleDocument
+        {
+            RuleId = "after_shooter_victory",
+            EventType = BattleEventType.GameModuleCompleted,
+            Timing = BattleRuleTiming.AfterCurrentModule,
+            Once = BattleRuleOnceMode.PerBattle,
+            SubjectId = "aim_shooter",
+            OutcomeId = "victory",
+            SequenceId = "after_shooter_victory"
+        });
+        document.Sequences.Add(new ScenarioSourceSequenceDocument
+        {
+            SequenceId = "after_shooter_victory",
+            DisplayNameKo = "슈팅 승리 후 연출",
+            Actions =
+            {
+                new ScenarioActionData { ActionId = "dialogue.wait", ParametersJson = "{\"id\":\"zev.shooter_victory\"}" }
             }
         });
 

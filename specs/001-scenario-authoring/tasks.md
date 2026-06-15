@@ -30,6 +30,7 @@
 - [x] Create scenario source parser adapter.
 - [x] Add source hash/stale metadata.
 - [x] Add source sync tests with a small source sample and fake parser.
+- [x] Preserve `module.completed` outcome rule data through Scenario Source document, importer, exporter, YAML writer, and editor rule summary.
 - [ ] Add export tests after YAML writer/parser package implementation.
 - [x] Commit source sync foundation.
 

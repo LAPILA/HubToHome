@@ -133,6 +133,7 @@ public sealed class ScenarioSourceImporter
                 Timing = rule.Timing,
                 Once = rule.Once,
                 SubjectId = rule.SubjectId,
+                OutcomeId = rule.OutcomeId,
                 ThresholdRatio = rule.ThresholdRatio,
                 SequenceId = rule.SequenceId,
                 Disabled = rule.Disabled

@@ -261,6 +261,11 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             {
                 summary += " / HP " + Mathf.RoundToInt(rule.ThresholdRatio * 100f) + "% 이하";
             }
+            else if (rule.EventType == BattleEventType.GameModuleCompleted
+                && !string.IsNullOrWhiteSpace(rule.OutcomeId))
+            {
+                summary += " / 결과 " + rule.OutcomeId.Trim();
+            }
 
             AddInfo(_rulesPanel, EmptyDash(rule.RuleId), summary);
         }

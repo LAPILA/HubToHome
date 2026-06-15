@@ -208,6 +208,7 @@ public sealed class ScenarioSourceExporter
                 Timing = rule.Timing,
                 Once = rule.Once,
                 SubjectId = rule.SubjectId,
+                OutcomeId = rule.OutcomeId,
                 ThresholdRatio = rule.ThresholdRatio,
                 SequenceId = rule.SequenceId,
                 Disabled = rule.Disabled
@@ -411,8 +412,7 @@ public sealed class ScenarioSourceYamlWriter
             AppendListItemKeyValue(builder, 1, "id", rule.RuleId);
             AppendKeyOnly(builder, 2, "when");
             AppendKeyValue(builder, 3, "event", FormatEventType(rule.EventType));
-            AppendKeyValue(builder, 3, "enemy", rule.SubjectId);
-            AppendKeyValue(builder, 3, "threshold", rule.ThresholdRatio);
+            WriteRuleSubject(builder, rule);
             AppendKeyValue(builder, 3, "timing", FormatTiming(rule.Timing));
             AppendKeyValue(builder, 3, "once", FormatOnce(rule.Once));
             AppendKeyOnly(builder, 2, "do");
@@ -424,6 +424,30 @@ public sealed class ScenarioSourceYamlWriter
         }
 
         builder.AppendLine();
+    }
+
+    private static void WriteRuleSubject(StringBuilder builder, ScenarioSourceRuleDocument rule)
+    {
+        if (rule == null)
+        {
+            return;
+        }
+
+        switch (rule.EventType)
+        {
+            case BattleEventType.GameModuleCompleted:
+                AppendKeyValue(builder, 3, "module", rule.SubjectId);
+                if (!string.IsNullOrWhiteSpace(rule.OutcomeId))
+                {
+                    AppendKeyValue(builder, 3, "outcome", rule.OutcomeId);
+                }
+
+                break;
+            default:
+                AppendKeyValue(builder, 3, "enemy", rule.SubjectId);
+                AppendKeyValue(builder, 3, "threshold", rule.ThresholdRatio);
+                break;
+        }
     }
 
     private static void WriteSequences(
@@ -727,7 +751,7 @@ public sealed class ScenarioSourceYamlWriter
             case BattleEventType.SkillCompleted:
                 return "skill.completed";
             case BattleEventType.GameModuleCompleted:
-                return "game_module.completed";
+                return "module.completed";
             default:
                 return "none";
         }

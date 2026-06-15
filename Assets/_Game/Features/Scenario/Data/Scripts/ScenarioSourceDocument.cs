@@ -34,6 +34,7 @@ public sealed class ScenarioSourceRuleDocument
     public BattleRuleTiming Timing = BattleRuleTiming.Immediate;
     public BattleRuleOnceMode Once = BattleRuleOnceMode.PerBattle;
     public string SubjectId = string.Empty;
+    public string OutcomeId = string.Empty;
     public float ThresholdRatio = 0.5f;
     public string SequenceId = string.Empty;
     public bool Disabled;
