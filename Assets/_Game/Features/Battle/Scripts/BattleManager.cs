@@ -809,6 +809,23 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
 
         ChangeState(BattleState.TurnCalc);
     }
+
+    private bool IsTurnQteCombatInputActive()
+    {
+        if (_isBattleEnding)
+        {
+            return false;
+        }
+
+        if (_battleGameModuleActionRunner == null)
+        {
+            return true;
+        }
+
+        string moduleId = _battleGameModuleActionRunner.CurrentModuleId;
+        return string.IsNullOrWhiteSpace(moduleId)
+            || string.Equals(moduleId, BattleTurnQteGameModuleRuntime.Id, StringComparison.Ordinal);
+    }
     #endregion
 
     #region [ Battle Setup & Intro ]
@@ -1312,6 +1329,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     #region [ Player Input Routing ]
     public void OnPlayerActionSelected(PlayerCharacter actor, PlayerMenuAction action)
     {
+        if (!IsTurnQteCombatInputActive())
+        {
+            return;
+        }
+
         _pendingActor = actor;
         _pendingAction = action;
 
@@ -1339,6 +1361,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     public void OnSubMenuActionSelected(PlayerCharacter actor, PlayerMenuAction action, SkillData skill, ItemData item)
     {
+        if (!IsTurnQteCombatInputActive())
+        {
+            return;
+        }
+
         _pendingActor = actor;
         _pendingAction = action;
         CurrentPendingSkill = skill; 
@@ -1352,18 +1379,33 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     public void CancelActionSelection() 
     {
+        if (!IsTurnQteCombatInputActive())
+        {
+            return;
+        }
+
         _pendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         ChangeState(BattleState.PlayerActionSelect);
     }
 
     public void CancelTargetSelection() 
     {
+        if (!IsTurnQteCombatInputActive())
+        {
+            return;
+        }
+
         _pendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         ChangeState(BattleState.PlayerActionSelect);
     }
 
     public void ConfirmTargetAndExecute(int targetIndex)
     {
+        if (!IsTurnQteCombatInputActive())
+        {
+            return;
+        }
+
         if (CurrentState == BattleState.ActionExecute) return;
         if (_pendingAction == PlayerMenuAction.Attack)
         {
