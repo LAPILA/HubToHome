@@ -458,6 +458,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-16 default aim shooter controller: `BattleGameModuleRegistryFactory` now creates `BattleAimShooterModuleController` by default when no explicit aim-shooter controller is injected. This means `module.start: aim_shooter` creates a combat session even before the Unity mouse-input adapter exists. Runtime code was placed in an existing generated-project file to avoid requiring a forced Unity refresh.
 
+2026-06-16 battle lookup seam: `BattleManager` now stores the active `IBattleAimShooterModuleController` and injects it into the default battle module registry. This gives a future mouse-input/projectile adapter a narrow lookup point (`AimShooterModuleController.FireAtTarget(...)`) without adding shot policy branches to `BattleManager`.
+
 **Step 5: Commit**
 
 ```powershell

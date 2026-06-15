@@ -25,6 +25,10 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
   - 살아있는 enemy target인지 확인하고, `IBattleParticipantCommandRunner`로 damage를 요청한다.
   - shot / hit count를 추적하고, 조건을 만족하면 `IGameModuleEventSink`로 `victory` 또는 `failed` outcome을 보고한다.
   - Unity-generated csproj refresh 없이 빌드되도록 현재는 기존 포함 파일 `GameModuleActionRunner.cs` 안에 배치했다.
+- `BattleManager.AimShooterModuleController`
+  - Battle setup 시 `BattleAimShooterModuleController`를 만들고 default registry에 주입한다.
+  - 다음 Unity mouse-input/projectile adapter가 호출할 런타임 진입점이다.
+  - 단, 실제 fire policy는 `BattleAimShooterCombatSession`이 맡는다.
 - `IBattleGameModulePresentationController`
   - Battle Game Module이 UI/입력 소유권을 바꾸는 좁은 Interface다.
   - 현재 Adapter는 `BattleUIController`다.
@@ -41,6 +45,8 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
 추가로 `IBattleAimShooterModuleController`를 열어두었기 때문에, 실제 슈팅 구현은 `BattleManager`가 아니라 이 controller와 그 뒤의 작은 adapter들에서 커져야 한다. 이게 이번 단계의 핵심 아키텍처 가드레일이다.
 
 또한 `BattleAimShooterCombatSession`을 분리했기 때문에, 마우스 입력/투사체/VFX/UI를 붙이는 다음 단계에서도 데미지 정책과 완료 outcome 정책은 테스트 가능한 순수 코어에 남길 수 있다.
+
+`BattleManager`에는 controller 참조만 보관했다. 이것은 새 전투 분기 추가가 아니라 future input adapter가 찾아갈 모듈 진입점을 제공하기 위한 것이다.
 
 ## 아직 남은 일
 

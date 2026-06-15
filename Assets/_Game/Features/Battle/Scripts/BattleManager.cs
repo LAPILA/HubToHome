@@ -117,9 +117,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private BattleScenarioExecutionGate _battleScenarioExecutionGate;
     private IGameModuleActionRunner _battleGameModuleActionRunner;
     private IBattleTurnQteModuleController _turnQteModuleController;
+    private IBattleAimShooterModuleController _aimShooterModuleController;
     #endregion
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
+
+    public IBattleAimShooterModuleController AimShooterModuleController => _aimShooterModuleController;
 
     public void SetBattleScenarioData(BattleScenarioData scenarioData)
     {
@@ -294,10 +297,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         BattleEncounterMemoryRecorder.RecordBattleStarted(scenarioData, global, fallbackEncounterId);
         _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
         _turnQteModuleController = new BattleTurnQteModuleController(this);
+        _aimShooterModuleController = new BattleAimShooterModuleController(BattleUIController.Instance);
         _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(
             scenarioData,
             _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null,
-            _turnQteModuleController);
+            _turnQteModuleController,
+            _aimShooterModuleController);
         _battleScenarioExecutionGate = CreateBattleScenarioExecutionGate(_battleScenarioRuntime);
     }
 
@@ -1326,9 +1331,13 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(
         BattleScenarioData scenarioData,
         IGameModuleStateStore moduleStateStore,
-        IBattleTurnQteModuleController turnQteController)
+        IBattleTurnQteModuleController turnQteController,
+        IBattleAimShooterModuleController aimShooterController)
     {
-        var registry = BattleGameModuleRegistryFactory.CreateDefault(turnQteController, BattleUIController.Instance);
+        var registry = BattleGameModuleRegistryFactory.CreateDefault(
+            turnQteController,
+            BattleUIController.Instance,
+            aimShooterController);
         string currentModuleId = scenarioData != null ? scenarioData.OpeningModule : BattleTurnQteGameModuleRuntime.Id;
         return new GameModuleActionRunner(registry, currentModuleId, moduleStateStore);
     }
