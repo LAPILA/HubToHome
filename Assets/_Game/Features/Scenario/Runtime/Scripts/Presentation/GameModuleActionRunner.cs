@@ -55,8 +55,9 @@ public sealed class GameModuleActionRunner : IGameModuleActionRunner
         IGameModuleRuntime current;
         if (!string.IsNullOrEmpty(activeModuleId) && _registry.TryGet(activeModuleId, out current))
         {
+            GameModuleRuntimeContext exitContext = CreateModuleContext(context, activeModuleId, targetModuleId);
             IEnumerator exitRoutine = ScenarioAdapterRoutineRunner.Run(
-                current.Exit(context),
+                current.Exit(exitContext),
                 context,
                 "Game Module failed while exiting: " + activeModuleId);
             while (exitRoutine.MoveNext())
@@ -70,8 +71,9 @@ public sealed class GameModuleActionRunner : IGameModuleActionRunner
             }
         }
 
+        GameModuleRuntimeContext enterContext = CreateModuleContext(context, activeModuleId, targetModuleId);
         IEnumerator enterRoutine = ScenarioAdapterRoutineRunner.Run(
-            target.Enter(context),
+            target.Enter(enterContext),
             context,
             "Game Module failed while entering: " + targetModuleId);
         while (enterRoutine.MoveNext())
@@ -101,8 +103,10 @@ public sealed class GameModuleActionRunner : IGameModuleActionRunner
             yield break;
         }
 
+        string activeModuleId = ResolveActiveModuleId(context);
+        GameModuleRuntimeContext startContext = CreateModuleContext(context, activeModuleId, targetModuleId);
         IEnumerator startRoutine = ScenarioAdapterRoutineRunner.Run(
-            target.Start(context),
+            target.Start(startContext),
             context,
             "Game Module failed while starting: " + targetModuleId);
         while (startRoutine.MoveNext())
@@ -124,6 +128,14 @@ public sealed class GameModuleActionRunner : IGameModuleActionRunner
         }
 
         return context != null ? Normalize(context.ModuleId) : string.Empty;
+    }
+
+    private static GameModuleRuntimeContext CreateModuleContext(
+        ActionExecutionContext actionContext,
+        string previousModuleId,
+        string targetModuleId)
+    {
+        return new GameModuleRuntimeContext(actionContext, previousModuleId, targetModuleId);
     }
 
     private void SetCurrentModule(string moduleId, ActionExecutionContext context)
@@ -169,20 +181,20 @@ public sealed class BattleTurnQteGameModuleRuntime : IGameModuleRuntime
         get { return Id; }
     }
 
-    public IEnumerator Enter(ActionExecutionContext context)
+    public IEnumerator Enter(GameModuleRuntimeContext context)
     {
         BattleUIController.Instance?.ResumeBattleModuleInput();
         yield break;
     }
 
-    public IEnumerator Exit(ActionExecutionContext context)
+    public IEnumerator Exit(GameModuleRuntimeContext context)
     {
         QTEManager.Instance?.ForceStop();
         BattleUIController.Instance?.SuspendBattleModuleInput();
         yield break;
     }
 
-    public IEnumerator Start(ActionExecutionContext context)
+    public IEnumerator Start(GameModuleRuntimeContext context)
     {
         BattleUIController.Instance?.ResumeBattleModuleInput();
         yield break;

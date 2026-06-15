@@ -34,6 +34,10 @@ _Avoid_: assuming all Game Modules are turn-based or battle-only.
 The runtime seam used by Action Sequences to switch, enter, exit, and start Game Modules through stable module IDs. `GameModuleRegistry` maps IDs to `IGameModuleRuntime`, and `GameModuleActionRunner` implements `IGameModuleActionRunner` for `module.switch` / `module.start`. In Battle, the runner instance must persist for the whole battle so `CurrentModuleId` survives across separate Action Sequence triggers.
 _Avoid_: hard-coding QTE, shooter, boxing, or minigame transition branches inside `BattleManager` or inside one action adapter.
 
+**Game Module Runtime Context**:
+The small context object passed into `IGameModuleRuntime.Enter`, `Exit`, and `Start`. It wraps the current Action Execution Context, previous/target module IDs, Battle Session State reader, and Battle Participant Command Runner so a concrete Game Module can inspect battle state and request HP/MP changes without reaching into `BattleManager`.
+_Avoid_: making each Game Module manually unpack broad Action Execution Context services or call `BattleManager.Instance`.
+
 **Action Sequence**:
 An authored sequence of actions for transitions, interactions, presentation, and gameplay beats. It must support sequential actions, parallel groups, waits, dialogue pauses, cancellation, and reuse from both Overworld and Battle.
 _Avoid_: binding this concept only to skill execution or only to battle transitions.

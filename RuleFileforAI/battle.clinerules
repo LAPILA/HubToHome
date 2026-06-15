@@ -37,6 +37,7 @@
 - Battle must keep one `IGameModuleActionRunner` instance alive for the battle session. Do not recreate it for each Action Sequence; otherwise `CurrentModuleId` can reset to `OpeningModule` after a module switch.
 - Register default battle modules through `BattleGameModuleRegistryFactory` or its successor, not by adding per-module registration branches directly into `BattleManager`.
 - Current battle scenario contexts register `BattleTurnQteGameModuleRuntime` as `turn_qte`. Treat it as a compatibility wrapper that stops active QTE and suspends/resumes the existing battle input surface during module switches; do not assume the full QTE turn state machine has already been extracted.
+- Concrete `IGameModuleRuntime` implementations receive `GameModuleRuntimeContext` in `Enter`, `Exit`, and `Start`. Use this context to read `BattleSession` and call `ParticipantCommands`; do not make each module manually reach into `BattleManager` for battle state or HP/MP mutation.
 - Existing `SkillData.ActionTimeline` can be invoked from scenarios through `battle.skill.timeline`, `ISkillTimelineRunner`, and the concrete `BattleSkillTimelineRunner` injected by `BattleManager`. Treat this as a compatibility adapter; do not move whole-battle phase logic, post-skill cleanup, or module transition policy back into SkillData.
 
 ## Defense / QTE Intent

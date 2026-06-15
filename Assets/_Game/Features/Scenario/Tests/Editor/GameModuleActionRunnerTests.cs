@@ -73,10 +73,11 @@ public class GameModuleActionRunnerTests
     {
         var module = new BattleTurnQteGameModuleRuntime();
         var context = new ActionExecutionContext();
+        var moduleContext = new GameModuleRuntimeContext(context, string.Empty, BattleTurnQteGameModuleRuntime.Id);
 
-        RunToCompletion(module.Enter(context));
-        RunToCompletion(module.Exit(context));
-        RunToCompletion(module.Start(context));
+        RunToCompletion(module.Enter(moduleContext));
+        RunToCompletion(module.Exit(moduleContext));
+        RunToCompletion(module.Start(moduleContext));
 
         Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.NotStarted));
     }
@@ -108,6 +109,29 @@ public class GameModuleActionRunnerTests
         Assert.That(context.ModuleId, Is.EqualTo("aim_shooter"));
     }
 
+    [Test]
+    public void ModuleRuntimeReceivesBattleSessionAndCommandSeams()
+    {
+        var registry = new GameModuleRegistry();
+        var module = new InspectingGameModule("aim_shooter");
+        registry.Register(module);
+        var context = new ActionExecutionContext();
+        var session = BattleSessionState.Create(null);
+        var commands = new FakeBattleParticipantCommandRunner();
+        context.SetService<IBattleSessionStateReader>(session);
+        context.SetService<IBattleParticipantCommandRunner>(commands);
+        var runner = new GameModuleActionRunner(registry, "turn_qte");
+
+        RunToCompletion(runner.Start("aim_shooter", context));
+
+        Assert.That(module.ReceivedContext, Is.Not.Null);
+        Assert.That(module.ReceivedContext.ActionContext, Is.SameAs(context));
+        Assert.That(module.ReceivedContext.PreviousModuleId, Is.EqualTo("turn_qte"));
+        Assert.That(module.ReceivedContext.TargetModuleId, Is.EqualTo("aim_shooter"));
+        Assert.That(module.ReceivedContext.BattleSession, Is.SameAs(session));
+        Assert.That(module.ReceivedContext.ParticipantCommands, Is.SameAs(commands));
+    }
+
     private static void RunToCompletion(IEnumerator routine, int maxSteps = 100)
     {
         int steps = 0;
@@ -133,22 +157,51 @@ public class GameModuleActionRunnerTests
 
         public string ModuleId { get; }
 
-        public IEnumerator Enter(ActionExecutionContext context)
+        public IEnumerator Enter(GameModuleRuntimeContext context)
         {
             yield return null;
             _log.Add("enter:" + ModuleId);
         }
 
-        public IEnumerator Exit(ActionExecutionContext context)
+        public IEnumerator Exit(GameModuleRuntimeContext context)
         {
             yield return null;
             _log.Add("exit:" + ModuleId);
         }
 
-        public IEnumerator Start(ActionExecutionContext context)
+        public IEnumerator Start(GameModuleRuntimeContext context)
         {
             yield return null;
             _log.Add("start:" + ModuleId);
+        }
+    }
+
+    private sealed class InspectingGameModule : IGameModuleRuntime
+    {
+        public InspectingGameModule(string moduleId)
+        {
+            ModuleId = moduleId;
+        }
+
+        public string ModuleId { get; }
+        public GameModuleRuntimeContext ReceivedContext { get; private set; }
+
+        public IEnumerator Enter(GameModuleRuntimeContext context)
+        {
+            ReceivedContext = context;
+            yield break;
+        }
+
+        public IEnumerator Exit(GameModuleRuntimeContext context)
+        {
+            ReceivedContext = context;
+            yield break;
+        }
+
+        public IEnumerator Start(GameModuleRuntimeContext context)
+        {
+            ReceivedContext = context;
+            yield break;
         }
     }
 
@@ -159,6 +212,41 @@ public class GameModuleActionRunnerTests
         public void SetCurrentModuleId(string moduleId)
         {
             CurrentModuleId = moduleId;
+        }
+    }
+
+    private sealed class FakeBattleParticipantCommandRunner : IBattleParticipantCommandRunner
+    {
+        public BattleParticipantCommandResult ApplyPureDamage(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 10 - amount);
+        }
+
+        public BattleParticipantCommandResult HealHp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 10 + amount);
+        }
+
+        public BattleParticipantCommandResult HealMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 10 + amount);
+        }
+
+        public BattleParticipantCommandResult ConsumeMp(
+            string subjectId,
+            int amount,
+            ActionExecutionContext context)
+        {
+            return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 10 - amount);
         }
     }
 }

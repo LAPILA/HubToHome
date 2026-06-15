@@ -442,6 +442,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 action grammar continuation: The command seam is now exposed as runtime-backed Action adapters: `battle.participant.damage`, `battle.participant.heal_hp`, `battle.participant.heal_mp`, and `battle.participant.consume_mp`. These actions parse `subject` and positive integer `amount`, fail clearly when `IBattleParticipantCommandRunner` is missing or the runner rejects the command, and are registered in the default battle scenario ActionDirector. This turns the command seam from a code-only service into authorable Action Sequence grammar.
 
+2026-06-15 Game Module context continuation: `IGameModuleRuntime.Enter` / `Exit` / `Start` now receive `GameModuleRuntimeContext` instead of raw `ActionExecutionContext`. The runner creates this context with the previous module ID, target module ID, original Action Context, `IBattleSessionStateReader`, and `IBattleParticipantCommandRunner`. This keeps future concrete modules such as aim shooter, boxing, or bullet hell from manually unpacking broad scenario services or calling `BattleManager.Instance` for battle facts and HP/MP mutation.
+
 **Step 5: Commit**
 
 ```powershell

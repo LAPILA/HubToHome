@@ -41,6 +41,10 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - `battle.participant.heal_mp`
   - `battle.participant.consume_mp`
   - 모두 `subject`와 1 이상의 정수 `amount`를 받습니다.
+- `GameModuleRuntimeContext`를 추가했습니다.
+  - 이제 `IGameModuleRuntime.Enter` / `Exit` / `Start`는 raw `ActionExecutionContext`가 아니라 module 전용 context를 받습니다.
+  - 이 context는 원본 Action Context, 이전 모듈 ID, 대상 모듈 ID, `IBattleSessionStateReader`, `IBattleParticipantCommandRunner`를 한 곳에서 제공합니다.
+  - 목표는 `aim_shooter`, `boxing`, `bullet_hell` 같은 concrete module이 상태 조회와 HP/MP 변경 요청을 위해 `BattleManager.Instance`를 직접 보지 않게 하는 것입니다.
 
 ## 효과
 
@@ -49,6 +53,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - 다음 Game Module은 `BattleManager.Instance`를 직접 참조하지 않고 `ActionExecutionContext.GetService<IBattleSessionStateReader>()`로 현재 scenario/module 상태를 읽을 수 있습니다.
 - 다음 Game Module은 같은 reader로 현재 파티/적 HP, MP, 생존 여부, 주요 상태 플래그도 읽을 수 있습니다.
 - 다음 Game Module은 `IBattleParticipantCommandRunner`로 데미지/회복/MP 변경을 요청할 수 있습니다.
+- 다음 Game Module은 이 두 seam을 `GameModuleRuntimeContext.BattleSession` / `ParticipantCommands`로 받을 수 있어, broad Action Context를 매번 직접 해석할 필요가 줄었습니다.
 - 시나리오 Action Sequence도 `battle.participant.*` action으로 같은 명령 통로를 사용할 수 있습니다.
 - `BattleManager`가 concrete module 목록을 직접 품는 일을 줄였습니다.
 - 이후 `aim_shooter`, `boxing`, `bullet_hell` 같은 모듈을 추가할 때 Action Adapter나 BattleManager 분기를 늘리는 대신 registry/factory 계층을 확장하는 경로가 생겼습니다.
@@ -59,6 +64,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - `IBattleParticipantCommandRunner`도 기존 변경 경로를 감싼 Adapter입니다. HP/MP mutation의 최종 소유권을 Battle Session State로 옮긴 것은 아닙니다.
 - `battle.participant.damage`는 현재 순수 피해 경로입니다. 방어/속성/공식 계산이 필요한 일반 피해 action은 별도 grammar로 추가해야 합니다.
 - 상태이상 추가/제거, 승패 확정, phase flag 변경은 아직 명령 seam에 포함하지 않았습니다.
+- `GameModuleRuntimeContext`는 context 전달 계약입니다. 실제 shooter/boxing module의 gameplay loop, UI, input capture는 아직 구현하지 않았습니다.
 
 ## 이번 검증
 
@@ -67,6 +73,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - C# LSP diagnostics 통과
 - Unity MCP script validation 통과: `BattleScenarioRuntime.cs`, `BattleScenarioActionContextFactory.cs`, `BattleManager.cs`
 - `battle.participant.*` adapter 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
+- `GameModuleRuntimeContext` 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - 이 시점 Unity MCP는 인스턴스를 찾지 못해 추가 EditMode 실행은 못 했습니다.
 
 ## 남은 핵심 작업

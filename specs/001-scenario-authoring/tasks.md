@@ -68,6 +68,7 @@
 - [x] Expose read-only battle participant snapshots through `IBattleSessionStateReader` so Game Modules can inspect HP/MP/status without owning existing Character state.
 - [x] Register `IBattleParticipantCommandRunner` into battle `ActionExecutionContext` so future Game Modules can request HP/MP mutations through one battle adapter.
 - [x] Add authorable `battle.participant.*` Action adapters for damage, HP heal, MP heal, and MP consume over `IBattleParticipantCommandRunner`.
+- [x] Add `GameModuleRuntimeContext` so concrete `IGameModuleRuntime` implementations receive previous/target module IDs plus battle session and participant command seams without directly unpacking `ActionExecutionContext`.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 
