@@ -450,6 +450,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 QTE module migration: The existing `turn_qte` path is now started through the Game Module Runner during battle setup. `BattleTurnQteGameModuleRuntime` accepts an `IBattleTurnQteModuleController`, and `BattleManager` injects a controller that owns lifecycle, turn calculation, turn advancement, player/enemy turn begin, player action input, target confirmation, player attack/skill/item execution, enemy action, defense QTE resolution, action completion, inactive-module guards, and pending QTE cleanup. The controller remains nested in `BattleManager` for serialized-field and scene-reference safety, but QTE flow implementation is now concentrated behind the `turn_qte` module seam. Future QTE work should deepen this controller or extract it with an explicit context object rather than adding setup/input/action-completion branches directly to `BattleManager`.
 
+2026-06-16 non-QTE module shell: The default battle registry now also registers `aim_shooter` through `BattleAimShooterGameModuleRuntime`. This is intentionally a presentation/input-ownership shell, not the finished shooter gameplay. It proves that `module.switch` / `module.start` can enter a non-QTE module, disable legacy Turn QTE menu/targeting/defense input through `IBattleGameModulePresentationController`, and let the next module own its own UI state. The next architecture step is to add an actual shooter loop behind this module using `GameModuleRuntimeContext` seams for battle state, participant commands, battle flags, and module outcome reporting.
+
 **Step 5: Commit**
 
 ```powershell

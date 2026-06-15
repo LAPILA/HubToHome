@@ -147,6 +147,15 @@ public class GameModuleActionRunnerTests
     }
 
     [Test]
+    public void BattleDefaultRegistryContainsAimShooterModule()
+    {
+        GameModuleRegistry registry = BattleGameModuleRegistryFactory.CreateDefault();
+
+        Assert.That(registry.TryGet(BattleAimShooterGameModuleRuntime.Id, out IGameModuleRuntime module), Is.True);
+        Assert.That(module, Is.TypeOf<BattleAimShooterGameModuleRuntime>());
+    }
+
+    [Test]
     public void BattleDefaultRegistryInjectsTurnQteController()
     {
         var log = new List<string>();
@@ -161,6 +170,26 @@ public class GameModuleActionRunnerTests
             BattleTurnQteGameModuleRuntime.Id)));
 
         Assert.That(log, Is.EqualTo(new[] { "start:turn_qte" }));
+    }
+
+    [Test]
+    public void AimShooterModuleOwnsPresentationAndDisablesTurnQteInput()
+    {
+        var presentation = new FakeBattleGameModulePresentationController();
+        var module = new BattleAimShooterGameModuleRuntime(presentation);
+        var context = new ActionExecutionContext();
+        var moduleContext = new GameModuleRuntimeContext(context, BattleTurnQteGameModuleRuntime.Id, BattleAimShooterGameModuleRuntime.Id);
+
+        RunToCompletion(module.Enter(moduleContext));
+        RunToCompletion(module.Start(moduleContext));
+        RunToCompletion(module.Exit(moduleContext));
+
+        Assert.That(presentation.Log, Is.EqualTo(new[]
+        {
+            "apply:aim_shooter:False:AIM SHOOTER",
+            "apply:aim_shooter:False:AIM SHOOTER",
+            "clear:aim_shooter"
+        }));
     }
 
     [Test]
@@ -333,6 +362,21 @@ public class GameModuleActionRunnerTests
             string outcomeId = "",
             BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
         {
+        }
+    }
+
+    private sealed class FakeBattleGameModulePresentationController : IBattleGameModulePresentationController
+    {
+        public List<string> Log { get; } = new List<string>();
+
+        public void ApplyGameModulePresentation(string moduleId, bool acceptsTurnQteInput, string label)
+        {
+            Log.Add("apply:" + moduleId + ":" + acceptsTurnQteInput + ":" + label);
+        }
+
+        public void ClearGameModulePresentation(string moduleId)
+        {
+            Log.Add("clear:" + moduleId);
         }
     }
 

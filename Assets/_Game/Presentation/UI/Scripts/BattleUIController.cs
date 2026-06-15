@@ -12,7 +12,7 @@ using Febucci.TextAnimatorForUnity;
 /// 전투 UI 총괄 View 컨트롤러 (Mediator 패턴).
 /// BattleManager(Model/Controller)의 이벤트를 구독(Observer)하여 UI를 갱신합니다.
 /// </summary>
-public class BattleUIController : MonoBehaviour
+public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationController
 {
     public static BattleUIController Instance { get; private set; }
 
@@ -56,6 +56,8 @@ public class BattleUIController : MonoBehaviour
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
     private readonly Dictionary<EnemyCharacter, Transform> _enemyTopPivots = new Dictionary<EnemyCharacter, Transform>();
+    private string _activeGameModuleId = BattleTurnQteGameModuleRuntime.Id;
+    private bool _acceptsTurnQteInput = true;
     #endregion
 
     #region [ Initialization & Lifecycle ]
@@ -154,6 +156,7 @@ public class BattleUIController : MonoBehaviour
     private void HandleTargetingInput()
     {
         if (!_isTargetingMode) return;
+        if (!_acceptsTurnQteInput) return;
         if (IsNarrationBlockingInput()) return;
 
         bool left = GameInput.BattleLeftPressed;
@@ -269,6 +272,14 @@ public class BattleUIController : MonoBehaviour
 
     private void HandleStateChanged(BattleState state)
     {
+        if (!_acceptsTurnQteInput && state != BattleState.Init)
+        {
+            _battleMenuUI?.HideImmediate();
+            ExitTargetingMode();
+            ResetPartyPanelPosition(0f);
+            return;
+        }
+
         switch (state)
         {
             case BattleState.Init:
@@ -457,6 +468,7 @@ public class BattleUIController : MonoBehaviour
     public void SuspendBattleModuleInput()
     {
         ExitTargetingMode();
+        _acceptsTurnQteInput = false;
         _battleMenuUI?.SuspendForModuleSwitch();
         _defenseQTEUI?.HideImmediate();
         ResetPartyPanelPosition(0f);
@@ -464,8 +476,50 @@ public class BattleUIController : MonoBehaviour
 
     public void ResumeBattleModuleInput()
     {
+        _activeGameModuleId = BattleTurnQteGameModuleRuntime.Id;
+        _acceptsTurnQteInput = true;
         _battleMenuUI?.ResumeAfterModuleSwitch();
         NormalizeForCurrentResolution();
+    }
+
+    public void ApplyGameModulePresentation(string moduleId, bool acceptsTurnQteInput, string label)
+    {
+        _activeGameModuleId = string.IsNullOrWhiteSpace(moduleId) ? string.Empty : moduleId.Trim();
+        _acceptsTurnQteInput = acceptsTurnQteInput;
+
+        ExitTargetingMode();
+        _defenseQTEUI?.HideImmediate();
+        ResetPartyPanelPosition(0f);
+
+        if (acceptsTurnQteInput)
+        {
+            _battleMenuUI?.ResumeAfterModuleSwitch();
+        }
+        else
+        {
+            _battleMenuUI?.SuspendForModuleSwitch();
+            _battleMenuUI?.HideImmediate();
+        }
+
+        if (!string.IsNullOrWhiteSpace(label))
+        {
+            SetTurnLabel(label);
+        }
+
+        NormalizeForCurrentResolution();
+    }
+
+    public void ClearGameModulePresentation(string moduleId)
+    {
+        string normalized = string.IsNullOrWhiteSpace(moduleId) ? string.Empty : moduleId.Trim();
+        if (!string.IsNullOrEmpty(normalized) && normalized != _activeGameModuleId)
+        {
+            return;
+        }
+
+        ExitTargetingMode();
+        _defenseQTEUI?.HideImmediate();
+        ResetPartyPanelPosition(0f);
     }
 
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);

@@ -241,6 +241,70 @@ public sealed class BattleTurnQteGameModuleRuntime : IGameModuleRuntime
     }
 }
 
+public sealed class BattleAimShooterGameModuleRuntime : IGameModuleRuntime
+{
+    public const string Id = "aim_shooter";
+
+    private readonly IBattleGameModulePresentationController _presentation;
+
+    public BattleAimShooterGameModuleRuntime(IBattleGameModulePresentationController presentation = null)
+    {
+        _presentation = presentation;
+    }
+
+    public string ModuleId
+    {
+        get { return Id; }
+    }
+
+    public IEnumerator Enter(GameModuleRuntimeContext context)
+    {
+        ApplyPresentation("AIM SHOOTER");
+        yield break;
+    }
+
+    public IEnumerator Exit(GameModuleRuntimeContext context)
+    {
+        ClearPresentation();
+        yield break;
+    }
+
+    public IEnumerator Start(GameModuleRuntimeContext context)
+    {
+        ApplyPresentation("AIM SHOOTER");
+        yield break;
+    }
+
+    private void ApplyPresentation(string label)
+    {
+        if (_presentation != null)
+        {
+            _presentation.ApplyGameModulePresentation(Id, false, label);
+            return;
+        }
+
+        BattleUIController.Instance?.ApplyGameModulePresentation(Id, false, label);
+    }
+
+    private void ClearPresentation()
+    {
+        if (_presentation != null)
+        {
+            _presentation.ClearGameModulePresentation(Id);
+            return;
+        }
+
+        BattleUIController.Instance?.ClearGameModulePresentation(Id);
+    }
+}
+
+public interface IBattleGameModulePresentationController
+{
+    void ApplyGameModulePresentation(string moduleId, bool acceptsTurnQteInput, string label);
+
+    void ClearGameModulePresentation(string moduleId);
+}
+
 public interface IBattleTurnQteModuleController
 {
     IEnumerator EnterTurnQteModule(GameModuleRuntimeContext context);

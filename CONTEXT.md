@@ -42,6 +42,10 @@ _Avoid_: making each Game Module manually unpack broad Action Execution Context 
 The result a Game Module reports when a module-local game loop or challenge completes, such as `victory`, `escaped`, `failed`, `timeout`, or a module-specific authored outcome. Concrete modules report these through `IGameModuleEventSink` / `GameModuleRuntimeContext.ModuleEvents`; Battle Event Rules can match `GameModuleCompleted` by module ID and optional outcome ID.
 _Avoid_: hard-coding shooter/boxing/QTE completion branches inside `BattleManager` or making every module transition immediately decide whole-battle progression.
 
+**Battle Game Module Presentation Controller**:
+The battle UI seam that lets the active Game Module apply or clear module-specific presentation state, including whether legacy Turn QTE menu/targeting input is accepted. The current adapter is `BattleUIController` through `IBattleGameModulePresentationController`.
+_Avoid_: letting a non-QTE module leave the old QTE menu, targeting cursor, or defense QTE input active by accident.
+
 **Action Sequence**:
 An authored sequence of actions for transitions, interactions, presentation, and gameplay beats. It must support sequential actions, parallel groups, waits, dialogue pauses, cancellation, and reuse from both Overworld and Battle.
 _Avoid_: binding this concept only to skill execution or only to battle transitions.
@@ -117,6 +121,10 @@ _Avoid_: adding actions that only exist as undocumented C# classes or one-off YA
 **Turn QTE Combat Module**:
 The migrated Game Module for the existing QTE/turn battle. `turn_qte` starts through the Game Module Runner, and `BattleTurnQteGameModuleRuntime` delegates to `IBattleTurnQteModuleController`. Battle's current controller owns QTE lifecycle, turn calculation, turn advancement, player/enemy turn begin, player input, player attack/skill/item execution, enemy action, defense QTE resolution, action completion, inactive-module guards, and pending QTE cleanup. It still lives as a nested adapter in `BattleManager` so it can safely use existing serialized fields, event bridges, battle presentation helpers, and legacy `SkillData.ActionTimeline` blocks without scene or asset migration.
 _Avoid_: adding new QTE state/input/action branches directly to battle setup or bypassing the controller when switching modules.
+
+**Aim Shooter Combat Module**:
+The first registered non-QTE battle Game Module ID, `aim_shooter`. The current implementation is a presentation and input-ownership shell: it can be entered or started through `module.switch` / `module.start`, disables legacy Turn QTE input through the Battle Game Module Presentation Controller, and proves the default battle registry can host more than QTE. It is not yet the full mouse-aim shooting gameplay loop.
+_Avoid_: treating `aim_shooter` as a complete shooter implementation until its input, target, projectile, damage, outcome, and UI contracts are implemented.
 
 **Skill Timeline Adapter**:
 A compatibility Action adapter that invokes an existing `SkillData.ActionTimeline` through a narrow runner seam. `BattleSkillTimelineRunner` is the current battle-side adapter: it resolves scenario `skill` / `actor` / `targets` IDs against the active `BattleManager`, builds a `SkillContext`, and executes existing `SkillActionBlock` entries. It allows current QTE/skill blocks to be called from an Action Sequence without making Skill Data the owner of whole-battle scenario flow.

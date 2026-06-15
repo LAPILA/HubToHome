@@ -1328,7 +1328,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         IGameModuleStateStore moduleStateStore,
         IBattleTurnQteModuleController turnQteController)
     {
-        var registry = BattleGameModuleRegistryFactory.CreateDefault(turnQteController);
+        var registry = BattleGameModuleRegistryFactory.CreateDefault(turnQteController, BattleUIController.Instance);
         string currentModuleId = scenarioData != null ? scenarioData.OpeningModule : BattleTurnQteGameModuleRuntime.Id;
         return new GameModuleActionRunner(registry, currentModuleId, moduleStateStore);
     }
