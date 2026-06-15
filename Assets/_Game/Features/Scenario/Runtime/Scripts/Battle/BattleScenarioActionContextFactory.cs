@@ -45,6 +45,11 @@ public static class BattleScenarioActionContextFactory
         if (battleSessionState != null)
         {
             context.SetService<IBattleSessionStateReader>(battleSessionState);
+            IBattleSessionFlagStore flagStore = battleSessionState as IBattleSessionFlagStore;
+            if (flagStore != null)
+            {
+                context.SetService<IBattleSessionFlagStore>(flagStore);
+            }
         }
 
         if (battleParticipantCommandRunner != null)

@@ -47,6 +47,11 @@ public sealed class GameModuleRuntimeContext
         get { return GetService<IBattleParticipantCommandRunner>(); }
     }
 
+    public IBattleSessionFlagStore BattleFlags
+    {
+        get { return GetService<IBattleSessionFlagStore>(); }
+    }
+
     public TService GetService<TService>()
         where TService : class
     {

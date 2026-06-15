@@ -414,6 +414,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         registry.Register(new BattleParticipantHealHpActionAdapter());
         registry.Register(new BattleParticipantHealMpActionAdapter());
         registry.Register(new BattleParticipantConsumeMpActionAdapter());
+        registry.Register(new BattleFlagSetActionAdapter());
+        registry.Register(new BattleFlagClearActionAdapter());
         return new ActionDirector(registry);
     }
 

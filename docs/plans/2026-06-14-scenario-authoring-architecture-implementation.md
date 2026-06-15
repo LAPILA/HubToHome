@@ -444,6 +444,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 Game Module context continuation: `IGameModuleRuntime.Enter` / `Exit` / `Start` now receive `GameModuleRuntimeContext` instead of raw `ActionExecutionContext`. The runner creates this context with the previous module ID, target module ID, original Action Context, `IBattleSessionStateReader`, and `IBattleParticipantCommandRunner`. This keeps future concrete modules such as aim shooter, boxing, or bullet hell from manually unpacking broad scenario services or calling `BattleManager.Instance` for battle facts and HP/MP mutation.
 
+2026-06-15 battle flag continuation: `BattleSessionState` now stores temporary battle-scoped key/value flags. The read seam is `IBattleSessionStateReader.Flags` / `HasFlag` / `TryGetFlagValue`, and the write seam is `IBattleSessionFlagStore`. `BattleScenarioActionContextFactory` registers the store when the session state provides it, `GameModuleRuntimeContext` exposes it as `BattleFlags`, and the default battle ActionDirector registers `battle.flag.set` / `battle.flag.clear`. These flags are for in-progress battle facts that must survive Game Module switches, not for save-restored Encounter Memory.
+
 **Step 5: Commit**
 
 ```powershell

@@ -225,6 +225,112 @@ public class ScenarioPresentationCommandAdapterTests
         }
     }
 
+    [Test]
+    public void BattleFlagSetWritesBattleSessionFlag()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleFlagSetActionAdapter());
+        var context = new ActionExecutionContext();
+        var flagStore = new LoggingBattleFlagStore();
+        context.SetService<IBattleSessionFlagStore>(flagStore);
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleFlagSetActionAdapter.Id,
+            ParametersJson = "{\"flag\":\"phase.two\",\"value\":\"entered\"}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+            Assert.That(flagStore.Log, Is.EqualTo(new[] { "set:phase.two:entered" }));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
+    [Test]
+    public void BattleFlagSetDefaultsValueToTrue()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleFlagSetActionAdapter());
+        var context = new ActionExecutionContext();
+        var flagStore = new LoggingBattleFlagStore();
+        context.SetService<IBattleSessionFlagStore>(flagStore);
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleFlagSetActionAdapter.Id,
+            ParametersJson = "{\"flag\":\"shooter.unlocked\"}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+            Assert.That(flagStore.Log, Is.EqualTo(new[] { "set:shooter.unlocked:true" }));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
+    [Test]
+    public void BattleFlagClearWritesBattleSessionFlagStore()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleFlagClearActionAdapter());
+        var context = new ActionExecutionContext();
+        var flagStore = new LoggingBattleFlagStore();
+        context.SetService<IBattleSessionFlagStore>(flagStore);
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleFlagClearActionAdapter.Id,
+            ParametersJson = "{\"flag\":\"phase.two\"}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+            Assert.That(flagStore.Log, Is.EqualTo(new[] { "clear:phase.two" }));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
+    [Test]
+    public void BattleFlagActionFailsWhenStoreIsMissing()
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleFlagSetActionAdapter());
+        var context = new ActionExecutionContext();
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleFlagSetActionAdapter.Id,
+            ParametersJson = "{\"flag\":\"phase.two\"}"
+        });
+
+        try
+        {
+            RunToCompletion(new ActionDirector(registry).Play(sequence, context));
+
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Failed));
+            Assert.That(context.Handle.Result.Message, Does.Contain("IBattleSessionFlagStore is missing"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
     private static ActionSequenceAsset MakeSequence(ScenarioActionData action)
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
@@ -365,6 +471,23 @@ public class ScenarioPresentationCommandAdapterTests
             ActionExecutionContext context)
         {
             return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found.");
+        }
+    }
+
+    private sealed class LoggingBattleFlagStore : IBattleSessionFlagStore
+    {
+        public List<string> Log { get; } = new List<string>();
+
+        public bool SetFlag(string flagId, string value)
+        {
+            Log.Add("set:" + flagId + ":" + value);
+            return true;
+        }
+
+        public bool ClearFlag(string flagId)
+        {
+            Log.Add("clear:" + flagId);
+            return true;
         }
     }
 }

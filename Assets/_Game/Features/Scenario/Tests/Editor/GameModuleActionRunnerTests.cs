@@ -129,6 +129,7 @@ public class GameModuleActionRunnerTests
         Assert.That(module.ReceivedContext.PreviousModuleId, Is.EqualTo("turn_qte"));
         Assert.That(module.ReceivedContext.TargetModuleId, Is.EqualTo("aim_shooter"));
         Assert.That(module.ReceivedContext.BattleSession, Is.SameAs(session));
+        Assert.That(module.ReceivedContext.BattleFlags, Is.SameAs(session));
         Assert.That(module.ReceivedContext.ParticipantCommands, Is.SameAs(commands));
     }
 

@@ -215,3 +215,88 @@ public sealed class BattleParticipantConsumeMpActionAdapter : BattleParticipantC
         return runner.ConsumeMp(subjectId, amount, context);
     }
 }
+
+public sealed class BattleFlagSetActionAdapter : IActionAdapter
+{
+    public const string Id = "battle.flag.set";
+
+    public string ActionId
+    {
+        get { return Id; }
+    }
+
+    public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
+    {
+        IBattleSessionFlagStore flagStore = context.GetService<IBattleSessionFlagStore>();
+        if (flagStore == null)
+        {
+            context.Handle.Fail("IBattleSessionFlagStore is missing for battle.flag.set.");
+            yield break;
+        }
+
+        string flagId;
+        string error;
+        if (!ScenarioActionParameterReader.TryGetString(action, "flag", out flagId, out error))
+        {
+            context.Handle.Fail(error);
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(flagId))
+        {
+            context.Handle.Fail("battle.flag.set requires parameter 'flag'.");
+            yield break;
+        }
+
+        string value;
+        if (!ScenarioActionParameterReader.TryGetString(action, "value", out value, out error))
+        {
+            context.Handle.Fail(error);
+            yield break;
+        }
+
+        if (!flagStore.SetFlag(flagId.Trim(), string.IsNullOrWhiteSpace(value) ? "true" : value.Trim()))
+        {
+            context.Handle.Fail("battle.flag.set failed for flag: " + flagId.Trim());
+        }
+    }
+}
+
+public sealed class BattleFlagClearActionAdapter : IActionAdapter
+{
+    public const string Id = "battle.flag.clear";
+
+    public string ActionId
+    {
+        get { return Id; }
+    }
+
+    public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
+    {
+        IBattleSessionFlagStore flagStore = context.GetService<IBattleSessionFlagStore>();
+        if (flagStore == null)
+        {
+            context.Handle.Fail("IBattleSessionFlagStore is missing for battle.flag.clear.");
+            yield break;
+        }
+
+        string flagId;
+        string error;
+        if (!ScenarioActionParameterReader.TryGetString(action, "flag", out flagId, out error))
+        {
+            context.Handle.Fail(error);
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(flagId))
+        {
+            context.Handle.Fail("battle.flag.clear requires parameter 'flag'.");
+            yield break;
+        }
+
+        if (!flagStore.ClearFlag(flagId.Trim()))
+        {
+            context.Handle.Fail("battle.flag.clear failed for flag: " + flagId.Trim());
+        }
+    }
+}

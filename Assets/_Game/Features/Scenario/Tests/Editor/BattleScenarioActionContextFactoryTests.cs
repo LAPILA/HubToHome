@@ -118,6 +118,7 @@ public class BattleScenarioActionContextFactoryTests
 
             Assert.That(context.ModuleId, Is.EqualTo("aim_shooter"));
             Assert.That(context.GetService<IBattleSessionStateReader>(), Is.SameAs(sessionState));
+            Assert.That(context.GetService<IBattleSessionFlagStore>(), Is.SameAs(sessionState));
         }
         finally
         {

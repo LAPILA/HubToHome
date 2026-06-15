@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,7 +9,17 @@ public interface IBattleSessionStateReader
     string OpeningModule { get; }
     string CurrentModuleId { get; }
     IReadOnlyList<BattleParticipantSnapshot> Participants { get; }
+    IReadOnlyList<BattleSessionFlagSnapshot> Flags { get; }
     bool TryGetParticipant(string subjectId, out BattleParticipantSnapshot participant);
+    bool HasFlag(string flagId);
+    bool TryGetFlagValue(string flagId, out string value);
+}
+
+public interface IBattleSessionFlagStore
+{
+    bool SetFlag(string flagId, string value);
+
+    bool ClearFlag(string flagId);
 }
 
 public interface IBattleParticipantCommandRunner
@@ -89,6 +100,23 @@ public enum BattleParticipantKind
 {
     Player,
     Enemy
+}
+
+public sealed class BattleSessionFlagSnapshot
+{
+    public BattleSessionFlagSnapshot(string flagId, string value)
+    {
+        FlagId = Normalize(flagId);
+        Value = string.IsNullOrWhiteSpace(value) ? "true" : value.Trim();
+    }
+
+    public string FlagId { get; }
+    public string Value { get; }
+
+    private static string Normalize(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
 }
 
 public sealed class BattleParticipantSnapshot
@@ -319,9 +347,10 @@ public sealed class BattleScenarioRuntime
     }
 }
 
-public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleStateStore
+public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleStateStore, IBattleSessionFlagStore
 {
     private readonly List<BattleParticipantSnapshot> _participants = new List<BattleParticipantSnapshot>();
+    private readonly List<BattleSessionFlagSnapshot> _flags = new List<BattleSessionFlagSnapshot>();
 
     private BattleSessionState(
         string scenarioId,
@@ -341,6 +370,10 @@ public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleS
     public IReadOnlyList<BattleParticipantSnapshot> Participants
     {
         get { return _participants; }
+    }
+    public IReadOnlyList<BattleSessionFlagSnapshot> Flags
+    {
+        get { return _flags; }
     }
 
     public static BattleSessionState Create(BattleScenarioData scenarioData)
@@ -404,6 +437,78 @@ public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleS
         }
 
         return false;
+    }
+
+    public bool HasFlag(string flagId)
+    {
+        string value;
+        return TryGetFlagValue(flagId, out value);
+    }
+
+    public bool TryGetFlagValue(string flagId, out string value)
+    {
+        value = string.Empty;
+        if (string.IsNullOrWhiteSpace(flagId))
+        {
+            return false;
+        }
+
+        string normalized = Normalize(flagId);
+        for (int i = 0; i < _flags.Count; i++)
+        {
+            BattleSessionFlagSnapshot flag = _flags[i];
+            if (flag != null && string.Equals(flag.FlagId, normalized, StringComparison.Ordinal))
+            {
+                value = flag.Value;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool SetFlag(string flagId, string value)
+    {
+        if (string.IsNullOrWhiteSpace(flagId))
+        {
+            return false;
+        }
+
+        string normalized = Normalize(flagId);
+        string normalizedValue = string.IsNullOrWhiteSpace(value) ? "true" : value.Trim();
+        for (int i = 0; i < _flags.Count; i++)
+        {
+            BattleSessionFlagSnapshot flag = _flags[i];
+            if (flag != null && string.Equals(flag.FlagId, normalized, StringComparison.Ordinal))
+            {
+                _flags[i] = new BattleSessionFlagSnapshot(normalized, normalizedValue);
+                return true;
+            }
+        }
+
+        _flags.Add(new BattleSessionFlagSnapshot(normalized, normalizedValue));
+        return true;
+    }
+
+    public bool ClearFlag(string flagId)
+    {
+        if (string.IsNullOrWhiteSpace(flagId))
+        {
+            return false;
+        }
+
+        string normalized = Normalize(flagId);
+        for (int i = _flags.Count - 1; i >= 0; i--)
+        {
+            BattleSessionFlagSnapshot flag = _flags[i];
+            if (flag != null && string.Equals(flag.FlagId, normalized, StringComparison.Ordinal))
+            {
+                _flags.RemoveAt(i);
+                return true;
+            }
+        }
+
+        return true;
     }
 
     private static string Normalize(string value)

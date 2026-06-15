@@ -265,6 +265,36 @@ public class BattleScenarioRuntimeTests
     }
 
     [Test]
+    public void SessionStateStoresBattleScopedFlags()
+    {
+        var runtime = new BattleScenarioRuntime(null);
+
+        Assert.That(runtime.SessionState.SetFlag("phase.two", "entered"), Is.True);
+        Assert.That(runtime.SessionState.SetFlag("shooter.unlocked", string.Empty), Is.True);
+
+        Assert.That(runtime.SessionState.HasFlag("phase.two"), Is.True);
+        Assert.That(runtime.SessionState.TryGetFlagValue("phase.two", out string phaseValue), Is.True);
+        Assert.That(phaseValue, Is.EqualTo("entered"));
+        Assert.That(runtime.SessionState.TryGetFlagValue("shooter.unlocked", out string shooterValue), Is.True);
+        Assert.That(shooterValue, Is.EqualTo("true"));
+        Assert.That(runtime.SessionState.Flags.Count, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void SessionStateCanReplaceAndClearBattleFlags()
+    {
+        var runtime = new BattleScenarioRuntime(null);
+
+        runtime.SessionState.SetFlag("phase.two", "pending");
+        runtime.SessionState.SetFlag("phase.two", "entered");
+        bool cleared = runtime.SessionState.ClearFlag("phase.two");
+
+        Assert.That(cleared, Is.True);
+        Assert.That(runtime.SessionState.HasFlag("phase.two"), Is.False);
+        Assert.That(runtime.SessionState.Flags.Count, Is.EqualTo(0));
+    }
+
+    [Test]
     public void ParticipantSnapshotFromEnemyUsesScenarioSubjectId()
     {
         GameObject enemyObject = new GameObject("EnemyRuntimeObject");

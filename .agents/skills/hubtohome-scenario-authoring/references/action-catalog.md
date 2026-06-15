@@ -316,6 +316,50 @@ scope: "Battle Primary Mode 전용 action입니다."
 runtimeBinding: "`BattleManager` adapter가 기존 CharacterBase.ConsumeMP와 player MP UI event bridge를 경유합니다."
 ```
 
+```yaml
+id: battle.flag.set
+category: battle
+displayNameKo: "전투 플래그 설정"
+summaryKo: "현재 전투 세션에서 모듈과 시퀀스가 공유해야 하는 임시 플래그를 설정합니다."
+runtimeAdapter: BattleFlagSetActionAdapter
+params:
+  flag:
+    type: BattleFlagId
+    required: true
+    validation: "현재 Battle Session 안에서 의미 있는 안정적인 플래그 ID여야 합니다. 예: phase.two, shooter.unlocked"
+  value:
+    type: String
+    required: false
+    default: "true"
+examples:
+  - battle.flag.set:
+      flag: phase.two
+      value: entered
+completion: "IBattleSessionFlagStore.SetFlag가 성공하면 즉시 완료됩니다."
+cancellation: "즉시 명령형 action이므로 실행 전 취소된 경우에만 중단됩니다."
+scope: "Battle Primary Mode 전용 action입니다. 저장 복구 대상이 아니라 전투 중 모듈 전환 동안 유지되는 상태입니다."
+runtimeBinding: "`BattleScenarioActionContextFactory`가 `IBattleSessionFlagStore`를 주입합니다. 현재 concrete store는 `BattleSessionState`입니다."
+```
+
+```yaml
+id: battle.flag.clear
+category: battle
+displayNameKo: "전투 플래그 해제"
+summaryKo: "현재 전투 세션에서 지정한 임시 플래그를 제거합니다."
+runtimeAdapter: BattleFlagClearActionAdapter
+params:
+  flag:
+    type: BattleFlagId
+    required: true
+examples:
+  - battle.flag.clear:
+      flag: phase.two
+completion: "IBattleSessionFlagStore.ClearFlag가 성공하면 즉시 완료됩니다. 없는 플래그 제거는 no-op 성공으로 취급합니다."
+cancellation: "즉시 명령형 action이므로 실행 전 취소된 경우에만 중단됩니다."
+scope: "Battle Primary Mode 전용 action입니다."
+runtimeBinding: "`BattleSessionState`의 battle-scoped flag store를 갱신합니다."
+```
+
 ## Rules For New Actions
 
 - Prefer clear, specific actions over over-abstracted parameter bags.
@@ -336,6 +380,7 @@ Existing `SkillActionBlock` classes are not the global grammar, but they are use
 - `Action_Damage` -> `battle.participant.damage` for scenario-level participant damage; legacy skill timelines may still keep local `Action_Damage` blocks behind `battle.skill.timeline`.
 - `Action_QTE` -> QTE module-specific adapter action
 - `Action_DefenseWindow` -> QTE/defense module adapter action
+- Module-local phase booleans -> `battle.flag.set` / `battle.flag.clear` when the fact must survive Game Module switches.
 
 Do not rename or move existing serialized action classes during initial migration unless a migration plan exists.
 
