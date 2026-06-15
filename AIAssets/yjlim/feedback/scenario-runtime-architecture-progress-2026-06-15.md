@@ -67,6 +67,10 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - `TurnCalc` / `EnemyAction` 상태 진입, 턴 진행, player turn begin, enemy turn begin, 플레이어 행동 선택, 스킬/아이템 하위 선택, 취소, 타겟 확정, 액션 완료가 `IBattleTurnQteModuleController` 뒤로 들어갔습니다.
   - 다른 모듈로 전환된 뒤 기존 QTE `EndAction()`이 턴을 계속 넘기지 않도록 inactive-module guard를 추가했습니다.
   - `turn_qte`를 빠져나갈 때는 QTE 타이머와 보류 중인 행동/스킬/아이템만 끊고, 캐릭터 위치/카메라 리셋은 정상 액션 완료 경로에만 남겼습니다. 전환 시퀀스가 캐릭터 위치와 카메라를 직접 연출할 수 있게 하기 위해서입니다.
+- QTE 전투 Battle Module 본문을 controller로 옮겼습니다.
+  - `BattleTurnQteModuleController`가 턴 계산, 턴 진행, player/enemy turn begin, 플레이어 입력, 타겟 확정, 플레이어 공격/스킬/아이템 실행, 적 행동, 방어 QTE 판정, 액션 완료를 직접 수행합니다.
+  - 기존 `BattleManager` 안의 `TurnCalcRoutine`, `EnemyActionRoutine`, `ExecuteAttack`, `ExecuteSkill`, `ExecuteItem`, `HandleTurnQte*` 중복 본문은 제거했습니다.
+  - controller는 아직 `BattleManager` nested class입니다. 인스펙터 serialized field와 씬 참조를 건드리지 않고 본문 소유권을 옮기기 위한 안전한 중간 형태입니다.
 
 ## 효과
 
@@ -96,7 +100,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - Battle Session Flag는 저장되는 Encounter Memory가 아닙니다. 전투 밖에서 기억해야 하는 첫 만남/재전/승리 여부/본 적 있는 연출 같은 정보는 여전히 `GlobalDataManager` Encounter Memory로 보내야 합니다.
 - Game Module Outcome은 전투 안의 이벤트 보고입니다. “이 결과를 다음 세이브에서도 기억해야 하는가”는 별도로 Encounter Memory에 기록해야 합니다.
 - 아직 실제 `aim_shooter` / `boxing` 모듈은 없으므로, outcome id의 최종 목록은 각 concrete module을 만들 때 문서화해야 합니다.
-- QTE 모듈화는 entry/ownership 경로는 잡혔지만, 실제 애니메이션/스킬/적 공격/방어 QTE 판정 본문은 아직 `BattleManager` 안의 기존 루틴을 사용합니다.
+- QTE 모듈화는 본문 소유권까지 controller로 옮겼습니다. 다만 controller가 아직 `BattleManager` 파일 안에 있으므로, 물리적 파일/클래스 분리는 별도 안전 단계입니다.
 - Battle UI 자체의 표시/비표시, 모듈별 UI ownership은 아직 다음 작업입니다. 현재는 기존 QTE 입력 콜백이 다른 모듈로 새지 않게 막는 단계입니다.
 
 ## 이번 검증
@@ -113,6 +117,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - QTE 모듈화 시작 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - QTE 입력 게이트 추가 뒤에도 `dotnet build`와 LSP diagnostics 통과
 - QTE 턴/입력/종료 경로를 컨트롤러로 모은 뒤에도 `dotnet build`와 LSP diagnostics 통과
+- QTE 전투 Battle Module 본문을 controller로 옮긴 뒤에도 `dotnet build`와 LSP diagnostics 통과
 - 이 시점 Unity MCP는 인스턴스를 찾지 못해 추가 EditMode 실행은 못 했습니다.
 
 ## 남은 핵심 작업
@@ -122,12 +127,12 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - 데미지/회복/MP 변경 요청은 `IBattleParticipantCommandRunner`와 `battle.participant.*` action으로 첫 통로가 열렸습니다.
   - 다음에는 상태이상/승패/phase flag 변경 명령을 기존 Character/BattleManager 상태와 어떻게 연결할지 정해야 합니다.
 - QTE 전투 모듈화
-  - 턴 계산, 턴 진행, player/enemy turn begin, 적 행동, 입력, 종료 entry는 `IBattleTurnQteModuleController` 뒤로 들어왔습니다.
-  - 남은 작업은 컨트롤러 구현을 별도 Module로 분리하고, `BattleManager` 안에 남은 실제 애니메이션/스킬/적 공격/QTE 판정 본문을 어떤 순서로 옮길지 결정하는 것입니다.
+  - 턴 계산, 턴 진행, player/enemy turn begin, 플레이어 액션 실행, 적 행동, 방어 QTE, 종료 본문은 `IBattleTurnQteModuleController` 뒤로 들어왔습니다.
+  - 남은 작업은 controller를 별도 Module로 물리 분리할 수 있도록 context object를 설계하는 것입니다.
 - concrete module 추가
   - `aim_shooter`, `boxing` 같은 신규 모듈은 최후순위입니다.
 - QTE 전투 추출
-  - 지금 QTE module은 wrapper 단계를 넘어 턴/입력/종료 entry를 소유합니다.
-  - 그러나 실제 실행 본문은 아직 `BattleManager` 내부 레거시 루틴에 있으므로, 전체 클래스 분리는 별도 안전 단계로 남겨야 합니다.
+  - 지금 QTE module은 wrapper 단계를 넘어 QTE 전투 본문을 소유합니다.
+  - 전체 클래스/파일 분리는 serialized field와 scene reference migration 위험을 낮춘 뒤 별도 안전 단계로 진행해야 합니다.
 - editor/YAML round-trip
   - runtime contract가 더 안정된 뒤 진행하는 것이 좋습니다.
