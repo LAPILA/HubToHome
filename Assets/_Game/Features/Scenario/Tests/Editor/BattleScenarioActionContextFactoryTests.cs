@@ -139,6 +139,18 @@ public class BattleScenarioActionContextFactoryTests
     }
 
     [Test]
+    public void RegistersGameModuleEventSinkWhenProvided()
+    {
+        var sink = new FakeGameModuleEventSink();
+
+        ActionExecutionContext context = BattleScenarioActionContextFactory.Create(
+            null,
+            gameModuleEventSink: sink);
+
+        Assert.That(context.GetService<IGameModuleEventSink>(), Is.SameAs(sink));
+    }
+
+    [Test]
     public void RunnerCurrentModuleOverridesBattleSessionState()
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
@@ -269,6 +281,16 @@ public class BattleScenarioActionContextFactoryTests
             ActionExecutionContext context)
         {
             return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 0);
+        }
+    }
+
+    private sealed class FakeGameModuleEventSink : IGameModuleEventSink
+    {
+        public void PublishGameModuleCompleted(
+            string moduleId,
+            string outcomeId = "",
+            BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
+        {
         }
     }
 }

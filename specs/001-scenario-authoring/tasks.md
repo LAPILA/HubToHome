@@ -70,6 +70,7 @@
 - [x] Add authorable `battle.participant.*` Action adapters for damage, HP heal, MP heal, and MP consume over `IBattleParticipantCommandRunner`.
 - [x] Add `GameModuleRuntimeContext` so concrete `IGameModuleRuntime` implementations receive previous/target module IDs plus battle session and participant command seams without directly unpacking `ActionExecutionContext`.
 - [x] Add battle-scoped flag read/write seams and authorable `battle.flag.set` / `battle.flag.clear` actions over `BattleSessionState`.
+- [x] Add Game Module completion/outcome event seam so concrete modules can report `module.completed` and Battle Event Rules can react by module ID and optional outcome ID.
 
 ## Phase 6 - Korean Scenario Authoring Editor
 

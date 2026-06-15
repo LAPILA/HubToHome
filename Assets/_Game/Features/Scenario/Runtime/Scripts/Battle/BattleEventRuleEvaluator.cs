@@ -22,6 +22,9 @@ public static class BattleEventRuleEvaluator
             case BattleEventType.EnemyHpCrossedBelow:
                 matched = IsEnemyHpCrossedBelow(rule, battleEvent);
                 break;
+            case BattleEventType.GameModuleCompleted:
+                matched = IsGameModuleCompleted(rule, battleEvent);
+                break;
         }
 
         if (!matched)
@@ -78,6 +81,27 @@ public static class BattleEventRuleEvaluator
         float threshold = Mathf.Clamp01(rule.ThresholdRatio);
         return battleEvent.PreviousHpRatio > threshold
             && battleEvent.CurrentHpRatio <= threshold;
+    }
+
+    private static bool IsGameModuleCompleted(
+        BattleEventRuleData rule,
+        BattleEventData battleEvent)
+    {
+        if (!MatchesSubject(rule.SubjectId, battleEvent.ModuleId)
+            && !MatchesSubject(rule.SubjectId, battleEvent.SubjectId))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(rule.OutcomeId))
+        {
+            return true;
+        }
+
+        return string.Equals(
+            rule.OutcomeId.Trim(),
+            battleEvent.OutcomeId != null ? battleEvent.OutcomeId.Trim() : string.Empty,
+            StringComparison.Ordinal);
     }
 
     private static bool MatchesSubject(string ruleSubjectId, string eventSubjectId)

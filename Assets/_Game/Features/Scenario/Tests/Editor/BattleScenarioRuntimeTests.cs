@@ -199,6 +199,55 @@ public class BattleScenarioRuntimeTests
     }
 
     [Test]
+    public void ModuleCompletedTriggersWhenMatchingTimingIsFlushed()
+    {
+        BattleScenarioData scenario = MakeModuleScenario(BattleRuleTiming.AfterCurrentModule);
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            List<BattleScenarioTrigger> immediate = runtime.PublishGameModuleCompleted(
+                "aim_shooter",
+                "victory",
+                BattleRuleTiming.AfterCurrentModule);
+            List<BattleScenarioTrigger> flushed = runtime.Flush(BattleRuleTiming.AfterCurrentModule);
+
+            Assert.That(immediate.Count, Is.EqualTo(0));
+            Assert.That(flushed.Count, Is.EqualTo(1));
+            Assert.That(flushed[0].RuleId, Is.EqualTo("after_shooter_victory"));
+            Assert.That(flushed[0].SequenceId, Is.EqualTo("after_shooter_victory_sequence"));
+            Assert.That(flushed[0].SourceEvent.ModuleId, Is.EqualTo("aim_shooter"));
+            Assert.That(flushed[0].SourceEvent.OutcomeId, Is.EqualTo("victory"));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void ModuleCompletedImmediateEventPublishesWithoutQueueing()
+    {
+        BattleScenarioData scenario = MakeModuleScenario(BattleRuleTiming.Immediate);
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            List<BattleScenarioTrigger> triggers = runtime.PublishGameModuleCompleted(
+                "aim_shooter",
+                "victory",
+                BattleRuleTiming.Immediate);
+
+            Assert.That(triggers.Count, Is.EqualTo(1));
+            Assert.That(triggers[0].SequenceId, Is.EqualTo("after_shooter_victory_sequence"));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
     public void SessionStateStoresReadableParticipantSnapshots()
     {
         var runtime = new BattleScenarioRuntime(null);
@@ -370,6 +419,25 @@ public class BattleScenarioRuntimeTests
             SequenceId = "zev_phase2"
         });
         scenario.Sequences.Add(MakeSequence("zev_phase2"));
+        return scenario;
+    }
+
+    private static BattleScenarioData MakeModuleScenario(BattleRuleTiming timing)
+    {
+        BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
+        scenario.ScenarioId = "zev_first_battle";
+        scenario.MemoryKey = "zev";
+        scenario.Rules.Add(new BattleEventRuleData
+        {
+            RuleId = "after_shooter_victory",
+            EventType = BattleEventType.GameModuleCompleted,
+            Timing = timing,
+            Once = BattleRuleOnceMode.PerBattle,
+            SubjectId = "aim_shooter",
+            OutcomeId = "victory",
+            SequenceId = "after_shooter_victory_sequence"
+        });
+        scenario.Sequences.Add(MakeSequence("after_shooter_victory_sequence"));
         return scenario;
     }
 

@@ -52,6 +52,15 @@ rules:
       once: encounter
     do:
       sequence: zev_phase2_transition
+  - id: shooter_victory
+    when:
+      event: module.completed
+      module: aim_shooter
+      outcome: victory
+      timing: after_current_module
+      once: battle
+    do:
+      sequence: zev_shooter_victory
 
 sequences:
   zev_phase2_transition:
@@ -88,6 +97,13 @@ sequences:
     - battle.participant.damage:
         subject: zev
         amount: 25
+  zev_shooter_victory:
+    - dialogue.wait:
+        id: zev.shooter_start
+    - screen.fade:
+        mode: out
+        color: white
+        duration: 0.8
 ```
 
 ## Authoring Rules
@@ -114,6 +130,7 @@ sequences:
 - Use `battle.skill.timeline` only as a compatibility call into existing `SkillData.ActionTimeline` / `SkillActionBlock` behavior. `targets` may be omitted when the battle runner should choose the skill's default alive target set from `SkillData.TargetType` / `IsAoE`; use explicit stable actor IDs when a sequence needs a specific target. Whole-battle phase flow still belongs in Battle Event Rules plus Action Sequences.
 - Use `battle.participant.damage`, `battle.participant.heal_hp`, `battle.participant.heal_mp`, and `battle.participant.consume_mp` when a scenario or Game Module needs to request HP/MP changes outside legacy SkillData timelines. These actions require `subject` and positive integer `amount`, and runtime must route them through `IBattleParticipantCommandRunner`.
 - Use `battle.flag.set` and `battle.flag.clear` for temporary battle-scoped facts that must survive Game Module switches but should not be saved as mid-battle state. These actions require `flag`; `battle.flag.set` may also provide string `value` and defaults to `"true"`.
+- Use `module.completed` rules for authored reactions to a Game Module finishing. `module` maps to the module ID reported by `IGameModuleEventSink.PublishGameModuleCompleted(...)`; `outcome` is optional and, when present, must match the reported outcome ID exactly. Leave `outcome` empty when any completion of that module should trigger the rule.
 
 ## Validation Expectations
 
@@ -129,6 +146,7 @@ Reject or warn on:
 - `audioClips` entries whose `audioClip` / `AudioClipId` cannot resolve unambiguously through `IScenarioAudioReferenceResolver`; importer error code is `scenario.audio.unresolved`.
 - Missing `once` on HP threshold rules unless repeat is intentional.
 - Module switch without a matching module start/ready rule.
+- `module.completed` rule with an unknown module ID or an outcome ID that the module contract does not document.
 - Dialogue action that cannot wait for completion.
 - Parallel group with actions that fight over the same target transform unless explicitly allowed.
 - YAML source newer than the synchronized ScriptableObject asset.

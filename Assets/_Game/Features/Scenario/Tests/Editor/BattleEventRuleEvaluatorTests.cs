@@ -110,6 +110,41 @@ public class BattleEventRuleEvaluatorTests
         Assert.That(rememberedTrigger, Is.Null);
     }
 
+    [Test]
+    public void GameModuleCompletedRuleMatchesModuleAndOutcome()
+    {
+        BattleEventRuleData rule = MakeModuleRule("aim_shooter", "victory", "after_shooter_victory");
+        var session = new BattleScenarioSession("zev_first_battle");
+
+        bool fired = BattleEventRuleEvaluator.TryEvaluate(
+            rule,
+            BattleEventData.GameModuleCompleted("aim_shooter", "victory", BattleRuleTiming.AfterCurrentModule),
+            session,
+            out BattleScenarioTrigger trigger);
+
+        Assert.That(fired, Is.True);
+        Assert.That(trigger.RuleId, Is.EqualTo("module_completed"));
+        Assert.That(trigger.SequenceId, Is.EqualTo("after_shooter_victory"));
+        Assert.That(trigger.SourceEvent.ModuleId, Is.EqualTo("aim_shooter"));
+        Assert.That(trigger.SourceEvent.OutcomeId, Is.EqualTo("victory"));
+    }
+
+    [Test]
+    public void GameModuleCompletedRuleRejectsWrongOutcome()
+    {
+        BattleEventRuleData rule = MakeModuleRule("aim_shooter", "victory", "after_shooter_victory");
+        var session = new BattleScenarioSession("zev_first_battle");
+
+        bool fired = BattleEventRuleEvaluator.TryEvaluate(
+            rule,
+            BattleEventData.GameModuleCompleted("aim_shooter", "timeout", BattleRuleTiming.AfterCurrentModule),
+            session,
+            out BattleScenarioTrigger trigger);
+
+        Assert.That(fired, Is.False);
+        Assert.That(trigger, Is.Null);
+    }
+
     private static BattleEventRuleData MakeHpRule(string enemyId, float threshold, string sequenceId)
     {
         return new BattleEventRuleData
@@ -120,6 +155,20 @@ public class BattleEventRuleEvaluatorTests
             Once = BattleRuleOnceMode.PerBattle,
             SubjectId = enemyId,
             ThresholdRatio = threshold,
+            SequenceId = sequenceId
+        };
+    }
+
+    private static BattleEventRuleData MakeModuleRule(string moduleId, string outcomeId, string sequenceId)
+    {
+        return new BattleEventRuleData
+        {
+            RuleId = "module_completed",
+            EventType = BattleEventType.GameModuleCompleted,
+            Timing = BattleRuleTiming.AfterCurrentModule,
+            Once = BattleRuleOnceMode.PerBattle,
+            SubjectId = moduleId,
+            OutcomeId = outcomeId,
             SequenceId = sequenceId
         };
     }

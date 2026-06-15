@@ -52,6 +52,11 @@ public sealed class GameModuleRuntimeContext
         get { return GetService<IBattleSessionFlagStore>(); }
     }
 
+    public IGameModuleEventSink ModuleEvents
+    {
+        get { return GetService<IGameModuleEventSink>(); }
+    }
+
     public TService GetService<TService>()
         where TService : class
     {

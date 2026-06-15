@@ -22,6 +22,14 @@ public interface IBattleSessionFlagStore
     bool ClearFlag(string flagId);
 }
 
+public interface IGameModuleEventSink
+{
+    void PublishGameModuleCompleted(
+        string moduleId,
+        string outcomeId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule);
+}
+
 public interface IBattleParticipantCommandRunner
 {
     BattleParticipantCommandResult ApplyPureDamage(string subjectId, int amount, ActionExecutionContext context);
@@ -323,6 +331,22 @@ public sealed class BattleScenarioRuntime
             timing);
 
         return _eventRouter.Publish(battleEvent);
+    }
+
+    public List<BattleScenarioTrigger> PublishGameModuleCompleted(
+        string moduleId,
+        string outcomeId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
+    {
+        if (!HasScenario || string.IsNullOrWhiteSpace(moduleId))
+        {
+            return new List<BattleScenarioTrigger>();
+        }
+
+        return _eventRouter.Publish(BattleEventData.GameModuleCompleted(
+            moduleId,
+            outcomeId,
+            timing));
     }
 
     public List<BattleScenarioTrigger> Flush(BattleRuleTiming timing)

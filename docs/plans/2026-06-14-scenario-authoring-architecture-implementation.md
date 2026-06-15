@@ -446,6 +446,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 battle flag continuation: `BattleSessionState` now stores temporary battle-scoped key/value flags. The read seam is `IBattleSessionStateReader.Flags` / `HasFlag` / `TryGetFlagValue`, and the write seam is `IBattleSessionFlagStore`. `BattleScenarioActionContextFactory` registers the store when the session state provides it, `GameModuleRuntimeContext` exposes it as `BattleFlags`, and the default battle ActionDirector registers `battle.flag.set` / `battle.flag.clear`. These flags are for in-progress battle facts that must survive Game Module switches, not for save-restored Encounter Memory.
 
+2026-06-15 module outcome continuation: `IGameModuleEventSink` is now the runtime seam for concrete Game Modules to report that a module-local loop completed with an optional authored outcome. `BattleScenarioRuntime.PublishGameModuleCompleted(...)` emits `BattleEventType.GameModuleCompleted`, `BattleEventRuleEvaluator` matches module ID plus optional `OutcomeId`, and `BattleScenarioExecutionGate` implements the sink so module completion can queue or immediately execute Battle Scenario Triggers through the existing gate. `GameModuleRuntimeContext.ModuleEvents` exposes this to future modules such as `aim_shooter`, `boxing`, or bullet-hell defense without adding outcome branches to `BattleManager`.
+
 **Step 5: Commit**
 
 ```powershell

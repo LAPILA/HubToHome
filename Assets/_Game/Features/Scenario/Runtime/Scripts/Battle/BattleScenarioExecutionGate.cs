@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-public sealed class BattleScenarioExecutionGate
+public sealed class BattleScenarioExecutionGate : IGameModuleEventSink
 {
     private readonly BattleScenarioRuntime _runtime;
     private readonly BattleScenarioActionBridge _bridge;
@@ -46,6 +46,22 @@ public sealed class BattleScenarioExecutionGate
             previousHp,
             currentHp,
             maxHp,
+            timing));
+    }
+
+    public void PublishGameModuleCompleted(
+        string moduleId,
+        string outcomeId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
+    {
+        if (_runtime == null)
+        {
+            return;
+        }
+
+        Enqueue(_runtime.PublishGameModuleCompleted(
+            moduleId,
+            outcomeId,
             timing));
     }
 

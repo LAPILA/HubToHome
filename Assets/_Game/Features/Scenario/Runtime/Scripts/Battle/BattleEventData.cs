@@ -22,6 +22,9 @@ public sealed class BattleEventData
     [Tooltip("이 이벤트가 발생한 Game Module ID입니다. 아직 선택적으로만 사용합니다.")]
     public string ModuleId = string.Empty;
 
+    [Tooltip("Game Module이 보고한 결과 ID입니다. 예: completed, failed, victory, timeout")]
+    public string OutcomeId = string.Empty;
+
     public static BattleEventData EnemyHpCrossedBelow(
         string enemyId,
         float previousHpRatio,
@@ -35,6 +38,22 @@ public sealed class BattleEventData
             SubjectId = enemyId ?? string.Empty,
             PreviousHpRatio = Mathf.Clamp01(previousHpRatio),
             CurrentHpRatio = Mathf.Clamp01(currentHpRatio)
+        };
+    }
+
+    public static BattleEventData GameModuleCompleted(
+        string moduleId,
+        string outcomeId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
+    {
+        string normalizedModuleId = string.IsNullOrWhiteSpace(moduleId) ? string.Empty : moduleId.Trim();
+        return new BattleEventData
+        {
+            EventType = BattleEventType.GameModuleCompleted,
+            Timing = timing,
+            SubjectId = normalizedModuleId,
+            ModuleId = normalizedModuleId,
+            OutcomeId = string.IsNullOrWhiteSpace(outcomeId) ? string.Empty : outcomeId.Trim()
         };
     }
 }

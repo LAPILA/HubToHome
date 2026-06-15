@@ -433,7 +433,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
                     new ResourcesAudioClipResolver())),
             screenTransitionRunner: new ScreenTransitionRunner(),
             battleSessionState: _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null,
-            battleParticipantCommandRunner: new BattleParticipantCommandRunner(this));
+            battleParticipantCommandRunner: new BattleParticipantCommandRunner(this),
+            gameModuleEventSink: _battleScenarioExecutionGate);
     }
 
     private void RefreshBattleSessionParticipants()

@@ -118,8 +118,10 @@ public class GameModuleActionRunnerTests
         var context = new ActionExecutionContext();
         var session = BattleSessionState.Create(null);
         var commands = new FakeBattleParticipantCommandRunner();
+        var events = new FakeGameModuleEventSink();
         context.SetService<IBattleSessionStateReader>(session);
         context.SetService<IBattleParticipantCommandRunner>(commands);
+        context.SetService<IGameModuleEventSink>(events);
         var runner = new GameModuleActionRunner(registry, "turn_qte");
 
         RunToCompletion(runner.Start("aim_shooter", context));
@@ -131,6 +133,7 @@ public class GameModuleActionRunnerTests
         Assert.That(module.ReceivedContext.BattleSession, Is.SameAs(session));
         Assert.That(module.ReceivedContext.BattleFlags, Is.SameAs(session));
         Assert.That(module.ReceivedContext.ParticipantCommands, Is.SameAs(commands));
+        Assert.That(module.ReceivedContext.ModuleEvents, Is.SameAs(events));
     }
 
     private static void RunToCompletion(IEnumerator routine, int maxSteps = 100)
@@ -248,6 +251,16 @@ public class GameModuleActionRunnerTests
             ActionExecutionContext context)
         {
             return BattleParticipantCommandResult.Succeeded(subjectId, amount, amount, 10, 10 - amount);
+        }
+    }
+
+    private sealed class FakeGameModuleEventSink : IGameModuleEventSink
+    {
+        public void PublishGameModuleCompleted(
+            string moduleId,
+            string outcomeId = "",
+            BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
+        {
         }
     }
 }

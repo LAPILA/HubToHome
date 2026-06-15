@@ -227,6 +227,34 @@ public class BattleScenarioActionBridgeTests
         Assert.That(context.Handle.Result.Message, Does.Contain("Battle scenario runtime is missing"));
     }
 
+    [Test]
+    public void ExecutionGatePlaysSequenceFromGameModuleCompletedEvent()
+    {
+        var log = new List<string>();
+        BattleScenarioData scenario = MakeModuleCompletedScenario();
+        var runtime = new BattleScenarioRuntime(scenario);
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new LoggingActionAdapter("test.module_complete", log));
+        var bridge = new BattleScenarioActionBridge(runtime, new ActionDirector(registry));
+        var gate = new BattleScenarioExecutionGate(
+            runtime,
+            bridge,
+            () => new ActionExecutionContext(new ActionExecutionHandle("battle_scenario")));
+
+        try
+        {
+            gate.PublishGameModuleCompleted("aim_shooter", "victory", BattleRuleTiming.AfterCurrentModule);
+            RunToCompletion(gate.Flush(BattleRuleTiming.AfterCurrentModule));
+
+            Assert.That(log, Is.EqualTo(new[] { "test.module_complete" }));
+            Assert.That(gate.LastHandle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
     private static BattleScenarioData MakeScenario(string sequenceId, string actionId)
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
@@ -244,6 +272,22 @@ public class BattleScenarioActionBridgeTests
             scenario.Sequences.Add(MakeSequence(sequences[i].sequenceId, sequences[i].actionId));
         }
 
+        return scenario;
+    }
+
+    private static BattleScenarioData MakeModuleCompletedScenario()
+    {
+        BattleScenarioData scenario = MakeScenario("after_shooter_victory", "test.module_complete");
+        scenario.Rules.Add(new BattleEventRuleData
+        {
+            RuleId = "after_shooter_victory",
+            EventType = BattleEventType.GameModuleCompleted,
+            Timing = BattleRuleTiming.AfterCurrentModule,
+            Once = BattleRuleOnceMode.PerBattle,
+            SubjectId = "aim_shooter",
+            OutcomeId = "victory",
+            SequenceId = "after_shooter_victory"
+        });
         return scenario;
     }
 

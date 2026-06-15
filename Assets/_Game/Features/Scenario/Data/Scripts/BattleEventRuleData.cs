@@ -36,6 +36,9 @@ public sealed class BattleEventRuleData
     [Tooltip("적, 아군, 모듈 등 이벤트 대상의 안정적인 ID입니다.")]
     public string SubjectId = string.Empty;
 
+    [Tooltip("모듈 완료/결과 규칙에서 선택적으로 비교할 outcome ID입니다. 비워두면 어떤 outcome이든 허용합니다.")]
+    public string OutcomeId = string.Empty;
+
     [Range(0f, 1f)]
     [Tooltip("HP 임계치 규칙에서 사용하는 0~1 비율입니다.")]
     public float ThresholdRatio = 0.5f;
