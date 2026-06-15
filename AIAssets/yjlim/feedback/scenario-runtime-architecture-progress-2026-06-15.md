@@ -58,6 +58,10 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - source document, importer, exporter, YAML writer가 `OutcomeId`를 잃지 않습니다.
   - YAML 미리보기는 모듈 완료 규칙을 `event: module.completed`, `module`, `outcome` 형태로 보여줍니다.
   - 한국어 시나리오 저작 창의 규칙 요약에도 모듈 결과가 표시됩니다.
+- QTE 전투 모듈화도 시작했습니다.
+  - 기존 전투 시작 루틴이 직접 `BattleState.TurnCalc`로 들어가지 않고, 이제 `IGameModuleActionRunner.Start(openingModule)`를 경유합니다.
+  - 현재 opening module은 기본적으로 `turn_qte`입니다.
+  - `BattleTurnQteGameModuleRuntime`은 `IBattleTurnQteModuleController`를 통해 기존 `BattleManager` 턴 루프를 시작합니다.
 
 ## 효과
 
@@ -69,6 +73,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - 다음 Game Module은 이 두 seam을 `GameModuleRuntimeContext.BattleSession` / `ParticipantCommands`로 받을 수 있어, broad Action Context를 매번 직접 해석할 필요가 줄었습니다.
 - 다음 Game Module은 `GameModuleRuntimeContext.BattleFlags`로 전투 임시 플래그를 쓰고, `BattleSession`으로 읽을 수 있습니다.
 - 다음 Game Module은 `ModuleEvents`로 자기 내부 게임 결과를 보고할 수 있습니다. 예를 들어 `aim_shooter`가 `victory`, `timeout`, `failed` 같은 outcome을 발행하면, Battle Scenario Data가 그 결과에 맞춰 대사/페이드/다른 모듈/마을 복귀를 이어갈 수 있습니다.
+- QTE 전투도 이제 같은 Game Module Runner 경로에서 시작됩니다. 이 덕분에 “QTE를 하다가 다른 모듈로 갔다가 다시 QTE로 돌아오기”를 특수 케이스가 아니라 `module.switch` / `module.start` 흐름으로 다룰 수 있습니다.
 - 시나리오 Action Sequence도 `battle.participant.*` action으로 같은 명령 통로를 사용할 수 있습니다.
 - 시나리오 Action Sequence도 `battle.flag.set` / `battle.flag.clear`로 같은 플래그 통로를 사용할 수 있습니다.
 - `BattleManager`가 concrete module 목록을 직접 품는 일을 줄였습니다.
@@ -84,6 +89,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - Battle Session Flag는 저장되는 Encounter Memory가 아닙니다. 전투 밖에서 기억해야 하는 첫 만남/재전/승리 여부/본 적 있는 연출 같은 정보는 여전히 `GlobalDataManager` Encounter Memory로 보내야 합니다.
 - Game Module Outcome은 전투 안의 이벤트 보고입니다. “이 결과를 다음 세이브에서도 기억해야 하는가”는 별도로 Encounter Memory에 기록해야 합니다.
 - 아직 실제 `aim_shooter` / `boxing` 모듈은 없으므로, outcome id의 최종 목록은 각 concrete module을 만들 때 문서화해야 합니다.
+- QTE 모듈화는 아직 시작 단계입니다. `BattleManager`의 턴 계산, 플레이어 행동 선택, 적 행동, enemy defense QTE 처리 구현은 아직 대부분 그대로 남아 있습니다.
 
 ## 이번 검증
 
@@ -96,6 +102,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - `battle.flag.*` adapter와 flag store 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - Game Module 완료/결과 이벤트 추가 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - Scenario Source outcome 보존 추가 뒤에는 importer/exporter/YAML writer 테스트를 추가했습니다.
+- QTE 모듈화 시작 뒤에는 `dotnet build`와 LSP diagnostics 통과
 - 이 시점 Unity MCP는 인스턴스를 찾지 못해 추가 EditMode 실행은 못 했습니다.
 
 ## 남은 핵심 작업
@@ -104,9 +111,10 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
   - 현재는 scenario identity, Primary Mode, opening/current module, 읽기 전용 참가자 스냅샷까지 들어왔습니다.
   - 데미지/회복/MP 변경 요청은 `IBattleParticipantCommandRunner`와 `battle.participant.*` action으로 첫 통로가 열렸습니다.
   - 다음에는 상태이상/승패/phase flag 변경 명령을 기존 Character/BattleManager 상태와 어떻게 연결할지 정해야 합니다.
+- QTE 전투 모듈화
+  - 다음 작업은 `TurnCalcRoutine`, `AdvanceTurn`, `BeginPlayerTurnRoutine`, `BeginEnemyTurnRoutine`, `EnemyActionRoutine`을 `IBattleTurnQteModuleController` 뒤로 더 모으는 것입니다.
 - concrete module 추가
-  - 현재는 `turn_qte` compatibility module만 있습니다.
-  - 다음 concrete module은 `ModuleEvents`로 완료/outcome을 발행하는 첫 사례가 되어야 합니다.
+  - `aim_shooter`, `boxing` 같은 신규 모듈은 최후순위입니다.
 - QTE 전투 추출
   - 지금 QTE module은 UI/input suspend/resume wrapper에 가깝고, 턴 계산/행동 선택/적 행동은 여전히 `BattleManager`에 있습니다.
 - editor/YAML round-trip

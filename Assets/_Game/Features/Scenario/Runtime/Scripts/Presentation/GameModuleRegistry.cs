@@ -41,10 +41,10 @@ public sealed class GameModuleRegistry
 
 public static class BattleGameModuleRegistryFactory
 {
-    public static GameModuleRegistry CreateDefault()
+    public static GameModuleRegistry CreateDefault(IBattleTurnQteModuleController turnQteController = null)
     {
         var registry = new GameModuleRegistry();
-        registry.Register(new BattleTurnQteGameModuleRuntime());
+        registry.Register(new BattleTurnQteGameModuleRuntime(turnQteController));
         return registry;
     }
 }

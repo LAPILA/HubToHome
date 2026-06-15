@@ -31,7 +31,7 @@ A replaceable rule/input/UI package that runs inside a Primary Mode. Examples in
 _Avoid_: assuming all Game Modules are turn-based or battle-only.
 
 **Game Module Runner**:
-The runtime seam used by Action Sequences to switch, enter, exit, and start Game Modules through stable module IDs. `GameModuleRegistry` maps IDs to `IGameModuleRuntime`, and `GameModuleActionRunner` implements `IGameModuleActionRunner` for `module.switch` / `module.start`. In Battle, the runner instance must persist for the whole battle so `CurrentModuleId` survives across separate Action Sequence triggers.
+The runtime seam used by Action Sequences and battle setup to switch, enter, exit, and start Game Modules through stable module IDs. `GameModuleRegistry` maps IDs to `IGameModuleRuntime`, and `GameModuleActionRunner` implements `IGameModuleActionRunner` for `module.switch` / `module.start`. In Battle, the runner instance must persist for the whole battle so `CurrentModuleId` survives across separate Action Sequence triggers.
 _Avoid_: hard-coding QTE, shooter, boxing, or minigame transition branches inside `BattleManager` or inside one action adapter.
 
 **Game Module Runtime Context**:
@@ -113,6 +113,10 @@ _Avoid_: exposing raw GUIDs, fileIDs, or managed reference internals as the norm
 **Action Catalog**:
 The discoverable catalog of Action grammar, Korean labels, parameters, examples, validation expectations, and runtime adapter ownership.
 _Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.
+
+**Turn QTE Combat Module**:
+The first migration target for the existing QTE/turn battle. `turn_qte` is still backed by `BattleManager` internals, but battle setup now starts it through the Game Module Runner, and `BattleTurnQteGameModuleRuntime` delegates lifecycle to `IBattleTurnQteModuleController`. Next migration steps should move turn calculation, action selection, enemy actions, and QTE-specific cleanup behind this controller instead of adding new branches directly to `BattleManager`.
+_Avoid_: claiming QTE extraction is complete while `BattleManager` still owns the turn loop implementation.
 
 **Skill Timeline Adapter**:
 A compatibility Action adapter that invokes an existing `SkillData.ActionTimeline` through a narrow runner seam. `BattleSkillTimelineRunner` is the current battle-side adapter: it resolves scenario `skill` / `actor` / `targets` IDs against the active `BattleManager`, builds a `SkillContext`, and executes existing `SkillActionBlock` entries. It allows current QTE/skill blocks to be called from an Action Sequence without making Skill Data the owner of whole-battle scenario flow.

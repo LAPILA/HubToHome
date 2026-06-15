@@ -448,6 +448,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-15 module outcome continuation: `IGameModuleEventSink` is now the runtime seam for concrete Game Modules to report that a module-local loop completed with an optional authored outcome. `BattleScenarioRuntime.PublishGameModuleCompleted(...)` emits `BattleEventType.GameModuleCompleted`, `BattleEventRuleEvaluator` matches module ID plus optional `OutcomeId`, and `BattleScenarioExecutionGate` implements the sink so module completion can queue or immediately execute Battle Scenario Triggers through the existing gate. `GameModuleRuntimeContext.ModuleEvents` exposes this to future modules such as `aim_shooter`, `boxing`, or bullet-hell defense without adding outcome branches to `BattleManager`.
 
+2026-06-15 QTE module migration start: The existing `turn_qte` path is now started through the Game Module Runner during battle setup. `BattleTurnQteGameModuleRuntime` accepts an `IBattleTurnQteModuleController`, and `BattleManager` injects an adapter that resumes/suspends existing battle input and starts the current `BattleState.TurnCalc` loop. This does not extract the full QTE state machine yet; it moves the ownership seam so later work can move turn calculation, player selection, enemy action, and QTE cleanup behind the module controller instead of expanding battle setup branches.
+
 **Step 5: Commit**
 
 ```powershell

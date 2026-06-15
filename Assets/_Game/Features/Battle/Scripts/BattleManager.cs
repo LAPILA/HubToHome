@@ -294,7 +294,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
         _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(
             scenarioData,
-            _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null);
+            _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null,
+            new BattleTurnQteModuleController(this));
         _battleScenarioExecutionGate = CreateBattleScenarioExecutionGate(_battleScenarioRuntime);
     }
 
@@ -686,11 +687,46 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         }
     }
 
+    private sealed class BattleTurnQteModuleController : IBattleTurnQteModuleController
+    {
+        private readonly BattleManager _battleManager;
+
+        public BattleTurnQteModuleController(BattleManager battleManager)
+        {
+            _battleManager = battleManager;
+        }
+
+        public IEnumerator EnterTurnQteModule(GameModuleRuntimeContext context)
+        {
+            BattleUIController.Instance?.ResumeBattleModuleInput();
+            yield break;
+        }
+
+        public IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context)
+        {
+            QTEManager.Instance?.ForceStop();
+            BattleUIController.Instance?.SuspendBattleModuleInput();
+            yield break;
+        }
+
+        public IEnumerator StartTurnQteModule(GameModuleRuntimeContext context)
+        {
+            BattleUIController.Instance?.ResumeBattleModuleInput();
+            if (_battleManager != null)
+            {
+                _battleManager.StartTurnQteCombatLoop();
+            }
+
+            yield break;
+        }
+    }
+
     private static IGameModuleActionRunner CreateBattleGameModuleActionRunner(
         BattleScenarioData scenarioData,
-        IGameModuleStateStore moduleStateStore)
+        IGameModuleStateStore moduleStateStore,
+        IBattleTurnQteModuleController turnQteController)
     {
-        var registry = BattleGameModuleRegistryFactory.CreateDefault();
+        var registry = BattleGameModuleRegistryFactory.CreateDefault(turnQteController);
         string currentModuleId = scenarioData != null ? scenarioData.OpeningModule : BattleTurnQteGameModuleRuntime.Id;
         return new GameModuleActionRunner(registry, currentModuleId, moduleStateStore);
     }
@@ -723,6 +759,55 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             case BattleState.EnemyAction: StartCoroutine(EnemyActionRoutine()); break;
             case BattleState.BattleEnd:   StartCoroutine(BattleEndRoutine()); break;
         }
+    }
+
+    private IEnumerator StartOpeningBattleGameModule()
+    {
+        string moduleId = _battleGameModuleActionRunner != null
+            && !string.IsNullOrWhiteSpace(_battleGameModuleActionRunner.CurrentModuleId)
+            ? _battleGameModuleActionRunner.CurrentModuleId
+            : BattleTurnQteGameModuleRuntime.Id;
+
+        yield return StartCoroutine(StartBattleGameModule(moduleId));
+    }
+
+    private IEnumerator StartBattleGameModule(string moduleId)
+    {
+        if (_battleGameModuleActionRunner == null)
+        {
+            StartTurnQteCombatLoop();
+            yield break;
+        }
+
+        ActionExecutionContext context = CreateBattleScenarioActionContext();
+        IEnumerator routine = _battleGameModuleActionRunner.Start(moduleId, context);
+        while (routine.MoveNext())
+        {
+            yield return routine.Current;
+        }
+
+        if (context.Handle.Status == ActionExecutionStatus.Failed)
+        {
+            Debug.LogError("[BattleManager] Game Module start failed: " + context.Handle.Result.Message);
+            if (!string.Equals(moduleId, BattleTurnQteGameModuleRuntime.Id, StringComparison.Ordinal))
+            {
+                yield return StartCoroutine(StartBattleGameModule(BattleTurnQteGameModuleRuntime.Id));
+            }
+            else
+            {
+                StartTurnQteCombatLoop();
+            }
+        }
+    }
+
+    private void StartTurnQteCombatLoop()
+    {
+        if (_isBattleEnding)
+        {
+            return;
+        }
+
+        ChangeState(BattleState.TurnCalc);
     }
     #endregion
 
@@ -836,7 +921,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         TryRequestFlavorNarration();
         yield return StartCoroutine(WaitForNarrationToFinish());
         ChangeState(BattleState.Init);
-        ChangeState(BattleState.TurnCalc);
+        yield return StartCoroutine(StartOpeningBattleGameModule());
     }
 
     /// <summary>
@@ -962,7 +1047,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         RequestNarration(BattleNarrationFormatter.BattleStart());
         TryRequestFlavorNarration();
         yield return StartCoroutine(WaitForNarrationToFinish());
-        ChangeState(BattleState.TurnCalc);
+        yield return StartCoroutine(StartOpeningBattleGameModule());
     }
 
     private GameObject ResolveEnemyBattlePrefab(EnemyData enemyData)

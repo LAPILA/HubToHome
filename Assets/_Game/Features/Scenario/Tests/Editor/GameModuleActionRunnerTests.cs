@@ -83,12 +83,45 @@ public class GameModuleActionRunnerTests
     }
 
     [Test]
+    public void BattleTurnQteModuleDelegatesLifecycleToInjectedController()
+    {
+        var log = new List<string>();
+        var controller = new FakeTurnQteModuleController(log);
+        var module = new BattleTurnQteGameModuleRuntime(controller);
+        var context = new ActionExecutionContext();
+        var moduleContext = new GameModuleRuntimeContext(context, "aim_shooter", BattleTurnQteGameModuleRuntime.Id);
+
+        RunToCompletion(module.Enter(moduleContext));
+        RunToCompletion(module.Start(moduleContext));
+        RunToCompletion(module.Exit(moduleContext));
+
+        Assert.That(log, Is.EqualTo(new[] { "enter:turn_qte", "start:turn_qte", "exit:turn_qte" }));
+    }
+
+    [Test]
     public void BattleDefaultRegistryContainsTurnQteCompatibilityModule()
     {
         GameModuleRegistry registry = BattleGameModuleRegistryFactory.CreateDefault();
 
         Assert.That(registry.TryGet(BattleTurnQteGameModuleRuntime.Id, out IGameModuleRuntime module), Is.True);
         Assert.That(module, Is.TypeOf<BattleTurnQteGameModuleRuntime>());
+    }
+
+    [Test]
+    public void BattleDefaultRegistryInjectsTurnQteController()
+    {
+        var log = new List<string>();
+        var controller = new FakeTurnQteModuleController(log);
+        GameModuleRegistry registry = BattleGameModuleRegistryFactory.CreateDefault(controller);
+        registry.TryGet(BattleTurnQteGameModuleRuntime.Id, out IGameModuleRuntime module);
+        var context = new ActionExecutionContext();
+
+        RunToCompletion(module.Start(new GameModuleRuntimeContext(
+            context,
+            string.Empty,
+            BattleTurnQteGameModuleRuntime.Id)));
+
+        Assert.That(log, Is.EqualTo(new[] { "start:turn_qte" }));
     }
 
     [Test]
@@ -261,6 +294,34 @@ public class GameModuleActionRunnerTests
             string outcomeId = "",
             BattleRuleTiming timing = BattleRuleTiming.AfterCurrentModule)
         {
+        }
+    }
+
+    private sealed class FakeTurnQteModuleController : IBattleTurnQteModuleController
+    {
+        private readonly List<string> _log;
+
+        public FakeTurnQteModuleController(List<string> log)
+        {
+            _log = log;
+        }
+
+        public IEnumerator EnterTurnQteModule(GameModuleRuntimeContext context)
+        {
+            _log.Add("enter:" + context.TargetModuleId);
+            yield break;
+        }
+
+        public IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context)
+        {
+            _log.Add("exit:" + context.TargetModuleId);
+            yield break;
+        }
+
+        public IEnumerator StartTurnQteModule(GameModuleRuntimeContext context)
+        {
+            _log.Add("start:" + context.TargetModuleId);
+            yield break;
         }
     }
 }

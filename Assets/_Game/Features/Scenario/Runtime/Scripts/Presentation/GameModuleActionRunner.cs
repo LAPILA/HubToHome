@@ -176,6 +176,13 @@ public sealed class BattleTurnQteGameModuleRuntime : IGameModuleRuntime
 {
     public const string Id = "turn_qte";
 
+    private readonly IBattleTurnQteModuleController _controller;
+
+    public BattleTurnQteGameModuleRuntime(IBattleTurnQteModuleController controller = null)
+    {
+        _controller = controller;
+    }
+
     public string ModuleId
     {
         get { return Id; }
@@ -183,12 +190,34 @@ public sealed class BattleTurnQteGameModuleRuntime : IGameModuleRuntime
 
     public IEnumerator Enter(GameModuleRuntimeContext context)
     {
+        if (_controller != null)
+        {
+            IEnumerator routine = _controller.EnterTurnQteModule(context);
+            while (routine != null && routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+
+            yield break;
+        }
+
         BattleUIController.Instance?.ResumeBattleModuleInput();
         yield break;
     }
 
     public IEnumerator Exit(GameModuleRuntimeContext context)
     {
+        if (_controller != null)
+        {
+            IEnumerator routine = _controller.ExitTurnQteModule(context);
+            while (routine != null && routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+
+            yield break;
+        }
+
         QTEManager.Instance?.ForceStop();
         BattleUIController.Instance?.SuspendBattleModuleInput();
         yield break;
@@ -196,7 +225,27 @@ public sealed class BattleTurnQteGameModuleRuntime : IGameModuleRuntime
 
     public IEnumerator Start(GameModuleRuntimeContext context)
     {
+        if (_controller != null)
+        {
+            IEnumerator routine = _controller.StartTurnQteModule(context);
+            while (routine != null && routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+
+            yield break;
+        }
+
         BattleUIController.Instance?.ResumeBattleModuleInput();
         yield break;
     }
+}
+
+public interface IBattleTurnQteModuleController
+{
+    IEnumerator EnterTurnQteModule(GameModuleRuntimeContext context);
+
+    IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context);
+
+    IEnumerator StartTurnQteModule(GameModuleRuntimeContext context);
 }
