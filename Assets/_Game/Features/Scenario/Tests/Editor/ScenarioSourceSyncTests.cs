@@ -309,6 +309,59 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void YamlParserRoundTripsWriterOutputIntoBattleScenario()
+    {
+        ScenarioSourceDocument document = MakeModuleOutcomeDocument();
+        document.Sequences[0].Actions.Insert(0, new ScenarioActionData
+        {
+            ActionId = ModuleSwitchActionAdapter.Id,
+            ParametersJson = "{\"to\":\"dummy_shooter\"}"
+        });
+        document.Sequences[0].Actions.Insert(1, new ScenarioActionData
+        {
+            ActionId = ModuleStartActionAdapter.Id,
+            ParametersJson = "{\"module\":\"dummy_shooter\"}"
+        });
+        var parallel = new ScenarioActionData { ActionId = ActionDirector.ParallelActionId };
+        parallel.Children.Add(new ScenarioActionData
+        {
+            ActionId = "battle.flag.set",
+            ParametersJson = "{\"flag\":\"phase.two\",\"value\":\"entered\"}"
+        });
+        parallel.Children.Add(new ScenarioActionData
+        {
+            ActionId = "flow.wait",
+            ParametersJson = "{\"duration\":0.25}",
+            Disabled = true
+        });
+        document.Sequences[0].Actions.Add(parallel);
+
+        ScenarioSourceYamlWriteResult writeResult = new ScenarioSourceYamlWriter().Write(document);
+        var importer = new ScenarioSourceImporter(new ScenarioSourceYamlParser());
+
+        ScenarioSourceSyncResult importResult = importer.Import(
+            writeResult.Text,
+            "Assets/_Game/Features/Scenario/Source/module_outcome.scenario.yaml",
+            new DateTime(2026, 6, 16, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.That(writeResult.Success, Is.True);
+        Assert.That(importResult.Success, Is.True);
+        Assert.That(importResult.Scenario.ScenarioId, Is.EqualTo("module_outcome"));
+        Assert.That(importResult.Scenario.Rules[0].EventType, Is.EqualTo(BattleEventType.GameModuleCompleted));
+        Assert.That(importResult.Scenario.Rules[0].SubjectId, Is.EqualTo("aim_shooter"));
+        Assert.That(importResult.Scenario.Rules[0].OutcomeId, Is.EqualTo("victory"));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[0].ActionId, Is.EqualTo(ModuleSwitchActionAdapter.Id));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[0].ParametersJson, Is.EqualTo("{\"to\":\"dummy_shooter\"}"));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[1].ActionId, Is.EqualTo(ModuleStartActionAdapter.Id));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[1].ParametersJson, Is.EqualTo("{\"module\":\"dummy_shooter\"}"));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[3].ActionId, Is.EqualTo(ActionDirector.ParallelActionId));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[3].Children.Count, Is.EqualTo(2));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[3].Children[1].Disabled, Is.True);
+
+        DestroyScenario(importResult.Scenario);
+    }
+
+    [Test]
     public void YamlWriterReportsInvalidActionParameterJson()
     {
         ScenarioSourceDocument document = MakeDocument();

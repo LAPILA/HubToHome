@@ -13,7 +13,9 @@ Use YAML as HubToHome's authoring source for scenario flow. Runtime ScriptableOb
 
 Runtime and editor code must depend on `IScenarioSourceParser`, not directly on a concrete YAML package.
 
-- Until a YamlDotNet-backed parser is installed, `MissingYamlScenarioSourceParser` must fail with a clear validation error.
+- `ScenarioSourceYamlParser` currently reads the deterministic subset emitted by `ScenarioSourceYamlWriter`. It is intentionally lightweight and not a full YAML 1.2 implementation.
+- Until a broader YamlDotNet-backed parser is installed, source files must stay within the documented shape: scalar header fields, inline string lists, `dialogues`, `audioClips`, `rules`, `sequences`, action parameter scalars/inline primitive arrays, and `parallel` child lists.
+- `MissingYamlScenarioSourceParser` remains the clear failure fallback when no concrete parser is provided.
 - `ScenarioSourceImporter` can be tested with a fake parser by feeding it a `ScenarioSourceDocument`.
 - Source hash and stale-state checks are handled by `ScenarioSourceHash` and `ScenarioSourceMetadata`, independent of the concrete YAML parser.
 
@@ -119,7 +121,7 @@ sequences:
 - `ScenarioSourceExporter` exports `BattleScenarioData` to `ScenarioSourceDocument`. `ScenarioSourceYamlWriter` serializes that document to deterministic `.scenario.yaml` text without Unity GUIDs, fileIDs, or managed-reference implementation names.
 - `ScenarioSourceYamlWriter` currently covers header fields, participants, `dialogues`, `audioClips`, `rules`, `module.completed` outcome rules, `sequences`, `flow.parallel`, and action `ParametersJson` object fields. Invalid action parameter JSON must produce `scenario.yaml.action.parameters.invalid`.
 - `ScenarioSourceYamlExportCommand` wraps `ScenarioSourceExporter -> ScenarioSourceYamlWriter` and provides text/file export for editor tooling. It writes YAML text but does not mutate runtime asset metadata; editor save flows should write source and then run the normal import/sync path.
-- YAML parser round-trip and Korean Scenario Authoring Editor save/export buttons are still follow-up work. Do not hand-roll a second writer or file save path in editor UI; reuse `ScenarioSourceYamlExportCommand`.
+- YAML parser round-trip is covered for the writer-supported subset through `ScenarioSourceYamlParser` and `ScenarioSourceSyncTests.YamlParserRoundTripsWriterOutputIntoBattleScenario`. Do not hand-roll a second writer or file save path in editor UI; reuse `ScenarioSourceYamlExportCommand`.
 - Keep `when` and `do` separate. `when` decides whether a beat fires; `do` names or inlines the Action Sequence.
 - Use `once` explicitly for rules that must not repeat.
 - Use `timing` explicitly when execution must wait for a skill, action, module, dialogue, or frame transition.

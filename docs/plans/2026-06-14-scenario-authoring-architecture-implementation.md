@@ -460,6 +460,10 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-16 battle lookup seam: `BattleManager` now stores the active `IBattleAimShooterModuleController` and injects it into the default battle module registry. This gives a future mouse-input/projectile adapter a narrow lookup point (`AimShooterModuleController.FireAtTarget(...)`) without adding shot policy branches to `BattleManager`.
 
+2026-06-16 dummy vertical slice: Before building a full concrete shooter module, the architecture now has an end-to-end dummy module test. `BattleScenarioActionBridgeTests.VerticalSliceSwitchesToDummyModuleAndRunsOutcomeSequence` proves authored trigger -> Action Sequence -> `module.switch` -> `module.start` -> dummy `IGameModuleRuntime` outcome publication -> `BattleScenarioExecutionGate.Flush(AfterCurrentModule)` -> follow-up Action Sequence, while preserving `CurrentModuleId` in both `GameModuleActionRunner` and `BattleSessionState`. Use this style as the acceptance test for future modules before adding input/UI/VFX complexity.
+
+2026-06-16 source/editor continuation: `ScenarioSourceYamlParser` now supports round-tripping the deterministic subset emitted by `ScenarioSourceYamlWriter`, and `ScenarioSourceSyncTests.YamlParserRoundTripsWriterOutputIntoBattleScenario` verifies writer -> parser -> importer -> `BattleScenarioData`. `ScenarioAuthoringWindow` now adds parser-backed source YAML validation plus action insert/reorder/duplicate/enable-disable/delete controls. Remaining editor work is catalog-backed action picking, row-level validation badges, source edit-back save, and safe runtime asset reimport/replace.
+
 **Step 5: Commit**
 
 ```powershell

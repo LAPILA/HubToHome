@@ -31,7 +31,7 @@
 - [x] Add source hash/stale metadata.
 - [x] Add source sync tests with a small source sample and fake parser.
 - [x] Preserve `module.completed` outcome rule data through Scenario Source document, importer, exporter, YAML writer, and editor rule summary.
-- [ ] Add export tests after YAML writer/parser package implementation.
+- [x] Add export/parser round-trip tests for the writer-supported Scenario YAML subset.
 - [x] Commit source sync foundation.
 
 ## Phase 4 - Presentation and Legacy Adapters
@@ -85,7 +85,7 @@
 
 - [x] Create UI Toolkit EditorWindow.
 - [x] Add overview/rules/sequences/catalog/validation/sync sections.
-- [ ] Add reorder/insert disabled-state prototype.
+- [x] Add reorder/insert/duplicate/delete/disabled-state prototype.
 - [ ] Add Korean labels from Action Catalog.
 - [ ] Add editor validation smoke tests where practical.
 - [ ] Commit editor.
@@ -94,6 +94,7 @@
 
 - [ ] Create sample ZEV phase-transition scenario source.
 - [ ] Generate/synchronize runtime asset.
-- [ ] Validate with tests.
+- [x] Validate dummy module transition slice with tests.
+- [ ] Validate sample ZEV slice with tests.
 - [ ] Ask for Unity Editor manual validation approval before scene/play verification.
 - [ ] Commit sample slice.

@@ -255,6 +255,70 @@ public class BattleScenarioActionBridgeTests
         }
     }
 
+    [Test]
+    public void VerticalSliceSwitchesToDummyModuleAndRunsOutcomeSequence()
+    {
+        var log = new List<string>();
+        BattleScenarioData scenario = MakeDummyModuleVerticalSliceScenario();
+        var runtime = new BattleScenarioRuntime(scenario);
+        var actionRegistry = new ActionAdapterRegistry();
+        actionRegistry.Register(new LoggingActionAdapter("test.before_module", log));
+        actionRegistry.Register(new LoggingActionAdapter("test.after_start", log));
+        actionRegistry.Register(new LoggingActionAdapter("test.outcome_sequence", log));
+        actionRegistry.Register(new ModuleSwitchActionAdapter());
+        actionRegistry.Register(new ModuleStartActionAdapter());
+
+        var moduleRegistry = new GameModuleRegistry();
+        moduleRegistry.Register(new LoggingGameModule("turn_qte", log));
+        moduleRegistry.Register(new LoggingGameModule(
+            "dummy_shooter",
+            log,
+            "victory",
+            BattleRuleTiming.AfterCurrentModule));
+
+        var runner = new GameModuleActionRunner(
+            moduleRegistry,
+            "turn_qte",
+            runtime.SessionState);
+
+        BattleScenarioExecutionGate gate = null;
+        var bridge = new BattleScenarioActionBridge(runtime, new ActionDirector(actionRegistry));
+        gate = new BattleScenarioExecutionGate(
+            runtime,
+            bridge,
+            () =>
+            {
+                return CreateBattleScenarioContext(runtime, runner, gate);
+            });
+
+        ActionExecutionContext rootContext = CreateBattleScenarioContext(runtime, runner, gate);
+        List<BattleScenarioTrigger> triggers = MakeTriggers("enter_dummy", "enter_dummy_module");
+
+        try
+        {
+            RunToCompletion(bridge.PlayTriggers(triggers, rootContext));
+            RunToCompletion(gate.Flush(BattleRuleTiming.AfterCurrentModule));
+
+            Assert.That(rootContext.Handle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+            Assert.That(gate.LastHandle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+            Assert.That(runner.CurrentModuleId, Is.EqualTo("dummy_shooter"));
+            Assert.That(runtime.SessionState.CurrentModuleId, Is.EqualTo("dummy_shooter"));
+            Assert.That(log, Is.EqualTo(new[]
+            {
+                "test.before_module",
+                "turn_qte.exit->dummy_shooter",
+                "dummy_shooter.enter:turn_qte",
+                "dummy_shooter.start",
+                "test.after_start",
+                "test.outcome_sequence"
+            }));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
     private static BattleScenarioData MakeScenario(string sequenceId, string actionId)
     {
         BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
@@ -291,12 +355,78 @@ public class BattleScenarioActionBridgeTests
         return scenario;
     }
 
+    private static BattleScenarioData MakeDummyModuleVerticalSliceScenario()
+    {
+        BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
+        scenario.ScenarioId = "zev_first_battle";
+        scenario.OpeningModule = "turn_qte";
+        scenario.Sequences.Add(MakeSequence(
+            "enter_dummy_module",
+            new ScenarioActionData { ActionId = "test.before_module" },
+            new ScenarioActionData
+            {
+                ActionId = ModuleSwitchActionAdapter.Id,
+                ParametersJson = "{\"to\":\"dummy_shooter\"}"
+            },
+            new ScenarioActionData
+            {
+                ActionId = ModuleStartActionAdapter.Id,
+                ParametersJson = "{\"module\":\"dummy_shooter\"}"
+            },
+            new ScenarioActionData { ActionId = "test.after_start" }));
+        scenario.Sequences.Add(MakeSequence(
+            "after_dummy_victory",
+            new ScenarioActionData { ActionId = "test.outcome_sequence" }));
+        scenario.Rules.Add(new BattleEventRuleData
+        {
+            RuleId = "after_dummy_victory",
+            EventType = BattleEventType.GameModuleCompleted,
+            Timing = BattleRuleTiming.AfterCurrentModule,
+            Once = BattleRuleOnceMode.PerBattle,
+            SubjectId = "dummy_shooter",
+            OutcomeId = "victory",
+            SequenceId = "after_dummy_victory"
+        });
+
+        return scenario;
+    }
+
     private static ActionSequenceAsset MakeSequence(string sequenceId, string actionId)
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
         sequence.SequenceId = sequenceId;
         sequence.Actions.Add(new ScenarioActionData { ActionId = actionId });
         return sequence;
+    }
+
+    private static ActionSequenceAsset MakeSequence(string sequenceId, params ScenarioActionData[] actions)
+    {
+        ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
+        sequence.SequenceId = sequenceId;
+        for (int i = 0; i < actions.Length; i++)
+        {
+            sequence.Actions.Add(actions[i]);
+        }
+
+        return sequence;
+    }
+
+    private static ActionExecutionContext CreateBattleScenarioContext(
+        BattleScenarioRuntime runtime,
+        IGameModuleActionRunner runner,
+        IGameModuleEventSink moduleEvents)
+    {
+        var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"))
+        {
+            ScenarioId = runtime.SessionState.ScenarioId,
+            PrimaryMode = runtime.SessionState.PrimaryMode,
+            ModuleId = runtime.SessionState.CurrentModuleId
+        };
+        context.SetService(runner);
+        context.SetService<IBattleSessionStateReader>(runtime.SessionState);
+        context.SetService<IGameModuleStateStore>(runtime.SessionState);
+        context.SetService(moduleEvents);
+        return context;
     }
 
     private static List<BattleScenarioTrigger> MakeTriggers(string ruleId, string sequenceId)
@@ -394,6 +524,53 @@ public class BattleScenarioActionBridgeTests
         public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
         {
             _log.Add(context.ScenarioId + "|" + context.PrimaryMode + "|" + context.ModuleId);
+            yield break;
+        }
+    }
+
+    private sealed class LoggingGameModule : IGameModuleRuntime
+    {
+        private readonly List<string> _log;
+        private readonly string _completionOutcomeId;
+        private readonly BattleRuleTiming _completionTiming;
+
+        public LoggingGameModule(
+            string moduleId,
+            List<string> log,
+            string completionOutcomeId = "",
+            BattleRuleTiming completionTiming = BattleRuleTiming.AfterCurrentModule)
+        {
+            ModuleId = moduleId;
+            _log = log;
+            _completionOutcomeId = completionOutcomeId;
+            _completionTiming = completionTiming;
+        }
+
+        public string ModuleId { get; }
+
+        public IEnumerator Enter(GameModuleRuntimeContext context)
+        {
+            _log.Add(ModuleId + ".enter:" + context.PreviousModuleId);
+            yield break;
+        }
+
+        public IEnumerator Exit(GameModuleRuntimeContext context)
+        {
+            _log.Add(ModuleId + ".exit->" + context.TargetModuleId);
+            yield break;
+        }
+
+        public IEnumerator Start(GameModuleRuntimeContext context)
+        {
+            _log.Add(ModuleId + ".start");
+            if (!string.IsNullOrWhiteSpace(_completionOutcomeId))
+            {
+                context.ModuleEvents.PublishGameModuleCompleted(
+                    ModuleId,
+                    _completionOutcomeId,
+                    _completionTiming);
+            }
+
             yield break;
         }
     }

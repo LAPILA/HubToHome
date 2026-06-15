@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -788,6 +789,695 @@ public sealed class ScenarioSourceYamlWriter
     private static string Normalize(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
+}
+
+public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
+{
+    private const int TopLevelIndent = 0;
+    private const int SectionIndent = 2;
+    private const int NestedIndent = 4;
+
+    public ScenarioSourceParseResult Parse(string sourceText, string sourcePath)
+    {
+        var result = new ScenarioSourceParseResult();
+        if (string.IsNullOrWhiteSpace(sourceText))
+        {
+            result.Validation.AddError(
+                "scenario.yaml.source.required",
+                "Scenario YAML source text is required.",
+                sourcePath);
+            return result;
+        }
+
+        List<YamlLine> lines = ReadLines(sourceText);
+        var document = new ScenarioSourceDocument();
+
+        int index = 0;
+        while (index < lines.Count)
+        {
+            YamlLine line = lines[index];
+            if (line.Indent != TopLevelIndent)
+            {
+                index++;
+                continue;
+            }
+
+            string key;
+            string value;
+            if (!TryReadKeyValue(line.Trimmed, out key, out value))
+            {
+                index++;
+                continue;
+            }
+
+            switch (key)
+            {
+                case "id":
+                    document.Id = ParseYamlString(value);
+                    index++;
+                    break;
+                case "title":
+                    document.TitleKo = ParseYamlString(value);
+                    index++;
+                    break;
+                case "primaryMode":
+                    document.PrimaryMode = ParseYamlString(value);
+                    index++;
+                    break;
+                case "openingModule":
+                    document.OpeningModule = ParseYamlString(value);
+                    index++;
+                    break;
+                case "memoryKey":
+                    document.MemoryKey = ParseYamlString(value);
+                    index++;
+                    break;
+                case "participants":
+                    index = ParseParticipants(lines, index + 1, document);
+                    break;
+                case "dialogues":
+                    index = ParseDialogues(lines, index + 1, document);
+                    break;
+                case "audioClips":
+                    index = ParseAudioClips(lines, index + 1, document);
+                    break;
+                case "rules":
+                    index = ParseRules(lines, index + 1, document);
+                    break;
+                case "sequences":
+                    index = ParseSequences(lines, index + 1, document, result.Validation);
+                    break;
+                default:
+                    index++;
+                    break;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(document.Id))
+        {
+            result.Validation.AddError(
+                "scenario.yaml.id.required",
+                "Scenario YAML requires top-level 'id'.",
+                sourcePath);
+        }
+
+        result.Document = result.Validation.HasErrors ? null : document;
+        return result;
+    }
+
+    private static int ParseParticipants(List<YamlLine> lines, int index, ScenarioSourceDocument document)
+    {
+        while (index < lines.Count && lines[index].Indent > TopLevelIndent)
+        {
+            if (lines[index].Indent == SectionIndent &&
+                TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
+            {
+                List<string> ids = ParseInlineStringList(value);
+                if (key == "party")
+                {
+                    document.PartyIds.AddRange(ids);
+                }
+                else if (key == "enemies")
+                {
+                    document.EnemyIds.AddRange(ids);
+                }
+            }
+
+            index++;
+        }
+
+        return index;
+    }
+
+    private static int ParseDialogues(List<YamlLine> lines, int index, ScenarioSourceDocument document)
+    {
+        while (index < lines.Count && lines[index].Indent > TopLevelIndent)
+        {
+            YamlLine line = lines[index];
+            if (line.Indent != SectionIndent || !line.Trimmed.StartsWith("- "))
+            {
+                index++;
+                continue;
+            }
+
+            var dialogue = new ScenarioSourceDialogueDocument();
+            if (TryReadListItemKeyValue(line.Trimmed, out string key, out string value) && key == "id")
+            {
+                dialogue.DialogueId = ParseYamlString(value);
+            }
+
+            index++;
+            while (index < lines.Count && lines[index].Indent > SectionIndent)
+            {
+                if (lines[index].Indent == NestedIndent &&
+                    TryReadKeyValue(lines[index].Trimmed, out key, out value) &&
+                    key == "dialogueData")
+                {
+                    dialogue.DialogueDataId = ParseYamlString(value);
+                }
+
+                index++;
+            }
+
+            document.Dialogues.Add(dialogue);
+        }
+
+        return index;
+    }
+
+    private static int ParseAudioClips(List<YamlLine> lines, int index, ScenarioSourceDocument document)
+    {
+        while (index < lines.Count && lines[index].Indent > TopLevelIndent)
+        {
+            YamlLine line = lines[index];
+            if (line.Indent != SectionIndent || !line.Trimmed.StartsWith("- "))
+            {
+                index++;
+                continue;
+            }
+
+            var audio = new ScenarioSourceAudioDocument();
+            if (TryReadListItemKeyValue(line.Trimmed, out string key, out string value) && key == "id")
+            {
+                audio.AudioId = ParseYamlString(value);
+            }
+
+            index++;
+            while (index < lines.Count && lines[index].Indent > SectionIndent)
+            {
+                if (lines[index].Indent == NestedIndent &&
+                    TryReadKeyValue(lines[index].Trimmed, out key, out value) &&
+                    key == "audioClip")
+                {
+                    audio.AudioClipId = ParseYamlString(value);
+                }
+
+                index++;
+            }
+
+            document.AudioClips.Add(audio);
+        }
+
+        return index;
+    }
+
+    private static int ParseRules(List<YamlLine> lines, int index, ScenarioSourceDocument document)
+    {
+        while (index < lines.Count && lines[index].Indent > TopLevelIndent)
+        {
+            YamlLine line = lines[index];
+            if (line.Indent != SectionIndent || !line.Trimmed.StartsWith("- "))
+            {
+                index++;
+                continue;
+            }
+
+            var rule = new ScenarioSourceRuleDocument();
+            if (TryReadListItemKeyValue(line.Trimmed, out string key, out string value) && key == "id")
+            {
+                rule.RuleId = ParseYamlString(value);
+            }
+
+            index++;
+            while (index < lines.Count && lines[index].Indent > SectionIndent)
+            {
+                if (lines[index].Indent == NestedIndent &&
+                    TryReadKeyValue(lines[index].Trimmed, out key, out value))
+                {
+                    if (key == "when")
+                    {
+                        index = ParseRuleWhen(lines, index + 1, rule);
+                        continue;
+                    }
+
+                    if (key == "do")
+                    {
+                        index = ParseRuleDo(lines, index + 1, rule);
+                        continue;
+                    }
+
+                    if (key == "disabled")
+                    {
+                        rule.Disabled = ParseBool(value);
+                    }
+                }
+
+                index++;
+            }
+
+            document.Rules.Add(rule);
+        }
+
+        return index;
+    }
+
+    private static int ParseRuleWhen(List<YamlLine> lines, int index, ScenarioSourceRuleDocument rule)
+    {
+        while (index < lines.Count && lines[index].Indent > NestedIndent)
+        {
+            if (lines[index].Indent == NestedIndent + 2 &&
+                TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
+            {
+                switch (key)
+                {
+                    case "event":
+                        rule.EventType = ParseEventType(value);
+                        break;
+                    case "enemy":
+                    case "module":
+                        rule.SubjectId = ParseYamlString(value);
+                        break;
+                    case "outcome":
+                        rule.OutcomeId = ParseYamlString(value);
+                        break;
+                    case "threshold":
+                        rule.ThresholdRatio = ParseFloat(value, rule.ThresholdRatio);
+                        break;
+                    case "timing":
+                        rule.Timing = ParseTiming(value);
+                        break;
+                    case "once":
+                        rule.Once = ParseOnce(value);
+                        break;
+                }
+            }
+
+            index++;
+        }
+
+        return index;
+    }
+
+    private static int ParseRuleDo(List<YamlLine> lines, int index, ScenarioSourceRuleDocument rule)
+    {
+        while (index < lines.Count && lines[index].Indent > NestedIndent)
+        {
+            if (lines[index].Indent == NestedIndent + 2 &&
+                TryReadKeyValue(lines[index].Trimmed, out string key, out string value) &&
+                key == "sequence")
+            {
+                rule.SequenceId = ParseYamlString(value);
+            }
+
+            index++;
+        }
+
+        return index;
+    }
+
+    private static int ParseSequences(
+        List<YamlLine> lines,
+        int index,
+        ScenarioSourceDocument document,
+        ScenarioValidationResult validation)
+    {
+        while (index < lines.Count && lines[index].Indent > TopLevelIndent)
+        {
+            YamlLine line = lines[index];
+            if (line.Indent != SectionIndent || !TryReadKeyValue(line.Trimmed, out string key, out string value))
+            {
+                index++;
+                continue;
+            }
+
+            var sequence = new ScenarioSourceSequenceDocument
+            {
+                SequenceId = ParseYamlString(key)
+            };
+            index++;
+            sequence.Actions = ParseActions(lines, ref index, NestedIndent, validation, sequence.SequenceId);
+            document.Sequences.Add(sequence);
+        }
+
+        return index;
+    }
+
+    private static List<ScenarioActionData> ParseActions(
+        List<YamlLine> lines,
+        ref int index,
+        int indent,
+        ScenarioValidationResult validation,
+        string ownerId)
+    {
+        var actions = new List<ScenarioActionData>();
+        while (index < lines.Count)
+        {
+            YamlLine line = lines[index];
+            if (line.Indent < indent)
+            {
+                break;
+            }
+
+            if (line.Indent != indent || !line.Trimmed.StartsWith("- "))
+            {
+                break;
+            }
+
+            if (!TryReadListItemKeyValue(line.Trimmed, out string actionId, out string inlineValue))
+            {
+                validation.AddError(
+                    "scenario.yaml.action.invalid",
+                    "Action list item must be written as '- action.id:'.",
+                    ownerId);
+                index++;
+                continue;
+            }
+
+            var action = new ScenarioActionData { ActionId = ParseYamlString(actionId) };
+            index++;
+
+            if (action.ActionId == ActionDirector.ParallelActionId)
+            {
+                action.Children = ParseActions(lines, ref index, indent + 2, validation, ownerId);
+                actions.Add(action);
+                continue;
+            }
+
+            JObject parameters = new JObject();
+            while (index < lines.Count && lines[index].Indent > indent)
+            {
+                if (lines[index].Indent == indent + 2 &&
+                    TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
+                {
+                    if (key == "disabled")
+                    {
+                        action.Disabled = ParseBool(value);
+                    }
+                    else
+                    {
+                        parameters[key] = ParseYamlValue(value);
+                    }
+
+                    index++;
+                    continue;
+                }
+
+                break;
+            }
+
+            action.ParametersJson = parameters.Count > 0
+                ? parameters.ToString(Newtonsoft.Json.Formatting.None)
+                : "{}";
+            actions.Add(action);
+        }
+
+        return actions;
+    }
+
+    private static List<YamlLine> ReadLines(string sourceText)
+    {
+        var lines = new List<YamlLine>();
+        string normalized = (sourceText ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');
+        string[] rawLines = normalized.Split('\n');
+        for (int i = 0; i < rawLines.Length; i++)
+        {
+            string withoutComment = StripComment(rawLines[i]);
+            if (string.IsNullOrWhiteSpace(withoutComment))
+            {
+                continue;
+            }
+
+            int indent = CountIndent(withoutComment);
+            lines.Add(new YamlLine(indent, withoutComment.Trim()));
+        }
+
+        return lines;
+    }
+
+    private static bool TryReadListItemKeyValue(string text, out string key, out string value)
+    {
+        key = string.Empty;
+        value = string.Empty;
+        if (string.IsNullOrWhiteSpace(text) || !text.StartsWith("- "))
+        {
+            return false;
+        }
+
+        return TryReadKeyValue(text.Substring(2).Trim(), out key, out value);
+    }
+
+    private static bool TryReadKeyValue(string text, out string key, out string value)
+    {
+        key = string.Empty;
+        value = string.Empty;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        int colonIndex = text.IndexOf(':');
+        if (colonIndex < 0)
+        {
+            return false;
+        }
+
+        key = ParseYamlString(text.Substring(0, colonIndex).Trim());
+        value = text.Substring(colonIndex + 1).Trim();
+        return true;
+    }
+
+    private static JToken ParseYamlValue(string value)
+    {
+        string scalar = value == null ? string.Empty : value.Trim();
+        if (scalar.StartsWith("[") && scalar.EndsWith("]"))
+        {
+            var array = new JArray();
+            List<string> values = ParseInlineValues(scalar);
+            for (int i = 0; i < values.Count; i++)
+            {
+                array.Add(ParseYamlValue(values[i]));
+            }
+
+            return array;
+        }
+
+        if (string.Equals(scalar, "true", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.Equals(scalar, "false", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (int.TryParse(scalar, NumberStyles.Integer, CultureInfo.InvariantCulture, out int intValue))
+        {
+            return intValue;
+        }
+
+        if (float.TryParse(scalar, NumberStyles.Float, CultureInfo.InvariantCulture, out float floatValue))
+        {
+            return floatValue;
+        }
+
+        return ParseYamlString(scalar);
+    }
+
+    private static List<string> ParseInlineStringList(string value)
+    {
+        List<string> rawValues = ParseInlineValues(value);
+        var result = new List<string>();
+        for (int i = 0; i < rawValues.Count; i++)
+        {
+            string item = ParseYamlString(rawValues[i]);
+            if (!string.IsNullOrWhiteSpace(item))
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    private static List<string> ParseInlineValues(string value)
+    {
+        var result = new List<string>();
+        string text = (value ?? string.Empty).Trim();
+        if (text.StartsWith("[") && text.EndsWith("]"))
+        {
+            text = text.Substring(1, text.Length - 2);
+        }
+
+        var builder = new StringBuilder();
+        bool inQuotes = false;
+        bool escaping = false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (escaping)
+            {
+                builder.Append(c);
+                escaping = false;
+                continue;
+            }
+
+            if (c == '\\' && inQuotes)
+            {
+                escaping = true;
+                builder.Append(c);
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+                builder.Append(c);
+                continue;
+            }
+
+            if (c == ',' && !inQuotes)
+            {
+                result.Add(builder.ToString().Trim());
+                builder.Length = 0;
+                continue;
+            }
+
+            builder.Append(c);
+        }
+
+        if (builder.Length > 0 || text.Length == 0)
+        {
+            string item = builder.ToString().Trim();
+            if (item.Length > 0)
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    private static string ParseYamlString(string value)
+    {
+        string text = value == null ? string.Empty : value.Trim();
+        if (text.Length >= 2 && text[0] == '"' && text[text.Length - 1] == '"')
+        {
+            text = text.Substring(1, text.Length - 2);
+            return text.Replace("\\\"", "\"").Replace("\\\\", "\\");
+        }
+
+        return text;
+    }
+
+    private static BattleEventType ParseEventType(string value)
+    {
+        switch (ParseYamlString(value))
+        {
+            case "enemy.hp_crossed_below":
+                return BattleEventType.EnemyHpCrossedBelow;
+            case "enemy.defeated":
+                return BattleEventType.EnemyDefeated;
+            case "skill.completed":
+                return BattleEventType.SkillCompleted;
+            case "module.completed":
+                return BattleEventType.GameModuleCompleted;
+            default:
+                return BattleEventType.None;
+        }
+    }
+
+    private static BattleRuleTiming ParseTiming(string value)
+    {
+        switch (ParseYamlString(value))
+        {
+            case "after_current_action":
+                return BattleRuleTiming.AfterCurrentAction;
+            case "after_current_skill":
+                return BattleRuleTiming.AfterCurrentSkill;
+            case "after_current_module":
+                return BattleRuleTiming.AfterCurrentModule;
+            default:
+                return BattleRuleTiming.Immediate;
+        }
+    }
+
+    private static BattleRuleOnceMode ParseOnce(string value)
+    {
+        switch (ParseYamlString(value))
+        {
+            case "always":
+                return BattleRuleOnceMode.Always;
+            case "encounter":
+                return BattleRuleOnceMode.PerEncounterMemory;
+            default:
+                return BattleRuleOnceMode.PerBattle;
+        }
+    }
+
+    private static bool ParseBool(string value)
+    {
+        return string.Equals(ParseYamlString(value), "true", System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static float ParseFloat(string value, float fallback)
+    {
+        return float.TryParse(ParseYamlString(value), NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed)
+            ? parsed
+            : fallback;
+    }
+
+    private static int CountIndent(string line)
+    {
+        int count = 0;
+        while (count < line.Length && line[count] == ' ')
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static string StripComment(string line)
+    {
+        if (string.IsNullOrEmpty(line))
+        {
+            return string.Empty;
+        }
+
+        bool inQuotes = false;
+        bool escaping = false;
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (escaping)
+            {
+                escaping = false;
+                continue;
+            }
+
+            if (c == '\\' && inQuotes)
+            {
+                escaping = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+                continue;
+            }
+
+            if (c == '#' && !inQuotes)
+            {
+                return line.Substring(0, i);
+            }
+        }
+
+        return line;
+    }
+
+    private readonly struct YamlLine
+    {
+        public YamlLine(int indent, string trimmed)
+        {
+            Indent = indent;
+            Trimmed = trimmed;
+        }
+
+        public int Indent { get; }
+        public string Trimmed { get; }
     }
 }
 

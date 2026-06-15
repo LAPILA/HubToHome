@@ -60,6 +60,40 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
 - Unity Editor에서 실제 `module.switch: aim_shooter` 시 QTE UI가 사라지고 turn label이 바뀌는지 확인
 - Presentation Service가 커질 경우 `BattleUIController` 내부 임시 구현을 더 깊은 adapter로 분리
 
+## 더미 모듈 vertical slice 결과
+
+실제 `aim_shooter`를 더 만들기 전에, 더미 `IGameModuleRuntime`으로 핵심 경로를 먼저 검증했다.
+
+검증된 흐름은 다음과 같다.
+
+1. 테스트가 `enter_dummy_module` Action Sequence를 실행한다.
+2. 시퀀스가 `module.switch: dummy_shooter`를 실행한다.
+3. `GameModuleActionRunner`가 기존 `turn_qte`를 exit하고 `dummy_shooter`를 enter한다.
+4. 시퀀스가 `module.start: dummy_shooter`를 실행한다.
+5. 더미 모듈이 `GameModuleRuntimeContext.ModuleEvents.PublishGameModuleCompleted("dummy_shooter", "victory", AfterCurrentModule)`를 호출한다.
+6. `BattleScenarioExecutionGate.Flush(AfterCurrentModule)`가 `module.completed` 규칙을 후속 Action Sequence로 바꿔 실행한다.
+7. `BattleSessionState.CurrentModuleId`와 `IGameModuleActionRunner.CurrentModuleId`가 `dummy_shooter`로 유지된다.
+
+즉, 실제 새 전투 게임을 만들지 않아도 “전투 데이터가 모듈 전환을 지시하고, 모듈이 자기 결과를 보고하고, 전투 데이터가 후속 연출을 이어가는 구조”는 코드상으로 연결되어 있다.
+
+## YAML / 에디터 진행
+
+- `ScenarioSourceYamlParser`를 추가했다.
+  - 현재는 범용 YAML parser가 아니라 `ScenarioSourceYamlWriter`가 내보내는 deterministic subset을 다시 읽는 parser다.
+  - writer -> parser -> importer -> `BattleScenarioData` 왕복 테스트를 추가했다.
+- `ScenarioAuthoringWindow`에 다음 조작을 추가했다.
+  - Source YAML 검증
+  - 시퀀스 액션 삽입
+  - 액션 위/아래 이동
+  - 액션 복제
+  - 액션 켜기/끄기
+  - 액션 삭제
+- 아직 남은 에디터 작업
+  - Action Catalog 기반 액션 선택기
+  - row별 validation badge
+  - source YAML로 edit-back 저장
+  - 안전한 runtime asset reimport/replace
+
 ## 확인된 검증
 
 - `dotnet build HubToHome.sln --no-restore` 통과
@@ -67,4 +101,6 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
 - C# LSP diagnostics 통과
 - `IBattleAimShooterModuleController` 주입/위임과 outcome 보고 테스트 추가
 - `BattleAimShooterCombatSession` target validation / damage command / victory/failure outcome 테스트 추가
+- 더미 모듈 vertical slice 테스트 추가
+- YAML writer/parser/importer 왕복 테스트 추가
 - Unity MCP validate는 현재 Editor instance 미연결로 미실행

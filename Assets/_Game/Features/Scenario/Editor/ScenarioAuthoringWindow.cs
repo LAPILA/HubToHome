@@ -19,6 +19,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private VisualElement _validationPanel;
     private TextField _yamlPreviewField;
     private Button _refreshButton;
+    private Button _validateSourceButton;
     private Button _exportSourceButton;
     private Button _exportAsButton;
 
@@ -73,6 +74,10 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _refreshButton = new Button(RefreshAll) { text = "새로고침" };
         _refreshButton.style.marginLeft = 8;
         toolbar.Add(_refreshButton);
+
+        _validateSourceButton = new Button(ValidateSourcePath) { text = "원본 YAML 검증" };
+        _validateSourceButton.style.marginLeft = 4;
+        toolbar.Add(_validateSourceButton);
 
         _exportSourceButton = new Button(ExportToSourcePath) { text = "원본 경로로 내보내기" };
         _exportSourceButton.style.marginLeft = 4;
@@ -184,6 +189,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         bool hasScenario = _scenario != null;
         _refreshButton?.SetEnabled(hasScenario);
         _exportAsButton?.SetEnabled(hasScenario);
+        _validateSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
         _exportSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
     }
 
@@ -295,7 +301,8 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             }
 
             AddInfo(_sequencesPanel, title, CountActions(sequence.Actions) + "개 액션");
-            AddActionRows(_sequencesPanel, sequence.Actions, 0);
+            AddSequenceControls(_sequencesPanel, sequence);
+            AddActionRows(_sequencesPanel, sequence, sequence.Actions, 0);
         }
     }
 
@@ -374,7 +381,34 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         }
     }
 
-    private static void AddActionRows(VisualElement panel, List<ScenarioActionData> actions, int depth)
+    private void AddSequenceControls(VisualElement panel, ActionSequenceAsset sequence)
+    {
+        VisualElement row = new VisualElement();
+        row.style.flexDirection = FlexDirection.Row;
+        row.style.alignItems = Align.Center;
+        row.style.marginBottom = 5;
+        row.style.marginLeft = 8;
+        panel.Add(row);
+
+        TextField actionIdField = new TextField();
+        actionIdField.style.flexGrow = 1;
+        actionIdField.label = "추가할 액션 ID";
+        actionIdField.tooltip = "예: dialogue.wait, module.switch, battle.flag.set";
+        row.Add(actionIdField);
+
+        Button addButton = new Button(() => AddAction(sequence, sequence.Actions, actionIdField))
+        {
+            text = "삽입"
+        };
+        addButton.style.marginLeft = 4;
+        row.Add(addButton);
+    }
+
+    private void AddActionRows(
+        VisualElement panel,
+        ActionSequenceAsset owner,
+        List<ScenarioActionData> actions,
+        int depth)
     {
         if (actions == null)
         {
@@ -391,9 +425,44 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             }
 
             string disabled = action.Disabled ? "비활성 / " : string.Empty;
-            AddInfo(panel, Indent(depth) + "- " + disabled + EmptyDash(action.ActionId));
-            AddActionRows(panel, action.Children, depth + 1);
+            VisualElement row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.marginBottom = 3;
+            row.style.marginLeft = 8 + depth * 16;
+            panel.Add(row);
+
+            Label label = new Label("- " + disabled + EmptyDash(action.ActionId));
+            label.style.whiteSpace = WhiteSpace.Normal;
+            label.style.flexGrow = 1;
+            row.Add(label);
+
+            int index = i;
+            Button upButton = MakeSmallButton("위", () => MoveAction(owner, actions, index, -1));
+            upButton.SetEnabled(index > 0);
+            row.Add(upButton);
+
+            Button downButton = MakeSmallButton("아래", () => MoveAction(owner, actions, index, 1));
+            downButton.SetEnabled(index < actions.Count - 1);
+            row.Add(downButton);
+
+            row.Add(MakeSmallButton("복제", () => DuplicateAction(owner, actions, index)));
+            row.Add(MakeSmallButton(action.Disabled ? "켜기" : "끄기", () => ToggleAction(owner, action)));
+            row.Add(MakeSmallButton("삭제", () => DeleteAction(owner, actions, index)));
+
+            if (action.Children != null && action.Children.Count > 0)
+            {
+                AddActionRows(panel, owner, action.Children, depth + 1);
+            }
         }
+    }
+
+    private static Button MakeSmallButton(string text, System.Action action)
+    {
+        Button button = new Button(action) { text = text };
+        button.style.marginLeft = 3;
+        button.style.minWidth = 34;
+        return button;
     }
 
     private void ExportToSourcePath()
@@ -402,6 +471,187 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _lastExportResult = result;
         _yamlPreviewField.value = result.Text ?? string.Empty;
         SetValidationStatus(result.Validation, result.Success ? "Source YAML 경로로 내보냈습니다." : "Source YAML 내보내기에 실패했습니다.");
+    }
+
+    private void ValidateSourcePath()
+    {
+        string sourcePath = GetSourcePath();
+        if (string.IsNullOrWhiteSpace(sourcePath))
+        {
+            SetStatus("검증할 Source YAML 경로가 없습니다.", MessageType.Warning);
+            return;
+        }
+
+        try
+        {
+            string text = File.ReadAllText(Path.GetFullPath(sourcePath));
+            var resolver = new AssetDatabaseScenarioDialogueReferenceResolver();
+            var importer = new ScenarioSourceImporter(
+                new ScenarioSourceYamlParser(),
+                resolver,
+                resolver);
+            ScenarioSourceSyncResult result = importer.Import(text, sourcePath);
+            if (result.Success)
+            {
+                SetStatus(
+                    "원본 YAML 검증 성공: 규칙 "
+                    + result.Scenario.Rules.Count
+                    + "개, 시퀀스 "
+                    + result.Scenario.Sequences.Count
+                    + "개를 읽었습니다.",
+                    MessageType.Info);
+            }
+            else
+            {
+                SetValidationStatus(result.Validation, "원본 YAML을 읽었습니다.");
+            }
+
+            DestroyTemporaryScenario(result.Scenario);
+        }
+        catch (System.Exception exception)
+        {
+            SetStatus("원본 YAML 검증 실패: " + exception.Message, MessageType.Error);
+        }
+    }
+
+    private void AddAction(
+        ActionSequenceAsset owner,
+        List<ScenarioActionData> actions,
+        TextField actionIdField)
+    {
+        if (owner == null || actions == null || actionIdField == null)
+        {
+            return;
+        }
+
+        string actionId = actionIdField.value != null ? actionIdField.value.Trim() : string.Empty;
+        if (string.IsNullOrWhiteSpace(actionId))
+        {
+            SetStatus("추가할 액션 ID를 입력하세요.", MessageType.Warning);
+            return;
+        }
+
+        RecordSequenceChange(owner, "시나리오 액션 삽입");
+        actions.Add(new ScenarioActionData
+        {
+            ActionId = actionId,
+            ParametersJson = "{}"
+        });
+        actionIdField.value = string.Empty;
+        RefreshAll();
+    }
+
+    private void MoveAction(
+        ActionSequenceAsset owner,
+        List<ScenarioActionData> actions,
+        int index,
+        int direction)
+    {
+        int target = index + direction;
+        if (owner == null || actions == null || index < 0 || index >= actions.Count || target < 0 || target >= actions.Count)
+        {
+            return;
+        }
+
+        RecordSequenceChange(owner, "시나리오 액션 순서 변경");
+        ScenarioActionData action = actions[index];
+        actions[index] = actions[target];
+        actions[target] = action;
+        RefreshAll();
+    }
+
+    private void DuplicateAction(
+        ActionSequenceAsset owner,
+        List<ScenarioActionData> actions,
+        int index)
+    {
+        if (owner == null || actions == null || index < 0 || index >= actions.Count)
+        {
+            return;
+        }
+
+        RecordSequenceChange(owner, "시나리오 액션 복제");
+        actions.Insert(index + 1, CloneAction(actions[index]));
+        RefreshAll();
+    }
+
+    private void ToggleAction(ActionSequenceAsset owner, ScenarioActionData action)
+    {
+        if (owner == null || action == null)
+        {
+            return;
+        }
+
+        RecordSequenceChange(owner, "시나리오 액션 활성 상태 변경");
+        action.Disabled = !action.Disabled;
+        RefreshAll();
+    }
+
+    private void DeleteAction(
+        ActionSequenceAsset owner,
+        List<ScenarioActionData> actions,
+        int index)
+    {
+        if (owner == null || actions == null || index < 0 || index >= actions.Count)
+        {
+            return;
+        }
+
+        RecordSequenceChange(owner, "시나리오 액션 삭제");
+        actions.RemoveAt(index);
+        RefreshAll();
+    }
+
+    private static ScenarioActionData CloneAction(ScenarioActionData source)
+    {
+        if (source == null)
+        {
+            return null;
+        }
+
+        var clone = new ScenarioActionData
+        {
+            ActionId = source.ActionId,
+            ParametersJson = source.ParametersJson,
+            Disabled = source.Disabled
+        };
+
+        if (source.Children != null)
+        {
+            for (int i = 0; i < source.Children.Count; i++)
+            {
+                clone.Children.Add(CloneAction(source.Children[i]));
+            }
+        }
+
+        return clone;
+    }
+
+    private static void RecordSequenceChange(ActionSequenceAsset sequence, string undoName)
+    {
+        Undo.RecordObject(sequence, undoName);
+        EditorUtility.SetDirty(sequence);
+    }
+
+    private static void DestroyTemporaryScenario(BattleScenarioData scenario)
+    {
+        if (scenario == null)
+        {
+            return;
+        }
+
+        if (scenario.Sequences != null)
+        {
+            for (int i = 0; i < scenario.Sequences.Count; i++)
+            {
+                if (scenario.Sequences[i] != null)
+                {
+                    DestroyImmediate(scenario.Sequences[i]);
+                }
+            }
+        }
+
+        DestroyImmediate(scenario);
     }
 
     private void ExportAs()
