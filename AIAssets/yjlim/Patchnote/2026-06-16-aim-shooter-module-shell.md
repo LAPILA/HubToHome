@@ -7,6 +7,7 @@
 - `IBattleGameModulePresentationController`와 `BattleUIController` 연동으로 비-QTE 모듈 진입 시 기존 QTE 메뉴/타겟팅/방어 UI가 남지 않도록 했습니다.
 - `IBattleAimShooterModuleController`를 추가해 실제 슈팅 루프가 나중에 `BattleManager`가 아니라 `aim_shooter` 모듈 뒤에서 커질 수 있게 했습니다.
 - `BattleAimShooterCombatSession`을 추가해 조준 결과가 들어왔을 때 target validation, damage command, shot count, victory/failed outcome을 테스트 가능한 순수 코어에서 처리하게 했습니다.
+- 기본 battle registry가 별도 주입 없이도 `BattleAimShooterModuleController`를 만들어 `module.start: aim_shooter` 시 세션 생성까지 갈 수 있게 했습니다.
 - 관련 EditMode 성격 테스트를 추가했습니다.
 
 ## 주의

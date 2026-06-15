@@ -48,7 +48,11 @@ public static class BattleGameModuleRegistryFactory
     {
         var registry = new GameModuleRegistry();
         registry.Register(new BattleTurnQteGameModuleRuntime(turnQteController));
-        registry.Register(new BattleAimShooterGameModuleRuntime(presentationController, aimShooterController));
+        IBattleAimShooterModuleController resolvedAimShooterController = aimShooterController
+            ?? new BattleAimShooterModuleController(presentationController);
+        registry.Register(new BattleAimShooterGameModuleRuntime(
+            presentationController,
+            resolvedAimShooterController));
         return registry;
     }
 }

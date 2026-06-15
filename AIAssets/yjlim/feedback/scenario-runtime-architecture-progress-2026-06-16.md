@@ -24,6 +24,7 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
   - 실제 슈팅 루프 뒤에서 호출할 순수 규칙 Module이다.
   - 살아있는 enemy target인지 확인하고, `IBattleParticipantCommandRunner`로 damage를 요청한다.
   - shot / hit count를 추적하고, 조건을 만족하면 `IGameModuleEventSink`로 `victory` 또는 `failed` outcome을 보고한다.
+  - Unity-generated csproj refresh 없이 빌드되도록 현재는 기존 포함 파일 `GameModuleActionRunner.cs` 안에 배치했다.
 - `IBattleGameModulePresentationController`
   - Battle Game Module이 UI/입력 소유권을 바꾸는 좁은 Interface다.
   - 현재 Adapter는 `BattleUIController`다.

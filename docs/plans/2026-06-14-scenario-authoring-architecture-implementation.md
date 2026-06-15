@@ -456,6 +456,8 @@ Current implementation note: `module.switch` / `module.start` now have a reusabl
 
 2026-06-16 aim shooter combat session core: `BattleAimShooterCombatSession` is the first pure gameplay rule slice for `aim_shooter`. It validates targets against `IBattleSessionStateReader`, applies damage through `IBattleParticipantCommandRunner`, tracks shots/hits, and publishes victory/failure through `IGameModuleEventSink`. The Unity input/projectile/UI layer should call into this core rather than owning damage or outcome policy itself.
 
+2026-06-16 default aim shooter controller: `BattleGameModuleRegistryFactory` now creates `BattleAimShooterModuleController` by default when no explicit aim-shooter controller is injected. This means `module.start: aim_shooter` creates a combat session even before the Unity mouse-input adapter exists. Runtime code was placed in an existing generated-project file to avoid requiring a forced Unity refresh.
+
 **Step 5: Commit**
 
 ```powershell
