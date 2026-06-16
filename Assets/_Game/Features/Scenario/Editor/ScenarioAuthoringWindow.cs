@@ -569,16 +569,6 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         if (result.Success)
         {
             Undo.RecordObject(_scenario, "시나리오 원본 YAML 저장");
-            if (_scenario != null && _scenario.Sequences != null)
-            {
-                for (int i = 0; i < _scenario.Sequences.Count; i++)
-                {
-                    if (_scenario.Sequences[i] != null)
-                    {
-                        Undo.RecordObject(_scenario.Sequences[i], "시나리오 원본 YAML 저장");
-                    }
-                }
-            }
 
             ScenarioSourceMetadataEditorSync.ApplyExportResult(_scenario, result, DateTime.UtcNow);
             MarkScenarioDirty(_scenario);
@@ -786,7 +776,6 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private static void RecordSequenceChange(ActionSequenceAsset sequence, string undoName)
     {
-        Undo.RecordObject(sequence, undoName);
         EditorUtility.SetDirty(sequence);
     }
 

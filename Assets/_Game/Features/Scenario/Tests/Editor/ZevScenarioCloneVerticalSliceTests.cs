@@ -1,6 +1,7 @@
 using System.IO;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 
 public class ZevScenarioCloneVerticalSliceTests
 {
@@ -74,6 +75,36 @@ public class ZevScenarioCloneVerticalSliceTests
         Assert.That(clone.BattlePrefab, Is.SameAs(source.BattlePrefab));
         Assert.That(clone.SkillList.Count, Is.EqualTo(source.SkillList.Count));
         Assert.That(clone.StrongSkillList.Count, Is.EqualTo(source.StrongSkillList.Count));
+    }
+
+    [Test]
+    public void ZevArchitectureClonePrefabUsesCloneEnemyAndScenario()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            ZevArchitectureCloneSampleBuilder.PrefabCloneAssetPath);
+        EnemyData cloneEnemy = AssetDatabase.LoadAssetAtPath<EnemyData>(
+            ZevArchitectureCloneSampleBuilder.EnemyCloneAssetPath);
+        BattleScenarioData scenario = AssetDatabase.LoadAssetAtPath<BattleScenarioData>(
+            ZevArchitectureCloneSampleBuilder.ScenarioAssetPath);
+
+        Assert.That(prefab, Is.Not.Null, "Clone prefab is missing.");
+        Assert.That(cloneEnemy, Is.Not.Null, "Clone EnemyData is missing.");
+        Assert.That(scenario, Is.Not.Null, "Clone BattleScenarioData is missing.");
+
+        EnemyCharacter enemyCharacter = prefab.GetComponent<EnemyCharacter>();
+        DialogueBattleNPC dialogueBattleNpc = prefab.GetComponent<DialogueBattleNPC>();
+        Assert.That(enemyCharacter, Is.Not.Null);
+        Assert.That(dialogueBattleNpc, Is.Not.Null);
+        Assert.That(enemyCharacter.Data, Is.SameAs(cloneEnemy));
+
+        var serialized = new SerializedObject(dialogueBattleNpc);
+        SerializedProperty enemies = serialized.FindProperty("_fallbackEncounterEnemies");
+        SerializedProperty scenarioProperty = serialized.FindProperty("_fallbackBattleScenarioData");
+        Assert.That(enemies, Is.Not.Null);
+        Assert.That(scenarioProperty, Is.Not.Null);
+        Assert.That(enemies.arraySize, Is.EqualTo(1));
+        Assert.That(enemies.GetArrayElementAtIndex(0).objectReferenceValue, Is.SameAs(cloneEnemy));
+        Assert.That(scenarioProperty.objectReferenceValue, Is.SameAs(scenario));
     }
 
     private static void DestroyImportedScenario(BattleScenarioData scenario)

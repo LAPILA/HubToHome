@@ -19,6 +19,9 @@ public class DialogueBattleNPC : InteractableBase
     [BoxGroup("Battle Encounter")]
     [SerializeField] private AudioClip _fallbackBattleBgm;
     [BoxGroup("Battle Encounter")]
+    [Tooltip("비워두면 BattleManager 기본 시나리오를 사용합니다. 이 NPC 전투만 별도 Scenario Source 흐름으로 실행할 때 지정합니다.")]
+    [SerializeField] private BattleScenarioData _fallbackBattleScenarioData;
+    [BoxGroup("Battle Encounter")]
     [SerializeField] private bool _useDedicatedBattleScene;
     [BoxGroup("Battle Encounter"), ShowIf(nameof(_useDedicatedBattleScene))]
     [SerializeField] private string _battleSceneName = "BattleScene";
@@ -54,6 +57,7 @@ public class DialogueBattleNPC : InteractableBase
         {
             EncounterEnemies = new List<EnemyData>(_fallbackEncounterEnemies),
             OverrideBattleBGM = _fallbackBattleBgm,
+            BattleScenarioData = _fallbackBattleScenarioData,
             UseDedicatedBattleScene = _useDedicatedBattleScene,
             BattleSceneName = _battleSceneName,
             BattleSceneFadeDuration = _battleSceneFadeDuration

@@ -25,6 +25,7 @@
 - Scenario-level battle flow should be authored through Battle Scenario Data / Encounter Definition and the `.agents/skills/hubtohome-scenario-authoring/` rules, not by expanding one-off branches inside `BattleManager`.
 - Battle Event Rule subjects should use Scenario Subject IDs. Enemy rules resolve through `BattleScenarioSubjectResolver` and should primarily match `EnemyData.EnemyId`.
 - Per-encounter battle scenarios can be passed through `BattleEncounterService.StartEncounter(..., battleScenarioData)` or assigned as the BattleManager default scenario. Dedicated battle scene transitions use `GlobalDataManager.PendingBattleScenario` as a runtime-only handoff.
+- `OverworldEnemy._battleScenarioData` and `DialogueBattleNPC._fallbackBattleScenarioData` are the current serialized entry-point fields for per-encounter scenarios. Use those on cloned/new entries instead of changing existing ZEV wiring when comparing scenario architecture work.
 - Battle event publication should go through `BattleScenarioRuntime`, not direct `BattleScenarioRuleRunner` / `BattleScenarioEventRouter` ownership inside `BattleManager`.
 - `PerEncounterMemory` battle rule state can be seeded into and exported from `BattleScenarioRuntime`, then stored in `GlobalDataManager` Encounter Memory outside battle. Do not serialize an in-progress battle session as save data.
 - `BattleManager` should use `BattleEncounterMemoryRecorder` for encounter memory seed/start/result recording. Do not duplicate meet-count, defeated-state, or seen-beat recording branches directly inside battle flow.

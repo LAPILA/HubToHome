@@ -20,6 +20,7 @@
 
 - Movement and interaction must respect `GameStateManager.CanPlayerMove`.
 - Battle entry should use `BattleEncounterService` rather than duplicating setup.
+- Contact enemies that need encounter-specific Scenario Source flow should assign `OverworldEnemy._battleScenarioData`; leave it empty for legacy/default battle behavior.
 - Overworld cutscenes, scripted interactions, town minigames, and encounter setup that use Action Sequences should follow `.agents/skills/hubtohome-scenario-authoring/SKILL.md`.
 - Scene/room transitions should use `MapTransitionService` or `SceneLoader` as appropriate.
 - Before scene transition, preserve position/facing/room state through `GlobalDataManager`.

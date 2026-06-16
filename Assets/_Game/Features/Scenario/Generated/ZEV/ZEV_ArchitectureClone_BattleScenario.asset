@@ -17,7 +17,7 @@ MonoBehaviour:
   Source:
     SourcePath: Assets/_Game/Features/Scenario/Source/ZEV/zev_architecture_clone.scenario.yaml
     SourceHash: 519489ff2b4f27b3ce2a3d6d55f6320bbabcdabde9cf40c0c99771317118df27
-    ImportedAtIso8601: 2026-06-16T15:35:36.4405970Z
+    ImportedAtIso8601: 2026-06-16T15:50:42.6255423Z
   Actions:
   - ActionId: bgm.crossfade
     ParametersJson: '{"clip":"zev_clone_phase2","duration":0.8}'
@@ -79,7 +79,7 @@ MonoBehaviour:
   Source:
     SourcePath: Assets/_Game/Features/Scenario/Source/ZEV/zev_architecture_clone.scenario.yaml
     SourceHash: 519489ff2b4f27b3ce2a3d6d55f6320bbabcdabde9cf40c0c99771317118df27
-    ImportedAtIso8601: 2026-06-16T15:35:36.4405970Z
+    ImportedAtIso8601: 2026-06-16T15:50:42.6255423Z
   PartyIds:
   - player
   EnemyIds:
@@ -143,7 +143,7 @@ MonoBehaviour:
   Source:
     SourcePath: Assets/_Game/Features/Scenario/Source/ZEV/zev_architecture_clone.scenario.yaml
     SourceHash: 519489ff2b4f27b3ce2a3d6d55f6320bbabcdabde9cf40c0c99771317118df27
-    ImportedAtIso8601: 2026-06-16T15:35:36.4405970Z
+    ImportedAtIso8601: 2026-06-16T15:50:42.6255423Z
   Actions:
   - ActionId: dialogue.wait
     ParametersJson: '{"id":"zev.clone.shooter_victory"}'

@@ -23,6 +23,7 @@
 - Scenario `dialogue.wait` IDs must be registered through `BattleScenarioData.Dialogues` and `ScenarioDialogueRegistry` before runtime execution. Do not hard-code dialogue IDs in `BattleManager` or a combat module.
 - Scenario Source `dialogues` entries resolve through `IScenarioDialogueReferenceResolver` during import. The editor default is `AssetDatabaseScenarioDialogueReferenceResolver`, which accepts a `DialogueData` asset name or `Assets/...` path and fails duplicate-name matches instead of guessing. Runtime `ScenarioDialogueReferenceData` keeps the source `DialogueDataId` so `ScenarioSourceExporter` can return to `ScenarioSourceDocument` without GUIDs. Missing or ambiguous `DialogueDataId` resolution should fail validation with `scenario.dialogue.unresolved`.
 - Validate full battle scenarios with `ScenarioCatalogValidator.ValidateBattleScenario(...)` so missing or unregistered `dialogue.wait` IDs are caught before runtime.
+- Dialogue-driven battles pass runtime-only encounter data through `DialogueEncounterContext`. If a dialogue NPC should use Scenario Source battle flow, assign `DialogueBattleNPC._fallbackBattleScenarioData`; do not mutate `DialogueData` assets at runtime or hard-code scenario selection in `DialogueManager`.
 - Keep localization keys and fallback text clear.
 - If choice behavior changes, inspect `DialogueManager`, `DialogueData`, and any encounter context code.
 - Document new event trigger IDs and their owners.

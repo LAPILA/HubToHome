@@ -9,9 +9,11 @@ public static class ZevArchitectureCloneSampleBuilder
     public const string ScenarioAssetPath = "Assets/_Game/Features/Scenario/Generated/ZEV/ZEV_ArchitectureClone_BattleScenario.asset";
     public const string CatalogAssetPath = "Assets/_Game/Features/Scenario/Data/Catalogs/ScenarioActionCatalog_ZEV_ArchitectureClone.asset";
     public const string EnemyCloneAssetPath = "Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Enemy_ZEV_ArchitectureClone.asset";
+    public const string PrefabCloneAssetPath = "Assets/_Game/Features/Characters/Prefabs/Enemy/ZEV_ArchitectureClone_Prefab.prefab";
     public const string EnemyCloneId = "zev_architecture_clone";
 
     private const string SourceEnemyAssetPath = "Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Enemy_ZEV.asset";
+    private const string SourcePrefabAssetPath = "Assets/_Game/Features/Characters/Prefabs/Enemy/ZEV_Prefab.prefab";
     private const string DialogueFolderPath = "Assets/_Game/Features/Dialogue/Data/Scenario/ZEV";
 
     [MenuItem("HubToHome/Scenario/Samples/Rebuild ZEV Architecture Clone")]
@@ -77,6 +79,8 @@ public static class ZevArchitectureCloneSampleBuilder
 
         AssetDatabase.SaveAssets();
         AssetDatabase.ImportAsset(ScenarioAssetPath);
+        CreateOrUpdatePrefabClone(result);
+        AssetDatabase.SaveAssets();
         return result;
     }
 
@@ -123,6 +127,109 @@ public static class ZevArchitectureCloneSampleBuilder
         clone.EnemyId = EnemyCloneId;
         clone.EnemyName = "ZEV Architecture Clone";
         EditorUtility.SetDirty(clone);
+    }
+
+    private static void CreateOrUpdatePrefabClone(ScenarioValidationResult result)
+    {
+        EnemyData cloneEnemy = AssetDatabase.LoadAssetAtPath<EnemyData>(EnemyCloneAssetPath);
+        BattleScenarioData scenario = AssetDatabase.LoadAssetAtPath<BattleScenarioData>(ScenarioAssetPath);
+        if (cloneEnemy == null || scenario == null)
+        {
+            result.AddError(
+                "zev.clone.prefab.dependencies.missing",
+                "ZEV architecture clone prefab requires clone enemy and scenario assets.",
+                PrefabCloneAssetPath);
+            return;
+        }
+
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabCloneAssetPath) == null)
+        {
+            if (!AssetDatabase.CopyAsset(SourcePrefabAssetPath, PrefabCloneAssetPath))
+            {
+                result.AddError(
+                    "zev.clone.prefab.copy.failed",
+                    "ZEV prefab could not be duplicated for the architecture clone.",
+                    PrefabCloneAssetPath);
+                return;
+            }
+        }
+
+        GameObject root = PrefabUtility.LoadPrefabContents(PrefabCloneAssetPath);
+        if (root == null)
+        {
+            result.AddError(
+                "zev.clone.prefab.load.failed",
+                "ZEV architecture clone prefab could not be loaded.",
+                PrefabCloneAssetPath);
+            return;
+        }
+
+        try
+        {
+            root.name = "ZEV_ArchitectureClone_Prefab";
+
+            EnemyCharacter enemyCharacter = root.GetComponent<EnemyCharacter>();
+            if (enemyCharacter == null)
+            {
+                result.AddError(
+                    "zev.clone.prefab.enemy_character.missing",
+                    "ZEV architecture clone prefab requires EnemyCharacter.",
+                    PrefabCloneAssetPath);
+            }
+            else
+            {
+                enemyCharacter.Data = cloneEnemy;
+                EditorUtility.SetDirty(enemyCharacter);
+            }
+
+            DialogueBattleNPC dialogueBattleNpc = root.GetComponent<DialogueBattleNPC>();
+            if (dialogueBattleNpc == null)
+            {
+                result.AddError(
+                    "zev.clone.prefab.dialogue_battle_npc.missing",
+                    "ZEV architecture clone prefab requires DialogueBattleNPC.",
+                    PrefabCloneAssetPath);
+            }
+            else
+            {
+                var serialized = new SerializedObject(dialogueBattleNpc);
+                SerializedProperty enemies = serialized.FindProperty("_fallbackEncounterEnemies");
+                if (enemies != null)
+                {
+                    enemies.arraySize = 1;
+                    enemies.GetArrayElementAtIndex(0).objectReferenceValue = cloneEnemy;
+                }
+
+                SerializedProperty scenarioProperty = serialized.FindProperty("_fallbackBattleScenarioData");
+                if (scenarioProperty != null)
+                {
+                    scenarioProperty.objectReferenceValue = scenario;
+                }
+
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(dialogueBattleNpc);
+            }
+
+            OverworldEnemy overworldEnemy = root.GetComponent<OverworldEnemy>();
+            if (overworldEnemy != null)
+            {
+                var serialized = new SerializedObject(overworldEnemy);
+                SerializedProperty scenarioProperty = serialized.FindProperty("_battleScenarioData");
+                if (scenarioProperty != null)
+                {
+                    scenarioProperty.objectReferenceValue = scenario;
+                    serialized.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(overworldEnemy);
+                }
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabCloneAssetPath);
+            AssetDatabase.ImportAsset(PrefabCloneAssetPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
     }
 
     private static void CreateOrUpdateDialogue(string assetPath, string text)

@@ -92,12 +92,14 @@ git commit -m "feat: add zev scenario clone slice" -m "기존 ZEV 전투 에셋�
 ## Implementation Result
 
 - Created a separate `Enemy_ZEV_ArchitectureClone.asset`; original `Enemy_ZEV.asset` remains untouched.
+- Created a separate `ZEV_ArchitectureClone_Prefab.prefab`; original `ZEV_Prefab.prefab` remains untouched.
 - Created `zev_architecture_clone.scenario.yaml` and synchronized it into `ZEV_ArchitectureClone_BattleScenario.asset`.
 - Created sample ZEV clone dialogue assets and a vertical-slice catalog asset.
+- Added optional per-entry scenario fields to `OverworldEnemy`, `DialogueBattleNPC`, and `DialogueEncounterContext` so cloned/new encounters can pass `BattleScenarioData` into `BattleEncounterService` without changing existing encounter wiring.
 - Fixed the Scenario YAML parser so documented deeper action parameter indentation is accepted.
 - Removed created sequence Undo registration from safe runtime reimport to avoid Unity serialization depth errors on recursive `ScenarioActionData.Children`.
 - Verified through Unity MCP EditMode tests:
-  - `ZevScenarioCloneVerticalSliceTests`: 3 passed
+  - `ZevScenarioCloneVerticalSliceTests`: 4 passed
   - `ScenarioSourceSyncTests`: 23 passed
 - Verified `dotnet build HubToHome.sln --no-restore` and `git diff --check`.
 - Manual Play Mode / scene wiring remains intentionally unperformed until human approval.
