@@ -1144,7 +1144,7 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 continue;
             }
 
-            var action = new ScenarioActionData { ActionId = ParseYamlString(actionId) };
+            var action = new ScenarioActionData { ActionId = NormalizeActionId(ParseYamlString(actionId)) };
             index++;
 
             if (action.ActionId == ActionDirector.ParallelActionId)
@@ -1273,6 +1273,12 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
         }
 
         return ParseYamlString(scalar);
+    }
+
+    private static string NormalizeActionId(string actionId)
+    {
+        string normalized = string.IsNullOrWhiteSpace(actionId) ? string.Empty : actionId.Trim();
+        return normalized == "parallel" ? ActionDirector.ParallelActionId : normalized;
     }
 
     private static List<string> ParseInlineStringList(string value)

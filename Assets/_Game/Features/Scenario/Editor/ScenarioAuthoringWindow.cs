@@ -21,6 +21,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private TextField _yamlPreviewField;
     private Button _refreshButton;
     private Button _validateSourceButton;
+    private Button _reimportSourceButton;
     private Button _exportSourceButton;
     private Button _exportAsButton;
 
@@ -79,6 +80,10 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _validateSourceButton = new Button(ValidateSourcePath) { text = "원본 YAML 검증" };
         _validateSourceButton.style.marginLeft = 4;
         toolbar.Add(_validateSourceButton);
+
+        _reimportSourceButton = new Button(ReimportSourcePath) { text = "런타임 에셋 반영" };
+        _reimportSourceButton.style.marginLeft = 4;
+        toolbar.Add(_reimportSourceButton);
 
         _exportSourceButton = new Button(SaveToSourcePath) { text = "원본 YAML 저장" };
         _exportSourceButton.style.marginLeft = 4;
@@ -191,6 +196,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _refreshButton?.SetEnabled(hasScenario);
         _exportAsButton?.SetEnabled(hasScenario);
         _validateSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
+        _reimportSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
         _exportSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
     }
 
@@ -621,6 +627,48 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         {
             SetStatus("원본 YAML 검증 실패: " + exception.Message, MessageType.Error);
         }
+    }
+
+    private void ReimportSourcePath()
+    {
+        if (_scenario == null)
+        {
+            SetStatus("반영할 Battle Scenario Data를 선택하세요.", MessageType.Warning);
+            return;
+        }
+
+        string sourcePath = GetSourcePath();
+        if (string.IsNullOrWhiteSpace(sourcePath))
+        {
+            SetStatus("반영할 Source YAML 경로가 없습니다.", MessageType.Warning);
+            return;
+        }
+
+        var command = new ScenarioSourceRuntimeAssetReimportCommand();
+        ScenarioSourceRuntimeAssetReimportResult result = command.ReimportFromSourcePath(
+            _scenario,
+            _catalog,
+            DateTime.UtcNow);
+
+        if (result.Success)
+        {
+            string message = "원본 YAML을 런타임 에셋에 반영했습니다. 기존 시퀀스 "
+                + result.ReusedSequenceCount
+                + "개 재사용, 새 시퀀스 "
+                + result.CreatedSequenceCount
+                + "개 생성";
+            if (result.DetachedSequenceCount > 0)
+            {
+                message += ", 제외된 기존 시퀀스 " + result.DetachedSequenceCount + "개";
+            }
+
+            message += ".";
+            RefreshAll();
+            SetValidationStatus(result.Validation, message);
+            return;
+        }
+
+        SetValidationStatus(result.Validation, "원본 YAML을 런타임 에셋에 반영하지 못했습니다.");
     }
 
     private void AddAction(

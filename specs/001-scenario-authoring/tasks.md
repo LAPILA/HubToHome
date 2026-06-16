@@ -89,8 +89,8 @@
 - [x] Add Korean labels from Action Catalog.
 - [x] Add editor validation smoke tests where practical.
 - [x] Add source YAML edit-back save.
-- [ ] Add safe runtime asset reimport/replace.
-- [ ] Commit editor.
+- [x] Add safe runtime asset reimport/replace.
+- [x] Commit editor.
 
 ## Phase 7 - Vertical Slice
 

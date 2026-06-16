@@ -15,6 +15,7 @@ Runtime and editor code must depend on `IScenarioSourceParser`, not directly on 
 
 - `ScenarioSourceYamlParser` currently reads the deterministic subset emitted by `ScenarioSourceYamlWriter`. It is intentionally lightweight and not a full YAML 1.2 implementation.
 - Until a broader YamlDotNet-backed parser is installed, source files must stay within the documented shape: scalar header fields, inline string lists, `dialogues`, `audioClips`, `rules`, `sequences`, action parameter scalars/inline primitive arrays, and `parallel` child lists.
+- The authoring alias `parallel:` is parsed back to runtime action ID `flow.parallel`. Do not write both forms for the same group in one source file.
 - `MissingYamlScenarioSourceParser` remains the clear failure fallback when no concrete parser is provided.
 - `ScenarioSourceImporter` can be tested with a fake parser by feeding it a `ScenarioSourceDocument`.
 - Source hash and stale-state checks are handled by `ScenarioSourceHash` and `ScenarioSourceMetadata`, independent of the concrete YAML parser.
@@ -128,7 +129,7 @@ sequences:
 - Use `parallel` for simultaneous actions; never imply concurrency from sibling ordering.
 - Keep dialogue as a waitable action, not a child of battle modules.
 - Keep save-bound facts in Encounter Memory, not in in-progress Battle Session State.
-- Runtime `flow.parallel` currently maps to `ActionDirector.ParallelActionId` and is handled as a director-level group action.
+- Runtime `flow.parallel` currently maps to `ActionDirector.ParallelActionId` and is handled as a director-level group action. In YAML, use `parallel:` for readability; the parser normalizes it to `flow.parallel`.
 - Use `battle.skill.timeline` only as a compatibility call into existing `SkillData.ActionTimeline` / `SkillActionBlock` behavior. `targets` may be omitted when the battle runner should choose the skill's default alive target set from `SkillData.TargetType` / `IsAoE`; use explicit stable actor IDs when a sequence needs a specific target. Whole-battle phase flow still belongs in Battle Event Rules plus Action Sequences.
 - Use `battle.participant.damage`, `battle.participant.heal_hp`, `battle.participant.heal_mp`, and `battle.participant.consume_mp` when a scenario or Game Module needs to request HP/MP changes outside legacy SkillData timelines. These actions require `subject` and positive integer `amount`, and runtime must route them through `IBattleParticipantCommandRunner`.
 - Use `battle.flag.set` and `battle.flag.clear` for temporary battle-scoped facts that must survive Game Module switches but should not be saved as mid-battle state. These actions require `flag`; `battle.flag.set` may also provide string `value` and defaults to `"true"`.

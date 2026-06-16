@@ -73,7 +73,11 @@ public sealed class BattleScenarioExecutionGate : IGameModuleEventSink
         }
 
         Enqueue(_runtime.Flush(timing));
-        yield return PlayReadyTriggers();
+        IEnumerator playRoutine = PlayReadyTriggers();
+        while (playRoutine.MoveNext())
+        {
+            yield return playRoutine.Current;
+        }
     }
 
     public IEnumerator PlayReadyTriggers()
@@ -92,7 +96,12 @@ public sealed class BattleScenarioExecutionGate : IGameModuleEventSink
             }
 
             IsExecuting = true;
-            yield return _bridge.PlayTriggers(batch, context);
+            IEnumerator bridgeRoutine = _bridge.PlayTriggers(batch, context);
+            while (bridgeRoutine.MoveNext())
+            {
+                yield return bridgeRoutine.Current;
+            }
+
             IsExecuting = false;
             LastHandle = context.Handle;
 

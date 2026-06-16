@@ -507,6 +507,98 @@ public class ScenarioSourceSyncTests
         DestroyScenario(scenario);
     }
 
+    [Test]
+    public void RuntimeAssetReimportReusesMatchingSequenceAsset()
+    {
+        const string sourceText = "id: test_battle\n";
+        const string sourcePath = "Assets/_Game/Features/Scenario/Source/test.scenario.yaml";
+        DateTime importedAt = new DateTime(2026, 6, 16, 2, 3, 4, DateTimeKind.Utc);
+        BattleScenarioData target = ScriptableObject.CreateInstance<BattleScenarioData>();
+        target.ScenarioId = "old_scenario";
+        target.TitleKo = "이전 전투";
+        target.PartyIds.Add("old_party");
+        ActionSequenceAsset existingSequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
+        existingSequence.SequenceId = "phase2_intro";
+        existingSequence.Actions.Add(new ScenarioActionData
+        {
+            ActionId = "flow.wait",
+            ParametersJson = "{\"duration\":99}"
+        });
+        target.Sequences.Add(existingSequence);
+
+        var command = new ScenarioSourceRuntimeAssetReimportCommand(new FakeScenarioSourceParser(MakeDocument()));
+
+        ScenarioSourceRuntimeAssetReimportResult result = command.ReimportFromText(
+            target,
+            sourceText,
+            sourcePath,
+            importedAtUtc: importedAt);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.ReusedSequenceCount, Is.EqualTo(1));
+        Assert.That(result.CreatedSequenceCount, Is.EqualTo(0));
+        Assert.That(result.DetachedSequenceCount, Is.EqualTo(0));
+        Assert.That(target.ScenarioId, Is.EqualTo("test_battle"));
+        Assert.That(target.TitleKo, Is.EqualTo("테스트 전투"));
+        Assert.That(target.PartyIds, Is.EqualTo(new[] { "player" }));
+        Assert.That(target.Sequences.Count, Is.EqualTo(1));
+        Assert.That(target.Sequences[0], Is.SameAs(existingSequence));
+        Assert.That(existingSequence.DisplayNameKo, Is.EqualTo("2페이즈 진입"));
+        Assert.That(existingSequence.Actions[0].ActionId, Is.EqualTo("dialogue.wait"));
+        Assert.That(target.Source.SourcePath, Is.EqualTo(sourcePath));
+        Assert.That(target.Source.SourceHash, Is.EqualTo(ScenarioSourceHash.Compute(sourceText)));
+        Assert.That(target.Source.ImportedAtIso8601, Is.EqualTo(importedAt.ToString("O")));
+        Assert.That(existingSequence.Source.SourceHash, Is.EqualTo(target.Source.SourceHash));
+
+        DestroyScenario(target);
+    }
+
+    [Test]
+    public void RuntimeAssetReimportDoesNotMutateTargetWhenCatalogValidationFails()
+    {
+        BattleScenarioData target = ScriptableObject.CreateInstance<BattleScenarioData>();
+        target.ScenarioId = "old_scenario";
+        target.TitleKo = "이전 전투";
+        ActionSequenceAsset existingSequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
+        existingSequence.SequenceId = "old_sequence";
+        existingSequence.Actions.Add(new ScenarioActionData
+        {
+            ActionId = "flow.wait",
+            ParametersJson = "{\"duration\":1}"
+        });
+        target.Sequences.Add(existingSequence);
+        ActionCatalogAsset catalog = ScriptableObject.CreateInstance<ActionCatalogAsset>();
+        catalog.Entries.Add(new ActionCatalogEntry
+        {
+            ActionId = "flow.wait",
+            Category = "flow",
+            DisplayNameKo = "기다리기",
+            RuntimeAdapterId = "flow.wait",
+            ExampleYaml = "- flow.wait:\n    duration: 0.5"
+        });
+
+        var command = new ScenarioSourceRuntimeAssetReimportCommand(new FakeScenarioSourceParser(MakeDocument()));
+
+        ScenarioSourceRuntimeAssetReimportResult result = command.ReimportFromText(
+            target,
+            "id: test_battle\n",
+            "Assets/_Game/Features/Scenario/Source/test.scenario.yaml",
+            catalog);
+
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Validation.Messages.Exists(message => message.Code == "sequence.action.unknown"), Is.True);
+        Assert.That(target.ScenarioId, Is.EqualTo("old_scenario"));
+        Assert.That(target.TitleKo, Is.EqualTo("이전 전투"));
+        Assert.That(target.Sequences.Count, Is.EqualTo(1));
+        Assert.That(target.Sequences[0], Is.SameAs(existingSequence));
+        Assert.That(existingSequence.SequenceId, Is.EqualTo("old_sequence"));
+        Assert.That(existingSequence.Actions[0].ActionId, Is.EqualTo("flow.wait"));
+        Assert.That(existingSequence.Actions[0].ParametersJson, Is.EqualTo("{\"duration\":1}"));
+
+        DestroyScenario(target);
+        UnityEngine.Object.DestroyImmediate(catalog);
+    }
+
     private static ScenarioSourceDocument MakeDocument()
     {
         var document = new ScenarioSourceDocument

@@ -603,6 +603,8 @@ Tabs:
 - Korean labels from Action Catalog.
 - No raw GUIDs in normal view.
 
+Current implementation note: `ScenarioAuthoringWindow` now includes source YAML validation, YAML edit-back save, catalog-backed action insertion, row validation badges, and the `런타임 에셋 반영` runtime reimport button. Runtime reimport is handled by `ScenarioSourceRuntimeAssetReimportCommand`, which parses/imports into a temporary scenario, validates before mutating the selected `BattleScenarioData`, reuses existing `ActionSequenceAsset` objects by `SequenceId`, adds new sequences as sub-assets for persisted target assets, and detaches obsolete sequences without deleting their assets. Sequence-level Undo is intentionally avoided because recursive `ScenarioActionData.Children` can exceed Unity's Undo serialization depth limit.
+
 **Step 5: Commit**
 
 ```powershell

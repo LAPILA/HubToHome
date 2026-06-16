@@ -49,7 +49,16 @@ public sealed class GameModuleRuntimeContext
 
     public IBattleSessionFlagStore BattleFlags
     {
-        get { return GetService<IBattleSessionFlagStore>(); }
+        get
+        {
+            IBattleSessionFlagStore flagStore = GetService<IBattleSessionFlagStore>();
+            if (flagStore != null)
+            {
+                return flagStore;
+            }
+
+            return BattleSession as IBattleSessionFlagStore;
+        }
     }
 
     public IGameModuleEventSink ModuleEvents
