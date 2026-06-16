@@ -57,6 +57,7 @@ Treat scenario YAML as the authoring source of truth and ScriptableObject assets
 ## Runtime Execution Contract
 
 - `ActionDirector` executes `ActionSequenceAsset` through `IActionAdapter` instances registered in `ActionAdapterRegistry`.
+- `ScenarioActionData.Children` is a recursive action tree field and must remain `[SerializeReference]`-backed. Do not turn it back into value serialization; Unity will emit `Serialization depth limit 10 exceeded at 'ScenarioActionData.Children'` during save/test/editor serialization even when the authored action tree has no cycle.
 - `ActionExecutionContext` is the place to pass mode, module, shared services, and the current `ActionExecutionHandle`; do not make adapters reach directly into unrelated singletons when a narrow service seam can be passed through context.
 - `flow.parallel` is currently a director-level group action. It runs child actions concurrently through the director rather than through a normal runtime adapter.
 - Presentation adapters must expose narrow seams for existing global systems. Current examples are `IActionClock` for `flow.wait`, `IDialogueRunner` / `DialogueManagerRunner` for `dialogue.wait`, `IAudioActionRunner` for `bgm.crossfade`, `IScreenTransitionRunner` for `screen.fade`, and `IGameModuleActionRunner` for `module.switch` / `module.start`.

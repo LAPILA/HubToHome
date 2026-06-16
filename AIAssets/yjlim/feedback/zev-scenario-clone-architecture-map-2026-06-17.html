@@ -277,6 +277,23 @@
       margin-bottom: 8px;
     }
 
+    .loggrid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .logcard {
+      border-top: 6px solid var(--done);
+      background: var(--panel);
+      padding: 14px;
+      min-height: 148px;
+    }
+
+    .logcard.next { border-top-color: var(--next); }
+    .logcard.risk { border-top-color: var(--risk); }
+    .logcard.blue { border-top-color: var(--blue); }
+
     footer {
       margin-top: 38px;
       color: var(--muted);
@@ -285,7 +302,7 @@
     }
 
     @media (max-width: 940px) {
-      header, .compare, .checklist { grid-template-columns: 1fr; }
+      header, .compare, .checklist, .loggrid { grid-template-columns: 1fr; }
       .stamp { justify-self: stretch; transform: none; }
       .flow { grid-template-columns: 1fr 1fr; }
       .node::after { display: none; }
@@ -314,7 +331,7 @@
         <dl>
           <dt>Branch</dt><dd>codex/action-sequence-architecture-review</dd>
           <dt>Work</dt><dd>Clone entry and visual handoff</dd>
-          <dt>Tests</dt><dd>ZEV slice 4, Source sync 23</dd>
+          <dt>Tests</dt><dd>EditMode 27/27</dd>
           <dt>Scope</dt><dd>Original ZEV untouched</dd>
         </dl>
       </aside>
@@ -352,7 +369,7 @@
         <div class="node done"><small>3. Catalog</small><h3>Action Contract</h3><p>사용 가능한 action ID와 한국어 표시명을 검증합니다.</p></div>
         <div class="node blue"><small>4. Entry</small><h3>Clone Prefab</h3><p>`DialogueBattleNPC`가 clone enemy와 scenario asset을 보관합니다.</p></div>
         <div class="node done"><small>5. Runtime</small><h3>BattleEncounterService</h3><p>전투 시작 시 `battleScenarioData`를 BattleManager/GlobalDataManager로 전달합니다.</p></div>
-        <div class="node next"><small>6. Gameplay</small><h3>Game Module</h3><p>`turn_qte`에서 시작하고 HP 이벤트 후 `aim_shooter` shell로 전환합니다.</p></div>
+        <div class="node done"><small>6. Gameplay</small><h3>Game Module Shell</h3><p>`turn_qte`에서 시작하고 HP 이벤트 후 `aim_shooter` shell로 전환하는 route를 검증했습니다.</p></div>
       </div>
     </section>
 
@@ -394,11 +411,11 @@
         <div class="cell risk">미변경</div>
         <div class="cell risk">비교 기준으로 보존</div>
 
-        <div class="cell">aim_shooter</div>
+        <div class="cell">aim_shooter shell</div>
         <div class="cell done">module ID 사용</div>
         <div class="cell done">switch/start 검증</div>
         <div class="cell">해당 없음</div>
-        <div class="cell next">실제 슈팅 루프 후속</div>
+        <div class="cell done">더미/순수 세션 검증</div>
       </div>
     </section>
 
@@ -407,7 +424,29 @@
       <div class="checklist">
         <div class="check done"><strong>Unity MCP</strong><p>샘플 builder 메뉴가 에러 없이 실행되고 clone assets를 재생성했습니다.</p></div>
         <div class="check done"><strong>EditMode Tests</strong><p>`ZevScenarioCloneVerticalSliceTests` 4개, `ScenarioSourceSyncTests` 23개 통과.</p></div>
-        <div class="check next"><strong>Next Slice</strong><p>실제 scene 배치와 Play Mode 비교는 clone entry를 놓을 위치를 정한 뒤 진행합니다.</p></div>
+        <div class="check done"><strong>Serialization Safety</strong><p>`ScenarioActionData.Children`를 managed reference로 고정해 Unity depth limit 에러 재발을 막았습니다.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>최종 완료 로그</h2>
+      <div class="loggrid">
+        <div class="logcard done">
+          <h3>닫힌 범위</h3>
+          <p>YAML source, generated runtime asset, clone enemy, clone prefab, entry reference, module switch/start, module outcome route까지 vertical slice로 닫았습니다.</p>
+        </div>
+        <div class="logcard blue">
+          <h3>에디터 검증</h3>
+          <p>Unity MCP에서 sample builder 메뉴를 실행했고, clone assets 재생성과 테스트 27/27 통과를 확인했습니다.</p>
+        </div>
+        <div class="logcard done">
+          <h3>안전장치</h3>
+          <p>recursive action tree 직렬화를 `[SerializeReference]`로 고정하고 회귀 테스트와 scenario-authoring skill 지침을 추가했습니다.</p>
+        </div>
+        <div class="logcard next">
+          <h3>게임 개발 후속</h3>
+          <p>실제 슈팅 입력, 전용 UI, projectile/VFX, Play Mode 비교용 scene 배치는 다음 gameplay slice에서 진행합니다.</p>
+        </div>
       </div>
     </section>
 

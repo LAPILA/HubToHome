@@ -27,6 +27,8 @@
 - Unity MCP로 sample builder 메뉴 실행 성공
 - Unity MCP `ZevScenarioCloneVerticalSliceTests`: 4개 통과
 - Unity MCP `ScenarioSourceSyncTests`: 23개 통과
+- 최종 재검증 기준 EditMode 27/27 통과
+- `ScenarioActionData.Children`를 managed reference로 고정해 Unity serialization depth 에러 재발을 막았습니다.
 - `dotnet build HubToHome.sln --no-restore` 통과
 - `git diff --check` 통과
 
@@ -34,5 +36,5 @@
 
 - 기존 `Enemy_ZEV.asset`, ZEV skill asset, battle scene, encounter wiring은 수정하지 않았습니다.
 - 기존 `ZEV_Prefab.prefab`도 수정하지 않았습니다. 새 clone prefab을 별도 배치해 비교합니다.
-- 아직 실제 Play Mode에서 clone encounter를 시작하도록 scene에 배치하지 않았습니다.
+- clone encounter를 시작하도록 기존 scene에 자동 배치하지 않았습니다. 비교 위치나 별도 test scene 방식을 정한 뒤 배치하는 것이 안전합니다.
 - `aim_shooter`는 현재 architecture shell입니다. 실제 조준 입력, UI, 투사체/VFX는 후속 구현입니다.

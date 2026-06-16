@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -479,6 +480,18 @@ public class ScenarioSourceSyncTests
 
         Assert.That(message.Code, Is.EqualTo("scenario.error"));
         Assert.That(message.Severity, Is.EqualTo(ScenarioValidationSeverity.Error));
+    }
+
+    [Test]
+    public void ScenarioActionChildrenUseManagedReferencesToAvoidUnitySerializationDepthErrors()
+    {
+        FieldInfo childrenField = typeof(ScenarioActionData).GetField(nameof(ScenarioActionData.Children));
+
+        Assert.That(childrenField, Is.Not.Null);
+        Assert.That(
+            childrenField.GetCustomAttribute<SerializeReference>() != null,
+            Is.True,
+            "ScenarioActionData.Children is recursive and must stay SerializeReference-backed so Unity does not value-serialize the type until its depth limit.");
     }
 
     [Test]

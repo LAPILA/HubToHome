@@ -15,6 +15,7 @@ public sealed class ScenarioActionData
     [Tooltip("체크하면 실행 시 이 액션과 하위 액션을 건너뜁니다.")]
     public bool Disabled;
 
+    [SerializeReference]
     [Tooltip("parallel, branch 같은 flow 액션이 소유하는 하위 액션 목록입니다.")]
     public List<ScenarioActionData> Children = new List<ScenarioActionData>();
 }
