@@ -481,6 +481,32 @@ public class ScenarioSourceSyncTests
         Assert.That(message.Severity, Is.EqualTo(ScenarioValidationSeverity.Error));
     }
 
+    [Test]
+    public void ScenarioSourceMetadataEditorSyncUpdatesScenarioAndSequencesAfterSourceSave()
+    {
+        BattleScenarioData scenario = ScenarioSourceImporter.CreateBattleScenario(
+            MakeDocument(),
+            "id: test_battle\n",
+            "Assets/_Game/Features/Scenario/Source/test.scenario.yaml");
+        var result = new ScenarioSourceYamlExportResult
+        {
+            Text = "id: test_battle\nsequences:\n",
+            TargetPath = "Assets/_Game/Features/Scenario/Source/test_saved.scenario.yaml"
+        };
+        DateTime writtenAt = new DateTime(2026, 6, 16, 1, 2, 3, DateTimeKind.Utc);
+
+        bool changed = ScenarioSourceMetadataEditorSync.ApplyExportResult(scenario, result, writtenAt);
+
+        Assert.That(changed, Is.True);
+        Assert.That(scenario.Source.SourcePath, Is.EqualTo(result.TargetPath));
+        Assert.That(scenario.Source.SourceHash, Is.EqualTo(ScenarioSourceHash.Compute(result.Text)));
+        Assert.That(scenario.Source.ImportedAtIso8601, Is.EqualTo(writtenAt.ToString("O")));
+        Assert.That(scenario.Sequences[0].Source.SourcePath, Is.EqualTo(result.TargetPath));
+        Assert.That(scenario.Sequences[0].Source.SourceHash, Is.EqualTo(scenario.Source.SourceHash));
+
+        DestroyScenario(scenario);
+    }
+
     private static ScenarioSourceDocument MakeDocument()
     {
         var document = new ScenarioSourceDocument

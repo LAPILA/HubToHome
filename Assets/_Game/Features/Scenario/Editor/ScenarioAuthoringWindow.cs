@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -79,7 +80,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _validateSourceButton.style.marginLeft = 4;
         toolbar.Add(_validateSourceButton);
 
-        _exportSourceButton = new Button(ExportToSourcePath) { text = "원본 경로로 내보내기" };
+        _exportSourceButton = new Button(SaveToSourcePath) { text = "원본 YAML 저장" };
         _exportSourceButton.style.marginLeft = 4;
         toolbar.Add(_exportSourceButton);
 
@@ -554,12 +555,31 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         return badge;
     }
 
-    private void ExportToSourcePath()
+    private void SaveToSourcePath()
     {
         ScenarioSourceYamlExportResult result = new ScenarioSourceYamlExportCommand().ExportToSourcePath(_scenario);
         _lastExportResult = result;
         _yamlPreviewField.value = result.Text ?? string.Empty;
-        SetValidationStatus(result.Validation, result.Success ? "Source YAML 경로로 내보냈습니다." : "Source YAML 내보내기에 실패했습니다.");
+        if (result.Success)
+        {
+            Undo.RecordObject(_scenario, "시나리오 원본 YAML 저장");
+            if (_scenario != null && _scenario.Sequences != null)
+            {
+                for (int i = 0; i < _scenario.Sequences.Count; i++)
+                {
+                    if (_scenario.Sequences[i] != null)
+                    {
+                        Undo.RecordObject(_scenario.Sequences[i], "시나리오 원본 YAML 저장");
+                    }
+                }
+            }
+
+            ScenarioSourceMetadataEditorSync.ApplyExportResult(_scenario, result, DateTime.UtcNow);
+            MarkScenarioDirty(_scenario);
+            RefreshAll();
+        }
+
+        SetValidationStatus(result.Validation, result.Success ? "Source YAML을 저장하고 metadata를 갱신했습니다." : "Source YAML 저장에 실패했습니다.");
     }
 
     private void ValidateSourcePath()
@@ -720,6 +740,28 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     {
         Undo.RecordObject(sequence, undoName);
         EditorUtility.SetDirty(sequence);
+    }
+
+    private static void MarkScenarioDirty(BattleScenarioData scenario)
+    {
+        if (scenario == null)
+        {
+            return;
+        }
+
+        EditorUtility.SetDirty(scenario);
+        if (scenario.Sequences == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < scenario.Sequences.Count; i++)
+        {
+            if (scenario.Sequences[i] != null)
+            {
+                EditorUtility.SetDirty(scenario.Sequences[i]);
+            }
+        }
     }
 
     private static void DestroyTemporaryScenario(BattleScenarioData scenario)
@@ -1042,5 +1084,54 @@ public static class ScenarioAuthoringCatalogView
         }
 
         return fallback;
+    }
+}
+
+public static class ScenarioSourceMetadataEditorSync
+{
+    public static bool ApplyExportResult(
+        BattleScenarioData scenario,
+        ScenarioSourceYamlExportResult result,
+        DateTime writtenAtUtc)
+    {
+        if (scenario == null || result == null || !result.Success)
+        {
+            return false;
+        }
+
+        DateTime normalized = writtenAtUtc.Kind == DateTimeKind.Utc
+            ? writtenAtUtc
+            : writtenAtUtc.ToUniversalTime();
+        string sourcePath = string.IsNullOrWhiteSpace(result.TargetPath)
+            ? (scenario.Source != null ? scenario.Source.SourcePath : string.Empty)
+            : result.TargetPath.Trim().Replace('\\', '/');
+        string sourceHash = ScenarioSourceHash.Compute(result.Text ?? string.Empty);
+        string importedAt = normalized.ToString("O");
+
+        ApplyMetadata(scenario.Source ?? (scenario.Source = new ScenarioSourceMetadata()), sourcePath, sourceHash, importedAt);
+        if (scenario.Sequences != null)
+        {
+            for (int i = 0; i < scenario.Sequences.Count; i++)
+            {
+                ActionSequenceAsset sequence = scenario.Sequences[i];
+                if (sequence != null)
+                {
+                    ApplyMetadata(sequence.Source ?? (sequence.Source = new ScenarioSourceMetadata()), sourcePath, sourceHash, importedAt);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static void ApplyMetadata(
+        ScenarioSourceMetadata metadata,
+        string sourcePath,
+        string sourceHash,
+        string importedAt)
+    {
+        metadata.SourcePath = sourcePath ?? string.Empty;
+        metadata.SourceHash = sourceHash ?? string.Empty;
+        metadata.ImportedAtIso8601 = importedAt ?? string.Empty;
     }
 }

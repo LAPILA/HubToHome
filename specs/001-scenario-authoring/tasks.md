@@ -88,7 +88,7 @@
 - [x] Add reorder/insert/duplicate/delete/disabled-state prototype.
 - [x] Add Korean labels from Action Catalog.
 - [x] Add editor validation smoke tests where practical.
-- [ ] Add source YAML edit-back save.
+- [x] Add source YAML edit-back save.
 - [ ] Add safe runtime asset reimport/replace.
 - [ ] Commit editor.
 
