@@ -1157,7 +1157,7 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
             JObject parameters = new JObject();
             while (index < lines.Count && lines[index].Indent > indent)
             {
-                if (lines[index].Indent == indent + 2 &&
+                if (lines[index].Indent > indent &&
                     TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
                 {
                     if (key == "disabled")

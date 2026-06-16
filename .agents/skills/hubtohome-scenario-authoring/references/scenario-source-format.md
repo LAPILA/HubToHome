@@ -15,6 +15,7 @@ Runtime and editor code must depend on `IScenarioSourceParser`, not directly on 
 
 - `ScenarioSourceYamlParser` currently reads the deterministic subset emitted by `ScenarioSourceYamlWriter`. It is intentionally lightweight and not a full YAML 1.2 implementation.
 - Until a broader YamlDotNet-backed parser is installed, source files must stay within the documented shape: scalar header fields, inline string lists, `dialogues`, `audioClips`, `rules`, `sequences`, action parameter scalars/inline primitive arrays, and `parallel` child lists.
+- Action parameters may be indented deeper than the action list item, including the common 4-space style shown in this document. The lightweight parser treats any more-deeply-indented `key: value` line under an action as that action's parameter until the indentation returns to the action level or above.
 - The authoring alias `parallel:` is parsed back to runtime action ID `flow.parallel`. Do not write both forms for the same group in one source file.
 - `MissingYamlScenarioSourceParser` remains the clear failure fallback when no concrete parser is provided.
 - `ScenarioSourceImporter` can be tested with a fake parser by feeding it a `ScenarioSourceDocument`.

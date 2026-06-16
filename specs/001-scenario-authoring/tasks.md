@@ -94,9 +94,9 @@
 
 ## Phase 7 - Vertical Slice
 
-- [ ] Create sample ZEV phase-transition scenario source.
-- [ ] Generate/synchronize runtime asset.
+- [x] Create sample ZEV phase-transition scenario source.
+- [x] Generate/synchronize runtime asset.
 - [x] Validate dummy module transition slice with tests.
-- [ ] Validate sample ZEV slice with tests.
+- [x] Validate sample ZEV slice with tests.
 - [ ] Ask for Unity Editor manual validation approval before scene/play verification.
-- [ ] Commit sample slice.
+- [x] Commit sample slice.

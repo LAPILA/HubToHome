@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddda2183494d4f0f89fe0169a8ff1dc4, type: 3}
+  m_Name: ScenarioActionCatalog_ZEV_ArchitectureClone
+  m_EditorClassIdentifier: Assembly-CSharp::ActionCatalogAsset
+  CatalogId: zev_architecture_clone
+  Entries:
+  - ActionId: flow.wait
+    Category: flow
+    DisplayNameKo: "\uAE30\uB2E4\uB9AC\uAE30"
+    DescriptionKo: "\uAE30\uB2E4\uB9AC\uAE30"
+    RuntimeAdapterId: FlowWaitActionAdapter
+    Parameters: []
+    ExampleYaml: "- flow.wait:\n    duration: 0.1"
+    Disabled: 0
+  - ActionId: dialogue.wait
+    Category: dialogue
+    DisplayNameKo: "\uB300\uC0AC \uD45C\uC2DC \uD6C4 \uB300\uAE30"
+    DescriptionKo: "\uB300\uC0AC \uD45C\uC2DC \uD6C4 \uB300\uAE30"
+    RuntimeAdapterId: DialogueWaitActionAdapter
+    Parameters: []
+    ExampleYaml: "- dialogue.wait:\n    id: zev.clone.phase2_intro"
+    Disabled: 0
+  - ActionId: bgm.crossfade
+    Category: audio
+    DisplayNameKo: "BGM \uD06C\uB85C\uC2A4\uD398\uC774\uB4DC"
+    DescriptionKo: "BGM \uD06C\uB85C\uC2A4\uD398\uC774\uB4DC"
+    RuntimeAdapterId: BgmCrossfadeActionAdapter
+    Parameters: []
+    ExampleYaml: "- bgm.crossfade:\n    clip: zev_clone_phase2\n    duration: 0.8"
+    Disabled: 0
+  - ActionId: screen.fade
+    Category: screen
+    DisplayNameKo: "\uD654\uBA74 \uD398\uC774\uB4DC"
+    DescriptionKo: "\uD654\uBA74 \uD398\uC774\uB4DC"
+    RuntimeAdapterId: ScreenFadeActionAdapter
+    Parameters: []
+    ExampleYaml: "- screen.fade:\n    mode: out\n    color: black\n    duration:
+      0.25"
+    Disabled: 0
+  - ActionId: module.switch
+    Category: module
+    DisplayNameKo: "\uC804\uD22C \uBAA8\uB4C8 \uC804\uD658"
+    DescriptionKo: "\uC804\uD22C \uBAA8\uB4C8 \uC804\uD658"
+    RuntimeAdapterId: ModuleSwitchActionAdapter
+    Parameters: []
+    ExampleYaml: "- module.switch:\n    to: aim_shooter"
+    Disabled: 0
+  - ActionId: module.start
+    Category: module
+    DisplayNameKo: "\uC804\uD22C \uBAA8\uB4C8 \uC2DC\uC791"
+    DescriptionKo: "\uC804\uD22C \uBAA8\uB4C8 \uC2DC\uC791"
+    RuntimeAdapterId: ModuleStartActionAdapter
+    Parameters: []
+    ExampleYaml: "- module.start:\n    module: aim_shooter"
+    Disabled: 0
+  - ActionId: battle.flag.set
+    Category: battle
+    DisplayNameKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC124\uC815"
+    DescriptionKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC124\uC815"
+    RuntimeAdapterId: BattleFlagSetActionAdapter
+    Parameters: []
+    ExampleYaml: "- battle.flag.set:\n    flag: zev.clone.phase\n    value: shooter"
+    Disabled: 0
+  - ActionId: battle.participant.damage
+    Category: battle
+    DisplayNameKo: "\uC804\uD22C \uCC38\uAC00\uC790 \uD53C\uD574"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790 \uD53C\uD574"
+    RuntimeAdapterId: BattleParticipantDamageActionAdapter
+    Parameters: []
+    ExampleYaml: "- battle.participant.damage:\n    subject: zev_architecture_clone\n   
+      amount: 999"
+    Disabled: 0

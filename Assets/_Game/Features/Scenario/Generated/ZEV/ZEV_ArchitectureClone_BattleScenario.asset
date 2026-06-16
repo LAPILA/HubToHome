@@ -1,0 +1,163 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6356561025629056243
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: zev_clone_phase2_transition
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: zev_clone_phase2_transition
+  DisplayNameKo: 
+  Source:
+    SourcePath: Assets/_Game/Features/Scenario/Source/ZEV/zev_architecture_clone.scenario.yaml
+    SourceHash: 519489ff2b4f27b3ce2a3d6d55f6320bbabcdabde9cf40c0c99771317118df27
+    ImportedAtIso8601: 2026-06-16T15:35:36.4405970Z
+  Actions:
+  - ActionId: bgm.crossfade
+    ParametersJson: '{"clip":"zev_clone_phase2","duration":0.8}'
+    Disabled: 0
+    Children: []
+  - ActionId: dialogue.wait
+    ParametersJson: '{"id":"zev.clone.phase2_intro"}'
+    Disabled: 0
+    Children: []
+  - ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"black","duration":0.25}'
+    Disabled: 0
+    Children: []
+  - ActionId: flow.wait
+    ParametersJson: '{"duration":0.1}'
+    Disabled: 0
+    Children: []
+  - ActionId: module.switch
+    ParametersJson: '{"to":"aim_shooter"}'
+    Disabled: 0
+    Children: []
+  - ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"black","duration":0.25}'
+    Disabled: 0
+    Children: []
+  - ActionId: dialogue.wait
+    ParametersJson: '{"id":"zev.clone.shooter_start"}'
+    Disabled: 0
+    Children: []
+  - ActionId: bgm.crossfade
+    ParametersJson: '{"clip":"zev_clone_shooter_loop","duration":0.6}'
+    Disabled: 0
+    Children: []
+  - ActionId: battle.flag.set
+    ParametersJson: '{"flag":"zev.clone.phase","value":"shooter"}'
+    Disabled: 0
+    Children: []
+  - ActionId: module.start
+    ParametersJson: '{"module":"aim_shooter"}'
+    Disabled: 0
+    Children: []
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba44383cc5d14901b9bfb684b07e47c8, type: 3}
+  m_Name: ZEV_ArchitectureClone_BattleScenario
+  m_EditorClassIdentifier: Assembly-CSharp::BattleScenarioData
+  ScenarioId: zev_architecture_clone
+  TitleKo: "ZEV \uC544\uD0A4\uD14D\uCC98 \uBCF5\uC81C \uC804\uD22C"
+  PrimaryMode: battle
+  OpeningModule: turn_qte
+  MemoryKey: zev_architecture_clone
+  Source:
+    SourcePath: Assets/_Game/Features/Scenario/Source/ZEV/zev_architecture_clone.scenario.yaml
+    SourceHash: 519489ff2b4f27b3ce2a3d6d55f6320bbabcdabde9cf40c0c99771317118df27
+    ImportedAtIso8601: 2026-06-16T15:35:36.4405970Z
+  PartyIds:
+  - player
+  EnemyIds:
+  - zev_architecture_clone
+  Rules:
+  - RuleId: enter_clone_phase2
+    EventType: 1
+    Timing: 2
+    Once: 1
+    SubjectId: zev_architecture_clone
+    OutcomeId: 
+    ThresholdRatio: 0.5
+    SequenceId: zev_clone_phase2_transition
+    Disabled: 0
+  - RuleId: shooter_clone_victory
+    EventType: 4
+    Timing: 3
+    Once: 1
+    SubjectId: aim_shooter
+    OutcomeId: victory
+    ThresholdRatio: 0.5
+    SequenceId: zev_clone_shooter_victory
+    Disabled: 0
+  Sequences:
+  - {fileID: -6356561025629056243}
+  - {fileID: 1681976409109841405}
+  Dialogues:
+  - DialogueId: zev.clone.phase2_intro
+    DialogueDataId: Assets/_Game/Features/Dialogue/Data/Scenario/ZEV/ZEV_Clone_Phase2Intro.asset
+    Dialogue: {fileID: 11400000, guid: 3b1bc70590351d8408817b2d1324abfe, type: 2}
+  - DialogueId: zev.clone.shooter_start
+    DialogueDataId: Assets/_Game/Features/Dialogue/Data/Scenario/ZEV/ZEV_Clone_ShooterStart.asset
+    Dialogue: {fileID: 11400000, guid: ab740a30b00777f4ea4483e62c5d432e, type: 2}
+  - DialogueId: zev.clone.shooter_victory
+    DialogueDataId: Assets/_Game/Features/Dialogue/Data/Scenario/ZEV/ZEV_Clone_ShooterVictory.asset
+    Dialogue: {fileID: 11400000, guid: 99f09ed63cdd5dc4cbb6b5c5fa4ece01, type: 2}
+  AudioClips:
+  - AudioId: zev_clone_phase2
+    AudioClipId: Assets/_Game/Shared/Audio/CUSTOM/BGM/BOSS/Zenta_part2.wav
+    Clip: {fileID: 8300000, guid: 6a3158d35a2a6a241bd67bfb8622371e, type: 3}
+  - AudioId: zev_clone_shooter_loop
+    AudioClipId: Assets/_Game/Shared/Audio/CUSTOM/BGM/BOSS/Zenta.wav
+    Clip: {fileID: 8300000, guid: cb1d33b06c9c049488335f81b890d6c5, type: 3}
+  - AudioId: zev_clone_victory
+    AudioClipId: Assets/_Game/Shared/Audio/CUSTOM/BGM/BOSS/Zenta_part1.wav
+    Clip: {fileID: 8300000, guid: 861b23652179354408af65bf7ab5a63d, type: 3}
+--- !u!114 &1681976409109841405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: zev_clone_shooter_victory
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: zev_clone_shooter_victory
+  DisplayNameKo: 
+  Source:
+    SourcePath: Assets/_Game/Features/Scenario/Source/ZEV/zev_architecture_clone.scenario.yaml
+    SourceHash: 519489ff2b4f27b3ce2a3d6d55f6320bbabcdabde9cf40c0c99771317118df27
+    ImportedAtIso8601: 2026-06-16T15:35:36.4405970Z
+  Actions:
+  - ActionId: dialogue.wait
+    ParametersJson: '{"id":"zev.clone.shooter_victory"}'
+    Disabled: 0
+    Children: []
+  - ActionId: bgm.crossfade
+    ParametersJson: '{"clip":"zev_clone_victory","duration":0.4}'
+    Disabled: 0
+    Children: []
+  - ActionId: battle.participant.damage
+    ParametersJson: '{"subject":"zev_architecture_clone","amount":999}'
+    Disabled: 0
+    Children: []
+  - ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"white","duration":0.5}'
+    Disabled: 0
+    Children: []

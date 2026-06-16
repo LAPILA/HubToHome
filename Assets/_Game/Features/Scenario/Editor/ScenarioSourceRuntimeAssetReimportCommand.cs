@@ -221,7 +221,6 @@ public sealed class ScenarioSourceRuntimeAssetReimportCommand
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
         sequence.name = string.IsNullOrWhiteSpace(sequenceId) ? "ActionSequence" : sequenceId.Trim();
-        Undo.RegisterCreatedObjectUndo(sequence, UndoName);
 
         string ownerPath = AssetDatabase.GetAssetPath(owner);
         if (!string.IsNullOrWhiteSpace(ownerPath))
