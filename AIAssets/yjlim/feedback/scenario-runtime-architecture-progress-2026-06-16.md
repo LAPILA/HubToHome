@@ -88,9 +88,9 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
   - 액션 복제
   - 액션 켜기/끄기
   - 액션 삭제
-- 아직 남은 에디터 작업
-  - Action Catalog 기반 액션 선택기
+  - Action Catalog 기반 액션 선택
   - row별 validation badge
+- 아직 남은 에디터 작업
   - source YAML로 edit-back 저장
   - 안전한 runtime asset reimport/replace
 
@@ -103,4 +103,5 @@ QTE 전투 모듈화 이후, 첫 비-QTE 모듈 ID인 `aim_shooter`를 기본 �
 - `BattleAimShooterCombatSession` target validation / damage command / victory/failure outcome 테스트 추가
 - 더미 모듈 vertical slice 테스트 추가
 - YAML writer/parser/importer 왕복 테스트 추가
+- Action Catalog picker label / row validation badge helper 테스트 추가
 - Unity MCP validate는 현재 Editor instance 미연결로 미실행

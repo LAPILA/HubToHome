@@ -86,8 +86,10 @@
 - [x] Create UI Toolkit EditorWindow.
 - [x] Add overview/rules/sequences/catalog/validation/sync sections.
 - [x] Add reorder/insert/duplicate/delete/disabled-state prototype.
-- [ ] Add Korean labels from Action Catalog.
-- [ ] Add editor validation smoke tests where practical.
+- [x] Add Korean labels from Action Catalog.
+- [x] Add editor validation smoke tests where practical.
+- [ ] Add source YAML edit-back save.
+- [ ] Add safe runtime asset reimport/replace.
 - [ ] Commit editor.
 
 ## Phase 7 - Vertical Slice

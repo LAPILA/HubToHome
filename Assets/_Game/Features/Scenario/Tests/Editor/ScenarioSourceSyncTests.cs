@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -434,6 +435,50 @@ public class ScenarioSourceSyncTests
 
         Assert.That(ScenarioSourceHash.IsStale(metadata, "new"), Is.True);
         Assert.That(ScenarioSourceHash.IsStale(metadata, "old"), Is.False);
+    }
+
+    [Test]
+    public void ScenarioAuthoringCatalogViewBuildsKoreanPickerLabels()
+    {
+        ActionCatalogAsset catalog = ScriptableObject.CreateInstance<ActionCatalogAsset>();
+        catalog.Entries.Add(new ActionCatalogEntry
+        {
+            ActionId = "dialogue.wait",
+            DisplayNameKo = "대사 재생",
+            Category = "dialogue",
+            RuntimeAdapterId = "dialogue.wait",
+            ExampleYaml = "- dialogue.wait:\n    id: zev.intro"
+        });
+        catalog.Entries.Add(new ActionCatalogEntry
+        {
+            ActionId = "disabled.action",
+            DisplayNameKo = "비활성 액션",
+            Disabled = true
+        });
+
+        List<string> labels = ScenarioAuthoringCatalogView.BuildActionPickerLabels(catalog);
+
+        Assert.That(labels, Is.EqualTo(new[] { "대사 재생 (dialogue.wait)" }));
+        Assert.That(
+            ScenarioAuthoringCatalogView.ResolveActionIdFromPickerLabel(labels[0]),
+            Is.EqualTo("dialogue.wait"));
+
+        UnityEngine.Object.DestroyImmediate(catalog);
+    }
+
+    [Test]
+    public void ScenarioAuthoringCatalogViewReturnsMostSevereMessageForActionRow()
+    {
+        var validation = new ScenarioValidationResult();
+        validation.AddWarning("scenario.warning", "warning", "phase2.actions[0]");
+        validation.AddError("scenario.error", "error", "phase2.actions[0]");
+
+        ScenarioValidationMessage message = ScenarioAuthoringCatalogView.FindMessageForObject(
+            validation,
+            "phase2.actions[0]");
+
+        Assert.That(message.Code, Is.EqualTo("scenario.error"));
+        Assert.That(message.Severity, Is.EqualTo(ScenarioValidationSeverity.Error));
     }
 
     private static ScenarioSourceDocument MakeDocument()

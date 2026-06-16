@@ -13,9 +13,11 @@
 - `ScenarioAuthoringWindow`를 보강했습니다.
   - 원본 YAML 검증 버튼 추가
   - 시퀀스 액션 삽입 / 위아래 이동 / 복제 / 켜기 / 끄기 / 삭제 추가
+  - 선택한 Action Catalog에서 한국어 표시명 기반 액션 선택 추가
+  - row별 validation badge 표시 추가
 
 ## 주의
 
 - 이번 parser는 범용 YAML parser가 아니라 프로젝트 writer가 내보내는 deterministic subset용입니다.
-- 커스텀 에디터는 아직 catalog 기반 액션 선택기, row별 validation badge, source YAML edit-back 저장까지는 지원하지 않습니다.
+- 커스텀 에디터는 아직 source YAML edit-back 저장과 안전한 runtime asset reimport/replace까지는 지원하지 않습니다.
 - Unity MCP 테스트 실행은 Editor instance 미연결로 실패했습니다. 컴파일과 C# LSP 진단은 통과했습니다.

@@ -396,6 +396,24 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         actionIdField.tooltip = "예: dialogue.wait, module.switch, battle.flag.set";
         row.Add(actionIdField);
 
+        List<string> pickerLabels = ScenarioAuthoringCatalogView.BuildActionPickerLabels(_catalog);
+        if (pickerLabels.Count > 0)
+        {
+            var picker = new PopupField<string>("카탈로그", pickerLabels, 0);
+            picker.style.marginLeft = 4;
+            picker.style.minWidth = 190;
+            picker.RegisterValueChangedCallback(evt =>
+            {
+                string actionId = ScenarioAuthoringCatalogView.ResolveActionIdFromPickerLabel(evt.newValue);
+                if (!string.IsNullOrWhiteSpace(actionId))
+                {
+                    actionIdField.value = actionId;
+                }
+            });
+            actionIdField.value = ScenarioAuthoringCatalogView.ResolveActionIdFromPickerLabel(picker.value);
+            row.Add(picker);
+        }
+
         Button addButton = new Button(() => AddAction(sequence, sequence.Actions, actionIdField))
         {
             text = "삽입"
@@ -409,6 +427,16 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         ActionSequenceAsset owner,
         List<ScenarioActionData> actions,
         int depth)
+    {
+        AddActionRows(panel, owner, actions, depth, owner != null ? owner.SequenceId : string.Empty);
+    }
+
+    private void AddActionRows(
+        VisualElement panel,
+        ActionSequenceAsset owner,
+        List<ScenarioActionData> actions,
+        int depth,
+        string objectIdPrefix)
     {
         if (actions == null)
         {
@@ -424,6 +452,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
                 continue;
             }
 
+            string objectId = objectIdPrefix + ".actions[" + i + "]";
             string disabled = action.Disabled ? "비활성 / " : string.Empty;
             VisualElement row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
@@ -432,10 +461,17 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             row.style.marginLeft = 8 + depth * 16;
             panel.Add(row);
 
-            Label label = new Label("- " + disabled + EmptyDash(action.ActionId));
+            Label label = new Label("- " + disabled + FormatActionLabel(action));
             label.style.whiteSpace = WhiteSpace.Normal;
             label.style.flexGrow = 1;
             row.Add(label);
+
+            ScenarioValidationMessage validationMessage = FindValidationMessage(objectId);
+            if (validationMessage != null)
+            {
+                Label badge = MakeValidationBadge(validationMessage);
+                row.Add(badge);
+            }
 
             int index = i;
             Button upButton = MakeSmallButton("위", () => MoveAction(owner, actions, index, -1));
@@ -452,7 +488,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
             if (action.Children != null && action.Children.Count > 0)
             {
-                AddActionRows(panel, owner, action.Children, depth + 1);
+                AddActionRows(panel, owner, action.Children, depth + 1, objectId);
             }
         }
     }
@@ -463,6 +499,59 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         button.style.marginLeft = 3;
         button.style.minWidth = 34;
         return button;
+    }
+
+    private string FormatActionLabel(ScenarioActionData action)
+    {
+        if (action == null)
+        {
+            return "비어 있는 액션";
+        }
+
+        ActionCatalogEntry entry = _catalog != null ? _catalog.FindById(action.ActionId) : null;
+        if (entry != null && !string.IsNullOrWhiteSpace(entry.DisplayNameKo))
+        {
+            return entry.DisplayNameKo.Trim() + " (" + EmptyDash(action.ActionId) + ")";
+        }
+
+        return EmptyDash(action.ActionId);
+    }
+
+    private ScenarioValidationMessage FindValidationMessage(string objectId)
+    {
+        if (_catalog == null || _scenario == null || string.IsNullOrWhiteSpace(objectId))
+        {
+            return null;
+        }
+
+        ScenarioValidationResult validation = ScenarioCatalogValidator.ValidateBattleScenario(_scenario, _catalog);
+        return ScenarioAuthoringCatalogView.FindMessageForObject(validation, objectId);
+    }
+
+    private static Label MakeValidationBadge(ScenarioValidationMessage message)
+    {
+        Label badge = new Label(FormatSeverity(message.Severity));
+        badge.tooltip = message.Code + ": " + message.Message;
+        badge.style.marginLeft = 4;
+        badge.style.marginRight = 2;
+        badge.style.paddingLeft = 4;
+        badge.style.paddingRight = 4;
+        badge.style.unityFontStyleAndWeight = FontStyle.Bold;
+        badge.style.color = Color.white;
+        switch (message.Severity)
+        {
+            case ScenarioValidationSeverity.Error:
+                badge.style.backgroundColor = new Color(0.72f, 0.16f, 0.16f);
+                break;
+            case ScenarioValidationSeverity.Warning:
+                badge.style.backgroundColor = new Color(0.64f, 0.42f, 0.12f);
+                break;
+            default:
+                badge.style.backgroundColor = new Color(0.18f, 0.38f, 0.62f);
+                break;
+        }
+
+        return badge;
     }
 
     private void ExportToSourcePath()
@@ -875,5 +964,83 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             default:
                 return "정보";
         }
+    }
+}
+
+public static class ScenarioAuthoringCatalogView
+{
+    public static List<string> BuildActionPickerLabels(ActionCatalogAsset catalog)
+    {
+        var labels = new List<string>();
+        if (catalog == null || catalog.Entries == null)
+        {
+            return labels;
+        }
+
+        for (int i = 0; i < catalog.Entries.Count; i++)
+        {
+            ActionCatalogEntry entry = catalog.Entries[i];
+            if (entry == null || entry.Disabled || string.IsNullOrWhiteSpace(entry.ActionId))
+            {
+                continue;
+            }
+
+            string displayName = string.IsNullOrWhiteSpace(entry.DisplayNameKo)
+                ? entry.ActionId.Trim()
+                : entry.DisplayNameKo.Trim();
+            labels.Add(displayName + " (" + entry.ActionId.Trim() + ")");
+        }
+
+        return labels;
+    }
+
+    public static string ResolveActionIdFromPickerLabel(string label)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            return string.Empty;
+        }
+
+        string trimmed = label.Trim();
+        int open = trimmed.LastIndexOf('(');
+        int close = trimmed.LastIndexOf(')');
+        if (open >= 0 && close > open)
+        {
+            return trimmed.Substring(open + 1, close - open - 1).Trim();
+        }
+
+        return trimmed;
+    }
+
+    public static ScenarioValidationMessage FindMessageForObject(
+        ScenarioValidationResult validation,
+        string objectId)
+    {
+        if (validation == null || validation.Messages == null || string.IsNullOrWhiteSpace(objectId))
+        {
+            return null;
+        }
+
+        ScenarioValidationMessage fallback = null;
+        for (int i = 0; i < validation.Messages.Count; i++)
+        {
+            ScenarioValidationMessage message = validation.Messages[i];
+            if (message == null || message.ObjectId != objectId)
+            {
+                continue;
+            }
+
+            if (message.Severity == ScenarioValidationSeverity.Error)
+            {
+                return message;
+            }
+
+            if (fallback == null)
+            {
+                fallback = message;
+            }
+        }
+
+        return fallback;
     }
 }
