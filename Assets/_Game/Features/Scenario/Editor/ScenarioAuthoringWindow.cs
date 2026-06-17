@@ -11,7 +11,7 @@ using UnityEngine.UIElements;
 
 public sealed class ScenarioAuthoringWindow : EditorWindow
 {
-    private const string WindowTitle = "시나리오 저작";
+    private const string WindowTitle = "시퀀스 메이커";
 
     private ObjectField _scenarioField;
     private ObjectField _catalogField;
@@ -42,7 +42,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private int _selectedActionIndex = -1;
     private string _selectedActionObjectId = string.Empty;
 
-    [MenuItem("HubToHome/시나리오/시나리오 저작 창")]
+    [MenuItem("HubToHome/시나리오/시퀀스 메이커")]
     public static void Open()
     {
         ScenarioAuthoringWindow window = GetWindow<ScenarioAuthoringWindow>();
@@ -67,7 +67,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         root.style.paddingTop = 10;
         root.style.paddingBottom = 10;
 
-        Label title = new Label("시나리오 저작");
+        Label title = new Label("시퀀스 메이커");
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         title.style.fontSize = 18;
         title.style.marginBottom = 8;

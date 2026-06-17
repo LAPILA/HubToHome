@@ -103,14 +103,14 @@ The authored scenario layer for a battle sequence, especially when the battle ch
 _Avoid_: using Skill Data as the owner of whole-battle story progression.
 
 **Scenario Source**:
-The human/AI-readable authoring source for Encounter Definitions, Battle Scenario Data, Battle Event Rules, and Action Sequences.
+The human/AI-readable YAML source for Encounter Definitions, Battle Scenario Data, Battle Event Rules, and Action Sequences.
 _Avoid_: treating generated Unity asset serialization as the primary authored scenario text.
 
 **Scenario Runtime Asset**:
 The Unity-facing runtime representation synchronized from Scenario Source and consumed by game systems.
 _Avoid_: making humans edit runtime asset serialization directly to author scenario flow.
 
-**Scenario Authoring Editor**:
+**Sequence Maker**:
 The Korean human-facing Unity editor surface for viewing, validating, reordering, inserting, and lightly editing Scenario Source-backed flow.
 _Avoid_: exposing raw GUIDs, fileIDs, or managed reference internals as the normal editing experience.
 

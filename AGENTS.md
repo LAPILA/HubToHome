@@ -115,15 +115,15 @@ Use `CONTEXT.md` terms consistently.
 - `Action Sequence`: authored sequence of gameplay/presentation actions.
 - `Action Director`: global runtime that executes Action Sequences.
 - `Presentation Service`: dialogue, UI, camera, audio, and VFX services callable from any Primary Mode or Game Module.
-- `Scenario Source`: human/AI-readable YAML authoring source for Encounter Definition, Battle Scenario Data, Battle Event Rules, and Action Sequences.
+- `Scenario Source`: human/AI-readable YAML source for Encounter Definition, Battle Scenario Data, Battle Event Rules, and Action Sequences.
 - `Scenario Runtime Asset`: generated or synchronized Unity ScriptableObject representation used by runtime systems.
 - `Action Catalog`: discoverable contract for scenario action grammar, Korean editor labels, parameters, examples, validation, and runtime adapters.
 
-## Scenario Authoring Skill
+## Scenario Pipeline Skill
 
-- Use `.agents/skills/hubtohome-scenario-authoring/SKILL.md` for any work that changes scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, scenario import/export, generated ScriptableObjects, or the custom scenario editor.
+- Use `.agents/skills/hubtohome-scenario-authoring/SKILL.md` for any work that changes scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, scenario import/export, generated ScriptableObjects, or the Sequence Maker editor.
 - Keep the skill current while working. If a new action, YAML field, validation rule, editor behavior, runtime adapter, or synchronization rule is introduced, update the skill or its references before finishing.
-- Scenario YAML is the authoring source of truth; ScriptableObjects are the Unity runtime representation; the custom editor is the Korean human-facing editing surface.
+- Scenario YAML is the source of truth; ScriptableObjects are the Unity runtime representation; the custom editor is the Korean human-facing Sequence Maker surface.
 - Humans should not need to directly edit Unity `.asset` YAML or managed-reference data for scenario flow.
 
 ## Security and Local Machine Rules

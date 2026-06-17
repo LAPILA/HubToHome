@@ -1,4 +1,4 @@
-# Scenario Authoring Editor UX Design
+# Sequence Maker UX Design
 
 > Date: 2026-06-18
 > Phase: implement
@@ -6,7 +6,7 @@
 
 ## Goal
 
-Make the Korean Scenario Authoring Editor comfortable for a human scenario author who needs to read, adjust, validate, save, and reimport battle scenario flow without directly editing Unity serialized YAML or memorizing action IDs.
+Make the Korean Sequence Maker comfortable for a human sequence designer who needs to read, adjust, validate, save, and reimport battle scenario flow without directly editing Unity serialized YAML or memorizing action IDs.
 
 ## Context
 
@@ -19,7 +19,7 @@ The runtime architecture is now validated for:
 - `Action Catalog` as discoverable action grammar.
 - `Action Director` and adapters as execution path.
 
-The remaining bottleneck is human authoring. The current `ScenarioAuthoringWindow` can already show overview/rules/sequences, preview YAML, validate source, export source, reimport runtime assets, and perform basic action list edits. Its main usability weakness is that the user must still understand IDs and JSON-like parameter blobs.
+The remaining bottleneck is human editing. The current `ScenarioAuthoringWindow` can already show overview/rules/sequences, preview YAML, validate source, export source, reimport runtime assets, and perform basic action list edits. Its main usability weakness is that the user must still understand IDs and JSON-like parameter blobs.
 
 ## UX Direction
 

@@ -1,15 +1,15 @@
-# 시나리오 저작 파이프라인 결정 메모
+# 시나리오 제작 파이프라인 결정 메모
 
 > 기준일: 2026-06-14  
-> 목적: AI와 사람이 함께 관리할 Action Sequence / Battle Scenario Data 저작 규격 확정
+> 목적: AI와 사람이 함께 관리할 Action Sequence / Battle Scenario Data 제작 규격 확정
 
 ## 결론
 
-시나리오 저작은 `YAML Scenario Source + ScriptableObject Scenario Runtime Asset + Korean Scenario Authoring Editor` 하이브리드로 진행한다.
+시나리오 제작은 `YAML Scenario Source + ScriptableObject Scenario Runtime Asset + Sequence Maker` 하이브리드로 진행한다.
 
 ```mermaid
 flowchart LR
-    Human["사람: 에디터에서 읽기/순서변경/삽입"] --> Editor["Scenario Authoring Editor"]
+    Human["사람: 에디터에서 읽기/순서변경/삽입"] --> Editor["Sequence Maker"]
     AI["AI: YAML/Action Catalog 작성"] --> Source["Scenario Source YAML"]
     Editor --> Source
     Source --> Validate["검증 / ID 해석 / import"]
@@ -22,7 +22,7 @@ flowchart LR
 
 - 순수 `ScriptableObject`는 Unity 참조에는 좋지만 AI diff와 사람이 읽는 리뷰에는 불리하다.
 - 순수 `JSON/XML/YAML` 런타임은 Unity 오브젝트 참조와 Inspector 안정성이 약하다.
-- Unity `.asset` YAML은 GUID, fileID, managed reference 정보가 섞여 사람이 보는 저작 포맷으로 부적합하다.
+- Unity `.asset` YAML은 GUID, fileID, managed reference 정보가 섞여 사람이 보는 편집 포맷으로 부적합하다.
 - 하이브리드 구조는 AI가 안정적으로 고칠 수 있는 텍스트와 Unity가 안정적으로 실행할 수 있는 에셋을 분리한다.
 
 ## 작업자가 반드시 읽을 스킬
@@ -41,7 +41,7 @@ flowchart LR
 
 - 새 액션을 만들면 Action Catalog 항목도 같이 추가한다.
 - 새 YAML 필드, 검증 규칙, import/export 규칙, editor behavior, runtime adapter가 생기면 스킬도 같은 변경 단위로 갱신한다.
-- 사람이 직접 Unity `.asset` YAML을 고치는 방식은 기본 저작 방식이 아니다.
+- 사람이 직접 Unity `.asset` YAML을 고치는 방식은 기본 편집 방식이 아니다.
 - 커스텀 에디터는 자연스러운 한국어 화면이어야 하며, 사람이 최소한 순서 변경과 중간 삽입은 안전하게 할 수 있어야 한다.
 - 기존 `SkillData.ActionTimeline`과 `SkillActionBlock`은 전역 시나리오 문법의 루트가 아니라, QTE/스킬 실행을 새 Action Sequence 체계에 연결하기 위한 레거시/adapter 대상으로 본다.
 
@@ -126,10 +126,10 @@ flowchart LR
   - `ScenarioSourceYamlExportCommand`가 editor UI에서 호출할 text/file export 경로를 제공한다. 이 command는 `ScenarioSourceExporter -> ScenarioSourceYamlWriter`를 재사용하고, 런타임 asset metadata는 직접 mutate하지 않는다.
   - 아직 YamlDotNet parser round-trip, source reimport, light edit sync는 연결하지 않았다. 이후 에디터 저장/편집 경로를 확장할 때도 별도 writer/file save path를 만들지 말고 `ScenarioSourceYamlExportCommand`를 호출해야 한다.
 - `ScenarioAuthoringWindow` 1차를 추가했다.
-  - 메뉴는 `HubToHome/시나리오/시나리오 저작 창`이다.
+  - 메뉴는 `HubToHome/시나리오/시퀀스 메이커`이다.
   - 현재는 `BattleScenarioData` 선택, optional `ActionCatalogAsset` 선택, 개요/규칙/시퀀스 요약, source stale 상태, catalog validation 메시지, YAML 미리보기, source path export, 다른 경로 export를 제공한다.
   - 아직 사람이 직접 순서 변경/삽입/복제/삭제/필드 수정하는 편집 기능은 없다. 이 기능은 parser-backed reimport와 row별 validation badge가 붙은 뒤 확장해야 한다.
-- `ScenarioCatalogValidator.ValidateBattleScenario(...)`를 추가해 `dialogue.wait` ID 검증을 저작 단계에서 잡을 수 있게 했다.
+- `ScenarioCatalogValidator.ValidateBattleScenario(...)`를 추가해 `dialogue.wait` ID 검증을 편집 단계에서 잡을 수 있게 했다.
   - 단일 `ValidateSequence(...)`는 action ID만 볼 수 있으므로 scenario-level registry가 필요한 검증에는 부족하다.
   - battle scenario 전체 검증은 catalog 검증, sequence action 검증, `BattleScenarioData.Dialogues` 기반 dialogue ID 검증을 함께 수행한다.
   - `flow.parallel` children에 들어간 중첩 `dialogue.wait`도 재귀적으로 검증한다.
@@ -234,10 +234,10 @@ flowchart LR
 ## 다음 구현 후보
 
 1. YamlDotNet-backed `IScenarioSourceParser` 구현
-2. Scenario Authoring Window에 stale-state badge, validation panel, Action Catalog 연결 추가
-3. Scenario Authoring Window에서 reorder/insert/duplicate/delete/light edit를 source sync와 함께 구현
+2. Sequence Maker에 stale-state badge, validation panel, Action Catalog 연결 추가
+3. Sequence Maker에서 reorder/insert/duplicate/delete/light edit를 source sync와 함께 구현
 4. 현재 QTE 전투의 턴/행동 선택/적 행동 상태를 단계적으로 `IGameModuleRuntime` 뒤로 옮기는 `turn_qte` concrete module 심화
 5. Battle Scenario Execution Gate의 module-transition 중 턴 진행 차단을 실제 sample scenario로 검증
-6. Scenario Source YAML export command를 Korean Scenario Authoring Editor save/export 버튼에 연결하고 `audioClips` 매핑을 저장/편집하는 경로 구현
+6. Scenario Source YAML export command를 Sequence Maker save/export 버튼에 연결하고 `audioClips` 매핑을 저장/편집하는 경로 구현
 6. `battle.skill.timeline`을 실제 scenario sequence 안에서 사용하는 ZEV 전환 샘플 작성
-7. UI Toolkit 기반 Scenario Authoring Editor 1차 구현
+7. UI Toolkit 기반 Sequence Maker 1차 구현

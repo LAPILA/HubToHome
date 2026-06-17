@@ -1,8 +1,8 @@
-# 2026-06-18 시나리오 에디터 UX 패치노트
+# 2026-06-18 시퀀스 메이커 UX 패치노트
 
 ## 요약
 
-시나리오 저작 창을 사람이 읽고 편집하기 쉬운 3패널 보드형 에디터로 개선했습니다.
+시퀀스 메이커를 사람이 읽고 편집하기 쉬운 3패널 보드형 에디터로 개선했습니다.
 
 ## 변경점
 
@@ -19,17 +19,18 @@
   - 런타임 에셋 안전 반영
   - 순서로 실행합니다.
 - ZEV 아키텍처 클론 샘플 카탈로그에 기본 파라미터 metadata를 추가했습니다.
+- Unity 메뉴와 창 제목은 `시퀀스 메이커`로 통일했습니다.
 
 ## 사용 위치
 
-- Unity 메뉴: `HubToHome/시나리오/시나리오 저작 창`
+- Unity 메뉴: `HubToHome/시나리오/시퀀스 메이커`
 - 샘플 카탈로그: `Assets/_Game/Features/Scenario/Data/Catalogs/ScenarioActionCatalog_ZEV_ArchitectureClone.asset`
 
 ## 검증
 
 - Unity MCP EditMode tests: 32/32 통과
 - `dotnet build HubToHome.sln --no-restore -v:minimal` 통과
-- 시나리오 저작 창 메뉴 실행 시 콘솔 오류 없음
+- 시퀀스 메이커 메뉴 실행 시 콘솔 오류 없음
 - ZEV 아키텍처 클론 샘플 에셋 재생성 성공
 
 ## 남은 일

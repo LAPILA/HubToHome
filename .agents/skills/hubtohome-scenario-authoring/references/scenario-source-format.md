@@ -1,6 +1,6 @@
 # Scenario Source Format
 
-Use YAML as HubToHome's authoring source for scenario flow. Runtime ScriptableObject assets are synchronized from this source; they are not the primary hand-authored format.
+Use YAML as HubToHome's source format for scenario flow. Runtime ScriptableObject assets are synchronized from this source; they are not the primary hand-edited format.
 
 ## File Role
 
@@ -110,7 +110,7 @@ sequences:
         duration: 0.8
 ```
 
-## Authoring Rules
+## Editing Rules
 
 - Use stable IDs, not Unity GUIDs, in YAML.
 - Resolve IDs through catalogs or registries during import.

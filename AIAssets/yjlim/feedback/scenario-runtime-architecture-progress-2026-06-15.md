@@ -2,7 +2,7 @@
 
 ## 결론
 
-YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 더 중요한 축은 전투 안에서 Game Module이 바뀌어도 현재 모듈 상태와 전투 공통 상태가 유지되는 runtime contract입니다.
+YAML 편집기/시퀀스 메이커는 후순위로 미루는 것이 맞습니다. 지금 더 중요한 축은 전투 안에서 Game Module이 바뀌어도 현재 모듈 상태와 전투 공통 상태가 유지되는 runtime contract입니다.
 
 이번 작업에서는 그중 첫 번째 결함을 닫았습니다.
 
@@ -57,7 +57,7 @@ YAML 편집기/저작 UI는 후순위로 미루는 것이 맞습니다. 지금 �
 - Scenario Source sync도 이 결과 조건을 보존하게 했습니다.
   - source document, importer, exporter, YAML writer가 `OutcomeId`를 잃지 않습니다.
   - YAML 미리보기는 모듈 완료 규칙을 `event: module.completed`, `module`, `outcome` 형태로 보여줍니다.
-  - 한국어 시나리오 저작 창의 규칙 요약에도 모듈 결과가 표시됩니다.
+  - 한국어 시퀀스 메이커의 규칙 요약에도 모듈 결과가 표시됩니다.
 - QTE 전투 모듈화도 시작했습니다.
   - 기존 전투 시작 루틴이 직접 `BattleState.TurnCalc`로 들어가지 않고, 이제 `IGameModuleActionRunner.Start(openingModule)`를 경유합니다.
   - 현재 opening module은 기본적으로 `turn_qte`입니다.

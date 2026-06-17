@@ -39,6 +39,6 @@ These cases were added after the first bridge implementation to cover more than 
 4. A fuller QTE `IGameModuleRuntime` can suspend player action selection, target selection, and QTE input while handing off to shooter/boxing without losing Battle Session State.
 5. Encounter Memory import/export suppresses `PerEncounterMemory` rules after save-bound memory is restored.
 6. YAML Scenario Source import rejects unknown dialogue, module, actor, audio, and UI target IDs.
-7. Korean Scenario Authoring Editor can reorder or insert a sequence action while preserving source/runtime sync metadata.
+7. Sequence Maker can reorder or insert a sequence action while preserving source/runtime sync metadata.
 8. A sample ZEV phase transition scenario runs from HP threshold to dialogue wait to module-start placeholder in EditMode.
 9. Battle Scenario Execution Gate prevents turn advancement while a module-transition Action Sequence is still running.

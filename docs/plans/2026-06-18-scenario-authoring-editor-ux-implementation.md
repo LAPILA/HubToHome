@@ -1,10 +1,10 @@
-# Scenario Authoring Editor UX Implementation Plan
+# Sequence Maker UX Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Upgrade the Korean Scenario Authoring Editor from a basic list view into a usable flow-board editor with selectable action rows, parameter editing, validation feedback, and safe save/reimport workflow.
+**Goal:** Upgrade the Korean Sequence Maker from a basic list view into a usable flow-board editor with selectable action rows, parameter editing, validation feedback, and safe save/reimport workflow.
 
-**Architecture:** Keep `ScenarioAuthoringWindow` as the UI Toolkit EditorWindow and reuse existing source/export/reimport commands. Add small pure helper methods/classes for catalog labels and JSON parameter editing so tests can cover the risky authoring behavior without opening Unity editor UI.
+**Architecture:** Keep `ScenarioAuthoringWindow` as the UI Toolkit EditorWindow and reuse existing source/export/reimport commands. Add small pure helper methods/classes for catalog labels and JSON parameter editing so tests can cover the risky editing behavior without opening Unity editor UI.
 
 **Tech Stack:** Unity 6, C#, UI Toolkit EditorWindow, ScriptableObject, Newtonsoft.Json.Linq, NUnit EditMode tests.
 

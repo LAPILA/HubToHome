@@ -1,4 +1,4 @@
-# Scenario Authoring Architecture Implementation Plan
+# Scenario Pipeline Architecture Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -14,7 +14,7 @@
 
 - Use `$hubtohome-scenario-authoring` for all scenario source, catalog, editor, and sync work.
 - Use `$improve-codebase-architecture` vocabulary: Module, Interface, Implementation, Depth, Seam, Adapter, Leverage, Locality.
-- Use `$Unity UI Toolkit` before implementing the Scenario Authoring Editor.
+- Use `$Unity UI Toolkit` before implementing the Sequence Maker.
 - Read `CONTEXT.md`, `docs/adr/0001-battle-scenario-rules-and-save-scope.md`, and `docs/adr/0002-scenario-authoring-source-and-sync.md`.
 - Do not enter Play Mode, force refresh/reimport, save open scenes, or edit `.unity` files without explicit approval.
 
@@ -563,7 +563,7 @@ git add Assets/_Game/Core/Scripts/SaveData.cs Assets/_Game/Core/Scripts/GlobalDa
 git commit -m "feat: persist encounter memory"
 ```
 
-## Task 9: Korean Scenario Authoring Editor
+## Task 9: Sequence Maker
 
 **Files:**
 - Create: `Assets/_Game/Features/Scenario/Editor/ScenarioAuthoringWindow.cs`
