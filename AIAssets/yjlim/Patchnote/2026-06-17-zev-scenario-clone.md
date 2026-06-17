@@ -38,3 +38,16 @@
 - 기존 `ZEV_Prefab.prefab`도 수정하지 않았습니다. 새 clone prefab을 별도 배치해 비교합니다.
 - clone encounter를 시작하도록 기존 scene에 자동 배치하지 않았습니다. 비교 위치나 별도 test scene 방식을 정한 뒤 배치하는 것이 안전합니다.
 - `aim_shooter`는 현재 architecture shell입니다. 실제 조준 입력, UI, 투사체/VFX는 후속 구현입니다.
+
+## 추가 테스트 씬
+
+- 새 테스트 씬을 추가했습니다.
+  - `Assets/_Game/Scenes/Tests/ZEV_ArchitectureClone_TestScene.unity`
+- 이 씬은 기존 `OverworldScene` 복사본을 기반으로 하며, 원본 ZEV 대신 `ZEV_ArchitectureClone_Prefab`을 배치합니다.
+- Play Mode에서 자동 probe가 다음을 확인합니다.
+  - clone prefab이 `zev_architecture_clone` EnemyData / BattleScenarioData로 전투를 시작함
+  - BattleScene으로 전환됨
+  - BattleManager가 `zev_architecture_clone` scenario runtime을 생성함
+  - opening module이 `turn_qte`로 시작함
+- 검증 캡처:
+  - `Assets/_Game/Scenes/Tests/Captures/ZEV_ArchitectureClone_TestScene_BattleScene.png`

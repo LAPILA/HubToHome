@@ -331,7 +331,7 @@
         <dl>
           <dt>Branch</dt><dd>codex/action-sequence-architecture-review</dd>
           <dt>Work</dt><dd>Clone entry and visual handoff</dd>
-          <dt>Tests</dt><dd>EditMode 27/27</dd>
+          <dt>Tests</dt><dd>EditMode 27/27 + Play Probe</dd>
           <dt>Scope</dt><dd>Original ZEV untouched</dd>
         </dl>
       </aside>
@@ -429,6 +429,18 @@
     </section>
 
     <section>
+      <h2>Play Mode 테스트 씬</h2>
+      <div class="flow">
+        <div class="node done"><small>1. Test Scene</small><h3>Overworld 복제</h3><p><code>Assets/_Game/Scenes/Tests/ZEV_ArchitectureClone_TestScene.unity</code>를 만들고 기존 씬은 보존했습니다.</p></div>
+        <div class="node done"><small>2. Clone Entry</small><h3>Prefab 배치</h3><p>원본 ZEV 위치에 <code>ZEV_ArchitectureClone_Prefab</code>을 배치했습니다.</p></div>
+        <div class="node done"><small>3. Probe</small><h3>Encounter 시작</h3><p>Play Mode에서 clone EnemyData와 BattleScenarioData를 읽고 실제 <code>BattleEncounterService</code>를 호출합니다.</p></div>
+        <div class="node done"><small>4. BattleScene</small><h3>Runtime 확인</h3><p><code>BattleManager</code>가 <code>zev_architecture_clone</code> scenario runtime과 <code>turn_qte</code> module로 시작함을 확인했습니다.</p></div>
+        <div class="node blue"><small>5. Capture</small><h3>증거 이미지</h3><p><code>Assets/_Game/Scenes/Tests/Captures/ZEV_ArchitectureClone_TestScene_BattleScene.png</code></p></div>
+        <div class="node next"><small>6. Next</small><h3>HP Trigger</h3><p>실제 HP 50% 이하 연출과 <code>aim_shooter</code> 전환은 shooter gameplay 구현 뒤 확인합니다.</p></div>
+      </div>
+    </section>
+
+    <section>
       <h2>최종 완료 로그</h2>
       <div class="loggrid">
         <div class="logcard done">
@@ -437,7 +449,7 @@
         </div>
         <div class="logcard blue">
           <h3>에디터 검증</h3>
-          <p>Unity MCP에서 sample builder 메뉴를 실행했고, clone assets 재생성과 테스트 27/27 통과를 확인했습니다.</p>
+          <p>Unity MCP에서 sample builder 메뉴를 실행했고, clone assets 재생성, 테스트 27/27 통과, Play Mode probe 통과를 확인했습니다.</p>
         </div>
         <div class="logcard done">
           <h3>안전장치</h3>
