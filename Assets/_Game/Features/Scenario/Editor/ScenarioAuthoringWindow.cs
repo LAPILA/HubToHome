@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -18,16 +21,26 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private VisualElement _rulesPanel;
     private VisualElement _sequencesPanel;
     private VisualElement _validationPanel;
+    private VisualElement _timelinePanel;
+    private VisualElement _inspectorPanel;
+    private VisualElement _syncPanel;
     private TextField _yamlPreviewField;
     private Button _refreshButton;
     private Button _validateSourceButton;
     private Button _reimportSourceButton;
     private Button _exportSourceButton;
+    private Button _saveAndReimportButton;
     private Button _exportAsButton;
 
     private BattleScenarioData _scenario;
     private ActionCatalogAsset _catalog;
     private ScenarioSourceYamlExportResult _lastExportResult;
+    private ScenarioValidationResult _cachedCatalogValidation;
+    private ActionSequenceAsset _selectedSequence;
+    private ScenarioActionData _selectedAction;
+    private List<ScenarioActionData> _selectedActionList;
+    private int _selectedActionIndex = -1;
+    private string _selectedActionObjectId = string.Empty;
 
     [MenuItem("HubToHome/시나리오/시나리오 저작 창")]
     public static void Open()
@@ -89,6 +102,10 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _exportSourceButton.style.marginLeft = 4;
         toolbar.Add(_exportSourceButton);
 
+        _saveAndReimportButton = new Button(SaveAndReimportSourcePath) { text = "저장 및 반영" };
+        _saveAndReimportButton.style.marginLeft = 4;
+        toolbar.Add(_saveAndReimportButton);
+
         _exportAsButton = new Button(ExportAs) { text = "다른 경로로 내보내기" };
         _exportAsButton.style.marginLeft = 4;
         toolbar.Add(_exportAsButton);
@@ -114,36 +131,46 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _statusLabel.style.whiteSpace = WhiteSpace.Normal;
         root.Add(_statusLabel);
 
-        var split = new TwoPaneSplitView(0, 360, TwoPaneSplitViewOrientation.Horizontal);
-        split.style.flexGrow = 1;
-        root.Add(split);
+        var board = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal);
+        board.style.flexGrow = 1;
+        root.Add(board);
 
-        ScrollView summaryScroll = new ScrollView();
-        summaryScroll.style.flexGrow = 1;
-        summaryScroll.style.paddingRight = 8;
-        split.Add(summaryScroll);
+        ScrollView flowScroll = new ScrollView();
+        flowScroll.style.flexGrow = 1;
+        flowScroll.style.paddingRight = 8;
+        board.Add(flowScroll);
 
-        _overviewPanel = MakeSection(summaryScroll, "개요");
-        _rulesPanel = MakeSection(summaryScroll, "규칙");
-        _sequencesPanel = MakeSection(summaryScroll, "시퀀스");
-        _validationPanel = MakeSection(summaryScroll, "동기화 / 검증");
+        _overviewPanel = MakeSection(flowScroll, "개요");
+        _rulesPanel = MakeSection(flowScroll, "규칙");
+        _sequencesPanel = MakeSection(flowScroll, "시퀀스 목록");
+        _validationPanel = MakeSection(flowScroll, "검증 요약");
 
-        VisualElement yamlPanel = new VisualElement();
-        yamlPanel.style.flexDirection = FlexDirection.Column;
-        yamlPanel.style.flexGrow = 1;
-        split.Add(yamlPanel);
+        var workArea = new TwoPaneSplitView(0, 430, TwoPaneSplitViewOrientation.Horizontal);
+        workArea.style.flexGrow = 1;
+        board.Add(workArea);
 
-        Label yamlTitle = new Label("YAML 미리보기");
-        yamlTitle.style.unityFontStyleAndWeight = FontStyle.Bold;
-        yamlTitle.style.marginBottom = 6;
-        yamlPanel.Add(yamlTitle);
+        ScrollView timelineScroll = new ScrollView();
+        timelineScroll.style.flexGrow = 1;
+        timelineScroll.style.paddingLeft = 8;
+        timelineScroll.style.paddingRight = 8;
+        workArea.Add(timelineScroll);
 
-        _yamlPreviewField = new TextField();
+        _timelinePanel = MakeSection(timelineScroll, "액션 타임라인");
+
+        ScrollView inspectorScroll = new ScrollView();
+        inspectorScroll.style.flexGrow = 1;
+        inspectorScroll.style.paddingLeft = 8;
+        workArea.Add(inspectorScroll);
+
+        _inspectorPanel = MakeSection(inspectorScroll, "액션 인스펙터");
+        _syncPanel = MakeSection(inspectorScroll, "YAML / 동기화");
+
+        _yamlPreviewField = new TextField("YAML 미리보기");
         _yamlPreviewField.multiline = true;
         _yamlPreviewField.isReadOnly = true;
-        _yamlPreviewField.style.flexGrow = 1;
+        _yamlPreviewField.style.minHeight = 180;
         _yamlPreviewField.style.whiteSpace = WhiteSpace.Normal;
-        yamlPanel.Add(_yamlPreviewField);
+        _syncPanel.Add(_yamlPreviewField);
     }
 
     private static VisualElement MakeSection(VisualElement parent, string title)
@@ -198,6 +225,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _validateSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
         _reimportSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
         _exportSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
+        _saveAndReimportButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
     }
 
     private void RefreshSummary()
@@ -206,15 +234,31 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         ClearPanel(_rulesPanel);
         ClearPanel(_sequencesPanel);
         ClearPanel(_validationPanel);
+        ClearPanel(_timelinePanel);
+        ClearPanel(_inspectorPanel);
+        ClearPanel(_syncPanel);
+        if (_syncPanel != null && _yamlPreviewField != null)
+        {
+            _syncPanel.Add(_yamlPreviewField);
+        }
 
         if (_scenario == null)
         {
             AddInfo(_overviewPanel, "Battle Scenario Data를 선택하세요.");
             AddInfo(_validationPanel, "검증할 시나리오가 없습니다.");
+            AddInfo(_timelinePanel, "시퀀스를 선택하면 액션 타임라인이 표시됩니다.");
+            AddInfo(_inspectorPanel, "액션을 선택하면 파라미터를 편집할 수 있습니다.");
             _sourcePathField.value = string.Empty;
+            _cachedCatalogValidation = null;
+            ClearSelection();
             SetStatus("시나리오 에셋을 선택하면 개요와 YAML 미리보기가 표시됩니다.", MessageType.Info);
             return;
         }
+
+        _cachedCatalogValidation = _catalog != null
+            ? ScenarioCatalogValidator.ValidateBattleScenario(_scenario, _catalog)
+            : null;
+        EnsureSelection();
 
         _sourcePathField.value = GetSourcePath();
         AddInfo(_overviewPanel, "ID", EmptyDash(_scenario.ScenarioId));
@@ -228,6 +272,8 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
         RenderRules();
         RenderSequences();
+        RenderSelectedSequenceTimeline();
+        RenderActionInspector();
         RenderSyncAndValidation();
     }
 
@@ -307,29 +353,275 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
                 title += " / " + sequence.DisplayNameKo.Trim();
             }
 
-            AddInfo(_sequencesPanel, title, CountActions(sequence.Actions) + "개 액션");
-            AddSequenceControls(_sequencesPanel, sequence);
-            AddActionRows(_sequencesPanel, sequence, sequence.Actions, 0);
+            bool selected = sequence == _selectedSequence;
+            Button row = new Button(() => SelectSequence(sequence))
+            {
+                text = (selected ? "▶ " : string.Empty) + title + " · " + CountActions(sequence.Actions) + "개 액션"
+            };
+            row.style.marginBottom = 4;
+            row.style.unityTextAlign = TextAnchor.MiddleLeft;
+            row.style.whiteSpace = WhiteSpace.Normal;
+            if (selected)
+            {
+                row.style.backgroundColor = new Color(0.16f, 0.30f, 0.42f);
+            }
+
+            _sequencesPanel.Add(row);
         }
+    }
+
+    private void RenderSelectedSequenceTimeline()
+    {
+        if (_selectedSequence == null)
+        {
+            AddInfo(_timelinePanel, "선택된 시퀀스가 없습니다.");
+            return;
+        }
+
+        string title = EmptyDash(_selectedSequence.SequenceId);
+        if (!string.IsNullOrWhiteSpace(_selectedSequence.DisplayNameKo))
+        {
+            title += " / " + _selectedSequence.DisplayNameKo.Trim();
+        }
+
+        AddInfo(_timelinePanel, title, CountActions(_selectedSequence.Actions) + "개 액션");
+        AddSequenceControls(_timelinePanel, _selectedSequence);
+        AddActionRows(_timelinePanel, _selectedSequence, _selectedSequence.Actions, 0);
+    }
+
+    private void RenderActionInspector()
+    {
+        if (_selectedAction == null)
+        {
+            AddInfo(_inspectorPanel, "액션 row를 선택하면 상세 정보와 파라미터 편집기가 표시됩니다.");
+            return;
+        }
+
+        ActionCatalogEntry entry = _catalog != null ? _catalog.FindById(_selectedAction.ActionId) : null;
+        AddInfo(_inspectorPanel, "액션", FormatActionLabel(_selectedAction));
+        AddInfo(_inspectorPanel, "ID", EmptyDash(_selectedAction.ActionId));
+        AddInfo(_inspectorPanel, "카테고리", entry != null ? EmptyDash(entry.Category) : "카탈로그 미등록");
+        AddInfo(_inspectorPanel, "상태", _selectedAction.Disabled ? "비활성" : "활성");
+        if (entry != null && !string.IsNullOrWhiteSpace(entry.DescriptionKo))
+        {
+            AddInfo(_inspectorPanel, "설명", entry.DescriptionKo.Trim());
+        }
+
+        ScenarioValidationMessage validationMessage = FindValidationMessage(_selectedActionObjectId);
+        if (validationMessage != null)
+        {
+            Label badge = MakeValidationBadge(validationMessage);
+            badge.style.marginBottom = 6;
+            _inspectorPanel.Add(badge);
+            AddInfo(_inspectorPanel, "검증", validationMessage.Code + " / " + validationMessage.Message);
+        }
+
+        AddParameterEditor(entry);
+        AddAdvancedJsonEditor();
+    }
+
+    private void AddParameterEditor(ActionCatalogEntry entry)
+    {
+        VisualElement section = new VisualElement();
+        section.style.marginTop = 8;
+        section.style.marginBottom = 8;
+        _inspectorPanel.Add(section);
+
+        Label title = new Label("파라미터");
+        title.style.unityFontStyleAndWeight = FontStyle.Bold;
+        title.style.marginBottom = 4;
+        section.Add(title);
+
+        List<string> names = ScenarioAuthoringParameterView.GetParameterNames(_selectedAction, entry);
+        if (names.Count == 0)
+        {
+            AddInfo(section, "파라미터가 없습니다. 고급 JSON에서 직접 추가할 수 있습니다.");
+            return;
+        }
+
+        for (int i = 0; i < names.Count; i++)
+        {
+            string parameterName = names[i];
+            ActionCatalogParameter parameter = ScenarioAuthoringParameterView.FindParameter(entry, parameterName);
+            string label = parameter != null && !string.IsNullOrWhiteSpace(parameter.DisplayNameKo)
+                ? parameter.DisplayNameKo.Trim() + " (" + parameterName + ")"
+                : parameterName;
+            string currentValue = ScenarioAuthoringParameterView.GetParameterValue(_selectedAction, parameterName);
+
+            TextField field = new TextField(label);
+            field.value = currentValue;
+            field.isDelayed = true;
+            field.style.marginBottom = 4;
+            field.tooltip = parameter != null
+                ? parameter.DescriptionKo
+                : "카탈로그 파라미터 정의가 없어 현재 JSON 값을 기준으로 표시합니다.";
+            string capturedName = parameterName;
+            ActionCatalogParameter capturedParameter = parameter;
+            field.RegisterValueChangedCallback(evt => ApplyParameterValue(capturedName, evt.newValue, capturedParameter));
+            section.Add(field);
+
+            if (parameter != null && parameter.Required && string.IsNullOrWhiteSpace(currentValue))
+            {
+                Label warning = new Label("필수 값입니다.");
+                warning.style.color = new Color(1f, 0.78f, 0.35f);
+                warning.style.marginBottom = 4;
+                section.Add(warning);
+            }
+        }
+    }
+
+    private void AddAdvancedJsonEditor()
+    {
+        Foldout foldout = new Foldout { text = "고급 JSON" };
+        foldout.value = false;
+        foldout.style.marginTop = 8;
+        _inspectorPanel.Add(foldout);
+
+        TextField jsonField = new TextField();
+        jsonField.multiline = true;
+        jsonField.value = ScenarioAuthoringParameterView.FormatJson(_selectedAction);
+        jsonField.style.minHeight = 96;
+        jsonField.style.whiteSpace = WhiteSpace.Normal;
+        foldout.Add(jsonField);
+
+        Button applyButton = new Button(() =>
+        {
+            if (_selectedSequence == null || _selectedAction == null)
+            {
+                return;
+            }
+
+            string error;
+            if (!ScenarioAuthoringParameterView.TrySetRawJson(_selectedAction, jsonField.value, out error))
+            {
+                SetStatus("JSON 적용 실패: " + error, MessageType.Error);
+                return;
+            }
+
+            RecordSequenceChange(_selectedSequence, "시나리오 액션 JSON 편집");
+            RefreshAll();
+            SetStatus("액션 JSON을 적용했습니다.", MessageType.Info);
+        })
+        {
+            text = "JSON 적용"
+        };
+        applyButton.style.marginTop = 4;
+        foldout.Add(applyButton);
+    }
+
+    private void SelectSequence(ActionSequenceAsset sequence)
+    {
+        _selectedSequence = sequence;
+        _selectedAction = null;
+        _selectedActionList = null;
+        _selectedActionIndex = -1;
+        _selectedActionObjectId = string.Empty;
+        RefreshAll();
+    }
+
+    private void SelectAction(
+        ActionSequenceAsset owner,
+        List<ScenarioActionData> actions,
+        int index,
+        ScenarioActionData action,
+        string objectId)
+    {
+        _selectedSequence = owner;
+        _selectedActionList = actions;
+        _selectedActionIndex = index;
+        _selectedAction = action;
+        _selectedActionObjectId = objectId ?? string.Empty;
+        RefreshAll();
+    }
+
+    private void EnsureSelection()
+    {
+        if (_scenario == null || _scenario.Sequences == null || _scenario.Sequences.Count == 0)
+        {
+            ClearSelection();
+            return;
+        }
+
+        if (_selectedSequence == null || !_scenario.Sequences.Contains(_selectedSequence))
+        {
+            _selectedSequence = _scenario.Sequences[0];
+            _selectedAction = null;
+            _selectedActionList = null;
+            _selectedActionIndex = -1;
+            _selectedActionObjectId = string.Empty;
+            return;
+        }
+
+        if (_selectedActionList == null
+            || _selectedActionIndex < 0
+            || _selectedActionIndex >= _selectedActionList.Count
+            || _selectedActionList[_selectedActionIndex] != _selectedAction)
+        {
+            _selectedAction = null;
+            _selectedActionList = null;
+            _selectedActionIndex = -1;
+            _selectedActionObjectId = string.Empty;
+        }
+    }
+
+    private void ClearSelection()
+    {
+        _selectedSequence = null;
+        _selectedAction = null;
+        _selectedActionList = null;
+        _selectedActionIndex = -1;
+        _selectedActionObjectId = string.Empty;
+    }
+
+    private void ApplyParameterValue(
+        string parameterName,
+        string rawValue,
+        ActionCatalogParameter parameter)
+    {
+        if (_selectedSequence == null || _selectedAction == null)
+        {
+            return;
+        }
+
+        string error;
+        if (!ScenarioAuthoringParameterView.SetParameterValue(
+            _selectedAction,
+            parameterName,
+            rawValue,
+            parameter,
+            out error))
+        {
+            SetStatus("파라미터 적용 실패: " + error, MessageType.Error);
+            return;
+        }
+
+        RecordSequenceChange(_selectedSequence, "시나리오 액션 파라미터 편집");
+        RefreshAll();
+        SetStatus("파라미터를 적용했습니다. 원본 YAML 저장 또는 저장 및 반영을 실행하세요.", MessageType.Info);
     }
 
     private void RenderSyncAndValidation()
     {
-        AddInfo(_validationPanel, "Source", GetSourceSyncStatus());
+        string sourceSyncStatus = GetSourceSyncStatus();
+        AddInfo(_validationPanel, "Source", sourceSyncStatus);
+        AddInfo(_syncPanel, "Source", sourceSyncStatus);
+        AddInfo(_syncPanel, "경로", EmptyDash(GetSourcePath()));
 
         if (_lastExportResult != null && _lastExportResult.Validation != null)
         {
             AddValidationRows(_validationPanel, "YAML Export", _lastExportResult.Validation);
+            AddValidationRows(_syncPanel, "YAML Export", _lastExportResult.Validation);
         }
 
         if (_catalog == null)
         {
             AddInfo(_validationPanel, "Action Catalog", "선택되지 않아 카탈로그 기반 검증을 생략했습니다.");
+            AddInfo(_syncPanel, "Action Catalog", "선택되지 않음");
             return;
         }
 
-        ScenarioValidationResult catalogValidation = ScenarioCatalogValidator.ValidateBattleScenario(_scenario, _catalog);
-        AddValidationRows(_validationPanel, "Catalog", catalogValidation);
+        AddValidationRows(_validationPanel, "Catalog", _cachedCatalogValidation);
+        AddValidationRows(_syncPanel, "Catalog", _cachedCatalogValidation);
     }
 
     private string GetSourceSyncStatus()
@@ -466,6 +758,17 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             row.style.alignItems = Align.Center;
             row.style.marginBottom = 3;
             row.style.marginLeft = 8 + depth * 16;
+            row.style.paddingTop = 3;
+            row.style.paddingBottom = 3;
+            row.style.paddingLeft = 4;
+            row.style.paddingRight = 4;
+            if (action == _selectedAction)
+            {
+                row.style.backgroundColor = new Color(0.12f, 0.28f, 0.40f);
+            }
+
+            int index = i;
+            row.RegisterCallback<MouseDownEvent>(_ => SelectAction(owner, actions, index, action, objectId));
             panel.Add(row);
 
             Label label = new Label("- " + disabled + FormatActionLabel(action));
@@ -480,7 +783,6 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
                 row.Add(badge);
             }
 
-            int index = i;
             Button upButton = MakeSmallButton("위", () => MoveAction(owner, actions, index, -1));
             upButton.SetEnabled(index > 0);
             row.Add(upButton);
@@ -526,13 +828,12 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private ScenarioValidationMessage FindValidationMessage(string objectId)
     {
-        if (_catalog == null || _scenario == null || string.IsNullOrWhiteSpace(objectId))
+        if (_cachedCatalogValidation == null || string.IsNullOrWhiteSpace(objectId))
         {
             return null;
         }
 
-        ScenarioValidationResult validation = ScenarioCatalogValidator.ValidateBattleScenario(_scenario, _catalog);
-        return ScenarioAuthoringCatalogView.FindMessageForObject(validation, objectId);
+        return ScenarioAuthoringCatalogView.FindMessageForObject(_cachedCatalogValidation, objectId);
     }
 
     private static Label MakeValidationBadge(ScenarioValidationMessage message)
@@ -661,6 +962,59 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         SetValidationStatus(result.Validation, "원본 YAML을 런타임 에셋에 반영하지 못했습니다.");
     }
 
+    private void SaveAndReimportSourcePath()
+    {
+        if (_scenario == null)
+        {
+            SetStatus("저장할 Battle Scenario Data를 선택하세요.", MessageType.Warning);
+            return;
+        }
+
+        string sourcePath = GetSourcePath();
+        if (string.IsNullOrWhiteSpace(sourcePath))
+        {
+            SetStatus("저장 및 반영할 Source YAML 경로가 없습니다.", MessageType.Warning);
+            return;
+        }
+
+        ScenarioSourceYamlExportResult exportResult = new ScenarioSourceYamlExportCommand().ExportToSourcePath(_scenario);
+        _lastExportResult = exportResult;
+        _yamlPreviewField.value = exportResult.Text ?? string.Empty;
+        if (!exportResult.Success)
+        {
+            SetValidationStatus(exportResult.Validation, "Source YAML 저장에 실패했습니다.");
+            return;
+        }
+
+        ScenarioSourceMetadataEditorSync.ApplyExportResult(_scenario, exportResult, DateTime.UtcNow);
+        MarkScenarioDirty(_scenario);
+
+        var command = new ScenarioSourceRuntimeAssetReimportCommand();
+        ScenarioSourceRuntimeAssetReimportResult reimportResult = command.ReimportFromSourcePath(
+            _scenario,
+            _catalog,
+            DateTime.UtcNow);
+
+        RefreshAll();
+        if (!reimportResult.Success)
+        {
+            SetValidationStatus(reimportResult.Validation, "Source YAML은 저장했지만 런타임 에셋 반영에 실패했습니다.");
+            return;
+        }
+
+        string message = "Source YAML 저장 후 런타임 에셋에 반영했습니다. 기존 시퀀스 "
+            + reimportResult.ReusedSequenceCount
+            + "개 재사용, 새 시퀀스 "
+            + reimportResult.CreatedSequenceCount
+            + "개 생성";
+        if (reimportResult.DetachedSequenceCount > 0)
+        {
+            message += ", 제외된 기존 시퀀스 " + reimportResult.DetachedSequenceCount + "개";
+        }
+
+        SetValidationStatus(reimportResult.Validation, message + ".");
+    }
+
     private void AddAction(
         ActionSequenceAsset owner,
         List<ScenarioActionData> actions,
@@ -679,11 +1033,18 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         }
 
         RecordSequenceChange(owner, "시나리오 액션 삽입");
-        actions.Add(new ScenarioActionData
+        ActionCatalogEntry entry = _catalog != null ? _catalog.FindById(actionId) : null;
+        var action = new ScenarioActionData
         {
             ActionId = actionId,
-            ParametersJson = "{}"
-        });
+            ParametersJson = ScenarioAuthoringParameterView.CreateDefaultParameterJson(entry)
+        };
+        actions.Add(action);
+        _selectedSequence = owner;
+        _selectedActionList = actions;
+        _selectedActionIndex = actions.Count - 1;
+        _selectedAction = action;
+        _selectedActionObjectId = owner.SequenceId + ".actions[" + _selectedActionIndex + "]";
         actionIdField.value = string.Empty;
         RefreshAll();
     }
@@ -704,6 +1065,12 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         ScenarioActionData action = actions[index];
         actions[index] = actions[target];
         actions[target] = action;
+        if (_selectedAction == action)
+        {
+            _selectedActionIndex = target;
+            _selectedActionObjectId = owner.SequenceId + ".actions[" + target + "]";
+        }
+
         RefreshAll();
     }
 
@@ -718,7 +1085,13 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         }
 
         RecordSequenceChange(owner, "시나리오 액션 복제");
-        actions.Insert(index + 1, CloneAction(actions[index]));
+        ScenarioActionData clone = CloneAction(actions[index]);
+        actions.Insert(index + 1, clone);
+        _selectedSequence = owner;
+        _selectedActionList = actions;
+        _selectedActionIndex = index + 1;
+        _selectedAction = clone;
+        _selectedActionObjectId = owner.SequenceId + ".actions[" + _selectedActionIndex + "]";
         RefreshAll();
     }
 
@@ -745,6 +1118,14 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         }
 
         RecordSequenceChange(owner, "시나리오 액션 삭제");
+        if (_selectedAction == actions[index])
+        {
+            _selectedAction = null;
+            _selectedActionList = null;
+            _selectedActionIndex = -1;
+            _selectedActionObjectId = string.Empty;
+        }
+
         actions.RemoveAt(index);
         RefreshAll();
     }
@@ -1121,6 +1502,276 @@ public static class ScenarioAuthoringCatalogView
         }
 
         return fallback;
+    }
+}
+
+public static class ScenarioAuthoringParameterView
+{
+    public static List<string> GetParameterNames(
+        ScenarioActionData action,
+        ActionCatalogEntry entry)
+    {
+        var names = new List<string>();
+        if (entry != null && entry.Parameters != null)
+        {
+            for (int i = 0; i < entry.Parameters.Count; i++)
+            {
+                ActionCatalogParameter parameter = entry.Parameters[i];
+                if (parameter == null || string.IsNullOrWhiteSpace(parameter.Name))
+                {
+                    continue;
+                }
+
+                AddUnique(names, parameter.Name.Trim());
+            }
+        }
+
+        JObject json = ParseOrNew(action);
+        foreach (JProperty property in json.Properties())
+        {
+            AddUnique(names, property.Name);
+        }
+
+        return names;
+    }
+
+    public static ActionCatalogParameter FindParameter(
+        ActionCatalogEntry entry,
+        string parameterName)
+    {
+        if (entry == null || entry.Parameters == null || string.IsNullOrWhiteSpace(parameterName))
+        {
+            return null;
+        }
+
+        for (int i = 0; i < entry.Parameters.Count; i++)
+        {
+            ActionCatalogParameter parameter = entry.Parameters[i];
+            if (parameter != null && parameter.Name == parameterName)
+            {
+                return parameter;
+            }
+        }
+
+        return null;
+    }
+
+    public static string GetParameterValue(
+        ScenarioActionData action,
+        string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(parameterName))
+        {
+            return string.Empty;
+        }
+
+        JObject json = ParseOrNew(action);
+        JToken token;
+        if (!json.TryGetValue(parameterName, out token) || token == null || token.Type == JTokenType.Null)
+        {
+            return string.Empty;
+        }
+
+        if (token.Type == JTokenType.String)
+        {
+            return token.Value<string>() ?? string.Empty;
+        }
+
+        return token.ToString(Formatting.None);
+    }
+
+    public static bool SetParameterValue(
+        ScenarioActionData action,
+        string parameterName,
+        string rawValue,
+        ActionCatalogParameter parameter,
+        out string error)
+    {
+        error = string.Empty;
+        if (action == null)
+        {
+            error = "액션이 없습니다.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(parameterName))
+        {
+            error = "파라미터 이름이 없습니다.";
+            return false;
+        }
+
+        JObject json = ParseOrNew(action);
+        JToken value;
+        if (!TryCreateToken(rawValue, parameter, out value, out error))
+        {
+            return false;
+        }
+
+        json[parameterName.Trim()] = value;
+        action.ParametersJson = json.ToString(Formatting.None);
+        return true;
+    }
+
+    public static bool TrySetRawJson(
+        ScenarioActionData action,
+        string rawJson,
+        out string error)
+    {
+        error = string.Empty;
+        if (action == null)
+        {
+            error = "액션이 없습니다.";
+            return false;
+        }
+
+        try
+        {
+            JObject json = string.IsNullOrWhiteSpace(rawJson)
+                ? new JObject()
+                : JObject.Parse(rawJson);
+            action.ParametersJson = json.ToString(Formatting.None);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error = exception.Message;
+            return false;
+        }
+    }
+
+    public static string FormatJson(ScenarioActionData action)
+    {
+        return ParseOrNew(action).ToString(Formatting.Indented);
+    }
+
+    public static string CreateDefaultParameterJson(ActionCatalogEntry entry)
+    {
+        var json = new JObject();
+        if (entry == null || entry.Parameters == null)
+        {
+            return "{}";
+        }
+
+        for (int i = 0; i < entry.Parameters.Count; i++)
+        {
+            ActionCatalogParameter parameter = entry.Parameters[i];
+            if (parameter == null || string.IsNullOrWhiteSpace(parameter.Name))
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(parameter.DefaultValue))
+            {
+                continue;
+            }
+
+            string error;
+            JToken value;
+            if (TryCreateToken(parameter.DefaultValue, parameter, out value, out error))
+            {
+                json[parameter.Name.Trim()] = value;
+            }
+        }
+
+        return json.ToString(Formatting.None);
+    }
+
+    private static bool TryCreateToken(
+        string rawValue,
+        ActionCatalogParameter parameter,
+        out JToken value,
+        out string error)
+    {
+        error = string.Empty;
+        string type = parameter != null && !string.IsNullOrWhiteSpace(parameter.Type)
+            ? parameter.Type.Trim().ToLowerInvariant()
+            : string.Empty;
+        string normalized = rawValue ?? string.Empty;
+
+        if (type.Contains("int"))
+        {
+            int intValue;
+            if (!int.TryParse(normalized, out intValue))
+            {
+                error = "정수 값이어야 합니다.";
+                value = JValue.CreateNull();
+                return false;
+            }
+
+            value = new JValue(intValue);
+            return true;
+        }
+
+        if (type.Contains("float") || type.Contains("number"))
+        {
+            float floatValue;
+            if (!float.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out floatValue))
+            {
+                error = "숫자 값이어야 합니다.";
+                value = JValue.CreateNull();
+                return false;
+            }
+
+            value = new JValue(floatValue);
+            return true;
+        }
+
+        if (type.Contains("bool"))
+        {
+            bool boolValue;
+            if (!bool.TryParse(normalized, out boolValue))
+            {
+                error = "true 또는 false 값이어야 합니다.";
+                value = JValue.CreateNull();
+                return false;
+            }
+
+            value = new JValue(boolValue);
+            return true;
+        }
+
+        if (type.Contains("[]"))
+        {
+            var array = new JArray();
+            string[] parts = normalized.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < parts.Length; i++)
+            {
+                array.Add(parts[i].Trim());
+            }
+
+            value = array;
+            return true;
+        }
+
+        value = new JValue(normalized);
+        return true;
+    }
+
+    private static JObject ParseOrNew(ScenarioActionData action)
+    {
+        if (action == null || string.IsNullOrWhiteSpace(action.ParametersJson))
+        {
+            return new JObject();
+        }
+
+        try
+        {
+            return JObject.Parse(action.ParametersJson);
+        }
+        catch
+        {
+            return new JObject();
+        }
+    }
+
+    private static void AddUnique(List<string> names, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || names.Contains(name))
+        {
+            return;
+        }
+
+        names.Add(name);
     }
 }
 

@@ -292,8 +292,66 @@ public static class ZevArchitectureCloneSampleBuilder
             DescriptionKo = displayNameKo,
             RuntimeAdapterId = runtimeAdapterId,
             ExampleYaml = exampleYaml,
-            Parameters = new List<ActionCatalogParameter>()
+            Parameters = BuildParameters(actionId)
         });
+    }
+
+    private static List<ActionCatalogParameter> BuildParameters(string actionId)
+    {
+        var parameters = new List<ActionCatalogParameter>();
+        switch (actionId)
+        {
+            case "flow.wait":
+                parameters.Add(Parameter("duration", "Float", "시간", "기다릴 시간(초)입니다.", false, "0.1"));
+                break;
+            case "dialogue.wait":
+                parameters.Add(Parameter("id", "String", "대화 ID", "Scenario Source dialogues에 등록된 안정적인 대화 ID입니다.", true, string.Empty));
+                break;
+            case "bgm.crossfade":
+                parameters.Add(Parameter("clip", "String", "BGM ID", "Scenario Source audioClips에 등록된 BGM ID입니다.", true, string.Empty));
+                parameters.Add(Parameter("duration", "Float", "전환 시간", "크로스페이드 시간(초)입니다.", false, "0.8"));
+                break;
+            case "screen.fade":
+                parameters.Add(Parameter("mode", "String", "방향", "out 또는 in 같은 페이드 방향입니다.", true, "out"));
+                parameters.Add(Parameter("color", "String", "색상", "black, white 같은 페이드 색상 ID입니다.", false, "black"));
+                parameters.Add(Parameter("duration", "Float", "시간", "페이드 시간(초)입니다.", false, "0.25"));
+                break;
+            case "module.switch":
+                parameters.Add(Parameter("to", "String", "전환 대상", "전환할 Game Module ID입니다.", true, "aim_shooter"));
+                break;
+            case "module.start":
+                parameters.Add(Parameter("module", "String", "시작 모듈", "시작할 Game Module ID입니다.", true, "aim_shooter"));
+                break;
+            case "battle.flag.set":
+                parameters.Add(Parameter("flag", "String", "플래그", "전투 중 공유할 battle flag ID입니다.", true, string.Empty));
+                parameters.Add(Parameter("value", "String", "값", "저장할 flag 값입니다.", false, "true"));
+                break;
+            case "battle.participant.damage":
+                parameters.Add(Parameter("subject", "String", "대상", "피해를 받을 전투 참가자 ID입니다.", true, string.Empty));
+                parameters.Add(Parameter("amount", "Integer", "피해량", "1 이상의 순수 피해량입니다.", true, "1"));
+                break;
+        }
+
+        return parameters;
+    }
+
+    private static ActionCatalogParameter Parameter(
+        string name,
+        string type,
+        string displayNameKo,
+        string descriptionKo,
+        bool required,
+        string defaultValue)
+    {
+        return new ActionCatalogParameter
+        {
+            Name = name,
+            Type = type,
+            DisplayNameKo = displayNameKo,
+            DescriptionKo = descriptionKo,
+            Required = required,
+            DefaultValue = defaultValue
+        };
     }
 
     private static void EnsureFolder(string folderPath)

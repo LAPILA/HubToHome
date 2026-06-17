@@ -483,6 +483,110 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void ScenarioAuthoringParameterViewCombinesCatalogAndJsonKeys()
+    {
+        var action = new ScenarioActionData
+        {
+            ParametersJson = "{\"id\":\"zev.intro\",\"duration\":0.5}"
+        };
+        var entry = new ActionCatalogEntry();
+        entry.Parameters.Add(new ActionCatalogParameter
+        {
+            Name = "id",
+            Type = "String",
+            Required = true
+        });
+        entry.Parameters.Add(new ActionCatalogParameter
+        {
+            Name = "mode",
+            Type = "String"
+        });
+
+        List<string> names = ScenarioAuthoringParameterView.GetParameterNames(action, entry);
+
+        Assert.That(names, Is.EqualTo(new[] { "id", "mode", "duration" }));
+    }
+
+    [Test]
+    public void ScenarioAuthoringParameterViewSetsTypedValues()
+    {
+        var action = new ScenarioActionData
+        {
+            ParametersJson = "{\"id\":\"zev.intro\"}"
+        };
+        string error;
+
+        bool floatResult = ScenarioAuthoringParameterView.SetParameterValue(
+            action,
+            "duration",
+            "0.75",
+            new ActionCatalogParameter { Name = "duration", Type = "Float" },
+            out error);
+        bool boolResult = ScenarioAuthoringParameterView.SetParameterValue(
+            action,
+            "enabled",
+            "true",
+            new ActionCatalogParameter { Name = "enabled", Type = "Bool" },
+            out error);
+        bool intResult = ScenarioAuthoringParameterView.SetParameterValue(
+            action,
+            "amount",
+            "12",
+            new ActionCatalogParameter { Name = "amount", Type = "Integer" },
+            out error);
+
+        Assert.That(floatResult, Is.True);
+        Assert.That(boolResult, Is.True);
+        Assert.That(intResult, Is.True);
+        Assert.That(action.ParametersJson, Does.Contain("\"duration\":0.75"));
+        Assert.That(action.ParametersJson, Does.Contain("\"enabled\":true"));
+        Assert.That(action.ParametersJson, Does.Contain("\"amount\":12"));
+        Assert.That(ScenarioAuthoringParameterView.GetParameterValue(action, "id"), Is.EqualTo("zev.intro"));
+    }
+
+    [Test]
+    public void ScenarioAuthoringParameterViewRepairsInvalidJsonWhenSettingParameter()
+    {
+        var action = new ScenarioActionData
+        {
+            ParametersJson = "{not json"
+        };
+        string error;
+
+        bool result = ScenarioAuthoringParameterView.SetParameterValue(
+            action,
+            "clip",
+            "zev_phase2",
+            new ActionCatalogParameter { Name = "clip", Type = "String" },
+            out error);
+
+        Assert.That(result, Is.True);
+        Assert.That(action.ParametersJson, Is.EqualTo("{\"clip\":\"zev_phase2\"}"));
+    }
+
+    [Test]
+    public void ScenarioAuthoringParameterViewCreatesDefaultJsonFromCatalogParameters()
+    {
+        var entry = new ActionCatalogEntry();
+        entry.Parameters.Add(new ActionCatalogParameter
+        {
+            Name = "module",
+            Type = "String",
+            DefaultValue = "aim_shooter"
+        });
+        entry.Parameters.Add(new ActionCatalogParameter
+        {
+            Name = "duration",
+            Type = "Float",
+            DefaultValue = "0.25"
+        });
+
+        string json = ScenarioAuthoringParameterView.CreateDefaultParameterJson(entry);
+
+        Assert.That(json, Is.EqualTo("{\"module\":\"aim_shooter\",\"duration\":0.25}"));
+    }
+
+    [Test]
     public void ScenarioActionChildrenUseManagedReferencesToAvoidUnitySerializationDepthErrors()
     {
         FieldInfo childrenField = typeof(ScenarioActionData).GetField(nameof(ScenarioActionData.Children));

@@ -19,7 +19,13 @@ MonoBehaviour:
     DisplayNameKo: "\uAE30\uB2E4\uB9AC\uAE30"
     DescriptionKo: "\uAE30\uB2E4\uB9AC\uAE30"
     RuntimeAdapterId: FlowWaitActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: duration
+      Type: Float
+      DisplayNameKo: "\uC2DC\uAC04"
+      DescriptionKo: "\uAE30\uB2E4\uB9B4 \uC2DC\uAC04(\uCD08)\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.1
     ExampleYaml: "- flow.wait:\n    duration: 0.1"
     Disabled: 0
   - ActionId: dialogue.wait
@@ -27,7 +33,14 @@ MonoBehaviour:
     DisplayNameKo: "\uB300\uC0AC \uD45C\uC2DC \uD6C4 \uB300\uAE30"
     DescriptionKo: "\uB300\uC0AC \uD45C\uC2DC \uD6C4 \uB300\uAE30"
     RuntimeAdapterId: DialogueWaitActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: id
+      Type: String
+      DisplayNameKo: "\uB300\uD654 ID"
+      DescriptionKo: "Scenario Source dialogues\uC5D0 \uB4F1\uB85D\uB41C \uC548\uC815\uC801\uC778
+        \uB300\uD654 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue:
     ExampleYaml: "- dialogue.wait:\n    id: zev.clone.phase2_intro"
     Disabled: 0
   - ActionId: bgm.crossfade
@@ -35,7 +48,19 @@ MonoBehaviour:
     DisplayNameKo: "BGM \uD06C\uB85C\uC2A4\uD398\uC774\uB4DC"
     DescriptionKo: "BGM \uD06C\uB85C\uC2A4\uD398\uC774\uB4DC"
     RuntimeAdapterId: BgmCrossfadeActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: clip
+      Type: String
+      DisplayNameKo: BGM ID
+      DescriptionKo: "Scenario Source audioClips\uC5D0 \uB4F1\uB85D\uB41C BGM ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue:
+    - Name: duration
+      Type: Float
+      DisplayNameKo: "\uC804\uD658 \uC2DC\uAC04"
+      DescriptionKo: "\uD06C\uB85C\uC2A4\uD398\uC774\uB4DC \uC2DC\uAC04(\uCD08)\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.8
     ExampleYaml: "- bgm.crossfade:\n    clip: zev_clone_phase2\n    duration: 0.8"
     Disabled: 0
   - ActionId: screen.fade
@@ -43,7 +68,25 @@ MonoBehaviour:
     DisplayNameKo: "\uD654\uBA74 \uD398\uC774\uB4DC"
     DescriptionKo: "\uD654\uBA74 \uD398\uC774\uB4DC"
     RuntimeAdapterId: ScreenFadeActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: mode
+      Type: String
+      DisplayNameKo: "\uBC29\uD5A5"
+      DescriptionKo: "out \uB610\uB294 in \uAC19\uC740 \uD398\uC774\uB4DC \uBC29\uD5A5\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: out
+    - Name: color
+      Type: String
+      DisplayNameKo: "\uC0C9\uC0C1"
+      DescriptionKo: "black, white \uAC19\uC740 \uD398\uC774\uB4DC \uC0C9\uC0C1 ID\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: black
+    - Name: duration
+      Type: Float
+      DisplayNameKo: "\uC2DC\uAC04"
+      DescriptionKo: "\uD398\uC774\uB4DC \uC2DC\uAC04(\uCD08)\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.25
     ExampleYaml: "- screen.fade:\n    mode: out\n    color: black\n    duration:
       0.25"
     Disabled: 0
@@ -52,7 +95,13 @@ MonoBehaviour:
     DisplayNameKo: "\uC804\uD22C \uBAA8\uB4C8 \uC804\uD658"
     DescriptionKo: "\uC804\uD22C \uBAA8\uB4C8 \uC804\uD658"
     RuntimeAdapterId: ModuleSwitchActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: to
+      Type: String
+      DisplayNameKo: "\uC804\uD658 \uB300\uC0C1"
+      DescriptionKo: "\uC804\uD658\uD560 Game Module ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: aim_shooter
     ExampleYaml: "- module.switch:\n    to: aim_shooter"
     Disabled: 0
   - ActionId: module.start
@@ -60,7 +109,13 @@ MonoBehaviour:
     DisplayNameKo: "\uC804\uD22C \uBAA8\uB4C8 \uC2DC\uC791"
     DescriptionKo: "\uC804\uD22C \uBAA8\uB4C8 \uC2DC\uC791"
     RuntimeAdapterId: ModuleStartActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: module
+      Type: String
+      DisplayNameKo: "\uC2DC\uC791 \uBAA8\uB4C8"
+      DescriptionKo: "\uC2DC\uC791\uD560 Game Module ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: aim_shooter
     ExampleYaml: "- module.start:\n    module: aim_shooter"
     Disabled: 0
   - ActionId: battle.flag.set
@@ -68,7 +123,19 @@ MonoBehaviour:
     DisplayNameKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC124\uC815"
     DescriptionKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC124\uC815"
     RuntimeAdapterId: BattleFlagSetActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: flag
+      Type: String
+      DisplayNameKo: "\uD50C\uB798\uADF8"
+      DescriptionKo: "\uC804\uD22C \uC911 \uACF5\uC720\uD560 battle flag ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue:
+    - Name: value
+      Type: String
+      DisplayNameKo: "\uAC12"
+      DescriptionKo: "\uC800\uC7A5\uD560 flag \uAC12\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: true
     ExampleYaml: "- battle.flag.set:\n    flag: zev.clone.phase\n    value: shooter"
     Disabled: 0
   - ActionId: battle.participant.damage
@@ -76,7 +143,20 @@ MonoBehaviour:
     DisplayNameKo: "\uC804\uD22C \uCC38\uAC00\uC790 \uD53C\uD574"
     DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790 \uD53C\uD574"
     RuntimeAdapterId: BattleParticipantDamageActionAdapter
-    Parameters: []
+    Parameters:
+    - Name: subject
+      Type: String
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "\uD53C\uD574\uB97C \uBC1B\uC744 \uC804\uD22C \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue:
+    - Name: amount
+      Type: Integer
+      DisplayNameKo: "\uD53C\uD574\uB7C9"
+      DescriptionKo: "1 \uC774\uC0C1\uC758 \uC21C\uC218 \uD53C\uD574\uB7C9\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 1
     ExampleYaml: "- battle.participant.damage:\n    subject: zev_architecture_clone\n   
       amount: 999"
     Disabled: 0
