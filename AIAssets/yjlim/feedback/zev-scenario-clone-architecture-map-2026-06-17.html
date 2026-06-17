@@ -331,7 +331,7 @@
         <dl>
           <dt>Branch</dt><dd>codex/action-sequence-architecture-review</dd>
           <dt>Work</dt><dd>Clone entry and visual handoff</dd>
-          <dt>Tests</dt><dd>EditMode 27/27 + Play Probe</dd>
+          <dt>Tests</dt><dd>EditMode 28/28 + Play Probe</dd>
           <dt>Scope</dt><dd>Original ZEV untouched</dd>
         </dl>
       </aside>
@@ -436,7 +436,30 @@
         <div class="node done"><small>3. Probe</small><h3>Encounter 시작</h3><p>Play Mode에서 clone EnemyData와 BattleScenarioData를 읽고 실제 <code>BattleEncounterService</code>를 호출합니다.</p></div>
         <div class="node done"><small>4. BattleScene</small><h3>Runtime 확인</h3><p><code>BattleManager</code>가 <code>zev_architecture_clone</code> scenario runtime과 <code>turn_qte</code> module로 시작함을 확인했습니다.</p></div>
         <div class="node blue"><small>5. Capture</small><h3>증거 이미지</h3><p><code>Assets/_Game/Scenes/Tests/Captures/ZEV_ArchitectureClone_TestScene_BattleScene.png</code></p></div>
-        <div class="node next"><small>6. Next</small><h3>HP Trigger</h3><p>실제 HP 50% 이하 연출과 <code>aim_shooter</code> 전환은 shooter gameplay 구현 뒤 확인합니다.</p></div>
+        <div class="node done"><small>6. HP Trigger</small><h3>Phase 전환</h3><p>HP 50% 이하 이벤트로 <code>bgm/dialogue/fade/module.switch/module.start</code> 시퀀스가 실행되고 <code>aim_shooter</code>로 전환됨을 확인했습니다.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>작성 패턴</h2>
+      <div class="compare">
+        <div class="column">
+          <h3>when</h3>
+          <div class="file-list">
+            <div class="file done"><b>event</b><code>enemy.hp_crossed_below</code></div>
+            <div class="file done"><b>enemy</b><code>zev_architecture_clone</code></div>
+            <div class="file done"><b>threshold</b><code>0.5</code></div>
+            <div class="file done"><b>timing</b><code>after_current_skill</code></div>
+          </div>
+        </div>
+        <div class="column">
+          <h3>do</h3>
+          <div class="file-list">
+            <div class="file blue"><b>sequence</b><code>zev_clone_phase2_transition</code></div>
+            <div class="file done"><b>actions</b><code>bgm.crossfade -> dialogue.wait -> screen.fade -> module.switch -> module.start</code></div>
+            <div class="file done"><b>result</b><code>module=aim_shooter, flag zev.clone.phase=shooter</code></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -449,7 +472,7 @@
         </div>
         <div class="logcard blue">
           <h3>에디터 검증</h3>
-          <p>Unity MCP에서 sample builder 메뉴를 실행했고, clone assets 재생성, 테스트 27/27 통과, Play Mode probe 통과를 확인했습니다.</p>
+          <p>Unity MCP에서 sample builder 메뉴를 실행했고, clone assets 재생성, 테스트 28/28 통과, Play Mode probe 통과를 확인했습니다.</p>
         </div>
         <div class="logcard done">
           <h3>안전장치</h3>
@@ -457,7 +480,7 @@
         </div>
         <div class="logcard next">
           <h3>게임 개발 후속</h3>
-          <p>실제 슈팅 입력, 전용 UI, projectile/VFX, Play Mode 비교용 scene 배치는 다음 gameplay slice에서 진행합니다.</p>
+          <p>실제 슈팅 입력, 전용 UI, projectile/VFX, aim_shooter victory outcome 발행은 다음 gameplay slice에서 진행합니다.</p>
         </div>
       </div>
     </section>

@@ -35,11 +35,18 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
     private static readonly FieldInfo BattleGameModuleActionRunnerField = typeof(BattleManager).GetField(
         "_battleGameModuleActionRunner",
         BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo BattleScenarioExecutionGateField = typeof(BattleManager).GetField(
+        "_battleScenarioExecutionGate",
+        BindingFlags.Instance | BindingFlags.NonPublic);
 
     [SerializeField] private bool _autoStartEncounter = true;
+    [SerializeField] private bool _autoTriggerPhaseTransition = true;
     [SerializeField] private string _expectedEnemyId = "zev_architecture_clone";
     [SerializeField] private string _probeEncounterId = "zev_architecture_clone_scene_probe";
     [SerializeField] private float _startupTimeoutSeconds = 2f;
+    [SerializeField] private float _phaseTransitionTimeoutSeconds = 8f;
+
+    private bool _phaseSequenceRunning;
 
     private IEnumerator Start()
     {
@@ -203,7 +210,103 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
         }
 
         Debug.Log(LogPrefix + " PASS: BattleScene received scenario runtime=" + runtime.ScenarioData.ScenarioId + " module=" + moduleRunner.CurrentModuleId);
+
+        if (_autoTriggerPhaseTransition)
+        {
+            yield return TriggerPhaseTransition(battleManager, runtime, moduleRunner, battleEnemy);
+        }
+
         Destroy(gameObject);
+    }
+
+    private IEnumerator TriggerPhaseTransition(
+        BattleManager battleManager,
+        BattleScenarioRuntime runtime,
+        IGameModuleActionRunner moduleRunner,
+        EnemyCharacter battleEnemy)
+    {
+        BattleScenarioExecutionGate gate = ReadField<BattleScenarioExecutionGate>(
+            BattleScenarioExecutionGateField,
+            battleManager);
+        if (gate == null)
+        {
+            Debug.LogError(LogPrefix + " BattleScenarioExecutionGate was not found.");
+            yield break;
+        }
+
+        int previousHp = battleEnemy.CurrentHP;
+        int targetHp = Mathf.FloorToInt(battleEnemy.MaxHP * 0.4f);
+        int damage = Mathf.Max(0, previousHp - targetHp);
+        if (damage > 0)
+        {
+            battleEnemy.TakePureDamage(damage);
+        }
+
+        gate.PublishEnemyHpCrossedBelow(
+            _expectedEnemyId,
+            previousHp,
+            battleEnemy.CurrentHP,
+            battleEnemy.MaxHP,
+            BattleRuleTiming.AfterCurrentSkill);
+
+        _phaseSequenceRunning = true;
+        StartCoroutine(AutoCompleteDialogueWhilePhaseRuns());
+        IEnumerator flushRoutine = gate.Flush(BattleRuleTiming.AfterCurrentSkill);
+        float deadline = Time.realtimeSinceStartup + Mathf.Max(1f, _phaseTransitionTimeoutSeconds);
+        while (flushRoutine.MoveNext())
+        {
+            if (Time.realtimeSinceStartup > deadline)
+            {
+                _phaseSequenceRunning = false;
+                Debug.LogError(LogPrefix + " Phase transition sequence timed out.");
+                yield break;
+            }
+
+            yield return flushRoutine.Current;
+        }
+
+        _phaseSequenceRunning = false;
+
+        if (gate.LastHandle == null || gate.LastHandle.Status == ActionExecutionStatus.Failed || gate.LastHandle.Status == ActionExecutionStatus.Canceled)
+        {
+            string status = gate.LastHandle != null ? gate.LastHandle.Status.ToString() : "null";
+            string message = gate.LastHandle != null && gate.LastHandle.Result != null ? gate.LastHandle.Result.Message : string.Empty;
+            Debug.LogError(LogPrefix + " Phase transition sequence failed. status=" + status + " message=" + message);
+            yield break;
+        }
+
+        if (moduleRunner.CurrentModuleId != BattleAimShooterGameModuleRuntime.Id)
+        {
+            Debug.LogError(LogPrefix + " Phase transition did not switch module. actual=" + moduleRunner.CurrentModuleId);
+            yield break;
+        }
+
+        string flagValue = string.Empty;
+        bool flagOk = runtime.SessionState != null
+            && runtime.SessionState.TryGetFlagValue("zev.clone.phase", out flagValue)
+            && flagValue == "shooter";
+        if (!flagOk)
+        {
+            Debug.LogError(LogPrefix + " Phase transition did not set battle flag zev.clone.phase=shooter.");
+            yield break;
+        }
+
+        Debug.Log(LogPrefix + " PASS: HP threshold triggered sequence and switched module=" + moduleRunner.CurrentModuleId + " flag=zev.clone.phase:" + flagValue);
+    }
+
+    private IEnumerator AutoCompleteDialogueWhilePhaseRuns()
+    {
+        while (_phaseSequenceRunning)
+        {
+            DialogueManager dialogueManager = DialogueManager.Instance;
+            if (dialogueManager != null && dialogueManager.IsPlaying)
+            {
+                yield return null;
+                dialogueManager.EndDialogue();
+            }
+
+            yield return null;
+        }
     }
 
     private static T ReadField<T>(FieldInfo field, DialogueBattleNPC source)
