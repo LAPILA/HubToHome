@@ -37,6 +37,8 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
     [SerializeField] private List<EnemyData> _additionalEncounterEnemies = new List<EnemyData>();
     [SerializeField] private AudioClip _overrideBattleBGM;
     [SerializeField] private AudioClip _encounterSFX;
+    [Tooltip("비워두면 BattleManager 기본 시나리오를 사용합니다. 특정 encounter만 Scenario Source 기반 흐름으로 실행할 때 지정합니다.")]
+    [SerializeField] private BattleScenarioData _battleScenarioData;
     [SerializeField] private float _encounterDelay = 0.08f;
     [SerializeField] private float _battleFadeDuration = 0.08f;
     [SerializeField] private string _battleSceneName = "BattleScene";
@@ -279,7 +281,8 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
             _battleFadeDuration,
             _enemyId,
             DefeatsOnVictory,
-            this);
+            this,
+            _battleScenarioData);
 
         if (!started)
         {

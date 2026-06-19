@@ -1,0 +1,88 @@
+id: zev_architecture_clone
+title: "ZEV 아키텍처 복제 전투"
+primaryMode: battle
+openingModule: turn_qte
+memoryKey: zev_architecture_clone
+
+participants:
+  party: [player]
+  enemies: [zev_architecture_clone]
+
+dialogues:
+  - id: zev.clone.phase2_intro
+    dialogueData: Assets/_Game/Features/Dialogue/Data/Scenario/ZEV/ZEV_Clone_Phase2Intro.asset
+  - id: zev.clone.shooter_start
+    dialogueData: Assets/_Game/Features/Dialogue/Data/Scenario/ZEV/ZEV_Clone_ShooterStart.asset
+  - id: zev.clone.shooter_victory
+    dialogueData: Assets/_Game/Features/Dialogue/Data/Scenario/ZEV/ZEV_Clone_ShooterVictory.asset
+
+audioClips:
+  - id: zev_clone_phase2
+    audioClip: Assets/_Game/Shared/Audio/CUSTOM/BGM/BOSS/Zenta_part2.wav
+  - id: zev_clone_shooter_loop
+    audioClip: Assets/_Game/Shared/Audio/CUSTOM/BGM/BOSS/Zenta.wav
+  - id: zev_clone_victory
+    audioClip: Assets/_Game/Shared/Audio/CUSTOM/BGM/BOSS/Zenta_part1.wav
+
+rules:
+  - id: enter_clone_phase2
+    when:
+      event: enemy.hp_crossed_below
+      enemy: zev_architecture_clone
+      threshold: 0.5
+      timing: after_current_skill
+      once: battle
+    do:
+      sequence: zev_clone_phase2_transition
+  - id: shooter_clone_victory
+    when:
+      event: module.completed
+      module: aim_shooter
+      outcome: victory
+      timing: after_current_module
+      once: battle
+    do:
+      sequence: zev_clone_shooter_victory
+
+sequences:
+  zev_clone_phase2_transition:
+    - bgm.crossfade:
+        clip: zev_clone_phase2
+        duration: 0.8
+    - dialogue.wait:
+        id: zev.clone.phase2_intro
+    - screen.fade:
+        mode: out
+        color: black
+        duration: 0.25
+    - flow.wait:
+        duration: 0.1
+    - module.switch:
+        to: aim_shooter
+    - screen.fade:
+        mode: in
+        color: black
+        duration: 0.25
+    - dialogue.wait:
+        id: zev.clone.shooter_start
+    - bgm.crossfade:
+        clip: zev_clone_shooter_loop
+        duration: 0.6
+    - battle.flag.set:
+        flag: zev.clone.phase
+        value: shooter
+    - module.start:
+        module: aim_shooter
+  zev_clone_shooter_victory:
+    - dialogue.wait:
+        id: zev.clone.shooter_victory
+    - bgm.crossfade:
+        clip: zev_clone_victory
+        duration: 0.4
+    - battle.participant.damage:
+        subject: zev_architecture_clone
+        amount: 999
+    - screen.fade:
+        mode: out
+        color: white
+        duration: 0.5

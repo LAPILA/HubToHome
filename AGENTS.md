@@ -1,80 +1,139 @@
-# AGENTS.md — yjlim Global Codex Instructions
+# AGENTS.md - HubToHome AI Collaboration Rules
 
-This file provides global guidance to Codex. Project-specific rules are loaded from the nearest repository `AGENTS.md`; when working under `D:\DL`, the DL project rules take precedence.
+This repository uses AI-assisted development. Every AI agent and human developer working in this repo must treat this file as the first shared operating contract.
 
-## 사용자 기본값
+## Project Defaults
 
-- 사용자: `yjlim`
-- 기본 응답 언어: 한국어
-- 소통 수준: C#/Unity 시니어 개발자와 대화하듯이 한다. 단순 구현 나열보다 구조, 영향 범위, 아키텍처 판단을 우선한다.
-- 답변 스타일: 존댓말, 간결한 답변, 과한 감정 표현 금지. 느낌표·이모지·감탄사 반복을 사용하지 않는다.
-- 표현 규칙: 사용자가 알아듣기 어려운 영어 표현을 불필요하게 쓰지 않는다. `caveat` 같은 단어는 `주의점`, `단서`, `전제`처럼 한국어로 풀어 쓴다.
-- 최우선 원칙: 모르는 것을 추측하지 않는다. 확인된 사실만 말하고, 확인할 수 없거나 판단이 불확실하면 모른다고 밝히고 필요한 질문을 한다.
+- Project: `HubToHome`
+- Engine: Unity 6, URP, 2D top-down exploration with 2.5D battle presentation.
+- Primary language for collaboration notes: Korean.
+- Communication style: concise senior Unity/C# engineering discussion. Prefer architecture, impact range, and verification notes over vague progress claims.
+- Do not guess. If a fact is not confirmed by source, say it is unconfirmed and inspect the project.
 
-## DL 프로젝트 진입 규칙
+## Required Reading Order
 
-`D:\DL` 또는 그 하위에서 작업할 때는 아래 파일들을 프로젝트 메모리와 지침으로 간주한다.
+Before meaningful work, read these in order:
 
-- 루트 지침: `D:\DL\AGENTS.md`
-- 브랜치 지침: `D:\DL\KR\Trunk\AGENTS.md`
-- 원문 전체 마이그레이션 메모리: `D:\DL\.codex\DL_PROJECT_MEMORY.md`
-- 글로벌 원문 사본: `C:\Users\yjlim\.codex\memories\DL_CODEX_MIGRATION.md`
-- 원본 핸드오버: `D:\DL\CODEX_MIGRATION.md`
+1. `README.md`
+2. `AGENTS.md`
+3. `CONTEXT.md`
+4. If the work touches Encounter Definition, Battle Scenario Data, Action Sequence, Action Catalog, scenario YAML, generated scenario ScriptableObjects, or the scenario editor, read `.agents/skills/hubtohome-scenario-authoring/SKILL.md` and its relevant `references/` file.
+5. `AIAssets/index.md`
+6. `AIAssets/context-briefing.md`
+7. `AIAssets/architecture.md`
+8. `AIAssets/todo.md`
+9. Latest `AIAssets/YYYY-MM-DD-update.md`
+10. `RuleFileforAI/mainrule.clinerules`
+11. Relevant domain rules in `RuleFileforAI/`
+    - `core.clinerules`
+    - `battle.clinerules`
+    - `overworld.clinerules`
+    - `dialogue.clinerules`
+    - `characters.clinerules`
+12. Relevant plans or design notes under `docs/`
 
-DL 작업에서는 `D:\DL\AGENTS.md`와 더 가까운 `AGENTS.md`의 규칙을 따른다. 세부 내용이 누락되었거나 충돌하면 원문 마이그레이션 메모리와 현재 파일 상태를 확인하고, 그래도 불확실하면 사용자에게 묻는다.
+If a task touches a system with a design document or previous feedback HTML, read that document before editing code.
 
-### DL Obsidian/Architecture 세션 규칙
+## Version Control Rules
 
-DL 작업에서 Obsidian Wiki는 선택 참고자료가 아니라 영구 프로젝트 메모리다. 매 세션 다음을 반드시 지킨다.
+- Work on a branch. Use the `codex/` prefix for AI-created branches unless the human asks otherwise.
+- Commit meaningful units of work.
+- Commit subjects may use conventional English prefixes such as `feat:` or `test:`, but explanatory commit bodies must be written in Korean so human teammates can review intent and verification quickly.
+- Do not push without explicit human approval for the target remote and branch.
+- Do not revert or overwrite changes you did not make.
+- If the worktree contains unrelated changes, leave them alone and mention them only if they affect the task.
 
-1. 작업 전 `C:\Users\yjlim\Documents\Obsidian Vault\DL\index.md`를 읽고 관련 도메인 지식을 확인한다.
-2. 아키텍처, 기술 방향, 레거시 오답 노트, 상급자 핸드오버, 온보딩, 관리 판단이 관련되면 `Architecture/_index.md`와 `Architecture/Roadmap/Architecture - Roadmap.md`를 함께 읽는다.
-3. 작업 중 가치 있는 분석, 결정, 미확정 질문, 패턴, 제약은 위키에 기록한다.
-4. 작업 후 관련 `_index.md`, 루트 `index.md`, `log.md`를 갱신한다.
-5. 위키 운영 규칙이 필요하면 `D:\DL\docs\obsidian-wiki.md`를 확인하고, 규칙 자체가 바뀌면 해당 문서도 갱신한다.
+## Documentation Rules
 
-### DL Obsidian Synapse 규칙
+Every meaningful change must leave durable context.
 
-- Obsidian은 단순 문서 저장소가 아니라 프로젝트 뇌의 노드 그래프다.
-- 모든 작업 전후에 관련 노드, 상위 `_index.md`, 루트 `index.md`, `Tasks/index.md`, `log.md` 연결 상태를 확인한다.
-- 새 사실, 결정, 미확정 질문은 채팅에만 남기지 않고 관련 노드에 기록한다.
-- 새 폴더는 `_index.md`를 만들고, 새 문서는 관련 노드 양쪽에 wikilink를 연결한다.
-- 작업 후 broken wikilink, 고립 노드, `_index.md` 누락을 검증한다.
+- Update `AIAssets/YYYY-MM-DD-update.md` with:
+  - what changed
+  - why it changed
+  - files touched
+  - validation performed
+  - risks or follow-up work
+- If the change is meant for a human teammate to review, also add or update a readable document under:
+  - `AIAssets/yjlim/feedback/` for reviews, analysis, architecture, and investigation
+  - `AIAssets/yjlim/Patchnote/` for patch-note style summaries
+- If terminology or architecture language changes, update `CONTEXT.md`.
+- If system ownership or usage rules change, update the relevant file in `RuleFileforAI/`.
+- If the change implements or changes a planned architecture, update the relevant `docs/` design or implementation plan.
+- If the change touches the scenario authoring pipeline, update `.agents/skills/hubtohome-scenario-authoring/` in the same change so future AI agents do not use stale scenario rules.
 
-## 보안과 인증 정보
+Do not leave important decisions only in chat.
 
-- Jira/Confluence 등 인증 토큰은 채팅에 재인용하지 않는다.
-- 인증은 지침에 적힌 토큰 값을 복사해 쓰지 말고, 프로젝트가 지정한 로컬 config 파일과 API 스크립트를 사용한다.
-- 로컬 파일에 이미 존재하는 민감 정보는 필요한 범위에서만 읽고, 최종 답변에 노출하지 않는다.
-- 권한/그룹 구성원 열거는 민감 작업으로 간주한다. 사용자가 해당 조회를 명시적으로 요청하거나 승인하지 않는 한 실행하지 않는다.
-- 금지 예시는 `net localgroup administrators`, `net localgroup docker-users`, `Get-LocalGroupMember`, `whoami /groups`, `lusrmgr.msc`, 로컬/도메인 관리자 그룹 구성원 조회, 현재 사용자의 권한 그룹 열거다.
-- Docker, WSL, Hyper-V, 서비스 문제를 진단할 때도 권한/그룹 구성원 목록을 우회적으로 확인하지 않는다. 필요한 경우 먼저 사용자에게 이유와 실행할 정확한 명령을 설명하고 승인받는다.
-- 민감 작업 여부가 애매하면 실행하지 말고, 조회 없이 가능한 대안 진단부터 수행한다.
+## Code Work Rules
 
-## Codex 운영 원칙
+- Inspect the existing code path before editing.
+- Prefer existing project patterns over new abstractions.
+- Keep changes scoped to the requested system.
+- Do not rename serialized fields, public APIs, enum values, ScriptableObject fields, scene object names, or prefab hierarchy paths unless the task explicitly requires it. Such changes can break Inspector references.
+- Avoid editing third-party package source unless the human explicitly approves it.
+- Avoid heavy work in `Update`: no repeated `GetComponent`, LINQ allocations, or avoidable per-frame allocations.
+- Cache frequently used components and transforms.
+- Use `ObjectPoolManager` for frequently spawned VFX, projectiles, popups, and repeated effects where practical.
+- Use `GlobalDataManager` for cross-scene runtime data and save-bound state.
+- Use `GameStateManager` for broad game state gates such as exploration, dialogue, battle, cutscene, and pause.
+- UI should generally react to events/callbacks rather than pulling battle state every frame.
 
-- 한글 파일을 읽거나 쓰기 전에 인코딩을 먼저 확인한다.
-- 파일 수정 전에는 변경 대상과 이유를 짧게 설명한다.
-- 독립적인 읽기·탐색 명령은 병렬 실행을 우선한다.
-- Git은 보조 수단일 수 있다. 프로젝트가 SVN 기반이면 SVN 규칙을 우선한다.
-- 사용자가 명시적으로 커밋을 요청하지 않으면 커밋하지 않는다.
+## Unity Asset Safety
 
-## Harness Lessons / 실패-성공 기록
+- Treat scenes, prefabs, ScriptableObjects, materials, and input assets as high-risk files.
+- Before changing a scene/prefab/ScriptableObject, document why the serialized change is needed.
+- After serialized asset edits, describe the affected Inspector references in the update note.
+- Do not force Unity refresh, reimport assets, enter/exit Play Mode, save open scenes, or rewrite `.unity` files unless the human explicitly approves or the task specifically requires it.
+- If a script change affects serialized data, note migration risk and whether existing assets need manual inspection.
 
-- 어떤 세션에서든 특정 작업의 첫 접근이 실패했고 다른 접근으로 성공했다면, 그 순간을 재사용 가능한 하네스 교훈으로 취급한다.
-- 같은 실수를 반복하지 않도록 작업 종료 전 지속 메모리에 기록한다. 전역 기록 위치는 `C:\Users\yjlim\.codex\memories\HARNESS_LESSONS.md`다.
-- DL 작업에서는 전역 기록과 함께 `C:\Users\yjlim\Documents\Obsidian Vault\DL\Codex\Operations\Codex - Harness Lessons.md` 또는 더 구체적인 관련 노드에도 반영한다.
-- 기록 항목은 날짜, 작업 맥락, 실패한 접근, 관찰된 증상/오류, 성공한 접근, 적용 조건, 검증 방법, 관련 문서/파일 링크를 포함한다.
-- 실패 원인이 확정되지 않았으면 사실과 추정을 분리해서 쓴다. 인증 토큰, 서버 비밀번호, 개인키, 권한/그룹 구성원 같은 민감 정보는 기록하지 않는다.
-- 일회성 네트워크 흔들림처럼 재사용 가능한 절차가 없는 실패는 기록 대상이 아니다. 단, 우회 절차나 안정적인 재시도 조건이 확인되면 기록한다.
-- Unity MCP, C# LSP/MCP, RAG, Browser, Atlassian, Docker/WSL, 서버 연결, 빌드/테스트, UTF/BOM/CP949 인코딩, 파일 잠금, 경로/권한 문제는 우선 기록 후보로 본다.
-- 동일 계열 작업을 다시 시작할 때는 관련 하네스 교훈을 먼저 확인하고, 이미 실패로 기록된 접근을 반복하지 않는다.
+## AI Collaboration Contract
 
-## DL Encoding / 한글 문서 운영 규칙 (2026-05-13)
+When an AI begins work, it should be able to answer:
 
-- 한글이 깨져 보이는 주원인은 대개 파일 손상이 아니라 PowerShell 콘솔 출력 코드페이지 또는 기본 디코딩 불일치다.
-- 한글 파일은 읽기 전 UTF-8 유효성과 BOM 여부를 확인한다.
-- Markdown/Obsidian 문서는 UTF-8 without BOM으로 유지한다.
-- PowerShell 읽기는 `Get-Content -Encoding UTF8`, 쓰기는 `[System.Text.UTF8Encoding]::new($false)`를 명시한다.
-- 콘솔 출력이 깨져 보였다는 이유만으로 원본 파일이 깨졌다고 판단하지 않는다.
-- 상세 운영 노드: `C:\Users\yjlim\Documents\Obsidian Vault\DL\Codex\Operations\Codex - Encoding Policy.md`.
+- What feature or bug is being touched?
+- Which existing system owns it?
+- What previous notes or decisions already exist?
+- What files are likely to change?
+- What validation is possible without guessing?
+
+When an AI finishes work, it must leave enough context for the other developer and their AI to continue without re-discovering the same facts.
+
+Minimum final handoff:
+
+- branch name
+- commit hash if committed
+- files changed
+- validation performed
+- known risks
+- where the durable note was written
+
+## Current Architecture Language
+
+Use `CONTEXT.md` terms consistently.
+
+- `Primary Mode`: top-level playable space. Current planning treats only `Overworld` and `Battle` as Primary Modes.
+- `Game Module`: replaceable rule/input/UI package inside a Primary Mode, such as QTE combat, shooter combat, boxing, or a town minigame.
+- `Action Sequence`: authored sequence of gameplay/presentation actions.
+- `Action Director`: global runtime that executes Action Sequences.
+- `Presentation Service`: dialogue, UI, camera, audio, and VFX services callable from any Primary Mode or Game Module.
+- `Scenario Source`: human/AI-readable YAML source for Encounter Definition, Battle Scenario Data, Battle Event Rules, and Action Sequences.
+- `Scenario Runtime Asset`: generated or synchronized Unity ScriptableObject representation used by runtime systems.
+- `Action Catalog`: discoverable contract for scenario action grammar, Korean editor labels, parameters, examples, validation, and runtime adapters.
+
+## Scenario Pipeline Skill
+
+- Use `.agents/skills/hubtohome-scenario-authoring/SKILL.md` for any work that changes scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, scenario import/export, generated ScriptableObjects, or the Sequence Maker editor.
+- Keep the skill current while working. If a new action, YAML field, validation rule, editor behavior, runtime adapter, or synchronization rule is introduced, update the skill or its references before finishing.
+- Scenario YAML is the source of truth; ScriptableObjects are the Unity runtime representation; the custom editor is the Korean human-facing Sequence Maker surface.
+- Humans should not need to directly edit Unity `.asset` YAML or managed-reference data for scenario flow.
+
+## Security and Local Machine Rules
+
+- Do not quote local secrets, tokens, private keys, or credentials into chat or docs.
+- Do not enumerate local administrator/group membership unless the human explicitly asks and approves the exact command.
+- Prefer project-local config and documented scripts over ad-hoc machine inspection.
+
+## Encoding Rules
+
+- Markdown and text docs should be UTF-8.
+- When reading/writing Korean files from PowerShell, use explicit UTF-8 where possible.
+- Do not assume a file is corrupt just because terminal output shows broken Korean; verify encoding first.

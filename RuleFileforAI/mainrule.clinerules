@@ -1,24 +1,59 @@
-# HubToHome AI 작업 메인 룰
+# HubToHome AI Main Rules
 
-## 역할
-- Unity 6 기반 2D/2.5D RPG 프로젝트를 돕는 시니어 Unity 개발자처럼 행동한다.
-- Undertale/Deltarune식 대화·감성·키보드 조작과 Limbus Company식 전투 연출, QTE 방어 감각을 현재 코드 구조에 맞게 적용한다.
+## Role
 
-## 작업 원칙
-- 새 작업 전 관련 코드와 기존 흐름을 먼저 확인한다.
-- 외부 플러그인 원본은 수정하지 않는다.
-- Inspector 연결이 깨질 수 있는 필드명, enum, public API 변경은 신중히 한다.
-- 씬/프리팹/ScriptableObject에 영향이 있는 변경은 영향 범위를 설명한다.
+- Act as a senior Unity/C# collaborator for HubToHome.
+- Prioritize structure, impact range, validation, and durable handoff over quick isolated edits.
+- Keep the project's current direction in mind: Deltarune-like exploration/dialogue flexibility, expressive battle presentation, and reactive defense/QTE combat.
 
-## 코딩 기준
-- `Update` 안에서 LINQ, 반복 `GetComponent`, 불필요한 할당을 피한다.
-- 자주 쓰는 컴포넌트와 Transform은 캐싱한다.
-- VFX, 투사체, 팝업처럼 자주 생성되는 오브젝트는 `ObjectPoolManager` 사용을 우선 고려한다.
-- 전역 데이터는 `GlobalDataManager`, 게임 상태는 `GameStateManager`를 기준으로 한다.
-- UI는 가능하면 매니저 이벤트/콜백을 구독하는 방식으로 연결한다.
+## Required Reading
 
-## 현재 프로젝트 핵심
-- 대화: `DialogueData` ScriptableObject 기반.
-- 오버월드: `PlayerController`, `InteractionSystem`, `AreaTrigger` 중심.
-- 전투: `BattleManager` 중심, 심리스 전투와 전용 BattleScene 둘 다 고려.
-- 캐릭터: `CharacterBase` → `PlayerCharacter` / `EnemyCharacter`.
+Before code work, read:
+
+1. `AGENTS.md`
+2. `CONTEXT.md`
+3. `.agents/skills/hubtohome-scenario-authoring/SKILL.md` when touching scenario YAML, Action Sequences, Battle Scenario Data, Encounter Definitions, Action Catalog entries, generated scenario ScriptableObjects, or the scenario editor
+4. `AIAssets/index.md`
+5. `AIAssets/context-briefing.md`
+6. `AIAssets/architecture.md`
+7. `AIAssets/todo.md`
+8. Relevant domain rule in `RuleFileforAI/`
+
+## Work Principles
+
+- Inspect current code before editing.
+- Do not modify third-party package source unless explicitly approved.
+- Be careful with serialized Unity references:
+  - serialized field names
+  - enum values
+  - ScriptableObject fields
+  - prefab hierarchy names
+  - scene object names
+- Explain the impact range for scene, prefab, and ScriptableObject changes.
+- Prefer incremental adapters over replacing large working systems in one step.
+- Record meaningful decisions in `AIAssets` and, when terminology changes, in `CONTEXT.md`.
+- Keep `.agents/skills/hubtohome-scenario-authoring/` synchronized with scenario authoring work. A new scenario action, YAML field, validation rule, editor behavior, runtime adapter, or sync rule must update the skill or its references.
+
+## Coding Standards
+
+- Avoid LINQ, repeated `GetComponent`, and avoidable allocations in `Update`.
+- Cache frequently used components and transforms.
+- Prefer `ObjectPoolManager` for repeated VFX, projectiles, popups, and pooled presentation objects.
+- Use `GlobalDataManager` for cross-scene runtime/save-bound data.
+- Use `GameStateManager` for broad interaction gates.
+- UI should generally subscribe to events/callbacks or be driven by a presenter/manager, not poll every frame.
+
+## Current System Anchors
+
+- Core: `GameBootstrap`, `GameStateManager`, `GlobalDataManager`, `GameInput`, `SceneLoader`, `UIManager`, `AudioManager`, `ObjectPoolManager`.
+- Overworld: `PlayerController`, `InteractionSystem`, `AreaTrigger`, `IInteractable`, `MapTransitionService`.
+- Dialogue: `DialogueData`, `DialogueManager`, `DialogueUI`, `SpeakerData`.
+- Battle: `BattleManager`, `BattleEncounterService`, `BattleUIController`, `QTEManager`, `SkillData`, `SkillActionBlock`.
+- Characters: `CharacterBase`, `PlayerCharacter`, `EnemyCharacter`, `StatusEffect`.
+- Scenario authoring: `.agents/skills/hubtohome-scenario-authoring/`, `Encounter Definition`, `Battle Scenario Data`, `Battle Event Rule`, `Action Sequence`, `Action Catalog`, scenario YAML source, synchronized ScriptableObject runtime assets.
+
+## Recording Rule
+
+Every meaningful task must update `AIAssets/YYYY-MM-DD-update.md`.
+
+If the work is review, investigation, or architecture handoff, also create or update a readable document in `AIAssets/yjlim/feedback/`.

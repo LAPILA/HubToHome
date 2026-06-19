@@ -10,6 +10,9 @@ public class EnemyData : SerializedScriptableObject
     [BoxGroup("Identity"), PreviewField(60, ObjectFieldAlignment.Left)]
     public Sprite TurnOrderPortrait;
     
+    [BoxGroup("Identity"), Tooltip("Scenario Source와 Battle Event Rule에서 사용하는 안정적인 적 ID입니다. 예: zev")]
+    public string EnemyId = "";
+
     [BoxGroup("Identity")] public string EnemyName = "Enemy";
 
     [BoxGroup("Audio")]

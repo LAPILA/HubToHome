@@ -9,6 +9,7 @@ public class DialogueEncounterContext
 {
     public List<EnemyData> EncounterEnemies = new List<EnemyData>();
     public AudioClip OverrideBattleBGM;
+    public BattleScenarioData BattleScenarioData;
     public bool UseDedicatedBattleScene;
     public string BattleSceneName = "BattleScene";
     public float BattleSceneFadeDuration = 0.08f;

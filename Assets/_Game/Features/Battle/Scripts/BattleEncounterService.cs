@@ -97,7 +97,8 @@ public static class BattleEncounterService
         float battleSceneFadeDuration = 0.08f,
         string encounterId = null,
         bool defeatsOnVictory = false,
-        IEncounterSource encounterSource = null)
+        IEncounterSource encounterSource = null,
+        BattleScenarioData battleScenarioData = null)
     {
         if (player == null)
         {
@@ -117,6 +118,7 @@ public static class BattleEncounterService
             global.LastOverworldScene = SceneManager.GetActiveScene().name;
             global.PendingEnemies = new List<EnemyData>(encounterEnemies);
             global.PendingBattleBGM = ResolveBattleBgm(encounterEnemies, overrideBattleBgm);
+            global.PendingBattleScenario = battleScenarioData;
 
             if (!string.IsNullOrWhiteSpace(encounterId))
                 global.BeginOverworldEnemyEncounter(encounterId, global.LastOverworldScene, defeatsOnVictory);
@@ -133,6 +135,7 @@ public static class BattleEncounterService
 
         if (BattleManager.Instance != null)
         {
+            BattleManager.Instance.SetBattleScenarioData(battleScenarioData);
             BattleManager.Instance.StartSeamlessBattle(encounterEnemies, player, encounterSource);
             return true;
         }

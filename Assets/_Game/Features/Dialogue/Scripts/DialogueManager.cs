@@ -20,6 +20,11 @@ public class DialogueManager : MonoBehaviour
     private Action _onCompleteCallback;
     private DialogueEncounterContext _encounterContext;
 
+    public bool IsPlaying
+    {
+        get { return _isPlaying; }
+    }
+
     private void Awake() 
     { 
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -177,6 +182,7 @@ public class DialogueManager : MonoBehaviour
             : 0.08f;
         string encounterId = encounterContext != null ? encounterContext.EncounterIdOverride : null;
         bool defeatsOnVictory = encounterContext != null && encounterContext.DefeatEnemyOnVictory;
+        BattleScenarioData battleScenarioData = encounterContext != null ? encounterContext.BattleScenarioData : null;
 
         BattleEncounterService.StartEncounter(
             player,
@@ -186,7 +192,9 @@ public class DialogueManager : MonoBehaviour
             battleSceneName,
             battleFadeDuration,
             encounterId,
-            defeatsOnVictory);
+            defeatsOnVictory,
+            null,
+            battleScenarioData);
     }
 
     private void StartNamingProcess()

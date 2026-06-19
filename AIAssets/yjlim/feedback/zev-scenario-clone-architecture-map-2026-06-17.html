@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZEV Architecture Clone Scenario Map</title>
+  <style>
+    :root {
+      --ink: #172126;
+      --muted: #5c6a70;
+      --line: #c9d5d8;
+      --paper: #f7f4ed;
+      --panel: #fffdf7;
+      --done: #1f8a70;
+      --done-bg: #dff2ea;
+      --next: #b66b21;
+      --next-bg: #f8e8d4;
+      --risk: #a23b4b;
+      --risk-bg: #f5dbe0;
+      --code: #273238;
+      --blue: #2f6f9f;
+      --blue-bg: #dcebf4;
+      --shadow: 0 16px 40px rgba(23, 33, 38, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(23,33,38,0.045) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(rgba(23,33,38,0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: Georgia, "Malgun Gothic", "Apple SD Gothic Neo", serif;
+      line-height: 1.55;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 42px 0 64px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 28px;
+      align-items: end;
+      min-height: 360px;
+      border-bottom: 3px solid var(--ink);
+      padding-bottom: 30px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      font-size: clamp(42px, 7vw, 86px);
+      line-height: 0.9;
+      letter-spacing: 0;
+      max-width: 860px;
+    }
+
+    h2 {
+      font-size: 28px;
+      margin-bottom: 16px;
+      border-left: 8px solid var(--ink);
+      padding-left: 12px;
+    }
+
+    h3 {
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+
+    .lead {
+      margin-top: 22px;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .stamp {
+      justify-self: end;
+      border: 3px solid var(--ink);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      width: min(100%, 380px);
+      transform: rotate(1deg);
+    }
+
+    .stamp strong {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    .stamp dl {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: 6px 12px;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .stamp dt { color: var(--muted); }
+    .stamp dd { margin: 0; font-family: Consolas, "Cascadia Mono", monospace; }
+
+    section {
+      margin-top: 42px;
+      background: rgba(255, 253, 247, 0.72);
+      border: 1px solid rgba(23,33,38,0.16);
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(23,33,38,0.06);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      border: 1px solid var(--line);
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      background: var(--panel);
+    }
+
+    .done { color: var(--done); background: var(--done-bg); border-color: rgba(31,138,112,0.35); }
+    .next { color: var(--next); background: var(--next-bg); border-color: rgba(182,107,33,0.35); }
+    .risk { color: var(--risk); background: var(--risk-bg); border-color: rgba(162,59,75,0.35); }
+    .blue { color: var(--blue); background: var(--blue-bg); border-color: rgba(47,111,159,0.35); }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .column {
+      border: 2px solid var(--ink);
+      background: var(--panel);
+      padding: 18px;
+    }
+
+    .column h3 {
+      font-size: 22px;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 10px;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .file {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      background: #f4f0e6;
+      border-left: 5px solid var(--line);
+      font-size: 13px;
+    }
+
+    .file b { font-size: 12px; text-transform: uppercase; color: var(--muted); }
+    code { color: var(--code); font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; overflow-wrap: anywhere; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .node {
+      position: relative;
+      min-height: 128px;
+      padding: 14px;
+      background: var(--panel);
+      border: 2px solid var(--ink);
+    }
+
+    .node::after {
+      content: "";
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      width: 12px;
+      border-top: 2px solid var(--ink);
+    }
+
+    .node:last-child::after { display: none; }
+
+    .node small {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-family: Consolas, "Cascadia Mono", monospace;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 12px;
+    }
+
+    .rail {
+      display: grid;
+      gap: 10px;
+    }
+
+    .beat {
+      display: grid;
+      grid-template-columns: 170px 1fr 122px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-left: 6px solid var(--done);
+      background: var(--panel);
+      box-shadow: 0 4px 12px rgba(23,33,38,0.05);
+    }
+
+    .beat .id {
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 1.1fr repeat(4, 1fr);
+      border: 2px solid var(--ink);
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .cell {
+      padding: 12px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      min-height: 58px;
+      font-size: 14px;
+    }
+
+    .cell.head {
+      background: var(--ink);
+      color: #fffaf0;
+      font-weight: 700;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .check {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 14px;
+      min-height: 120px;
+    }
+
+    .check strong {
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .loggrid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .logcard {
+      border-top: 6px solid var(--done);
+      background: var(--panel);
+      padding: 14px;
+      min-height: 148px;
+    }
+
+    .logcard.next { border-top-color: var(--next); }
+    .logcard.risk { border-top-color: var(--risk); }
+    .logcard.blue { border-top-color: var(--blue); }
+
+    footer {
+      margin-top: 38px;
+      color: var(--muted);
+      font-size: 13px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+    }
+
+    @media (max-width: 940px) {
+      header, .compare, .checklist, .loggrid { grid-template-columns: 1fr; }
+      .stamp { justify-self: stretch; transform: none; }
+      .flow { grid-template-columns: 1fr 1fr; }
+      .node::after { display: none; }
+      .timeline { grid-template-columns: 1fr; }
+      .beat { grid-template-columns: 1fr; }
+      .matrix { grid-template-columns: 1fr; }
+      .cell { border-right: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>ZEV Clone Scenario Architecture Map</h1>
+        <p class="lead">기존 ZEV 전투를 보존한 채, 복제 EnemyData와 복제 Prefab이 Scenario Source 기반 전투 흐름을 타도록 만든 vertical slice 요약입니다.</p>
+        <div class="legend">
+          <span class="pill done">구현 및 검증 완료</span>
+          <span class="pill blue">비교용 새 에셋</span>
+          <span class="pill next">후속 gameplay 구현</span>
+          <span class="pill risk">의도적으로 미연결</span>
+        </div>
+      </div>
+      <aside class="stamp">
+        <strong>2026-06-17 작업 지도</strong>
+        <dl>
+          <dt>Branch</dt><dd>codex/action-sequence-architecture-review</dd>
+          <dt>Work</dt><dd>Clone entry and visual handoff</dd>
+          <dt>Tests</dt><dd>EditMode 28/28 + Play Probe</dd>
+          <dt>Scope</dt><dd>Original ZEV untouched</dd>
+        </dl>
+      </aside>
+    </header>
+
+    <section>
+      <h2>원본과 복제</h2>
+      <div class="compare">
+        <div class="column">
+          <h3>Original ZEV</h3>
+          <div class="file-list">
+            <div class="file"><b>Enemy</b><code>Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Enemy_ZEV.asset</code></div>
+            <div class="file"><b>Prefab</b><code>Assets/_Game/Features/Characters/Prefabs/Enemy/ZEV_Prefab.prefab</code></div>
+            <div class="file"><b>Skills</b><code>Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Skil_Zev.asset</code></div>
+            <div class="file risk"><b>Status</b><code>이번 작업에서 수정하지 않음</code></div>
+          </div>
+        </div>
+        <div class="column">
+          <h3>Architecture Clone</h3>
+          <div class="file-list">
+            <div class="file blue"><b>Enemy</b><code>Enemy_ZEV_ArchitectureClone.asset</code></div>
+            <div class="file blue"><b>Prefab</b><code>ZEV_ArchitectureClone_Prefab.prefab</code></div>
+            <div class="file blue"><b>Scenario</b><code>ZEV_ArchitectureClone_BattleScenario.asset</code></div>
+            <div class="file done"><b>Status</b><code>YAML, runtime asset, prefab reference 검증 완료</code></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>데이터 파이프라인</h2>
+      <div class="flow">
+        <div class="node done"><small>1. Source</small><h3>Scenario YAML</h3><p>when / do, dialogue, audio, sequence를 사람이 읽는 텍스트로 관리합니다.</p></div>
+        <div class="node done"><small>2. Import</small><h3>Runtime Asset</h3><p>검증 후 `BattleScenarioData`와 sub-asset sequence로 동기화합니다.</p></div>
+        <div class="node done"><small>3. Catalog</small><h3>Action Contract</h3><p>사용 가능한 action ID와 한국어 표시명을 검증합니다.</p></div>
+        <div class="node blue"><small>4. Entry</small><h3>Clone Prefab</h3><p>`DialogueBattleNPC`가 clone enemy와 scenario asset을 보관합니다.</p></div>
+        <div class="node done"><small>5. Runtime</small><h3>BattleEncounterService</h3><p>전투 시작 시 `battleScenarioData`를 BattleManager/GlobalDataManager로 전달합니다.</p></div>
+        <div class="node done"><small>6. Gameplay</small><h3>Game Module Shell</h3><p>`turn_qte`에서 시작하고 HP 이벤트 후 `aim_shooter` shell로 전환하는 route를 검증했습니다.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>전투 시퀀스</h2>
+      <div class="timeline">
+        <div class="column">
+          <h3>Rules</h3>
+          <p><code>enemy.hp_crossed_below</code>와 <code>module.completed</code> 두 규칙으로 phase 전환과 victory 후속 시퀀스를 분리했습니다.</p>
+        </div>
+        <div class="rail">
+          <div class="beat done"><span class="id">turn_qte</span><strong>QTE 전투 시작</strong><span class="pill done">검증</span></div>
+          <div class="beat done"><span class="id">enemy.hp_crossed_below 0.5</span><strong>적 HP 50% 미만, 현재 스킬 종료 후 trigger</strong><span class="pill done">검증</span></div>
+          <div class="beat done"><span class="id">zev_clone_phase2_transition</span><strong>BGM, 대사, fade, module.switch, flag, module.start</strong><span class="pill done">검증</span></div>
+          <div class="beat next"><span class="id">aim_shooter</span><strong>슈팅 모듈 실제 입력/UI/VFX 루프</strong><span class="pill next">후속</span></div>
+          <div class="beat done"><span class="id">module.completed victory</span><strong>승리 대사, BGM, damage, white fade</strong><span class="pill done">데이터 검증</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>구현 상태</h2>
+      <div class="matrix">
+        <div class="cell head">영역</div>
+        <div class="cell head">YAML</div>
+        <div class="cell head">Runtime Asset</div>
+        <div class="cell head">Entry Prefab</div>
+        <div class="cell head">Play 검증</div>
+
+        <div class="cell">ZEV Clone 시나리오</div>
+        <div class="cell done">작성 완료</div>
+        <div class="cell done">동기화 완료</div>
+        <div class="cell blue">Clone prefab 생성</div>
+        <div class="cell risk">Scene 미배치</div>
+
+        <div class="cell">기존 ZEV</div>
+        <div class="cell risk">미변경</div>
+        <div class="cell risk">미변경</div>
+        <div class="cell risk">미변경</div>
+        <div class="cell risk">비교 기준으로 보존</div>
+
+        <div class="cell">aim_shooter shell</div>
+        <div class="cell done">module ID 사용</div>
+        <div class="cell done">switch/start 검증</div>
+        <div class="cell">해당 없음</div>
+        <div class="cell done">더미/순수 세션 검증</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>검증 체크</h2>
+      <div class="checklist">
+        <div class="check done"><strong>Unity MCP</strong><p>샘플 builder 메뉴가 에러 없이 실행되고 clone assets를 재생성했습니다.</p></div>
+        <div class="check done"><strong>EditMode Tests</strong><p>`ZevScenarioCloneVerticalSliceTests` 4개, `ScenarioSourceSyncTests` 23개 통과.</p></div>
+        <div class="check done"><strong>Serialization Safety</strong><p>`ScenarioActionData.Children`를 managed reference로 고정해 Unity depth limit 에러 재발을 막았습니다.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Play Mode 테스트 씬</h2>
+      <div class="flow">
+        <div class="node done"><small>1. Test Scene</small><h3>Overworld 복제</h3><p><code>Assets/_Game/Scenes/Tests/ZEV_ArchitectureClone_TestScene.unity</code>를 만들고 기존 씬은 보존했습니다.</p></div>
+        <div class="node done"><small>2. Clone Entry</small><h3>Prefab 배치</h3><p>원본 ZEV 위치에 <code>ZEV_ArchitectureClone_Prefab</code>을 배치했습니다.</p></div>
+        <div class="node done"><small>3. Probe</small><h3>Encounter 시작</h3><p>Play Mode에서 clone EnemyData와 BattleScenarioData를 읽고 실제 <code>BattleEncounterService</code>를 호출합니다.</p></div>
+        <div class="node done"><small>4. BattleScene</small><h3>Runtime 확인</h3><p><code>BattleManager</code>가 <code>zev_architecture_clone</code> scenario runtime과 <code>turn_qte</code> module로 시작함을 확인했습니다.</p></div>
+        <div class="node blue"><small>5. Capture</small><h3>증거 이미지</h3><p><code>Assets/_Game/Scenes/Tests/Captures/ZEV_ArchitectureClone_TestScene_BattleScene.png</code></p></div>
+        <div class="node done"><small>6. HP Trigger</small><h3>Phase 전환</h3><p>HP 50% 이하 이벤트로 <code>bgm/dialogue/fade/module.switch/module.start</code> 시퀀스가 실행되고 <code>aim_shooter</code>로 전환됨을 확인했습니다.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>작성 패턴</h2>
+      <div class="compare">
+        <div class="column">
+          <h3>when</h3>
+          <div class="file-list">
+            <div class="file done"><b>event</b><code>enemy.hp_crossed_below</code></div>
+            <div class="file done"><b>enemy</b><code>zev_architecture_clone</code></div>
+            <div class="file done"><b>threshold</b><code>0.5</code></div>
+            <div class="file done"><b>timing</b><code>after_current_skill</code></div>
+          </div>
+        </div>
+        <div class="column">
+          <h3>do</h3>
+          <div class="file-list">
+            <div class="file blue"><b>sequence</b><code>zev_clone_phase2_transition</code></div>
+            <div class="file done"><b>actions</b><code>bgm.crossfade -> dialogue.wait -> screen.fade -> module.switch -> module.start</code></div>
+            <div class="file done"><b>result</b><code>module=aim_shooter, flag zev.clone.phase=shooter</code></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>최종 완료 로그</h2>
+      <div class="loggrid">
+        <div class="logcard done">
+          <h3>닫힌 범위</h3>
+          <p>YAML source, generated runtime asset, clone enemy, clone prefab, entry reference, module switch/start, module outcome route까지 vertical slice로 닫았습니다.</p>
+        </div>
+        <div class="logcard blue">
+          <h3>에디터 검증</h3>
+          <p>Unity MCP에서 sample builder 메뉴를 실행했고, clone assets 재생성, 테스트 28/28 통과, Play Mode probe 통과를 확인했습니다.</p>
+        </div>
+        <div class="logcard done">
+          <h3>안전장치</h3>
+          <p>recursive action tree 직렬화를 `[SerializeReference]`로 고정하고 회귀 테스트와 scenario-authoring skill 지침을 추가했습니다.</p>
+        </div>
+        <div class="logcard next">
+          <h3>게임 개발 후속</h3>
+          <p>실제 슈팅 입력, 전용 UI, projectile/VFX, aim_shooter victory outcome 발행은 다음 gameplay slice에서 진행합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Generated for HubToHome AIAssets/yjlim feedback. Source of truth remains scenario YAML plus generated Unity runtime assets.
+    </footer>
+  </main>
+</body>
+</html>

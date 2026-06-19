@@ -1,21 +1,29 @@
-# Dialogue 규칙
+# Dialogue Rules
 
-## 현재 구조
-- 대화 데이터는 JSON이 아니라 `DialogueData` ScriptableObject 기반이다.
-- `DialogueData`는 `DialogueStyle`과 `List<DialogueNode>`를 가진다.
-- `DialogueNode`는 `SpeakerData`, `EmotionType`, `LocalizationKey`, `DefaultText`, `EventTriggerID`, 선택지 정보를 가진다.
-- 출력은 `DialogueManager` + `DialogueUI`가 담당한다.
+## Current Structure
 
-## 흐름
-- `DialogueManager.StartDialogue(DialogueData, onComplete)`로 시작한다.
-- 대화 중 `GameStateManager`는 `Dialogue` 상태가 된다.
-- Confirm 입력은 Z/Space/Enter.
-- 타이핑 중 Confirm은 스킵, 완료 후 Confirm은 다음 노드로 진행한다.
-- 종료 시 `GameState.Exploration`으로 복귀한다.
+- Dialogue data uses `DialogueData` ScriptableObjects.
+- `DialogueData` contains `DialogueStyle` and `List<DialogueNode>`.
+- `DialogueNode` can reference `SpeakerData`, `EmotionType`, localization key, default text, event trigger, and choices.
+- Output is handled by `DialogueManager` and `DialogueUI`.
+- Battle speech bubbles are separate presentation pieces but live in the dialogue feature area.
 
-## 주의점
-- `EventTriggerID == "RequestName"`이면 이름 입력 UI를 연다.
-- 플레이어 이름은 `GlobalDataManager.PlayerName`에 저장된다.
-- 텍스트 내 이름 치환은 `{0}` 포맷을 사용한다.
-- 선택지 호출은 현재 `DialogueManager`에서 주석 처리되어 있으므로, 선택지 작업 시 복구가 필요하다.
-- `DialogueUI`는 Febucci Typewriter와 캐릭터별 보이스 블립을 사용한다.
+## Flow
+
+- Start dialogue through `DialogueManager.StartDialogue(...)`.
+- Dialogue should set broad game state to Dialogue where appropriate and restore the previous/expected state on completion.
+- Confirm during typewriter output should complete typing; confirm after completion should advance.
+- Name input stores the player name in `GlobalDataManager.PlayerName`.
+
+## Work Rules
+
+- Do not make dialogue subordinate to a battle module. Dialogue must remain callable from overworld, battle, transitions, and cinematics.
+- For Action Sequence integration, wrap existing dialogue through a `ShowDialogueAction` / `DialogueService.ShowAndWait` style adapter.
+- Scenario-authored dialogue beats should follow `.agents/skills/hubtohome-scenario-authoring/SKILL.md`, including waitable dialogue actions and validation that dialogue can pause/resume the sequence.
+- Scenario `dialogue.wait` IDs must be registered through `BattleScenarioData.Dialogues` and `ScenarioDialogueRegistry` before runtime execution. Do not hard-code dialogue IDs in `BattleManager` or a combat module.
+- Scenario Source `dialogues` entries resolve through `IScenarioDialogueReferenceResolver` during import. The editor default is `AssetDatabaseScenarioDialogueReferenceResolver`, which accepts a `DialogueData` asset name or `Assets/...` path and fails duplicate-name matches instead of guessing. Runtime `ScenarioDialogueReferenceData` keeps the source `DialogueDataId` so `ScenarioSourceExporter` can return to `ScenarioSourceDocument` without GUIDs. Missing or ambiguous `DialogueDataId` resolution should fail validation with `scenario.dialogue.unresolved`.
+- Validate full battle scenarios with `ScenarioCatalogValidator.ValidateBattleScenario(...)` so missing or unregistered `dialogue.wait` IDs are caught before runtime.
+- Dialogue-driven battles pass runtime-only encounter data through `DialogueEncounterContext`. If a dialogue NPC should use Scenario Source battle flow, assign `DialogueBattleNPC._fallbackBattleScenarioData`; do not mutate `DialogueData` assets at runtime or hard-code scenario selection in `DialogueManager`.
+- Keep localization keys and fallback text clear.
+- If choice behavior changes, inspect `DialogueManager`, `DialogueData`, and any encounter context code.
+- Document new event trigger IDs and their owners.

@@ -1,19 +1,24 @@
-# 디자인 노트
+# Design Notes
 
-## 방향성
-- 대화는 캐릭터 감정, 초상화, 보이스 블립, Text Animator 태그로 개성을 표현한다.
-- 전투는 턴제 기반이지만 적 턴 QTE로 긴장감을 만든다.
-- 오버월드는 키보드 중심의 즉각 반응형 조작감을 유지한다.
+## Current Direction
 
-## 미결 사항
-- 선택지 UI 최종 방식 결정 필요.
-- 심리스 전투와 전용 BattleScene 중 어느 쪽을 메인 루프로 삼을지 정리 필요.
-- `BulletHell` enum은 남아 있지만 실제 구현 범위는 아직 미정.
-- `AreaTrigger.DestroyOnVictory` 동작은 이름과 다르므로 추후 수정 필요.
-- `InteractionSystem`의 플레이어 검색은 캐싱 개선 가능.
+- Exploration should remain keyboard-first and immediately readable.
+- Dialogue should support character voice, portraits, text effects, choice/flag logic, and reuse from field, battle, and cinematic sequences.
+- Battle should support expressive movement, impact, camera, and reactive defense.
+- The project is moving toward a flexible Action Sequence layer that can drive transitions, interactions, battle module switches, and cinematics.
 
-## 현재 우선순위
-1. RuleFileforAI 문서 복구 및 유지.
-2. 대화 선택지 기능 연결.
-3. 오버월드 → 전투 → 복귀 루프 안정화.
-4. 전투 UI와 QTE 피드백 폴리싱.
+## Open Questions
+
+- How much of the current battle loop should remain turn-based once additional Game Modules are introduced?
+- Which UI surfaces need stable `UIRegistry` IDs first?
+- Which actor/target binding model should be used for Action Sequences?
+- When should Timeline be used as a clip inside Action Sequences versus replaced by custom actions?
+- How should save/continue restore room, scene, party, and encounter state in a complete loop?
+
+## Current Priorities
+
+1. Keep AI/human collaboration docs accurate and easy to follow.
+2. Introduce Action Director / Action Sequence architecture without breaking the current playable loop.
+3. Stabilize battle and overworld return flows.
+4. Complete save/continue restoration.
+5. Continue reducing `BattleManager` responsibility through safe seams and adapters.
