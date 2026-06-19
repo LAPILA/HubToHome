@@ -5,6 +5,9 @@
 - `InteractionSystem`: 플레이어 전방 상호작용 대상 캐싱.
 - `IInteractable` / `InteractableBase`: 상호작용 대상 공통 규약.
 - `AreaTrigger`: 씬 전환, 자동 대화, 전투 조우 처리.
+- `Scripts/Map`: 델타룬식 Room 기반 맵 전환 런타임. `RoomDefinition`, `RoomInstance`, `RoomContainer`, `DoorTransition`, `MapTransitionService`, `SpawnPoint` 포함.
+- `Editor/RoomMapSampleBuilder`: 룸 기반 샘플/템플릿/스타터팩 생성기. 실제 월드 산출물은 `Assets/_Game/Scenes/Overworld/MapWorlds` 아래에 생성한다.
+- `Assets/_Game/Scenes/Overworld/README_OverworldMapGuide.md`: 기획자용 맵 제작 가이드.
 
 ## 조작
 - 이동: 방향키/WASD.
@@ -19,7 +22,12 @@
 - 상호작용 대상은 `IInteractable` 구현 또는 `InteractableBase` 상속을 우선한다.
 - `AreaTrigger`의 AutoEvent는 `DialogueData` 에셋을 직접 받는다.
 - 씬 전환 전 위치/방향 저장을 잊지 않는다.
+- 큰 지역 이동은 `MapTransitionType.Scene`, 같은 지역 안의 방/실내/통로 이동은 `MapTransitionType.Room`을 우선한다.
+- 맵 월드 Scene, RoomDefinition, Room Prefab은 `Assets/_Game/Scenes/Overworld/MapWorlds` 아래에 둔다.
+- 런타임 코드와 에디터 생성기는 `Assets/_Game/Features/Overworld`에 두고, 기획자가 편집할 월드 산출물과 분리한다.
+- 룸 연결 검사는 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사` 메뉴를 사용한다.
 
 ## 주의점
 - `InteractionSystem`은 현재 `FindFirstObjectByType<PlayerController>()`를 매 프레임 호출하므로, 나중에 캐싱 개선 여지가 있다.
 - `AreaTrigger`의 `DestroyOnVictory`는 현재 전투 시작 직후 Destroy되는 구조라 이름과 실제 동작 차이가 있다.
+- `Features/Overworld/Maps/_Shared/Generated`는 생성기 공용 리소스 위치다. 실제 맵 월드 산출물 위치로 사용하지 않는다.

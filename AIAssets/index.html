@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HubToHome AIAssets Dashboard</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg0: #080b12;
+      --bg1: #0f172a;
+      --panel: rgba(15, 23, 42, 0.78);
+      --panel-strong: rgba(20, 31, 55, 0.94);
+      --line: rgba(148, 163, 184, 0.22);
+      --line-strong: rgba(148, 163, 184, 0.38);
+      --text: #eef4ff;
+      --muted: #9fb0c7;
+      --soft: #c7d2fe;
+      --cyan: #22d3ee;
+      --cyan-soft: rgba(34, 211, 238, 0.14);
+      --violet: #a78bfa;
+      --violet-soft: rgba(167, 139, 250, 0.16);
+      --green: #34d399;
+      --green-soft: rgba(52, 211, 153, 0.14);
+      --amber: #fbbf24;
+      --amber-soft: rgba(251, 191, 36, 0.14);
+      --red: #fb7185;
+      --red-soft: rgba(251, 113, 133, 0.14);
+      --blue: #60a5fa;
+      --blue-soft: rgba(96, 165, 250, 0.14);
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+      --radius-xl: 28px;
+      --radius: 18px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Segoe UI", "Pretendard", "Malgun Gothic", AppleSDGothicNeo, sans-serif;
+      line-height: 1.68;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(34, 211, 238, 0.18), transparent 30%),
+        radial-gradient(circle at 82% 0%, rgba(167, 139, 250, 0.2), transparent 34%),
+        radial-gradient(circle at 68% 78%, rgba(52, 211, 153, 0.12), transparent 28%),
+        linear-gradient(135deg, var(--bg0), var(--bg1) 46%, #101827);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.22;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent 75%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+    code { font-family: Consolas, "Cascadia Mono", monospace; }
+
+    .shell {
+      width: min(1240px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 34px 0 70px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 22px;
+    }
+
+    .glass {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.48));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero-main {
+      padding: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-main::after {
+      content: "AI";
+      position: absolute;
+      right: 24px;
+      bottom: -44px;
+      color: rgba(255, 255, 255, 0.035);
+      font-size: 164px;
+      font-weight: 900;
+      letter-spacing: -12px;
+      line-height: 1;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 12px;
+      border: 1px solid rgba(34, 211, 238, 0.34);
+      border-radius: 999px;
+      color: #a5f3fc;
+      background: var(--cyan-soft);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      max-width: 780px;
+      font-size: clamp(34px, 5vw, 66px);
+      line-height: 1.04;
+      letter-spacing: -0.055em;
+    }
+
+    .gradient-text {
+      background: linear-gradient(90deg, #e0f2fe, #67e8f9 35%, #c4b5fd 72%, #fef3c7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero-copy {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 9px 15px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.06);
+      color: #eaf6ff;
+      font-weight: 800;
+      font-size: 13px;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .button.primary {
+      border-color: rgba(34, 211, 238, 0.5);
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.24), rgba(167, 139, 250, 0.22));
+    }
+
+    .button:hover { transform: translateY(-2px); border-color: rgba(226, 232, 240, 0.6); background: rgba(255, 255, 255, 0.1); }
+
+    .hero-side {
+      padding: 24px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 13px;
+      align-items: center;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .metric-icon {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: var(--cyan-soft);
+      color: var(--cyan);
+      font-size: 22px;
+    }
+
+    .metric strong { display: block; font-size: 21px; line-height: 1.2; }
+    .metric span { color: var(--muted); font-size: 13px; }
+
+    .nav {
+      position: sticky;
+      top: 12px;
+      z-index: 3;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0 22px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(8, 11, 18, 0.72);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+    }
+
+    .nav a {
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .nav a:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+    section {
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      background: rgba(15, 23, 42, 0.66);
+      box-shadow: 0 18px 52px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      padding: 24px 26px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(255,255,255,0.045), transparent);
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 23px;
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .section-body { padding: 24px 26px 28px; }
+
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .card ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+    .card li { margin: 5px 0; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .tag.done { color: #bbf7d0; background: var(--green-soft); border: 1px solid rgba(52, 211, 153, 0.24); }
+    .tag.proto { color: #bfdbfe; background: var(--blue-soft); border: 1px solid rgba(96, 165, 250, 0.24); }
+    .tag.debt { color: #fde68a; background: var(--amber-soft); border: 1px solid rgba(251, 191, 36, 0.24); }
+    .tag.gap { color: #fecdd3; background: var(--red-soft); border: 1px solid rgba(251, 113, 133, 0.24); }
+    .tag.doc { color: #ddd6fe; background: var(--violet-soft); border: 1px solid rgba(167, 139, 250, 0.24); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; background: rgba(255,255,255,0.04); }
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--text); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.045);
+      min-height: 136px;
+    }
+
+    .flow-step b {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      margin-bottom: 10px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      color: #06101f;
+      font-size: 12px;
+    }
+
+    .flow-step strong { display: block; margin-bottom: 6px; }
+    .flow-step span { color: var(--muted); font-size: 13px; }
+
+    .timeline { display: grid; gap: 12px; }
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.045);
+    }
+    .timeline-date { color: #a5f3fc; font-weight: 900; }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .doc-link {
+      display: block;
+      min-height: 132px;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(34,211,238,0.09), rgba(167,139,250,0.07));
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .doc-link:hover { transform: translateY(-3px); border-color: rgba(34,211,238,0.48); background: linear-gradient(145deg, rgba(34,211,238,0.15), rgba(167,139,250,0.12)); }
+    .doc-link small { display: block; margin-bottom: 8px; color: var(--cyan); font-weight: 900; }
+    .doc-link strong { display: block; margin-bottom: 8px; font-size: 16px; }
+    .doc-link span { color: var(--muted); font-size: 13px; }
+
+    .callout {
+      padding: 18px;
+      border: 1px solid rgba(34,211,238,0.24);
+      border-left: 5px solid var(--cyan);
+      border-radius: var(--radius);
+      background: var(--cyan-soft);
+      color: #dffaff;
+    }
+
+    .callout strong { display: block; margin-bottom: 5px; }
+    .callout p { margin: 0; color: #b6d8e5; }
+
+    .todo-list { display: grid; gap: 10px; }
+    .todo {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.04);
+    }
+    .check {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      color: #052e16;
+      background: var(--green);
+      font-weight: 900;
+    }
+    .check.open { color: #451a03; background: var(--amber); }
+    .todo strong { display: block; margin-bottom: 3px; }
+    .todo span { color: var(--muted); font-size: 13px; }
+
+    footer {
+      margin-top: 26px;
+      padding: 22px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .hero, .grid, .grid.three, .flow, .doc-grid { grid-template-columns: 1fr; }
+      .timeline-item { grid-template-columns: 1fr; }
+      .nav { border-radius: var(--radius); }
+    }
+
+    @media (max-width: 640px) {
+      .shell { width: min(100% - 22px, 1240px); padding-top: 16px; }
+      .hero-main, .hero-side, .section-head, .section-body { padding: 18px; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div class="hero-main glass">
+        <span class="eyebrow">✦ AIAssets 통합 허브</span>
+        <h1><span class="gradient-text">HubToHome</span><br>프로젝트 메모 대시보드</h1>
+        <p class="hero-copy">
+          루트 Markdown 문서 4개와 <code>AIAssets/yjlim</code>의 HTML 리포트를 한 화면에서 읽을 수 있도록 정리한 프로젝트 상황판입니다.
+          다음 세션에서 바로 판단할 수 있도록 구조, 마일스톤, 위험 작업, TODO를 시각적으로 묶었습니다.
+        </p>
+        <div class="quick-actions">
+          <a class="button primary" href="#now">현재 상태 보기</a>
+          <a class="button" href="#todo">우선순위 TODO</a>
+          <a class="button" href="#docs">문서 링크</a>
+          <a class="button" href="yjlim/feedback/project-current-implementation-map-2026-05-24.html">yjlim 구현 지도</a>
+        </div>
+      </div>
+      <aside class="hero-side glass">
+        <div class="metric"><div class="metric-icon">📚</div><div><strong>4</strong><span>루트 Markdown 문서 통합</span></div></div>
+        <div class="metric"><div class="metric-icon">🧭</div><div><strong>5</strong><span>yjlim HTML 리포트/패치노트 연결</span></div></div>
+        <div class="metric"><div class="metric-icon">⚔️</div><div><strong>Battle / Overworld</strong><span>현재 핵심 안정화 축</span></div></div>
+        <div class="metric"><div class="metric-icon">💾</div><div><strong>Save Flow</strong><span>다음 세션 최우선 게이트</span></div></div>
+      </aside>
+    </header>
+
+    <nav class="nav" aria-label="문서 내 이동">
+      <a href="#now">현재 단계</a>
+      <a href="#architecture">아키텍처</a>
+      <a href="#flow">플레이 루프</a>
+      <a href="#milestones">마일스톤</a>
+      <a href="#todo">TODO</a>
+      <a href="#briefing">다음 세션</a>
+      <a href="#docs">원문/리포트</a>
+    </nav>
+
+    <section id="now">
+      <div class="section-head">
+        <div>
+          <h2>현재 단계 요약</h2>
+          <p><code>context-briefing.md</code>, <code>milestones.md</code> 기준 요약</p>
+        </div>
+        <span class="tag proto">Playable Vertical Slice</span>
+      </div>
+      <div class="section-body grid three">
+        <article class="card">
+          <h3>플레이어블 수직 슬라이스 진입</h3>
+          <p>타이틀/인트로를 넘어 설정 시스템, 오버월드 적 조우, 대화-전투 연결까지 붙은 상태입니다.</p>
+        </article>
+        <article class="card">
+          <h3>지금의 효율 지점</h3>
+          <p>새 시스템 확장보다 이미 붙은 루프에서 끊긴 지점과 불안정한 지점을 닫는 것이 우선입니다.</p>
+        </article>
+        <article class="card">
+          <h3>우선순위 기준</h3>
+          <p>사용자 체감 버그 → 끊긴 플레이 루프 → 확장 전 리팩터링 순서가 가장 좋습니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <div class="section-head">
+        <div>
+          <h2>시스템 아키텍처 지도</h2>
+          <p><code>architecture.md</code>의 핵심 책임과 의존 관계를 카드로 재정리</p>
+        </div>
+        <span class="tag doc">Architecture</span>
+      </div>
+      <div class="section-body">
+        <div class="grid three">
+          <article class="card">
+            <h3>설정/입력 계층</h3>
+            <p><code>GameConfigManager</code>가 저장과 적용을 담당하고, <code>GameInput</code>이 입력 액션에 반영합니다. <code>ConfigPanelUI</code>는 프런트엔드입니다.</p>
+          </article>
+          <article class="card">
+            <h3>전투 진입 계층</h3>
+            <p><code>BattleEncounterService</code>가 오버월드 접촉, 이벤트, 대화 선택지 전투를 공통 진입 파이프라인으로 묶습니다.</p>
+          </article>
+          <article class="card">
+            <h3>영속 오버월드 적</h3>
+            <p><code>OverworldEnemy</code>는 순찰, 접촉, 승리 제거, 도주 쿨다운 등 월드 상태를 가진 엔티티로 확장 중입니다.</p>
+          </article>
+        </div>
+        <div style="height:16px"></div>
+        <table>
+          <thead><tr><th>클래스</th><th>역할</th><th>주요 의존</th></tr></thead>
+          <tbody>
+            <tr><td><strong>GameConfigManager</strong></td><td>설정 저장, 즉시 적용, 키 리바인딩 저장</td><td>AudioManager, LocalizationManager, Screen, PlayerPrefs, GameInput</td></tr>
+            <tr><td><strong>GameInput</strong></td><td>Player/UI/Battle/Dialogue/Config 액션맵 파사드</td><td>InputSystem_Actions, GameConfigManager</td></tr>
+            <tr><td><strong>BattleEncounterService</strong></td><td>전투 진입 컨텍스트 적재 및 심리스/전용 씬 분기</td><td>GlobalDataManager, BattleManager, SceneLoader</td></tr>
+            <tr><td><strong>DialogueEncounterContext</strong></td><td>대화 선택지 전투 런타임 컨텍스트</td><td>DialogueManager, BattleEncounterService</td></tr>
+            <tr><td><strong>OverworldEnemy</strong></td><td>순찰형 적, 접촉 전투, 복귀 쿨다운, 영속 상태</td><td>EnemyCharacter, BattleEncounterService, GlobalDataManager</td></tr>
+            <tr><td><strong>BattleManager</strong></td><td>전투 유닛 세팅, 심리스/전용 씬 전투, 조우 결과 기록</td><td>GlobalDataManager, AudioManager, PositionManager, SceneLoader</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="flow">
+      <div class="section-head">
+        <div>
+          <h2>주요 플레이 루프</h2>
+          <p>현재 플레이 가능한 루프를 기획/개발이 함께 보기 쉽게 정리</p>
+        </div>
+        <span class="tag proto">Game Loop</span>
+      </div>
+      <div class="section-body">
+        <div class="flow">
+          <div class="flow-step"><b>1</b><strong>Title / Intro</strong><span>타이틀 → 인트로 → 이름 입력 → 대화 흐름은 구현됨.</span></div>
+          <div class="flow-step"><b>2</b><strong>Overworld</strong><span>플레이어 이동, 상호작용, 적 접촉, 룸 기반 맵 전환 구조가 동작.</span></div>
+          <div class="flow-step"><b>3</b><strong>Dialogue → Battle</strong><span>대화 선택지에서 전투 컨텍스트를 만들고 공통 조우 서비스로 전달.</span></div>
+          <div class="flow-step"><b>4</b><strong>Battle Return</strong><span>심리스/전용 배틀 씬 전투 후 결과를 기록하고 월드 상태로 복귀.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="milestones">
+      <div class="section-head">
+        <div>
+          <h2>마일스톤 상태표</h2>
+          <p><code>milestones.md</code>의 현재 진행 단계와 게이트</p>
+        </div>
+        <span class="tag done">Milestones</span>
+      </div>
+      <div class="section-body">
+        <table>
+          <thead><tr><th>시스템</th><th>상태</th><th>판단</th></tr></thead>
+          <tbody>
+            <tr><td><strong>타이틀 → 인트로 → 이름 입력</strong></td><td><span class="tag done">구현됨</span></td><td>TitleMenuManager, IntroManager, NameInputUI, DialogueManager 흐름이 연결됨.</td></tr>
+            <tr><td><strong>설정/입력 계층</strong></td><td><span class="tag proto">Usable</span></td><td>GameConfigManager, ConfigPanelUI, GameInput이 실제 런타임 경로를 가짐.</td></tr>
+            <tr><td><strong>오버월드 순찰 적 조우</strong></td><td><span class="tag proto">프로토타입</span></td><td>OverworldEnemy, BattleEncounterService, GlobalDataManager가 접촉 전투를 구성함.</td></tr>
+            <tr><td><strong>대화 선택지 → 전투 분기</strong></td><td><span class="tag done">구현됨</span></td><td>DialogueManager.OnChoiceSelected와 CoStartBattleFromChoice 경로가 활성화됨.</td></tr>
+            <tr><td><strong>전투 진입/복귀</strong></td><td><span class="tag proto">프로토타입</span></td><td>BattleManager가 심리스/전용 배틀 씬 양쪽을 처리함.</td></tr>
+            <tr><td><strong>저장/이어하기</strong></td><td><span class="tag gap">미완료</span></td><td>Continue가 실질적인 로드 흐름을 아직 호출하지 않음.</td></tr>
+            <tr><td><strong>상태이상 아이템 구조</strong></td><td><span class="tag debt">기술 부채</span></td><td>InventoryManager와 BattleManager가 문자열 분기에 의존함.</td></tr>
+          </tbody>
+        </table>
+        <div style="height:16px"></div>
+        <div class="timeline">
+          <div class="timeline-item"><div class="timeline-date">2026-05-10</div><div><strong>설정/입력 계층, 텍스트 속도, 오버월드 적 조우, 대화-전투 연결</strong><br><span style="color:var(--muted)">플레이 가능한 시스템 수가 늘었고, 설정과 조우 전투가 실제 게임 루프에 붙기 시작했습니다.</span></div></div>
+          <div class="timeline-item"><div class="timeline-date">2026-05-09</div><div><strong>폴더 구조 재정리, 타이틀/인트로, 현지화, 기본 UX 루프</strong><br><span style="color:var(--muted)">Core / Features / Presentation / Shared 중심으로 구조가 정돈되고 초반 UX 루프가 완성됐습니다.</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="todo">
+      <div class="section-head">
+        <div>
+          <h2>우선순위 TODO 보드</h2>
+          <p><code>todo.md</code>에서 다음 의사결정과 작업을 뽑아 정리</p>
+        </div>
+        <span class="tag debt">Action Items</span>
+      </div>
+      <div class="section-body">
+        <div class="todo-list">
+          <div class="todo"><div class="check open">!</div><div><strong>타이틀 Continue를 실제 세이브 슬롯 로드와 씬 복구 흐름에 연결</strong><span>TitleMenuManager, SaveManager, SaveData, GlobalDataManager</span></div><span class="tag gap">High</span></div>
+          <div class="todo"><div class="check open">!</div><div><strong>전투 도주 후 오버월드 적의 collider, 이동 상태, 재조우 쿨다운 안정화</strong><span>OverworldEnemy, BattleManager, GlobalDataManager</span></div><span class="tag gap">High</span></div>
+          <div class="todo"><div class="check open">!</div><div><strong>BattleManager를 상태 전이/행동 실행/방어 판정/종료 처리 단위로 분리</strong><span>God Object화된 전투 흐름을 서비스/핸들러로 분해</span></div><span class="tag debt">Refactor</span></div>
+          <div class="todo"><div class="check open">!</div><div><strong>기본공격 방어 판정과 스킬 방어 판정의 정책 통합</strong><span>성공 판정, 피해 계산, 성공 피드백을 공용 정책으로 모음</span></div><span class="tag debt">Battle</span></div>
+          <div class="todo"><div class="check open">!</div><div><strong>상태이상 적용을 StatusFactory 또는 레지스트리 기반으로 통합</strong><span>InventoryManager, BattleManager, StatusEffect</span></div><span class="tag debt">Medium</span></div>
+          <div class="todo"><div class="check">✓</div><div><strong>방어 입력 게이트, 방어 anchor, BattleIdle 복귀, EnemyTelegraph/DefenseWindow 정리</strong><span>전투 안정화의 핵심 체감 버그 다수 수정 완료</span></div><span class="tag done">Done</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="briefing">
+      <div class="section-head">
+        <div>
+          <h2>다음 세션 브리핑</h2>
+          <p>바로 시작하기 좋은 작업 순서</p>
+        </div>
+        <span class="tag doc">Next Session</span>
+      </div>
+      <div class="section-body grid three">
+        <article class="card">
+          <h3>1. Continue 저장 복구</h3>
+          <p>가장 눈에 띄는 끊김입니다. 실제 저장 슬롯 존재 여부 확인 → GlobalDataManager 복원 → 저장 씬 로드 순서로 닫습니다.</p>
+        </article>
+        <article class="card">
+          <h3>2. 오버월드 적 조우 안정화</h3>
+          <p>도주/승리/패배마다 CurrentEncounterEnemyId, collider, cooldown state가 어떻게 남는지 플레이테스트와 로그로 확인합니다.</p>
+        </article>
+        <article class="card">
+          <h3>3. 설정 시스템 마감</h3>
+          <p>ConfigPanelUI fallback 문구를 줄이고, 현지화 테이블 및 Voice 볼륨 필요 여부를 결정합니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="docs">
+      <div class="section-head">
+        <div>
+          <h2>원문 문서 / yjlim 리포트 링크</h2>
+          <p>Markdown 원문과 기존 HTML 문서를 한 곳에서 접근</p>
+        </div>
+        <span class="tag doc">Document Hub</span>
+      </div>
+      <div class="section-body">
+        <div class="callout">
+          <strong>정리 기준</strong>
+          <p>루트 Markdown은 이 대시보드에 요약했고, 상세 원문은 아래 링크로 유지했습니다. yjlim 폴더의 기존 예쁜 HTML 문서도 바로 열 수 있습니다.</p>
+        </div>
+        <div style="height:16px"></div>
+        <div class="doc-grid">
+          <a class="doc-link" href="architecture.md"><small>Root Markdown</small><strong>architecture.md</strong><span>시스템 구조, 핵심 클래스, 의존 관계, 기술 부채</span></a>
+          <a class="doc-link" href="context-briefing.md"><small>Root Markdown</small><strong>context-briefing.md</strong><span>다음 세션 브리핑과 전투 안정화 상세 메모</span></a>
+          <a class="doc-link" href="milestones.md"><small>Root Markdown</small><strong>milestones.md</strong><span>진행 단계, 작업 히스토리, 다음 마일스톤 게이트</span></a>
+          <a class="doc-link" href="todo.md"><small>Root Markdown</small><strong>todo.md</strong><span>코드 태그 스캔, 완료/미완료 작업 목록</span></a>
+          <a class="doc-link" href="yjlim/feedback/project-current-implementation-map-2026-05-24.html"><small>yjlim / feedback</small><strong>현재 구현 현황 지도</strong><span>프로젝트 구현 현황을 시각적으로 정리한 기존 HTML</span></a>
+          <a class="doc-link" href="yjlim/feedback/parry-defense-system-review-2026-05-24.html"><small>yjlim / feedback</small><strong>패링/회피/점프 방어 시스템 리뷰</strong><span>방어 시스템 설계와 검증 메모</span></a>
+          <a class="doc-link" href="yjlim/feedback/dialogue-text-animator-speech-bubble-review-2026-05-24.html"><small>yjlim / feedback</small><strong>Dialogue / Speech Bubble Review</strong><span>대화 텍스트 애니메이터와 말풍선 후속 리뷰</span></a>
+          <a class="doc-link" href="yjlim/Patchnote/2026-05-24-patchnote.html"><small>yjlim / Patchnote</small><strong>2026-05-24 Patchnote</strong><span>5월 24일 작업 변경 이력</span></a>
+          <a class="doc-link" href="yjlim/Patchnote/2026-05-25-patchnote.html"><small>yjlim / Patchnote</small><strong>2026-05-25 Patchnote</strong><span>5월 25일 작업 변경 이력</span></a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      HubToHome AIAssets Dashboard · 루트 Markdown 4종과 yjlim HTML 리포트를 통합한 읽기용 허브입니다.
+    </footer>
+  </div>
+</body>
+</html>

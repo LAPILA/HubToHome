@@ -15,6 +15,9 @@
 - `PlayerController`: 즉각 반응형 8방향 이동, 전투 모드 전환, 전투 연출 일부.
 - `InteractionSystem`: 전방 상호작용 대상 감지.
 - `AreaTrigger`: 씬 전환, 자동 대화, 심리스 전투, BattleScene 전환.
+- `Scripts/Map`: Room 기반 오버월드 전환 시스템. `DoorTransition`은 요청만 만들고, `MapTransitionService`가 Scene/Room 전환을 통합 처리한다.
+- 맵 월드 산출물 위치: `Assets/_Game/Scenes/Overworld/MapWorlds`. 생성기는 `RoomMapSampleBuilder`, 검사는 `RoomMapValidator`.
+- 기획자용 맵 가이드: `Assets/_Game/Scenes/Overworld/README_OverworldMapGuide.md`.
 
 ## Battle
 - `BattleManager`: 전투 전체 흐름, 턴 큐, 행동 실행, QTE 결과 적용, 전투 종료.

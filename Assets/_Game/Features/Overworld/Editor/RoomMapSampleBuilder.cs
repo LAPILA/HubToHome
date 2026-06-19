@@ -6,6 +6,11 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Room 기반 맵 시스템을 바로 확인할 수 있는 샘플 씬/룸/데이터 생성기입니다.
+///
+/// 원칙:
+/// - 런타임 코드는 Assets/_Game/Features/Overworld/Scripts/Map 아래에 둡니다.
+/// - 실제 월드/씬/룸 데이터/룸 프리팹은 Assets/_Game/Scenes/Overworld 아래에 생성합니다.
+/// - 기획자는 Scenes/Overworld/MapWorlds 안의 README와 RoomDefinition을 기준으로 룸 연결을 확인합니다.
 /// 메뉴:
 /// - HubToHome > Overworld > Create Room Map Sample
 /// - HubToHome > Overworld > Create Map Field Starter Pack
@@ -17,8 +22,9 @@ public static class RoomMapSampleBuilder
     private const int BackgroundSortingLayerId = unchecked((int)3914913265u);
     private const string BackgroundSortingLayerName = "Background";
 
-    private const string MapRoot = "Assets/_Game/Features/Overworld/Maps";
-    private const string SharedGeneratedFolder = MapRoot + "/_Shared/Generated";
+    private const string SceneWorldRoot = "Assets/_Game/Scenes/Overworld";
+    private const string MapRoot = SceneWorldRoot + "/MapWorlds";
+    private const string SharedGeneratedFolder = "Assets/_Game/Features/Overworld/Maps/_Shared/Generated";
     private const string SharedSpritePath = SharedGeneratedFolder + "/RoomMap_WhiteSquare.png";
 
     private const string BasicRoot = MapRoot + "/Samples/BasicRoomMap";
@@ -33,9 +39,12 @@ public static class RoomMapSampleBuilder
 
     private const string TemplateRoot = MapRoot + "/Templates";
 
+    private const string DesignerGuidePath = SceneWorldRoot + "/README_OverworldMapGuide.md";
+
     [MenuItem("HubToHome/오버월드/맵 생성/기본 Room 샘플 생성")]
     public static void CreateBasicSample()
     {
+        CreateDesignerGuide();
         EnsureFolder(BasicRoot + "/Scenes");
         EnsureSharedSpriteAsset();
         EnsureFolder(BasicPrefabFolder);
@@ -75,6 +84,7 @@ public static class RoomMapSampleBuilder
     [MenuItem("HubToHome/오버월드/맵 생성/맵 필드 스타터팩 생성")]
     public static void CreateMapFieldStarterPack()
     {
+        CreateDesignerGuide();
         DeleteAssetIfExists(StarterPackRoot);
         EnsureSharedSpriteAsset();
         EnsureFolder(StarterPackRoot);
@@ -226,6 +236,7 @@ public static class RoomMapSampleBuilder
     [MenuItem("HubToHome/오버월드/맵 생성/템플릿/전체 템플릿 생성")]
     public static void CreateAllTemplatePacks()
     {
+        CreateDesignerGuide();
         CreateFieldTemplate();
         CreateTownTemplate();
         CreateInteriorTemplate();
@@ -237,6 +248,7 @@ public static class RoomMapSampleBuilder
 
     private static void CreateSingleRoomTemplatePack(string packName, string roomId, string roomPrefabName, string sceneName, Color floorColor, Color wallColor)
     {
+        CreateDesignerGuide();
         EnsureSharedSpriteAsset();
 
         string root = $"{TemplateRoot}/{packName}";
@@ -262,7 +274,7 @@ public static class RoomMapSampleBuilder
             CreateTemplateRoomLayout);
 
         CreateScene($"{sceneFolder}/{sceneName}.unity", room, sceneName, Color.black);
-        File.WriteAllText($"{notesFolder}/{packName}_README.md", $"# {packName}\n\nRoom 기반 맵 제작용 단일 룸 템플릿입니다.\n", System.Text.Encoding.UTF8);
+        File.WriteAllText($"{notesFolder}/{packName}_README.md", $"# {packName}\n\nRoom 기반 맵 제작용 단일 룸 템플릿입니다.\n\n- Scene: `{sceneName}.unity`\n- RoomDefinition: `Data/Rooms/{roomPrefabName}_Definition.asset`\n- Room Prefab: `Prefabs/Rooms/{roomPrefabName}.prefab`\n\n작업 순서: 룸 프리팹 편집 → SpawnPoint/DoorTransition 확인 → 현재 열린 룸 맵 검사 실행.\n", System.Text.Encoding.UTF8);
         AssetDatabase.Refresh();
     }
 
@@ -706,11 +718,12 @@ public static class RoomMapSampleBuilder
     {
         string path = StarterPackRoot + "/Notes/MapFieldStarter_README.md";
         string content = "# Map Field Starter Pack\n\n"
-            + "Room 기반 맵 제작 흐름을 검증하기 위한 기본 맵팩입니다. 특정 상용 게임의 명칭/구조를 그대로 복제하지 않고, 필드/마을/실내 연결 구조를 빠르게 확인하는 예시입니다.\n\n"
+            + "기획자가 필드/마을/실내/던전 입구 연결 흐름을 빠르게 확인할 수 있는 기본 맵팩입니다. 특정 상용 게임의 명칭/구조를 그대로 복제하지 않고, 작은 룸을 연결하는 RPG식 흐름을 검증하는 예시입니다.\n\n"
             + "## 구성\n\n"
+            + $"- 루트: `{StarterPackRoot}`\n"
             + "- Region Scene: `Scenes/Region_MapFieldStarter.unity`\n"
-            + "- Rooms: Gate, Village, Inn, Shop, House, ForestPath, DungeonEntrance\n"
-            + "- Data: 각 RoomDefinition asset\n"
+            + "- RoomDefinition: `Data/Rooms`\n"
+            + "- Room Prefab: `Prefabs/Rooms`\n"
             + "- DoorTransition: Gate <-> Village <-> Inn / Shop / House / ForestPath <-> DungeonEntrance\n\n"
             + "## 기본 생성 룸 7개\n\n"
             + "1. `Room_MapField_Gate`\n"
@@ -724,10 +737,57 @@ public static class RoomMapSampleBuilder
             + "- NPC 배치\n"
             + "- 지역 분위기 파티클\n"
             + "- 이벤트 트리거\n"
-            + "- 지역 BGM/실내 BGM override\n";
+            + "- 지역 BGM/실내 BGM override\n\n"
+            + "## 기획자 체크 방법\n\n"
+            + "1. `Region_MapFieldStarter.unity`를 엽니다.\n"
+            + "2. Hierarchy의 `Map Systems`에서 초기 RoomDefinition을 확인합니다.\n"
+            + "3. `Data/Rooms`의 RoomDefinition을 열어 룸 ID, 프리팹, BGM 설정을 확인합니다.\n"
+            + "4. 문 이동은 각 룸 프리팹 안의 `DoorTransition` 컴포넌트에서 TargetRoom/TargetSpawnPointId로 확인합니다.\n"
+            + "5. 메뉴 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 연결 누락을 확인합니다.\n";
 
         File.WriteAllText(path, content, System.Text.Encoding.UTF8);
         AssetDatabase.ImportAsset(path);
+    }
+
+    [MenuItem("HubToHome/오버월드/맵 문서/기획자용 맵 가이드 생성")]
+    public static void CreateDesignerGuide()
+    {
+        EnsureFolder(SceneWorldRoot);
+        EnsureFolder(MapRoot);
+
+        string content = "# Overworld Map Guide\n\n"
+            + "오버월드 맵은 **큰 지역 Scene** 안에서 **작은 Room Prefab**을 갈아 끼우는 방식으로 관리합니다. 델타룬처럼 한 화면 단위의 방/통로/실내를 연결하는 구조를 목표로 합니다.\n\n"
+            + "## 폴더 기준\n\n"
+            + "- `Assets/_Game/Features/Overworld/Scripts/Map`: 개발자가 관리하는 맵 전환 런타임 코드\n"
+            + "- `Assets/_Game/Features/Overworld/Editor`: 샘플/템플릿 생성기와 검사 도구\n"
+            + "- `Assets/_Game/Scenes/Overworld/MapWorlds`: 실제 월드 Scene, RoomDefinition, Room Prefab 생성 위치\n"
+            + "- `Assets/_Game/Features/Overworld/Maps/_Shared/Generated`: 생성기가 쓰는 공용 임시 스프라이트\n\n"
+            + "## 핵심 용어\n\n"
+            + "- **Region Scene**: 하나의 큰 지역 씬입니다. 예: 마을 지역, 숲 지역, 던전 입구 지역.\n"
+            + "- **RoomDefinition**: 룸 ID, 룸 프리팹, BGM 설정을 담는 데이터입니다. 기획자가 가장 먼저 확인할 데이터입니다.\n"
+            + "- **Room Prefab**: 실제 바닥, 벽, 문, 스폰 지점, NPC가 들어가는 한 화면 단위 맵입니다.\n"
+            + "- **DoorTransition**: 문/통로/계단입니다. 어느 Room으로 이동할지와 도착 SpawnPoint를 지정합니다.\n"
+            + "- **SpawnPoint**: 이동 후 플레이어가 서는 위치와 바라볼 방향입니다.\n\n"
+            + "## 제작 흐름\n\n"
+            + "1. Unity 메뉴 `HubToHome > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`을 실행합니다.\n"
+            + "2. `Assets/_Game/Scenes/Overworld/MapWorlds/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`를 엽니다.\n"
+            + "3. `Data/Rooms`의 RoomDefinition으로 룸 목록과 BGM을 확인합니다.\n"
+            + "4. `Prefabs/Rooms`의 Room Prefab을 열어 바닥/벽/문/NPC/이벤트를 배치합니다.\n"
+            + "5. 문을 추가하면 `DoorTransition.TargetRoom`과 `TargetSpawnPointId`를 맞춥니다.\n"
+            + "6. 메뉴 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 누락된 연결을 확인합니다.\n\n"
+            + "## 이름 규칙\n\n"
+            + "- Room ID: `지역.장소` 형식. 예: `mapfield.village`, `forest.entrance`\n"
+            + "- SpawnPoint ID: `from_출발지` 또는 `to_목적지` 형식. 예: `from_gate`, `to_inn`\n"
+            + "- Room Prefab: `Room_지역_장소` 형식. 예: `Room_MapField_Village`\n"
+            + "- Region Scene: `Region_지역명` 형식. 예: `Region_MapFieldStarter`\n\n"
+            + "## 판단 기준\n\n"
+            + "- 같은 큰 지역 안의 방/실내/통로 이동은 `Room` 전환을 사용합니다.\n"
+            + "- 완전히 다른 지역, 전투 전용 씬, 타이틀 등으로 넘어갈 때는 `Scene` 전환을 사용합니다.\n"
+            + "- 기획 문서에는 RoomDefinition 기준으로 룸 목록과 연결표를 적으면 됩니다.\n";
+
+        File.WriteAllText(DesignerGuidePath, content, System.Text.Encoding.UTF8);
+        AssetDatabase.ImportAsset(DesignerGuidePath);
+        AssetDatabase.Refresh();
     }
 
     private static void EnsureFolder(string path)
