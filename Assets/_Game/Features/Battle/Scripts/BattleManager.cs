@@ -2071,6 +2071,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     private IEnumerator BattleOutroRoutine(bool isVictory)
     {
         Time.timeScale = 1.0f; // 슬로우 모션 방지
+        AudioManager.Instance?.StopBGM(isVictory ? 0.35f : 0.15f);
         OnBattleEnded?.Invoke(isVictory);
         if (isVictory)
             BattleUIController.Instance?.ClearNarrationLog();

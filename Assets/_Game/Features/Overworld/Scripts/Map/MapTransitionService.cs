@@ -92,6 +92,7 @@ public class MapTransitionService : MonoBehaviour
 
         RoomInstance room = _roomContainer.LoadRoom(request.TargetRoom, player);
         ApplyArrival(player, request);
+        room?.ConfigureCamera(player != null ? player : FindFirstObjectByType<PlayerController>());
         SuppressArrivalDoor(request.TargetSpawnPointId);
         yield return null;
 

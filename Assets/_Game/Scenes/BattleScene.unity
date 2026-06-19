@@ -1232,6 +1232,7 @@ MonoBehaviour:
   _enemyAoEWindup: 0.35
   _enemyCenterAdvanceDuration: 0.18
   _battleNarrationConfig: {fileID: 11400000, guid: 873dd24e3cad4b09b8d130d7c56f4df2, type: 2}
+  _defaultBattleScenarioData: {fileID: 0}
 --- !u!114 &437845292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3279,7 +3280,7 @@ MonoBehaviour:
   priority: 0
   blendDistance: 0
   weight: 1
-  sharedProfile: {fileID: 11400000, guid: 80b1c8818be61aa4b98075da10524edc, type: 2}
+  sharedProfile: {fileID: 11400000, guid: 65d34f10a8bfe88408cadbf2b04ce600, type: 2}
 --- !u!4 &933773930
 Transform:
   m_ObjectHideFlags: 0

@@ -112,17 +112,51 @@ public class AudioManager : MonoBehaviour
 
     public void FadeOutBGM(float duration = 1f)
     {
-        if (_activeBGM == null || !_activeBGM.isPlaying) return;
+        FadeOutSource(_activeBGM, duration, true);
+        FadeOutSource(_inactiveBGM, duration, true);
+    }
 
-        _activeBGM.DOKill();
-        _activeBGM.DOFade(0f, Mathf.Max(0.01f, duration))
+    public void StopBGM(float fadeDuration = 0.25f)
+    {
+        if (fadeDuration <= 0f)
+        {
+            StopSourceImmediate(_activeBGM);
+            StopSourceImmediate(_inactiveBGM);
+            return;
+        }
+
+        FadeOutBGM(fadeDuration);
+    }
+
+    private void FadeOutSource(AudioSource source, float duration, bool clearClip)
+    {
+        if (source == null) return;
+
+        source.DOKill();
+        if (!source.isPlaying)
+        {
+            source.volume = 0f;
+            if (clearClip) source.clip = null;
+            return;
+        }
+
+        source.DOFade(0f, Mathf.Max(0.01f, duration))
             .SetUpdate(true)
             .OnComplete(() =>
             {
-                _activeBGM.Stop();
-                _activeBGM.clip = null;
-                _activeBGM.volume = 1f;
+                source.Stop();
+                if (clearClip) source.clip = null;
+                source.volume = 0f;
             });
+    }
+
+    private static void StopSourceImmediate(AudioSource source)
+    {
+        if (source == null) return;
+        source.DOKill();
+        source.Stop();
+        source.clip = null;
+        source.volume = 0f;
     }
 
     private IEnumerator CrossFadeRoutine(AudioClip clip, float duration)

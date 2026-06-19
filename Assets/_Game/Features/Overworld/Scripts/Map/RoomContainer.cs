@@ -14,7 +14,7 @@ public class RoomContainer : MonoBehaviour
     private void Start()
     {
         if (_loadInitialRoomOnStart && _initialRoom != null)
-            LoadRoom(_initialRoom, null);
+            LoadRoom(_initialRoom, FindFirstObjectByType<PlayerController>());
     }
 
     public RoomInstance LoadRoom(RoomDefinition roomDefinition, PlayerController player)
