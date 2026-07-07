@@ -1,0 +1,45 @@
+[1mdiff --git a/Assets/_Game/Core/Scripts/GameInput.cs b/Assets/_Game/Core/Scripts/GameInput.cs[m
+[1mindex 8276f9c6..52cfd5b7 100644[m
+[1m--- a/Assets/_Game/Core/Scripts/GameInput.cs[m
+[1m+++ b/Assets/_Game/Core/Scripts/GameInput.cs[m
+[36m@@ -53,6 +53,7 @@[m [mpublic static class GameInput[m
+     private static InputAction _configBack;[m
+     private static InputAction _configReset;[m
+     private static int _cachedFrame = -1;[m
+[32m+[m[32m    private static int _suppressPlayerConfirmUntilFrame = -1;[m
+ [m
+     private static Vector2 _prevPlayerMove;[m
+     private static Vector2 _currPlayerMove;[m
+[36m@@ -140,7 +141,7 @@[m [mpublic static class GameInput[m
+     public static bool MoveUpHeld    { get { UpdateCache(); return IsUp(_currPlayerMove); } }[m
+     public static bool MoveDownHeld  { get { UpdateCache(); return IsDown(_currPlayerMove); } }[m
+ [m
+[31m-    public static bool ConfirmPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }[m
+[32m+[m[32m    public static bool ConfirmPressed { get { if (_configModalActive || Time.frameCount <= _suppressPlayerConfirmUntilFrame) return false; EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }[m
+     public static bool CancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _playerCancel.WasPressedThisFrame() || _uiCancel.WasPressedThisFrame(); } }[m
+     public static bool MenuPressed    { get { if (_configModalActive) return false; EnsureInitialized(); return _playerMenu.WasPressedThisFrame() || _uiMenu.WasPressedThisFrame(); } }[m
+     public static bool RunHeld        { get { if (_configModalActive) return false; EnsureInitialized(); return _playerRun.IsPressed(); } }[m
+[36m@@ -237,6 +238,11 @@[m [mpublic static class GameInput[m
+         _configModalActive = active;[m
+     }[m
+ [m
+[32m+[m[32m    public static void SuppressPlayerConfirmForCurrentFrame()[m
+[32m+[m[32m    {[m
+[32m+[m[32m        _suppressPlayerConfirmUntilFrame = Time.frameCount;[m
+[32m+[m[32m    }[m
+[32m+[m
+     public static bool TryReadPressedKey(out Key key)[m
+     {[m
+         key = Key.None;[m
+[1mdiff --git a/Assets/_Game/Features/Dialogue/Scripts/DialogueManager.cs b/Assets/_Game/Features/Dialogue/Scripts/DialogueManager.cs[m
+[1mindex ec3d7d81..43403a82 100644[m
+[1m--- a/Assets/_Game/Features/Dialogue/Scripts/DialogueManager.cs[m
+[1m+++ b/Assets/_Game/Features/Dialogue/Scripts/DialogueManager.cs[m
+[36m@@ -232,6 +232,7 @@[m [mpublic class DialogueManager : MonoBehaviour[m
+         _isPlaying = false;[m
+         if (_activeUI != null) _activeUI.ClosePanel(); [m
+         _encounterContext = null;[m
+[32m+[m[32m        GameInput.SuppressPlayerConfirmForCurrentFrame();[m
+         [m
+         GameStateManager.Instance?.ChangeState(GameState.Exploration); [m
+         [m

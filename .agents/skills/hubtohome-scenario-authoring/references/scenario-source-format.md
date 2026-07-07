@@ -47,6 +47,13 @@ audioClips:
     audioClip: bgm_zev_shooter_loop
 
 rules:
+  - id: opening_clash
+    when:
+      event: battle.started
+      timing: immediate
+      once: battle
+    do:
+      sequence: zev_opening_clash
   - id: enter_phase2
     when:
       event: enemy.hp_crossed_below
@@ -127,6 +134,7 @@ sequences:
 - Keep `when` and `do` separate. `when` decides whether a beat fires; `do` names or inlines the Action Sequence.
 - Use `once` explicitly for rules that must not repeat.
 - Use `timing` explicitly when execution must wait for a skill, action, module, dialogue, or frame transition.
+- Use `battle.started` with `timing: immediate` for 전투 UI/참가자/시나리오 런타임 초기화 이후, opening Game Module(`openingModule`)이 시작되기 전에 재생할 오프닝 시네마틱/QTE Action Sequence. 이 규칙은 `subject`가 필요 없으며, Battle 쪽 `BattleScenarioExecutionGate.PublishBattleStarted(...)`를 통해 실행된다.
 - Use `parallel` for simultaneous actions; never imply concurrency from sibling ordering.
 - Keep dialogue as a waitable action, not a child of battle modules.
 - Keep save-bound facts in Encounter Memory, not in in-progress Battle Session State.
@@ -134,7 +142,9 @@ sequences:
 - Use `battle.skill.timeline` only as a compatibility call into existing `SkillData.ActionTimeline` / `SkillActionBlock` behavior. `targets` may be omitted when the battle runner should choose the skill's default alive target set from `SkillData.TargetType` / `IsAoE`; use explicit stable actor IDs when a sequence needs a specific target. Whole-battle phase flow still belongs in Battle Event Rules plus Action Sequences.
 - Use `battle.participant.damage`, `battle.participant.heal_hp`, `battle.participant.heal_mp`, and `battle.participant.consume_mp` when a scenario or Game Module needs to request HP/MP changes outside legacy SkillData timelines. These actions require `subject` and positive integer `amount`, and runtime must route them through `IBattleParticipantCommandRunner`.
 - Use `battle.flag.set` and `battle.flag.clear` for temporary battle-scoped facts that must survive Game Module switches but should not be saved as mid-battle state. These actions require `flag`; `battle.flag.set` may also provide string `value` and defaults to `"true"`.
+- Use `cinematic.letterbox`, `battle.camera.focus`, `battle.camera.reset`, `battle.actor.pose`, `battle.actor.fake_attack`, and `battle.actor.return_slots` for battle-only cinematic beats such as boss clash intros and phase telegraphs. `battle.actor.fake_attack` is presentation-only and must not mutate HP/MP; use `battle.participant.damage` separately when real damage is intended. Catalog descriptions should make this distinction clear so Sequence Maker users do not confuse fake clash attacks with real combat damage.
 - Use `module.completed` rules for authored reactions to a Game Module finishing. `module` maps to the module ID reported by `IGameModuleEventSink.PublishGameModuleCompleted(...)`; `outcome` is optional and, when present, must match the reported outcome ID exactly. Leave `outcome` empty when any completion of that module should trigger the rule.
+- The current battle event rule IDs supported by the lightweight YAML importer/exporter are `battle.started`, `enemy.hp_crossed_below`, `enemy.defeated`, `skill.completed`, and `module.completed`. Only add new `event` values with importer/exporter, Sequence Maker labels, evaluator/runtime coverage, and tests in the same change.
 
 ## Validation Expectations
 

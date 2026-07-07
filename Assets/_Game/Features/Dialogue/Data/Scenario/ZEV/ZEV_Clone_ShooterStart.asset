@@ -17,8 +17,7 @@ MonoBehaviour:
   - Speaker: {fileID: 0}
     Emotion: 1
     LocalizationKey: 
-    DefaultText: "\uCD1D\uAD6C\uB97C \uB9DE\uCDB0 \uBD10. \uC774\uBC88\uC5D0\uB294
-      \uB124 \uCC28\uB840\uAC00 \uC544\uB2C8\uC57C."
+    DefaultText: "ZEV: 본게임으로 복귀합니다. 조준선을 유지하세요."
     EventTriggerID: 
     IsChoiceNode: 0
     Choices: []

@@ -30,16 +30,19 @@ public static class RoomMapSampleBuilder
     private const string BasicRoot = MapRoot + "/Samples/BasicRoomMap";
     private const string BasicScenePath = BasicRoot + "/Scenes/Sample_RoomMap.unity";
     private const string BasicPrefabFolder = BasicRoot + "/Prefabs/Rooms";
-    private const string BasicDataFolder = BasicRoot + "/Data/Rooms";
+    private const string BasicDataFolder = BasicPrefabFolder;
 
     private const string StarterPackRoot = MapRoot + "/MapFieldStarter";
     private const string StarterPackScenePath = StarterPackRoot + "/Scenes/Region_MapFieldStarter.unity";
     private const string StarterPackPrefabFolder = StarterPackRoot + "/Prefabs/Rooms";
-    private const string StarterPackDataFolder = StarterPackRoot + "/Data/Rooms";
+    private const string StarterPackDataFolder = StarterPackPrefabFolder;
 
     private const string TemplateRoot = MapRoot + "/Templates";
 
     private const string DesignerGuidePath = SceneWorldRoot + "/README_OverworldMapGuide.md";
+    private const string ZevCloneEnemyAssetPath = "Assets/_Game/Features/Characters/Data/EnemyDB/ZEV/Enemy_ZEV_ArchitectureClone.asset";
+    private const string ZevCloneScenarioAssetPath = "Assets/_Game/Features/Scenario/Generated/ZEV/ZEV_ArchitectureClone_BattleScenario.asset";
+    private const string ZevClonePrefabAssetPath = "Assets/_Game/Features/Characters/Prefabs/Enemy/ZEV_ArchitectureClone_Prefab.prefab";
 
     [MenuItem("HubToHome/오버월드/맵 생성/기본 Room 샘플 생성")]
     public static void CreateBasicSample()
@@ -254,7 +257,7 @@ public static class RoomMapSampleBuilder
         string root = $"{TemplateRoot}/{packName}";
         string sceneFolder = root + "/Scenes";
         string prefabFolder = root + "/Prefabs/Rooms";
-        string dataFolder = root + "/Data/Rooms";
+        string dataFolder = prefabFolder;
         string notesFolder = root + "/Notes";
 
         EnsureFolder(sceneFolder);
@@ -274,7 +277,7 @@ public static class RoomMapSampleBuilder
             CreateTemplateRoomLayout);
 
         CreateScene($"{sceneFolder}/{sceneName}.unity", room, sceneName, Color.black);
-        File.WriteAllText($"{notesFolder}/{packName}_README.md", $"# {packName}\n\nRoom 기반 맵 제작용 단일 룸 템플릿입니다.\n\n- Scene: `{sceneName}.unity`\n- RoomDefinition: `Data/Rooms/{roomPrefabName}_Definition.asset`\n- Room Prefab: `Prefabs/Rooms/{roomPrefabName}.prefab`\n\n작업 순서: 룸 프리팹 편집 → SpawnPoint/DoorTransition 확인 → 현재 열린 룸 맵 검사 실행.\n", System.Text.Encoding.UTF8);
+        File.WriteAllText($"{notesFolder}/{packName}_README.md", $"# {packName}\n\nRoom 기반 맵 제작용 단일 룸 템플릿입니다.\n\n- Scene: `{sceneName}.unity`\n- RoomDefinition: `Prefabs/Rooms/{roomPrefabName}_Definition.asset`\n- Room Prefab: `Prefabs/Rooms/{roomPrefabName}.prefab`\n\n작업 순서: 룸 프리팹 편집 → SpawnPoint/AreaConnectionMarker 확인 → 현재 열린 룸 맵 검사 실행.\n", System.Text.Encoding.UTF8);
         AssetDatabase.Refresh();
     }
 
@@ -372,6 +375,8 @@ public static class RoomMapSampleBuilder
         CreateBlock("Dark Tree Line Top", root.transform, new Vector3(0f, 2.25f, 0f), new Vector3(10.5f, 0.35f, 0.1f), wallColor).AddComponent<BoxCollider2D>();
         CreateBlock("Dark Tree Line Bottom", root.transform, new Vector3(0f, -2.25f, 0f), new Vector3(10.5f, 0.35f, 0.1f), wallColor).AddComponent<BoxCollider2D>();
         CreateBlock("Entrance Sign", root.transform, new Vector3(-2.4f, 1.15f, -0.1f), new Vector3(0.9f, 0.5f, 0.1f), new Color(0.45f, 0.24f, 0.12f));
+        CreateSignMarker(root.transform, roomId, "gate.welcome_sign", new Vector3(-2.4f, 0.72f, 0f), "* 북쪽 숲과 오래된 구조체 실험장으로 이어지는 초입이다.\n* Z로 표지판 반복/원샷 정책을 확인한다.", true, "mapfield.gate.sign.read");
+        CreatePlotPointMarker(root.transform, roomId, "gate.first_entry_cutscene", new Vector3(-1.1f, 0f, 0f), AreaPlotTriggerMode.OnEnter, "* 짧은 컷씬 테스트: 카메라가 잠깐 멈춘 것처럼 입구의 공기가 무거워진다.\n* 실제 컷씬은 Action Sequence로 옮길 수 있다.", true, "mapfield.gate.plot.entered");
         CreateSpawnPoint("Spawn_From_Village", root.transform, returnSpawnId, new Vector3(-3.6f, 0f, 0f), FacingDirection.Right);
         CreateSpawnPoint("Spawn_To_Village", root.transform, doorSpawnId, new Vector3(3.05f, 0f, 0f), FacingDirection.Left);
         CreateDoorPlaceholder("Door", root.transform, new Vector3(4.25f, 0f, 0f), new Vector3(0.45f, 1.7f, 0.1f), new Color(0.88f, 0.95f, 1f));
@@ -388,6 +393,11 @@ public static class RoomMapSampleBuilder
         CreateBlock("Warm Window", root.transform, new Vector3(1.35f, 1.25f, -0.2f), new Vector3(0.35f, 0.35f, 0.1f), new Color(1f, 0.76f, 0.28f));
         CreateBlock("Lantern", root.transform, new Vector3(-1.2f, 0.65f, -0.2f), new Vector3(0.25f, 0.7f, 0.1f), new Color(1f, 0.70f, 0.22f));
         CreateBlock("Frozen Pond", root.transform, new Vector3(-2.35f, -1.1f, -0.1f), new Vector3(1.9f, 0.8f, 0.1f), new Color(0.50f, 0.80f, 0.95f));
+        CreateNPCMarker(root.transform, roomId, "village.guide", new Vector3(-1.2f, 0.1f, 0f), "* 숲 쪽은 아직 테스트 중이야.\n* 표지판, 아이템, 상점, 퍼즐, 전투 마커를 전부 만져 보고 이상한 입력 락을 찾아줘.", false, string.Empty);
+        CreateItemMarker(root.transform, roomId, "village.test_item", new Vector3(-2.35f, -1.75f, 0f), "debug_healing_leaf", 2, "* 차가운 연못가에서 debug_healing_leaf 2개를 주웠다.\n* 아이템 획득 대화/원샷/저장 플래그 테스트.", "mapfield.village.item.pond_leaf");
+        CreatePuzzleMarker(root.transform, roomId, "village.lantern_puzzle", new Vector3(-1.2f, 1.15f, 0f), "mapfield.village.lantern_puzzle.solved");
+        CreateVendorMarker(root.transform, roomId, "village.street_vendor", new Vector3(3.7f, -0.55f, 0f), "vendor.mapfield.street", "shop.debug.village");
+        CreateSublocationMarker(root.transform, roomId, "village.notice_board", new Vector3(-4.0f, 1.8f, 0f), "Region_MapFieldStarter", "mapfield.village", "from_gate");
         CreateSpawnPoint("Spawn_From_Gate", root.transform, returnSpawnId, new Vector3(-4.7f, 0f, 0f), FacingDirection.Right);
         CreateSpawnPoint("Spawn_From_Inn", root.transform, doorSpawnId, new Vector3(1.9f, 0.05f, 0f), FacingDirection.Down);
         CreateSpawnPoint("Spawn_From_Shop", root.transform, "to_shop", new Vector3(3.7f, 0.25f, 0f), FacingDirection.Down);
@@ -410,6 +420,9 @@ public static class RoomMapSampleBuilder
         CreateBlock("Counter", root.transform, new Vector3(0.8f, 1.1f, -0.1f), new Vector3(2.1f, 0.45f, 0.1f), new Color(0.30f, 0.14f, 0.08f)).AddComponent<BoxCollider2D>();
         CreateBlock("Fireplace", root.transform, new Vector3(-2.2f, 1.25f, -0.1f), new Vector3(0.9f, 0.7f, 0.1f), new Color(0.95f, 0.30f, 0.12f)).AddComponent<BoxCollider2D>();
         CreateBlock("Table", root.transform, new Vector3(-1.2f, -0.75f, -0.1f), new Vector3(1.1f, 0.65f, 0.1f), new Color(0.28f, 0.14f, 0.07f)).AddComponent<BoxCollider2D>();
+        CreateNPCMarker(root.transform, roomId, "inn.keeper", new Vector3(0.8f, 0.55f, 0f), "* 여관 카운터 테스트야.\n* 대화가 끝난 같은 프레임에 다시 열리지 않는지 확인해 줘.", false, string.Empty);
+        CreateSavePointMarker(root.transform, roomId, "inn.save_crystal", new Vector3(-2.2f, 0.35f, 0f));
+        CreateItemMarker(root.transform, roomId, "inn.table_item", new Vector3(-1.2f, -1.25f, 0f), "debug_room_key", 1, "* 낡은 debug_room_key를 얻었다.\n* 집 안의 잠긴 문 테스트에 쓰는 척하는 아이템이다.", "mapfield.inn.item.room_key");
         CreateSpawnPoint("Spawn_From_Village", root.transform, returnSpawnId, new Vector3(0f, -1.45f, 0f), FacingDirection.Up);
         CreateSpawnPoint("Spawn_To_Village", root.transform, doorSpawnId, new Vector3(0f, -1.95f, 0f), FacingDirection.Down);
         CreateDoorPlaceholder("Door", root.transform, new Vector3(0f, -2.2f, 0f), new Vector3(0.9f, 0.35f, 0.1f), new Color(0.10f, 0.06f, 0.04f));
@@ -425,6 +438,8 @@ public static class RoomMapSampleBuilder
         CreateBlock("Shop Counter", root.transform, new Vector3(0.3f, 1.0f, -0.1f), new Vector3(2.6f, 0.45f, 0.1f), new Color(0.20f, 0.10f, 0.05f)).AddComponent<BoxCollider2D>();
         CreateBlock("Display Left", root.transform, new Vector3(-2.2f, -0.3f, -0.1f), new Vector3(0.55f, 1.25f, 0.1f), new Color(0.55f, 0.38f, 0.20f)).AddComponent<BoxCollider2D>();
         CreateBlock("Display Right", root.transform, new Vector3(2.2f, -0.3f, -0.1f), new Vector3(0.55f, 1.25f, 0.1f), new Color(0.55f, 0.38f, 0.20f)).AddComponent<BoxCollider2D>();
+        CreateVendorMarker(root.transform, roomId, "shop.main_counter", new Vector3(0.3f, 0.35f, 0f), "vendor.mapfield.shopkeeper", "shop.debug.general_store");
+        CreateSignMarker(root.transform, roomId, "shop.price_sign", new Vector3(-2.2f, 1.1f, 0f), "* 모든 물건 0G.\n* 아직 Shop UI는 Debug.Log fallback이라 콘솔을 확인하자.", false, string.Empty);
         CreateSpawnPoint("Spawn_From_Village", root.transform, returnSpawnId, new Vector3(0f, -1.45f, 0f), FacingDirection.Up);
         CreateSpawnPoint("Spawn_To_Village", root.transform, doorSpawnId, new Vector3(0f, -1.95f, 0f), FacingDirection.Down);
         CreateDoorPlaceholder("Door", root.transform, new Vector3(0f, -2.08f, 0f), new Vector3(0.9f, 0.35f, 0.1f), new Color(0.08f, 0.04f, 0.02f));
@@ -440,6 +455,9 @@ public static class RoomMapSampleBuilder
         CreateBlock("Bed", root.transform, new Vector3(-1.9f, 0.85f, -0.1f), new Vector3(1.2f, 0.75f, 0.1f), new Color(0.25f, 0.32f, 0.55f)).AddComponent<BoxCollider2D>();
         CreateBlock("Table", root.transform, new Vector3(1.3f, -0.35f, -0.1f), new Vector3(1.0f, 0.65f, 0.1f), new Color(0.28f, 0.14f, 0.07f)).AddComponent<BoxCollider2D>();
         CreateBlock("Bookshelf", root.transform, new Vector3(2.35f, 1.1f, -0.1f), new Vector3(0.55f, 1.2f, 0.1f), new Color(0.20f, 0.10f, 0.04f)).AddComponent<BoxCollider2D>();
+        CreateSignMarker(root.transform, roomId, "house.bookshelf_note", new Vector3(2.0f, 0.35f, 0f), "* 책장 뒤에 지름길 문 도면이 끼어 있다.\n* 잠긴 ShortcutDoor와 플래그 조건 테스트용 문서다.", false, string.Empty);
+        CreateItemMarker(root.transform, roomId, "house.bed_item", new Vector3(-1.9f, 0.2f, 0f), "debug_sleep_token", 1, "* debug_sleep_token을 얻었다.\n* 집 안 아이템 원샷 테스트.", "mapfield.house.item.sleep_token");
+        CreateShortcutDoorMarker(root.transform, roomId, "house.shortcut_locked", new Vector3(2.75f, -0.9f, 0f), "shortcut.house.forest", "shortcut.forest.house", "mapfield.village.lantern_puzzle.solved");
         CreateSpawnPoint("Spawn_From_Village", root.transform, returnSpawnId, new Vector3(0f, -1.35f, 0f), FacingDirection.Up);
         CreateSpawnPoint("Spawn_To_Village", root.transform, doorSpawnId, new Vector3(0f, -1.85f, 0f), FacingDirection.Down);
         CreateDoorPlaceholder("Door", root.transform, new Vector3(0f, -1.95f, 0f), new Vector3(0.9f, 0.35f, 0.1f), new Color(0.08f, 0.04f, 0.02f));
@@ -454,6 +472,10 @@ public static class RoomMapSampleBuilder
         CreateBlock("Tree Wall Top", root.transform, new Vector3(0f, 2.25f, 0f), new Vector3(11.5f, 0.35f, 0.1f), wallColor).AddComponent<BoxCollider2D>();
         CreateBlock("Tree Wall Bottom", root.transform, new Vector3(0f, -2.25f, 0f), new Vector3(11.5f, 0.35f, 0.1f), wallColor).AddComponent<BoxCollider2D>();
         CreateBlock("Rock", root.transform, new Vector3(-0.8f, -0.85f, -0.1f), new Vector3(0.75f, 0.55f, 0.1f), new Color(0.28f, 0.30f, 0.32f)).AddComponent<BoxCollider2D>();
+        CreateHazardMarker(root.transform, roomId, "forest.thorn_patch", new Vector3(-2.0f, -0.9f, 0f), 7, 0.8f, true);
+        CreatePuzzleMarker(root.transform, roomId, "forest.rock_switch", new Vector3(-0.8f, -0.25f, 0f), "mapfield.forest.rock_switch.solved");
+        CreateShortcutDoorMarker(root.transform, roomId, "forest.shortcut_locked", new Vector3(-3.1f, 1.0f, 0f), "shortcut.forest.house", "shortcut.house.forest", "mapfield.village.lantern_puzzle.solved");
+        CreatePlotPointMarker(root.transform, roomId, "forest.ambush_warning", new Vector3(2.2f, 0.95f, 0f), AreaPlotTriggerMode.OnInteract, "* 숲 안쪽에서 낯선 구조체 소리가 들린다.\n* 다음 방에서 ZEV Architecture Clone 전투/시나리오를 확인한다.", false, string.Empty);
         CreateSpawnPoint("Spawn_From_Village", root.transform, returnSpawnId, new Vector3(-4.2f, 0f, 0f), FacingDirection.Right);
         CreateSpawnPoint("Spawn_From_Dungeon", root.transform, doorSpawnId, new Vector3(4.0f, 0f, 0f), FacingDirection.Left);
         CreateDoorPlaceholder("Door_To_Village", root.transform, new Vector3(-5.15f, 0f, 0f), new Vector3(0.45f, 1.55f, 0.1f), new Color(0.18f, 0.38f, 0.20f));
@@ -470,6 +492,10 @@ public static class RoomMapSampleBuilder
         CreateBlock("Cave Mouth", root.transform, new Vector3(1.8f, 0.65f, -0.1f), new Vector3(1.7f, 1.3f, 0.1f), new Color(0.03f, 0.03f, 0.045f)).AddComponent<BoxCollider2D>();
         CreateBlock("Torch Left", root.transform, new Vector3(0.55f, 1.1f, -0.2f), new Vector3(0.22f, 0.7f, 0.1f), new Color(1.0f, 0.42f, 0.12f));
         CreateBlock("Torch Right", root.transform, new Vector3(3.05f, 1.1f, -0.2f), new Vector3(0.22f, 0.7f, 0.1f), new Color(1.0f, 0.42f, 0.12f));
+        CreateSignMarker(root.transform, roomId, "dungeon.warning_sign", new Vector3(-1.2f, 1.55f, 0f), "* 구조체 복제체 격리 구역.\n* Z 상호작용 전투, 시나리오 2페이즈, BattleScene 전환을 모두 확인한다.", false, string.Empty);
+        CreateHazardMarker(root.transform, roomId, "dungeon.ember_floor", new Vector3(0.55f, 0.45f, 0f), 12, 0.65f, false);
+        CreatePlotPointMarker(root.transform, roomId, "dungeon.clone_cutscene_intro", new Vector3(0.3f, -1.25f, 0f), AreaPlotTriggerMode.OnEnter, "* 컷씬 테스트: 화면이 어두워지고 복제체가 고개를 든다.\n* 실제 전환은 ZEV Architecture Clone BattleScenario의 Action Sequence에서 검증한다.", true, "mapfield.dungeon.clone_intro.seen");
+        CreateZevArchitectureCloneEncounter(root.transform, roomId, new Vector3(2.1f, -0.45f, 0f));
         CreateSpawnPoint("Spawn_From_Forest", root.transform, returnSpawnId, new Vector3(-3.2f, 0f, 0f), FacingDirection.Right);
         CreateSpawnPoint("Spawn_To_Forest", root.transform, doorSpawnId, new Vector3(-3.85f, 0f, 0f), FacingDirection.Left);
         CreateDoorPlaceholder("Door", root.transform, new Vector3(-4.15f, 0f, 0f), new Vector3(0.45f, 1.5f, 0.1f), new Color(0.16f, 0.16f, 0.20f));
@@ -511,17 +537,28 @@ public static class RoomMapSampleBuilder
         }
 
         door.name = doorName;
-        DoorTransition transition = door.GetComponent<DoorTransition>();
-        if (transition == null) transition = door.gameObject.AddComponent<DoorTransition>();
+        DoorTransition legacyTransition = door.GetComponent<DoorTransition>();
+        if (legacyTransition != null) Object.DestroyImmediate(legacyTransition, true);
+
+        AreaConnectionMarker transition = door.GetComponent<AreaConnectionMarker>();
+        if (transition == null) transition = door.gameObject.AddComponent<AreaConnectionMarker>();
 
         SerializedObject serialized = new SerializedObject(transition);
-        serialized.FindProperty("_activationMode").enumValueIndex = (int)DoorActivationMode.OnTriggerEnter;
-        serialized.FindProperty("_oneShotUntilExit").boolValue = true;
-        serialized.FindProperty("_request.TransitionType").enumValueIndex = (int)MapTransitionType.Room;
-        serialized.FindProperty("_request.TargetRoom").objectReferenceValue = targetRoom;
-        serialized.FindProperty("_request.TargetSpawnPointId").stringValue = targetSpawnId;
-        serialized.FindProperty("_request.FacingAfterEnter").enumValueIndex = (int)facing;
-        serialized.FindProperty("_request.FadeDuration").floatValue = 0.15f;
+        serialized.FindProperty("markerId").stringValue = $"{sourceRoom.RoomId}.{doorName}";
+        serialized.FindProperty("areaId").stringValue = sourceRoom.RoomId;
+        serialized.FindProperty("markerType").enumValueIndex = (int)AreaMarkerType.Connection;
+        serialized.FindProperty("displayName").stringValue = doorName;
+        serialized.FindProperty("description").stringValue = $"{sourceRoom.RoomId}에서 {targetRoom.RoomId}로 이동";
+        serialized.FindProperty("isOneShot").boolValue = false;
+        serialized.FindProperty("interactionRange").floatValue = 1.5f;
+        serialized.FindProperty("activationMode").enumValueIndex = (int)DoorActivationMode.OnTriggerEnter;
+        serialized.FindProperty("interactToUse").boolValue = false;
+        serialized.FindProperty("oneShotUntilExit").boolValue = true;
+        serialized.FindProperty("mapTransition.TransitionType").enumValueIndex = (int)MapTransitionType.Room;
+        serialized.FindProperty("mapTransition.TargetRoom").objectReferenceValue = targetRoom;
+        serialized.FindProperty("mapTransition.TargetSpawnPointId").stringValue = targetSpawnId;
+        serialized.FindProperty("mapTransition.FacingAfterEnter").enumValueIndex = (int)facing;
+        serialized.FindProperty("mapTransition.FadeDuration").floatValue = 0.15f;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
@@ -582,8 +619,160 @@ public static class RoomMapSampleBuilder
         GameObject door = CreateBlock(name, parent, localPosition, localScale, color);
         BoxCollider2D trigger = door.AddComponent<BoxCollider2D>();
         trigger.isTrigger = true;
-        door.AddComponent<DoorTransition>();
+        door.AddComponent<AreaConnectionMarker>();
         return door;
+    }
+
+    private static T CreateAreaMarker<T>(Transform parent, string roomId, string localId, Vector3 localPosition, string displayName, string description, bool oneShot, string completeFlag)
+        where T : AreaMarkerBase
+    {
+        GameObject markerObject = new GameObject($"Marker_{displayName}");
+        markerObject.layer = 6;
+        markerObject.transform.SetParent(parent);
+        markerObject.transform.localPosition = localPosition;
+
+        CircleCollider2D trigger = markerObject.AddComponent<CircleCollider2D>();
+        trigger.isTrigger = true;
+        trigger.radius = 0.35f;
+
+        T marker = markerObject.AddComponent<T>();
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("markerId").stringValue = $"{roomId}.{localId}";
+        serialized.FindProperty("areaId").stringValue = roomId;
+        serialized.FindProperty("displayName").stringValue = displayName;
+        serialized.FindProperty("description").stringValue = description;
+        serialized.FindProperty("isOneShot").boolValue = oneShot;
+        serialized.FindProperty("setFlagOnComplete").stringValue = completeFlag ?? string.Empty;
+        serialized.FindProperty("interactionRange").floatValue = 1.35f;
+        serialized.FindProperty("showLabelInSceneView").boolValue = true;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        return marker;
+    }
+
+    private static void CreateNPCMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string fallbackText, bool oneShot, string completeFlag)
+    {
+        NPCMarker marker = CreateAreaMarker<NPCMarker>(parent, roomId, localId, localPosition, localId, "NPC dialogue test marker", oneShot, completeFlag);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("npcId").stringValue = localId;
+        serialized.FindProperty("dialogueId").stringValue = $"{roomId}.{localId}.dialogue";
+        serialized.FindProperty("fallbackDialogueText").stringValue = fallbackText;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateSignMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string text, bool oneShot, string completeFlag)
+    {
+        SignMarker marker = CreateAreaMarker<SignMarker>(parent, roomId, localId, localPosition, localId, "Sign dialogue test marker", oneShot, completeFlag);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("signText").stringValue = text;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateItemMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string itemId, int amount, string pickupMessage, string completeFlag)
+    {
+        ItemPickupMarker marker = CreateAreaMarker<ItemPickupMarker>(parent, roomId, localId, localPosition, localId, "Item pickup dialogue and one-shot test marker", true, completeFlag);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("itemId").stringValue = itemId;
+        serialized.FindProperty("amount").intValue = amount;
+        serialized.FindProperty("pickupMessage").stringValue = pickupMessage;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreatePuzzleMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string solvedFlag)
+    {
+        PuzzleMarker marker = CreateAreaMarker<PuzzleMarker>(parent, roomId, localId, localPosition, localId, "Puzzle flag test marker", false, string.Empty);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("puzzleId").stringValue = localId;
+        serialized.FindProperty("solvedFlag").stringValue = solvedFlag;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateVendorMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string vendorId, string shopId)
+    {
+        VendorMarker marker = CreateAreaMarker<VendorMarker>(parent, roomId, localId, localPosition, localId, "Vendor fallback test marker", false, string.Empty);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("vendorId").stringValue = vendorId;
+        serialized.FindProperty("shopId").stringValue = shopId;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateSavePointMarker(Transform parent, string roomId, string localId, Vector3 localPosition)
+    {
+        SavePointMarker marker = CreateAreaMarker<SavePointMarker>(parent, roomId, localId, localPosition, localId, "Save point fallback test marker", false, string.Empty);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("savePointId").stringValue = $"{roomId}.{localId}";
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateHazardMarker(Transform parent, string roomId, string localId, Vector3 localPosition, int damage, float knockback, bool triggerOnEnter)
+    {
+        HazardMarker marker = CreateAreaMarker<HazardMarker>(parent, roomId, localId, localPosition, localId, "Hazard trigger/interact test marker", false, string.Empty);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("damage").intValue = damage;
+        serialized.FindProperty("knockback").floatValue = knockback;
+        serialized.FindProperty("triggerOnEnter").boolValue = triggerOnEnter;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreatePlotPointMarker(Transform parent, string roomId, string localId, Vector3 localPosition, AreaPlotTriggerMode triggerMode, string fallbackText, bool oneShot, string completeFlag)
+    {
+        PlotPointMarker marker = CreateAreaMarker<PlotPointMarker>(parent, roomId, localId, localPosition, localId, "Plot/cutscene fallback test marker", oneShot, completeFlag);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("plotId").stringValue = localId;
+        serialized.FindProperty("triggerMode").enumValueIndex = (int)triggerMode;
+        serialized.FindProperty("fallbackDialogueText").stringValue = fallbackText;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateSublocationMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string targetSceneName, string targetAreaId, string targetSpawnId)
+    {
+        SublocationMarker marker = CreateAreaMarker<SublocationMarker>(parent, roomId, localId, localPosition, localId, "Sublocation scene/area state test marker", false, string.Empty);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("sublocationId").stringValue = localId;
+        serialized.FindProperty("targetSceneName").stringValue = targetSceneName;
+        serialized.FindProperty("targetAreaId").stringValue = targetAreaId;
+        serialized.FindProperty("targetSpawnId").stringValue = targetSpawnId;
+        serialized.FindProperty("fadeDuration").floatValue = 0.2f;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateShortcutDoorMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string doorId, string linkedDoorId, string unlockFlag)
+    {
+        ShortcutDoorMarker marker = CreateAreaMarker<ShortcutDoorMarker>(parent, roomId, localId, localPosition, localId, "Locked shortcut test marker", false, string.Empty);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("doorId").stringValue = doorId;
+        serialized.FindProperty("linkedDoorId").stringValue = linkedDoorId;
+        serialized.FindProperty("isLocked").boolValue = true;
+        serialized.FindProperty("unlockFlag").stringValue = unlockFlag;
+        serialized.FindProperty("activationMode").enumValueIndex = (int)DoorActivationMode.OnInteract;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void CreateZevArchitectureCloneEncounter(Transform parent, string roomId, Vector3 localPosition)
+    {
+        GameObject clonePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ZevClonePrefabAssetPath);
+        if (clonePrefab != null)
+        {
+            GameObject cloneInstance = (GameObject)PrefabUtility.InstantiatePrefab(clonePrefab);
+            cloneInstance.name = "ZEV_ArchitectureClone_EncounterActor";
+            cloneInstance.transform.SetParent(parent);
+            cloneInstance.transform.localPosition = localPosition;
+            cloneInstance.transform.localScale = Vector3.one;
+        }
+
+        OverworldEnemyMarker marker = CreateAreaMarker<OverworldEnemyMarker>(parent, roomId, "dungeon.zev_architecture_clone_enemy", localPosition + new Vector3(0f, -0.75f, 0f), "ZEV Architecture Clone Battle", "ZEV clone battle/scenario entry marker", false, string.Empty);
+        EnemyData enemy = AssetDatabase.LoadAssetAtPath<EnemyData>(ZevCloneEnemyAssetPath);
+        BattleScenarioData scenario = AssetDatabase.LoadAssetAtPath<BattleScenarioData>(ZevCloneScenarioAssetPath);
+        SerializedObject serialized = new SerializedObject(marker);
+        serialized.FindProperty("enemyId").stringValue = "zev_architecture_clone";
+        serialized.FindProperty("enemyLevel").intValue = 1;
+        serialized.FindProperty("battleEncounterId").stringValue = "mapfield.dungeon.zev_architecture_clone";
+        serialized.FindProperty("enemyData").objectReferenceValue = enemy;
+        serialized.FindProperty("battleScenarioData").objectReferenceValue = scenario;
+        serialized.FindProperty("useDedicatedBattleScene").boolValue = true;
+        serialized.FindProperty("battleSceneName").stringValue = "BattleScene";
+        serialized.FindProperty("battleFadeDuration").floatValue = 0.08f;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private static void CreateSpawnPoint(string name, Transform parent, string spawnPointId, Vector3 localPosition, FacingDirection facing)
@@ -722,9 +911,11 @@ public static class RoomMapSampleBuilder
             + "## 구성\n\n"
             + $"- 루트: `{StarterPackRoot}`\n"
             + "- Region Scene: `Scenes/Region_MapFieldStarter.unity`\n"
-            + "- RoomDefinition: `Data/Rooms`\n"
+            + "- RoomDefinition: `Prefabs/Rooms` (각 Room Prefab 옆 `_Definition.asset`)\n"
             + "- Room Prefab: `Prefabs/Rooms`\n"
-            + "- DoorTransition: Gate <-> Village <-> Inn / Shop / House / ForestPath <-> DungeonEntrance\n\n"
+            + "- AreaConnectionMarker: Gate <-> Village <-> Inn / Shop / House / ForestPath <-> DungeonEntrance\n"
+            + "- 테스트용 Area Marker: NPC, Sign, Item, SavePoint, Vendor, Puzzle, Hazard, ShortcutDoor, Sublocation, PlotPoint, Enemy\n"
+            + "- 전투 테스트: `Room_MapField_DungeonEntrance`에 `ZEV_ArchitectureClone_Prefab` 인스턴스와 `OverworldEnemyMarker`를 함께 배치합니다.\n\n"
             + "## 기본 생성 룸 7개\n\n"
             + "1. `Room_MapField_Gate`\n"
             + "2. `Room_MapField_Village`\n"
@@ -733,17 +924,19 @@ public static class RoomMapSampleBuilder
             + "5. `Room_MapField_House`\n"
             + "6. `Room_MapField_ForestPath`\n"
             + "7. `Room_MapField_DungeonEntrance`\n\n"
-            + "## 다음 제작 포인트\n\n"
-            + "- NPC 배치\n"
-            + "- 지역 분위기 파티클\n"
-            + "- 이벤트 트리거\n"
-            + "- 지역 BGM/실내 BGM override\n\n"
+            + "## 버그 탐색 루트\n\n"
+            + "1. Gate: 입장 PlotPoint 자동 발동과 welcome Sign one-shot을 확인합니다.\n"
+            + "2. Village: 반복 NPC, 아이템 one-shot, 퍼즐 플래그, 상점 fallback, Sublocation 저장/복귀값을 확인합니다.\n"
+            + "3. Inn/Shop/House: 실내 이동 후 대화 종료 입력 재소비, SavePoint fallback, ShortcutDoor 잠금 조건을 확인합니다.\n"
+            + "4. ForestPath: 접촉 Hazard와 Z 상호작용 PlotPoint/ShortcutDoor를 확인합니다.\n"
+            + "5. DungeonEntrance: 컷신용 PlotPoint 자동 발동 후 ZEV Architecture Clone 전투 진입과 BattleScenarioData 전달을 확인합니다.\n\n"
             + "## 기획자 체크 방법\n\n"
             + "1. `Region_MapFieldStarter.unity`를 엽니다.\n"
             + "2. Hierarchy의 `Map Systems`에서 초기 RoomDefinition을 확인합니다.\n"
-            + "3. `Data/Rooms`의 RoomDefinition을 열어 룸 ID, 프리팹, BGM 설정을 확인합니다.\n"
-            + "4. 문 이동은 각 룸 프리팹 안의 `DoorTransition` 컴포넌트에서 TargetRoom/TargetSpawnPointId로 확인합니다.\n"
-            + "5. 메뉴 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 연결 누락을 확인합니다.\n";
+            + "3. `Prefabs/Rooms`의 RoomDefinition을 열어 룸 ID, 프리팹, BGM 설정을 확인합니다.\n"
+            + "4. 문 이동은 각 룸 프리팹 안의 `AreaConnectionMarker` 컴포넌트에서 MapTransition.TargetRoom/TargetSpawnPointId로 확인합니다.\n"
+            + "5. 각 Room Prefab의 `Marker_*` 오브젝트가 Interactable 레이어와 Trigger Collider를 갖는지 확인합니다.\n"
+            + "6. 메뉴 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 연결 누락을 확인합니다.\n";
 
         File.WriteAllText(path, content, System.Text.Encoding.UTF8);
         AssetDatabase.ImportAsset(path);
@@ -766,14 +959,14 @@ public static class RoomMapSampleBuilder
             + "- **Region Scene**: 하나의 큰 지역 씬입니다. 예: 마을 지역, 숲 지역, 던전 입구 지역.\n"
             + "- **RoomDefinition**: 룸 ID, 룸 프리팹, BGM 설정을 담는 데이터입니다. 기획자가 가장 먼저 확인할 데이터입니다.\n"
             + "- **Room Prefab**: 실제 바닥, 벽, 문, 스폰 지점, NPC가 들어가는 한 화면 단위 맵입니다.\n"
-            + "- **DoorTransition**: 문/통로/계단입니다. 어느 Room으로 이동할지와 도착 SpawnPoint를 지정합니다.\n"
+            + "- **AreaConnectionMarker**: 문/통로/계단 Area Marker입니다. 어느 Room/Scene으로 이동할지와 도착 SpawnPoint를 지정합니다.\n"
             + "- **SpawnPoint**: 이동 후 플레이어가 서는 위치와 바라볼 방향입니다.\n\n"
             + "## 제작 흐름\n\n"
             + "1. Unity 메뉴 `HubToHome > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`을 실행합니다.\n"
             + "2. `Assets/_Game/Scenes/Overworld/MapWorlds/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`를 엽니다.\n"
-            + "3. `Data/Rooms`의 RoomDefinition으로 룸 목록과 BGM을 확인합니다.\n"
+            + "3. `Prefabs/Rooms`에서 Room Prefab 옆의 RoomDefinition으로 룸 목록과 BGM을 확인합니다.\n"
             + "4. `Prefabs/Rooms`의 Room Prefab을 열어 바닥/벽/문/NPC/이벤트를 배치합니다.\n"
-            + "5. 문을 추가하면 `DoorTransition.TargetRoom`과 `TargetSpawnPointId`를 맞춥니다.\n"
+            + "5. 문을 추가하면 `AreaConnectionMarker.MapTransition.TargetRoom`과 `TargetSpawnPointId`를 맞춥니다.\n"
             + "6. 메뉴 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 누락된 연결을 확인합니다.\n\n"
             + "## 이름 규칙\n\n"
             + "- Room ID: `지역.장소` 형식. 예: `mapfield.village`, `forest.entrance`\n"

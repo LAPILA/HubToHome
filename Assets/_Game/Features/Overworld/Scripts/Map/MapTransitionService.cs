@@ -179,5 +179,15 @@ public class MapTransitionService : MonoBehaviour
             if (distance <= 1.5f)
                 doors[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
         }
+
+        AreaConnectionMarker[] connectionMarkers = FindObjectsByType<AreaConnectionMarker>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < connectionMarkers.Length; i++)
+        {
+            if (connectionMarkers[i] == null) continue;
+
+            float distance = Vector2.Distance(connectionMarkers[i].transform.position, spawnPoint.transform.position);
+            if (distance <= 1.5f)
+                connectionMarkers[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
+        }
     }
 }

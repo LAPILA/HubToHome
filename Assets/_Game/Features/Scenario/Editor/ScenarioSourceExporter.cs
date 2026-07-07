@@ -436,6 +436,8 @@ public sealed class ScenarioSourceYamlWriter
 
         switch (rule.EventType)
         {
+            case BattleEventType.BattleStarted:
+                break;
             case BattleEventType.GameModuleCompleted:
                 AppendKeyValue(builder, 3, "module", rule.SubjectId);
                 if (!string.IsNullOrWhiteSpace(rule.OutcomeId))
@@ -753,6 +755,8 @@ public sealed class ScenarioSourceYamlWriter
                 return "skill.completed";
             case BattleEventType.GameModuleCompleted:
                 return "module.completed";
+            case BattleEventType.BattleStarted:
+                return "battle.started";
             default:
                 return "none";
         }
@@ -1379,6 +1383,8 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 return BattleEventType.SkillCompleted;
             case "module.completed":
                 return BattleEventType.GameModuleCompleted;
+            case "battle.started":
+                return BattleEventType.BattleStarted;
             default:
                 return BattleEventType.None;
         }

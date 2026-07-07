@@ -15,6 +15,7 @@ public class InteractionSystem : MonoBehaviour
 
     private IInteractable _currentTarget; 
     private readonly Collider2D[] _hitResults = new Collider2D[1]; 
+    private PlayerController _player;
     
     private ContactFilter2D _contactFilter;
 
@@ -31,6 +32,11 @@ public class InteractionSystem : MonoBehaviour
         _contactFilter.useTriggers = true; // 트리거 콜라이더도 감지하도록 설정
     }
 
+    private void Start()
+    {
+        CachePlayerIfNeeded();
+    }
+
     private void Update()
     {
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) 
@@ -44,8 +50,12 @@ public class InteractionSystem : MonoBehaviour
 
     private void DetectInteractable()
     {
-        var player = FindFirstObjectByType<PlayerController>(); 
-        if (player == null) return;
+        PlayerController player = CachePlayerIfNeeded();
+        if (player == null)
+        {
+            ClearTarget();
+            return;
+        }
 
         Vector2 dir = _directionVectors[player.FacingDirection];
         Vector2 origin = (Vector2)player.transform.position + dir * _boxDistance;
@@ -68,6 +78,14 @@ public class InteractionSystem : MonoBehaviour
         }
 
         ClearTarget();
+    }
+
+    private PlayerController CachePlayerIfNeeded()
+    {
+        if (_player == null)
+            _player = FindFirstObjectByType<PlayerController>();
+
+        return _player;
     }
 
     private void ClearTarget()

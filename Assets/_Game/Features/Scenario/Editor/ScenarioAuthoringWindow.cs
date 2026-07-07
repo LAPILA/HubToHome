@@ -1380,6 +1380,8 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
                 return "스킬 종료";
             case BattleEventType.GameModuleCompleted:
                 return "모듈 종료";
+            case BattleEventType.BattleStarted:
+                return "전투 시작";
             default:
                 return "이벤트 없음";
         }

@@ -3,6 +3,24 @@ using NUnit.Framework;
 public class BattleEventRuleEvaluatorTests
 {
     [Test]
+    public void BattleStartedRuleFiresAtBattleOpening()
+    {
+        BattleEventRuleData rule = MakeBattleStartedRule("opening_clash");
+        var session = new BattleScenarioSession("zev_first_battle");
+
+        bool fired = BattleEventRuleEvaluator.TryEvaluate(
+            rule,
+            BattleEventData.BattleStarted(),
+            session,
+            out BattleScenarioTrigger trigger);
+
+        Assert.That(fired, Is.True);
+        Assert.That(trigger.RuleId, Is.EqualTo("battle_started"));
+        Assert.That(trigger.SequenceId, Is.EqualTo("opening_clash"));
+        Assert.That(trigger.SourceEvent.SubjectId, Is.EqualTo("battle"));
+    }
+
+    [Test]
     public void HpCrossedBelowRuleFiresOncePerBattle()
     {
         BattleEventRuleData rule = MakeHpRule("zev", 0.5f, "zev_phase2");
@@ -155,6 +173,18 @@ public class BattleEventRuleEvaluatorTests
             Once = BattleRuleOnceMode.PerBattle,
             SubjectId = enemyId,
             ThresholdRatio = threshold,
+            SequenceId = sequenceId
+        };
+    }
+
+    private static BattleEventRuleData MakeBattleStartedRule(string sequenceId)
+    {
+        return new BattleEventRuleData
+        {
+            RuleId = "battle_started",
+            EventType = BattleEventType.BattleStarted,
+            Timing = BattleRuleTiming.Immediate,
+            Once = BattleRuleOnceMode.PerBattle,
             SequenceId = sequenceId
         };
     }

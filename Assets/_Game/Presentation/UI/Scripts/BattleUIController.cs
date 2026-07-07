@@ -49,6 +49,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private bool _isAllyTargeting = false;
     private int _selectedTargetIndex = 0;
     private bool _isBattleEnding = false;
+    private bool _isScenarioCinematicMode;
     
     // 🚨 체력창의 기본 Y좌표를 기억해둘 변수
     private float _defaultPartyPanelY;
@@ -520,6 +521,64 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
         ResetPartyPanelPosition(0f);
+    }
+
+    public void SetScenarioCinematicMode(bool active)
+    {
+        _isScenarioCinematicMode = active;
+        ExitTargetingMode();
+
+        if (_battleMenuUI != null)
+        {
+            if (active)
+            {
+                _battleMenuUI.HideImmediate();
+                _battleMenuUI.gameObject.SetActive(false);
+            }
+            else
+            {
+                _battleMenuUI.gameObject.SetActive(true);
+            }
+        }
+
+        if (_partyStatusPanel != null)
+        {
+            _partyStatusPanel.gameObject.SetActive(!active);
+        }
+
+        if (_turnQueueContainer != null)
+        {
+            _turnQueueContainer.gameObject.SetActive(!active);
+        }
+
+        if (_turnLabel != null)
+        {
+            _turnLabel.gameObject.SetActive(!active);
+        }
+
+        if (_targetCursor != null)
+        {
+            _targetCursor.gameObject.SetActive(false);
+        }
+
+        if (_defenseQTEUI != null)
+        {
+            _defenseQTEUI.HideImmediate();
+            _defenseQTEUI.gameObject.SetActive(!active);
+        }
+
+        if (_narrationUI != null)
+        {
+            if (active)
+            {
+                _narrationUI.Clear();
+                _narrationUI.gameObject.SetActive(false);
+            }
+            else
+            {
+                _narrationUI.gameObject.SetActive(true);
+            }
+        }
     }
 
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);

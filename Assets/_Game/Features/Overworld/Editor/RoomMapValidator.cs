@@ -12,6 +12,7 @@ public static class RoomMapValidator
     public static void ValidateOpenRoomMap()
     {
         DoorTransition[] doors = Object.FindObjectsByType<DoorTransition>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        AreaConnectionMarker[] connectionMarkers = Object.FindObjectsByType<AreaConnectionMarker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         SpawnPoint[] spawnPoints = Object.FindObjectsByType<SpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         RoomContainer[] containers = Object.FindObjectsByType<RoomContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         MapTransitionService[] services = Object.FindObjectsByType<MapTransitionService>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -89,6 +90,40 @@ public static class RoomMapValidator
             }
         }
 
-        Debug.Log($"[RoomMapValidator] 검사 완료. Doors={doors.Length}, SpawnPoints={spawnPoints.Length}, Errors={errorCount}, Warnings={warningCount}");
+        for (int i = 0; i < connectionMarkers.Length; i++)
+        {
+            AreaConnectionMarker marker = connectionMarkers[i];
+            MapTransitionRequest request = marker.MapTransition;
+            if (request == null)
+            {
+                Debug.LogWarning($"[RoomMapValidator] AreaConnectionMarker의 MapTransition이 비어 있습니다. Marker={marker.name}", marker);
+                warningCount++;
+                continue;
+            }
+
+            if (!request.IsValid(out string error))
+            {
+                if (marker.HasSceneTarget)
+                    continue;
+
+                Debug.LogError($"[RoomMapValidator] AreaConnectionMarker 요청 오류: Marker={marker.name}, Error={error}", marker);
+                errorCount++;
+                continue;
+            }
+
+            if (request.TransitionType == MapTransitionType.Room && request.TargetRoom != null && !request.TargetRoom.IsValid)
+            {
+                Debug.LogError($"[RoomMapValidator] Marker={marker.name}의 TargetRoom이 유효하지 않습니다.", marker);
+                errorCount++;
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.TargetSpawnPointId) && !spawnPointMap.ContainsKey(request.TargetSpawnPointId))
+            {
+                Debug.LogWarning($"[RoomMapValidator] 현재 로드된 씬/룸 안에서 목적지 SpawnPointId를 찾지 못했습니다. Marker={marker.name}, TargetSpawnPointId={request.TargetSpawnPointId}", marker);
+                warningCount++;
+            }
+        }
+
+        Debug.Log($"[RoomMapValidator] 검사 완료. Doors={doors.Length}, AreaConnectionMarkers={connectionMarkers.Length}, SpawnPoints={spawnPoints.Length}, Errors={errorCount}, Warnings={warningCount}");
     }
 }

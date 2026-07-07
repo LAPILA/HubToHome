@@ -64,6 +64,7 @@ public class CameraController : MonoBehaviour
         
         // 🚨 DOTween 이동을 삭제하고, 시네머신의 추적 대상을 직접 갈아끼움 (지터링 완벽 해결)
         _vCam.Follow = newTarget;
+        SnapVirtualCameraToTarget(newTarget);
     }
 
     /// <summary>
@@ -74,6 +75,7 @@ public class CameraController : MonoBehaviour
         if (_vCam == null || target == null) return;
 
         SetTarget(target);
+        SnapVirtualCameraToTarget(target);
 
         DOTween.Kill(CameraZoomTweenId);
         DOTween.Kill(CameraImpactTweenId);
@@ -127,6 +129,18 @@ public class CameraController : MonoBehaviour
     }
     
     public void ModeEnemyAction() => ResetCamera(0.3f); 
+
+    private void SnapVirtualCameraToTarget(Transform target)
+    {
+        if (_vCam == null || target == null)
+        {
+            return;
+        }
+
+        Transform cameraTransform = _vCam.transform;
+        Vector3 currentPosition = cameraTransform.position;
+        cameraTransform.position = new Vector3(target.position.x, target.position.y, currentPosition.z);
+    }
 
 
     // ─── [2. 타격 연출 (Slam & Impact)] ───

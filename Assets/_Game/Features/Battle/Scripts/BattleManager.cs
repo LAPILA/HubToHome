@@ -92,6 +92,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
     #region [ Internal State ]
     public BattleState CurrentState { get; private set; } = BattleState.Init;
     
+    private readonly Dictionary<CharacterBase, int> _actorForegroundSortingOrderCache = new Dictionary<CharacterBase, int>();
+    private readonly Dictionary<CharacterBase, bool> _actorDefaultFlipXCache = new Dictionary<CharacterBase, bool>();
     public SkillData CurrentPendingSkill { get; private set; }
     public ItemData  CurrentPendingItem  { get; private set; }
 
@@ -415,6 +417,15 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         registry.Register(new DialogueWaitActionAdapter());
         registry.Register(new BgmCrossfadeActionAdapter());
         registry.Register(new ScreenFadeActionAdapter());
+        registry.Register(new CinematicLetterboxActionAdapter());
+        registry.Register(new BattleCameraFocusActionAdapter());
+        registry.Register(new BattleCameraResetActionAdapter());
+        registry.Register(new BattleActorPoseActionAdapter());
+        registry.Register(new BattleActorFlipActionAdapter());
+        registry.Register(new BattleActorMoveActionAdapter());
+        registry.Register(new BattleActorDropInActionAdapter());
+        registry.Register(new BattleActorFakeAttackActionAdapter());
+        registry.Register(new BattleActorReturnSlotsActionAdapter());
         registry.Register(new ModuleSwitchActionAdapter());
         registry.Register(new ModuleStartActionAdapter());
         registry.Register(new BattleSkillTimelineActionAdapter());
@@ -440,6 +451,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
                     scenarioData != null ? scenarioData.AudioClips : null,
                     new ResourcesAudioClipResolver())),
             screenTransitionRunner: new ScreenTransitionRunner(),
+            battleCinematicRunner: new BattleCinematicRunner(this),
             battleSessionState: _battleScenarioRuntime != null ? _battleScenarioRuntime.SessionState : null,
             battleParticipantCommandRunner: new BattleParticipantCommandRunner(this),
             gameModuleEventSink: _battleScenarioExecutionGate);
@@ -691,6 +703,665 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
             return _battleManager != null
                 ? _battleManager.ConsumeMpParticipant(subjectId, amount)
                 : BattleParticipantCommandResult.Failed(subjectId, "BattleManager is missing.");
+        }
+    }
+
+    private sealed class BattleCinematicRunner : IBattleCinematicRunner
+    {
+        private readonly BattleManager _battleManager;
+
+        public BattleCinematicRunner(BattleManager battleManager)
+        {
+            _battleManager = battleManager;
+        }
+
+        public IEnumerator SetLetterbox(bool visible, float thickness, float duration, ActionExecutionHandle handle)
+        {
+            CinematicLetterboxOverlay overlay = null;
+            try
+            {
+                overlay = CinematicLetterboxOverlay.GetOrCreate();
+            }
+            catch (Exception exception)
+            {
+                SafeWarn("cinematic.letterbox overlay could not be created.", exception);
+            }
+
+            if (overlay == null)
+            {
+                yield break;
+            }
+
+            IEnumerator routine = overlay.SetVisible(visible, thickness, Mathf.Max(0f, duration), handle);
+            while (routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+        }
+
+        public IEnumerator FocusCamera(string subjectId, float zoom, float duration, ActionExecutionHandle handle)
+        {
+            CharacterBase subject = FindParticipantOrSkip(subjectId);
+            if (subject == null)
+            {
+                yield break;
+            }
+
+            CameraController cameraController = CameraController.Instance;
+            if (cameraController == null)
+            {
+                SafeWarn("battle.camera.focus skipped because CameraController.Instance is missing.");
+                yield break;
+            }
+
+            Transform focusTarget = ResolveCameraTarget(subject);
+            cameraController.ZoomOnTransform(focusTarget, Mathf.Max(0.5f, zoom), Mathf.Max(0f, duration));
+            yield return WaitRealtime(duration, handle);
+        }
+
+        public IEnumerator ResetCamera(float duration, ActionExecutionHandle handle)
+        {
+            CameraController cameraController = CameraController.Instance;
+            if (cameraController == null)
+            {
+                SafeWarn("battle.camera.reset skipped because CameraController.Instance is missing.");
+                yield break;
+            }
+
+            cameraController.ResetCamera(Mathf.Max(0f, duration));
+            yield return WaitRealtime(duration, handle);
+        }
+
+        public IEnumerator PlayActorPose(string subjectId, string pose, float duration, float impact, ActionExecutionHandle handle)
+        {
+            CharacterBase subject = FindParticipantOrSkip(subjectId);
+            if (subject == null)
+            {
+                yield break;
+            }
+
+            PlayPose(subject, pose);
+            PlayAttackEffect(subject, pose);
+            if (impact > 0f)
+            {
+                CameraController.Instance?.PlayHeavySlam(Vector3.right, Mathf.Max(0f, impact), true);
+            }
+
+            yield return WaitRealtime(duration, handle);
+        }
+
+        public IEnumerator SetActorFlip(string subjectId, string mode, ActionExecutionHandle handle)
+        {
+            CharacterBase subject = FindParticipantOrSkip(subjectId);
+            if (subject == null)
+            {
+                yield break;
+            }
+
+            ApplyActorFlip(subject, mode);
+            yield break;
+        }
+
+        public IEnumerator MoveActor(string subjectId, string anchor, float x, float y, float duration, string pose, float impact, ActionExecutionHandle handle)
+        {
+            CharacterBase subject = FindParticipantOrSkip(subjectId);
+            if (subject == null)
+            {
+                yield break;
+            }
+
+            bool foregroundApplied = false;
+            try
+            {
+                Vector3 destination = ResolveAnchorPosition(subject, anchor) + new Vector3(x, y, 0f);
+                _battleManager.SetActorForeground(subject, true);
+                foregroundApplied = true;
+                SetGhostTrail(subject, true);
+                PlayPose(subject, string.IsNullOrWhiteSpace(pose) ? "move" : pose);
+
+                Tween move = StartMoveTween(subject, destination, duration, Ease.InOutSine);
+                yield return WaitTween(move, handle);
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                if (impact > 0f)
+                {
+                    CameraController.Instance?.PlayHeavySlam(Vector3.right, Mathf.Max(0f, impact), true);
+                }
+
+                PlayPose(subject, "idle");
+            }
+            finally
+            {
+                SetGhostTrail(subject, false);
+                PlayPose(subject, "idle");
+                if (foregroundApplied && _battleManager != null)
+                {
+                    _battleManager.SetActorForeground(subject, false);
+                }
+            }
+        }
+
+        public IEnumerator DropActorIn(string subjectId, float height, float hangDuration, float fallDuration, float settleDuration, float impact, ActionExecutionHandle handle)
+        {
+            CharacterBase subject = FindParticipantOrSkip(subjectId);
+            if (subject == null)
+            {
+                yield break;
+            }
+
+            Vector3 landingPosition = ResolveSlotPosition(subject);
+            Vector3 currentPosition = subject.transform.position;
+            Vector3 startPosition = currentPosition.y > landingPosition.y + 0.05f || Vector3.Distance(currentPosition, landingPosition) > 0.25f
+                ? currentPosition
+                : landingPosition + Vector3.up * Mathf.Max(0f, height);
+            bool foregroundApplied = false;
+
+            try
+            {
+                _battleManager.SetActorForeground(subject, true);
+                foregroundApplied = true;
+                subject.transform.DOKill(false);
+                subject.transform.position = startPosition;
+                CameraController.Instance?.SetTarget(ResolveCameraTarget(subject));
+                SetGhostTrail(subject, true);
+                PlayPose(subject, "move");
+
+                yield return WaitRealtime(hangDuration, handle);
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                Tween fall = StartMoveTween(subject, landingPosition, fallDuration, Ease.InExpo);
+                yield return WaitTween(fall, handle);
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                SetGhostTrail(subject, false);
+                PlayPose(subject, "attack");
+                CameraController.Instance?.PlayHeavySlam(Vector3.down, Mathf.Max(0f, impact), true);
+                yield return WaitRealtime(settleDuration, handle);
+                PlayPose(subject, "idle");
+            }
+            finally
+            {
+                subject.transform.DOKill(false);
+                subject.transform.position = landingPosition;
+                SetGhostTrail(subject, false);
+                PlayPose(subject, "idle");
+                if (foregroundApplied && _battleManager != null)
+                {
+                    _battleManager.SetActorForeground(subject, false);
+                }
+            }
+        }
+
+        private Vector3 ResolveSlotPosition(CharacterBase subject)
+        {
+            if (subject == null)
+            {
+                return Vector3.zero;
+            }
+
+            PositionManager pm = PositionManager.Instance;
+            if (pm == null || _battleManager == null)
+            {
+                return subject.transform.position;
+            }
+
+            PlayerCharacter player = subject as PlayerCharacter;
+            if (player != null)
+            {
+                int playerIndex = _battleManager._playerParty.IndexOf(player);
+                return playerIndex >= 0 ? pm.GetPlayerDefaultPos(playerIndex) : subject.transform.position;
+            }
+
+            EnemyCharacter enemy = subject as EnemyCharacter;
+            if (enemy != null)
+            {
+                int enemyIndex = _battleManager._enemies.IndexOf(enemy);
+                return enemyIndex >= 0 ? pm.GetEnemyDefaultPos(enemyIndex) : subject.transform.position;
+            }
+
+            return subject.transform.position;
+        }
+
+        private static Transform ResolveCameraTarget(CharacterBase subject)
+        {
+            return subject != null ? subject.transform : null;
+        }
+
+        private void ApplyActorFlip(CharacterBase subject, string mode)
+        {
+            if (subject == null || _battleManager == null)
+            {
+                return;
+            }
+
+            SpriteRenderer renderer = subject.GetComponent<SpriteRenderer>();
+            if (renderer == null)
+            {
+                renderer = subject.GetComponentInChildren<SpriteRenderer>();
+            }
+
+            if (renderer == null)
+            {
+                SafeWarn("battle.actor.flip skipped because SpriteRenderer was not found on " + subject.name);
+                return;
+            }
+
+            if (!_battleManager._actorDefaultFlipXCache.ContainsKey(subject))
+            {
+                _battleManager._actorDefaultFlipXCache.Add(subject, renderer.flipX);
+            }
+
+            bool defaultFlip = _battleManager._actorDefaultFlipXCache[subject];
+            string normalized = string.IsNullOrWhiteSpace(mode) ? "default" : mode.Trim().ToLowerInvariant();
+            switch (normalized)
+            {
+                case "invert":
+                case "inverted":
+                case "flipped":
+                    renderer.flipX = !defaultFlip;
+                    break;
+                case "toggle":
+                    renderer.flipX = !renderer.flipX;
+                    break;
+                default:
+                    renderer.flipX = defaultFlip;
+                    break;
+            }
+        }
+
+        private Vector3 ResolveAnchorPosition(CharacterBase subject, string anchor)
+        {
+            PositionManager pm = PositionManager.Instance;
+            string normalizedAnchor = string.IsNullOrWhiteSpace(anchor) ? "current" : anchor.Trim().ToLowerInvariant();
+            switch (normalizedAnchor)
+            {
+                case "center":
+                    return pm != null ? pm.GetCenterPos() : subject.transform.position;
+                case "player_slot":
+                    if (_battleManager != null && subject is PlayerCharacter)
+                    {
+                        int playerIndex = _battleManager._playerParty.IndexOf((PlayerCharacter)subject);
+                        return pm != null ? pm.GetPlayerDefaultPos(playerIndex) : subject.transform.position;
+                    }
+
+                    return subject.transform.position;
+                case "enemy_slot":
+                    if (_battleManager != null && subject is EnemyCharacter)
+                    {
+                        int enemyIndex = _battleManager._enemies.IndexOf((EnemyCharacter)subject);
+                        return pm != null ? pm.GetEnemyDefaultPos(enemyIndex) : subject.transform.position;
+                    }
+
+                    return subject.transform.position;
+                default:
+                    return subject.transform.position;
+            }
+        }
+
+        public IEnumerator PlayFakeAttack(
+            string actorId,
+            string targetId,
+            string targetPose,
+            float approachDistance,
+            float lungeDuration,
+            float holdDuration,
+            float recoverDuration,
+            float impact,
+            ActionExecutionHandle handle)
+        {
+            CharacterBase actor = FindParticipantOrSkip(actorId);
+            CharacterBase target = FindParticipantOrSkip(targetId);
+            if (actor == null || target == null)
+            {
+                yield break;
+            }
+
+            bool foregroundApplied = false;
+            try
+            {
+                Vector3 originalPosition = actor.transform.position;
+                Vector3 directionFromTarget = actor.transform.position - target.transform.position;
+                if (directionFromTarget.sqrMagnitude < 0.0001f)
+                {
+                    directionFromTarget = actor is PlayerCharacter ? Vector3.left : Vector3.right;
+                }
+
+                Vector3 strikePosition = target.transform.position + directionFromTarget.normalized * Mathf.Max(0.15f, approachDistance);
+                _battleManager.SetActorForeground(actor, true);
+                foregroundApplied = true;
+                SetGhostTrail(actor, true);
+                PlayPose(actor, "move");
+                Tween lunge = StartMoveTween(actor, strikePosition, lungeDuration, Ease.OutExpo);
+                yield return WaitTween(lunge, handle);
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                SetGhostTrail(actor, false);
+
+                PlayPose(actor, "attack");
+                PlayAttackEffect(actor, "attack");
+                PlayPose(target, string.IsNullOrWhiteSpace(targetPose) ? "hurt" : targetPose);
+                CameraController.Instance?.PlayHeavySlam(actor is PlayerCharacter ? Vector3.right : Vector3.left, Mathf.Max(0f, impact), true);
+                yield return WaitRealtime(holdDuration, handle);
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                PlayPose(actor, "move");
+                SetGhostTrail(actor, true);
+                Tween recover = StartMoveTween(actor, originalPosition, recoverDuration, Ease.OutQuad);
+                yield return WaitTween(recover, handle);
+                SetGhostTrail(actor, false);
+
+                PlayPose(actor, "idle");
+                PlayPose(target, "idle");
+            }
+            finally
+            {
+                SetGhostTrail(actor, false);
+                PlayPose(actor, "idle");
+                PlayPose(target, "idle");
+                if (foregroundApplied && _battleManager != null)
+                {
+                    _battleManager.SetActorForeground(actor, false);
+                }
+            }
+        }
+
+        public IEnumerator ReturnActorsToSlots(float duration, ActionExecutionHandle handle)
+        {
+            if (_battleManager == null)
+            {
+                yield break;
+            }
+
+            PositionManager pm = PositionManager.Instance;
+            float clampedDuration = Mathf.Max(0f, duration);
+            var tweens = new List<Tween>();
+
+            for (int i = 0; i < _battleManager._playerParty.Count; i++)
+            {
+                PlayerCharacter player = _battleManager._playerParty[i];
+                if (player == null || !player.IsAlive)
+                {
+                    continue;
+                }
+
+                Vector3 targetPosition = pm != null ? pm.GetPlayerDefaultPos(i) : player.transform.position;
+                _battleManager.SetActorForeground(player, false);
+                PlayPose(player, "move");
+                Tween tween = StartMoveTween(player, targetPosition, clampedDuration, Ease.OutQuad);
+                if (tween != null)
+                {
+                    tweens.Add(tween);
+                }
+            }
+
+            for (int i = 0; i < _battleManager._enemies.Count; i++)
+            {
+                EnemyCharacter enemy = _battleManager._enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                Vector3 targetPosition = pm != null ? pm.GetEnemyDefaultPos(i) : enemy.transform.position;
+                _battleManager.SetActorForeground(enemy, false);
+                PlayPose(enemy, "move_back");
+                Tween tween = StartMoveTween(enemy, targetPosition, clampedDuration, Ease.OutQuad);
+                if (tween != null)
+                {
+                    tweens.Add(tween);
+                }
+            }
+
+            float elapsed = 0f;
+            while (elapsed < clampedDuration)
+            {
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    KillTweens(tweens);
+                    yield break;
+                }
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            for (int i = 0; i < _battleManager._playerParty.Count; i++)
+            {
+                PlayPose(_battleManager._playerParty[i], "idle");
+            }
+
+            for (int i = 0; i < _battleManager._enemies.Count; i++)
+            {
+                PlayPose(_battleManager._enemies[i], "idle");
+            }
+
+            CameraController.Instance?.ResetCamera(0.35f);
+        }
+
+        private CharacterBase FindParticipantOrSkip(string subjectId)
+        {
+            if (_battleManager == null)
+            {
+                SafeWarn("BattleManager is missing for battle cinematic action.");
+                return null;
+            }
+
+            CharacterBase subject = _battleManager.FindBattleParticipant(subjectId);
+            if (subject == null)
+            {
+                SafeWarn("Battle cinematic participant was not found: " + subjectId);
+            }
+
+            return subject;
+        }
+
+        private static void PlayPose(CharacterBase actor, string pose)
+        {
+            if (actor == null)
+            {
+                return;
+            }
+
+            string normalized = string.IsNullOrWhiteSpace(pose) ? "idle" : pose.Trim().ToLowerInvariant();
+            PlayerCharacter player = actor as PlayerCharacter;
+            if (player != null)
+            {
+                TryPlayPose(() => player.PlayBattleAnim(ResolvePlayerPose(normalized)), player, normalized);
+                return;
+            }
+
+            EnemyCharacter enemy = actor as EnemyCharacter;
+            if (enemy != null)
+            {
+                TryPlayPose(() => enemy.PlayBattleAnim(ResolveEnemyPose(normalized)), enemy, normalized);
+            }
+        }
+
+        private static int ResolvePlayerPose(string pose)
+        {
+            switch (pose)
+            {
+                case "move":
+                    return PlayerCharacter.HashBattleMove;
+                case "ready":
+                    return PlayerCharacter.HashBattleReady;
+                case "attack":
+                    return PlayerCharacter.HashAttack;
+                case "hurt":
+                    return PlayerCharacter.HashHurt;
+                case "parry":
+                case "guard":
+                case "block":
+                    return PlayerCharacter.HashBattleReady;
+                default:
+                    return PlayerCharacter.HashBattleIdle;
+            }
+        }
+
+        private static int ResolveEnemyPose(string pose)
+        {
+            switch (pose)
+            {
+                case "move":
+                    return EnemyCharacter.HashBattleMove;
+                case "move_back":
+                    return EnemyCharacter.HashBattleMoveBack;
+                case "attack":
+                    return EnemyCharacter.HashAttack;
+                case "skill":
+                case "strong_skill":
+                    return EnemyCharacter.HashSkill;
+                case "hurt":
+                    return EnemyCharacter.HashHurt;
+                case "parry":
+                case "guard":
+                case "block":
+                    return EnemyCharacter.HashBattleIdle;
+                default:
+                    return EnemyCharacter.HashBattleIdle;
+            }
+        }
+
+        private static void PlayAttackEffect(CharacterBase actor, string pose)
+        {
+            if (actor == null || string.IsNullOrWhiteSpace(pose))
+            {
+                return;
+            }
+
+            string normalized = pose.Trim().ToLowerInvariant();
+            if (normalized != "attack" && normalized != "skill" && normalized != "strong_skill")
+            {
+                return;
+            }
+
+            PlayerCharacter player = actor as PlayerCharacter;
+            if (player != null)
+            {
+                TryPlayPose(player.PlayBasicAttackEffect, player, normalized + ":effect");
+                return;
+            }
+
+            EnemyCharacter enemy = actor as EnemyCharacter;
+            if (enemy != null)
+            {
+                TryPlayPose(enemy.PlayBasicAttackEffect, enemy, normalized + ":effect");
+            }
+        }
+
+        private static Tween StartMoveTween(CharacterBase actor, Vector3 targetPosition, float duration, Ease ease)
+        {
+            if (actor == null)
+            {
+                return null;
+            }
+
+            Transform actorTransform = actor.transform;
+            if (actorTransform == null)
+            {
+                return null;
+            }
+
+            actorTransform.DOKill(false);
+            float clampedDuration = Mathf.Max(0f, duration);
+            if (clampedDuration <= 0f)
+            {
+                actorTransform.position = targetPosition;
+                return null;
+            }
+
+            return actorTransform.DOMove(targetPosition, clampedDuration).SetEase(ease);
+        }
+
+        private static void TryPlayPose(Action playAction, CharacterBase actor, string pose)
+        {
+            try
+            {
+                playAction?.Invoke();
+            }
+            catch (Exception exception)
+            {
+                string actorName = actor != null ? actor.name : "<missing>";
+                SafeWarn("Battle cinematic pose skipped: " + actorName + " / " + pose, exception);
+            }
+        }
+
+        private static IEnumerator WaitTween(Tween tween, ActionExecutionHandle handle)
+        {
+            if (tween == null)
+            {
+                yield break;
+            }
+
+            while (tween.IsActive() && tween.IsPlaying())
+            {
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    tween.Kill(false);
+                    yield break;
+                }
+
+                yield return null;
+            }
+        }
+
+        private static IEnumerator WaitRealtime(float duration, ActionExecutionHandle handle)
+        {
+            float elapsed = 0f;
+            float clampedDuration = Mathf.Max(0f, duration);
+            while (elapsed < clampedDuration)
+            {
+                if (handle != null && handle.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        private static void KillTweens(List<Tween> tweens)
+        {
+            if (tweens == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < tweens.Count; i++)
+            {
+                Tween tween = tweens[i];
+                if (tween != null && tween.IsActive())
+                {
+                    tween.Kill(false);
+                }
+            }
+        }
+
+        private static void SafeWarn(string message, Exception exception = null)
+        {
+            if (exception != null)
+            {
+                Debug.LogWarning(message + " " + exception.GetType().Name + ": " + exception.Message);
+                return;
+            }
+
+            Debug.LogWarning(message);
         }
     }
 
@@ -1567,11 +2238,59 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
         _isBattleEnding = false;
-        RequestNarration(BattleNarrationFormatter.BattleStart());
-        TryRequestFlavorNarration();
-        yield return StartCoroutine(WaitForNarrationToFinish());
+        yield return StartCoroutine(PlayBattleStartedScenarioSequence());
+        if (!HasImmediateBattleStartScenario())
+        {
+            RequestNarration(BattleNarrationFormatter.BattleStart());
+            TryRequestFlavorNarration();
+            yield return StartCoroutine(WaitForNarrationToFinish());
+        }
         ChangeState(BattleState.Init);
         yield return StartCoroutine(StartOpeningBattleGameModule());
+    }
+
+    private IEnumerator PlayBattleStartedScenarioSequence()
+    {
+        if (_battleScenarioExecutionGate == null)
+        {
+            yield break;
+        }
+
+        _battleScenarioExecutionGate.PublishBattleStarted(BattleRuleTiming.Immediate);
+        yield return StartCoroutine(_battleScenarioExecutionGate.PlayReadyTriggers());
+        ReportBattleScenarioExecutionResult(_battleScenarioExecutionGate.LastHandle);
+    }
+
+    private bool HasImmediateBattleStartScenario()
+    {
+        if (_battleScenarioRuntime == null || _battleScenarioRuntime.ScenarioData == null)
+        {
+            return false;
+        }
+
+        List<BattleEventRuleData> rules = _battleScenarioRuntime.ScenarioData.Rules;
+        if (rules == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < rules.Count; i++)
+        {
+            BattleEventRuleData rule = rules[i];
+            if (rule == null || rule.Disabled)
+            {
+                continue;
+            }
+
+            if (rule.EventType == BattleEventType.BattleStarted
+                && rule.Timing == BattleRuleTiming.Immediate
+                && !string.IsNullOrWhiteSpace(rule.SequenceId))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -1694,9 +2413,14 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
         _isBattleEnding = false;
-        RequestNarration(BattleNarrationFormatter.BattleStart());
-        TryRequestFlavorNarration();
         yield return StartCoroutine(WaitForNarrationToFinish());
+        yield return StartCoroutine(PlayBattleStartedScenarioSequence());
+        if (!HasImmediateBattleStartScenario())
+        {
+            RequestNarration(BattleNarrationFormatter.BattleStart());
+            TryRequestFlavorNarration();
+            yield return StartCoroutine(WaitForNarrationToFinish());
+        }
         yield return StartCoroutine(StartOpeningBattleGameModule());
     }
 
@@ -1876,13 +2600,48 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         if (actor is PlayerCharacter player)
         {
-            player.GetComponent<PlayerController>()?.SetBattleSortingBoost(active ? boost : 0);
+            PlayerController controller = player.GetComponent<PlayerController>();
+            if (controller != null)
+            {
+                controller.SetBattleSortingBoost(active ? boost : 0);
+                return;
+            }
+
+            SetSpriteRendererForeground(player, active, boost);
         }
         else if (actor is EnemyCharacter enemy)
         {
-            SpriteRenderer sr = enemy.GetComponent<SpriteRenderer>();
-            if (sr != null)
-                sr.sortingOrder = active ? boost : 0;
+            SetSpriteRendererForeground(enemy, active, boost);
+        }
+        else
+        {
+            SetSpriteRendererForeground(actor, active, boost);
+        }
+    }
+
+    private void SetSpriteRendererForeground(CharacterBase actor, bool active, int boost)
+    {
+        if (actor == null) return;
+
+        SpriteRenderer sr = actor.GetComponent<SpriteRenderer>();
+        if (sr == null) return;
+
+        if (active)
+        {
+            if (!_actorForegroundSortingOrderCache.ContainsKey(actor))
+            {
+                _actorForegroundSortingOrderCache.Add(actor, sr.sortingOrder);
+            }
+
+            sr.sortingOrder = boost;
+            return;
+        }
+
+        int originalSortingOrder;
+        if (_actorForegroundSortingOrderCache.TryGetValue(actor, out originalSortingOrder))
+        {
+            sr.sortingOrder = originalSortingOrder;
+            _actorForegroundSortingOrderCache.Remove(actor);
         }
     }
     #endregion

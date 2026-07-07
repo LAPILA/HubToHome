@@ -232,6 +232,7 @@ public class DialogueManager : MonoBehaviour
         _isPlaying = false;
         if (_activeUI != null) _activeUI.ClosePanel(); 
         _encounterContext = null;
+        GameInput.SuppressPlayerConfirmForCurrentFrame();
         
         GameStateManager.Instance?.ChangeState(GameState.Exploration); 
         

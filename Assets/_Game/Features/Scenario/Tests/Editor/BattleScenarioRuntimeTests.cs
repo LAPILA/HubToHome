@@ -5,6 +5,27 @@ using UnityEngine;
 public class BattleScenarioRuntimeTests
 {
     [Test]
+    public void BattleStartedImmediateEventPublishesOpeningSequence()
+    {
+        BattleScenarioData scenario = MakeBattleStartedScenario();
+        var runtime = new BattleScenarioRuntime(scenario);
+
+        try
+        {
+            List<BattleScenarioTrigger> triggers = runtime.PublishBattleStarted();
+
+            Assert.That(triggers.Count, Is.EqualTo(1));
+            Assert.That(triggers[0].RuleId, Is.EqualTo("battle_started"));
+            Assert.That(triggers[0].SequenceId, Is.EqualTo("opening_clash"));
+            Assert.That(triggers[0].SourceEvent.SubjectId, Is.EqualTo("battle"));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
     public void DeferredHpCrossingTriggersWhenMatchingTimingIsFlushed()
     {
         BattleScenarioData scenario = MakeScenario(BattleRuleTiming.AfterCurrentSkill);
@@ -419,6 +440,23 @@ public class BattleScenarioRuntimeTests
             SequenceId = "zev_phase2"
         });
         scenario.Sequences.Add(MakeSequence("zev_phase2"));
+        return scenario;
+    }
+
+    private static BattleScenarioData MakeBattleStartedScenario()
+    {
+        BattleScenarioData scenario = ScriptableObject.CreateInstance<BattleScenarioData>();
+        scenario.ScenarioId = "zev_first_battle";
+        scenario.MemoryKey = "zev";
+        scenario.Rules.Add(new BattleEventRuleData
+        {
+            RuleId = "battle_started",
+            EventType = BattleEventType.BattleStarted,
+            Timing = BattleRuleTiming.Immediate,
+            Once = BattleRuleOnceMode.PerBattle,
+            SequenceId = "opening_clash"
+        });
+        scenario.Sequences.Add(MakeSequence("opening_clash"));
         return scenario;
     }
 

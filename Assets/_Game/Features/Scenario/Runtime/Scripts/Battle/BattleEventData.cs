@@ -25,6 +25,16 @@ public sealed class BattleEventData
     [Tooltip("Game Module이 보고한 결과 ID입니다. 예: completed, failed, victory, timeout")]
     public string OutcomeId = string.Empty;
 
+    public static BattleEventData BattleStarted(BattleRuleTiming timing = BattleRuleTiming.Immediate)
+    {
+        return new BattleEventData
+        {
+            EventType = BattleEventType.BattleStarted,
+            Timing = timing,
+            SubjectId = "battle"
+        };
+    }
+
     public static BattleEventData EnemyHpCrossedBelow(
         string enemyId,
         float previousHpRatio,

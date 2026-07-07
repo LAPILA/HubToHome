@@ -17,8 +17,7 @@ MonoBehaviour:
   - Speaker: {fileID: 0}
     Emotion: 1
     LocalizationKey: 
-    DefaultText: "ZEV\uAC00 QTE \uC804\uD22C\uB97C \uAC70\uBD80\uD558\uACE0 \uB2E4\uB978
-      \uADDC\uCE59\uC744 \uAEBC\uB0B4 \uB4E0\uB2E4."
+    DefaultText: "ZEV: 태세를 정비하겠습니다."
     EventTriggerID: 
     IsChoiceNode: 0
     Choices: []

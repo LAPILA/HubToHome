@@ -7,7 +7,8 @@ public enum BattleEventType
     EnemyHpCrossedBelow,
     EnemyDefeated,
     SkillCompleted,
-    GameModuleCompleted
+    GameModuleCompleted,
+    BattleStarted
 }
 
 public enum BattleRuleTiming

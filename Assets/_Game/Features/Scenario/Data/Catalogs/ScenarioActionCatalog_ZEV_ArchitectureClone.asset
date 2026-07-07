@@ -16,147 +16,451 @@ MonoBehaviour:
   Entries:
   - ActionId: flow.wait
     Category: flow
-    DisplayNameKo: "\uAE30\uB2E4\uB9AC\uAE30"
-    DescriptionKo: "\uAE30\uB2E4\uB9AC\uAE30"
+    DisplayNameKo: ????
+    DescriptionKo: ??? ???? ???? ????.
     RuntimeAdapterId: FlowWaitActionAdapter
     Parameters:
     - Name: duration
       Type: Float
-      DisplayNameKo: "\uC2DC\uAC04"
-      DescriptionKo: "\uAE30\uB2E4\uB9B4 \uC2DC\uAC04(\uCD08)\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ??
+      DescriptionKo: ??? ??(?)???.
       Required: 0
       DefaultValue: 0.1
     ExampleYaml: "- flow.wait:\n    duration: 0.1"
     Disabled: 0
   - ActionId: dialogue.wait
     Category: dialogue
-    DisplayNameKo: "\uB300\uC0AC \uD45C\uC2DC \uD6C4 \uB300\uAE30"
-    DescriptionKo: "\uB300\uC0AC \uD45C\uC2DC \uD6C4 \uB300\uAE30"
+    DisplayNameKo: ?? ?? ? ??
+    DescriptionKo: Scenario Source dialogues? ??? ??? ???? ???? ?????.
     RuntimeAdapterId: DialogueWaitActionAdapter
     Parameters:
     - Name: id
       Type: String
-      DisplayNameKo: "\uB300\uD654 ID"
-      DescriptionKo: "Scenario Source dialogues\uC5D0 \uB4F1\uB85D\uB41C \uC548\uC815\uC801\uC778
-        \uB300\uD654 ID\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ?? ID
+      DescriptionKo: Scenario Source dialogues? ??? ???? ?? ID???.
       Required: 1
       DefaultValue:
     ExampleYaml: "- dialogue.wait:\n    id: zev.clone.phase2_intro"
     Disabled: 0
   - ActionId: bgm.crossfade
     Category: audio
-    DisplayNameKo: "BGM \uD06C\uB85C\uC2A4\uD398\uC774\uB4DC"
-    DescriptionKo: "BGM \uD06C\uB85C\uC2A4\uD398\uC774\uB4DC"
+    DisplayNameKo: BGM ??????
+    DescriptionKo: Scenario Source audioClips? ??? BGM?? ?????.
     RuntimeAdapterId: BgmCrossfadeActionAdapter
     Parameters:
     - Name: clip
       Type: String
       DisplayNameKo: BGM ID
-      DescriptionKo: "Scenario Source audioClips\uC5D0 \uB4F1\uB85D\uB41C BGM ID\uC785\uB2C8\uB2E4."
+      DescriptionKo: Scenario Source audioClips? ??? BGM ID???.
       Required: 1
       DefaultValue:
     - Name: duration
       Type: Float
-      DisplayNameKo: "\uC804\uD658 \uC2DC\uAC04"
-      DescriptionKo: "\uD06C\uB85C\uC2A4\uD398\uC774\uB4DC \uC2DC\uAC04(\uCD08)\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ?? ??
+      DescriptionKo: ?????? ??(?)???.
       Required: 0
       DefaultValue: 0.8
     ExampleYaml: "- bgm.crossfade:\n    clip: zev_clone_phase2\n    duration: 0.8"
     Disabled: 0
   - ActionId: screen.fade
     Category: screen
-    DisplayNameKo: "\uD654\uBA74 \uD398\uC774\uB4DC"
-    DescriptionKo: "\uD654\uBA74 \uD398\uC774\uB4DC"
+    DisplayNameKo: ?? ???
+    DescriptionKo: ???/?? ?? ???? ??? ?????.
     RuntimeAdapterId: ScreenFadeActionAdapter
     Parameters:
     - Name: mode
       Type: String
-      DisplayNameKo: "\uBC29\uD5A5"
-      DescriptionKo: "out \uB610\uB294 in \uAC19\uC740 \uD398\uC774\uB4DC \uBC29\uD5A5\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ??
+      DescriptionKo: out ?? in ?? ??? ?????.
       Required: 1
       DefaultValue: out
     - Name: color
       Type: String
-      DisplayNameKo: "\uC0C9\uC0C1"
-      DescriptionKo: "black, white \uAC19\uC740 \uD398\uC774\uB4DC \uC0C9\uC0C1 ID\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ??
+      DescriptionKo: black, white ?? ??? ?? ID???.
       Required: 0
       DefaultValue: black
     - Name: duration
       Type: Float
-      DisplayNameKo: "\uC2DC\uAC04"
-      DescriptionKo: "\uD398\uC774\uB4DC \uC2DC\uAC04(\uCD08)\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ??
+      DescriptionKo: ??? ??(?)???.
       Required: 0
       DefaultValue: 0.25
-    ExampleYaml: "- screen.fade:\n    mode: out\n    color: black\n    duration:
-      0.25"
+    ExampleYaml: "- screen.fade:\n    mode: out\n    color: black\n    duration: 0.25"
+    Disabled: 0
+  - ActionId: cinematic.letterbox
+    Category: cinematic
+    DisplayNameKo: ???? ????
+    DescriptionKo: ???? ?? ??? ?? ?? ?? ????.
+    RuntimeAdapterId: CinematicLetterboxActionAdapter
+    Parameters:
+    - Name: mode
+      Type: String
+      DisplayNameKo: ?? ??
+      DescriptionKo: show ?? hide???.
+      Required: 1
+      DefaultValue: show
+    - Name: thickness
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ?? ?? ?? ???? ?? ?????.
+      Required: 0
+      DefaultValue: 0.14
+    - Name: duration
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ????? ??? ??? ??(?)???.
+      Required: 0
+      DefaultValue: 0.18
+    ExampleYaml: "- cinematic.letterbox:\n    mode: show\n    thickness: 0.14\n    duration: 0.18"
+    Disabled: 0
+  - ActionId: battle.camera.focus
+    Category: cinematic
+    DisplayNameKo: ?? ??? ???
+    DescriptionKo: ?? ?? ???? ??? ????? ????.
+    RuntimeAdapterId: BattleCameraFocusActionAdapter
+    Parameters:
+    - Name: subject
+      Type: String
+      DisplayNameKo: ??
+      DescriptionKo: ???? ???? ?? ??? ID???.
+      Required: 1
+      DefaultValue:
+    - Name: zoom
+      Type: Float
+      DisplayNameKo: ?
+      DescriptionKo: ??? ? ????.
+      Required: 0
+      DefaultValue: 5.0
+    - Name: duration
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ??? ?? ??(?)???.
+      Required: 0
+      DefaultValue: 0.42
+    ExampleYaml: "- battle.camera.focus:\n    subject: zev_architecture_clone\n    zoom: 4.75\n    duration: 0.42"
+    Disabled: 0
+  - ActionId: battle.camera.reset
+    Category: cinematic
+    DisplayNameKo: ?? ??? ??
+    DescriptionKo: ?? BattleScene ???? ?????.
+    RuntimeAdapterId: BattleCameraResetActionAdapter
+    Parameters:
+    - Name: duration
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ?? ?? ???? ???? ??(?)???.
+      Required: 0
+      DefaultValue: 0.25
+    ExampleYaml: "- battle.camera.reset:\n    duration: 0.25"
+    Disabled: 0
+  - ActionId: battle.actor.pose
+    Category: cinematic
+    DisplayNameKo: ?? ?? ??
+    DescriptionKo: ?? ???? ??/??/?? ??? ??? ???.
+    RuntimeAdapterId: BattleActorPoseActionAdapter
+    Parameters:
+    - Name: actor
+      Type: String
+      DisplayNameKo: ??
+      DescriptionKo: ??? ?? ?? ??? ID???.
+      Required: 1
+      DefaultValue: zev_architecture_clone
+    - Name: pose
+      Type: String
+      DisplayNameKo: ??
+      DescriptionKo: idle, attack, skill, strong_skill ?? ?? ID???.
+      Required: 0
+      DefaultValue: strong_skill
+    - Name: duration
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ?? ?? ??(?)???.
+      Required: 0
+      DefaultValue: 0.28
+    - Name: impact
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ???/??? ?????.
+      Required: 0
+      DefaultValue: 0.6
+    ExampleYaml: "- battle.actor.pose:\n    actor: zev_architecture_clone\n    pose: strong_skill\n    duration: 0.28\n    impact: 0.6"
+    Disabled: 0
+  - ActionId: battle.actor.flip
+    Category: cinematic
+    DisplayNameKo: ?? ?? ???
+    DescriptionKo: ??? SpriteRenderer ?? ??? ?? ?????.
+    RuntimeAdapterId: BattleActorFlipActionAdapter
+    Parameters:
+    - Name: actor
+      Type: String
+      DisplayNameKo: ??
+      DescriptionKo: ??? ?? ?? ??? ID???.
+      Required: 1
+      DefaultValue: zev_architecture_clone
+    - Name: mode
+      Type: String
+      DisplayNameKo: ??? ??
+      DescriptionKo: default, inverted, toggle ?? ??? ????.
+      Required: 0
+      DefaultValue: default
+    ExampleYaml: "- battle.actor.flip:\n    actor: zev_architecture_clone\n    mode: inverted"
+    Disabled: 0
+  - ActionId: battle.actor.move_to
+    Category: cinematic
+    DisplayNameKo: ?? ?? ??
+    DescriptionKo: ??? ??? ?? ????? ? ?? ?? ?????.
+    RuntimeAdapterId: BattleActorMoveActionAdapter
+    Parameters:
+    - Name: actor
+      Type: String
+      DisplayNameKo: ??
+      DescriptionKo: ??? ?? ?? ??? ID???.
+      Required: 1
+      DefaultValue: zev_architecture_clone
+    - Name: anchor
+      Type: String
+      DisplayNameKo: ???
+      DescriptionKo: current, center, player_slot, enemy_slot ?? ??? ?? ?? ?????.
+      Required: 0
+      DefaultValue: center
+    - Name: x
+      Type: Float
+      DisplayNameKo: X ???
+      DescriptionKo: ??? ???? X ?? ????.
+      Required: 0
+      DefaultValue: 0.55
+    - Name: y
+      Type: Float
+      DisplayNameKo: Y ???
+      DescriptionKo: ??? ???? Y ?? ????.
+      Required: 0
+      DefaultValue: 0
+    - Name: duration
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ?? ??(?)???.
+      Required: 0
+      DefaultValue: 0.32
+    - Name: pose
+      Type: String
+      DisplayNameKo: ??
+      DescriptionKo: ??? ??? ??? ID???.
+      Required: 0
+      DefaultValue: move
+    - Name: impact
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ?? ?? ?????.
+      Required: 0
+      DefaultValue: 0
+    ExampleYaml: "- battle.actor.move_to:\n    actor: zev_architecture_clone\n    anchor: center\n    x: 0.55\n    y: 0\n    duration: 0.32\n    pose: move"
+    Disabled: 0
+  - ActionId: battle.actor.fake_attack
+    Category: cinematic
+    DisplayNameKo: ??? ?? ??
+    DescriptionKo: ?? HP? ??? ?? ???? ??? ??/?? ??? ?????.
+    RuntimeAdapterId: BattleActorFakeAttackActionAdapter
+    Parameters:
+    - Name: actor
+      Type: String
+      DisplayNameKo: ???
+      DescriptionKo: ??? ??? ??? ?? ??? ID???.
+      Required: 1
+      DefaultValue: zev_architecture_clone
+    - Name: target
+      Type: String
+      DisplayNameKo: ??
+      DescriptionKo: ??? ?? ?? ?? ??? ID???. ?? HP? ???? ????.
+      Required: 1
+      DefaultValue: player_001
+    - Name: targetPose
+      Type: String
+      DisplayNameKo: Target Pose
+      DescriptionKo: Presentation-only target reaction pose such as parry, guard, or hurt.
+      Required: 0
+      DefaultValue: hurt
+    - Name: approach
+      Type: Float
+      DisplayNameKo: ?? ??
+      DescriptionKo: ?? ??? ???? ?????.
+      Required: 0
+      DefaultValue: 0.36
+    - Name: lunge
+      Type: Float
+      DisplayNameKo: ?? ??
+      DescriptionKo: ?? ?? ??(?)???.
+      Required: 0
+      DefaultValue: 0.08
+    - Name: hold
+      Type: Float
+      DisplayNameKo: ?? ??
+      DescriptionKo: ?? ???? ??? ??(?)???.
+      Required: 0
+      DefaultValue: 0.04
+    - Name: recover
+      Type: Float
+      DisplayNameKo: ?? ??
+      DescriptionKo: ?? ? ???? ??(?)???.
+      Required: 0
+      DefaultValue: 0.12
+    - Name: impact
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ??? ?????. ?? ??? ????.
+      Required: 0
+      DefaultValue: 0.75
+    ExampleYaml: "- battle.actor.fake_attack:\n    actor: zev_architecture_clone\n    target: player_001\n    targetPose: parry\n    approach: 0.36\n    lunge: 0.11\n    hold: 0.08\n    recover: 0.16\n    impact: 0.75"
+    Disabled: 0
+  - ActionId: battle.actor.drop_in
+    Category: cinematic
+    DisplayNameKo: Actor Drop In
+    DescriptionKo: Presentation-only actor drop-in landing with camera impact.
+    RuntimeAdapterId: BattleActorDropInActionAdapter
+    Parameters:
+    - Name: actor
+      Type: String
+      DisplayNameKo: Actor
+      DescriptionKo: Battle participant id to drop from above.
+      Required: 1
+      DefaultValue: zev_architecture_clone
+    - Name: height
+      Type: Float
+      DisplayNameKo: Height
+      DescriptionKo: Starting height above the landing position.
+      Required: 0
+      DefaultValue: 4.2
+    - Name: hang
+      Type: Float
+      DisplayNameKo: Hang Duration
+      DescriptionKo: Hold time in the air before the fall starts.
+      Required: 0
+      DefaultValue: 0.45
+    - Name: fall
+      Type: Float
+      DisplayNameKo: Fall Duration
+      DescriptionKo: Fall duration in seconds.
+      Required: 0
+      DefaultValue: 0.42
+    - Name: settle
+      Type: Float
+      DisplayNameKo: Settle Duration
+      DescriptionKo: Post-landing hold duration in seconds.
+      Required: 0
+      DefaultValue: 0.24
+    - Name: impact
+      Type: Float
+      DisplayNameKo: Impact
+      DescriptionKo: Camera impact strength.
+      Required: 0
+      DefaultValue: 1.15
+    ExampleYaml: "- battle.actor.drop_in:\n    actor: zev_architecture_clone\n    height: 4.2\n    hang: 0.45\n    fall: 0.42\n    settle: 0.24\n    impact: 1.15"
+    Disabled: 0
+  - ActionId: battle.actor.return_slots
+    Category: cinematic
+    DisplayNameKo: ?? ?? ??
+    DescriptionKo: ????? ?? ?? ?? ?? ??? ?????.
+    RuntimeAdapterId: BattleActorReturnSlotsActionAdapter
+    Parameters:
+    - Name: duration
+      Type: Float
+      DisplayNameKo: ??
+      DescriptionKo: ?? ?? ???? ?? ???? ???? ??(?)???.
+      Required: 0
+      DefaultValue: 0.25
+    ExampleYaml: "- battle.actor.return_slots:\n    duration: 0.25"
     Disabled: 0
   - ActionId: module.switch
     Category: module
-    DisplayNameKo: "\uC804\uD22C \uBAA8\uB4C8 \uC804\uD658"
-    DescriptionKo: "\uC804\uD22C \uBAA8\uB4C8 \uC804\uD658"
+    DisplayNameKo: ?? ?? ??
+    DescriptionKo: ?? Game Module? ?? ??? ?????.
     RuntimeAdapterId: ModuleSwitchActionAdapter
     Parameters:
     - Name: to
       Type: String
-      DisplayNameKo: "\uC804\uD658 \uB300\uC0C1"
-      DescriptionKo: "\uC804\uD658\uD560 Game Module ID\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ?? ??
+      DescriptionKo: ??? Game Module ID???.
       Required: 1
       DefaultValue: aim_shooter
     ExampleYaml: "- module.switch:\n    to: aim_shooter"
     Disabled: 0
   - ActionId: module.start
     Category: module
-    DisplayNameKo: "\uC804\uD22C \uBAA8\uB4C8 \uC2DC\uC791"
-    DescriptionKo: "\uC804\uD22C \uBAA8\uB4C8 \uC2DC\uC791"
+    DisplayNameKo: ?? ?? ??
+    DescriptionKo: ??? Game Module? ??? ?????.
     RuntimeAdapterId: ModuleStartActionAdapter
     Parameters:
     - Name: module
       Type: String
-      DisplayNameKo: "\uC2DC\uC791 \uBAA8\uB4C8"
-      DescriptionKo: "\uC2DC\uC791\uD560 Game Module ID\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ?? ??
+      DescriptionKo: ??? Game Module ID???.
       Required: 1
       DefaultValue: aim_shooter
     ExampleYaml: "- module.start:\n    module: aim_shooter"
     Disabled: 0
+  - ActionId: battle.skill.timeline
+    Category: battle
+    DisplayNameKo: ?? ?? ???? ??
+    DescriptionKo: ?? SkillData.ActionTimeline ?? QTE/?? ??? ?????. ??? ?? ???? ???? ???.
+    RuntimeAdapterId: BattleSkillTimelineActionAdapter
+    Parameters:
+    - Name: skill
+      Type: String
+      DisplayNameKo: ?? ID
+      DescriptionKo: ?? SkillData.ActionTimeline? ??? SkillData ID???.
+      Required: 1
+      DefaultValue: skill_001
+    - Name: actor
+      Type: String
+      DisplayNameKo: ???
+      DescriptionKo: ?? ????? ??? ?? ??? ID???.
+      Required: 1
+      DefaultValue: zev_architecture_clone
+    - Name: targets
+      Type: String[]
+      DisplayNameKo: ?? ??
+      DescriptionKo: ?? ?? ??? ID ?????.
+      Required: 0
+      DefaultValue: '[player_001]'
+    ExampleYaml: "- battle.skill.timeline:\n    skill: skill_001\n    actor: zev_architecture_clone\n    targets: [player_001]"
+    Disabled: 0
   - ActionId: battle.flag.set
     Category: battle
-    DisplayNameKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC124\uC815"
-    DescriptionKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC124\uC815"
+    DisplayNameKo: ?? ??? ??
+    DescriptionKo: ?? ? ??? battle flag ?? ?????.
     RuntimeAdapterId: BattleFlagSetActionAdapter
     Parameters:
     - Name: flag
       Type: String
-      DisplayNameKo: "\uD50C\uB798\uADF8"
-      DescriptionKo: "\uC804\uD22C \uC911 \uACF5\uC720\uD560 battle flag ID\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ???
+      DescriptionKo: ?? ? ??? battle flag ID???.
       Required: 1
       DefaultValue:
     - Name: value
       Type: String
-      DisplayNameKo: "\uAC12"
-      DescriptionKo: "\uC800\uC7A5\uD560 flag \uAC12\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ?
+      DescriptionKo: ??? flag ????.
       Required: 0
       DefaultValue: true
     ExampleYaml: "- battle.flag.set:\n    flag: zev.clone.phase\n    value: shooter"
     Disabled: 0
   - ActionId: battle.participant.damage
     Category: battle
-    DisplayNameKo: "\uC804\uD22C \uCC38\uAC00\uC790 \uD53C\uD574"
-    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790 \uD53C\uD574"
+    DisplayNameKo: ?? ??? ??
+    DescriptionKo: ?? ????? ?? HP ??? ?????.
     RuntimeAdapterId: BattleParticipantDamageActionAdapter
     Parameters:
     - Name: subject
       Type: String
-      DisplayNameKo: "\uB300\uC0C1"
-      DescriptionKo: "\uD53C\uD574\uB97C \uBC1B\uC744 \uC804\uD22C \uCC38\uAC00\uC790
-        ID\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ??
+      DescriptionKo: ??? ?? ?? ??? ID???.
       Required: 1
       DefaultValue:
     - Name: amount
       Type: Integer
-      DisplayNameKo: "\uD53C\uD574\uB7C9"
-      DescriptionKo: "1 \uC774\uC0C1\uC758 \uC21C\uC218 \uD53C\uD574\uB7C9\uC785\uB2C8\uB2E4."
+      DisplayNameKo: ???
+      DescriptionKo: 1 ??? ?? ??????.
       Required: 1
       DefaultValue: 1
-    ExampleYaml: "- battle.participant.damage:\n    subject: zev_architecture_clone\n   
-      amount: 999"
+    ExampleYaml: "- battle.participant.damage:\n    subject: zev_architecture_clone\n    amount: 999"
     Disabled: 0

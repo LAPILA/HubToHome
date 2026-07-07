@@ -53,6 +53,7 @@ public static class GameInput
     private static InputAction _configBack;
     private static InputAction _configReset;
     private static int _cachedFrame = -1;
+    private static int _suppressPlayerConfirmUntilFrame = -1;
 
     private static Vector2 _prevPlayerMove;
     private static Vector2 _currPlayerMove;
@@ -140,7 +141,7 @@ public static class GameInput
     public static bool MoveUpHeld    { get { UpdateCache(); return IsUp(_currPlayerMove); } }
     public static bool MoveDownHeld  { get { UpdateCache(); return IsDown(_currPlayerMove); } }
 
-    public static bool ConfirmPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }
+    public static bool ConfirmPressed { get { if (_configModalActive || Time.frameCount <= _suppressPlayerConfirmUntilFrame) return false; EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }
     public static bool CancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _playerCancel.WasPressedThisFrame() || _uiCancel.WasPressedThisFrame(); } }
     public static bool MenuPressed    { get { if (_configModalActive) return false; EnsureInitialized(); return _playerMenu.WasPressedThisFrame() || _uiMenu.WasPressedThisFrame(); } }
     public static bool RunHeld        { get { if (_configModalActive) return false; EnsureInitialized(); return _playerRun.IsPressed(); } }
@@ -235,6 +236,11 @@ public static class GameInput
     public static void SetConfigModalActive(bool active)
     {
         _configModalActive = active;
+    }
+
+    public static void SuppressPlayerConfirmForCurrentFrame()
+    {
+        _suppressPlayerConfirmUntilFrame = Time.frameCount;
     }
 
     public static bool TryReadPressedKey(out Key key)

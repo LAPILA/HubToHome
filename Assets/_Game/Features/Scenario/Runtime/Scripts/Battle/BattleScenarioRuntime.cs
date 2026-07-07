@@ -312,6 +312,16 @@ public sealed class BattleScenarioRuntime
         get { return ScenarioData != null && _eventRouter != null; }
     }
 
+    public List<BattleScenarioTrigger> PublishBattleStarted(BattleRuleTiming timing = BattleRuleTiming.Immediate)
+    {
+        if (!HasScenario)
+        {
+            return new List<BattleScenarioTrigger>();
+        }
+
+        return _eventRouter.Publish(BattleEventData.BattleStarted(timing));
+    }
+
     public List<BattleScenarioTrigger> PublishEnemyHpCrossedBelow(
         string subjectId,
         int previousHp,

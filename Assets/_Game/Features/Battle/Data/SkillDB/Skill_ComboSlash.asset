@@ -16,6 +16,7 @@ MonoBehaviour:
   SkillName: "\uCF64\uBCF4\uC2AC\uB798\uC26C"
   SkillID: skill_001
   Description: "\uAC00\uB85C \uC138\uB85C \uB9C8\uBB34\uB9AC!"
+  UsageProfile: 0
   MPCost: 10
   TargetType: 1
   IsAoE: 0
@@ -41,16 +42,19 @@ MonoBehaviour:
       data:
         VfxPrefab: {fileID: 4748681987041982144, guid: 3ff9ac3abf5e96848b6b1d3f52f12a13, type: 3}
         Pivot: 1
+        UseActorRotation: 0
     - rid: 8456611228188409954
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
         VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
         Pivot: 1
+        UseActorRotation: 0
     - rid: 8456611228188409958
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
         VfxPrefab: {fileID: 4748681987041982144, guid: c6d8472fd2a44b24c90abc54bb1ee63f, type: 3}
         Pivot: 1
+        UseActorRotation: 0
     - rid: 8456611228188409963
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
@@ -107,7 +111,7 @@ MonoBehaviour:
     - rid: 8456611228188409973
       type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
       data:
-        SkillMultiplier: 1
+        SkillMultiplier: 10
         ShakeCamera: 0
     - rid: 8456611228188409974
       type: {class: Action_Damage, ns: , asm: Assembly-CSharp}

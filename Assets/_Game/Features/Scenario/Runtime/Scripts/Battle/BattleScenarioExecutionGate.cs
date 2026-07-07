@@ -29,6 +29,16 @@ public sealed class BattleScenarioExecutionGate : IGameModuleEventSink
     public bool IsExecuting { get; private set; }
     public ActionExecutionHandle LastHandle { get; private set; }
 
+    public void PublishBattleStarted(BattleRuleTiming timing = BattleRuleTiming.Immediate)
+    {
+        if (_runtime == null)
+        {
+            return;
+        }
+
+        Enqueue(_runtime.PublishBattleStarted(timing));
+    }
+
     public void PublishEnemyHpCrossedBelow(
         string subjectId,
         int previousHp,
@@ -96,10 +106,19 @@ public sealed class BattleScenarioExecutionGate : IGameModuleEventSink
             }
 
             IsExecuting = true;
+            BattleUIController.Instance?.SetScenarioCinematicMode(true);
             IEnumerator bridgeRoutine = _bridge.PlayTriggers(batch, context);
-            while (bridgeRoutine.MoveNext())
+            try
             {
-                yield return bridgeRoutine.Current;
+                while (bridgeRoutine.MoveNext())
+                {
+                    yield return bridgeRoutine.Current;
+                }
+            }
+            finally
+            {
+                BattleUIController.Instance?.SetScenarioCinematicMode(false);
+                CameraController.Instance?.ResetCamera(0f);
             }
 
             IsExecuting = false;

@@ -19,6 +19,9 @@ public static class BattleEventRuleEvaluator
         bool matched = false;
         switch (rule.EventType)
         {
+            case BattleEventType.BattleStarted:
+                matched = IsBattleStarted(rule, battleEvent);
+                break;
             case BattleEventType.EnemyHpCrossedBelow:
                 matched = IsEnemyHpCrossedBelow(rule, battleEvent);
                 break;
@@ -67,6 +70,13 @@ public static class BattleEventRuleEvaluator
         }
 
         return !session.HasRuleFired(rule);
+    }
+
+    private static bool IsBattleStarted(
+        BattleEventRuleData rule,
+        BattleEventData battleEvent)
+    {
+        return MatchesSubject(rule.SubjectId, battleEvent.SubjectId);
     }
 
     private static bool IsEnemyHpCrossedBelow(

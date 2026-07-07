@@ -22,18 +22,31 @@ public class ZevScenarioCloneVerticalSliceTests
         Assert.That(importResult.Success, Is.True, Describe(importResult.Validation));
         Assert.That(importResult.Scenario.ScenarioId, Is.EqualTo("zev_architecture_clone"));
         Assert.That(importResult.Scenario.EnemyIds, Is.EqualTo(new[] { ZevArchitectureCloneSampleBuilder.EnemyCloneId }));
-        Assert.That(importResult.Scenario.Dialogues.Count, Is.EqualTo(3));
+        Assert.That(importResult.Scenario.Dialogues.Count, Is.EqualTo(5));
         Assert.That(importResult.Scenario.AudioClips.Count, Is.EqualTo(3));
-        Assert.That(importResult.Scenario.Rules.Count, Is.EqualTo(2));
-        Assert.That(importResult.Scenario.Sequences.Count, Is.EqualTo(2));
+        Assert.That(importResult.Scenario.Rules.Count, Is.EqualTo(3));
+        Assert.That(importResult.Scenario.Sequences.Count, Is.EqualTo(3));
+        ActionSequenceAsset opening = importResult.Scenario.Sequences.Find(
+            sequence => sequence != null && sequence.SequenceId == "zev_clone_opening_clash");
         ActionSequenceAsset phase2 = importResult.Scenario.Sequences.Find(
             sequence => sequence != null && sequence.SequenceId == "zev_clone_phase2_transition");
         ActionSequenceAsset victory = importResult.Scenario.Sequences.Find(
             sequence => sequence != null && sequence.SequenceId == "zev_clone_shooter_victory");
+        Assert.That(opening, Is.Not.Null);
         Assert.That(phase2, Is.Not.Null);
         Assert.That(victory, Is.Not.Null);
-        AssertParameter(phase2.Actions[0], "clip", "zev_clone_phase2");
-        AssertParameter(phase2.Actions[1], "id", "zev.clone.phase2_intro");
+        Assert.That(importResult.Scenario.Rules[0].EventType, Is.EqualTo(BattleEventType.BattleStarted));
+        Assert.That(opening.Actions[0].ActionId, Is.EqualTo("cinematic.letterbox"));
+        AssertParameter(opening.Actions[0], "mode", "show");
+        Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.drop_in"), Is.True);
+        Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.move_to"), Is.True);
+        Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.fake_attack"), Is.True);
+        Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.skill.timeline"), Is.False);
+        Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.pose" && HasStringParameter(action, "actor", "player_001") && HasStringParameter(action, "pose", "parry")), Is.True);
+        Assert.That(opening.Actions.Exists(action => action.ActionId == "dialogue.wait" && HasStringParameter(action, "id", "zev.clone.opening_clash")), Is.True);
+        AssertParameter(phase2.Actions[0], "mode", "show");
+        AssertParameter(phase2.Actions[1], "clip", "zev_clone_phase2");
+        AssertParameter(phase2.Actions[4], "id", "zev.clone.phase2_intro");
         AssertParameter(victory.Actions[0], "id", "zev.clone.shooter_victory");
         AssertParameter(victory.Actions[2], "subject", ZevArchitectureCloneSampleBuilder.EnemyCloneId);
 
@@ -53,6 +66,7 @@ public class ZevScenarioCloneVerticalSliceTests
         Assert.That(scenario.Source.SourcePath, Is.EqualTo(ZevArchitectureCloneSampleBuilder.SourcePath));
         Assert.That(scenario.OpeningModule, Is.EqualTo(BattleTurnQteGameModuleRuntime.Id));
         Assert.That(scenario.MemoryKey, Is.EqualTo("zev_architecture_clone"));
+        Assert.That(scenario.Sequences.Exists(sequence => sequence != null && sequence.SequenceId == "zev_clone_opening_clash"), Is.True);
         Assert.That(scenario.Sequences.Exists(sequence => sequence != null && sequence.SequenceId == "zev_clone_phase2_transition"), Is.True);
         Assert.That(scenario.Sequences.Exists(sequence => sequence != null && sequence.SequenceId == "zev_clone_shooter_victory"), Is.True);
 
@@ -131,6 +145,14 @@ public class ZevScenarioCloneVerticalSliceTests
             Is.True,
             error);
         Assert.That(value, Is.EqualTo(expected));
+    }
+
+    private static bool HasStringParameter(ScenarioActionData action, string key, string expected)
+    {
+        string value;
+        string error;
+        return ScenarioActionParameterReader.TryGetString(action, key, out value, out error)
+            && value == expected;
     }
 
     private static string Describe(ScenarioValidationResult validation)
