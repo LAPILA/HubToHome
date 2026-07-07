@@ -53,9 +53,10 @@ public class QTEManager : MonoBehaviour
         {
             elapsed += Time.deltaTime;
 
+            PlayerController ctrl = null;
             if (BattleManager.Instance != null && BattleManager.Instance._playerParty.Count > 0)
             {
-                var ctrl = BattleManager.Instance._playerParty[0]?.GetComponent<PlayerController>();
+                ctrl = BattleManager.Instance._playerParty[0]?.GetComponent<PlayerController>();
                 if (ctrl != null && ctrl.TryConsumeBufferedDefenseInput(out input))
                 {
                     inputReceived = true;
@@ -65,7 +66,10 @@ public class QTEManager : MonoBehaviour
             }
             
             if (GameInput.TryReadDefenseInputThisFrame(out input))
+            {
                 inputReceived = true;
+                ctrl?.PreviewDefenseInput(input);
+            }
             yield return null; 
         }
 

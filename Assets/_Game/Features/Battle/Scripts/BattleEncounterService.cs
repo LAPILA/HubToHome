@@ -98,7 +98,8 @@ public static class BattleEncounterService
         string encounterId = null,
         bool defeatsOnVictory = false,
         IEncounterSource encounterSource = null,
-        BattleScenarioData battleScenarioData = null)
+        BattleScenarioData battleScenarioData = null,
+        bool playerPreemptiveAttack = false)
     {
         if (player == null)
         {
@@ -121,7 +122,7 @@ public static class BattleEncounterService
             global.PendingBattleScenario = battleScenarioData;
 
             if (!string.IsNullOrWhiteSpace(encounterId))
-                global.BeginOverworldEnemyEncounter(encounterId, global.LastOverworldScene, defeatsOnVictory);
+                global.BeginOverworldEnemyEncounter(encounterId, global.LastOverworldScene, defeatsOnVictory, playerPreemptiveAttack);
         }
 
         player.SetBattleMode(true);

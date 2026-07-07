@@ -12,7 +12,7 @@ using Sirenix.OdinInspector;
 [RequireComponent(typeof(Collider2D))]
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(EnemyCharacter))]
-public class OverworldEnemy : MonoBehaviour, IEncounterSource
+public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttackTarget
 {
     private static float s_globalEncounterLockUntil;
 
@@ -95,6 +95,16 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
 
     public string EnemyId => _enemyId;
     public bool DefeatsOnVictory => _victoryHandling == PersistentEnemyStateHandling.DefeatOnVictory;
+    public bool CanStartPreemptiveAttack(PlayerController player) => isActiveAndEnabled
+        && player != null
+        && !_runtimeDisabledForBattle
+        && !_encounterInProgress
+        && !_triggered
+        && !_waitForPlayerExitBeforeRearm
+        && _mode == EncounterMode.PatrolContactBattle
+        && Time.unscaledTime >= _localEncounterBlockedUntil
+        && Time.unscaledTime >= s_globalEncounterLockUntil
+        && !EncounterCollisionGuard.IsGloballyBlocked;
 
     private void Awake()
     {
@@ -205,6 +215,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (_runtimeDisabledForBattle) return;
+        if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) return;
         if (EncounterCollisionGuard.IsGloballyBlocked) return;
         if (Time.unscaledTime < s_globalEncounterLockUntil) return;
         if (Time.unscaledTime < _localEncounterBlockedUntil) return;
@@ -243,7 +254,27 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
         enabled = false;
     }
 
+    public bool TryStartPreemptiveAttack(PlayerController player)
+    {
+        if (!CanStartPreemptiveAttack(player)) return false;
+
+        List<EnemyData> resolvedEnemies = ResolveEncounterEnemies();
+        if (_enemyCharacter == null || _enemyCharacter.Data == null || resolvedEnemies == null || resolvedEnemies.Count == 0)
+        {
+            Debug.LogWarning($"[OverworldEnemy] 선공 전투 적 데이터가 비어있습니다. Object={gameObject.name}", this);
+            return false;
+        }
+
+        StartCoroutine(StartSceneBattleRoutine(player, true));
+        return true;
+    }
+
     private IEnumerator StartSceneBattleRoutine(PlayerController player)
+    {
+        yield return StartSceneBattleRoutine(player, false);
+    }
+
+    private IEnumerator StartSceneBattleRoutine(PlayerController player, bool isPreemptiveAttack)
     {
         List<EnemyData> resolvedEnemies = ResolveEncounterEnemies();
         if (_enemyCharacter == null || _enemyCharacter.Data == null)
@@ -260,7 +291,8 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
 
         _triggered = true;
         _encounterInProgress = true;
-        s_globalEncounterLockUntil = Time.unscaledTime + Mathf.Max(0.75f, _encounterDelay + 0.5f);
+        float entryDelay = isPreemptiveAttack ? 0f : _encounterDelay;
+        s_globalEncounterLockUntil = Time.unscaledTime + Mathf.Max(0.75f, entryDelay + 0.5f);
         _rb.linearVelocity = Vector2.zero;
         UpdateMoveAnimation(Vector2.zero);
         if (_useDedicatedBattleScene && _collider != null)
@@ -269,8 +301,8 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
 
         AudioManager.Instance?.PlaySFX(_encounterSFX);
 
-        if (_encounterDelay > 0f)
-            yield return new WaitForSecondsRealtime(_encounterDelay);
+        if (entryDelay > 0f)
+            yield return new WaitForSecondsRealtime(entryDelay);
 
         bool started = BattleEncounterService.StartEncounter(
             player,
@@ -282,12 +314,14 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource
             _enemyId,
             DefeatsOnVictory,
             this,
-            _battleScenarioData);
+            _battleScenarioData,
+            isPreemptiveAttack);
 
         if (!started)
         {
             _encounterInProgress = false;
             _triggered = false;
+            player.SetBattleMode(false);
         }
 
         if (_destroyAfterTouch && _useDedicatedBattleScene) Destroy(gameObject);

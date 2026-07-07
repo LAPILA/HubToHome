@@ -300,6 +300,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   _moveSpeed: 8
   _actionCooldown: 0.4
+  _attackRange: 1.5
+  _attackDelay: 0.25
+  _attackRecoverDelay: 0.35
+  _enemyLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _attackTriggerName: Attack
   _parryFlashDuration: 0.08
   _parryFlashColor: {r: 0, g: 1, b: 1, a: 1}
   _hurtFlashDuration: 0.05

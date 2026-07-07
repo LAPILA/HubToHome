@@ -12,3 +12,12 @@ public interface IInteractable
     /// <summary>플레이어가 바라보고 있을 때 시각적 피드백(외곽선, ! 아이콘 등) 표시</summary>
     void ShowHighlight(bool show);
 }
+
+/// <summary>
+/// 오버월드에서 플레이어의 F키 선공 공격으로 전투에 진입할 수 있는 대상입니다.
+/// </summary>
+public interface IPreemptiveAttackTarget
+{
+    bool CanStartPreemptiveAttack(PlayerController player);
+    bool TryStartPreemptiveAttack(PlayerController player);
+}

@@ -34,6 +34,7 @@ public class GlobalDataManager : MonoBehaviour
     public BattleScenarioData PendingBattleScenario { get; set; }
     public string CurrentEncounterEnemyId { get; private set; }
     public bool CurrentEncounterDefeatsOnVictory { get; private set; }
+    public bool CurrentEncounterPlayerPreemptiveAttack { get; private set; }
     
     // 🚨 다중 파티 시스템 
     public List<CharacterSaveData> Party { get; private set; } = new List<CharacterSaveData>();
@@ -240,12 +241,13 @@ public class GlobalDataManager : MonoBehaviour
     #endregion
 
     #region [ Overworld Enemy Runtime State ]
-    public void BeginOverworldEnemyEncounter(string enemyId, string sceneName, bool defeatsOnVictory)
+    public void BeginOverworldEnemyEncounter(string enemyId, string sceneName, bool defeatsOnVictory, bool playerPreemptiveAttack = false)
     {
         if (string.IsNullOrWhiteSpace(enemyId)) return;
 
         CurrentEncounterEnemyId = enemyId;
         CurrentEncounterDefeatsOnVictory = defeatsOnVictory;
+        CurrentEncounterPlayerPreemptiveAttack = playerPreemptiveAttack;
 
         var state = GetOrCreateOverworldEnemyState(enemyId, sceneName);
         state.SceneName = sceneName;
@@ -255,6 +257,7 @@ public class GlobalDataManager : MonoBehaviour
     {
         CurrentEncounterEnemyId = null;
         CurrentEncounterDefeatsOnVictory = false;
+        CurrentEncounterPlayerPreemptiveAttack = false;
     }
 
     public OverworldEnemyRuntimeState GetOrCreateOverworldEnemyState(string enemyId, string sceneName = null)

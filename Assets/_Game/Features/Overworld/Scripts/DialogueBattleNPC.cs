@@ -8,7 +8,7 @@ using Sirenix.OdinInspector;
 /// 전투 분기는 DialogueData의 ChoiceData 설정을 우선 사용하고,
 /// 비어 있을 경우 이 컴포넌트의 기본 적 목록을 보조값으로 채워 넣습니다.
 /// </summary>
-public class DialogueBattleNPC : InteractableBase
+public class DialogueBattleNPC : InteractableBase, IPreemptiveAttackTarget, IEncounterSource
 {
     [BoxGroup("Dialogue")]
     [SerializeField] private DialogueData _dialogue;
@@ -30,6 +30,8 @@ public class DialogueBattleNPC : InteractableBase
 
     [BoxGroup("Runtime Safety")]
     [SerializeField] private bool _disableSiblingOverworldEnemy = true;
+
+    private bool _preemptiveEncounterInProgress;
 
     private void Reset()
     {
@@ -64,5 +66,64 @@ public class DialogueBattleNPC : InteractableBase
         };
 
         DialogueManager.Instance?.StartDialogue(_dialogue, null, encounterContext);
+    }
+
+    public bool CanStartPreemptiveAttack(PlayerController player)
+    {
+        return isActiveAndEnabled
+            && player != null
+            && !_preemptiveEncounterInProgress
+            && _fallbackEncounterEnemies != null
+            && _fallbackEncounterEnemies.Count > 0;
+    }
+
+    public bool TryStartPreemptiveAttack(PlayerController player)
+    {
+        if (!CanStartPreemptiveAttack(player)) return false;
+
+        List<EnemyData> enemies = new List<EnemyData>();
+        for (int i = 0; i < _fallbackEncounterEnemies.Count; i++)
+        {
+            if (_fallbackEncounterEnemies[i] != null)
+                enemies.Add(_fallbackEncounterEnemies[i]);
+        }
+
+        if (enemies.Count == 0)
+        {
+            Debug.LogWarning($"[DialogueBattleNPC] 선공 전투 적 목록이 비어있습니다. Object={gameObject.name}", this);
+            return false;
+        }
+
+        _preemptiveEncounterInProgress = true;
+        bool started = BattleEncounterService.StartEncounter(
+            player,
+            enemies,
+            _fallbackBattleBgm,
+            _useDedicatedBattleScene,
+            _battleSceneName,
+            _battleSceneFadeDuration,
+            ResolveEncounterId(enemies),
+            true,
+            this,
+            _fallbackBattleScenarioData,
+            true);
+
+        if (!started)
+            _preemptiveEncounterInProgress = false;
+
+        return started;
+    }
+
+    public void OnEncounterResolved(bool victory, PlayerController player)
+    {
+        _preemptiveEncounterInProgress = false;
+    }
+
+    private string ResolveEncounterId(List<EnemyData> enemies)
+    {
+        if (enemies != null && enemies.Count > 0 && enemies[0] != null && !string.IsNullOrWhiteSpace(enemies[0].EnemyId))
+            return enemies[0].EnemyId;
+
+        return gameObject.name;
     }
 }

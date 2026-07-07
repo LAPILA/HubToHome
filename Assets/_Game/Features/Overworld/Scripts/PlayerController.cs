@@ -24,6 +24,11 @@ public class PlayerController : MonoBehaviour
     // ── 액션 쿨타임 ───────────────────────────────────────────
     [Header("Action Settings")]
     [SerializeField] private float _actionCooldown = 0.4f;
+    [SerializeField] private float _attackRange = 1.5f;
+    [SerializeField] private float _attackDelay = 0.25f;
+    [SerializeField] private float _attackRecoverDelay = 0.35f;
+    [SerializeField] private LayerMask _enemyLayerMask = ~0;
+    [SerializeField] private string _attackTriggerName = "Attack";
     private float _lastActionTime;
 
     // ── VFX / DOTween 연출 설정 ───────────────────────────────
@@ -45,6 +50,7 @@ public class PlayerController : MonoBehaviour
     private SpriteRenderer _spriteRenderer;
     private Collider2D[] _colliders;
     private Vector3        _originalLocalPos;
+    private Vector3        _originalLocalScale;
     private bool _defenseReactionLocked;
     private float _lastDefenseAttemptTime = -999f;
     private Vector3 _battleDefenseAnchorPosition;
@@ -56,6 +62,8 @@ public class PlayerController : MonoBehaviour
     private float _bufferedDefenseInputTime = -999f;
     private const float DefenseInputBufferWindow = 1.25f;
     private bool _defenseInputWindowOpen;
+    private bool _preemptiveAttackInProgress;
+    private readonly Collider2D[] _preemptiveAttackHits = new Collider2D[12];
 
     private Animator Animator
     {
@@ -105,6 +113,7 @@ public class PlayerController : MonoBehaviour
         }
 
         _originalLocalPos = transform.localPosition;
+        _originalLocalScale = transform.localScale;
     }
 
     private void Start()
@@ -138,6 +147,9 @@ public class PlayerController : MonoBehaviour
         // 상호작용 (캐싱된 타겟을 InteractionSystem을 통해 즉시 실행)
         if (GameInput.ConfirmPressed)
             InteractionSystem.Instance?.TryInteract(this);
+
+        if (GameInput.PreemptiveAttackPressed)
+            TryStartPreemptiveAttack();
 
         // 오버월드 옵션(Config) 호출
         if (GameInput.MenuPressed)
@@ -200,6 +212,22 @@ public class PlayerController : MonoBehaviour
         input = _bufferedDefenseInput;
         _bufferedDefenseInput = DefenseInput.None;
         return true;
+    }
+
+    public void PreviewDefenseInput(DefenseInput input)
+    {
+        switch (input)
+        {
+            case DefenseInput.Parry:
+                ExecuteParry(true);
+                break;
+            case DefenseInput.Dodge:
+                ExecuteDodge(true);
+                break;
+            case DefenseInput.Jump:
+                ExecuteJump(true);
+                break;
+        }
     }
 
     private void FixedUpdate()
@@ -329,6 +357,133 @@ public class PlayerController : MonoBehaviour
         _anim.SetBool(HashIsMoving, isMoving);
     }
 
+    public void StopOverworldMovement()
+    {
+        if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+
+        _moveInput = Vector2.zero;
+        _prevLeft = _prevRight = _prevUp = _prevDown = false;
+        if (_rb != null) _rb.linearVelocity = Vector2.zero;
+        UpdateAnimator(false);
+        if (State != PlayerState.InBattle)
+            State = PlayerState.Idle;
+    }
+
+    public bool TryStartPreemptiveAttack()
+    {
+        if (_preemptiveAttackInProgress) return false;
+        if (!CanExecuteAction()) return false;
+        if (State == PlayerState.InBattle) return false;
+        if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) return false;
+
+        IPreemptiveAttackTarget target = FindPreemptiveAttackTarget();
+        StartCoroutine(CoPreemptiveAttack(target));
+        return true;
+    }
+
+    private IEnumerator CoPreemptiveAttack(IPreemptiveAttackTarget target)
+    {
+        _preemptiveAttackInProgress = true;
+
+        GameState previousState = GameStateManager.Instance != null
+            ? GameStateManager.Instance.CurrentState
+            : GameState.Exploration;
+
+        GameStateManager.Instance?.ChangeState(GameState.Cutscene);
+        StopOverworldMovement();
+        TryPlayAnimatorTrigger(_attackTriggerName);
+
+        if (_attackDelay > 0f)
+            yield return new WaitForSecondsRealtime(_attackDelay);
+
+        bool started = IsPreemptiveAttackTargetAlive(target) && target.TryStartPreemptiveAttack(this);
+
+        if (!started)
+        {
+            if (_attackRecoverDelay > 0f)
+                yield return new WaitForSecondsRealtime(_attackRecoverDelay);
+
+            GameStateManager.Instance?.ChangeState(previousState == GameState.Paused ? GameState.Exploration : previousState);
+            ResetOverworldAttackAnimation();
+            StopOverworldMovement();
+            _preemptiveAttackInProgress = false;
+        }
+    }
+
+    private IPreemptiveAttackTarget FindPreemptiveAttackTarget()
+    {
+        int hitCount = Physics2D.OverlapCircleNonAlloc(transform.position, Mathf.Max(0f, _attackRange), _preemptiveAttackHits, _enemyLayerMask);
+        IPreemptiveAttackTarget bestTarget = null;
+        float bestDistanceSqr = float.MaxValue;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            Collider2D hit = _preemptiveAttackHits[i];
+            _preemptiveAttackHits[i] = null;
+            if (hit == null) continue;
+
+            IPreemptiveAttackTarget candidate = ResolvePreemptiveAttackTarget(hit);
+            if (candidate == null || !candidate.CanStartPreemptiveAttack(this)) continue;
+
+            Component component = candidate as Component;
+            if (component == null) continue;
+
+            float distanceSqr = ((Vector2)component.transform.position - (Vector2)transform.position).sqrMagnitude;
+            if (distanceSqr >= bestDistanceSqr) continue;
+
+            bestDistanceSqr = distanceSqr;
+            bestTarget = candidate;
+        }
+
+        return bestTarget;
+    }
+
+    private static IPreemptiveAttackTarget ResolvePreemptiveAttackTarget(Collider2D hit)
+    {
+        if (hit == null) return null;
+
+        MonoBehaviour[] behaviours = hit.GetComponentsInParent<MonoBehaviour>(true);
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (behaviours[i] is IPreemptiveAttackTarget target)
+                return target;
+        }
+
+        return null;
+    }
+
+    private static bool IsPreemptiveAttackTargetAlive(IPreemptiveAttackTarget target)
+    {
+        if (target == null) return false;
+        if (target is Object unityObject) return unityObject != null;
+        return true;
+    }
+
+    private void ResetOverworldAttackAnimation()
+    {
+        if (_anim == null) return;
+
+        int triggerHash = Animator.StringToHash(_attackTriggerName);
+        if (HasAnimatorTrigger(triggerHash))
+            _anim.ResetTrigger(triggerHash);
+
+        _anim.SetBool(HashIsMoving, false);
+        _anim.SetFloat(HashMoveX, GetFacingVector2().x);
+        _anim.SetFloat(HashMoveY, GetFacingVector2().y);
+        TryCrossFadeOverworldIdle();
+    }
+
+    private void TryCrossFadeOverworldIdle()
+    {
+        if (_anim == null) return;
+
+        const string stateName = "idle";
+
+        int stateHash = Animator.StringToHash(stateName);
+        if (_anim.HasState(0, stateHash))
+            _anim.Play(stateHash, 0, 0f);
+    }
+
     public void SetFacingDirection(int dir)
     {
         FacingDirection = dir;
@@ -356,6 +511,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
+            _preemptiveAttackInProgress = false;
             _defenseReactionLocked = false;
             _lastDefenseAttemptTime = -999f;
             _moveInput = Vector2.zero;
@@ -405,6 +561,36 @@ public class PlayerController : MonoBehaviour
         else if (triggerHash == HashDie)     PlayDieEffect();
         else if (triggerHash == HashAttack)  PlayAttackEffect();
         else if (triggerHash == HashVictory) PlayVictoryEffect();
+    }
+
+    public bool TryPlayAnimatorTrigger(string triggerName)
+    {
+        if (_anim == null || string.IsNullOrWhiteSpace(triggerName)) return false;
+
+        int triggerHash = Animator.StringToHash(triggerName);
+        if (!HasAnimatorTrigger(triggerHash))
+        {
+            Debug.LogWarning($"[PlayerController] Animator Trigger '{triggerName}'가 없어 트리거 실행을 건너뜁니다.", this);
+            return false;
+        }
+
+        _anim.SetTrigger(triggerHash);
+        if (triggerHash == HashAttack)
+            PlayAttackEffect();
+
+        return true;
+    }
+
+    private bool HasAnimatorTrigger(int triggerHash)
+    {
+        if (_anim == null) return false;
+        foreach (AnimatorControllerParameter parameter in _anim.parameters)
+        {
+            if (parameter.nameHash == triggerHash && parameter.type == AnimatorControllerParameterType.Trigger)
+                return true;
+        }
+
+        return false;
     }
 
     public void ExecuteAttack()
@@ -467,6 +653,7 @@ public class PlayerController : MonoBehaviour
         {
             if (_rb != null) _rb.position = _battleDefenseAnchorPosition;
             transform.position = _battleDefenseAnchorPosition;
+            transform.localScale = _originalLocalScale == Vector3.zero ? transform.localScale : _originalLocalScale;
             if (_rb != null) _rb.linearVelocity = Vector2.zero;
         }
     }
@@ -484,12 +671,15 @@ public class PlayerController : MonoBehaviour
         Vector3 dodgeDir = -GetFacingVector(); // 뒤로 빠지기
         _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
 
-        var ghostTrail = GetComponentInChildren<CharacterGhostTrail>();
+        float backDistance = 2.2f;
+        Vector3 overshoot = anchor + dodgeDir * backDistance;
+        Vector3 rebound = anchor + dodgeDir * 0.35f;
 
         Sequence seq = DOTween.Sequence();
-        seq.Append(_rb.DOMove(anchor + dodgeDir * 2.5f, 0.2f).SetEase(Ease.OutExpo));
-        seq.AppendInterval(0.1f); 
-        seq.Append(_rb.DOMove(anchor, 0.2f).SetEase(Ease.InOutQuad));
+        seq.Append(transform.DOMove(overshoot, 0.16f).SetEase(Ease.OutCubic));
+        seq.Append(transform.DOMove(rebound, 0.12f).SetEase(Ease.InOutSine));
+        seq.Append(transform.DOMove(anchor, 0.10f).SetEase(Ease.OutBack));
+        seq.SetUpdate(true);
         seq.OnComplete(() =>
         {
             if (_rb != null) _rb.position = anchor;
@@ -511,22 +701,30 @@ public class PlayerController : MonoBehaviour
         Vector3 anchor = _battleDefenseAnchorPosition;
         _vfx?.Play(CharacterVFX.VFXAction.Jump_Dust);
 
-        var ghostTrail = GetComponentInChildren<CharacterGhostTrail>();
+        Vector3 baseScale = _originalLocalScale == Vector3.zero ? transform.localScale : _originalLocalScale;
+        Vector3 apex = anchor + Vector3.up * 2.8f;
+        Vector3 squash = anchor + Vector3.down * 0.12f;
 
         Sequence seq = DOTween.Sequence();
-        seq.Append(_rb.DOMoveY(anchor.y + 3.0f, 0.2f).SetEase(Ease.OutQuad));
-        seq.AppendInterval(0.1f);
-        seq.Append(_rb.DOMoveY(anchor.y, 0.2f).SetEase(Ease.InQuad));
+        seq.Append(transform.DOMove(apex, 0.18f).SetEase(Ease.OutCubic));
+        seq.Join(transform.DOScale(new Vector3(baseScale.x * 0.92f, baseScale.y * 1.08f, baseScale.z), 0.12f).SetEase(Ease.OutSine));
+        seq.Append(transform.DOMove(squash, 0.18f).SetEase(Ease.InCubic));
+        seq.Join(transform.DOScale(new Vector3(baseScale.x * 1.08f, baseScale.y * 0.90f, baseScale.z), 0.08f).SetEase(Ease.OutSine));
+        seq.Append(transform.DOMove(anchor, 0.08f).SetEase(Ease.OutBack));
+        seq.Join(transform.DOScale(baseScale, 0.10f).SetEase(Ease.OutBack));
+        seq.SetUpdate(true);
         seq.OnComplete(() =>
         {
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
+            transform.localScale = baseScale;
             _defenseReactionLocked = false;
         });
         seq.OnKill(() =>
         {
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
+            transform.localScale = baseScale;
             _defenseReactionLocked = false;
         });
         _defenseVisualTween = seq;
@@ -545,6 +743,7 @@ public class PlayerController : MonoBehaviour
         {
             if (_rb != null) _rb.position = _battleDefenseAnchorPosition;
             transform.position = _battleDefenseAnchorPosition;
+            transform.localScale = _originalLocalScale == Vector3.zero ? transform.localScale : _originalLocalScale;
             if (_rb != null) _rb.linearVelocity = Vector2.zero;
             PlayBattleAnim(HashBattleIdle);
         }
