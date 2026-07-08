@@ -154,11 +154,50 @@ public class BattleSkillTimelineRunnerTests
         }
     }
 
-    private static SkillData MakeSkill(string skillId, SkillActionBlock block)
+    [Test]
+    public void PlaySkillTimeline_SkipsDisabledBlocks()
+    {
+        var fixture = new BattleFixture();
+        SkillData skill = null;
+        try
+        {
+            RecordingSkillActionBlock.Reset();
+            var disabled = new RecordingSkillActionBlock { Disabled = true };
+            var enabled = new RecordingSkillActionBlock();
+            skill = MakeSkill("player_slash", disabled, enabled);
+            fixture.Player.Skills.Add(skill);
+
+            var runner = new BattleSkillTimelineRunner(fixture.BattleManager);
+            var context = new ActionExecutionContext();
+
+            RunToCompletion(runner.PlaySkillTimeline(
+                "player_slash",
+                "player",
+                new[] { "zev" },
+                context));
+
+            Assert.That(context.Handle.Status, Is.Not.EqualTo(ActionExecutionStatus.Failed), context.Handle.Result.Message);
+            Assert.That(RecordingSkillActionBlock.Calls, Is.EqualTo(1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(skill);
+            fixture.Dispose();
+        }
+    }
+
+    private static SkillData MakeSkill(string skillId, params SkillActionBlock[] blocks)
     {
         SkillData skill = ScriptableObject.CreateInstance<SkillData>();
         skill.SkillID = skillId;
-        skill.ActionTimeline.Add(block);
+        if (blocks != null)
+        {
+            for (int i = 0; i < blocks.Length; i++)
+            {
+                skill.ActionTimeline.Add(blocks[i]);
+            }
+        }
+
         return skill;
     }
 

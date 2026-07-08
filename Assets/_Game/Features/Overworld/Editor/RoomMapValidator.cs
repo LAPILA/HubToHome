@@ -13,6 +13,7 @@ public static class RoomMapValidator
     {
         DoorTransition[] doors = Object.FindObjectsByType<DoorTransition>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         AreaConnectionMarker[] connectionMarkers = Object.FindObjectsByType<AreaConnectionMarker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        AreaMarkerBase[] areaMarkers = Object.FindObjectsByType<AreaMarkerBase>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         SpawnPoint[] spawnPoints = Object.FindObjectsByType<SpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         RoomContainer[] containers = Object.FindObjectsByType<RoomContainer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         MapTransitionService[] services = Object.FindObjectsByType<MapTransitionService>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -124,6 +125,21 @@ public static class RoomMapValidator
             }
         }
 
-        Debug.Log($"[RoomMapValidator] 검사 완료. Doors={doors.Length}, AreaConnectionMarkers={connectionMarkers.Length}, SpawnPoints={spawnPoints.Length}, Errors={errorCount}, Warnings={warningCount}");
+        for (int i = 0; i < areaMarkers.Length; i++)
+        {
+            AreaMarkerBase marker = areaMarkers[i];
+            if (marker == null)
+                continue;
+
+            var issues = new List<string>();
+            marker.CollectValidationIssues(issues);
+            if (issues.Count <= 0)
+                continue;
+
+            Debug.LogError($"[RoomMapValidator] Marker validation failed: {marker.name}\n- {string.Join("\n- ", issues.ToArray())}", marker);
+            errorCount++;
+        }
+
+        Debug.Log($"[RoomMapValidator] 검사 완료. Doors={doors.Length}, AreaMarkers={areaMarkers.Length}, AreaConnectionMarkers={connectionMarkers.Length}, SpawnPoints={spawnPoints.Length}, Errors={errorCount}, Warnings={warningCount}");
     }
 }

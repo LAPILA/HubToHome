@@ -53,6 +53,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     
     // 🚨 체력창의 기본 Y좌표를 기억해둘 변수
     private float _defaultPartyPanelY;
+    private Image _scenarioFlashOverlay;
 
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
@@ -581,6 +582,67 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
     }
 
+    public Sequence PlayScenarioUiFlash(Color color, float alpha, float duration, object tweenTarget = null)
+    {
+        Image overlay = EnsureScenarioFlashOverlay();
+        if (overlay == null)
+        {
+            return null;
+        }
+
+        overlay.DOKill(false);
+        overlay.gameObject.SetActive(true);
+        Color startColor = color;
+        startColor.a = 0f;
+        overlay.color = startColor;
+
+        float clampedDuration = Mathf.Max(0.01f, duration);
+        Sequence sequence = DOTween.Sequence()
+            .SetUpdate(true)
+            .SetTarget(tweenTarget ?? overlay)
+            .Append(overlay.DOFade(Mathf.Clamp01(alpha), clampedDuration * 0.5f))
+            .Append(overlay.DOFade(0f, clampedDuration * 0.5f))
+            .OnKill(() =>
+            {
+                if (overlay != null)
+                {
+                    Color reset = overlay.color;
+                    reset.a = 0f;
+                    overlay.color = reset;
+                    overlay.gameObject.SetActive(false);
+                }
+            });
+
+        return sequence;
+    }
+
+    public Tween PlayScenarioUiShake(
+        Vector2 strength,
+        float duration,
+        int vibrato,
+        float randomness,
+        object tweenTarget = null)
+    {
+        RectTransform shakeTarget = _partyStatusPanel != null
+            ? _partyStatusPanel
+            : transform as RectTransform;
+        if (shakeTarget == null)
+        {
+            return null;
+        }
+
+        shakeTarget.DOKill(false);
+        return shakeTarget.DOShakeAnchorPos(
+                Mathf.Max(0.01f, duration),
+                strength,
+                Mathf.Max(1, vibrato),
+                Mathf.Clamp(randomness, 0f, 180f),
+                false,
+                true)
+            .SetUpdate(true)
+            .SetTarget(tweenTarget ?? shakeTarget);
+    }
+
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();
@@ -591,6 +653,39 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void SetTurnLabel(string text)
     {
         if (_turnLabel != null) _turnLabel.text = text;
+    }
+
+    private Image EnsureScenarioFlashOverlay()
+    {
+        if (_scenarioFlashOverlay != null)
+        {
+            return _scenarioFlashOverlay;
+        }
+
+        Canvas rootCanvas = GetComponentInParent<Canvas>();
+        Transform parent = rootCanvas != null ? rootCanvas.transform : transform;
+        if (parent == null)
+        {
+            return null;
+        }
+
+        var overlayObject = new GameObject("ScenarioUiFlashOverlay", typeof(RectTransform), typeof(Image));
+        overlayObject.transform.SetParent(parent, false);
+        overlayObject.SetActive(false);
+
+        RectTransform rect = overlayObject.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        rect.SetAsLastSibling();
+
+        _scenarioFlashOverlay = overlayObject.GetComponent<Image>();
+        _scenarioFlashOverlay.raycastTarget = false;
+        Color initialColor = Color.white;
+        initialColor.a = 0f;
+        _scenarioFlashOverlay.color = initialColor;
+        return _scenarioFlashOverlay;
     }
 
     private Transform GetPivot(Transform root, string pivotName)

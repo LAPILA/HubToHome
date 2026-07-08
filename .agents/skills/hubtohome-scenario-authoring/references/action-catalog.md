@@ -220,6 +220,77 @@ runtimeBinding: "`BattleManager`가 `BattleScenarioActionContextFactory`에 `Bat
 ```
 
 ```yaml
+id: timeline.play
+category: timeline
+displayNameKo: "타임라인 컷신 재생"
+summaryKo: "TimelineCutsceneCatalog에 등록된 고정 컷신 TimelineAsset을 재생합니다."
+runtimeAdapter: TimelinePlayActionAdapter
+params:
+  cutsceneId:
+    type: TimelineCutsceneId
+    required: true
+    validation: "현재 BattleScenarioData.TimelineCutsceneCatalog에서 찾을 수 있는 안정적인 컷신 ID여야 합니다."
+  waitForComplete:
+    type: Bool
+    required: false
+    default: true
+  lockInput:
+    type: Bool
+    required: false
+    default: true
+  restoreCamera:
+    type: Bool
+    required: false
+    default: true
+  skipIfMissing:
+    type: Bool
+    required: false
+    default: false
+examples:
+  - timeline.play:
+      cutsceneId: zev_intro_clash
+      waitForComplete: true
+      lockInput: true
+      restoreCamera: true
+      skipIfMissing: false
+completion: "waitForComplete가 true면 PlayableDirector 재생 종료까지 Action Sequence를 대기하고, false면 재생 시작 직후 다음 액션으로 진행합니다."
+cancellation: "실행 핸들의 취소 요청이 들어오면 PlayableDirector를 정지하고 대기 루프를 종료합니다."
+scope: "고정 컷, 고정 타이밍, 재사용 가능한 TimelineAsset 기반 연출용 Presentation action입니다. 전투 규칙/플래그/분기 판단을 Timeline 내부에 넣지 않습니다."
+runtimeBinding: "`BattleManager`가 `BattleScenarioActionContextFactory`에 `TimelineCutsceneRunner`를 주입합니다. Runner는 `BattleScenarioData.TimelineCutsceneCatalog`와 `BattleTimelineCutsceneBindingSource`를 사용해 cutsceneId를 찾고, `PlayableDirector` 인스턴스에서 `SetGenericBinding` / `SetReferenceValue`를 적용합니다. `lockInput`은 `GameStateManager.Cutscene`, `restoreCamera`는 `CameraController.ResetCamera(...)`로 처리합니다."
+```
+
+```yaml
+id: timeline.signal.bridge
+category: timeline
+displayNameKo: "타임라인 Signal 브릿지"
+summaryKo: "Timeline 내부 타이밍에서 presentation-only 연출만 허용하는 최소 브릿지 규칙입니다. 별도 ActionId가 아니라 `timeline.play` runtime contract의 일부입니다."
+runtimeAdapter: ScenarioTimelineSignalReceiver
+params:
+  signalType:
+    type: Enum
+    required: true
+    validation: "현재 허용 값은 sfx.play / camera.shake / vfx.spawn / actor.pose / ui.flash"
+  targetKey:
+    type: ActorIdOrBindingKey
+    required: false
+examples:
+  - signal:
+      type: camera.shake
+      intensity: 0.8
+      duration: 0.12
+  - signal:
+      type: actor.pose
+      targetKey: zev
+      pose: attack
+restrictions:
+  - "Signal에서 전투 시작 금지"
+  - "Signal에서 퀘스트/세이브/영구 플래그 변경 금지"
+  - "Signal에서 시나리오 분기 결정 금지"
+runtimeBinding: "`TimelineCutsceneRunner`가 director object에 `ScenarioTimelineSignalReceiver`를 자동 부착합니다. receiver는 `ScenarioTimelineSignalAsset` / `ScenarioTimelineSignalEmitter` 또는 Unity `SignalEmitter` asset을 읽고, battle context에서는 `IBattleTweenCinematicService`와 `IBattleCinematicRunner`를 사용해 presentation-only side effect를 실행합니다."
+scope: "연출 타이밍 전용. 상태 변경 정책은 Scenario Sequence가 계속 소유합니다."
+```
+
+```yaml
 id: battle.participant.damage
 category: battle
 displayNameKo: "전투 참가자 피해"

@@ -38,4 +38,7 @@ public sealed class BattleScenarioData : ScriptableObject
 
     [Tooltip("이 전투 시나리오에서 bgm.crossfade가 참조할 Audio ID 매핑입니다.")]
     public List<ScenarioAudioReferenceData> AudioClips = new List<ScenarioAudioReferenceData>();
+
+    [Tooltip("이 전투 시나리오에서 timeline.play가 참조할 Timeline 컷신 카탈로그입니다.")]
+    public TimelineCutsceneCatalog TimelineCutsceneCatalog;
 }

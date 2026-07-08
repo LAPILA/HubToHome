@@ -77,6 +77,11 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
                 continue;
             }
 
+            if (block.Disabled)
+            {
+                continue;
+            }
+
             IEnumerator routine;
             try
             {

@@ -1,19 +1,30 @@
+using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 public class SignMarker : AreaMarkerBase
 {
-    [Header("Sign")]
-    [SerializeField, Tooltip("표지판 전용 DialogueData입니다. 비어 있으면 signText를 1노드 대사로 표시합니다.")]
+    [TitleGroup("Sign 설정/대화")]
+    [InfoBox("표지판도 기본값은 반복 읽기 가능이 더 자연스럽습니다. 소모성 안내문일 때만 '1회성'을 켜세요.")]
+    [SerializeField, Tooltip("표지판 전용 DialogueData입니다. 비어 있으면 signText를 1노드 대사로 표시합니다."), LabelText("DialogueData")]
     private DialogueData dialogueData;
-    [TextArea(2, 6)] [SerializeField] private string signText;
-    [SerializeField] private SpeakerData fallbackSpeaker;
-    [SerializeField] private EmotionType fallbackEmotion = EmotionType.Normal;
+    [TitleGroup("Sign 설정/대화")]
+    [TextArea(2, 6)] [SerializeField, ShowIf(nameof(UseFallbackSignText)), LabelText("표지판 텍스트")]
+    private string signText;
+    [TitleGroup("Sign 설정/대화")]
+    [SerializeField, ShowIf(nameof(UseFallbackSignText)), LabelText("Fallback Speaker")]
+    private SpeakerData fallbackSpeaker;
+    [TitleGroup("Sign 설정/대화")]
+    [SerializeField, ShowIf(nameof(UseFallbackSignText)), LabelText("Fallback Emotion")]
+    private EmotionType fallbackEmotion = EmotionType.Normal;
+
+    private bool UseFallbackSignText => dialogueData == null;
 
     protected override void Reset()
     {
         markerType = AreaMarkerType.Sign;
         gizmoColor = AreaMarkerDefaults.GetColor(markerType);
-        isOneShot = true;
+        isOneShot = false;
         base.Reset();
     }
 
@@ -30,5 +41,12 @@ public class SignMarker : AreaMarkerBase
 
         if (!started)
             Debug.LogWarning($"[SignMarker] 표지판 대화 시작 실패: {DisplayName}", this);
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        base.CollectValidationIssues(issues);
+        if (dialogueData == null && string.IsNullOrWhiteSpace(signText))
+            issues.Add("DialogueData 또는 signText 중 하나는 필요합니다.");
     }
 }

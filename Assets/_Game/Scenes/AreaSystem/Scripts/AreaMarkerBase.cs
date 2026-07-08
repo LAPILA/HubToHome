@@ -1,26 +1,56 @@
+using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 [DisallowMultipleComponent]
 public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
 {
-    [Header("Marker Identity")]
+    [TitleGroup("기본 정보")]
     [SerializeField, Tooltip("비워두면 OnValidate/Reset에서 GameObject 기준으로 생성합니다.")]
+    [LabelText("마커 ID")]
     protected string markerId;
+    [TitleGroup("기본 정보")]
     [SerializeField, Tooltip("마커가 속한 Area/Room ID입니다.")]
+    [LabelText("Area/Room ID")]
     protected string areaId;
-    [SerializeField] protected AreaMarkerType markerType;
-    [SerializeField] protected string displayName;
-    [TextArea, SerializeField] protected string description;
+    [TitleGroup("기본 정보")]
+    [SerializeField, ReadOnly]
+    [LabelText("마커 타입")]
+    protected AreaMarkerType markerType;
+    [TitleGroup("기본 정보")]
+    [SerializeField]
+    [LabelText("표시 이름")]
+    protected string displayName;
+    [TitleGroup("기본 정보")]
+    [TextArea, SerializeField]
+    [LabelText("설명")]
+    protected string description;
 
-    [Header("Runtime Rules")]
-    [SerializeField] protected bool isOneShot;
-    [SerializeField] protected string requiredFlag;
-    [SerializeField] protected string setFlagOnComplete;
-    [SerializeField] protected float interactionRange = 1.5f;
+    [TitleGroup("런타임 규칙")]
+    [SerializeField]
+    [LabelText("1회성")]
+    protected bool isOneShot;
+    [TitleGroup("런타임 규칙")]
+    [SerializeField]
+    [LabelText("필수 플래그")]
+    protected string requiredFlag;
+    [TitleGroup("런타임 규칙")]
+    [SerializeField]
+    [LabelText("완료 시 설정 플래그")]
+    protected string setFlagOnComplete;
+    [TitleGroup("런타임 규칙")]
+    [SerializeField]
+    [LabelText("상호작용 거리")]
+    protected float interactionRange = 1.5f;
 
-    [Header("Scene View Only")]
-    [SerializeField] protected bool showLabelInSceneView = true;
-    [SerializeField] protected Color gizmoColor = Color.white;
+    [TitleGroup("에디터 표시")]
+    [SerializeField]
+    [LabelText("씬 뷰 라벨 표시")]
+    protected bool showLabelInSceneView = true;
+    [TitleGroup("에디터 표시")]
+    [SerializeField]
+    [LabelText("Gizmo 색상")]
+    protected Color gizmoColor = Color.white;
 
     private bool _completed;
     private bool _highlighted;
@@ -34,6 +64,7 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
     public Color GizmoColor => gizmoColor;
     public float InteractionRange => Mathf.Max(0.1f, interactionRange);
     public bool IsCompleted => _completed;
+    public string ShortTypeLabel => AreaMarkerDefaults.GetShortLabel(markerType);
 
     protected virtual void Reset()
     {
@@ -102,54 +133,53 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
         EmotionType fallbackEmotion,
         System.Action onComplete = null)
     {
-        DialogueManager manager = DialogueManager.Instance;
-        if (manager == null)
-        {
-            Debug.LogWarning("[AreaMarker] DialogueManager가 없어 대화를 시작할 수 없습니다.", this);
-            return false;
-        }
-
-        if (manager.IsPlaying)
-        {
-            Debug.Log("[AreaMarker] 이미 대화가 재생 중이라 새 Area Marker 대화를 무시합니다.", this);
-            return false;
-        }
-
-        if (dialogue != null)
-        {
-            manager.StartDialogue(dialogue, onComplete);
-            return true;
-        }
-
-        if (string.IsNullOrWhiteSpace(fallbackText))
-        {
-            Debug.LogWarning("[AreaMarker] DialogueData와 fallback text가 모두 비어 있습니다.", this);
-            return false;
-        }
-
-        DialogueData transientDialogue = ScriptableObject.CreateInstance<DialogueData>();
-        transientDialogue.name = "Runtime_AreaMarkerDialogue";
-        transientDialogue.Style = DialogueStyle.Overworld;
-        transientDialogue.Nodes.Add(new DialogueNode
-        {
-            Speaker = fallbackSpeaker,
-            Emotion = fallbackEmotion,
-            DefaultText = fallbackText
-        });
-
-        manager.StartDialogue(transientDialogue, () =>
-        {
-            Destroy(transientDialogue);
-            onComplete?.Invoke();
-        });
-
-        return true;
+        return AreaMarkerRuntimeService.TryStartDialogue(
+            this,
+            dialogue,
+            fallbackText,
+            fallbackSpeaker,
+            fallbackEmotion,
+            onComplete);
     }
 
     protected bool IsPlayerInRange(PlayerController player)
     {
         if (player == null) return true;
         return Vector2.Distance(player.transform.position, transform.position) <= InteractionRange;
+    }
+
+    [TitleGroup("검증")]
+    [Button("Validate Marker")]
+    public void ValidateAndLog()
+    {
+        var issues = new List<string>();
+        CollectValidationIssues(issues);
+        if (issues.Count == 0)
+        {
+            Debug.Log($"[AreaMarker] Validation passed: {DisplayName} ({markerType})", this);
+            return;
+        }
+
+        Debug.LogError(
+            $"[AreaMarker] Validation failed: {DisplayName} ({markerType})\n- " + string.Join("\n- ", issues.ToArray()),
+            this);
+    }
+
+    public virtual void CollectValidationIssues(List<string> issues)
+    {
+        if (issues == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(markerId))
+            issues.Add("markerId가 비어 있습니다.");
+
+        if (string.IsNullOrWhiteSpace(areaId))
+            issues.Add("areaId가 비어 있습니다.");
+
+        if (GetComponent<Collider2D>() == null)
+            issues.Add("Collider2D가 없습니다. Interaction/Trigger용 콜라이더가 필요합니다.");
     }
 
 #if UNITY_EDITOR
@@ -160,7 +190,15 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
         Color drawColor = _highlighted ? Color.white : gizmoColor;
         UnityEditor.Handles.color = drawColor;
         Gizmos.color = drawColor;
+        AreaMarkerDefaults.DrawSceneIcon(markerType, transform.position, drawColor);
         Gizmos.DrawWireSphere(transform.position, InteractionRange);
+
+        if (showLabelInSceneView)
+        {
+            UnityEditor.Handles.Label(
+                transform.position + Vector3.up * 0.35f,
+                $"[{AreaMarkerDefaults.GetShortLabel(markerType)}] {DisplayName}");
+        }
     }
 #endif
 }
@@ -187,4 +225,56 @@ public static class AreaMarkerDefaults
         }
     }
 
+    public static string GetShortLabel(AreaMarkerType type)
+    {
+        switch (type)
+        {
+            case AreaMarkerType.Connection: return "CON";
+            case AreaMarkerType.Enemy: return "ENM";
+            case AreaMarkerType.Hazard: return "HAZ";
+            case AreaMarkerType.Puzzle: return "PZL";
+            case AreaMarkerType.Vendor: return "VND";
+            case AreaMarkerType.ShortcutDoor: return "SCD";
+            case AreaMarkerType.NPC: return "NPC";
+            case AreaMarkerType.Item: return "ITM";
+            case AreaMarkerType.Sign: return "SGN";
+            case AreaMarkerType.SavePoint: return "SAV";
+            case AreaMarkerType.PlotPoint: return "PLT";
+            case AreaMarkerType.Sublocation: return "SUB";
+            default: return "MRK";
+        }
+    }
+
+#if UNITY_EDITOR
+    public static void DrawSceneIcon(AreaMarkerType type, Vector3 position, Color color)
+    {
+        UnityEditor.Handles.color = color;
+        Quaternion rotation = Quaternion.identity;
+        const float size = 0.28f;
+
+        switch (type)
+        {
+            case AreaMarkerType.Connection:
+            case AreaMarkerType.ShortcutDoor:
+                UnityEditor.Handles.RectangleHandleCap(0, position, rotation, size, EventType.Repaint);
+                break;
+            case AreaMarkerType.Enemy:
+            case AreaMarkerType.Hazard:
+            case AreaMarkerType.PlotPoint:
+                UnityEditor.Handles.ConeHandleCap(0, position, rotation, size, EventType.Repaint);
+                break;
+            case AreaMarkerType.Vendor:
+            case AreaMarkerType.SavePoint:
+                UnityEditor.Handles.CylinderHandleCap(0, position, rotation, size, EventType.Repaint);
+                break;
+            case AreaMarkerType.Item:
+            case AreaMarkerType.Sign:
+                UnityEditor.Handles.CubeHandleCap(0, position, rotation, size, EventType.Repaint);
+                break;
+            default:
+                UnityEditor.Handles.SphereHandleCap(0, position, rotation, size, EventType.Repaint);
+                break;
+        }
+    }
+#endif
 }

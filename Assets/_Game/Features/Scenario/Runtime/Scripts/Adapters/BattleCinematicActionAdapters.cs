@@ -626,6 +626,11 @@ public sealed class CinematicLetterboxOverlay : MonoBehaviour
     private RectTransform _bottom;
     private float _currentThickness;
 
+    public float CurrentThickness
+    {
+        get { return _currentThickness; }
+    }
+
     public static CinematicLetterboxOverlay GetOrCreate()
     {
         if (_instance != null)
@@ -675,6 +680,13 @@ public sealed class CinematicLetterboxOverlay : MonoBehaviour
         }
 
         ApplyThickness(target);
+    }
+
+    public void SetThicknessImmediate(float thickness)
+    {
+        EnsureInitialized();
+        gameObject.SetActive(true);
+        ApplyThickness(thickness);
     }
 
     private void Awake()

@@ -364,6 +364,50 @@ public class ScenarioSourceSyncTests
     }
 
     [Test]
+    public void YamlParserRoundTripsWriterOutputPreservingDesignerLabelNoteDisabledAndChildren()
+    {
+        ScenarioSourceDocument document = MakeDocument();
+        document.Sequences[0].Actions.Clear();
+        document.Sequences[0].Actions.Add(new ScenarioActionData
+        {
+            DesignerLabel = "인트로 대사",
+            ActionId = "dialogue.wait",
+            ParametersJson = "{\"id\":\"zev.phase2\"}",
+            Note = "첫 대사",
+            Disabled = true
+        });
+
+        var parallel = new ScenarioActionData { ActionId = ActionDirector.ParallelActionId };
+        parallel.Children.Add(new ScenarioActionData
+        {
+            DesignerLabel = "플래그 설정",
+            ActionId = "battle.flag.set",
+            ParametersJson = "{\"flag\":\"phase.two\",\"value\":\"entered\"}",
+            Note = "자식 메모"
+        });
+        document.Sequences[0].Actions.Add(parallel);
+
+        ScenarioSourceYamlWriteResult writeResult = new ScenarioSourceYamlWriter().Write(document);
+        var importer = new ScenarioSourceImporter(new ScenarioSourceYamlParser());
+
+        ScenarioSourceSyncResult importResult = importer.Import(
+            writeResult.Text,
+            "Assets/_Game/Features/Scenario/Source/metadata_roundtrip.scenario.yaml",
+            new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.That(writeResult.Success, Is.True);
+        Assert.That(importResult.Success, Is.True);
+        Assert.That(importResult.Scenario.Sequences[0].Actions[0].DesignerLabel, Is.EqualTo("인트로 대사"));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[0].Note, Is.EqualTo("첫 대사"));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[0].Disabled, Is.True);
+        Assert.That(importResult.Scenario.Sequences[0].Actions[1].Children.Count, Is.EqualTo(1));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[1].Children[0].DesignerLabel, Is.EqualTo("플래그 설정"));
+        Assert.That(importResult.Scenario.Sequences[0].Actions[1].Children[0].Note, Is.EqualTo("자식 메모"));
+
+        DestroyScenario(importResult.Scenario);
+    }
+
+    [Test]
     public void YamlWriterReportsInvalidActionParameterJson()
     {
         ScenarioSourceDocument document = MakeDocument();

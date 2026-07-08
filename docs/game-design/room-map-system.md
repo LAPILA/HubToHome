@@ -234,3 +234,11 @@ Assets/_Game/Features/Overworld/Maps/
 - 큰 지역은 Scene, 작은 방은 Room Prefab으로 관리합니다.
 - 카메라는 새로 만들지 않고 기존 Cinemachine Camera의 Follow/Confiner를 갱신합니다.
 - BGM은 지역 BGM을 기본으로 하고, RoomDefinition에서 필요할 때만 덮어씁니다.
+
+## Area Marker authoring 메모
+
+- `NPCMarker`, `SignMarker`는 기본값을 **반복 상호작용 가능**으로 두는 편이 자연스럽습니다. 1회성 대화/안내문일 때만 `1회성`을 켭니다.
+- `HazardMarker.damage`는 현재 **기획용 수치**입니다. 런타임은 플레이어 넉백만 적용하고 실제 HP 감소는 아직 연결하지 않았습니다.
+- `VendorMarker`는 현재 **상점 UI 연결 지점**입니다. `vendorId`, `shopId` 전달 seam만 제공하며 자동으로 상점 화면을 열지 않습니다.
+- `PuzzleMarker`는 현재 **임시 완료 seam**입니다. 퍼즐 미니게임을 실행하지 않고 `solvedFlag`를 즉시 세팅합니다.
+- Area Marker 아이콘/라벨/Gizmo는 `#if UNITY_EDITOR` 경로에서만 그리므로 인게임 HUD처럼 노출되지 않습니다.

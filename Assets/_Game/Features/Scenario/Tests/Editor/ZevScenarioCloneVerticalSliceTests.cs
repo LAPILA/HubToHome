@@ -42,7 +42,7 @@ public class ZevScenarioCloneVerticalSliceTests
         Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.move_to"), Is.True);
         Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.fake_attack"), Is.True);
         Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.skill.timeline"), Is.False);
-        Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.pose" && HasStringParameter(action, "actor", "player_001") && HasStringParameter(action, "pose", "parry")), Is.True);
+        Assert.That(opening.Actions.Exists(action => action.ActionId == "battle.actor.pose" && HasStringParameter(action, "actor", "player") && HasStringParameter(action, "pose", "parry")), Is.True);
         Assert.That(opening.Actions.Exists(action => action.ActionId == "dialogue.wait" && HasStringParameter(action, "id", "zev.clone.opening_clash")), Is.True);
         AssertParameter(phase2.Actions[0], "mode", "show");
         AssertParameter(phase2.Actions[1], "clip", "zev_clone_phase2");

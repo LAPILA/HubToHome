@@ -8,6 +8,7 @@ public class RoomDefinition : ScriptableObject
 {
     [SerializeField] private string _roomId;
     [SerializeField] private RoomInstance _roomPrefab;
+    [SerializeField] private AreaDefinition _areaDefinition;
 
     [Header("Audio")]
     [SerializeField] private AudioClip _bgmOverride;
@@ -16,6 +17,7 @@ public class RoomDefinition : ScriptableObject
 
     public string RoomId => _roomId;
     public RoomInstance RoomPrefab => _roomPrefab;
+    public AreaDefinition AreaDefinition => _areaDefinition;
     public AudioClip BgmOverride => _bgmOverride;
     public bool KeepCurrentBgm => _keepCurrentBgm;
     public float BgmFadeDuration => _bgmFadeDuration;

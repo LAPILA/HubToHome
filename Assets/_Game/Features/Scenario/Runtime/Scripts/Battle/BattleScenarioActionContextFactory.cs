@@ -7,7 +7,9 @@ public static class BattleScenarioActionContextFactory
         IGameModuleActionRunner gameModuleActionRunner = null,
         IAudioActionRunner audioActionRunner = null,
         IScreenTransitionRunner screenTransitionRunner = null,
+        ITimelineCutsceneRunner timelineCutsceneRunner = null,
         IBattleCinematicRunner battleCinematicRunner = null,
+        IBattleTweenCinematicService battleTweenCinematicService = null,
         IBattleSessionStateReader battleSessionState = null,
         IBattleParticipantCommandRunner battleParticipantCommandRunner = null,
         IGameModuleEventSink gameModuleEventSink = null)
@@ -44,9 +46,19 @@ public static class BattleScenarioActionContextFactory
             context.SetService<IScreenTransitionRunner>(screenTransitionRunner);
         }
 
+        if (timelineCutsceneRunner != null)
+        {
+            context.SetService<ITimelineCutsceneRunner>(timelineCutsceneRunner);
+        }
+
         if (battleCinematicRunner != null)
         {
             context.SetService<IBattleCinematicRunner>(battleCinematicRunner);
+        }
+
+        if (battleTweenCinematicService != null)
+        {
+            context.SetService<IBattleTweenCinematicService>(battleTweenCinematicService);
         }
 
         if (battleSessionState != null)

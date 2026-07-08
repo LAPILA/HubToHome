@@ -141,6 +141,37 @@ public static class ScenarioActionParameterReader
         return true;
     }
 
+    public static bool TryGetBool(
+        ScenarioActionData action,
+        string name,
+        bool defaultValue,
+        out bool value,
+        out string error)
+    {
+        value = defaultValue;
+        error = string.Empty;
+
+        JObject root;
+        if (!TryParse(action, out root, out error))
+        {
+            return false;
+        }
+
+        if (root == null || !root.TryGetValue(name, out JToken token) || token.Type == JTokenType.Null)
+        {
+            return true;
+        }
+
+        if (token.Type == JTokenType.Boolean)
+        {
+            value = token.Value<bool>();
+            return true;
+        }
+
+        error = "Parameter '" + name + "' must be a boolean.";
+        return false;
+    }
+
     private static bool TryParse(
         ScenarioActionData action,
         out JObject root,

@@ -27,8 +27,71 @@ public class SkillContext
 [System.Serializable]
 public abstract class SkillActionBlock
 {
-    [HideInInspector] public string BlockName => GetType().Name.Replace("Action_", "");
+    [HideInInspector] public string BlockName => GetReadableBlockName();
+
+    [PropertyOrder(-50)]
+    [LabelText("사용")]
+    [ShowInInspector]
+    public bool Enabled
+    {
+        get { return !Disabled; }
+        set { Disabled = !value; }
+    }
+
+    [HideInInspector]
+    public bool Disabled;
+
+    [PropertyOrder(-49)]
+    [LabelText("디자이너 라벨")]
+    public string DesignerLabel = string.Empty;
+
+    [PropertyOrder(-48)]
+    [TextArea(1, 3)]
+    [LabelText("메모")]
+    public string Note = string.Empty;
+
+    [PropertyOrder(-60)]
+    [ShowInInspector]
+    [ReadOnly]
+    [LabelText("블록 요약")]
+    public string BlockHeader
+    {
+        get
+        {
+            string label = string.IsNullOrWhiteSpace(DesignerLabel) ? GetReadableBlockName() : DesignerLabel.Trim();
+            return (Enabled ? string.Empty : "[비활성] ") + "[" + GetBlockCategoryKo() + "] " + label;
+        }
+    }
+
     public abstract IEnumerator Execute(SkillContext context);
+
+    private string GetReadableBlockName()
+    {
+        if (this is Action_Wait) return "대기";
+        if (this is Action_Move) return "이동";
+        if (this is Action_PlayAnim) return "애니메이션";
+        if (this is Action_Damage) return "데미지";
+        if (this is Action_ApplyStatus) return "상태이상";
+        if (this is Action_QTE) return "QTE";
+        if (this is Action_VFX) return "VFX";
+        if (this is Action_DefenseWindow) return "방어/패링";
+        if (this is Action_Projectile) return "투사체";
+        if (this is Action_SequentialMelee) return "연쇄 근접";
+        return GetType().Name.Replace("Action_", string.Empty);
+    }
+
+    private string GetBlockCategoryKo()
+    {
+        if (this is Action_Wait) return "흐름";
+        if (this is Action_Move) return "이동";
+        if (this is Action_PlayAnim) return "애니메이션";
+        if (this is Action_Damage || this is Action_Projectile || this is Action_SequentialMelee) return "데미지";
+        if (this is Action_VFX) return "VFX";
+        if (this is Action_QTE) return "QTE";
+        if (this is Action_DefenseWindow) return "방어";
+        if (this is Action_ApplyStatus) return "상태이상";
+        return "기타";
+    }
 
     protected static void PlayActorBattleAnim(CharacterBase actor, int triggerHash)
     {
@@ -215,11 +278,15 @@ public class Action_ApplyStatus : SkillActionBlock
 [TypeInfoBox("QTE를 실행하고 성공 여부에 따라 다음 데미지/회복 배율을 결정합니다.")]
 public class Action_QTE : SkillActionBlock
 {
+    [LabelText("제한 시간")]
     public float TimeLimit = 1.0f;
+    [LabelText("성공 배율")]
     public float SuccessMultiplier = 1.5f;
+    [LabelText("실패 배율")]
     public float FailMultiplier = 0.5f;
     
     [ListDrawerSettings(ShowIndexLabels = true)]
+    [LabelText("QTE 노드")]
     public List<SkillQTENode> Nodes = new List<SkillQTENode>();
 
     public override IEnumerator Execute(SkillContext context)
@@ -250,7 +317,7 @@ public class Action_VFX : SkillActionBlock
 {
     public enum VfxPivot { ActorCenter, ActorFront, TargetCenter, TargetBottom, TargetTop }
     
-    [AssetsOnly, Required] public GameObject VfxPrefab;
+    [AssetsOnly, Required, LabelText("VFX 프리팹")] public GameObject VfxPrefab;
     [LabelText("소환 위치")] public VfxPivot Pivot;
     [LabelText("Actor 회전 사용")] public bool UseActorRotation = false;
 
@@ -468,10 +535,10 @@ public class Action_DefenseWindow : SkillActionBlock
 [TypeInfoBox("내 위치에서 타겟을 향해 투사체를 날립니다.")]
 public class Action_Projectile : SkillActionBlock
 {
-    [AssetsOnly, Required] public GameObject ProjectilePrefab;
-    [AssetsOnly] public GameObject ImpactVFXPrefab;
-    public float FlightDuration = 0.3f;
-    public float DamageMultiplier = 1.0f;
+    [AssetsOnly, Required, LabelText("투사체 프리팹")] public GameObject ProjectilePrefab;
+    [AssetsOnly, LabelText("충돌 VFX 프리팹")] public GameObject ImpactVFXPrefab;
+    [LabelText("비행 시간")] public float FlightDuration = 0.3f;
+    [LabelText("데미지 배율")] public float DamageMultiplier = 1.0f;
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -519,10 +586,10 @@ public class Action_Projectile : SkillActionBlock
 [TypeInfoBox("광역기(AoE) 스킬일 경우, 모든 타겟을 순서대로 돌아가며 타격합니다.")]
 public class Action_SequentialMelee : SkillActionBlock
 {
-    public string AttackAnimTrigger = "Attack";
-    public float DamageMultiplier = 0.8f;
-    public float DashSpeed = 0.15f;
-    [AssetsOnly] public GameObject HitVfxPrefab;
+    [LabelText("공격 애니메이션 트리거"), Required] public string AttackAnimTrigger = "Attack";
+    [LabelText("데미지 배율")] public float DamageMultiplier = 0.8f;
+    [LabelText("대시 속도")] public float DashSpeed = 0.15f;
+    [AssetsOnly, LabelText("히트 VFX 프리팹")] public GameObject HitVfxPrefab;
 
     public override IEnumerator Execute(SkillContext context)
     {

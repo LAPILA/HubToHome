@@ -267,8 +267,10 @@ public sealed class ScenarioSourceExporter
 
         return new ScenarioActionData
         {
+            DesignerLabel = source.DesignerLabel,
             ActionId = source.ActionId,
             ParametersJson = source.ParametersJson,
+            Note = source.Note,
             Disabled = source.Disabled,
             Children = CloneActions(source.Children)
         };
@@ -506,6 +508,16 @@ public sealed class ScenarioSourceYamlWriter
             }
 
             AppendListItemKeyOnly(builder, indentLevel, actionId);
+            if (!string.IsNullOrWhiteSpace(action.DesignerLabel))
+            {
+                AppendKeyValue(builder, indentLevel + 1, "designerLabel", action.DesignerLabel);
+            }
+
+            if (!string.IsNullOrWhiteSpace(action.Note))
+            {
+                AppendKeyValue(builder, indentLevel + 1, "note", action.Note);
+            }
+
             if (action.Disabled)
             {
                 AppendKeyValue(builder, indentLevel + 1, "disabled", true);
@@ -1167,6 +1179,14 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                     if (key == "disabled")
                     {
                         action.Disabled = ParseBool(value);
+                    }
+                    else if (key == "designerLabel")
+                    {
+                        action.DesignerLabel = ParseYamlString(value);
+                    }
+                    else if (key == "note")
+                    {
+                        action.Note = ParseYamlString(value);
                     }
                     else
                     {

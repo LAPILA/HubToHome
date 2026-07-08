@@ -294,6 +294,7 @@ public static class RoomMapSampleBuilder
     {
         string prefabPath = $"{prefabFolder}/{prefabName}.prefab";
         string definitionPath = $"{dataFolder}/{prefabName}_Definition.asset";
+        string areaDefinitionPath = $"{dataFolder}/{prefabName}_Area.asset";
 
         GameObject roomRoot = layoutFactory(roomId, floorColor, wallColor, doorSpawnId, returnSpawnId);
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(roomRoot, prefabPath);
@@ -310,7 +311,21 @@ public static class RoomMapSampleBuilder
         SetPrivateString(definition, "_roomId", roomId);
         SetPrivateObject(definition, "_roomPrefab", roomPrefab);
         SetPrivateBool(definition, "_keepCurrentBgm", true);
+
+        AreaDefinition areaDefinition = AssetDatabase.LoadAssetAtPath<AreaDefinition>(areaDefinitionPath);
+        if (areaDefinition == null)
+        {
+            areaDefinition = ScriptableObject.CreateInstance<AreaDefinition>();
+            AssetDatabase.CreateAsset(areaDefinition, areaDefinitionPath);
+        }
+
+        SetPrivateString(areaDefinition, "_areaId", roomId);
+        SetPrivateObject(areaDefinition, "_roomDefinition", definition);
+        SetPrivateObject(definition, "_areaDefinition", areaDefinition);
         EditorUtility.SetDirty(definition);
+        EditorUtility.SetDirty(areaDefinition);
+
+        areaDefinition.RefreshMarkerSummary();
 
         return definition;
     }

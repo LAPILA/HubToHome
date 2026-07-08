@@ -7,6 +7,11 @@ public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
 
+    public AudioSource PrimaryBgmSource => _activeBGM;
+    public AudioSource SecondaryBgmSource => _inactiveBGM;
+    public AudioSource SfxSource => _sfxSource;
+    public AudioSource VoiceSource => _voiceSource;
+
     [Header("Audio Mixer")]
     [SerializeField] private AudioMixer _mixer;
 

@@ -1,16 +1,29 @@
+using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 public class PlotPointMarker : AreaMarkerBase
 {
-    [Header("Plot Point")]
-    [SerializeField] private string plotId;
-    [SerializeField] private AreaPlotTriggerMode triggerMode = AreaPlotTriggerMode.OnEnter;
-    [SerializeField, Tooltip("플롯 이벤트와 함께 보여줄 DialogueData입니다. 비어 있으면 fallbackDialogueText를 사용합니다.")]
+    [TitleGroup("Plot Point 설정/기본")]
+    [SerializeField, LabelText("플롯 ID")] private string plotId;
+    [TitleGroup("Plot Point 설정/기본")]
+    [SerializeField, LabelText("발동 방식")]
+    private AreaPlotTriggerMode triggerMode = AreaPlotTriggerMode.OnEnter;
+
+    [TitleGroup("Plot Point 설정/표시")]
+    [SerializeField, Tooltip("플롯 이벤트와 함께 보여줄 DialogueData입니다. 비어 있으면 fallbackDialogueText를 사용합니다."), LabelText("DialogueData")]
     private DialogueData dialogueData;
-    [TextArea(2, 6)] [SerializeField]
+    [TitleGroup("Plot Point 설정/표시")]
+    [TextArea(2, 6)] [SerializeField, ShowIf(nameof(UseFallbackDialogue)), LabelText("Fallback 대사")]
     private string fallbackDialogueText;
-    [SerializeField] private SpeakerData fallbackSpeaker;
-    [SerializeField] private EmotionType fallbackEmotion = EmotionType.Normal;
+    [TitleGroup("Plot Point 설정/표시")]
+    [SerializeField, ShowIf(nameof(UseFallbackDialogue)), LabelText("Fallback Speaker")]
+    private SpeakerData fallbackSpeaker;
+    [TitleGroup("Plot Point 설정/표시")]
+    [SerializeField, ShowIf(nameof(UseFallbackDialogue)), LabelText("Fallback Emotion")]
+    private EmotionType fallbackEmotion = EmotionType.Normal;
+
+    private bool UseFallbackDialogue => dialogueData == null;
 
     protected override void Reset()
     {
@@ -46,5 +59,14 @@ public class PlotPointMarker : AreaMarkerBase
 
         if (!started && isOneShot)
             CompleteMarker();
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        base.CollectValidationIssues(issues);
+        if (string.IsNullOrWhiteSpace(plotId))
+            issues.Add("plotId가 비어 있습니다.");
+        if (dialogueData == null && string.IsNullOrWhiteSpace(fallbackDialogueText))
+            issues.Add("DialogueData 또는 fallbackDialogueText 중 하나는 필요합니다.");
     }
 }

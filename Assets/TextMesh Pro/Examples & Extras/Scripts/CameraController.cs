@@ -4,9 +4,11 @@ using DG.Tweening;
 using Sirenix.OdinInspector;
 
 /// <summary>
-/// 전투 카메라 컨트롤러 (시네머신 네이티브 최적화 버전).
+/// 프로젝트 실사용 카메라 컨트롤러.
+/// 현재 파일 경로는 TMP Examples 아래에 남아 있지만, 실제로는 전투/시나리오/오버월드가 함께 참조하는 게임 전용 스크립트다.
+/// 씬과 프리팹이 현재 GUID를 직접 참조하므로, 이동이 필요할 때는 .meta 보존 전제로 안전하게 옮겨야 한다.
 /// 지터링 방지를 위해 위치 이동은 Cinemachine의 Follow 타겟팅을 사용하며,
-/// DOTween은 렌즈 줌(Zoom)과 이펙트 연출에만 사용합니다.
+/// DOTween은 렌즈 줌(Zoom)과 이펙트 연출에만 사용한다.
 /// </summary>
 public class CameraController : MonoBehaviour
 {
@@ -29,6 +31,9 @@ public class CameraController : MonoBehaviour
     [Title("⚙️ 기본 설정")]
     [SerializeField] private float _defaultLensSize = 5.5f;
     [SerializeField] private float _battleZoomSize = 4.0f;
+
+    public CinemachineCamera VirtualCamera => _vCam;
+    public Transform CenterTarget => _centerTarget;
 
     private void Awake()
     {

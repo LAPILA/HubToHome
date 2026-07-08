@@ -1,10 +1,14 @@
+using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 public class VendorMarker : AreaMarkerBase
 {
-    [Header("Vendor")]
-    [SerializeField] private string vendorId;
-    [SerializeField] private string shopId;
+    [TitleGroup("Vendor 설정")]
+    [InfoBox("현재 VendorMarker는 상점 UI를 직접 열지 않습니다. vendorId/shopId를 런타임 서비스에 전달하는 연결 지점만 제공합니다.")]
+    [SerializeField, LabelText("Vendor ID (연결용)")] private string vendorId;
+    [TitleGroup("Vendor 설정")]
+    [SerializeField, LabelText("Shop ID (연결용)")] private string shopId;
 
     protected override void Reset()
     {
@@ -16,7 +20,16 @@ public class VendorMarker : AreaMarkerBase
     public override void Interact(PlayerController player)
     {
         if (!CanInteract(player) || !IsPlayerInRange(player)) return;
-        Debug.Log($"[VendorMarker] 상점 요청: vendorId={vendorId}, shopId={shopId}. Shop UI 연결 지점입니다.", this);
+        AreaMarkerRuntimeService.RequestVendor(this, vendorId, shopId);
         if (isOneShot) CompleteMarker();
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        base.CollectValidationIssues(issues);
+        if (string.IsNullOrWhiteSpace(vendorId))
+            issues.Add("vendorId가 비어 있습니다.");
+        if (string.IsNullOrWhiteSpace(shopId))
+            issues.Add("shopId가 비어 있습니다.");
     }
 }

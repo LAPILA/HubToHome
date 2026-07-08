@@ -1,24 +1,33 @@
+using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class AreaConnectionMarker : AreaMarkerBase
 {
-    [Header("Connection")]
-    [SerializeField, Tooltip("이동할 Unity Scene 이름입니다.")]
+    [TitleGroup("연결/직접 Scene 이동")]
+    [SerializeField, Tooltip("이동할 Unity Scene 이름입니다."), LabelText("대상 Scene")]
     private string targetSceneName;
-    [SerializeField, Tooltip("도착 SpawnPoint ID입니다.")]
+    [TitleGroup("연결/직접 Scene 이동")]
+    [SerializeField, Tooltip("도착 SpawnPoint ID입니다."), LabelText("도착 SpawnPoint")]
     private string targetSpawnId;
-    [SerializeField, Tooltip("켜면 상호작용 키로 이동하고, 끄면 TriggerEnter로 이동합니다.")]
-    private bool interactToUse = true;
-    [SerializeField, Min(0f)] private float fadeDuration = 0.25f;
+    [TitleGroup("연결/직접 Scene 이동")]
+    [SerializeField, Min(0f), LabelText("페이드 시간")]
+    private float fadeDuration = 0.25f;
 
-    [Header("Room Map Connection")]
-    [SerializeField, Tooltip("Room 기반 맵 이동 요청입니다. 유효하면 위 Scene 이름보다 우선합니다.")]
-    private MapTransitionRequest mapTransition = new MapTransitionRequest();
-    [SerializeField, Tooltip("Room/Scene 이동 발동 방식입니다.")]
+    [TitleGroup("연결/진입 규칙")]
+    [SerializeField, Tooltip("켜면 상호작용 키로 이동하고, 끄면 TriggerEnter로 이동합니다."), LabelText("상호작용으로 사용")]
+    private bool interactToUse = true;
+
+    [TitleGroup("연결/진입 규칙")]
+    [SerializeField, Tooltip("Room/Scene 이동 발동 방식입니다."), LabelText("발동 방식")]
     private DoorActivationMode activationMode = DoorActivationMode.OnInteract;
-    [SerializeField, Tooltip("Trigger 내부에 머무르는 동안 같은 이동을 한 번만 실행합니다.")]
+    [TitleGroup("연결/진입 규칙")]
+    [SerializeField, Tooltip("Trigger 내부에 머무르는 동안 같은 이동을 한 번만 실행합니다."), LabelText("Trigger 내 1회만")]
     private bool oneShotUntilExit = true;
+
+    [TitleGroup("연결/Room Map 이동")]
+    [SerializeField, Tooltip("Room 기반 맵 이동 요청입니다. 유효하면 위 Scene 이름보다 우선합니다."), LabelText("Map Transition")]
+    private MapTransitionRequest mapTransition = new MapTransitionRequest();
 
     private bool _isPlayerInside;
     private bool _usedWhileInside;
@@ -78,57 +87,36 @@ public class AreaConnectionMarker : AreaMarkerBase
         if (Time.unscaledTime < _nextAllowedTransitionTime) return;
         if (oneShotUntilExit && _usedWhileInside) return;
 
-        if (TryRequestMapTransition(player))
+        bool requested = AreaMarkerRuntimeService.TryRequestConnection(
+            this,
+            player,
+            mapTransition,
+            targetSceneName,
+            targetSpawnId,
+            fadeDuration);
+        if (!requested)
             return;
-
-        if (string.IsNullOrWhiteSpace(targetSceneName))
-        {
-            Debug.LogWarning($"[AreaConnectionMarker] TargetSceneName이 비어 있습니다. Marker={MarkerId}", this);
-            return;
-        }
-
-        player?.SavePositionToGlobal();
-        if (GlobalDataManager.Instance != null)
-        {
-            GlobalDataManager.Instance.SpawnScene = targetSceneName;
-            GlobalDataManager.Instance.SpawnPointId = targetSpawnId;
-            if (player != null)
-            {
-                GlobalDataManager.Instance.SpawnX = player.transform.position.x;
-                GlobalDataManager.Instance.SpawnY = player.transform.position.y;
-            }
-        }
-
-        if (SceneLoader.Instance != null)
-            SceneLoader.Instance.LoadScene(targetSceneName, fadeDuration);
-        else
-            SceneManager.LoadScene(targetSceneName);
-
-        Debug.Log($"[AreaConnectionMarker] 이동 요청: scene={targetSceneName}, spawn={targetSpawnId}", this);
-        if (isOneShot) CompleteMarker();
-    }
-
-    private bool TryRequestMapTransition(PlayerController player)
-    {
-        if (mapTransition == null || !mapTransition.IsValid(out string error))
-            return false;
-
-        if (MapTransitionService.Instance == null)
-        {
-            Debug.LogError("[AreaConnectionMarker] MapTransitionService가 씬에 없어 Room 이동을 실행할 수 없습니다.", this);
-            return true;
-        }
 
         _usedWhileInside = true;
-        MapTransitionService.Instance.RequestTransition(mapTransition, player);
-        Debug.Log($"[AreaConnectionMarker] 맵 이동 요청: type={mapTransition.TransitionType}, room={mapTransition.TargetRoom}, scene={mapTransition.TargetSceneName}, spawn={mapTransition.TargetSpawnPointId}", this);
-        if (isOneShot) CompleteMarker();
-        return true;
+        if (isOneShot)
+            CompleteMarker();
     }
 
     public void SuppressForSeconds(float seconds)
     {
         _nextAllowedTransitionTime = Time.unscaledTime + Mathf.Max(0f, seconds);
         _usedWhileInside = true;
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        base.CollectValidationIssues(issues);
+        string error = string.Empty;
+        bool hasValidMapTransition = mapTransition != null && mapTransition.IsValid(out error);
+        if (!hasValidMapTransition && string.IsNullOrWhiteSpace(targetSceneName))
+            issues.Add("MapTransition 또는 targetSceneName 중 하나는 유효해야 합니다.");
+
+        if (mapTransition != null && !hasValidMapTransition && string.IsNullOrWhiteSpace(targetSceneName) && !string.IsNullOrWhiteSpace(error))
+            issues.Add("MapTransition 오류: " + error);
     }
 }

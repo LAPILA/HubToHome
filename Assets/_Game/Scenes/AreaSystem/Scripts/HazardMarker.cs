@@ -1,11 +1,16 @@
+using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 public class HazardMarker : AreaMarkerBase
 {
-    [Header("Hazard")]
-    [SerializeField, Min(0)] private int damage = 10;
-    [SerializeField, Min(0f)] private float knockback = 0.5f;
-    [SerializeField] private bool triggerOnEnter = true;
+    [TitleGroup("Hazard 설정")]
+    [InfoBox("현재 Hazard는 플레이어를 밀어내는 연출 seam만 연결되어 있습니다. damage 값은 로그/기획 수치이며 실제 HP는 아직 감소하지 않습니다.")]
+    [SerializeField, Min(0), LabelText("디자인 피해량(HP 미연동)")] private int damage = 10;
+    [TitleGroup("Hazard 설정")]
+    [SerializeField, Min(0f), LabelText("넉백")] private float knockback = 0.5f;
+    [TitleGroup("Hazard 설정")]
+    [SerializeField, LabelText("접촉 즉시 발동")] private bool triggerOnEnter = true;
 
     protected override void Reset()
     {
@@ -31,11 +36,14 @@ public class HazardMarker : AreaMarkerBase
 
     private void ApplyHazard(PlayerController player)
     {
-        if (player == null) return;
-        Vector2 dir = ((Vector2)player.transform.position - (Vector2)transform.position).normalized;
-        if (dir.sqrMagnitude < 0.001f) dir = player.GetFacingVector2();
-        player.NudgeFromEncounter(dir, knockback);
-        Debug.Log($"[HazardMarker] 피해 요청: damage={damage}, knockback={knockback}", this);
+        AreaMarkerRuntimeService.ApplyHazard(this, player, damage, knockback);
         if (isOneShot) CompleteMarker();
+    }
+
+    public override void CollectValidationIssues(List<string> issues)
+    {
+        base.CollectValidationIssues(issues);
+        if (damage <= 0)
+            issues.Add("damage는 1 이상이어야 합니다.");
     }
 }

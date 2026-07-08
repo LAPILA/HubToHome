@@ -96,7 +96,7 @@ sequences:
         duration: 0.36
         pose: move
     - battle.actor.move_to:
-        actor: player_001
+        actor: player
         anchor: center
         x: -0.52
         y: 0
@@ -108,7 +108,7 @@ sequences:
         duration: 0.28
     - battle.actor.fake_attack:
         actor: zev_architecture_clone
-        target: player_001
+        target: player
         targetPose: parry
         approach: 0.32
         lunge: 0.12
@@ -118,7 +118,7 @@ sequences:
     - flow.wait:
         duration: 0.08
     - battle.actor.pose:
-        actor: player_001
+        actor: player
         pose: parry
         duration: 0.12
         impact: 0.18
@@ -140,7 +140,7 @@ sequences:
         duration: 0.18
     - battle.actor.fake_attack:
         actor: zev_architecture_clone
-        target: player_001
+        target: player
         targetPose: parry
         approach: 0.24
         lunge: 0.11
@@ -150,7 +150,7 @@ sequences:
     - flow.wait:
         duration: 0.08
     - battle.actor.pose:
-        actor: player_001
+        actor: player
         pose: parry
         duration: 0.12
         impact: 0.2
