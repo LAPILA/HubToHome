@@ -3,7 +3,7 @@ using System.Collections.Generic;
 public sealed class BattleScenarioEventRouter
 {
     private readonly BattleScenarioRuleRunner _ruleRunner;
-    private readonly List<BattleEventData> _deferredEvents = new List<BattleEventData>();
+    private readonly List<BattleScenarioTrigger> _deferredTriggers = new List<BattleScenarioTrigger>();
 
     public BattleScenarioEventRouter(BattleScenarioRuleRunner ruleRunner)
     {
@@ -17,42 +17,65 @@ public sealed class BattleScenarioEventRouter
             return new List<BattleScenarioTrigger>();
         }
 
-        if (battleEvent.Timing == BattleRuleTiming.Immediate)
+        return Route(_ruleRunner.Evaluate(battleEvent));
+    }
+
+    public List<BattleScenarioTrigger> Publish(ScenarioEventData scenarioEvent)
+    {
+        if (scenarioEvent == null || _ruleRunner == null)
         {
-            return _ruleRunner.Evaluate(battleEvent);
+            return new List<BattleScenarioTrigger>();
         }
 
-        _deferredEvents.Add(battleEvent);
-        return new List<BattleScenarioTrigger>();
+        return Route(_ruleRunner.Evaluate(scenarioEvent));
     }
 
     public List<BattleScenarioTrigger> Flush(BattleRuleTiming timing)
     {
+        return Flush(BattleTriggerRuleCompatibilityMapper.ToScenarioTiming(timing));
+    }
+
+    public List<BattleScenarioTrigger> FlushCheckpoint(string checkpointId)
+    {
+        return Flush(ScenarioTriggerTiming.Checkpoint, checkpointId);
+    }
+
+    public List<BattleScenarioTrigger> Flush(
+        ScenarioTriggerTiming timing,
+        string checkpointId = "")
+    {
         var triggers = new List<BattleScenarioTrigger>();
-        if (_ruleRunner == null || _deferredEvents.Count == 0)
+        if (_ruleRunner == null || _deferredTriggers.Count == 0)
         {
             return triggers;
         }
 
-        var remainingEvents = new List<BattleEventData>();
-        for (int i = 0; i < _deferredEvents.Count; i++)
+        string normalizedCheckpoint = Normalize(checkpointId);
+        var remaining = new List<BattleScenarioTrigger>();
+        for (int i = 0; i < _deferredTriggers.Count; i++)
         {
-            BattleEventData battleEvent = _deferredEvents[i];
-            if (battleEvent == null || battleEvent.Timing != timing)
+            BattleScenarioTrigger trigger = _deferredTriggers[i];
+            if (trigger == null)
             {
-                remainingEvents.Add(battleEvent);
                 continue;
             }
 
-            List<BattleScenarioTrigger> eventTriggers = _ruleRunner.Evaluate(battleEvent);
-            for (int triggerIndex = 0; triggerIndex < eventTriggers.Count; triggerIndex++)
+            bool checkpointMatches = timing != ScenarioTriggerTiming.Checkpoint
+                || Normalize(trigger.CheckpointId) == normalizedCheckpoint;
+            if (trigger.ScenarioTiming != timing || !checkpointMatches)
             {
-                triggers.Add(eventTriggers[triggerIndex]);
+                remaining.Add(trigger);
+                continue;
+            }
+
+            if (_ruleRunner.TryCommit(trigger))
+            {
+                triggers.Add(trigger);
             }
         }
 
-        _deferredEvents.Clear();
-        _deferredEvents.AddRange(remainingEvents);
+        _deferredTriggers.Clear();
+        _deferredTriggers.AddRange(remaining);
         return triggers;
     }
 
@@ -60,5 +83,42 @@ public sealed class BattleScenarioEventRouter
     {
         sequence = null;
         return _ruleRunner != null && _ruleRunner.TryResolveSequence(sequenceId, out sequence);
+    }
+
+    private List<BattleScenarioTrigger> Route(IReadOnlyList<BattleScenarioTrigger> evaluated)
+    {
+        var immediate = new List<BattleScenarioTrigger>();
+        if (evaluated == null)
+        {
+            return immediate;
+        }
+
+        for (int i = 0; i < evaluated.Count; i++)
+        {
+            BattleScenarioTrigger trigger = evaluated[i];
+            if (trigger == null)
+            {
+                continue;
+            }
+
+            if (trigger.ScenarioTiming == ScenarioTriggerTiming.Immediate)
+            {
+                if (_ruleRunner.TryCommit(trigger))
+                {
+                    immediate.Add(trigger);
+                }
+            }
+            else
+            {
+                _deferredTriggers.Add(trigger);
+            }
+        }
+
+        return immediate;
+    }
+
+    private static string Normalize(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     }
 }

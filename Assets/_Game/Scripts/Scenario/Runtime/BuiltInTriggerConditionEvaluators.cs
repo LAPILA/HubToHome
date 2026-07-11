@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 
 public sealed class ValueEqualsTriggerConditionEvaluator : ITriggerConditionEvaluator
 {
-    public string ConditionId => "value.equals";
+    public string ConditionId => BuiltInTriggerConditionIds.ValueEquals;
 
     public bool TryEvaluate(
         ScenarioTriggerConditionNodeData condition,
@@ -28,7 +28,7 @@ public sealed class ValueEqualsTriggerConditionEvaluator : ITriggerConditionEval
 
 public sealed class NumberCompareTriggerConditionEvaluator : ITriggerConditionEvaluator
 {
-    public string ConditionId => "number.compare";
+    public string ConditionId => BuiltInTriggerConditionIds.NumberCompare;
 
     public bool TryEvaluate(
         ScenarioTriggerConditionNodeData condition,
@@ -59,7 +59,7 @@ public sealed class NumberCompareTriggerConditionEvaluator : ITriggerConditionEv
 
 public sealed class NumberCrossedBelowTriggerConditionEvaluator : ITriggerConditionEvaluator
 {
-    public string ConditionId => "number.crossed_below";
+    public string ConditionId => BuiltInTriggerConditionIds.NumberCrossedBelow;
 
     public bool TryEvaluate(
         ScenarioTriggerConditionNodeData condition,
@@ -93,7 +93,7 @@ public sealed class NumberCrossedBelowTriggerConditionEvaluator : ITriggerCondit
 
 public sealed class EventParticipantTriggerConditionEvaluator : ITriggerConditionEvaluator
 {
-    public string ConditionId => "event.participant";
+    public string ConditionId => BuiltInTriggerConditionIds.EventParticipant;
 
     public bool TryEvaluate(
         ScenarioTriggerConditionNodeData condition,
@@ -118,7 +118,7 @@ public sealed class EventParticipantTriggerConditionEvaluator : ITriggerConditio
 
 public sealed class ModuleOutcomeTriggerConditionEvaluator : ITriggerConditionEvaluator
 {
-    public string ConditionId => "module.outcome";
+    public string ConditionId => BuiltInTriggerConditionIds.ModuleOutcome;
 
     public bool TryEvaluate(
         ScenarioTriggerConditionNodeData condition,
@@ -157,7 +157,7 @@ public sealed class ModuleOutcomeTriggerConditionEvaluator : ITriggerConditionEv
 
 public sealed class EncounterMeetCountTriggerConditionEvaluator : ITriggerConditionEvaluator
 {
-    public string ConditionId => "memory.meet_count";
+    public string ConditionId => BuiltInTriggerConditionIds.EncounterMeetCount;
 
     public bool TryEvaluate(
         ScenarioTriggerConditionNodeData condition,
@@ -188,7 +188,7 @@ public sealed class EncounterMeetCountTriggerConditionEvaluator : ITriggerCondit
 
 public sealed class FlagStateTriggerConditionEvaluator : ITriggerConditionEvaluator
 {
-    public string ConditionId => "flag.state";
+    public string ConditionId => BuiltInTriggerConditionIds.FlagState;
 
     public bool TryEvaluate(
         ScenarioTriggerConditionNodeData condition,

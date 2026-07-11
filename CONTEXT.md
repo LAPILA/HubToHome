@@ -79,7 +79,7 @@ The game's save/load scope. Current planning saves outside battle only; battle r
 _Avoid_: treating mid-battle state as save-bound.
 
 **Battle Event Rule**:
-An authored rule owned primarily by an Encounter Definition or Battle Scenario Data, deciding when a Battle Event should trigger from Battle Session State, Encounter Memory, or Game Module outcomes.
+The legacy battle-specialized authored rule represented by `BattleEventRuleData`. Runtime construction maps it once into the general Trigger Rule model so existing assets retain behavior while new work uses stable Scenario Event IDs and Trigger Conditions.
 _Avoid_: embedding enemy phase changes inside one skill timeline or hard-coding them inside a specific combat module.
 
 **Battle Event**:
@@ -139,7 +139,7 @@ The `sequence.call` Action that runs another Action Sequence by stable ID, binds
 _Avoid_: copying shared beats between scenarios or allowing recursive call graphs.
 
 **Trigger Rule**:
-The general `when -> do` rule that observes one Scenario Event, evaluates Conditions and execution policy, then requests an Action Sequence. A Battle Event Rule is the battle-owned specialization of this concept.
+The general `when -> do` rule that observes one Scenario Event, evaluates Conditions and execution policy, then requests an Action Sequence with typed target inputs. Existing Battle Event Rules are mapped compatibility inputs to this runtime rather than a second evaluator layer.
 _Avoid_: requiring every new rule to add one central enum member and a new set of unrelated optional fields.
 
 **Scenario Event**:

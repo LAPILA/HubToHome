@@ -34,9 +34,12 @@ Condition evaluation is pure and read-only. Event payload reads use `event.*`; s
 ## Migration Safety
 
 - Never rewrite an existing legacy Battle Event Rule merely because the extensible type exists.
-- Map legacy rules once when the scenario runtime is constructed or imported; do not remap every frame.
-- Preserve deferred timing and Encounter Memory once behavior through the same execution gate.
-- Keep compatibility tests for every legacy event kind before switching production assets.
+- `BattleTriggerRuleCompatibilityMapper` maps legacy rules once when `BattleScenarioRuleRunner` is constructed; it does not remap every frame.
+- `BattleStarted`, `EnemyHpCrossedBelow`, `EnemyDefeated`, `SkillCompleted`, and `GameModuleCompleted` all map into built-in Event IDs and Conditions.
+- The shared `ScenarioTriggerEvaluator` owns Event ID, Condition tree, target input binding, disabled state, and once-scope evaluation.
+- `BattleScenarioEventRouter` queues matched Triggers, not raw Events, and preserves enum timing plus exact named checkpoints. Session/Encounter/Save once history is committed only when the Trigger is actually dispatched; queued but never-flushed work must not become remembered history.
+- `BattleScenarioSession` implements `IScenarioTriggerHistory` for Session, Encounter Memory, and explicitly imported Save-scoped fired IDs. This does not save or restore in-progress battle state.
+- `BattleScenarioActionBridge` binds resolved Trigger target inputs into the target Sequence contract before playback.
 
 ## Official YAML Library
 

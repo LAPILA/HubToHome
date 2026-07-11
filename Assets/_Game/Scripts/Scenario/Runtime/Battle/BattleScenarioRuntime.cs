@@ -285,7 +285,9 @@ public sealed class BattleScenarioRuntime
 
     public BattleScenarioRuntime(
         BattleScenarioData scenarioData,
-        IEnumerable<string> encounterFiredRuleIds = null)
+        IEnumerable<string> encounterFiredRuleIds = null,
+        IEnumerable<string> saveFiredRuleIds = null,
+        ActionExecutionContext triggerValues = null)
     {
         ScenarioData = scenarioData;
         SessionState = BattleSessionState.Create(scenarioData);
@@ -298,8 +300,12 @@ public sealed class BattleScenarioRuntime
             scenarioData.ScenarioId,
             scenarioData.MemoryKey);
         _session.ImportEncounterFiredRuleIds(encounterFiredRuleIds);
+        _session.ImportSaveFiredRuleIds(saveFiredRuleIds);
 
-        var ruleRunner = new BattleScenarioRuleRunner(scenarioData, _session);
+        var ruleRunner = new BattleScenarioRuleRunner(
+            scenarioData,
+            _session,
+            values: triggerValues);
         _eventRouter = new BattleScenarioEventRouter(ruleRunner);
     }
 
@@ -359,6 +365,47 @@ public sealed class BattleScenarioRuntime
             timing));
     }
 
+    public List<BattleScenarioTrigger> PublishEnemyDefeated(
+        string subjectId,
+        string sourceActorId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentAction)
+    {
+        if (!HasScenario || string.IsNullOrWhiteSpace(subjectId))
+        {
+            return new List<BattleScenarioTrigger>();
+        }
+
+        return _eventRouter.Publish(BattleEventData.EnemyDefeated(
+            subjectId,
+            sourceActorId,
+            timing));
+    }
+
+    public List<BattleScenarioTrigger> PublishSkillCompleted(
+        string skillId,
+        string sourceActorId = "",
+        string outcomeId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentSkill)
+    {
+        if (!HasScenario || string.IsNullOrWhiteSpace(skillId))
+        {
+            return new List<BattleScenarioTrigger>();
+        }
+
+        return _eventRouter.Publish(BattleEventData.SkillCompleted(
+            skillId,
+            sourceActorId,
+            outcomeId,
+            timing));
+    }
+
+    public List<BattleScenarioTrigger> PublishScenarioEvent(ScenarioEventData scenarioEvent)
+    {
+        return HasScenario
+            ? _eventRouter.Publish(scenarioEvent)
+            : new List<BattleScenarioTrigger>();
+    }
+
     public List<BattleScenarioTrigger> Flush(BattleRuleTiming timing)
     {
         if (!HasScenario)
@@ -367,6 +414,13 @@ public sealed class BattleScenarioRuntime
         }
 
         return _eventRouter.Flush(timing);
+    }
+
+    public List<BattleScenarioTrigger> FlushCheckpoint(string checkpointId)
+    {
+        return HasScenario
+            ? _eventRouter.FlushCheckpoint(checkpointId)
+            : new List<BattleScenarioTrigger>();
     }
 
     public bool TryResolveSequence(string sequenceId, out ActionSequenceAsset sequence)
@@ -378,6 +432,11 @@ public sealed class BattleScenarioRuntime
     public string[] ExportEncounterFiredRuleIds()
     {
         return _session != null ? _session.ExportEncounterFiredRuleIds() : new string[0];
+    }
+
+    public string[] ExportSaveFiredRuleIds()
+    {
+        return _session != null ? _session.ExportSaveFiredRuleIds() : new string[0];
     }
 }
 

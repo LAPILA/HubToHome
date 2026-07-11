@@ -33,3 +33,19 @@
 
 - YAML 파서/라이터/동기화 8/8 통과.
 - 공식 원본/런타임/생성 에셋 일치 2/2 통과.
+
+## 기존 전투 규칙과 통합
+
+- 기존 `BattleEventRuleData` 에셋은 그대로 둔다.
+- 전투 시작, HP 임계치, 적 쓰러짐, 스킬 종료, 모듈 완료 규칙을 전투 시작 시 새 Trigger Rule 형태로 한 번 변환한다.
+- 기존 규칙과 새 규칙은 같은 evaluator, timing queue, Action Sequence 실행 게이트를 사용한다.
+- 새 규칙은 이벤트가 발생한 시점과 실제 실행 시점을 분리할 수 있다. 현재 액션/스킬/모듈 종료 또는 이름 있는 checkpoint에서 실행 가능하다.
+- 이벤트 payload 값을 대상 Sequence의 typed input으로 넘길 수 있다.
+- Session, Encounter Memory, Save once 범위를 지원하지만 전투 중간 상태 자체는 저장하지 않는다.
+
+### 통합 검증
+
+- 신규 호환 테스트 15/15 통과.
+- 기존 전투 시나리오 회귀 테스트 42/42 통과.
+- Sequence Input 실행 연결 테스트를 포함한 Action Bridge 13/13 통과.
+- 지연 규칙은 실제 checkpoint에서 꺼내기 전에는 Encounter Memory에 실행 완료로 기록되지 않는다.

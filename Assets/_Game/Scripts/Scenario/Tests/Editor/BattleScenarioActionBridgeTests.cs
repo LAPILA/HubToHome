@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -208,6 +209,79 @@ public class BattleScenarioActionBridgeTests
 
             Assert.That(log, Is.EqualTo(new[] { "zev_first_battle|battle|turn_qte" }));
             Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void TriggerTargetInputsBindIntoSequenceContract()
+    {
+        var log = new List<string>();
+        BattleScenarioData scenario = MakeScenario("typed_trigger", "test.input");
+        scenario.Sequences[0].Contract.Inputs.Add(new SequenceInputDefinition
+        {
+            InputId = "enemy",
+            TypeId = "string",
+            Required = true
+        });
+        var runtime = new BattleScenarioRuntime(scenario);
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new InputLoggingActionAdapter("test.input", "enemy", log));
+        var bridge = new BattleScenarioActionBridge(runtime, new ActionDirector(registry));
+        var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
+        var match = new ScenarioTriggerMatch(
+            "typed_rule",
+            "typed_trigger",
+            ScenarioTriggerTiming.Immediate,
+            string.Empty,
+            "{\"enemy\":\"zev\"}",
+            new ScenarioEventData(BuiltInScenarioEventIds.BattleStarted));
+
+        try
+        {
+            RunToCompletion(bridge.PlayTriggers(
+                new[] { new BattleScenarioTrigger(match) },
+                context));
+
+            Assert.That(log, Is.EqualTo(new[] { "zev" }));
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Succeeded));
+        }
+        finally
+        {
+            DestroyScenario(scenario);
+        }
+    }
+
+    [Test]
+    public void UnknownTriggerTargetInputFailsBeforeActionPlayback()
+    {
+        var log = new List<string>();
+        BattleScenarioData scenario = MakeScenario("typed_trigger", "test.input");
+        var runtime = new BattleScenarioRuntime(scenario);
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new LoggingActionAdapter("test.input", log));
+        var bridge = new BattleScenarioActionBridge(runtime, new ActionDirector(registry));
+        var context = new ActionExecutionContext(new ActionExecutionHandle("battle_scenario"));
+        var match = new ScenarioTriggerMatch(
+            "typed_rule",
+            "typed_trigger",
+            ScenarioTriggerTiming.Immediate,
+            string.Empty,
+            "{\"unknown\":42}",
+            new ScenarioEventData(BuiltInScenarioEventIds.BattleStarted));
+
+        try
+        {
+            RunToCompletion(bridge.PlayTriggers(
+                new[] { new BattleScenarioTrigger(match) },
+                context));
+
+            Assert.That(log, Is.Empty);
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Failed));
+            Assert.That(context.Handle.Result.Message, Does.Contain("unknown input"));
         }
         finally
         {
@@ -524,6 +598,31 @@ public class BattleScenarioActionBridgeTests
         public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
         {
             _log.Add(context.ScenarioId + "|" + context.PrimaryMode + "|" + context.ModuleId);
+            yield break;
+        }
+    }
+
+    private sealed class InputLoggingActionAdapter : IActionAdapter
+    {
+        private readonly string _inputId;
+        private readonly List<string> _log;
+
+        public InputLoggingActionAdapter(string actionId, string inputId, List<string> log)
+        {
+            ActionId = actionId;
+            _inputId = inputId;
+            _log = log;
+        }
+
+        public string ActionId { get; }
+
+        public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
+        {
+            if (context.TryGetValue("input." + _inputId, out JToken value))
+            {
+                _log.Add(value.Value<string>());
+            }
+
             yield break;
         }
     }
