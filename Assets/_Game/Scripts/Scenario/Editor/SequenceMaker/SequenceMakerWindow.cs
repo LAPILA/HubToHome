@@ -44,6 +44,10 @@ public sealed class SequenceMakerWindow : EditorWindow
     private VisualElement _workspaceHost;
     private VisualElement _navigatorPanel;
     private VisualElement _navigatorContent;
+    private SequenceNavigatorView _navigatorView;
+    private SequenceAssetIndex _assetIndex;
+    private SequenceUsageIndex _usageIndex;
+    private SequenceNavigatorHistory _navigatorHistory;
     private Label _flowTitle;
     private Label _flowSubtitle;
     private VisualElement _flowContent;
@@ -77,6 +81,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         titleContent = new GUIContent(WindowTitle);
         minSize = new Vector2(960f, 620f);
         _preferences = new EditorSequenceMakerPreferences();
+        _navigatorHistory = new SequenceNavigatorHistory(_preferences);
         _workspace = new SequenceMakerWorkspaceState();
         _workspace.LoadPreferences(_preferences);
         _workspace.Changed += OnWorkspaceChanged;
@@ -84,6 +89,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         BuildVisualTree();
         BindControls();
         BuildWorkspacePanels();
+        RefreshIndexes(false);
         RestoreTarget();
         RefreshDerivedState(true);
         RenderAll();
@@ -119,6 +125,18 @@ public sealed class SequenceMakerWindow : EditorWindow
         {
             SetTarget(sequence);
         }
+    }
+
+    private void OnProjectChange()
+    {
+        if (_workspace == null)
+        {
+            return;
+        }
+
+        SequenceAssetIndexCache.MarkDirty();
+        RefreshIndexes(false);
+        RenderNavigator();
     }
 
     private void BuildVisualTree()
@@ -246,6 +264,14 @@ public sealed class SequenceMakerWindow : EditorWindow
             "sm-panel--navigator",
             out _navigatorContent,
             false);
+        _navigatorView = new SequenceNavigatorView();
+        _navigatorView.OpenRequested += OpenFromNavigator;
+        _navigatorView.RefreshRequested += () =>
+        {
+            RefreshIndexes(true);
+            RenderNavigator();
+        };
+        _navigatorContent.Add(_navigatorView);
         outer.Add(_navigatorPanel);
 
         var right = new TwoPaneSplitView(
@@ -306,10 +332,9 @@ public sealed class SequenceMakerWindow : EditorWindow
         }
         else
         {
-            var scrollView = new ScrollView(ScrollViewMode.Vertical);
-            scrollView.AddToClassList("sm-panel-scroll");
-            content = scrollView.contentContainer;
-            panel.Add(scrollView);
+            content = new VisualElement();
+            content.AddToClassList("sm-panel-scroll");
+            panel.Add(content);
         }
 
         return panel;
@@ -387,6 +412,12 @@ public sealed class SequenceMakerWindow : EditorWindow
             _serializedStandaloneSequence = null;
         }
 
+        SequenceAssetIndexEntry opened = _assetIndex?.FindByAsset(_workspace.ActiveTarget);
+        if (opened != null)
+        {
+            _navigatorHistory?.RecordOpened(opened.StableKey);
+        }
+
         RefreshDerivedState(true);
         RenderAll();
     }
@@ -422,6 +453,14 @@ public sealed class SequenceMakerWindow : EditorWindow
         }
 
         _workspace.SetDirty(AnyEditStackDirty());
+    }
+
+    private void RefreshIndexes(bool force)
+    {
+        _assetIndex = force
+            ? SequenceAssetIndexCache.Refresh()
+            : SequenceAssetIndexCache.Current;
+        _usageIndex = SequenceUsageIndex.Build(_assetIndex);
     }
 
     private void RefreshCatalogValidation()
@@ -547,77 +586,121 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RenderNavigator()
     {
-        if (_navigatorContent == null)
+        if (_navigatorView == null)
         {
             return;
         }
 
-        _navigatorContent.Clear();
-        if (!_workspace.HasTarget)
+        _navigatorView.Bind(
+            _assetIndex,
+            _usageIndex,
+            _navigatorHistory,
+            _workspace.ActiveTarget,
+            _workspace.SelectedSequence);
+    }
+
+    private void OpenFromNavigator(SequenceNavigatorRequest request)
+    {
+        if (request?.Asset == null)
         {
-            _navigatorContent.Add(CreateEmptyState(
-                "열린 대상 없음",
-                "Project 창에서 Battle Scenario 또는 Action Sequence를 선택"));
             return;
         }
 
-        if (_workspace.TargetKind == SequenceMakerTargetKind.BattleScenario)
+        if (request.Asset is BattleScenarioData battle)
         {
-            AddSectionLabel(_navigatorContent, "전투 흐름");
-            Button scenario = CreateNavigatorRow(
-                DisplayName(_workspace.BattleScenario.TitleKo, _workspace.BattleScenario.ScenarioId),
-                true);
-            scenario.tooltip = _workspace.BattleScenario.ScenarioId;
-            _navigatorContent.Add(scenario);
-
-            AddSectionLabel(_navigatorContent, "시퀀스");
-            List<ActionSequenceAsset> sequences = _workspace.BattleScenario.Sequences;
-            if (sequences != null)
+            if (battle != _workspace.BattleScenario && !CanLeaveCurrentTarget())
             {
-                for (int i = 0; i < sequences.Count; i++)
-                {
-                    ActionSequenceAsset sequence = sequences[i];
-                    if (sequence == null)
-                    {
-                        continue;
-                    }
+                return;
+            }
 
-                    Button row = CreateNavigatorRow(
-                        DisplayName(sequence.DisplayNameKo, sequence.SequenceId),
-                        sequence == _workspace.SelectedSequence);
-                    row.tooltip = sequence.SequenceId;
-                    ActionSequenceAsset captured = sequence;
-                    row.clicked += () =>
-                    {
-                        if (_workspace.TrySelectSequence(captured))
-                        {
-                            RefreshDerivedState(true);
-                            RenderAll();
-                        }
-                    };
-                    _navigatorContent.Add(row);
+            SetTarget(battle);
+            return;
+        }
+
+        if (!(request.Asset is ActionSequenceAsset sequence))
+        {
+            return;
+        }
+
+        if (IsSequenceInCurrentBattle(sequence))
+        {
+            SelectSequenceFromNavigator(sequence, request.BlockId);
+            return;
+        }
+
+        SequenceAssetIndexEntry entry = _assetIndex?.FindByAsset(sequence);
+        BattleScenarioData owner = FindFirstOwner(entry);
+        if (owner != null)
+        {
+            if (!CanLeaveCurrentTarget())
+            {
+                return;
+            }
+
+            SetTarget(owner);
+            SelectSequenceFromNavigator(sequence, request.BlockId);
+            return;
+        }
+
+        if (_workspace.StandaloneSequence != sequence && !CanLeaveCurrentTarget())
+        {
+            return;
+        }
+
+        SetTarget(sequence);
+        if (!string.IsNullOrWhiteSpace(request.BlockId))
+        {
+            _workspace.SelectBlock(request.BlockId);
+        }
+    }
+
+    private void SelectSequenceFromNavigator(
+        ActionSequenceAsset sequence,
+        string blockId)
+    {
+        if (!_workspace.TrySelectSequence(sequence))
+        {
+            return;
+        }
+
+        SequenceAssetIndexEntry entry = _assetIndex?.FindByAsset(sequence);
+        if (entry != null)
+        {
+            _navigatorHistory?.RecordOpened(entry.StableKey);
+        }
+
+        if (!string.IsNullOrWhiteSpace(blockId))
+        {
+            _workspace.SelectBlock(blockId);
+        }
+
+        RefreshDerivedState(true);
+        RenderAll();
+    }
+
+    private BattleScenarioData FindFirstOwner(SequenceAssetIndexEntry entry)
+    {
+        if (entry == null || entry.OwningScenarioIds.Count == 0 || _assetIndex == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < _assetIndex.BattleFlows.Count; i++)
+        {
+            SequenceAssetIndexEntry battle = _assetIndex.BattleFlows[i];
+            for (int j = 0; j < entry.OwningScenarioIds.Count; j++)
+            {
+                if (string.Equals(
+                        battle.ScenarioId,
+                        entry.OwningScenarioIds[j],
+                        StringComparison.Ordinal))
+                {
+                    return battle.BattleScenario;
                 }
             }
         }
-        else
-        {
-            AddSectionLabel(_navigatorContent, "독립 시퀀스");
-            Button row = CreateNavigatorRow(
-                DisplayName(
-                    _workspace.StandaloneSequence.DisplayNameKo,
-                    _workspace.StandaloneSequence.SequenceId),
-                true);
-            row.tooltip = _workspace.StandaloneSequence.SequenceId;
-            _navigatorContent.Add(row);
-        }
 
-        AddSectionLabel(_navigatorContent, "원본");
-        Button sourceRow = CreateNavigatorRow(
-            string.IsNullOrWhiteSpace(SourcePath()) ? "YAML 경로 없음" : Path.GetFileName(SourcePath()),
-            false);
-        sourceRow.clicked += () => _workspace.SetDrawer(SequenceMakerDrawerTab.Yaml, true);
-        sourceRow.tooltip = SourcePath();
-        _navigatorContent.Add(sourceRow);
+        return null;
     }
 
     private void RenderFlow()
