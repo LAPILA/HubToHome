@@ -30,6 +30,9 @@ public sealed class BattleScenarioData : ScriptableObject
     [Tooltip("전투 중 발생하는 when -> do 규칙입니다.")]
     public List<BattleEventRuleData> Rules = new List<BattleEventRuleData>();
 
+    [Tooltip("Action/Trigger Library를 사용하는 확장 가능한 when -> do 규칙입니다. 기존 Rules와 함께 호환 실행됩니다.")]
+    public List<ScenarioTriggerRuleData> TriggerRules = new List<ScenarioTriggerRuleData>();
+
     [Tooltip("이 전투 시나리오가 참조하는 Action Sequence 목록입니다.")]
     public List<ActionSequenceAsset> Sequences = new List<ActionSequenceAsset>();
 

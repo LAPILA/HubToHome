@@ -14,7 +14,7 @@
 - [x] Add deterministic Action Library YAML parser/writer/sync.
 - [x] Publish production Action Library category sources.
 - [x] Add Action adapter/catalog consistency validation.
-- [ ] Add Scenario Event and Trigger Condition data.
+- [x] Add Scenario Event and Trigger Condition data.
 - [ ] Add deterministic Trigger Library YAML parser/writer/sync.
 
 ## Runtime
