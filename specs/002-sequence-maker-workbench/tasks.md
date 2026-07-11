@@ -11,7 +11,7 @@
 ## Libraries
 
 - [x] Deepen Action Library metadata.
-- [ ] Add deterministic Action Library YAML parser/writer/sync.
+- [x] Add deterministic Action Library YAML parser/writer/sync.
 - [ ] Publish production Action Library category sources.
 - [ ] Add Action adapter/catalog consistency validation.
 - [ ] Add Scenario Event and Trigger Condition data.

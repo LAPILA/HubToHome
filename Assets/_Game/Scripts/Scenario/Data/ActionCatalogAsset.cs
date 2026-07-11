@@ -131,6 +131,12 @@ public sealed class ActionCatalogAsset : ScriptableObject
     [Tooltip("Human-readable purpose and ownership of this catalog.")]
     public string DescriptionKo = string.Empty;
 
+    [Tooltip("Category YAML paths used to generate this resolved catalog.")]
+    public List<string> SourcePaths = new List<string>();
+
+    [Tooltip("Deterministic semantic hash of all resolved Action Library sources.")]
+    public string SourceHash = string.Empty;
+
     [Tooltip("Scenario Source와 Action Sequence에서 사용할 수 있는 액션 목록입니다.")]
     public List<ActionCatalogEntry> Entries = new List<ActionCatalogEntry>();
 

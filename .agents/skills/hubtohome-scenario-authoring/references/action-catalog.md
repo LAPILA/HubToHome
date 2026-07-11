@@ -45,6 +45,48 @@ examples:
       duration: 0.4
 ```
 
+## Category Source Files
+
+Official Action Library source files use `*.actions.yaml` and one category per file. The deterministic shape is:
+
+```yaml
+libraryId: flow
+name: "흐름"
+description: "시퀀스 실행 순서와 시간 제어"
+category: flow
+order: 10
+accent: "#4FA3FF"
+actions:
+  flow.wait:
+    name: "기다리기"
+    description: "지정한 시간 동안 다음 블록 실행을 기다립니다."
+    usage: "연출 사이 간격이 필요할 때 사용합니다."
+    summary: "{duration}초 기다리기"
+    runtimeAdapter: FlowWaitActionAdapter
+    tags: [flow, timing]
+    contexts: [clock]
+    preview: safe_preview
+    preparation: skip_presentation
+    example: "- flow.wait: { duration: 1.0 }"
+    parameters:
+      duration:
+        name: "시간"
+        description: "기다릴 초 단위 시간"
+        type: duration
+        control: number
+        quick: true
+        default: "0"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event]
+```
+
+- Use two spaces per level and quoted one-line text. The writer escapes newlines inside quoted values.
+- `ActionLibrarySourceParser` and `ActionLibrarySourceWriter` own this constrained format; do not parse these files from UI code.
+- `ResolvedActionLibrary` merges category documents, sorts by category and Action ID, and reports duplicate IDs with both source paths.
+- `ActionLibrarySourceSync.ApplyToAsset` validates a temporary catalog first and mutates the generated target only after every source and merged contract has no errors.
+- `ActionCatalogAsset.SourcePaths` and `SourceHash` identify the exact generated source set. Do not hand-edit the generated catalog as the durable source.
+
 ## Categories
 
 Start with these categories:
