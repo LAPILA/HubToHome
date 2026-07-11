@@ -129,7 +129,7 @@ ScriptedImporter:
   animatedSpriteImportData:
   - name: Subway
     originalName: 
-    pivot: {x: 0.5, y: 0}
+    pivot: {x: 0.50454545, y: -0.01369863}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -137,8 +137,8 @@ ScriptedImporter:
       serializedVersion: 2
       x: 4
       y: 4
-      width: 222
-      height: 74
+      width: 220
+      height: 73
     spriteID: dffe1ad07487be345a585c443339bdbd
     spriteBone: []
     spriteOutline: []
@@ -168,9 +168,9 @@ ScriptedImporter:
       additiveSortOrder: 0
       cellRect:
         x: 0
-        y: 0
-        width: 222
-        height: 74
+        y: 1
+        width: 220
+        height: 73
       spriteId: dffe1ad07487be345a585c443339bdbd
     linkedCells: []
     tileCells: []
