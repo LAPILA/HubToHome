@@ -1,0 +1,603 @@
+.sm-root {
+    flex-grow: 1;
+    min-width: 900px;
+    min-height: 560px;
+    background-color: #202326;
+    color: #d9dde1;
+}
+
+.sm-root.sm-light {
+    background-color: #eef0f2;
+    color: #25292d;
+}
+
+.sm-command-bar,
+.sm-context-bar,
+.sm-status-bar,
+.sm-drawer-tabs {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.sm-command-bar {
+    height: 42px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-bottom-width: 1px;
+    border-bottom-color: #111315;
+    background-color: #292d31;
+}
+
+.sm-light .sm-command-bar {
+    border-bottom-color: #c8ccd0;
+    background-color: #f8f9fa;
+}
+
+.sm-context-bar {
+    height: 36px;
+    padding-left: 12px;
+    padding-right: 8px;
+    border-bottom-width: 1px;
+    border-bottom-color: #191c1f;
+    background-color: #23272a;
+}
+
+.sm-light .sm-context-bar {
+    border-bottom-color: #d4d7da;
+    background-color: #e8ebed;
+}
+
+.sm-target-field-host {
+    width: 300px;
+    min-width: 220px;
+    max-width: 380px;
+}
+
+.sm-target-field-host > .unity-base-field {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.sm-command-divider {
+    width: 1px;
+    height: 22px;
+    margin-left: 7px;
+    margin-right: 7px;
+    background-color: #44494e;
+}
+
+.sm-light .sm-command-divider {
+    background-color: #c9cdd1;
+}
+
+.sm-command-spacer {
+    flex-grow: 1;
+}
+
+.sm-command-button,
+.sm-icon-button,
+.sm-drawer-tab,
+.sm-nav-row,
+.sm-flow-row {
+    border-width: 1px;
+    border-radius: 4px;
+    border-color: transparent;
+    background-color: transparent;
+    color: #d9dde1;
+}
+
+.sm-light .sm-command-button,
+.sm-light .sm-icon-button,
+.sm-light .sm-drawer-tab,
+.sm-light .sm-nav-row,
+.sm-light .sm-flow-row {
+    color: #25292d;
+}
+
+.sm-command-button {
+    min-width: 52px;
+    height: 28px;
+    margin-right: 4px;
+    padding-left: 10px;
+    padding-right: 10px;
+    background-color: #34393e;
+    border-color: #454b51;
+}
+
+.sm-light .sm-command-button {
+    background-color: #ffffff;
+    border-color: #c8cdd2;
+}
+
+.sm-command-button:hover,
+.sm-icon-button:hover,
+.sm-drawer-tab:hover {
+    background-color: #3b4248;
+}
+
+.sm-light .sm-command-button:hover,
+.sm-light .sm-icon-button:hover,
+.sm-light .sm-drawer-tab:hover {
+    background-color: #dce8e8;
+}
+
+.sm-command-button--primary {
+    background-color: #1f6f78;
+    border-color: #31919b;
+    color: #ffffff;
+    -unity-font-style: bold;
+}
+
+.sm-command-button--primary:hover {
+    background-color: #27838d;
+}
+
+.sm-icon-button {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    padding: 4px;
+    margin-right: 2px;
+}
+
+.sm-icon-button--small {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+}
+
+.sm-icon-button--play {
+    background-color: #215a43;
+    border-color: #347e5e;
+}
+
+.sm-icon-button:disabled,
+.sm-command-button:disabled {
+    opacity: 0.38;
+}
+
+.sm-button-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    -unity-background-image-tint-color: #d8dde1;
+}
+
+.sm-light .sm-button-icon {
+    -unity-background-image-tint-color: #353a3f;
+}
+
+.sm-play-mode {
+    width: 118px;
+    margin-right: 5px;
+}
+
+.sm-breadcrumb {
+    -unity-font-style: bold;
+    color: #c7cdd2;
+}
+
+.sm-light .sm-breadcrumb {
+    color: #34393e;
+}
+
+.sm-search-field {
+    width: 220px;
+    margin-right: 6px;
+}
+
+.sm-content-stack,
+.sm-workspace-host {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.sm-content-stack {
+    flex-direction: column;
+}
+
+.sm-workspace-split {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.sm-panel {
+    flex-grow: 1;
+    min-width: 0;
+    background-color: #202326;
+}
+
+.sm-light .sm-panel {
+    background-color: #eef0f2;
+}
+
+.sm-panel--navigator {
+    border-right-width: 1px;
+    border-right-color: #111315;
+    background-color: #25292d;
+}
+
+.sm-light .sm-panel--navigator {
+    border-right-color: #c8ccd0;
+    background-color: #e4e7e9;
+}
+
+.sm-panel--inspector {
+    border-left-width: 1px;
+    border-left-color: #111315;
+    background-color: #25292d;
+}
+
+.sm-light .sm-panel--inspector {
+    border-left-color: #c8ccd0;
+    background-color: #e4e7e9;
+}
+
+.sm-panel-header {
+    height: 38px;
+    padding-left: 12px;
+    padding-right: 8px;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    border-bottom-width: 1px;
+    border-bottom-color: #15181a;
+}
+
+.sm-light .sm-panel-header {
+    border-bottom-color: #ccd0d3;
+}
+
+.sm-panel-title {
+    -unity-font-style: bold;
+    font-size: 12px;
+}
+
+.sm-panel-subtitle {
+    margin-left: 8px;
+    color: #8e979e;
+    font-size: 11px;
+}
+
+.sm-panel-scroll {
+    flex-grow: 1;
+}
+
+.sm-section-label {
+    margin-top: 12px;
+    margin-bottom: 5px;
+    padding-left: 12px;
+    padding-right: 10px;
+    color: #88939a;
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.sm-nav-row {
+    height: 34px;
+    min-height: 34px;
+    margin-left: 6px;
+    margin-right: 6px;
+    margin-bottom: 2px;
+    padding-left: 10px;
+    padding-right: 8px;
+    -unity-text-align: middle-left;
+}
+
+.sm-nav-row:hover {
+    background-color: #30363b;
+}
+
+.sm-light .sm-nav-row:hover {
+    background-color: #d4dcde;
+}
+
+.sm-nav-row.is-selected {
+    background-color: #25474b;
+    border-color: #39747a;
+    color: #f1ffff;
+}
+
+.sm-light .sm-nav-row.is-selected {
+    background-color: #c6e1e2;
+    border-color: #65a5a9;
+    color: #16383b;
+}
+
+.sm-empty-state {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    padding-left: 28px;
+    padding-right: 28px;
+}
+
+.sm-empty-title {
+    -unity-font-style: bold;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.sm-empty-copy {
+    color: #929ba2;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.sm-flow-list {
+    padding-top: 10px;
+    padding-bottom: 28px;
+}
+
+.sm-flow-row {
+    height: 52px;
+    min-height: 52px;
+    margin-left: 12px;
+    margin-right: 12px;
+    margin-bottom: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
+    flex-direction: row;
+    align-items: center;
+    border-color: #3a4045;
+    background-color: #292e32;
+    -unity-text-align: middle-left;
+}
+
+.sm-light .sm-flow-row {
+    border-color: #c8cdd1;
+    background-color: #fafbfb;
+}
+
+.sm-flow-row:hover {
+    border-color: #5e6a72;
+    background-color: #30363b;
+}
+
+.sm-flow-row.is-selected {
+    border-color: #48a5ad;
+    background-color: #23484c;
+}
+
+.sm-light .sm-flow-row.is-selected {
+    border-color: #368a91;
+    background-color: #d1e8e9;
+}
+
+.sm-flow-row.is-disabled {
+    opacity: 0.48;
+}
+
+.sm-flow-index {
+    width: 34px;
+    color: #77828a;
+    -unity-text-align: middle-center;
+}
+
+.sm-flow-accent {
+    width: 3px;
+    height: 28px;
+    margin-right: 10px;
+    border-radius: 2px;
+    background-color: #3f9ca3;
+}
+
+.sm-flow-copy {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.sm-flow-title {
+    -unity-font-style: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sm-flow-summary {
+    margin-top: 2px;
+    color: #929ba2;
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sm-flow-badge,
+.sm-status-chip {
+    border-radius: 4px;
+    padding-left: 6px;
+    padding-right: 6px;
+    height: 20px;
+    -unity-text-align: middle-center;
+    font-size: 10px;
+}
+
+.sm-flow-badge {
+    color: #aeb7bd;
+    background-color: #363c41;
+}
+
+.sm-light .sm-flow-badge {
+    color: #515a60;
+    background-color: #e2e6e8;
+}
+
+.sm-inspector-content {
+    padding: 12px;
+}
+
+.sm-inspector-heading {
+    -unity-font-style: bold;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.sm-inspector-id {
+    color: #7eaeb2;
+    font-size: 10px;
+    margin-bottom: 12px;
+}
+
+.sm-property-row {
+    margin-bottom: 9px;
+}
+
+.sm-property-label {
+    color: #929ba2;
+    font-size: 10px;
+    margin-bottom: 3px;
+}
+
+.sm-property-value {
+    white-space: normal;
+}
+
+.sm-drawer {
+    flex-shrink: 0;
+    border-top-width: 1px;
+    border-top-color: #101214;
+    background-color: #1d2023;
+}
+
+.sm-light .sm-drawer {
+    border-top-color: #c3c7ca;
+    background-color: #f4f5f6;
+}
+
+.sm-drawer-tabs {
+    height: 30px;
+    padding-left: 8px;
+    padding-right: 5px;
+    border-bottom-width: 1px;
+    border-bottom-color: #30353a;
+}
+
+.sm-light .sm-drawer-tabs {
+    border-bottom-color: #d3d6d9;
+}
+
+.sm-drawer-tab {
+    height: 25px;
+    margin-right: 2px;
+    padding-left: 9px;
+    padding-right: 9px;
+}
+
+.sm-drawer-tab.is-selected {
+    color: #7fd0d6;
+    border-bottom-width: 2px;
+    border-bottom-color: #4eacb3;
+    border-radius: 0;
+}
+
+.sm-light .sm-drawer-tab.is-selected {
+    color: #1d6970;
+}
+
+.sm-drawer-content {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.sm-yaml-field {
+    flex-grow: 1;
+    margin: 6px;
+}
+
+.sm-yaml-field .unity-text-input {
+    font-size: 11px;
+    white-space: normal;
+}
+
+.sm-problem-row {
+    min-height: 32px;
+    padding: 7px 12px;
+    border-bottom-width: 1px;
+    border-bottom-color: #30353a;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.sm-light .sm-problem-row {
+    border-bottom-color: #d4d7d9;
+}
+
+.sm-problem-icon {
+    width: 18px;
+    margin-right: 7px;
+    -unity-font-style: bold;
+}
+
+.sm-problem-icon--error {
+    color: #ed756d;
+}
+
+.sm-problem-icon--warning {
+    color: #d5a844;
+}
+
+.sm-problem-icon--info {
+    color: #5fa9d0;
+}
+
+.sm-problem-copy {
+    flex-grow: 1;
+    white-space: normal;
+}
+
+.sm-status-bar {
+    height: 24px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-top-width: 1px;
+    border-top-color: #111315;
+    background-color: #25292d;
+}
+
+.sm-light .sm-status-bar {
+    border-top-color: #c9cdd0;
+    background-color: #e7eaec;
+}
+
+.sm-status-dot {
+    width: 7px;
+    height: 7px;
+    margin-right: 7px;
+    border-radius: 4px;
+    background-color: #6f7a81;
+}
+
+.sm-status-dot.is-clean {
+    background-color: #5da77d;
+}
+
+.sm-status-dot.is-dirty {
+    background-color: #d7a84b;
+}
+
+.sm-status-dot.is-error {
+    background-color: #e26d67;
+}
+
+.sm-status-label,
+.sm-source-status {
+    font-size: 10px;
+    color: #a1aab0;
+}
+
+.sm-compact .sm-flow-row {
+    height: 40px;
+    min-height: 40px;
+    margin-bottom: 3px;
+}
+
+.sm-compact .sm-flow-accent {
+    height: 22px;
+}
+
+.sm-compact .sm-nav-row {
+    height: 28px;
+    min-height: 28px;
+}

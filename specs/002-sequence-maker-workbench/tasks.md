@@ -33,7 +33,7 @@
 
 ## Workbench UI
 
-- [ ] Build UXML/USS workbench shell.
+- [x] Build UXML/USS workbench shell.
 - [ ] Add unified battle-flow and sequence navigation.
 - [ ] Add usage and impact index.
 - [ ] Add vertical nested block canvas.

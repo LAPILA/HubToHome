@@ -45,7 +45,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private int _selectedActionIndex = -1;
     private string _selectedActionObjectId = string.Empty;
 
-    [MenuItem("HubToHome/시나리오/시퀀스 메이커")]
+    [MenuItem("HubToHome/시나리오/개발/기존 시퀀스 메이커")]
     public static void Open()
     {
         ScenarioAuthoringWindow window = GetWindow<ScenarioAuthoringWindow>();
