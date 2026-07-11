@@ -5,8 +5,8 @@
 - [x] Capture build, test, and current-editor baseline.
 - [x] Add stable recursive Block IDs and duplication rules.
 - [x] Round-trip Block IDs and sequence metadata through YAML.
-- [ ] Add typed Sequence Inputs and value bindings.
-- [ ] Add sequence calls and cycle validation.
+- [x] Add typed Sequence Inputs and value bindings.
+- [x] Add sequence calls and cycle validation.
 
 ## Libraries
 

@@ -130,6 +130,14 @@ _Avoid_: identifying authored blocks only by list index, display name, or curren
 A typed value accepted by a reusable Action Sequence and supplied by its caller, triggering event, or supported execution context.
 _Avoid_: duplicating an entire sequence only to substitute an actor, position, dialogue, duration, or similar authored value.
 
+**Value Binding**:
+A constrained reference such as `${input.actor}` that resolves an Action parameter from an explicit execution-context value. Runtime data stores it as `{"$bind":"input.actor"}` and supports only documented roots; it is not an expression language.
+_Avoid_: evaluating arbitrary expressions, reflection paths, or scene-object lookups from scenario data.
+
+**Sequence Call**:
+The `sequence.call` Action that runs another Action Sequence by stable ID, binds only its declared Sequence Inputs into a child execution context, and propagates completion, failure, and cancellation to the caller.
+_Avoid_: copying shared beats between scenarios or allowing recursive call graphs.
+
 **Trigger Rule**:
 The general `when -> do` rule that observes one Scenario Event, evaluates Conditions and execution policy, then requests an Action Sequence. A Battle Event Rule is the battle-owned specialization of this concept.
 _Avoid_: requiring every new rule to add one central enum member and a new set of unrelated optional fields.

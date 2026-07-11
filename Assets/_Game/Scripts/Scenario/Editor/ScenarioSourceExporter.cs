@@ -498,9 +498,65 @@ public sealed class ScenarioSourceYamlWriter
                 {
                     AppendInlineList(builder, 2, "allowedPrimaryModes", contract.AllowedPrimaryModes);
                 }
+
+                WriteSequenceInputs(builder, contract.Inputs, 2);
             }
 
             WriteActions(builder, sequence.Actions, 2, validation, sequence.SequenceId);
+        }
+    }
+
+    private static void WriteSequenceInputs(
+        StringBuilder builder,
+        List<SequenceInputDefinition> inputs,
+        int indentLevel)
+    {
+        if (inputs == null || inputs.Count == 0)
+        {
+            return;
+        }
+
+        AppendKeyOnly(builder, indentLevel, "inputs");
+        for (int i = 0; i < inputs.Count; i++)
+        {
+            SequenceInputDefinition input = inputs[i];
+            if (input == null)
+            {
+                continue;
+            }
+
+            AppendListItemKeyValue(builder, indentLevel + 1, "id", input.InputId);
+            if (!string.IsNullOrWhiteSpace(input.DisplayNameKo))
+            {
+                AppendKeyValue(builder, indentLevel + 2, "name", input.DisplayNameKo);
+            }
+
+            if (!string.IsNullOrWhiteSpace(input.DescriptionKo))
+            {
+                AppendKeyValue(builder, indentLevel + 2, "description", input.DescriptionKo);
+            }
+
+            AppendKeyValue(builder, indentLevel + 2, "type", input.TypeId);
+            if (input.Required)
+            {
+                AppendKeyValue(builder, indentLevel + 2, "required", true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(input.DefaultValueJson))
+            {
+                try
+                {
+                    WriteParameter(
+                        builder,
+                        indentLevel + 2,
+                        "default",
+                        JToken.Parse(input.DefaultValueJson));
+                }
+                catch (System.Exception)
+                {
+                    AppendKeyValue(builder, indentLevel + 2, "defaultJson", input.DefaultValueJson);
+                }
+            }
         }
     }
 
@@ -605,6 +661,12 @@ public sealed class ScenarioSourceYamlWriter
 
     private static void WriteParameter(StringBuilder builder, int indentLevel, string key, JToken value)
     {
+        if (ScenarioValueBinding.TryRead(value, out string bindingPath, out _))
+        {
+            AppendRawKeyValue(builder, indentLevel, key, ScenarioValueBinding.ToExpression(bindingPath));
+            return;
+        }
+
         if (value == null || value.Type == JTokenType.Null)
         {
             AppendKeyValue(builder, indentLevel, key, string.Empty);
@@ -1169,6 +1231,23 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 && lines[index].Indent == NestedIndent
                 && TryReadKeyValue(lines[index].Trimmed, out string sequenceKey, out string sequenceValue))
             {
+                if (sequenceKey == "inputs")
+                {
+                    index++;
+                    if (sequence.Contract == null)
+                    {
+                        sequence.Contract = new ActionSequenceContractData();
+                    }
+
+                    sequence.Contract.Inputs = ParseSequenceInputs(
+                        lines,
+                        ref index,
+                        NestedIndent + 2,
+                        validation,
+                        sequence.SequenceId);
+                    continue;
+                }
+
                 if (!TryApplySequenceMetadata(sequence, sequenceKey, sequenceValue))
                 {
                     break;
@@ -1183,6 +1262,67 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
         }
 
         return index;
+    }
+
+    private static List<SequenceInputDefinition> ParseSequenceInputs(
+        List<YamlLine> lines,
+        ref int index,
+        int listIndent,
+        ScenarioValidationResult validation,
+        string ownerId)
+    {
+        var inputs = new List<SequenceInputDefinition>();
+        while (index < lines.Count
+            && lines[index].Indent == listIndent
+            && lines[index].Trimmed.StartsWith("- ", StringComparison.Ordinal))
+        {
+            if (!TryReadListItemKeyValue(lines[index].Trimmed, out string key, out string value)
+                || key != "id")
+            {
+                validation.AddError(
+                    "sequence.input.id.required",
+                    "Each sequence input must start with '- id:'.",
+                    ownerId);
+                index++;
+                continue;
+            }
+
+            var input = new SequenceInputDefinition { InputId = ParseYamlString(value) };
+            index++;
+            while (index < lines.Count
+                && lines[index].Indent == listIndent + 2
+                && TryReadKeyValue(lines[index].Trimmed, out string inputKey, out string inputValue))
+            {
+                switch (inputKey)
+                {
+                    case "name":
+                        input.DisplayNameKo = ParseYamlString(inputValue);
+                        break;
+                    case "description":
+                        input.DescriptionKo = ParseYamlString(inputValue);
+                        break;
+                    case "type":
+                        input.TypeId = ParseYamlString(inputValue);
+                        break;
+                    case "required":
+                        input.Required = ParseBool(inputValue);
+                        break;
+                    case "default":
+                        input.DefaultValueJson = ParseYamlValue(inputValue)
+                            .ToString(Newtonsoft.Json.Formatting.None);
+                        break;
+                    case "defaultJson":
+                        input.DefaultValueJson = ParseYamlString(inputValue);
+                        break;
+                }
+
+                index++;
+            }
+
+            inputs.Add(input);
+        }
+
+        return inputs;
     }
 
     private static List<ScenarioActionData> ParseActions(
@@ -1406,6 +1546,25 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
     private static JToken ParseYamlValue(string value)
     {
         string scalar = value == null ? string.Empty : value.Trim();
+        string parsedString = ParseYamlString(scalar);
+        if (ScenarioValueBinding.TryParseExpression(parsedString, out JObject binding))
+        {
+            return binding;
+        }
+
+        if ((scalar.StartsWith("{") && scalar.EndsWith("}"))
+            || (scalar.StartsWith("[") && scalar.EndsWith("]")))
+        {
+            try
+            {
+                return JToken.Parse(scalar);
+            }
+            catch (System.Exception)
+            {
+                // Fall through to the constrained YAML scalar/list parser.
+            }
+        }
+
         if (scalar.StartsWith("[") && scalar.EndsWith("]"))
         {
             var array = new JArray();
@@ -1438,7 +1597,7 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
             return floatValue;
         }
 
-        return ParseYamlString(scalar);
+        return parsedString;
     }
 
     private static string NormalizeActionId(string actionId)

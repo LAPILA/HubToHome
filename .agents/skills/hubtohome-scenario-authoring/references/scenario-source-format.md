@@ -47,6 +47,34 @@ sequences:
 
 Use `*.sequence.yaml` for standalone source paths. In Sequence Maker choose **독립 Action Sequence**, then use the same YAML validation, save, reimport, and export-as commands as a battle scenario. Do not hand-edit the Unity `.asset` managed-reference data.
 
+### Typed Inputs, Bindings, And Reusable Calls
+
+Reusable sequences declare their public values under `inputs`. Action parameter bindings use `${root.name}` in YAML and normalize to a structured `$bind` object in Runtime Assets.
+
+```yaml
+sequences:
+  shared.actor_move:
+    inputs:
+      - id: actor
+        name: "이동 캐릭터"
+        description: "이동시킬 캐릭터 ID"
+        type: actorRef
+        required: true
+      - id: speed
+        name: "이동 속도"
+        type: number
+        default: 1.5
+    - actor.move:
+        actor: ${input.actor}
+        speed: ${input.speed}
+```
+
+- Supported binding roots are `input`, `event`, `session`, `memory`, `flag`, `context`, and `result`.
+- A binding is a value reference, not an expression language. Do not put operators, method calls, reflection paths, or arbitrary code inside `${...}`.
+- `sequence.call` uses `sequence` for the stable target ID and `inputs` for the target sequence's declared inputs. Missing, unknown, or type-incompatible inputs fail clearly.
+- Source validation must reject direct and indirect `sequence.call` cycles. Runtime keeps a second cycle guard for invalid assets that bypass source validation.
+- Child calls inherit Presentation Services and read-only parent values, but own their local input/result scope and execution handle.
+
 ### Sequence Contract And Block Identity
 
 - Sequence metadata uses optional `description`, `usage`, `status`, `tags`, and `allowedPrimaryModes` keys. Missing metadata keeps legacy sources valid.

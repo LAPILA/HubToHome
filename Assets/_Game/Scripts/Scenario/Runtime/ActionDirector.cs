@@ -31,6 +31,15 @@ public sealed class ActionDirector
             yield break;
         }
 
+        if (!SequenceInputBinder.TryEnsureInputs(
+                sequence.Contract != null ? sequence.Contract.Inputs : null,
+                context,
+                out string inputError))
+        {
+            handle.Fail("Action Sequence input validation failed: " + inputError);
+            yield break;
+        }
+
         for (int i = 0; i < sequence.Actions.Count; i++)
         {
             if (handle.IsDone || handle.IsCancellationRequested)
@@ -99,7 +108,17 @@ public sealed class ActionDirector
             yield break;
         }
 
-        IEnumerator adapterRoutine = adapter.Execute(action, context);
+        if (!ScenarioValueResolver.TryResolveAction(
+                action,
+                context,
+                out ScenarioActionData resolvedAction,
+                out string bindingError))
+        {
+            handle.Fail(bindingError);
+            yield break;
+        }
+
+        IEnumerator adapterRoutine = adapter.Execute(resolvedAction, context);
         if (adapterRoutine == null)
         {
             yield break;

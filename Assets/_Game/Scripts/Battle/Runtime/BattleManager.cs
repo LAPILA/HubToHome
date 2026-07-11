@@ -435,6 +435,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         registry.Register(new BattleFlagSetActionAdapter());
         registry.Register(new BattleFlagClearActionAdapter());
         registry.Register(new TimelinePlayActionAdapter());
+        registry.Register(new SequenceCallActionAdapter(registry));
         return new ActionDirector(registry);
     }
 

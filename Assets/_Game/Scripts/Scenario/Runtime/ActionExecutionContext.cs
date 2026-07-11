@@ -1,26 +1,32 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 public sealed class ActionExecutionContext
 {
     private readonly Dictionary<Type, object> _services;
+    private readonly Dictionary<string, JToken> _values;
+    private readonly ActionExecutionContext _valueParent;
 
     public ActionExecutionContext()
-        : this(new ActionExecutionHandle(), new Dictionary<Type, object>())
+        : this(new ActionExecutionHandle(), new Dictionary<Type, object>(), null)
     {
     }
 
     public ActionExecutionContext(ActionExecutionHandle handle)
-        : this(handle, new Dictionary<Type, object>())
+        : this(handle, new Dictionary<Type, object>(), null)
     {
     }
 
     private ActionExecutionContext(
         ActionExecutionHandle handle,
-        Dictionary<Type, object> services)
+        Dictionary<Type, object> services,
+        ActionExecutionContext valueParent)
     {
         Handle = handle ?? new ActionExecutionHandle();
         _services = services ?? new Dictionary<Type, object>();
+        _values = new Dictionary<string, JToken>(StringComparer.Ordinal);
+        _valueParent = valueParent;
     }
 
     public ActionExecutionHandle Handle { get; }
@@ -63,13 +69,52 @@ public sealed class ActionExecutionContext
         return TryGetService(out service) ? service : null;
     }
 
+    public void SetValue(string path, JToken value)
+    {
+        string normalized = NormalizePath(path);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            throw new ArgumentException("Context value path is required.", nameof(path));
+        }
+
+        _values[normalized] = value == null ? JValue.CreateNull() : value.DeepClone();
+    }
+
+    public bool TryGetValue(string path, out JToken value)
+    {
+        string normalized = NormalizePath(path);
+        if (_values.TryGetValue(normalized, out JToken local))
+        {
+            value = local.DeepClone();
+            return true;
+        }
+
+        if (_valueParent != null)
+        {
+            return _valueParent.TryGetValue(normalized, out value);
+        }
+
+        value = null;
+        return false;
+    }
+
+    public bool RemoveLocalValue(string path)
+    {
+        return _values.Remove(NormalizePath(path));
+    }
+
     public ActionExecutionContext CreateChild(ActionExecutionHandle handle)
     {
-        return new ActionExecutionContext(handle, _services)
+        return new ActionExecutionContext(handle, _services, this)
         {
             ScenarioId = ScenarioId,
             PrimaryMode = PrimaryMode,
             ModuleId = ModuleId
         };
+    }
+
+    private static string NormalizePath(string path)
+    {
+        return string.IsNullOrWhiteSpace(path) ? string.Empty : path.Trim();
     }
 }

@@ -69,6 +69,8 @@ public static class ScenarioCatalogValidator
             ValidateSequenceActions(sequence, entryMap, dialogueRegistry, scenario, scenario.TimelineCutsceneCatalog, result);
         }
 
+        result.Merge(SequenceCallGraphValidator.Validate(scenario.Sequences));
+
         return result;
     }
 
@@ -266,6 +268,16 @@ public static class ScenarioCatalogValidator
                     "scenario.action.parameter.required",
                     "Required parameter is blank: " + parameterName,
                     objectId);
+                continue;
+            }
+
+            if (ScenarioValueBinding.HasMarker(token))
+            {
+                if (!ScenarioValueBinding.TryRead(token, out _, out string bindingError))
+                {
+                    result.AddError("scenario.action.parameter.binding", bindingError, objectId);
+                }
+
                 continue;
             }
 

@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -139,6 +140,57 @@ public class ActionSequenceSourceSyncTests
         Assert.That(importResult.Sequence.Actions[1].Children, Has.Count.EqualTo(2));
         Assert.That(importResult.Sequence.Actions[1].Children[1].Disabled, Is.True);
         Assert.That(importResult.Sequence.Source.SourceHash, Is.EqualTo(ScenarioSourceHash.Compute(exportResult.Text)));
+
+        UnityEngine.Object.DestroyImmediate(source);
+        UnityEngine.Object.DestroyImmediate(importResult.Sequence);
+    }
+
+    [Test]
+    public void ExportThenImport_RoundTripsTypedInputsAndReadableBindings()
+    {
+        ActionSequenceAsset source = ScriptableObject.CreateInstance<ActionSequenceAsset>();
+        source.SequenceId = "shared.actor_move";
+        source.DisplayNameKo = "Actor Move";
+        source.Contract.Inputs.Add(new SequenceInputDefinition
+        {
+            InputId = "actor",
+            DisplayNameKo = "Actor",
+            DescriptionKo = "Actor to move",
+            TypeId = "actorRef",
+            Required = true
+        });
+        source.Contract.Inputs.Add(new SequenceInputDefinition
+        {
+            InputId = "speed",
+            DisplayNameKo = "Speed",
+            TypeId = "number",
+            DefaultValueJson = "1.5"
+        });
+        source.Actions.Add(new ScenarioActionData
+        {
+            BlockId = "33333333333333333333333333333333",
+            ActionId = "actor.move",
+            ParametersJson = "{\"actor\":{\"$bind\":\"input.actor\"},\"speed\":{\"$bind\":\"input.speed\"}}"
+        });
+
+        ActionSequenceSourceExportResult exportResult = ActionSequenceSourceSync.Export(source, "overworld");
+        ActionSequenceSourceImportResult importResult = ActionSequenceSourceSync.Import(
+            exportResult.Text,
+            "Assets/_Game/Content/Scenarios/Source/Common/shared_actor_move.sequence.yaml");
+
+        Assert.That(exportResult.Success, Is.True);
+        Assert.That(exportResult.Text, Does.Contain("inputs:"));
+        Assert.That(exportResult.Text, Does.Contain("id: actor"));
+        Assert.That(exportResult.Text, Does.Contain("actor: ${input.actor}"));
+        Assert.That(importResult.Success, Is.True);
+        Assert.That(importResult.Sequence.Contract.Inputs, Has.Count.EqualTo(2));
+        Assert.That(importResult.Sequence.Contract.Inputs[0].InputId, Is.EqualTo("actor"));
+        Assert.That(importResult.Sequence.Contract.Inputs[0].Required, Is.True);
+        Assert.That(importResult.Sequence.Contract.Inputs[1].DefaultValueJson, Is.EqualTo("1.5"));
+
+        JObject parameters = JObject.Parse(importResult.Sequence.Actions[0].ParametersJson);
+        Assert.That(parameters["actor"]["$bind"].Value<string>(), Is.EqualTo("input.actor"));
+        Assert.That(parameters["speed"]["$bind"].Value<string>(), Is.EqualTo("input.speed"));
 
         UnityEngine.Object.DestroyImmediate(source);
         UnityEngine.Object.DestroyImmediate(importResult.Sequence);

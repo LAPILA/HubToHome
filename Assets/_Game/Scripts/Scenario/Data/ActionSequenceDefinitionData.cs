@@ -29,6 +29,9 @@ public sealed class ActionSequenceContractData
     [Tooltip("이 시퀀스를 실행할 수 있는 Primary Mode ID입니다. 비어 있으면 제한하지 않습니다.")]
     public List<string> AllowedPrimaryModes = new List<string>();
 
+    [Tooltip("Typed values a caller may provide to this sequence.")]
+    public List<SequenceInputDefinition> Inputs = new List<SequenceInputDefinition>();
+
     public static ActionSequenceContractData CopyOf(ActionSequenceContractData source)
     {
         var copy = new ActionSequenceContractData();
@@ -42,6 +45,14 @@ public sealed class ActionSequenceContractData
         copy.Lifecycle = source.Lifecycle;
         CopyStrings(source.Tags, copy.Tags);
         CopyStrings(source.AllowedPrimaryModes, copy.AllowedPrimaryModes);
+        if (source.Inputs != null)
+        {
+            for (int i = 0; i < source.Inputs.Count; i++)
+            {
+                copy.Inputs.Add(SequenceInputDefinition.CopyOf(source.Inputs[i]));
+            }
+        }
+
         return copy;
     }
 
