@@ -1,0 +1,73 @@
+libraryId: camera
+name: "카메라"
+description: "전투 카메라의 초점과 확대 상태를 제어합니다."
+category: camera
+order: 60
+accent: "#5E91C9"
+actions:
+  battle.camera.focus:
+    name: "전투 대상 강조"
+    description: "전투 카메라가 지정한 참가자를 중심으로 확대합니다."
+    usage: "보스 대사, 강한 공격 예고, 페이즈 전환에서 특정 캐릭터를 강조할 때 사용합니다."
+    summary: "{subject} 강조 · 줌 {zoom}"
+    runtimeAdapter: BattleCameraFocusActionAdapter
+    tags: [camera, battle, focus]
+    aliases: [줌인, 초점]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: focus
+    example: "- battle.camera.focus: { subject: zev, zoom: 3.2, duration: 0.2 }"
+    parameters:
+      subject:
+        name: "대상"
+        description: "카메라가 강조할 전투 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      zoom:
+        name: "확대값"
+        description: "카메라의 목표 확대값입니다."
+        type: number
+        control: number
+        quick: true
+        default: "3.2"
+        min: 0.1
+        sources: [literal, input, event, context]
+      duration:
+        name: "시간"
+        description: "목표 구도로 이동할 초 단위 시간입니다."
+        type: duration
+        control: number
+        default: "0.2"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+  battle.camera.reset:
+    name: "전투 카메라 복귀"
+    description: "전투 카메라를 기본 슬롯 구도로 되돌립니다."
+    usage: "캐릭터 강조나 공격 연출이 끝난 뒤 일반 전투 화면으로 돌아갈 때 사용합니다."
+    summary: "기본 카메라로 {duration}초 복귀"
+    runtimeAdapter: BattleCameraResetActionAdapter
+    tags: [camera, battle, reset]
+    aliases: [카메라복귀, 줌아웃]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: maximize
+    example: "- battle.camera.reset: { duration: 0.35 }"
+    parameters:
+      duration:
+        name: "시간"
+        description: "기본 구도로 돌아갈 초 단위 시간입니다."
+        type: duration
+        control: number
+        quick: true
+        default: "0.35"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]

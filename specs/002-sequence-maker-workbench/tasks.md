@@ -12,8 +12,8 @@
 
 - [x] Deepen Action Library metadata.
 - [x] Add deterministic Action Library YAML parser/writer/sync.
-- [ ] Publish production Action Library category sources.
-- [ ] Add Action adapter/catalog consistency validation.
+- [x] Publish production Action Library category sources.
+- [x] Add Action adapter/catalog consistency validation.
 - [ ] Add Scenario Event and Trigger Condition data.
 - [ ] Add deterministic Trigger Library YAML parser/writer/sync.
 

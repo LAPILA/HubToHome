@@ -2,6 +2,11 @@ public static class SceneActionSequenceContextFactory
 {
     public static ActionDirector CreateDirector()
     {
+        return new ActionDirector(CreateRegistry());
+    }
+
+    public static ActionAdapterRegistry CreateRegistry()
+    {
         var registry = new ActionAdapterRegistry();
         registry.Register(new FlowWaitActionAdapter());
         registry.Register(new ScreenFadeActionAdapter());
@@ -9,7 +14,7 @@ public static class SceneActionSequenceContextFactory
         registry.Register(new CinematicShotPlayActionAdapter());
         registry.Register(new CinematicStageReleaseActionAdapter());
         registry.Register(new SequenceCallActionAdapter(registry));
-        return new ActionDirector(registry);
+        return registry;
     }
 
     public static ActionExecutionContext Create(

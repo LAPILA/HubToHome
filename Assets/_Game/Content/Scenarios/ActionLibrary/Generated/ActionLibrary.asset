@@ -1,0 +1,2424 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddda2183494d4f0f89fe0169a8ff1dc4, type: 3}
+  m_Name: ActionLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::ActionCatalogAsset
+  CatalogId: resolved-action-library
+  DisplayNameKo: "\uD1B5\uD569 Action Library"
+  DescriptionKo: "\uCE74\uD14C\uACE0\uB9AC YAML \uC6D0\uBCF8\uC5D0\uC11C \uC0DD\uC131\uB41C
+    \uACF5\uC2DD Action Library"
+  SourcePaths:
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/actor.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/audio.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/battle.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/camera.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/cinematic.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/dialogue.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/flow.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/module.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/screen.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/timeline.actions.yaml
+  SourceHash: c5a2b9d78a3c2fc968940d1495a94ff4dd2237da20ad8a5937072889a7ab9fbd
+  Entries:
+  - ActionId: battle.actor.drop_in
+    Category: actor
+    DisplayNameKo: "\uCE90\uB9AD\uD130 \uB099\uD558 \uB4F1\uC7A5"
+    DescriptionKo: "\uCE90\uB9AD\uD130\uB97C \uC704\uCABD\uC5D0\uC11C \uB5A8\uC5B4\uB728\uB824
+      \uCDA9\uACA9\uACFC \uD568\uAED8 \uC804\uD22C \uC704\uCE58\uC5D0 \uB4F1\uC7A5\uC2DC\uD0B5\uB2C8\uB2E4."
+    UsageKo: "\uBCF4\uC2A4 \uB09C\uC785\uC774\uB098 \uAC15\uD55C \uCC29\uC9C0 \uB4F1
+      \uC138\uB85C \uBC29\uD5A5 \uB4F1\uC7A5 \uC5F0\uCD9C\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{actor} \uB099\uD558 \uB4F1\uC7A5 \xB7 \uB192\uC774 {height}"
+    Subcategory: 
+    Tags:
+    - actor
+    - battle
+    - entrance
+    Aliases:
+    - "\uB099\uD558"
+    - "\uCC29\uC9C0"
+    - "\uB4F1\uC7A5"
+    RuntimeAdapterId: BattleActorDropInActionAdapter
+    Parameters:
+    - Name: actor
+      Type: actorRef
+      DisplayNameKo: "\uCE90\uB9AD\uD130"
+      DescriptionKo: "\uB4F1\uC7A5\uC2DC\uD0AC \uC804\uD22C \uCC38\uAC00\uC790 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: height
+      Type: number
+      DisplayNameKo: "\uC2DC\uC791 \uB192\uC774"
+      DescriptionKo: "\uD604\uC7AC \uC704\uCE58 \uC704\uCABD\uC758 \uC2DC\uC791 \uAC70\uB9AC\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 3.5
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: hang
+      Type: duration
+      DisplayNameKo: "\uACF5\uC911 \uB300\uAE30"
+      DescriptionKo: "\uB099\uD558 \uC804 \uACF5\uC911\uC5D0\uC11C \uBA38\uBB34\uB294
+        \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.18
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: fall
+      Type: duration
+      DisplayNameKo: "\uB099\uD558 \uC2DC\uAC04"
+      DescriptionKo: "\uBC14\uB2E5\uAE4C\uC9C0 \uB0B4\uB824\uC624\uB294 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.22
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: settle
+      Type: duration
+      DisplayNameKo: "\uCC29\uC9C0 \uC548\uC815 \uC2DC\uAC04"
+      DescriptionKo: "\uCC29\uC9C0 \uD6C4 \uAE30\uBCF8 \uC0C1\uD0DC\uB85C \uC548\uC815\uB418\uB294
+        \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.12
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: impact
+      Type: number
+      DisplayNameKo: "\uCDA9\uACA9 \uAC15\uB3C4"
+      DescriptionKo: "\uCC29\uC9C0 \uC2DC \uD654\uBA74\uACFC \uCE90\uB9AD\uD130\uC5D0
+        \uC801\uC6A9\uD560 \uC5F0\uCD9C \uAC15\uB3C4\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 1.1
+      EditorControlId: slider
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.actor.drop_in: { actor: zev, height: 3.5, fall: 0.22 }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: arrow-down-to-line
+    AccentHex: '#D2A84D'
+    Disabled: 0
+  - ActionId: battle.actor.fake_attack
+    Category: actor
+    DisplayNameKo: "\uC5F0\uCD9C\uC6A9 \uACF5\uACA9"
+    DescriptionKo: "\uACF5\uACA9\uC790\uC640 \uB300\uC0C1\uC744 \uC6C0\uC9C1\uC774\uACE0
+      \uD53C\uACA9 \uD3EC\uC988\uB97C \uC7AC\uC0DD\uD558\uC9C0\uB9CC \uC2E4\uC81C
+      HP\uB294 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    UsageKo: "\uB300\uC0AC \uC911 \uCDA9\uB3CC\uC774\uB098 \uD398\uC774\uC988 \uC5F0\uCD9C\uCC98\uB7FC
+      \uD53C\uD574 \uACC4\uC0B0\uACFC \uBD84\uB9AC\uB41C \uAC00\uC9DC \uACF5\uACA9\uC5D0\uB9CC
+      \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{actor} \u2192 {target} \uC5F0\uCD9C \uACF5\uACA9"
+    Subcategory: 
+    Tags:
+    - actor
+    - battle
+    - attack
+    - presentation
+    Aliases:
+    - "\uAC00\uC9DC\uACF5\uACA9"
+    - "\uCDA9\uB3CC\uC5F0\uCD9C"
+    RuntimeAdapterId: BattleActorFakeAttackActionAdapter
+    Parameters:
+    - Name: actor
+      Type: actorRef
+      DisplayNameKo: "\uACF5\uACA9\uC790"
+      DescriptionKo: "\uACF5\uACA9 \uB3D9\uC791\uC744 \uC7AC\uC0DD\uD560 \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: target
+      Type: actorRef
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "\uD53C\uACA9 \uC5F0\uCD9C\uC744 \uBC1B\uC744 \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: targetPose
+      Type: animationRef
+      DisplayNameKo: "\uB300\uC0C1 \uD3EC\uC988"
+      DescriptionKo: "\uACF5\uACA9\uC774 \uB2FF\uC558\uC744 \uB54C \uB300\uC0C1\uC5D0\uAC8C
+        \uC801\uC6A9\uD560 \uD3EC\uC988 ID\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: hurt
+      EditorControlId: animation
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: approach
+      Type: number
+      DisplayNameKo: "\uC811\uADFC \uAC70\uB9AC"
+      DescriptionKo: "\uACF5\uACA9\uC790\uAC00 \uB300\uC0C1\uC5D0\uAC8C \uC811\uADFC\uD560
+        \uAC70\uB9AC \uBE44\uC728\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.85
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: lunge
+      Type: duration
+      DisplayNameKo: "\uB3CC\uC9C4 \uC2DC\uAC04"
+      DescriptionKo: "\uACF5\uACA9\uC790\uAC00 \uD30C\uACE0\uB4DC\uB294 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.12
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: hold
+      Type: duration
+      DisplayNameKo: "\uD0C0\uACA9 \uC815\uC9C0"
+      DescriptionKo: "\uCDA9\uB3CC \uC21C\uAC04\uC744 \uC720\uC9C0\uD560 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.05
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: recover
+      Type: duration
+      DisplayNameKo: "\uBCF5\uADC0 \uC2DC\uAC04"
+      DescriptionKo: "\uACF5\uACA9\uC790\uAC00 \uC6D0\uB798 \uC704\uCE58\uB85C \uB3CC\uC544\uC624\uB294
+        \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.18
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: impact
+      Type: number
+      DisplayNameKo: "\uCDA9\uACA9 \uAC15\uB3C4"
+      DescriptionKo: "\uD0C0\uACA9 \uC21C\uAC04\uC758 \uC5F0\uCD9C \uAC15\uB3C4\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.6
+      EditorControlId: slider
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.actor.fake_attack: { actor: player, target: zev, targetPose:
+      hurt }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: sword
+    AccentHex: '#D2A84D'
+    Disabled: 0
+  - ActionId: battle.actor.flip
+    Category: actor
+    DisplayNameKo: "\uCE90\uB9AD\uD130 \uBC29\uD5A5 \uBCC0\uACBD"
+    DescriptionKo: "\uC804\uD22C \uCE90\uB9AD\uD130\uC758 \uC88C\uC6B0 \uBC29\uD5A5
+      \uC0C1\uD0DC\uB97C \uBCC0\uACBD\uD569\uB2C8\uB2E4."
+    UsageKo: "\uC0C1\uB300\uB97C \uBC14\uB77C\uBCF4\uAC8C \uD558\uAC70\uB098 \uC5F0\uCD9C
+      \uC911 \uAE30\uBCF8 \uBC29\uD5A5\uC744 \uB4A4\uC9D1\uC744 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{actor} \uBC29\uD5A5 {mode}"
+    Subcategory: 
+    Tags:
+    - actor
+    - battle
+    - direction
+    Aliases:
+    - "\uB4A4\uC9D1\uAE30"
+    - "\uC88C\uC6B0\uBC18\uC804"
+    RuntimeAdapterId: BattleActorFlipActionAdapter
+    Parameters:
+    - Name: actor
+      Type: actorRef
+      DisplayNameKo: "\uCE90\uB9AD\uD130"
+      DescriptionKo: "\uBC29\uD5A5\uC744 \uBC14\uAFC0 \uCC38\uAC00\uC790 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: mode
+      Type: enum
+      DisplayNameKo: "\uBC29\uD5A5 \uC0C1\uD0DC"
+      DescriptionKo: "default \uB610\uB294 flipped \uBC29\uD5A5 \uC0C1\uD0DC\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: default
+      EditorControlId: segmented
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options:
+      - default
+      - flipped
+      PlaceholderKo: 
+    ExampleYaml: '- battle.actor.flip: { actor: zev, mode: flipped }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: flip-horizontal
+    AccentHex: '#D2A84D'
+    Disabled: 0
+  - ActionId: battle.actor.move_to
+    Category: actor
+    DisplayNameKo: "\uCE90\uB9AD\uD130 \uC774\uB3D9"
+    DescriptionKo: "\uC804\uD22C \uCE90\uB9AD\uD130\uB97C \uAE30\uC900 \uC575\uCEE4\uC640
+      \uC624\uD504\uC14B\uC73C\uB85C \uC9C0\uC815\uD55C \uC704\uCE58\uAE4C\uC9C0
+      \uC774\uB3D9\uD569\uB2C8\uB2E4."
+    UsageKo: "\uD398\uC774\uC988 \uC804\uD658 \uC911 \uCC38\uAC00\uC790 \uC7AC\uBC30\uCE58\uB098
+      \uB300\uC0AC \uC5F0\uCD9C\uC758 \uC704\uCE58 \uBCC0\uACBD\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{actor} \u2192 {anchor} ({x}, {y})"
+    Subcategory: 
+    Tags:
+    - actor
+    - battle
+    - movement
+    Aliases:
+    - "\uC774\uB3D9"
+    - "\uC704\uCE58\uBCC0\uACBD"
+    RuntimeAdapterId: BattleActorMoveActionAdapter
+    Parameters:
+    - Name: actor
+      Type: actorRef
+      DisplayNameKo: "\uCE90\uB9AD\uD130"
+      DescriptionKo: "\uC774\uB3D9\uD560 \uCC38\uAC00\uC790 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: anchor
+      Type: positionRef
+      DisplayNameKo: "\uAE30\uC900 \uC704\uCE58"
+      DescriptionKo: "current \uB610\uB294 \uC804\uD22C \uC5F0\uCD9C\uC774 \uC9C0\uC6D0\uD558\uB294
+        \uC575\uCEE4 ID\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: current
+      EditorControlId: position
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: x
+      Type: number
+      DisplayNameKo: "X \uC624\uD504\uC14B"
+      DescriptionKo: "\uAE30\uC900 \uC704\uCE58\uC5D0\uC11C \uAC00\uB85C \uBC29\uD5A5\uC73C\uB85C
+        \uB354\uD560 \uAC70\uB9AC\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: y
+      Type: number
+      DisplayNameKo: "Y \uC624\uD504\uC14B"
+      DescriptionKo: "\uAE30\uC900 \uC704\uCE58\uC5D0\uC11C \uC138\uB85C \uBC29\uD5A5\uC73C\uB85C
+        \uB354\uD560 \uAC70\uB9AC\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC774\uB3D9 \uC2DC\uAC04"
+      DescriptionKo: "\uBAA9\uD45C \uC704\uCE58\uAE4C\uC9C0 \uC774\uB3D9\uD560 \uCD08
+        \uB2E8\uC704 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.25
+      EditorControlId: number
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: pose
+      Type: animationRef
+      DisplayNameKo: "\uC774\uB3D9 \uD3EC\uC988"
+      DescriptionKo: "\uC774\uB3D9 \uC911 \uC7AC\uC0DD\uD560 \uD3EC\uC988 \uB610\uB294
+        \uC560\uB2C8\uBA54\uC774\uC158 ID\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: move
+      EditorControlId: animation
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: impact
+      Type: number
+      DisplayNameKo: "\uB3C4\uCC29 \uCDA9\uACA9"
+      DescriptionKo: "\uB3C4\uCC29 \uC21C\uAC04\uC758 \uC5F0\uCD9C \uAC15\uB3C4\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0
+      EditorControlId: slider
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.actor.move_to: { actor: zev, anchor: center, x: 0, y:
+      0, duration: 0.25 }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: move
+    AccentHex: '#D2A84D'
+    Disabled: 0
+  - ActionId: battle.actor.pose
+    Category: actor
+    DisplayNameKo: "\uCE90\uB9AD\uD130 \uD3EC\uC988"
+    DescriptionKo: "\uC804\uD22C \uCE90\uB9AD\uD130\uC5D0\uAC8C \uC9C0\uC815\uD55C
+      \uD3EC\uC988 \uB610\uB294 \uC560\uB2C8\uBA54\uC774\uC158 \uC0C1\uD0DC\uB97C
+      \uC801\uC6A9\uD569\uB2C8\uB2E4."
+    UsageKo: "\uB300\uC0AC \uAC10\uC815, \uD53C\uACA9, \uC900\uBE44 \uC790\uC138\uCC98\uB7FC
+      \uC5F0\uCD9C\uC6A9 \uC0C1\uD0DC\uB97C \uBA85\uC2DC\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{actor} \uD3EC\uC988 {pose}"
+    Subcategory: 
+    Tags:
+    - actor
+    - battle
+    - animation
+    Aliases:
+    - "\uC560\uB2C8\uBA54\uC774\uC158"
+    - "\uC790\uC138"
+    RuntimeAdapterId: BattleActorPoseActionAdapter
+    Parameters:
+    - Name: actor
+      Type: actorRef
+      DisplayNameKo: "\uCE90\uB9AD\uD130"
+      DescriptionKo: "\uD3EC\uC988\uB97C \uC801\uC6A9\uD560 \uCC38\uAC00\uC790 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: pose
+      Type: animationRef
+      DisplayNameKo: "\uD3EC\uC988"
+      DescriptionKo: "\uC7AC\uC0DD\uD560 \uD3EC\uC988 \uB610\uB294 \uC560\uB2C8\uBA54\uC774\uC158
+        ID\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: idle
+      EditorControlId: animation
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC804\uD658 \uC2DC\uAC04"
+      DescriptionKo: "\uC0C8 \uD3EC\uC988\uB85C \uC804\uD658\uD560 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.25
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: impact
+      Type: number
+      DisplayNameKo: "\uCDA9\uACA9 \uAC15\uB3C4"
+      DescriptionKo: "\uD3EC\uC988 \uC804\uD658\uC5D0 \uB354\uD560 \uC5F0\uCD9C \uAC15\uB3C4\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0
+      EditorControlId: slider
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.actor.pose: { actor: zev, pose: angry, duration: 0.25
+      }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: accessibility
+    AccentHex: '#D2A84D'
+    Disabled: 0
+  - ActionId: battle.actor.return_slots
+    Category: actor
+    DisplayNameKo: "\uCE90\uB9AD\uD130 \uC804\uD22C \uC704\uCE58 \uBCF5\uADC0"
+    DescriptionKo: "\uBAA8\uB4E0 \uC804\uD22C \uCE90\uB9AD\uD130\uB97C \uAC01\uC790\uC758
+      \uAE30\uBCF8 \uC804\uD22C \uC2AC\uB86F\uC73C\uB85C \uB418\uB3CC\uB9BD\uB2C8\uB2E4."
+    UsageKo: "\uACF5\uACA9\uC774\uB098 \uC2DC\uB124\uB9C8\uD2F1 \uC7AC\uBC30\uCE58\uAC00
+      \uB05D\uB09C \uB4A4 \uC815\uC0C1 \uC804\uD22C \uAD6C\uB3C4\uB85C \uBCF5\uADC0\uD560
+      \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uC804\uD22C \uC2AC\uB86F\uC73C\uB85C {duration}\uCD08 \uBCF5\uADC0"
+    Subcategory: 
+    Tags:
+    - actor
+    - battle
+    - reset
+    Aliases:
+    - "\uC704\uCE58\uBCF5\uADC0"
+    - "\uC2AC\uB86F\uBCF5\uADC0"
+    RuntimeAdapterId: BattleActorReturnSlotsActionAdapter
+    Parameters:
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uBCF5\uADC0 \uC2DC\uAC04"
+      DescriptionKo: "\uAE30\uBCF8 \uC2AC\uB86F\uC73C\uB85C \uC774\uB3D9\uD560 \uCD08
+        \uB2E8\uC704 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.28
+      EditorControlId: number
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.actor.return_slots: { duration: 0.28 }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: undo-2
+    AccentHex: '#D2A84D'
+    Disabled: 0
+  - ActionId: bgm.crossfade
+    Category: audio
+    DisplayNameKo: "\uBC30\uACBD\uC74C\uC545 \uC804\uD658"
+    DescriptionKo: "\uD604\uC7AC \uBC30\uACBD\uC74C\uC545\uC5D0\uC11C \uC9C0\uC815\uD55C
+      \uD074\uB9BD\uC73C\uB85C \uBD80\uB4DC\uB7FD\uAC8C \uC804\uD658\uD569\uB2C8\uB2E4."
+    UsageKo: "\uC804\uD22C \uD398\uC774\uC988 \uBCC0\uACBD, \uC7A5\uC18C \uC804\uD658,
+      \uAC10\uC815 \uBCC0\uD654\uCC98\uB7FC \uC74C\uC545\uC774 \uC790\uC5F0\uC2A4\uB7FD\uAC8C
+      \uBC14\uB00C\uC5B4\uC57C \uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "BGM {clip} \xB7 {duration}\uCD08"
+    Subcategory: 
+    Tags:
+    - audio
+    - bgm
+    - music
+    Aliases:
+    - "\uC74C\uC545"
+    - "\uBE0C\uAE08"
+    - crossfade
+    RuntimeAdapterId: BgmCrossfadeActionAdapter
+    Parameters:
+    - Name: clip
+      Type: audioRef
+      DisplayNameKo: "\uC74C\uC545 \uD074\uB9BD"
+      DescriptionKo: "Scenario audioClips \uB610\uB294 \uACF5\uD1B5 \uC624\uB514\uC624
+        \uCE74\uD0C8\uB85C\uADF8\uC758 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: audio
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - memory
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC804\uD658 \uC2DC\uAC04"
+      DescriptionKo: "\uC774\uC804 \uC74C\uC545\uC5D0\uC11C \uC0C8 \uC74C\uC545\uC73C\uB85C
+        \uC804\uD658\uD560 \uCD08 \uB2E8\uC704 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0
+      EditorControlId: number
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- bgm.crossfade: { clip: zev_phase2, duration: 0.8 }'
+    RequiredContexts:
+    - audio_runner
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: music
+    AccentHex: '#55B99A'
+    Disabled: 0
+  - ActionId: battle.flag.clear
+    Category: battle
+    DisplayNameKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC9C0\uC6B0\uAE30"
+    DescriptionKo: "\uD604\uC7AC \uC804\uD22C \uB3D9\uC548 \uACF5\uC720\uB418\uB294
+      \uC784\uC2DC \uD50C\uB798\uADF8\uB97C \uC81C\uAC70\uD569\uB2C8\uB2E4."
+    UsageKo: "Game Module \uC804\uD658 \uD6C4 \uB354 \uC774\uC0C1 \uC720\uC9C0\uD558\uBA74
+      \uC548 \uB418\uB294 \uC804\uD22C \uD55C\uC815 \uC0C1\uD0DC\uB97C \uC815\uB9AC\uD560
+      \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uC804\uD22C \uD50C\uB798\uADF8 {flag} \uC81C\uAC70"
+    Subcategory: 
+    Tags:
+    - battle
+    - flag
+    - state
+    Aliases:
+    - "\uC0C1\uD0DC\uC0AD\uC81C"
+    - "\uD50C\uB798\uADF8\uD574\uC81C"
+    RuntimeAdapterId: BattleFlagClearActionAdapter
+    Parameters:
+    - Name: flag
+      Type: flagRef
+      DisplayNameKo: "\uD50C\uB798\uADF8"
+      DescriptionKo: "\uC81C\uAC70\uD560 \uC804\uD22C \uD55C\uC815 \uD50C\uB798\uADF8
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: flag
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.flag.clear: { flag: shooter.unlocked }'
+    RequiredContexts:
+    - battle_flag_store
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: flag-off
+    AccentHex: '#D35D68'
+    Disabled: 0
+  - ActionId: battle.flag.set
+    Category: battle
+    DisplayNameKo: "\uC804\uD22C \uD50C\uB798\uADF8 \uC124\uC815"
+    DescriptionKo: "Game Module\uC774 \uBC14\uB00C\uC5B4\uB3C4 \uD604\uC7AC \uC804\uD22C
+      \uB3D9\uC548 \uC720\uC9C0\uB418\uB294 \uC784\uC2DC \uAC12\uC744 \uAE30\uB85D\uD569\uB2C8\uB2E4."
+    UsageKo: "\uD398\uC774\uC988 \uC9C4\uC785, \uAE30\uB2A5 \uD574\uAE08, \uC801\uC758
+      \uD589\uB3D9 \uBCC0\uD654\uCC98\uB7FC \uC800\uC7A5 \uD30C\uC77C\uC5D0\uB294
+      \uB0A8\uAE30\uC9C0 \uC54A\uC744 \uC804\uD22C \uC0C1\uD0DC\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uC804\uD22C \uD50C\uB798\uADF8 {flag} = {value}"
+    Subcategory: 
+    Tags:
+    - battle
+    - flag
+    - state
+    Aliases:
+    - "\uC0C1\uD0DC\uC124\uC815"
+    - "\uD50C\uB798\uADF8"
+    RuntimeAdapterId: BattleFlagSetActionAdapter
+    Parameters:
+    - Name: flag
+      Type: flagRef
+      DisplayNameKo: "\uD50C\uB798\uADF8"
+      DescriptionKo: "\uC124\uC815\uD560 \uC804\uD22C \uD55C\uC815 \uD50C\uB798\uADF8
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: flag
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: value
+      Type: string
+      DisplayNameKo: "\uAC12"
+      DescriptionKo: "\uD50C\uB798\uADF8\uC5D0 \uAE30\uB85D\uD560 \uBB38\uC790\uC5F4
+        \uAC12\uC774\uBA70 \uC0DD\uB7B5\uD558\uBA74 true\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: true
+      EditorControlId: text
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      - result
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.flag.set: { flag: shooter.unlocked, value: phase2 }'
+    RequiredContexts:
+    - battle_flag_store
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: flag
+    AccentHex: '#D35D68'
+    Disabled: 0
+  - ActionId: battle.participant.consume_mp
+    Category: battle
+    DisplayNameKo: "MP \uC18C\uBE44"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 MP\uB97C \uC9C0\uC815\uD55C
+      \uC591\uB9CC\uD07C \uC18C\uBE44\uD558\uB3C4\uB85D \uC804\uD22C \uBA85\uB839
+      \uACC4\uCE35\uC5D0 \uC694\uCCAD\uD569\uB2C8\uB2E4."
+    UsageKo: "Game Module\uC774\uB098 \uC2DC\uB098\uB9AC\uC624 \uC561\uC158\uC5D0\uC11C
+      \uC2A4\uD0AC \uBE44\uC6A9\uC744 \uC2E4\uC81C \uC804\uD22C \uC0C1\uD0DC\uC5D0
+      \uBC18\uC601\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: '{subject} MP -{amount}'
+    Subcategory: 
+    Tags:
+    - battle
+    - participant
+    - mp
+    Aliases:
+    - "\uB9C8\uB098\uC18C\uBE44"
+    - "\uBE44\uC6A9"
+    RuntimeAdapterId: BattleParticipantConsumeMpActionAdapter
+    Parameters:
+    - Name: subject
+      Type: actorRef
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "MP\uB97C \uC18C\uBE44\uD560 \uC804\uD22C \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: amount
+      Type: int
+      DisplayNameKo: "\uC591"
+      DescriptionKo: "\uC18C\uBE44\uD560 \uC591\uC758 \uC815\uC218 MP\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: integer
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 1
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      - result
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.participant.consume_mp: { subject: player, amount: 10
+      }'
+    RequiredContexts:
+    - battle_participant_commands
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: minus-circle
+    AccentHex: '#D35D68'
+    Disabled: 0
+  - ActionId: battle.participant.damage
+    Category: battle
+    DisplayNameKo: "\uD53C\uD574 \uC801\uC6A9"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC5D0\uAC8C \uC2E4\uC81C HP \uD53C\uD574\uB97C
+      \uC801\uC6A9\uD558\uB3C4\uB85D \uC804\uD22C \uBA85\uB839 \uACC4\uCE35\uC5D0
+      \uC694\uCCAD\uD569\uB2C8\uB2E4."
+    UsageKo: "\uC288\uD305, \uAD8C\uD22C, \uBBF8\uB2C8\uAC8C\uC784 \uB610\uB294 \uC2DC\uB098\uB9AC\uC624
+      \uC774\uBCA4\uD2B8\uAC00 \uC2E4\uC81C \uC804\uD22C \uD53C\uD574\uB97C \uB9CC\uB4E4\uC5B4\uC57C
+      \uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: '{subject} HP -{amount}'
+    Subcategory: 
+    Tags:
+    - battle
+    - participant
+    - damage
+    Aliases:
+    - "\uB370\uBBF8\uC9C0"
+    - "\uD53C\uD574"
+    RuntimeAdapterId: BattleParticipantDamageActionAdapter
+    Parameters:
+    - Name: subject
+      Type: actorRef
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "\uD53C\uD574\uB97C \uBC1B\uC744 \uC804\uD22C \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: amount
+      Type: int
+      DisplayNameKo: "\uD53C\uD574\uB7C9"
+      DescriptionKo: "\uC801\uC6A9\uD560 \uC591\uC758 \uC815\uC218 \uD53C\uD574\uB7C9\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: integer
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 1
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      - result
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.participant.damage: { subject: zev, amount: 25 }'
+    RequiredContexts:
+    - battle_participant_commands
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: heart-crack
+    AccentHex: '#D35D68'
+    Disabled: 0
+  - ActionId: battle.participant.heal_hp
+    Category: battle
+    DisplayNameKo: "HP \uD68C\uBCF5"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 HP\uB97C \uC9C0\uC815\uD55C
+      \uC591\uB9CC\uD07C \uD68C\uBCF5\uD558\uB3C4\uB85D \uC804\uD22C \uBA85\uB839
+      \uACC4\uCE35\uC5D0 \uC694\uCCAD\uD569\uB2C8\uB2E4."
+    UsageKo: "\uC2DC\uB098\uB9AC\uC624 \uBCF4\uC0C1, \uD68C\uBCF5 Game Module, \uD2B9\uC218
+      \uC774\uBCA4\uD2B8\uAC00 \uC2E4\uC81C HP\uB97C \uD68C\uBCF5\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: '{subject} HP +{amount}'
+    Subcategory: 
+    Tags:
+    - battle
+    - participant
+    - heal
+    Aliases:
+    - "\uCCB4\uB825\uD68C\uBCF5"
+    - "\uD790"
+    RuntimeAdapterId: BattleParticipantHealHpActionAdapter
+    Parameters:
+    - Name: subject
+      Type: actorRef
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "HP\uB97C \uD68C\uBCF5\uD560 \uC804\uD22C \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: amount
+      Type: int
+      DisplayNameKo: "\uD68C\uBCF5\uB7C9"
+      DescriptionKo: "\uC801\uC6A9\uD560 \uC591\uC758 \uC815\uC218 HP \uD68C\uBCF5\uB7C9\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: integer
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 1
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      - result
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.participant.heal_hp: { subject: player, amount: 20 }'
+    RequiredContexts:
+    - battle_participant_commands
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: heart-plus
+    AccentHex: '#D35D68'
+    Disabled: 0
+  - ActionId: battle.participant.heal_mp
+    Category: battle
+    DisplayNameKo: "MP \uD68C\uBCF5"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 MP\uB97C \uC9C0\uC815\uD55C
+      \uC591\uB9CC\uD07C \uD68C\uBCF5\uD558\uB3C4\uB85D \uC804\uD22C \uBA85\uB839
+      \uACC4\uCE35\uC5D0 \uC694\uCCAD\uD569\uB2C8\uB2E4."
+    UsageKo: "\uC2DC\uB098\uB9AC\uC624 \uBCF4\uC0C1\uC774\uB098 \uD2B9\uC218 Game
+      Module\uC774 \uC2E4\uC81C MP\uB97C \uD68C\uBCF5\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: '{subject} MP +{amount}'
+    Subcategory: 
+    Tags:
+    - battle
+    - participant
+    - mp
+    - heal
+    Aliases:
+    - "\uB9C8\uB098\uD68C\uBCF5"
+    - "MP\uD68C\uBCF5"
+    RuntimeAdapterId: BattleParticipantHealMpActionAdapter
+    Parameters:
+    - Name: subject
+      Type: actorRef
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "MP\uB97C \uD68C\uBCF5\uD560 \uC804\uD22C \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: amount
+      Type: int
+      DisplayNameKo: "\uD68C\uBCF5\uB7C9"
+      DescriptionKo: "\uC801\uC6A9\uD560 \uC591\uC758 \uC815\uC218 MP \uD68C\uBCF5\uB7C9\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: integer
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 1
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      - result
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.participant.heal_mp: { subject: player, amount: 10 }'
+    RequiredContexts:
+    - battle_participant_commands
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: sparkles
+    AccentHex: '#D35D68'
+    Disabled: 0
+  - ActionId: battle.skill.timeline
+    Category: battle
+    DisplayNameKo: "\uAE30\uC874 \uC2A4\uD0AC \uD0C0\uC784\uB77C\uC778 \uC2E4\uD589"
+    DescriptionKo: "\uD604\uC7AC SkillData\uC758 \uAE30\uC874 ActionTimeline \uBE14\uB85D\uC744
+      \uD638\uD658 \uC5B4\uB311\uD130\uB97C \uD1B5\uD574 \uC2E4\uD589\uD569\uB2C8\uB2E4."
+    UsageKo: "QTE \uC804\uD22C\uC5D0\uC11C \uC774\uBBF8 \uB9CC\uB4E0 \uC2A4\uD0AC
+      \uC5F0\uCD9C\uACFC \uD53C\uD574 \uB85C\uC9C1\uC744 \uC0C8 \uC2DC\uB098\uB9AC\uC624
+      \uD750\uB984 \uC548\uC5D0 \uD3EC\uD568\uD560 \uB54C\uB9CC \uC0AC\uC6A9\uD569\uB2C8\uB2E4.
+      \uC804\uCCB4 \uC804\uD22C \uD750\uB984\uC744 \uC774 \uC561\uC158 \uC548\uC5D0
+      \uB123\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    SummaryTemplateKo: "{actor} \uC2A4\uD0AC {skill}"
+    Subcategory: 
+    Tags:
+    - battle
+    - skill
+    - qte
+    - compatibility
+    Aliases:
+    - "\uC2A4\uD0AC\uC2E4\uD589"
+    - "\uAE30\uC874\uC2A4\uD0AC"
+    RuntimeAdapterId: BattleSkillTimelineActionAdapter
+    Parameters:
+    - Name: skill
+      Type: skillRef
+      DisplayNameKo: "\uC2A4\uD0AC"
+      DescriptionKo: "\uC2E4\uD589\uD560 SkillData\uC758 \uC548\uC815\uC801\uC778
+        \uC2A4\uD0AC ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: skill
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: actor
+      Type: actorRef
+      DisplayNameKo: "\uC0AC\uC6A9\uC790"
+      DescriptionKo: "\uC2A4\uD0AC\uC744 \uC0AC\uC6A9\uD560 \uC804\uD22C \uCC38\uAC00\uC790
+        ID\uC774\uBA70 \uC0DD\uB7B5\uD558\uBA74 \uD604\uC7AC \uD589\uB3D9\uC790\uB97C
+        \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: targets
+      Type: 'actorRef[]'
+      DisplayNameKo: "\uB300\uC0C1 \uBAA9\uB85D"
+      DescriptionKo: "\uBA85\uC2DC\uC801\uC778 \uB300\uC0C1 ID \uBAA9\uB85D\uC774\uBA70
+        \uC0DD\uB7B5\uD558\uBA74 SkillData\uC758 TargetType\uC744 \uB530\uB985\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 
+      EditorControlId: actor_list
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.skill.timeline: { skill: slash, actor: player, targets:
+      [zev] }'
+    RequiredContexts:
+    - skill_timeline_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: wand-sparkles
+    AccentHex: '#D35D68'
+    Disabled: 0
+  - ActionId: battle.camera.focus
+    Category: camera
+    DisplayNameKo: "\uC804\uD22C \uB300\uC0C1 \uAC15\uC870"
+    DescriptionKo: "\uC804\uD22C \uCE74\uBA54\uB77C\uAC00 \uC9C0\uC815\uD55C \uCC38\uAC00\uC790\uB97C
+      \uC911\uC2EC\uC73C\uB85C \uD655\uB300\uD569\uB2C8\uB2E4."
+    UsageKo: "\uBCF4\uC2A4 \uB300\uC0AC, \uAC15\uD55C \uACF5\uACA9 \uC608\uACE0,
+      \uD398\uC774\uC988 \uC804\uD658\uC5D0\uC11C \uD2B9\uC815 \uCE90\uB9AD\uD130\uB97C
+      \uAC15\uC870\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{subject} \uAC15\uC870 \xB7 \uC90C {zoom}"
+    Subcategory: 
+    Tags:
+    - camera
+    - battle
+    - focus
+    Aliases:
+    - "\uC90C\uC778"
+    - "\uCD08\uC810"
+    RuntimeAdapterId: BattleCameraFocusActionAdapter
+    Parameters:
+    - Name: subject
+      Type: actorRef
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "\uCE74\uBA54\uB77C\uAC00 \uAC15\uC870\uD560 \uC804\uD22C \uCC38\uAC00\uC790
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: actor
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: zoom
+      Type: number
+      DisplayNameKo: "\uD655\uB300\uAC12"
+      DescriptionKo: "\uCE74\uBA54\uB77C\uC758 \uBAA9\uD45C \uD655\uB300\uAC12\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 3.2
+      EditorControlId: number
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0.1
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC2DC\uAC04"
+      DescriptionKo: "\uBAA9\uD45C \uAD6C\uB3C4\uB85C \uC774\uB3D9\uD560 \uCD08 \uB2E8\uC704
+        \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.2
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.camera.focus: { subject: zev, zoom: 3.2, duration: 0.2
+      }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: focus
+    AccentHex: '#5E91C9'
+    Disabled: 0
+  - ActionId: battle.camera.reset
+    Category: camera
+    DisplayNameKo: "\uC804\uD22C \uCE74\uBA54\uB77C \uBCF5\uADC0"
+    DescriptionKo: "\uC804\uD22C \uCE74\uBA54\uB77C\uB97C \uAE30\uBCF8 \uC2AC\uB86F
+      \uAD6C\uB3C4\uB85C \uB418\uB3CC\uB9BD\uB2C8\uB2E4."
+    UsageKo: "\uCE90\uB9AD\uD130 \uAC15\uC870\uB098 \uACF5\uACA9 \uC5F0\uCD9C\uC774
+      \uB05D\uB09C \uB4A4 \uC77C\uBC18 \uC804\uD22C \uD654\uBA74\uC73C\uB85C \uB3CC\uC544\uAC08
+      \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uAE30\uBCF8 \uCE74\uBA54\uB77C\uB85C {duration}\uCD08 \uBCF5\uADC0"
+    Subcategory: 
+    Tags:
+    - camera
+    - battle
+    - reset
+    Aliases:
+    - "\uCE74\uBA54\uB77C\uBCF5\uADC0"
+    - "\uC90C\uC544\uC6C3"
+    RuntimeAdapterId: BattleCameraResetActionAdapter
+    Parameters:
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC2DC\uAC04"
+      DescriptionKo: "\uAE30\uBCF8 \uAD6C\uB3C4\uB85C \uB3CC\uC544\uAC08 \uCD08 \uB2E8\uC704
+        \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.35
+      EditorControlId: number
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- battle.camera.reset: { duration: 0.35 }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: maximize
+    AccentHex: '#5E91C9'
+    Disabled: 0
+  - ActionId: cinematic.letterbox
+    Category: cinematic
+    DisplayNameKo: "\uB808\uD130\uBC15\uC2A4"
+    DescriptionKo: "\uD654\uBA74 \uC704\uC544\uB798\uC758 \uAC80\uC740 \uB9C9\uB300\uB97C
+      \uD45C\uC2DC\uD558\uAC70\uB098 \uC228\uAE41\uB2C8\uB2E4."
+    UsageKo: "\uC804\uD22C \uC5F0\uCD9C\uC774\uB098 \uC911\uC694\uD55C \uB300\uC0AC\uB97C
+      \uC601\uD654 \uAC19\uC740 \uAD6C\uB3C4\uB85C \uAC15\uC870\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uB808\uD130\uBC15\uC2A4 {mode} \xB7 {duration}\uCD08"
+    Subcategory: 
+    Tags:
+    - cinematic
+    - screen
+    - letterbox
+    Aliases:
+    - "\uC601\uD654\uD654\uBA74"
+    - "\uAC80\uC740\uB760"
+    RuntimeAdapterId: CinematicLetterboxActionAdapter
+    Parameters:
+    - Name: mode
+      Type: enum
+      DisplayNameKo: "\uC0C1\uD0DC"
+      DescriptionKo: "show\uB294 \uD45C\uC2DC\uD558\uACE0 hide\uB294 \uC228\uAE41\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: show
+      EditorControlId: segmented
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options:
+      - show
+      - hide
+      PlaceholderKo: 
+    - Name: thickness
+      Type: number
+      DisplayNameKo: "\uB450\uAED8"
+      DescriptionKo: "\uD654\uBA74 \uB192\uC774\uC5D0 \uB300\uD55C \uB9C9\uB300 \uBE44\uC728\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.12
+      EditorControlId: slider
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 1
+      Maximum: 0.5
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC804\uD658 \uC2DC\uAC04"
+      DescriptionKo: "\uB9C9\uB300\uAC00 \uC774\uB3D9\uD558\uB294 \uCD08 \uB2E8\uC704
+        \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0.2
+      EditorControlId: number
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- cinematic.letterbox: { mode: show, thickness: 0.12, duration:
+      0.2 }'
+    RequiredContexts:
+    - battle_cinematic_runner
+    AllowedPrimaryModes:
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: panel-top
+    AccentHex: '#C78A62'
+    Disabled: 0
+  - ActionId: cinematic.shot.play
+    Category: cinematic
+    DisplayNameKo: "\uC2DC\uB124\uB9C8\uD2F1 \uC0F7 \uC7AC\uC0DD"
+    DescriptionKo: "\uC9C0\uC815\uD55C Cinematic Stage\uC758 \uCE74\uBA54\uB77C\uC640
+      \uB300\uC0C1 \uBAA8\uC158\uC744 \uD568\uAED8 \uC7AC\uC0DD\uD569\uB2C8\uB2E4."
+    UsageKo: "\uBCC4\uB3C4 Scene \uC804\uD658 \uC5C6\uC774 \uC9C0\uD558\uCCA0 \uB4F1\uC7A5
+      \uAC19\uC740 \uB3C5\uB9BD \uC5F0\uCD9C \uAD6C\uB3C4\uB97C \uC7AC\uC0DD\uD560
+      \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{stage} / {shot} \uC7AC\uC0DD"
+    Subcategory: 
+    Tags:
+    - cinematic
+    - camera
+    - shot
+    Aliases:
+    - "\uC0F7"
+    - "\uCE74\uBA54\uB77C\uC5F0\uCD9C"
+    RuntimeAdapterId: CinematicShotPlayActionAdapter
+    Parameters:
+    - Name: stage
+      Type: stageRef
+      DisplayNameKo: Stage ID
+      DescriptionKo: "Scene\uC5D0 \uB4F1\uB85D\uB41C Cinematic Stage\uC758 \uC548\uC815\uC801\uC778
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: stage
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: shot
+      Type: shotRef
+      DisplayNameKo: Shot ID
+      DescriptionKo: "Stage \uC548\uC5D0\uC11C \uC7AC\uC0DD\uD560 Cinematic Shot\uC758
+        \uC548\uC815\uC801\uC778 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: shot
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- cinematic.shot.play: { stage: overworld.arrival, shot: subway_arrival
+      }'
+    RequiredContexts:
+    - cinematic_stage_runner
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 2
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: clapperboard
+    AccentHex: '#C78A62'
+    Disabled: 0
+  - ActionId: cinematic.stage.prepare
+    Category: cinematic
+    DisplayNameKo: "\uC2DC\uB124\uB9C8\uD2F1 Stage \uC900\uBE44"
+    DescriptionKo: "\uC804\uC6A9 \uCE74\uBA54\uB77C\uC640 \uC5F0\uCD9C \uB300\uC0C1\uC744
+      \uC120\uD0DD\uD55C Shot\uC758 \uC2DC\uC791 \uC0C1\uD0DC\uB85C \uC989\uC2DC
+      \uC900\uBE44\uD569\uB2C8\uB2E4."
+    UsageKo: "\uD654\uBA74\uC774 \uAC00\uB824\uC9C4 \uB3D9\uC548 \uB2E4\uC74C \uC0F7\uC758
+      \uCE74\uBA54\uB77C\uC640 \uB300\uC0C1\uC744 \uBBF8\uB9AC \uBC30\uCE58\uD560
+      \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{stage} / {shot} \uC900\uBE44"
+    Subcategory: 
+    Tags:
+    - cinematic
+    - stage
+    - prepare
+    Aliases:
+    - "\uC5F0\uCD9C\uC900\uBE44"
+    - "\uD504\uB9AC\uB864"
+    RuntimeAdapterId: CinematicStagePrepareActionAdapter
+    Parameters:
+    - Name: stage
+      Type: stageRef
+      DisplayNameKo: Stage ID
+      DescriptionKo: "\uC900\uBE44\uD560 Cinematic Stage\uC758 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: stage
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: shot
+      Type: shotRef
+      DisplayNameKo: Shot ID
+      DescriptionKo: "\uC2DC\uC791 \uC0C1\uD0DC\uB97C \uC801\uC6A9\uD560 Shot\uC758
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: shot
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- cinematic.stage.prepare: { stage: overworld.arrival, shot: subway_arrival
+      }'
+    RequiredContexts:
+    - cinematic_stage_runner
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: scan
+    AccentHex: '#C78A62'
+    Disabled: 0
+  - ActionId: cinematic.stage.release
+    Category: cinematic
+    DisplayNameKo: "\uC2DC\uB124\uB9C8\uD2F1 Stage \uD574\uC81C"
+    DescriptionKo: "\uC804\uC6A9 \uCE74\uBA54\uB77C\uB97C \uB044\uACE0 \uC6D0\uB798
+      \uAC8C\uC784 \uCE74\uBA54\uB77C\uC640 \uB300\uC0C1 \uD45C\uC2DC \uC0C1\uD0DC\uB85C
+      \uBCF5\uADC0\uD569\uB2C8\uB2E4."
+    UsageKo: "\uB3C5\uB9BD \uC5F0\uCD9C\uC744 \uB05D\uB0B4\uACE0 Overworld \uB610\uB294
+      Battle \uD50C\uB808\uC774 \uD654\uBA74\uC73C\uB85C \uB3CC\uC544\uAC08 \uB54C
+      \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{stage} \uD574\uC81C"
+    Subcategory: 
+    Tags:
+    - cinematic
+    - stage
+    - release
+    Aliases:
+    - "\uC5F0\uCD9C\uC885\uB8CC"
+    - "\uCE74\uBA54\uB77C\uBCF5\uADC0"
+    RuntimeAdapterId: CinematicStageReleaseActionAdapter
+    Parameters:
+    - Name: stage
+      Type: stageRef
+      DisplayNameKo: Stage ID
+      DescriptionKo: "\uD574\uC81C\uD560 Cinematic Stage\uC758 ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: stage
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- cinematic.stage.release: { stage: overworld.arrival }'
+    RequiredContexts:
+    - cinematic_stage_runner
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: undo-2
+    AccentHex: '#C78A62'
+    Disabled: 0
+  - ActionId: dialogue.wait
+    Category: dialogue
+    DisplayNameKo: "\uB300\uD654\uD558\uACE0 \uAE30\uB2E4\uB9AC\uAE30"
+    DescriptionKo: "\uB4F1\uB85D\uB41C \uB300\uD654\uB97C \uC2DC\uC791\uD558\uACE0
+      \uBAA8\uB4E0 \uBB38\uC7A5\uACFC \uC120\uD0DD \uCC98\uB9AC\uAC00 \uB05D\uB0A0
+      \uB54C\uAE4C\uC9C0 \uC2DC\uD000\uC2A4\uB97C \uBA48\uCDA5\uB2C8\uB2E4."
+    UsageKo: "\uB9C8\uC744, \uC804\uD22C, \uC2DC\uB124\uB9C8\uD2F1 \uC5B4\uB514\uC11C\uB4E0
+      \uD50C\uB808\uC774\uC5B4\uAC00 \uC77D\uACE0 \uB118\uACA8\uC57C \uD558\uB294
+      \uB300\uD654\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uB300\uD654 {id}"
+    Subcategory: 
+    Tags:
+    - dialogue
+    - presentation
+    - wait
+    Aliases:
+    - "\uB300\uC0AC"
+    - "\uB9D0\uD558\uAE30"
+    - conversation
+    RuntimeAdapterId: DialogueWaitActionAdapter
+    Parameters:
+    - Name: id
+      Type: dialogueRef
+      DisplayNameKo: "\uB300\uD654 ID"
+      DescriptionKo: "Scenario\uC758 dialogue \uBAA9\uB85D\uC774\uB098 \uACF5\uD1B5
+        \uB300\uD654 \uCE74\uD0C8\uB85C\uADF8\uC5D0 \uB4F1\uB85D\uB41C ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: dialogue
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - memory
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- dialogue.wait: { id: zev.phase2_intro }'
+    RequiredContexts:
+    - dialogue_runner
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 4
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: message-square
+    AccentHex: '#D58ACB'
+    Disabled: 0
+  - ActionId: flow.parallel
+    Category: flow
+    DisplayNameKo: "\uB3D9\uC2DC\uC5D0 \uC2E4\uD589"
+    DescriptionKo: "\uC548\uCABD\uC758 \uC5EC\uB7EC \uBE14\uB85D\uC744 \uAC19\uC740
+      \uD504\uB808\uC784\uBD80\uD130 \uD568\uAED8 \uC2E4\uD589\uD558\uACE0 \uBAA8\uB450
+      \uB05D\uB0A0 \uB54C\uAE4C\uC9C0 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4."
+    UsageKo: "\uCE90\uB9AD\uD130 \uC774\uB3D9\uACFC \uD654\uBA74 \uC804\uD658\uCC98\uB7FC
+      \uC11C\uB85C \uB3C5\uB9BD\uC801\uC778 \uC5F0\uCD9C\uC744 \uB3D9\uC2DC\uC5D0
+      \uC9C4\uD589\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uC790\uC2DD \uBE14\uB85D {children}\uAC1C \uB3D9\uC2DC \uC2E4\uD589"
+    Subcategory: 
+    Tags:
+    - flow
+    - parallel
+    - group
+    Aliases:
+    - "\uB3D9\uC2DC"
+    - "\uBCD1\uB82C"
+    RuntimeAdapterId: ActionDirector
+    Parameters: []
+    ExampleYaml: '- parallel: { children: [] }'
+    RequiredContexts:
+    - action_director
+    AllowedPrimaryModes: []
+    PreviewSupport: 1
+    PreparationPolicy: 2
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: rows-3
+    AccentHex: '#55A6D9'
+    Disabled: 0
+  - ActionId: flow.wait
+    Category: flow
+    DisplayNameKo: "\uAE30\uB2E4\uB9AC\uAE30"
+    DescriptionKo: "\uC9C0\uC815\uD55C \uC2DC\uAC04 \uB3D9\uC548 \uB2E4\uC74C \uBE14\uB85D\uC758
+      \uC2E4\uD589\uC744 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4."
+    UsageKo: "\uC5F0\uCD9C \uC0AC\uC774\uC758 \uD638\uD761\uC774\uB098 \uD6A8\uACFC\uAC00
+      \uB05D\uB0A0 \uC2DC\uAC04\uC744 \uD655\uBCF4\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{duration}\uCD08 \uAE30\uB2E4\uB9AC\uAE30"
+    Subcategory: 
+    Tags:
+    - flow
+    - timing
+    - wait
+    Aliases:
+    - "\uB300\uAE30"
+    - "\uB51C\uB808\uC774"
+    - delay
+    RuntimeAdapterId: FlowWaitActionAdapter
+    Parameters:
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC2DC\uAC04"
+      DescriptionKo: "\uAE30\uB2E4\uB9B4 \uCD08 \uB2E8\uC704 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0
+      EditorControlId: number
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- flow.wait: { duration: 0.5 }'
+    RequiredContexts:
+    - clock
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 3
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: timer
+    AccentHex: '#55A6D9'
+    Disabled: 0
+  - ActionId: sequence.call
+    Category: flow
+    DisplayNameKo: "\uB2E4\uB978 \uC2DC\uD000\uC2A4 \uC2E4\uD589"
+    DescriptionKo: "\uC548\uC815\uC801\uC778 ID\uB85C \uB2E4\uB978 Action Sequence\uB97C
+      \uD638\uCD9C\uD558\uACE0 \uC644\uB8CC\uB420 \uB54C\uAE4C\uC9C0 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4."
+    UsageKo: "\uC5EC\uB7EC \uC804\uD22C\uB098 \uC5F0\uCD9C\uC5D0\uC11C \uBC18\uBCF5\uB418\uB294
+      \uBE14\uB85D \uBB36\uC74C\uC744 \uD558\uB098\uC758 \uC7AC\uC0AC\uC6A9 \uC2DC\uD000\uC2A4\uB85C
+      \uBD84\uB9AC\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{sequence} \uC2E4\uD589"
+    Subcategory: 
+    Tags:
+    - flow
+    - sequence
+    - reuse
+    Aliases:
+    - "\uD638\uCD9C"
+    - "\uC11C\uBE0C\uC2DC\uD000\uC2A4"
+    - function
+    RuntimeAdapterId: SequenceCallActionAdapter
+    Parameters:
+    - Name: sequence
+      Type: sequenceRef
+      DisplayNameKo: "\uB300\uC0C1 \uC2DC\uD000\uC2A4"
+      DescriptionKo: "\uC2E4\uD589\uD560 Action Sequence\uC758 \uC548\uC815\uC801\uC778
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: sequence
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      Options: []
+      PlaceholderKo: 
+    - Name: inputs
+      Type: object
+      DisplayNameKo: "\uC785\uB825\uAC12"
+      DescriptionKo: "\uB300\uC0C1 \uC2DC\uD000\uC2A4\uAC00 \uACF5\uAC1C\uD55C \uC785\uB825
+        ID\uC640 \uC804\uB2EC\uD560 \uAC12\uC758 \uB9F5\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 
+      EditorControlId: input_map
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - memory
+      - flag
+      - context
+      - result
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- sequence.call: { sequence: shared.intro, inputs: {} }'
+    RequiredContexts:
+    - sequence_resolver
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 2
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: workflow
+    AccentHex: '#55A6D9'
+    Disabled: 0
+  - ActionId: module.start
+    Category: module
+    DisplayNameKo: "\uAC8C\uC784 \uBAA8\uB4C8 \uC2DC\uC791"
+    DescriptionKo: "\uC9C4\uC785\uC774 \uB05D\uB09C \uD604\uC7AC Game Module\uC758
+      \uC2E4\uC81C \uD50C\uB808\uC774 \uB8E8\uD504\uB97C \uC2DC\uC791\uD569\uB2C8\uB2E4."
+    UsageKo: "\uC804\uD658 \uB300\uC0AC\uC640 \uBC30\uCE58 \uC5F0\uCD9C\uC774 \uBAA8\uB450
+      \uB05D\uB09C \uB4A4 \uC288\uD305, QTE, \uAD8C\uD22C \uAC19\uC740 \uD50C\uB808\uC774\uB97C
+      \uD5C8\uC6A9\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{module} \uD50C\uB808\uC774 \uC2DC\uC791"
+    Subcategory: 
+    Tags:
+    - module
+    - gameplay
+    - start
+    Aliases:
+    - "\uC804\uD22C\uC2DC\uC791"
+    - "\uBBF8\uB2C8\uAC8C\uC784\uC2DC\uC791"
+    RuntimeAdapterId: ModuleStartActionAdapter
+    Parameters:
+    - Name: module
+      Type: moduleRef
+      DisplayNameKo: "\uBAA8\uB4C8"
+      DescriptionKo: "\uC2DC\uC791\uD560 Game Module\uC758 \uC548\uC815\uC801\uC778
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: module
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - memory
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- module.start: { module: aim_shooter }'
+    RequiredContexts:
+    - game_module_runner
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: play
+    AccentHex: '#8C78C6'
+    Disabled: 0
+  - ActionId: module.switch
+    Category: module
+    DisplayNameKo: "\uAC8C\uC784 \uBAA8\uB4C8 \uC804\uD658"
+    DescriptionKo: "\uD604\uC7AC Game Module\uC744 \uC885\uB8CC\uD558\uACE0 \uB300\uC0C1
+      \uBAA8\uB4C8\uC758 \uC785\uB825, UI, \uADDC\uCE59 \uD658\uACBD\uC73C\uB85C
+      \uC9C4\uC785\uD569\uB2C8\uB2E4."
+    UsageKo: "QTE \uC804\uD22C\uC5D0\uC11C \uC288\uD305 \uC804\uD22C\uB85C \uBC14\uAFB8\uB294
+      \uAC83\uCC98\uB7FC \uD50C\uB808\uC774 \uBC29\uC2DD \uC804\uCCB4\uB97C \uAD50\uCCB4\uD560
+      \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uC2DC\uC791\uC740 \uBCC4\uB3C4 module.start\uB85C
+      \uC81C\uC5B4\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "\uBAA8\uB4C8 \u2192 {to}"
+    Subcategory: 
+    Tags:
+    - module
+    - gameplay
+    - switch
+    Aliases:
+    - "\uC804\uD22C\uC804\uD658"
+    - "\uBAA8\uB4DC\uBCC0\uACBD"
+    RuntimeAdapterId: ModuleSwitchActionAdapter
+    Parameters:
+    - Name: to
+      Type: moduleRef
+      DisplayNameKo: "\uB300\uC0C1 \uBAA8\uB4C8"
+      DescriptionKo: "\uC9C4\uC785\uD560 Game Module\uC758 \uC548\uC815\uC801\uC778
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: module
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - session
+      - memory
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- module.switch: { to: aim_shooter }'
+    RequiredContexts:
+    - game_module_runner
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    PreviewSupport: 2
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: replace
+    AccentHex: '#8C78C6'
+    Disabled: 0
+  - ActionId: screen.fade
+    Category: screen
+    DisplayNameKo: "\uD654\uBA74 \uD398\uC774\uB4DC"
+    DescriptionKo: "\uC9C0\uC815\uD55C \uC0C9\uC73C\uB85C \uD654\uBA74\uC744 \uB36E\uAC70\uB098
+      \uB2E4\uC2DC \uBC1D\uD799\uB2C8\uB2E4."
+    UsageKo: "\uCE74\uBA54\uB77C, \uCE90\uB9AD\uD130 \uBC30\uCE58, Game Module\uC744
+      \uBCF4\uC774\uC9C0 \uC54A\uAC8C \uAD50\uCCB4\uD558\uAC70\uB098 \uC7A5\uBA74\uC758
+      \uC2DC\uC791\uACFC \uB05D\uC744 \uC5F0\uACB0\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: "{color} \uD398\uC774\uB4DC {mode} \xB7 {duration}\uCD08"
+    Subcategory: 
+    Tags:
+    - screen
+    - fade
+    - transition
+    Aliases:
+    - "\uC554\uC804"
+    - "\uBC1D\uC544\uC9D0"
+    - "\uC804\uD658"
+    RuntimeAdapterId: ScreenFadeActionAdapter
+    Parameters:
+    - Name: mode
+      Type: enum
+      DisplayNameKo: "\uBC29\uD5A5"
+      DescriptionKo: "out\uC740 \uD654\uBA74\uC744 \uB36E\uACE0 in\uC740 \uB36E\uAC1C\uB97C
+        \uC81C\uAC70\uD569\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: out
+      EditorControlId: segmented
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options:
+      - out
+      - in
+      PlaceholderKo: 
+    - Name: color
+      Type: color
+      DisplayNameKo: "\uC0C9\uC0C1"
+      DescriptionKo: "black, white \uB610\uB294 \uC9C0\uC6D0\uB418\uB294 \uC0C9\uC0C1
+        ID\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: black
+      EditorControlId: color
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: duration
+      Type: duration
+      DisplayNameKo: "\uC2DC\uAC04"
+      DescriptionKo: "\uD398\uC774\uB4DC\uAC00 \uC644\uB8CC\uB420 \uB54C\uAE4C\uC9C0\uC758
+        \uCD08 \uB2E8\uC704 \uC2DC\uAC04\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 0
+      EditorControlId: number
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uCD08"
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- screen.fade: { mode: out, color: black, duration: 0.4 }'
+    RequiredContexts:
+    - screen_transition_runner
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 1
+    PreparationPolicy: 1
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: circle-dot
+    AccentHex: '#7D8EA8'
+    Disabled: 0
+  - ActionId: timeline.play
+    Category: timeline
+    DisplayNameKo: "Timeline \uC7AC\uC0DD"
+    DescriptionKo: "\uB4F1\uB85D\uB41C Timeline Cutscene\uC744 \uC7AC\uC0DD\uD558\uACE0
+      \uC124\uC815\uC5D0 \uB530\uB77C \uC644\uB8CC\uAE4C\uC9C0 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4."
+    UsageKo: "\uBCF5\uC7A1\uD55C \uC560\uB2C8\uBA54\uC774\uC158 \uD2B8\uB799\uACFC
+      \uCE74\uBA54\uB77C \uC5F0\uCD9C\uC774 Timeline Asset\uC73C\uB85C \uB9CC\uB4E4\uC5B4\uC838
+      \uC788\uC744 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uB300\uD654 \uC785\uB825
+      \uB300\uAE30\uB294 dialogue.wait\uB97C \uBCC4\uB3C4 \uBE14\uB85D\uC73C\uB85C
+      \uB461\uB2C8\uB2E4."
+    SummaryTemplateKo: Timeline {cutsceneId}
+    Subcategory: 
+    Tags:
+    - timeline
+    - cinematic
+    - presentation
+    Aliases:
+    - "\uD0C0\uC784\uB77C\uC778"
+    - "\uCEF7\uC2E0"
+    RuntimeAdapterId: TimelinePlayActionAdapter
+    Parameters:
+    - Name: cutsceneId
+      Type: timelineRef
+      DisplayNameKo: "\uCEF7\uC2E0 ID"
+      DescriptionKo: "TimelineCutsceneCatalog\uC5D0 \uB4F1\uB85D\uB41C \uC548\uC815\uC801\uC778
+        ID\uC785\uB2C8\uB2E4."
+      Required: 1
+      DefaultValue: 
+      EditorControlId: timeline
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - memory
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: waitForComplete
+      Type: bool
+      DisplayNameKo: "\uC644\uB8CC \uB300\uAE30"
+      DescriptionKo: "Timeline \uC7AC\uC0DD\uC774 \uB05D\uB0A0 \uB54C\uAE4C\uC9C0
+        \uB2E4\uC74C \uBE14\uB85D\uC744 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: true
+      EditorControlId: toggle
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: lockInput
+      Type: bool
+      DisplayNameKo: "\uC785\uB825 \uC7A0\uAE08"
+      DescriptionKo: "\uC7AC\uC0DD \uC911 \uAC8C\uC784 \uC785\uB825\uC744 \uC7A0\uAE09\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: true
+      EditorControlId: toggle
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: restoreCamera
+      Type: bool
+      DisplayNameKo: "\uCE74\uBA54\uB77C \uBCF5\uADC0"
+      DescriptionKo: "\uC7AC\uC0DD \uD6C4 \uAE30\uBCF8 \uAC8C\uC784 \uCE74\uBA54\uB77C
+        \uC0C1\uD0DC\uB97C \uBCF5\uAD6C\uD569\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: true
+      EditorControlId: toggle
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    - Name: skipIfMissing
+      Type: bool
+      DisplayNameKo: "\uC5C6\uC73C\uBA74 \uAC74\uB108\uB6F0\uAE30"
+      DescriptionKo: "\uCEF7\uC2E0\uC774\uB098 \uBC14\uC778\uB529\uC774 \uC5C6\uC744
+        \uB54C \uC624\uB958 \uB300\uC2E0 \uC774 \uBE14\uB85D\uC744 \uAC74\uB108\uB701\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: false
+      EditorControlId: toggle
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      - input
+      - event
+      - context
+      Options: []
+      PlaceholderKo: 
+    ExampleYaml: '- timeline.play: { cutsceneId: zev_intro, waitForComplete: true
+      }'
+    RequiredContexts:
+    - timeline_cutscene_runner
+    AllowedPrimaryModes:
+    - overworld
+    - battle
+    PreviewSupport: 2
+    PreparationPolicy: 4
+    Deprecated: 0
+    ReplacementActionId: 
+    IconId: panels-top-left
+    AccentHex: '#5AA8A1'
+    Disabled: 0

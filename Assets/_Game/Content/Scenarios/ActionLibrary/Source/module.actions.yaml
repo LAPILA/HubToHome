@@ -1,0 +1,53 @@
+libraryId: module
+name: "게임 모듈"
+description: "현재 Primary Mode 안에서 실행할 게임 규칙과 입력/UI 묶음을 전환하고 시작합니다."
+category: module
+order: 80
+accent: "#8C78C6"
+actions:
+  module.start:
+    name: "게임 모듈 시작"
+    description: "진입이 끝난 현재 Game Module의 실제 플레이 루프를 시작합니다."
+    usage: "전환 대사와 배치 연출이 모두 끝난 뒤 슈팅, QTE, 권투 같은 플레이를 허용할 때 사용합니다."
+    summary: "{module} 플레이 시작"
+    runtimeAdapter: ModuleStartActionAdapter
+    tags: [module, gameplay, start]
+    aliases: [전투시작, 미니게임시작]
+    contexts: [game_module_runner]
+    modes: [battle, overworld]
+    preview: live_only
+    preparation: apply_final_state
+    icon: play
+    example: "- module.start: { module: aim_shooter }"
+    parameters:
+      module:
+        name: "모듈"
+        description: "시작할 Game Module의 안정적인 ID입니다."
+        type: moduleRef
+        control: module
+        required: true
+        quick: true
+        sources: [literal, input, event, session, memory, context]
+  module.switch:
+    name: "게임 모듈 전환"
+    description: "현재 Game Module을 종료하고 대상 모듈의 입력, UI, 규칙 환경으로 진입합니다."
+    usage: "QTE 전투에서 슈팅 전투로 바꾸는 것처럼 플레이 방식 전체를 교체할 때 사용합니다. 시작은 별도 module.start로 제어합니다."
+    summary: "모듈 → {to}"
+    runtimeAdapter: ModuleSwitchActionAdapter
+    tags: [module, gameplay, switch]
+    aliases: [전투전환, 모드변경]
+    contexts: [game_module_runner]
+    modes: [battle, overworld]
+    preview: live_only
+    preparation: apply_final_state
+    icon: replace
+    example: "- module.switch: { to: aim_shooter }"
+    parameters:
+      to:
+        name: "대상 모듈"
+        description: "진입할 Game Module의 안정적인 ID입니다."
+        type: moduleRef
+        control: module
+        required: true
+        quick: true
+        sources: [literal, input, event, session, memory, context]

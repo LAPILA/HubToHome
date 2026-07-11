@@ -1,0 +1,135 @@
+libraryId: cinematic
+name: "시네마틱"
+description: "화면 구도, 전용 Stage, 레터박스 같은 시네마틱 연출을 제어합니다."
+category: cinematic
+order: 50
+accent: "#C78A62"
+actions:
+  cinematic.letterbox:
+    name: "레터박스"
+    description: "화면 위아래의 검은 막대를 표시하거나 숨깁니다."
+    usage: "전투 연출이나 중요한 대사를 영화 같은 구도로 강조할 때 사용합니다."
+    summary: "레터박스 {mode} · {duration}초"
+    runtimeAdapter: CinematicLetterboxActionAdapter
+    tags: [cinematic, screen, letterbox]
+    aliases: [영화화면, 검은띠]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: safe_preview
+    preparation: apply_final_state
+    icon: panel-top
+    example: "- cinematic.letterbox: { mode: show, thickness: 0.12, duration: 0.2 }"
+    parameters:
+      mode:
+        name: "상태"
+        description: "show는 표시하고 hide는 숨깁니다."
+        type: enum
+        control: segmented
+        required: true
+        quick: true
+        default: "show"
+        sources: [literal, input, event, context]
+        options: [show, hide]
+      thickness:
+        name: "두께"
+        description: "화면 높이에 대한 막대 비율입니다."
+        type: number
+        control: slider
+        default: "0.12"
+        min: 0
+        max: 0.5
+        sources: [literal, input, event, context]
+      duration:
+        name: "전환 시간"
+        description: "막대가 이동하는 초 단위 시간입니다."
+        type: duration
+        control: number
+        default: "0.2"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+  cinematic.shot.play:
+    name: "시네마틱 샷 재생"
+    description: "지정한 Cinematic Stage의 카메라와 대상 모션을 함께 재생합니다."
+    usage: "별도 Scene 전환 없이 지하철 등장 같은 독립 연출 구도를 재생할 때 사용합니다."
+    summary: "{stage} / {shot} 재생"
+    runtimeAdapter: CinematicShotPlayActionAdapter
+    tags: [cinematic, camera, shot]
+    aliases: [샷, 카메라연출]
+    contexts: [cinematic_stage_runner]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: execute_isolated
+    icon: clapperboard
+    example: "- cinematic.shot.play: { stage: overworld.arrival, shot: subway_arrival }"
+    parameters:
+      stage:
+        name: "Stage ID"
+        description: "Scene에 등록된 Cinematic Stage의 안정적인 ID입니다."
+        type: stageRef
+        control: stage
+        required: true
+        quick: true
+        sources: [literal, input, event, context]
+      shot:
+        name: "Shot ID"
+        description: "Stage 안에서 재생할 Cinematic Shot의 안정적인 ID입니다."
+        type: shotRef
+        control: shot
+        required: true
+        quick: true
+        sources: [literal, input, event, context]
+  cinematic.stage.prepare:
+    name: "시네마틱 Stage 준비"
+    description: "전용 카메라와 연출 대상을 선택한 Shot의 시작 상태로 즉시 준비합니다."
+    usage: "화면이 가려진 동안 다음 샷의 카메라와 대상을 미리 배치할 때 사용합니다."
+    summary: "{stage} / {shot} 준비"
+    runtimeAdapter: CinematicStagePrepareActionAdapter
+    tags: [cinematic, stage, prepare]
+    aliases: [연출준비, 프리롤]
+    contexts: [cinematic_stage_runner]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: apply_final_state
+    icon: scan
+    example: "- cinematic.stage.prepare: { stage: overworld.arrival, shot: subway_arrival }"
+    parameters:
+      stage:
+        name: "Stage ID"
+        description: "준비할 Cinematic Stage의 ID입니다."
+        type: stageRef
+        control: stage
+        required: true
+        quick: true
+        sources: [literal, input, event, context]
+      shot:
+        name: "Shot ID"
+        description: "시작 상태를 적용할 Shot의 ID입니다."
+        type: shotRef
+        control: shot
+        required: true
+        quick: true
+        sources: [literal, input, event, context]
+  cinematic.stage.release:
+    name: "시네마틱 Stage 해제"
+    description: "전용 카메라를 끄고 원래 게임 카메라와 대상 표시 상태로 복귀합니다."
+    usage: "독립 연출을 끝내고 Overworld 또는 Battle 플레이 화면으로 돌아갈 때 사용합니다."
+    summary: "{stage} 해제"
+    runtimeAdapter: CinematicStageReleaseActionAdapter
+    tags: [cinematic, stage, release]
+    aliases: [연출종료, 카메라복귀]
+    contexts: [cinematic_stage_runner]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: apply_final_state
+    icon: undo-2
+    example: "- cinematic.stage.release: { stage: overworld.arrival }"
+    parameters:
+      stage:
+        name: "Stage ID"
+        description: "해제할 Cinematic Stage의 ID입니다."
+        type: stageRef
+        control: stage
+        required: true
+        quick: true
+        sources: [literal, input, event, context]

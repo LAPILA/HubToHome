@@ -1,0 +1,40 @@
+libraryId: audio
+name: "오디오"
+description: "배경음악과 소리 연출을 제어합니다."
+category: audio
+order: 30
+accent: "#55B99A"
+actions:
+  bgm.crossfade:
+    name: "배경음악 전환"
+    description: "현재 배경음악에서 지정한 클립으로 부드럽게 전환합니다."
+    usage: "전투 페이즈 변경, 장소 전환, 감정 변화처럼 음악이 자연스럽게 바뀌어야 할 때 사용합니다."
+    summary: "BGM {clip} · {duration}초"
+    runtimeAdapter: BgmCrossfadeActionAdapter
+    tags: [audio, bgm, music]
+    aliases: [음악, 브금, crossfade]
+    contexts: [audio_runner]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: apply_final_state
+    icon: music
+    example: "- bgm.crossfade: { clip: zev_phase2, duration: 0.8 }"
+    parameters:
+      clip:
+        name: "음악 클립"
+        description: "Scenario audioClips 또는 공통 오디오 카탈로그의 ID입니다."
+        type: audioRef
+        control: audio
+        required: true
+        quick: true
+        sources: [literal, input, event, memory, context]
+      duration:
+        name: "전환 시간"
+        description: "이전 음악에서 새 음악으로 전환할 초 단위 시간입니다."
+        type: duration
+        control: number
+        quick: true
+        default: "0"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]

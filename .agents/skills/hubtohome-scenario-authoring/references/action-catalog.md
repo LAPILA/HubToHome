@@ -86,6 +86,10 @@ actions:
 - `ResolvedActionLibrary` merges category documents, sorts by category and Action ID, and reports duplicate IDs with both source paths.
 - `ActionLibrarySourceSync.ApplyToAsset` validates a temporary catalog first and mutates the generated target only after every source and merged contract has no errors.
 - `ActionCatalogAsset.SourcePaths` and `SourceHash` identify the exact generated source set. Do not hand-edit the generated catalog as the durable source.
+- Production category sources live under `Assets/_Game/Content/Scenarios/ActionLibrary/Source/`; the generated official catalog is `Assets/_Game/Content/Scenarios/ActionLibrary/Generated/ActionLibrary.asset`.
+- Rebuild through `HubToHome/시나리오/Action Library 다시 만들기` or `ProductionActionLibraryBuildCommand.Rebuild()`. Both paths parse every category, merge, validate adapter coverage, and then replace the generated asset.
+- `BattleScenarioActionRegistryFactory.CreateRegistry()` and `SceneActionSequenceContextFactory.CreateRegistry()` expose production registrations without scene state. `ActionAdapterContractScanner` must report adapter-without-catalog and catalog-without-adapter separately; `flow.parallel` is explicitly Director-owned.
+- The initial production library contains 28 contracts: 27 runtime adapters plus Director-owned `flow.parallel`. Any new registered Action must add its category source and consistency test in the same change.
 
 ## Categories
 

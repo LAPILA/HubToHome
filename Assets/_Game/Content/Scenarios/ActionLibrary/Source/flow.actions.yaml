@@ -1,0 +1,74 @@
+libraryId: flow
+name: "흐름"
+description: "시퀀스의 시간, 병렬 실행, 재사용 호출을 제어합니다."
+category: flow
+order: 10
+accent: "#55A6D9"
+actions:
+  flow.parallel:
+    name: "동시에 실행"
+    description: "안쪽의 여러 블록을 같은 프레임부터 함께 실행하고 모두 끝날 때까지 기다립니다."
+    usage: "캐릭터 이동과 화면 전환처럼 서로 독립적인 연출을 동시에 진행할 때 사용합니다."
+    summary: "자식 블록 {children}개 동시 실행"
+    runtimeAdapter: ActionDirector
+    tags: [flow, parallel, group]
+    aliases: [동시, 병렬]
+    contexts: [action_director]
+    preview: safe_preview
+    preparation: execute_isolated
+    icon: rows-3
+    example: "- parallel: { children: [] }"
+  flow.wait:
+    name: "기다리기"
+    description: "지정한 시간 동안 다음 블록의 실행을 기다립니다."
+    usage: "연출 사이의 호흡이나 효과가 끝날 시간을 확보할 때 사용합니다."
+    summary: "{duration}초 기다리기"
+    runtimeAdapter: FlowWaitActionAdapter
+    tags: [flow, timing, wait]
+    aliases: [대기, 딜레이, delay]
+    contexts: [clock]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: skip_presentation
+    icon: timer
+    example: "- flow.wait: { duration: 0.5 }"
+    parameters:
+      duration:
+        name: "시간"
+        description: "기다릴 초 단위 시간입니다."
+        type: duration
+        control: number
+        quick: true
+        default: "0"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+  sequence.call:
+    name: "다른 시퀀스 실행"
+    description: "안정적인 ID로 다른 Action Sequence를 호출하고 완료될 때까지 기다립니다."
+    usage: "여러 전투나 연출에서 반복되는 블록 묶음을 하나의 재사용 시퀀스로 분리할 때 사용합니다."
+    summary: "{sequence} 실행"
+    runtimeAdapter: SequenceCallActionAdapter
+    tags: [flow, sequence, reuse]
+    aliases: [호출, 서브시퀀스, function]
+    contexts: [sequence_resolver]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: execute_isolated
+    icon: workflow
+    example: "- sequence.call: { sequence: shared.intro, inputs: {} }"
+    parameters:
+      sequence:
+        name: "대상 시퀀스"
+        description: "실행할 Action Sequence의 안정적인 ID입니다."
+        type: sequenceRef
+        control: sequence
+        required: true
+        quick: true
+        sources: [literal]
+      inputs:
+        name: "입력값"
+        description: "대상 시퀀스가 공개한 입력 ID와 전달할 값의 맵입니다."
+        type: object
+        control: input_map
+        sources: [literal, input, event, session, memory, flag, context, result]

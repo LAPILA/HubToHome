@@ -1,0 +1,58 @@
+libraryId: timeline
+name: "Timeline"
+description: "Unity Timeline 기반 시네마틱을 공통 Action Sequence에서 실행합니다."
+category: timeline
+order: 100
+accent: "#5AA8A1"
+actions:
+  timeline.play:
+    name: "Timeline 재생"
+    description: "등록된 Timeline Cutscene을 재생하고 설정에 따라 완료까지 기다립니다."
+    usage: "복잡한 애니메이션 트랙과 카메라 연출이 Timeline Asset으로 만들어져 있을 때 사용합니다. 대화 입력 대기는 dialogue.wait를 별도 블록으로 둡니다."
+    summary: "Timeline {cutsceneId}"
+    runtimeAdapter: TimelinePlayActionAdapter
+    tags: [timeline, cinematic, presentation]
+    aliases: [타임라인, 컷신]
+    contexts: [timeline_cutscene_runner]
+    modes: [overworld, battle]
+    preview: live_only
+    preparation: require_input
+    icon: panels-top-left
+    example: "- timeline.play: { cutsceneId: zev_intro, waitForComplete: true }"
+    parameters:
+      cutsceneId:
+        name: "컷신 ID"
+        description: "TimelineCutsceneCatalog에 등록된 안정적인 ID입니다."
+        type: timelineRef
+        control: timeline
+        required: true
+        quick: true
+        sources: [literal, input, event, memory, context]
+      waitForComplete:
+        name: "완료 대기"
+        description: "Timeline 재생이 끝날 때까지 다음 블록을 기다립니다."
+        type: bool
+        control: toggle
+        default: "true"
+        sources: [literal, input, event, context]
+      lockInput:
+        name: "입력 잠금"
+        description: "재생 중 게임 입력을 잠급니다."
+        type: bool
+        control: toggle
+        default: "true"
+        sources: [literal, input, event, context]
+      restoreCamera:
+        name: "카메라 복귀"
+        description: "재생 후 기본 게임 카메라 상태를 복구합니다."
+        type: bool
+        control: toggle
+        default: "true"
+        sources: [literal, input, event, context]
+      skipIfMissing:
+        name: "없으면 건너뛰기"
+        description: "컷신이나 바인딩이 없을 때 오류 대신 이 블록을 건너뜁니다."
+        type: bool
+        control: toggle
+        default: "false"
+        sources: [literal, input, event, context]

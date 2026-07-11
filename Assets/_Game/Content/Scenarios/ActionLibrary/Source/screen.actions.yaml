@@ -1,0 +1,50 @@
+libraryId: screen
+name: "화면"
+description: "전체 화면 페이드와 장면 가림 연출을 제어합니다."
+category: screen
+order: 40
+accent: "#7D8EA8"
+actions:
+  screen.fade:
+    name: "화면 페이드"
+    description: "지정한 색으로 화면을 덮거나 다시 밝힙니다."
+    usage: "카메라, 캐릭터 배치, Game Module을 보이지 않게 교체하거나 장면의 시작과 끝을 연결할 때 사용합니다."
+    summary: "{color} 페이드 {mode} · {duration}초"
+    runtimeAdapter: ScreenFadeActionAdapter
+    tags: [screen, fade, transition]
+    aliases: [암전, 밝아짐, 전환]
+    contexts: [screen_transition_runner]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: apply_final_state
+    icon: circle-dot
+    example: "- screen.fade: { mode: out, color: black, duration: 0.4 }"
+    parameters:
+      mode:
+        name: "방향"
+        description: "out은 화면을 덮고 in은 덮개를 제거합니다."
+        type: enum
+        control: segmented
+        required: true
+        quick: true
+        default: "out"
+        sources: [literal, input, event, context]
+        options: [out, in]
+      color:
+        name: "색상"
+        description: "black, white 또는 지원되는 색상 ID입니다."
+        type: color
+        control: color
+        quick: true
+        default: "black"
+        sources: [literal, input, event, context]
+      duration:
+        name: "시간"
+        description: "페이드가 완료될 때까지의 초 단위 시간입니다."
+        type: duration
+        control: number
+        quick: true
+        default: "0"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
