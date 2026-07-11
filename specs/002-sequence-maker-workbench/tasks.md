@@ -27,8 +27,8 @@
 
 ## Editing Modules
 
-- [ ] Add recursive-safe command history.
-- [ ] Add validated atomic save and conflict detection.
+- [x] Add recursive-safe command history.
+- [x] Add validated atomic save and conflict detection.
 - [ ] Add editor recovery snapshots.
 
 ## Workbench UI
