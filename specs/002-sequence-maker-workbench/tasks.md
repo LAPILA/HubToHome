@@ -21,8 +21,8 @@
 
 - [x] Map fixed Battle Event Rules into extensible Trigger Rules.
 - [x] Round-trip extensible Trigger Rules through scenario YAML.
-- [ ] Add observable Execution Session.
-- [ ] Add structured parallel policies and cancellation.
+- [x] Add observable Execution Session.
+- [x] Add structured parallel policies and cancellation.
 - [ ] Add Preparation Run and safe preview state contracts.
 
 ## Editing Modules

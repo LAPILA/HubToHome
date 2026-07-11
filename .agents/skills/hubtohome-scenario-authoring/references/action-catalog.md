@@ -90,6 +90,7 @@ actions:
 - Rebuild through `HubToHome/시나리오/Action Library 다시 만들기` or `ProductionActionLibraryBuildCommand.Rebuild()`. Both paths parse every category, merge, validate adapter coverage, and then replace the generated asset.
 - `BattleScenarioActionRegistryFactory.CreateRegistry()` and `SceneActionSequenceContextFactory.CreateRegistry()` expose production registrations without scene state. `ActionAdapterContractScanner` must report adapter-without-catalog and catalog-without-adapter separately; `flow.parallel` is explicitly Director-owned.
 - The initial production library contains 28 contracts: 27 runtime adapters plus Director-owned `flow.parallel`. Any new registered Action must add its category source and consistency test in the same change.
+- `flow.parallel.parameters.policy` is a segmented enum with `all`, `any`, and `race`. Keep the default `all` for old sources. The Action Library description and generated runtime asset must be rebuilt whenever these completion semantics change.
 
 ## Categories
 

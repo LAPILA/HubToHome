@@ -27,7 +27,7 @@ MonoBehaviour:
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/module.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/screen.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/timeline.actions.yaml
-  SourceHash: c5a2b9d78a3c2fc968940d1495a94ff4dd2237da20ad8a5937072889a7ab9fbd
+  SourceHash: b11dfd9dcce6de341352c0ca31d63504253e9c969dad5a7e3cbeea9f69bc8a15
   Entries:
   - ActionId: battle.actor.drop_in
     Category: actor
@@ -1917,12 +1917,14 @@ MonoBehaviour:
     Category: flow
     DisplayNameKo: "\uB3D9\uC2DC\uC5D0 \uC2E4\uD589"
     DescriptionKo: "\uC548\uCABD\uC758 \uC5EC\uB7EC \uBE14\uB85D\uC744 \uAC19\uC740
-      \uD504\uB808\uC784\uBD80\uD130 \uD568\uAED8 \uC2E4\uD589\uD558\uACE0 \uBAA8\uB450
-      \uB05D\uB0A0 \uB54C\uAE4C\uC9C0 \uAE30\uB2E4\uB9BD\uB2C8\uB2E4."
+      \uD504\uB808\uC784\uBD80\uD130 \uD568\uAED8 \uC2E4\uD589\uD558\uACE0 \uC120\uD0DD\uD55C
+      \uC644\uB8CC \uADDC\uCE59\uC5D0 \uB530\uB77C \uB2E4\uC74C \uBE14\uB85D\uC73C\uB85C
+      \uB118\uC5B4\uAC11\uB2C8\uB2E4."
     UsageKo: "\uCE90\uB9AD\uD130 \uC774\uB3D9\uACFC \uD654\uBA74 \uC804\uD658\uCC98\uB7FC
       \uC11C\uB85C \uB3C5\uB9BD\uC801\uC778 \uC5F0\uCD9C\uC744 \uB3D9\uC2DC\uC5D0
       \uC9C4\uD589\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
-    SummaryTemplateKo: "\uC790\uC2DD \uBE14\uB85D {children}\uAC1C \uB3D9\uC2DC \uC2E4\uD589"
+    SummaryTemplateKo: "\uC790\uC2DD \uBE14\uB85D {children}\uAC1C \uB3D9\uC2DC \uC2E4\uD589
+      \xB7 {policy}"
     Subcategory: 
     Tags:
     - flow
@@ -1932,8 +1934,30 @@ MonoBehaviour:
     - "\uB3D9\uC2DC"
     - "\uBCD1\uB82C"
     RuntimeAdapterId: ActionDirector
-    Parameters: []
-    ExampleYaml: '- parallel: { children: [] }'
+    Parameters:
+    - Name: policy
+      Type: enum
+      DisplayNameKo: "\uC644\uB8CC \uADDC\uCE59"
+      DescriptionKo: "\uBAA8\uB450 \uC644\uB8CC(all), \uD558\uB098 \uC131\uACF5(any),
+        \uAC00\uC7A5 \uBA3C\uC800 \uB05D\uB09C \uACB0\uACFC(race) \uC911 \uBCD1\uB82C
+        \uBE14\uB85D\uC744 \uB05D\uB0B4\uB294 \uAE30\uC900\uC785\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: all
+      EditorControlId: segmented
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      Options:
+      - all
+      - any
+      - race
+      PlaceholderKo: 
+    ExampleYaml: '- parallel: { policy: all, children: [] }'
     RequiredContexts:
     - action_director
     AllowedPrimaryModes: []

@@ -34,6 +34,7 @@ public sealed class ActionExecutionContext
     public string ScenarioId { get; set; } = string.Empty;
     public string PrimaryMode { get; set; } = string.Empty;
     public string ModuleId { get; set; } = string.Empty;
+    public string ExecutionBlockId { get; set; } = string.Empty;
 
     public void SetService<TService>(TService service)
         where TService : class
@@ -109,7 +110,8 @@ public sealed class ActionExecutionContext
         {
             ScenarioId = ScenarioId,
             PrimaryMode = PrimaryMode,
-            ModuleId = ModuleId
+            ModuleId = ModuleId,
+            ExecutionBlockId = ExecutionBlockId
         };
     }
 

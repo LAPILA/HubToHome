@@ -13,6 +13,8 @@ The approved successor design is documented in `docs/plans/2026-07-12-sequence-m
 - The workbench uses unified navigation, a vertical block flow, typed controls, contextual validation, reference usage, Safe Preview, Live Test, and Preparation Run.
 - `when` evolves from the fixed battle enum toward Scenario Event IDs plus catalog-backed Trigger Conditions.
 - Action Sequences gain typed inputs and remain finite orchestration; continuous gameplay remains inside Game Modules.
+- Runtime block highlighting, execution history, pause, resume, one-block step, cancel, and selected-block start must use `ActionExecutionSession` and `ActionPlayRequest`. Do not duplicate coroutine-state inference in the editor.
+- Nested sequence calls and parallel children retain their parent Block ID in trace events. The UI may group these visually, but must preserve event order and terminal failure/cancellation messages.
 
 ## Stable Block Identity
 

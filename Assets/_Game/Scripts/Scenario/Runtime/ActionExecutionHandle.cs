@@ -2,6 +2,9 @@ using System;
 
 public sealed class ActionExecutionHandle
 {
+    public event Action<ActionExecutionHandle> Changed;
+    public event Action<ActionExecutionHandle> CancellationRequested;
+
     public ActionExecutionHandle(string executionId = "")
     {
         ExecutionId = executionId;
@@ -26,6 +29,7 @@ public sealed class ActionExecutionHandle
     public void Cancel(string message = "Action execution was canceled.")
     {
         IsCancellationRequested = true;
+        CancellationRequested?.Invoke(this);
         if (!IsDone)
         {
             MarkCanceled(message);
@@ -46,6 +50,7 @@ public sealed class ActionExecutionHandle
 
         Status = ActionExecutionStatus.Running;
         Result = ActionExecutionResult.Running();
+        Changed?.Invoke(this);
     }
 
     internal void MarkSucceeded(string message = "")
@@ -57,6 +62,7 @@ public sealed class ActionExecutionHandle
 
         Status = ActionExecutionStatus.Succeeded;
         Result = ActionExecutionResult.Succeeded(message);
+        Changed?.Invoke(this);
     }
 
     internal void MarkFailed(string message, Exception exception = null)
@@ -68,6 +74,7 @@ public sealed class ActionExecutionHandle
 
         Status = ActionExecutionStatus.Failed;
         Result = ActionExecutionResult.Failed(message, exception);
+        Changed?.Invoke(this);
     }
 
     internal void MarkCanceled(string message = "")
@@ -79,5 +86,6 @@ public sealed class ActionExecutionHandle
 
         Status = ActionExecutionStatus.Canceled;
         Result = ActionExecutionResult.Canceled(message);
+        Changed?.Invoke(this);
     }
 }
