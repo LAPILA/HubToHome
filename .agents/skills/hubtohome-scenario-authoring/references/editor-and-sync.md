@@ -82,6 +82,9 @@ When adding or changing the pipeline:
 - `ScenarioAuthoringWindow` remains temporarily available at `HubToHome/시나리오/개발/기존 시퀀스 메이커` until parity migration is complete. Do not add new official behavior there.
 - `SequenceAssetIndexCache` lazily indexes Battle Scenario and Action Sequence assets and invalidates on `EditorApplication.projectChanged`. `SequenceNavigatorHistory` stores recent/favorite stable asset keys rather than mutable sequence IDs.
 - `SequenceUsageIndex` is the only workbench reference graph for scenario ownership, legacy/Trigger Rule targets, and recursive `sequence.call` targets. Use it before rename/delete, for `사용 위치`, and for missing-target diagnostics instead of ad-hoc AssetDatabase text searches.
+- 중앙 Block Flow는 `SequenceFlowCanvas`와 `SequenceFlowProjection`이 소유한다. 순차/병렬 구조, 중첩 깊이, 접기, 검색 시 조상 유지, 정확한 Block 단위 검증 배지는 projection 결과만 사용한다.
+- 표준 편집 동작은 다중 선택, 드래그 이동, 복사/잘라내기/붙여넣기, 복제, 삭제, 활성화, 병렬 묶기, Action 교체, 독립 Sequence 추출을 포함한다. 모든 데이터 변경은 command stack transaction이어야 하며 선택 상태는 안정적인 Block ID로 유지한다.
+- Block 카드는 catalog의 한국어 이름, category 색상, 요약 template, quick parameter, note, validation, breakpoint/bookmark를 표시한다. 구조 Block은 일반 Action과 구분하며 parallel policy를 `모두/하나/경쟁`으로 보여준다.
 - The same window also accepts a mutually exclusive **독립 Action Sequence**. This mode has no Battle Event Rule panel and uses `ActionSequenceSourceSync` for preview, validation, source save, safe reimport, and export-as. The timeline, action inspector, catalog parameter forms, validation badges, and light edit controls must behave the same as scenario-owned sequences.
 - The editor now uses a three-panel board layout:
   - left: flow map with overview, rules, sequence list, and validation summary

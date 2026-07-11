@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -51,6 +52,7 @@ public sealed class SequenceMakerWindow : EditorWindow
     private Label _flowTitle;
     private Label _flowSubtitle;
     private VisualElement _flowContent;
+    private SequenceFlowCanvas _flowCanvas;
     private VisualElement _inspectorContent;
     private VisualElement _drawer;
     private VisualElement _drawerContent;
@@ -289,6 +291,23 @@ public sealed class SequenceMakerWindow : EditorWindow
         VisualElement flowHeader = flowPanel.Q<VisualElement>(className: "sm-panel-header");
         _flowTitle = flowHeader.Q<Label>(className: "sm-panel-title");
         _flowSubtitle = flowHeader.Q<Label>(className: "sm-panel-subtitle");
+        _flowCanvas = new SequenceFlowCanvas();
+        _flowCanvas.InsertRequested += ShowQuickActionMenu;
+        _flowCanvas.ExtractRequested += ExtractSelectionToSequence;
+        _flowCanvas.InspectRequested += blockId =>
+        {
+            _workspace.SelectBlock(blockId);
+            RenderBreadcrumb();
+            RenderInspector();
+        };
+        _flowCanvas.Error += message =>
+        {
+            SetStatus(message, true);
+            RenderStatus();
+        };
+        _flowCanvas.SaveRequested += () => SaveCurrent();
+        _flowCanvas.Changed += AfterEdit;
+        _flowContent.Add(_flowCanvas);
         right.Add(flowPanel);
 
         VisualElement inspectorPanel = CreatePanel(
@@ -705,12 +724,11 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RenderFlow()
     {
-        if (_flowContent == null)
+        if (_flowCanvas == null)
         {
             return;
         }
 
-        _flowContent.Clear();
         ActionSequenceAsset sequence = _workspace.SelectedSequence;
         if (_flowTitle != null)
         {
@@ -726,109 +744,362 @@ public sealed class SequenceMakerWindow : EditorWindow
                 : string.Empty;
         }
 
-        if (sequence == null)
-        {
-            _flowContent.Add(CreateEmptyState("시퀀스 없음", "현재 흐름에 연결된 시퀀스가 없습니다."));
-            return;
-        }
-
-        if (sequence.Actions == null || sequence.Actions.Count == 0)
-        {
-            _flowContent.Add(CreateEmptyState("빈 시퀀스", "액션 블록이 없습니다."));
-            return;
-        }
-
-        var list = new VisualElement();
-        list.AddToClassList("sm-flow-list");
-        int displayIndex = 0;
-        AddActionRows(list, sequence.Actions, 0, ref displayIndex);
-        _flowContent.Add(list);
+        _flowCanvas.Bind(
+            sequence,
+            GetCurrentEditStack(),
+            _catalog,
+            _lastValidation,
+            _searchField != null ? _searchField.value : string.Empty);
     }
 
-    private void AddActionRows(
-        VisualElement parent,
-        IList<ScenarioActionData> actions,
-        int depth,
-        ref int displayIndex)
+    private void ShowQuickActionMenu(SequenceInsertionRequest request)
     {
-        if (actions == null)
+        if (request == null || _workspace.SelectedSequence == null || _catalog == null)
+        {
+            SetStatus("추가할 Action Library를 찾지 못했습니다.", true);
+            RenderStatus();
+            return;
+        }
+
+        var entries = new List<ActionCatalogEntry>();
+        for (int i = 0; i < _catalog.Entries.Count; i++)
+        {
+            if (_catalog.Entries[i] != null)
+            {
+                entries.Add(_catalog.Entries[i]);
+            }
+        }
+
+        entries.Sort((left, right) =>
+        {
+            int category = StringComparer.OrdinalIgnoreCase.Compare(
+                left.Category,
+                right.Category);
+            return category != 0
+                ? category
+                : StringComparer.OrdinalIgnoreCase.Compare(
+                    left.DisplayNameKo,
+                    right.DisplayNameKo);
+        });
+
+        var menu = new GenericMenu();
+        for (int i = 0; i < entries.Count; i++)
+        {
+            ActionCatalogEntry entry = entries[i];
+            string category = string.IsNullOrWhiteSpace(entry.Category)
+                ? "기타"
+                : entry.Category;
+            string display = string.IsNullOrWhiteSpace(entry.DisplayNameKo)
+                ? entry.ActionId
+                : entry.DisplayNameKo;
+            GUIContent content = new GUIContent(category + "/" + display);
+            if (entry.Disabled || entry.Deprecated)
+            {
+                menu.AddDisabledItem(content);
+                continue;
+            }
+
+            ActionCatalogEntry captured = entry;
+            menu.AddItem(content, false, () =>
+                InsertCatalogAction(request, captured));
+        }
+
+        menu.ShowAsContext();
+    }
+
+    private void InsertCatalogAction(
+        SequenceInsertionRequest request,
+        ActionCatalogEntry entry)
+    {
+        SequenceEditCommandStack stack = GetCurrentEditStack();
+        if (stack == null || entry == null)
         {
             return;
         }
 
-        string search = Normalize(_searchField != null ? _searchField.value : string.Empty);
-        for (int i = 0; i < actions.Count; i++)
+        var action = new ScenarioActionData
         {
-            ScenarioActionData action = actions[i];
-            if (action == null)
+            BlockId = ScenarioBlockIdentity.Create(),
+            ActionId = entry.ActionId ?? string.Empty,
+            ParametersJson = BuildDefaultParameters(entry).ToString(
+                Newtonsoft.Json.Formatting.None)
+        };
+        try
+        {
+            stack.Execute(SequenceEditCommands.Insert(
+                request.ParentBlockId,
+                request.InsertionIndex,
+                action));
+            _workspace.SelectBlock(action.BlockId);
+            SetStatus("액션 추가", false);
+            AfterEdit();
+        }
+        catch (Exception exception)
+        {
+            SetStatus(exception.Message, true);
+            RenderStatus();
+        }
+    }
+
+    private static JObject BuildDefaultParameters(ActionCatalogEntry entry)
+    {
+        var result = new JObject();
+        if (entry?.Parameters == null)
+        {
+            return result;
+        }
+
+        for (int i = 0; i < entry.Parameters.Count; i++)
+        {
+            ActionCatalogParameter parameter = entry.Parameters[i];
+            if (parameter == null || string.IsNullOrWhiteSpace(parameter.Name))
             {
                 continue;
             }
 
-            displayIndex++;
-            bool visible = MatchesSearch(action, search);
-            if (visible)
+            if (!string.IsNullOrWhiteSpace(parameter.DefaultValue))
             {
-                parent.Add(CreateActionRow(action, depth, displayIndex));
+                result[parameter.Name] = ParseDefaultValue(parameter.DefaultValue);
             }
+            else if (parameter.Required
+                && parameter.Options != null
+                && parameter.Options.Count > 0)
+            {
+                result[parameter.Name] = parameter.Options[0];
+            }
+        }
 
-            AddActionRows(parent, action.Children, depth + 1, ref displayIndex);
+        return result;
+    }
+
+    private static JToken ParseDefaultValue(string value)
+    {
+        try
+        {
+            return JToken.Parse(value);
+        }
+        catch
+        {
+            return new JValue(value ?? string.Empty);
         }
     }
 
-    private VisualElement CreateActionRow(ScenarioActionData action, int depth, int index)
+    private void ExtractSelectionToSequence(IReadOnlyList<string> blockIds)
     {
-        var row = new Button();
-        row.AddToClassList("sm-flow-row");
-        row.EnableInClassList(
-            "is-selected",
-            string.Equals(action.BlockId, _workspace.SelectedBlockId, StringComparison.Ordinal));
-        row.EnableInClassList("is-disabled", action.Disabled);
-        row.style.marginLeft = 12f + depth * 18f;
-        row.tooltip = string.IsNullOrWhiteSpace(action.Note)
-            ? action.ActionId
-            : action.Note;
-
-        var indexLabel = new Label(index.ToString("00"));
-        indexLabel.AddToClassList("sm-flow-index");
-        row.Add(indexLabel);
-
-        var accent = new VisualElement();
-        accent.AddToClassList("sm-flow-accent");
-        ActionCatalogEntry entry = FindCatalogEntry(action.ActionId);
-        if (entry != null
-            && !string.IsNullOrWhiteSpace(entry.AccentHex)
-            && ColorUtility.TryParseHtmlString(entry.AccentHex, out Color color))
+        if (_workspace.TargetKind != SequenceMakerTargetKind.BattleScenario
+            || _workspace.BattleScenario == null
+            || _workspace.SelectedSequence == null)
         {
-            accent.style.backgroundColor = color;
+            EditorUtility.DisplayDialog(
+                "새 시퀀스로 추출",
+                "전투 흐름에 포함된 시퀀스에서 사용할 수 있습니다.",
+                "확인");
+            return;
         }
-        row.Add(accent);
 
-        var copy = new VisualElement();
-        copy.AddToClassList("sm-flow-copy");
-        var title = new Label(ActionDisplayName(action, entry));
-        title.AddToClassList("sm-flow-title");
-        copy.Add(title);
-        var summary = new Label(ActionSummary(action, entry));
-        summary.AddToClassList("sm-flow-summary");
-        copy.Add(summary);
-        row.Add(copy);
-
-        var badge = new Label(entry != null && !string.IsNullOrWhiteSpace(entry.Category)
-            ? entry.Category
-            : "action");
-        badge.AddToClassList("sm-flow-badge");
-        row.Add(badge);
-
-        string blockId = action.BlockId;
-        row.clicked += () =>
+        if (!TryResolveContiguousBlocks(
+                _workspace.SelectedSequence,
+                blockIds,
+                out List<ScenarioActionData> selected,
+                out string error))
         {
-            _workspace.SelectBlock(blockId);
-            SequenceEditCommandStack stack = GetCurrentEditStack();
-            stack?.SetSelection(blockId);
-            RenderAll();
+            SetStatus(error, true);
+            RenderStatus();
+            return;
+        }
+
+        string defaultName = _workspace.SelectedSequence.SequenceId + "_part";
+        string path = EditorUtility.SaveFilePanelInProject(
+            "새 Action Sequence 에셋",
+            defaultName,
+            "asset",
+            "추출한 시퀀스 Runtime Asset 경로를 선택");
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        string sequenceId = MakeUniqueSequenceId(Path.GetFileNameWithoutExtension(path));
+        ActionSequenceAsset extracted = ScriptableObject.CreateInstance<ActionSequenceAsset>();
+        extracted.SequenceId = sequenceId;
+        extracted.DisplayNameKo = Path.GetFileNameWithoutExtension(path).Replace('_', ' ');
+        extracted.Contract = ActionSequenceContractData.CopyOf(
+            _workspace.SelectedSequence.Contract);
+        extracted.Contract.DescriptionKo = "'"
+            + DisplayName(
+                _workspace.SelectedSequence.DisplayNameKo,
+                _workspace.SelectedSequence.SequenceId)
+            + "'에서 추출한 재사용 시퀀스";
+        for (int i = 0; i < selected.Count; i++)
+        {
+            extracted.Actions.Add(ScenarioBlockIdentity.ClonePreservingIds(selected[i]));
+        }
+
+        var inputs = new JObject();
+        if (extracted.Contract.Inputs != null)
+        {
+            for (int i = 0; i < extracted.Contract.Inputs.Count; i++)
+            {
+                string inputId = extracted.Contract.Inputs[i]?.InputId;
+                if (!string.IsNullOrWhiteSpace(inputId))
+                {
+                    inputs[inputId] = new JObject
+                    {
+                        ["$bind"] = "input." + inputId
+                    };
+                }
+            }
+        }
+
+        var callParameters = new JObject
+        {
+            ["sequence"] = sequenceId
         };
-        return row;
+        if (inputs.Count > 0)
+        {
+            callParameters["inputs"] = inputs;
+        }
+
+        var call = new ScenarioActionData
+        {
+            BlockId = ScenarioBlockIdentity.Create(),
+            ActionId = SequenceCallActionAdapter.Id,
+            DesignerLabel = "호출: " + extracted.DisplayNameKo,
+            ParametersJson = callParameters.ToString(Newtonsoft.Json.Formatting.None)
+        };
+
+        try
+        {
+            AssetDatabase.CreateAsset(extracted, path);
+            GetCurrentEditStack().Execute(SequenceEditCommands.ExtractToSequence(
+                blockIds,
+                call,
+                _workspace.BattleScenario,
+                extracted));
+            AssetDatabase.SaveAssets();
+            SequenceAssetIndexCache.MarkDirty();
+            _workspace.SelectBlock(call.BlockId);
+            SetStatus("재사용 시퀀스 추출 완료", false);
+            AfterEdit();
+        }
+        catch (Exception exception)
+        {
+            if (!string.IsNullOrWhiteSpace(AssetDatabase.GetAssetPath(extracted)))
+            {
+                AssetDatabase.DeleteAsset(path);
+            }
+            else
+            {
+                DestroyImmediate(extracted);
+            }
+
+            SetStatus("시퀀스 추출 실패: " + exception.Message, true);
+            RenderStatus();
+        }
+    }
+
+    private static bool TryResolveContiguousBlocks(
+        ActionSequenceAsset sequence,
+        IReadOnlyList<string> blockIds,
+        out List<ScenarioActionData> actions,
+        out string error)
+    {
+        actions = new List<ScenarioActionData>();
+        error = string.Empty;
+        if (sequence == null || blockIds == null || blockIds.Count == 0)
+        {
+            error = "추출할 블록을 선택해야 합니다.";
+            return false;
+        }
+
+        var locations = new List<SequenceBlockLocation>();
+        List<ScenarioActionData> list = null;
+        for (int i = 0; i < blockIds.Count; i++)
+        {
+            if (!SequenceBlockTree.TryFind(
+                    sequence,
+                    blockIds[i],
+                    out SequenceBlockLocation location))
+            {
+                error = "선택한 블록을 찾지 못했습니다: " + blockIds[i];
+                return false;
+            }
+
+            if (list == null)
+            {
+                list = location.List;
+            }
+            else if (!ReferenceEquals(list, location.List))
+            {
+                error = "같은 부모 안의 블록만 한 시퀀스로 추출할 수 있습니다.";
+                return false;
+            }
+
+            locations.Add(location);
+        }
+
+        locations.Sort((left, right) => left.Index.CompareTo(right.Index));
+        for (int i = 1; i < locations.Count; i++)
+        {
+            if (locations[i].Index != locations[i - 1].Index + 1)
+            {
+                error = "서로 이어진 블록만 한 시퀀스로 추출할 수 있습니다.";
+                return false;
+            }
+        }
+
+        for (int i = 0; i < locations.Count; i++)
+        {
+            actions.Add(locations[i].Action);
+        }
+
+        return true;
+    }
+
+    private string MakeUniqueSequenceId(string seed)
+    {
+        string normalized = NormalizeIdentifier(seed);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            normalized = "extracted_sequence";
+        }
+
+        string candidate = normalized;
+        int suffix = 2;
+        while (_assetIndex?.FindSequenceById(candidate) != null)
+        {
+            candidate = normalized + "_" + suffix++;
+        }
+
+        return candidate;
+    }
+
+    private static string NormalizeIdentifier(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var characters = new System.Text.StringBuilder();
+        string source = value.Trim().ToLowerInvariant();
+        for (int i = 0; i < source.Length; i++)
+        {
+            char character = source[i];
+            if (char.IsLetterOrDigit(character)
+                || character == '.'
+                || character == '_'
+                || character == '-')
+            {
+                characters.Append(character);
+            }
+            else if (char.IsWhiteSpace(character))
+            {
+                characters.Append('_');
+            }
+        }
+
+        return characters.ToString().Trim('_');
     }
 
     private void RenderInspector()

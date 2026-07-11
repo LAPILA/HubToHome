@@ -36,8 +36,8 @@
 - [x] Build UXML/USS workbench shell.
 - [x] Add unified battle-flow and sequence navigation.
 - [x] Add usage and impact index.
-- [ ] Add vertical nested block canvas.
-- [ ] Add multi-selection and standard edit operations.
+- [x] Add vertical nested block canvas.
+- [x] Add multi-selection and standard edit operations.
 - [ ] Add Action picker and Action Library screen.
 - [ ] Add typed parameter and binding inspector.
 - [ ] Add sequence contract editor.

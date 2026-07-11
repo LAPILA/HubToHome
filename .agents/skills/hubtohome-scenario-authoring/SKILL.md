@@ -72,6 +72,9 @@ Treat scenario YAML as the source of truth and ScriptableObject assets as the Un
 - Preparation must be read-only with respect to Action Sequence assets. Missing or duplicate Block IDs are validation failures; never call `ScenarioBlockIdentity.EnsureUnique` from preview playback.
 - `flow.parallel` Preparation applies every child for `all`. `any` and `race` require an explicit direct-child `previewWinner` Block ID because the editor must not guess a winning branch.
 - Runtime Asset 편집은 `SequenceEditCommandStack`과 역연산 기반 명령을 사용한다. 재귀 Action 트리를 통째로 Unity Undo에 넣지 말고, 추가/이동/복제/삭제/활성화/파라미터 변경을 안정적인 Block ID로 기록한다. 여러 편집은 하나의 transaction으로 묶고 저장 성공 후에만 `MarkSaved()`를 호출한다.
+- 공식 세로 Block Flow는 `SequenceFlowProjection`을 통해 재귀 Action 트리를 표시한다. UI가 재귀 목록을 직접 변경하면 안 되며, 드래그 이동, 다중 선택, 복사/붙여넣기, 병렬 묶기, 교체, 추출은 모두 `SequenceEditCommandStack` 명령 하나로 실행되어야 한다.
+- 복제/붙여넣기는 새 Block ID를 발급하고, 순서 변경은 기존 Block ID를 보존한다. 부모와 자식이 동시에 선택된 삭제/이동은 최상위 선택만 처리해 같은 노드를 두 번 변경하지 않는다.
+- Battle Scenario 소유 시퀀스를 별도 시퀀스로 추출할 때는 새 `ActionSequenceAsset`을 Battle의 `Sequences`에 연결하고 원래 구간을 typed `sequence.call`로 교체한다. Undo는 참조와 원래 블록을 복원하되 생성된 에셋을 자동 삭제하지 않는다.
 - 공식 Sequence Maker의 YAML 저장은 `SequenceSaveCoordinator` 하나를 사용한다. Battle Scenario와 독립 Action Sequence 차이는 `ISequenceSaveTarget` adapter가 감추며, UI가 기존 exporter의 직접 파일 쓰기 API를 호출하면 안 된다.
 - 저장 순서는 export validation -> 기존 source hash 충돌 확인 -> 같은 폴더 temp write/readback -> temp source reparse/catalog validation -> 교체 직전 hash 재확인 -> atomic replace/move -> metadata update다. 어느 검증이든 실패하면 기존 YAML과 runtime metadata를 그대로 둔다.
 - 외부 변경 충돌을 발견하면 기본 동작은 저장 중단이다. 명시적 overwrite는 사용자가 내용을 확인한 뒤에만 허용하며, 검증 중 원본이 다시 바뀌면 overwrite 승인 여부와 무관하게 다시 중단한다.

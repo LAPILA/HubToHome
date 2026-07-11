@@ -38,6 +38,65 @@ public static class SequenceEditCommands
     {
         return new SetSequenceBlockParametersCommand(blockId, parametersJson);
     }
+
+    public static ISequenceEditCommand SetActionId(string blockId, string actionId)
+    {
+        return new SetSequenceBlockTextCommand(
+            blockId,
+            SequenceBlockTextField.ActionId,
+            actionId,
+            "블록 액션 변경");
+    }
+
+    public static ISequenceEditCommand SetDesignerLabel(string blockId, string label)
+    {
+        return new SetSequenceBlockTextCommand(
+            blockId,
+            SequenceBlockTextField.DesignerLabel,
+            label,
+            "블록 이름 변경");
+    }
+
+    public static ISequenceEditCommand SetNote(string blockId, string note)
+    {
+        return new SetSequenceBlockTextCommand(
+            blockId,
+            SequenceBlockTextField.Note,
+            note,
+            "블록 메모 변경");
+    }
+
+    public static ISequenceEditCommand WrapInParallel(
+        IEnumerable<string> blockIds,
+        string wrapperBlockId = "",
+        string parametersJson = "{\"policy\":\"all\"}")
+    {
+        return new WrapSequenceBlocksInParallelCommand(
+            blockIds,
+            wrapperBlockId,
+            parametersJson);
+    }
+
+    public static ISequenceEditCommand ReplaceWith(
+        IEnumerable<string> blockIds,
+        ScenarioActionData replacement,
+        string commandName = "블록 교체")
+    {
+        return new ReplaceSequenceBlocksCommand(blockIds, replacement, commandName);
+    }
+
+    public static ISequenceEditCommand ExtractToSequence(
+        IEnumerable<string> blockIds,
+        ScenarioActionData callBlock,
+        BattleScenarioData owner,
+        ActionSequenceAsset extractedSequence)
+    {
+        return new ExtractSequenceEditCommand(
+            blockIds,
+            callBlock,
+            owner,
+            extractedSequence);
+    }
 }
 
 public sealed class SequenceBlockLocation
@@ -598,5 +657,339 @@ internal sealed class SetSequenceBlockParametersCommand : SequenceEditCommandBas
         {
             location.Action.ParametersJson = _previousParameters ?? "{}";
         }
+    }
+}
+
+internal enum SequenceBlockTextField
+{
+    ActionId,
+    DesignerLabel,
+    Note
+}
+
+internal sealed class SetSequenceBlockTextCommand : SequenceEditCommandBase
+{
+    private readonly string _blockId;
+    private readonly SequenceBlockTextField _field;
+    private readonly string _value;
+    private string _previousValue;
+    private bool _captured;
+
+    public SetSequenceBlockTextCommand(
+        string blockId,
+        SequenceBlockTextField field,
+        string value,
+        string commandName)
+        : base(commandName)
+    {
+        _blockId = blockId ?? string.Empty;
+        _field = field;
+        _value = value ?? string.Empty;
+    }
+
+    public override void Execute(ActionSequenceAsset sequence)
+    {
+        ScenarioActionData action = RequireBlock(sequence, _blockId).Action;
+        if (!_captured)
+        {
+            _previousValue = Read(action);
+            _captured = true;
+        }
+
+        Write(action, _value);
+    }
+
+    public override void Undo(ActionSequenceAsset sequence)
+    {
+        if (sequence != null
+            && SequenceBlockTree.TryFind(sequence, _blockId, out SequenceBlockLocation location))
+        {
+            Write(location.Action, _previousValue);
+        }
+    }
+
+    private string Read(ScenarioActionData action)
+    {
+        switch (_field)
+        {
+            case SequenceBlockTextField.ActionId:
+                return action.ActionId ?? string.Empty;
+            case SequenceBlockTextField.DesignerLabel:
+                return action.DesignerLabel ?? string.Empty;
+            default:
+                return action.Note ?? string.Empty;
+        }
+    }
+
+    private void Write(ScenarioActionData action, string value)
+    {
+        switch (_field)
+        {
+            case SequenceBlockTextField.ActionId:
+                action.ActionId = value ?? string.Empty;
+                break;
+            case SequenceBlockTextField.DesignerLabel:
+                action.DesignerLabel = value ?? string.Empty;
+                break;
+            default:
+                action.Note = value ?? string.Empty;
+                break;
+        }
+    }
+}
+
+internal abstract class ReplaceSequenceBlockRangeCommandBase : SequenceEditCommandBase
+{
+    private readonly List<string> _blockIds;
+    private readonly ScenarioActionData _replacement;
+    private List<ScenarioActionData> _replaced;
+    private string _parentBlockId = string.Empty;
+    private int _firstIndex;
+    private bool _captured;
+
+    protected ReplaceSequenceBlockRangeCommandBase(
+        IEnumerable<string> blockIds,
+        ScenarioActionData replacement,
+        string commandName)
+        : base(commandName)
+    {
+        _blockIds = NormalizeIds(blockIds);
+        _replacement = replacement ?? throw new ArgumentNullException(nameof(replacement));
+        if (_blockIds.Count == 0)
+        {
+            throw new ArgumentException("At least one block ID is required.", nameof(blockIds));
+        }
+    }
+
+    public override string PreferredSelectionBlockId => _replacement.BlockId;
+
+    public override void Execute(ActionSequenceAsset sequence)
+    {
+        if (!_captured)
+        {
+            CaptureRange(sequence);
+            _captured = true;
+        }
+
+        List<ScenarioActionData> list = RequireContainer(sequence, _parentBlockId);
+        RemoveReplacedBlocks(sequence, list);
+        if (SequenceBlockTree.TryFindReference(sequence, _replacement, out SequenceBlockLocation _))
+        {
+            throw new InvalidOperationException("The replacement block already belongs to this sequence.");
+        }
+
+        list.Insert(Math.Min(_firstIndex, list.Count), _replacement);
+    }
+
+    public override void Undo(ActionSequenceAsset sequence)
+    {
+        if (!_captured)
+        {
+            return;
+        }
+
+        if (SequenceBlockTree.TryFindReference(
+                sequence,
+                _replacement,
+                out SequenceBlockLocation replacementLocation))
+        {
+            replacementLocation.List.RemoveAt(replacementLocation.Index);
+        }
+
+        List<ScenarioActionData> list = RequireContainer(sequence, _parentBlockId);
+        int index = Math.Min(_firstIndex, list.Count);
+        for (int i = 0; i < _replaced.Count; i++)
+        {
+            if (!SequenceBlockTree.TryFindReference(
+                    sequence,
+                    _replaced[i],
+                    out SequenceBlockLocation _))
+            {
+                list.Insert(index++, _replaced[i]);
+            }
+        }
+    }
+
+    protected IReadOnlyList<ScenarioActionData> ReplacedBlocks => _replaced;
+    protected ScenarioActionData Replacement => _replacement;
+
+    private void CaptureRange(ActionSequenceAsset sequence)
+    {
+        var locations = new List<SequenceBlockLocation>();
+        List<ScenarioActionData> commonList = null;
+        string commonParent = string.Empty;
+        for (int i = 0; i < _blockIds.Count; i++)
+        {
+            SequenceBlockLocation location = RequireBlock(sequence, _blockIds[i]);
+            if (commonList == null)
+            {
+                commonList = location.List;
+                commonParent = location.ParentBlockId;
+            }
+            else if (!ReferenceEquals(commonList, location.List))
+            {
+                throw new InvalidOperationException(
+                    "묶거나 교체할 블록은 같은 부모 안에 있어야 합니다.");
+            }
+
+            locations.Add(location);
+        }
+
+        locations.Sort((left, right) => left.Index.CompareTo(right.Index));
+        for (int i = 1; i < locations.Count; i++)
+        {
+            if (locations[i].Index != locations[i - 1].Index + 1)
+            {
+                throw new InvalidOperationException(
+                    "묶거나 교체할 블록은 서로 이어져 있어야 합니다.");
+            }
+        }
+
+        _parentBlockId = commonParent;
+        _firstIndex = locations[0].Index;
+        _replaced = new List<ScenarioActionData>(locations.Count);
+        for (int i = 0; i < locations.Count; i++)
+        {
+            _replaced.Add(locations[i].Action);
+        }
+    }
+
+    private void RemoveReplacedBlocks(
+        ActionSequenceAsset sequence,
+        List<ScenarioActionData> list)
+    {
+        for (int i = _replaced.Count - 1; i >= 0; i--)
+        {
+            if (SequenceBlockTree.TryFindReference(
+                    sequence,
+                    _replaced[i],
+                    out SequenceBlockLocation location))
+            {
+                if (!ReferenceEquals(location.List, list))
+                {
+                    throw new InvalidOperationException(
+                        "A replaced block moved to another parent before redo.");
+                }
+
+                location.List.RemoveAt(location.Index);
+            }
+        }
+    }
+
+    private static List<string> NormalizeIds(IEnumerable<string> blockIds)
+    {
+        var result = new List<string>();
+        if (blockIds == null)
+        {
+            return result;
+        }
+
+        foreach (string blockId in blockIds)
+        {
+            string normalized = string.IsNullOrWhiteSpace(blockId)
+                ? string.Empty
+                : blockId.Trim();
+            if (!string.IsNullOrEmpty(normalized) && !result.Contains(normalized))
+            {
+                result.Add(normalized);
+            }
+        }
+
+        return result;
+    }
+}
+
+internal sealed class WrapSequenceBlocksInParallelCommand :
+    ReplaceSequenceBlockRangeCommandBase
+{
+    public WrapSequenceBlocksInParallelCommand(
+        IEnumerable<string> blockIds,
+        string wrapperBlockId,
+        string parametersJson)
+        : base(
+            blockIds,
+            new ScenarioActionData
+            {
+                BlockId = string.IsNullOrWhiteSpace(wrapperBlockId)
+                    ? ScenarioBlockIdentity.Create()
+                    : wrapperBlockId.Trim(),
+                ActionId = ActionDirector.ParallelActionId,
+                DesignerLabel = "동시 실행",
+                ParametersJson = string.IsNullOrWhiteSpace(parametersJson)
+                    ? "{\"policy\":\"all\"}"
+                    : parametersJson
+            },
+            "블록을 동시 실행으로 묶기")
+    {
+    }
+
+    public override void Execute(ActionSequenceAsset sequence)
+    {
+        base.Execute(sequence);
+        Replacement.Children.Clear();
+        for (int i = 0; i < ReplacedBlocks.Count; i++)
+        {
+            Replacement.Children.Add(ReplacedBlocks[i]);
+        }
+    }
+}
+
+internal sealed class ReplaceSequenceBlocksCommand :
+    ReplaceSequenceBlockRangeCommandBase
+{
+    public ReplaceSequenceBlocksCommand(
+        IEnumerable<string> blockIds,
+        ScenarioActionData replacement,
+        string commandName)
+        : base(blockIds, replacement, commandName)
+    {
+    }
+}
+
+internal sealed class ExtractSequenceEditCommand : ISequenceEditCommand
+{
+    private readonly ReplaceSequenceBlocksCommand _replace;
+    private readonly BattleScenarioData _owner;
+    private readonly ActionSequenceAsset _extracted;
+
+    public ExtractSequenceEditCommand(
+        IEnumerable<string> blockIds,
+        ScenarioActionData callBlock,
+        BattleScenarioData owner,
+        ActionSequenceAsset extracted)
+    {
+        _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+        _extracted = extracted ?? throw new ArgumentNullException(nameof(extracted));
+        _replace = new ReplaceSequenceBlocksCommand(
+            blockIds,
+            callBlock,
+            "새 시퀀스로 추출");
+    }
+
+    public string Name => "새 시퀀스로 추출";
+    public string PreferredSelectionBlockId => _replace.PreferredSelectionBlockId;
+
+    public void Execute(ActionSequenceAsset sequence)
+    {
+        _replace.Execute(sequence);
+        if (_owner.Sequences == null)
+        {
+            _owner.Sequences = new List<ActionSequenceAsset>();
+        }
+
+        if (!_owner.Sequences.Contains(_extracted))
+        {
+            _owner.Sequences.Add(_extracted);
+        }
+
+        UnityEditor.EditorUtility.SetDirty(_owner);
+        UnityEditor.EditorUtility.SetDirty(_extracted);
+    }
+
+    public void Undo(ActionSequenceAsset sequence)
+    {
+        _replace.Undo(sequence);
+        _owner.Sequences?.Remove(_extracted);
+        UnityEditor.EditorUtility.SetDirty(_owner);
     }
 }

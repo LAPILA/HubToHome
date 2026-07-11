@@ -294,6 +294,150 @@ public class SequenceEditCommandStackTests
     }
 
     [Test]
+    public void ActionIdDesignerLabelAndNoteEditsUndoAsOneTransaction()
+    {
+        ScenarioActionData action = Action("a", "old.action");
+        action.DesignerLabel = "이전 이름";
+        action.Note = "이전 메모";
+        _sequence.Actions.Add(action);
+        var stack = new SequenceEditCommandStack(_sequence);
+
+        using (SequenceEditTransaction transaction = stack.BeginTransaction("블록 설명 편집"))
+        {
+            stack.Execute(SequenceEditCommands.SetActionId("a", "new.action"));
+            stack.Execute(SequenceEditCommands.SetDesignerLabel("a", "새 이름"));
+            stack.Execute(SequenceEditCommands.SetNote("a", "새 메모"));
+            transaction.Commit();
+        }
+
+        Assert.That(action.ActionId, Is.EqualTo("new.action"));
+        Assert.That(action.DesignerLabel, Is.EqualTo("새 이름"));
+        Assert.That(action.Note, Is.EqualTo("새 메모"));
+        Assert.That(stack.UndoLabel, Is.EqualTo("블록 설명 편집"));
+
+        stack.Undo();
+        Assert.That(action.ActionId, Is.EqualTo("old.action"));
+        Assert.That(action.DesignerLabel, Is.EqualTo("이전 이름"));
+        Assert.That(action.Note, Is.EqualTo("이전 메모"));
+    }
+
+    [Test]
+    public void WrapContiguousBlocksInParallelUndoRedoPreservesObjects()
+    {
+        ScenarioActionData a = Action("a", "test.a");
+        ScenarioActionData b = Action("b", "test.b");
+        ScenarioActionData tail = Action("tail", "test.tail");
+        _sequence.Actions.AddRange(new[] { a, b, tail });
+        var stack = new SequenceEditCommandStack(_sequence);
+
+        stack.Execute(SequenceEditCommands.WrapInParallel(
+            new[] { "a", "b" },
+            "wrapper"));
+
+        AssertIds(_sequence.Actions, "wrapper", "tail");
+        Assert.That(_sequence.Actions[0].ActionId, Is.EqualTo(ActionDirector.ParallelActionId));
+        Assert.That(_sequence.Actions[0].Children, Is.EqualTo(new[] { a, b }));
+        Assert.That(stack.PrimarySelectionBlockId, Is.EqualTo("wrapper"));
+
+        stack.Undo();
+        AssertIds(_sequence.Actions, "a", "b", "tail");
+        Assert.That(_sequence.Actions[0], Is.SameAs(a));
+        Assert.That(_sequence.Actions[1], Is.SameAs(b));
+
+        stack.Redo();
+        AssertIds(_sequence.Actions, "wrapper", "tail");
+        Assert.That(_sequence.Actions[0].Children[0], Is.SameAs(a));
+    }
+
+    [Test]
+    public void WrapRejectsNonContiguousOrDifferentParentSelectionsWithoutMutation()
+    {
+        ScenarioActionData group = Group("group", Action("child", "test.child"));
+        _sequence.Actions.AddRange(new[]
+        {
+            Action("a", "test.a"),
+            Action("middle", "test.middle"),
+            Action("b", "test.b"),
+            group
+        });
+        var stack = new SequenceEditCommandStack(_sequence);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            stack.Execute(SequenceEditCommands.WrapInParallel(new[] { "a", "b" })));
+        Assert.Throws<InvalidOperationException>(() =>
+            stack.Execute(SequenceEditCommands.WrapInParallel(new[] { "a", "child" })));
+
+        AssertIds(_sequence.Actions, "a", "middle", "b", "group");
+        Assert.That(group.Children[0].BlockId, Is.EqualTo("child"));
+        Assert.That(stack.CanUndo, Is.False);
+    }
+
+    [Test]
+    public void ReplaceRangeWithSequenceCallIsReversible()
+    {
+        ScenarioActionData a = Action("a", "test.a");
+        ScenarioActionData b = Action("b", "test.b");
+        _sequence.Actions.AddRange(new[] { a, b });
+        ScenarioActionData call = Action(
+            "call",
+            SequenceCallActionAdapter.Id,
+            "{\"sequence\":\"extracted\"}");
+        var stack = new SequenceEditCommandStack(_sequence);
+
+        stack.Execute(SequenceEditCommands.ReplaceWith(
+            new[] { "a", "b" },
+            call,
+            "시퀀스로 추출"));
+
+        AssertIds(_sequence.Actions, "call");
+        stack.Undo();
+        AssertIds(_sequence.Actions, "a", "b");
+        stack.Redo();
+        AssertIds(_sequence.Actions, "call");
+    }
+
+    [Test]
+    public void ExtractCommandKeepsBattleOwnershipAndCallReplacementInOneHistoryEntry()
+    {
+        ScenarioActionData source = Action("source", "test.source");
+        _sequence.Actions.Add(source);
+        BattleScenarioData battle = ScriptableObject.CreateInstance<BattleScenarioData>();
+        battle.Sequences.Add(_sequence);
+        ActionSequenceAsset extracted = ScriptableObject.CreateInstance<ActionSequenceAsset>();
+        extracted.SequenceId = "extracted";
+        ScenarioActionData call = Action(
+            "call",
+            SequenceCallActionAdapter.Id,
+            "{\"sequence\":\"extracted\"}");
+        var stack = new SequenceEditCommandStack(_sequence);
+
+        try
+        {
+            stack.Execute(SequenceEditCommands.ExtractToSequence(
+                new[] { "source" },
+                call,
+                battle,
+                extracted));
+
+            AssertIds(_sequence.Actions, "call");
+            Assert.That(battle.Sequences, Contains.Item(extracted));
+
+            stack.Undo();
+            AssertIds(_sequence.Actions, "source");
+            Assert.That(battle.Sequences.Contains(extracted), Is.False);
+
+            stack.Redo();
+            AssertIds(_sequence.Actions, "call");
+            Assert.That(battle.Sequences, Contains.Item(extracted));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(extracted);
+            UnityEngine.Object.DestroyImmediate(battle);
+        }
+    }
+
+    [Test]
     public void ChangedEventFiresForExecuteUndoRedoAndSelection()
     {
         _sequence.Actions.Add(Action("a", "test.a"));
