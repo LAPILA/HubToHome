@@ -24,6 +24,7 @@ Before changing scenario editing behavior, read:
 Then load the reference file that matches the work:
 
 - `references/scenario-source-format.md` for YAML shape, IDs, action syntax, or import/export.
+- `docs/plans/2026-07-12-sequence-maker-workbench-design.md` and `specs/002-sequence-maker-workbench/spec.md` before changing the Sequence Maker, Action Library source, Trigger Rule grammar, preview, or live-test behavior.
 - `references/editor-and-sync.md` for custom editor UX, validation, localization, or synchronization.
 - `references/action-catalog.md` for adding or changing action grammar.
 

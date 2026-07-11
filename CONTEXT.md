@@ -118,6 +118,38 @@ _Avoid_: exposing raw GUIDs, fileIDs, or managed reference internals as the norm
 The discoverable catalog of Action grammar, Korean labels, parameters, examples, validation expectations, and runtime adapter ownership.
 _Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.
 
+**Action Library**:
+The human-facing resolved collection of Action Catalog definitions used to search, understand, configure, validate, and preview Actions. Multiple owned catalogs may contribute to one library, but one stable Action ID has only one active contract.
+_Avoid_: asking a normal Sequence Maker user to choose a catalog asset manually or treating an undocumented runtime adapter as discoverable authoring grammar.
+
+**Action Block ID**:
+The stable identity of one authored Action instance inside an Action Sequence. It remains the same when the block is reordered and is distinct from the Action ID that names the Action type.
+_Avoid_: identifying authored blocks only by list index, display name, or current hierarchy path.
+
+**Sequence Input**:
+A typed value accepted by a reusable Action Sequence and supplied by its caller, triggering event, or supported execution context.
+_Avoid_: duplicating an entire sequence only to substitute an actor, position, dialogue, duration, or similar authored value.
+
+**Trigger Rule**:
+The general `when -> do` rule that observes one Scenario Event, evaluates Conditions and execution policy, then requests an Action Sequence. A Battle Event Rule is the battle-owned specialization of this concept.
+_Avoid_: requiring every new rule to add one central enum member and a new set of unrelated optional fields.
+
+**Scenario Event**:
+A stable, typed description of something that occurred in a domain system and may be observed by Trigger Rules, such as participant HP changing, a Game Module completing, or an interaction beginning.
+_Avoid_: using an unrestricted global string event bus or letting scenario code own the domain behavior that emits the event.
+
+**Trigger Condition**:
+A typed predicate used by a Trigger Rule to compare Scenario Event payload, session state, Encounter Memory, or other explicitly supported read-only state.
+_Avoid_: embedding arbitrary code expressions in scenario data.
+
+**Execution Session**:
+An observable run of an Action Sequence with current Action Block ID, lifecycle, pause, step, cancellation, completion result, and diagnostics.
+_Avoid_: treating sequence execution as a fire-and-forget coroutine with no author-facing state.
+
+**Preparation Run**:
+An editor-only fast-forward of blocks preceding a selected start block, used to establish required preview or test state without replaying their full presentation. Production gameplay does not use Preparation Run semantics.
+_Avoid_: applying real save, reward, or scene-transition side effects while preparing an editor preview.
+
 **Cinematic Stage**:
 A scene-local, offstage presentation rig that owns a temporary Cinemachine camera, named subject bindings, and reusable Cinematic Shots. It prepares under SceneLoader's black reveal gate, takes camera ownership only while a sequence requests it, then releases back to the normal gameplay camera.
 _Avoid_: hiding gameplay actors with `SetActive`, duplicating scenes for short transitions, or making culling layers the default way to separate a cinematic from gameplay.

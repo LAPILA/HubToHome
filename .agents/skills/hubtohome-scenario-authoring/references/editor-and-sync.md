@@ -2,6 +2,18 @@
 
 The custom editor is the human-facing surface for scenario authoring. It must be readable in Korean, modern, stable, and safe for light edits.
 
+## Approved Workbench Redesign
+
+The approved successor design is documented in `docs/plans/2026-07-12-sequence-maker-workbench-design.md` and `specs/002-sequence-maker-workbench/spec.md`. It is not fully implemented yet. Do not deepen the old three-panel prototype with ad-hoc UI behavior that conflicts with this direction.
+
+- The UI Toolkit Sequence Maker becomes the one official workbench after feature parity; the Odin editor is a migration-only surface.
+- Humans directly edit Runtime Assets and explicitly save validated changes back to YAML. AI agents primarily edit YAML.
+- Every Action instance gains a stable Block ID.
+- Action and Trigger Library definitions move toward category-scoped YAML sources with generated Unity representations.
+- The workbench uses unified navigation, a vertical block flow, typed controls, contextual validation, reference usage, Safe Preview, Live Test, and Preparation Run.
+- `when` evolves from the fixed battle enum toward Scenario Event IDs plus catalog-backed Trigger Conditions.
+- Action Sequences gain typed inputs and remain finite orchestration; continuous gameplay remains inside Game Modules.
+
 ## Editor Goals
 
 - Show scenario flow as rules and sequences, not raw serialized data.
