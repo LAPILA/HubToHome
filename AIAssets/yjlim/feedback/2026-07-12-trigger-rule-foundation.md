@@ -20,3 +20,16 @@
 
 - Unity EditMode 집중 테스트 12/12 통과.
 - 기존 규칙 목록과 새 규칙 목록이 한 `BattleScenarioData` 안에서 함께 유지됨을 확인했다.
+
+## 공식 Trigger Library
+
+- `Assets/_Game/Content/Scenarios/TriggerLibrary/Source`의 YAML 3개가 사람이 읽는 원본이다.
+- 전투 이벤트 6개와 조건 7개에 한국어 이름, 설명, 사용 시점, 문장형 요약, 검색어, 타입 파라미터를 작성했다.
+- Unity 메뉴 `HubToHome > 시나리오 > Trigger Library 다시 만들기`로 생성 에셋을 갱신한다.
+- 원본에 중복 ID나 잘못된 필드가 있으면 기존 생성 에셋은 교체되지 않는다.
+- Runtime Condition과 Library 계약 중 어느 한쪽만 추가해도 검증에서 실패한다.
+
+### 추가 검증
+
+- YAML 파서/라이터/동기화 8/8 통과.
+- 공식 원본/런타임/생성 에셋 일치 2/2 통과.

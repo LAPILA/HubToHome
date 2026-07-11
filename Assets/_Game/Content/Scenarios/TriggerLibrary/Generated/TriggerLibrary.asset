@@ -1,0 +1,837 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: becbd8cf7fed1894098ccecad54cf51a, type: 3}
+  m_Name: TriggerLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::TriggerLibraryAsset
+  LibraryId: resolved-trigger-library
+  DisplayNameKo: "\uD1B5\uD569 Trigger Library"
+  DescriptionKo: "\uCE74\uD14C\uACE0\uB9AC YAML \uC6D0\uBCF8\uC5D0\uC11C \uC0DD\uC131\uB41C
+    \uACF5\uC2DD Event/Condition Library"
+  SourcePaths:
+  - Assets/_Game/Content/Scenarios/TriggerLibrary/Source/battle.events.yaml
+  - Assets/_Game/Content/Scenarios/TriggerLibrary/Source/common.conditions.yaml
+  - Assets/_Game/Content/Scenarios/TriggerLibrary/Source/encounter.conditions.yaml
+  SourceHash: 72133096c55e542ca246a1a21b1f4424d5d5a807bd85aa85f06911b1f0ae5f36
+  Events:
+  - EventId: battle.checkpoint
+    Category: battle
+    DisplayNameKo: "\uC804\uD22C \uCCB4\uD06C\uD3EC\uC778\uD2B8 \uB3C4\uB2EC"
+    DescriptionKo: "\uC804\uD22C \uD750\uB984\uC774 \uC774\uB984 \uC788\uB294 \uC548\uC804
+      \uC2E4\uD589 \uC9C0\uC810\uC5D0 \uB3C4\uB2EC\uD588\uC744 \uB54C \uBC1C\uC0DD\uD55C\uB2E4."
+    UsageKo: "\uD604\uC7AC \uC561\uC158, \uC2A4\uD0AC, \uBAA8\uB4C8\uC774 \uB05D\uB09C
+      \uB4A4\uCC98\uB7FC \uC9C0\uC5F0 \uADDC\uCE59\uC744 \uC815\uD655\uD55C \uC9C0\uC810\uC5D0\uC11C
+      \uD480 \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "\uC804\uD22C\uAC00 {checkpoint} \uCCB4\uD06C\uD3EC\uC778\uD2B8\uC5D0
+      \uB3C4\uB2EC\uD558\uBA74"
+    Tags:
+    - "\uC804\uD22C"
+    - "\uCCB4\uD06C\uD3EC\uC778\uD2B8"
+    - "\uC9C0\uC5F0"
+    Aliases:
+    - checkpoint
+    - flush
+    AllowedPrimaryModes:
+    - battle
+    IconId: flag
+    AccentHex: '#E56A54'
+    Deprecated: 0
+    ReplacementEventId: 
+    Payload:
+    - FieldId: checkpoint
+      DisplayNameKo: "\uCCB4\uD06C\uD3EC\uC778\uD2B8"
+      DescriptionKo: "\uB3C4\uB2EC\uD55C \uCCB4\uD06C\uD3EC\uC778\uD2B8\uC758 \uC548\uC815\uC801\uC778
+        ID"
+      TypeId: checkpoint_id
+      EditorControlId: checkpoint_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: "\uC608: skill.finished"
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - EventId: battle.started
+    Category: battle
+    DisplayNameKo: "\uC804\uD22C \uC2DC\uC791"
+    DescriptionKo: "Battle Scenario\uAC00 \uCD08\uAE30\uD654\uB418\uACE0 \uC2DC\uC791
+      \uD750\uB984\uC744 \uC2E4\uD589\uD560 \uC900\uBE44\uAC00 \uB418\uC5C8\uC744
+      \uB54C \uBC1C\uC0DD\uD55C\uB2E4."
+    UsageKo: "\uCCAB \uB300\uC0AC, \uC2DC\uC791 \uC5F0\uCD9C, \uC624\uD504\uB2DD
+      \uBAA8\uB4C8 \uC900\uBE44\uCC98\uB7FC \uC804\uD22C \uC9C4\uC785 \uC9C1\uD6C4
+      \uD55C \uBC88 \uC2E4\uD589\uD560 \uADDC\uCE59\uC5D0 \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "\uC804\uD22C\uAC00 \uC2DC\uC791\uB418\uBA74"
+    Tags:
+    - "\uC804\uD22C"
+    - "\uC2DC\uC791"
+    - "\uC624\uD504\uB2DD"
+    Aliases:
+    - battle start
+    - "\uC804\uD22C \uC9C4\uC785"
+    AllowedPrimaryModes:
+    - battle
+    IconId: swords
+    AccentHex: '#E56A54'
+    Deprecated: 0
+    ReplacementEventId: 
+    Payload:
+    - FieldId: subject
+      DisplayNameKo: "\uB300\uC0C1"
+      DescriptionKo: "\uC804\uD22C \uC2DC\uC791 \uC774\uBCA4\uD2B8\uC758 \uC8FC\uCCB4
+        ID"
+      TypeId: subject_id
+      EditorControlId: subject_picker
+      Required: 0
+      DefaultValueJson: '"battle"'
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - EventId: module.completed
+    Category: battle
+    DisplayNameKo: "\uAC8C\uC784 \uBAA8\uB4C8 \uC644\uB8CC"
+    DescriptionKo: "QTE, \uC288\uD305, \uAD8C\uD22C, \uBBF8\uB2C8\uAC8C\uC784 \uAC19\uC740
+      Game Module\uC774 \uD558\uB098\uC758 \uACB0\uACFC\uB97C \uBCF4\uACE0\uD588\uC744
+      \uB54C \uBC1C\uC0DD\uD55C\uB2E4."
+    UsageKo: "\uBAA8\uB4C8 \uACB0\uACFC\uC5D0 \uB530\uB77C \uB2E4\uC74C \uC2DC\uD000\uC2A4,
+      \uB2E4\uB978 \uBAA8\uB4C8, \uC804\uD22C \uC885\uB8CC \uD750\uB984\uC744 \uC120\uD0DD\uD560
+      \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{module} \uBAA8\uB4C8\uC774 {outcome} \uACB0\uACFC\uB85C
+      \uB05D\uB098\uBA74"
+    Tags:
+    - "\uBAA8\uB4C8"
+    - "\uC644\uB8CC"
+    - "\uACB0\uACFC"
+    Aliases:
+    - module result
+    - "\uBBF8\uB2C8\uAC8C\uC784 \uC644\uB8CC"
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: gamepad-2
+    AccentHex: '#E56A54'
+    Deprecated: 0
+    ReplacementEventId: 
+    Payload:
+    - FieldId: module
+      DisplayNameKo: "\uBAA8\uB4C8"
+      DescriptionKo: "\uC644\uB8CC\uB97C \uBCF4\uACE0\uD55C Game Module ID"
+      TypeId: module_id
+      EditorControlId: module_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: "\uC608: aim_shooter"
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: outcome
+      DisplayNameKo: "\uACB0\uACFC"
+      DescriptionKo: "\uBAA8\uB4C8\uC774 \uBCF4\uACE0\uD55C \uC120\uD0DD\uC801 \uACB0\uACFC
+        ID"
+      TypeId: outcome_id
+      EditorControlId: outcome_picker
+      Required: 0
+      DefaultValueJson: 
+      PlaceholderKo: "\uC608: victory"
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - EventId: participant.defeated
+    Category: battle
+    DisplayNameKo: "\uCC38\uAC00\uC790 \uC4F0\uB7EC\uC9D0"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 HP\uAC00 0\uC774 \uB418\uC5B4
+      \uC4F0\uB7EC\uC9C4 \uC0C1\uD0DC\uB85C \uC804\uD658\uB420 \uB54C \uBC1C\uC0DD\uD55C\uB2E4."
+    UsageKo: "\uC801 \uCC98\uCE58 \uB300\uC0AC, \uC4F0\uB7EC\uC9D0 \uC5F0\uCD9C,
+      \uC804\uD22C \uACB0\uACFC \uC804\uD658\uCC98\uB7FC \uC0AC\uB9DD \uC774\uD6C4
+      \uD750\uB984\uC744 \uC2DC\uC791\uD560 \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{subject} \uCC38\uAC00\uC790\uAC00 \uC4F0\uB7EC\uC9C0\uBA74"
+    Tags:
+    - "\uCC38\uAC00\uC790"
+    - HP
+    - "\uC4F0\uB7EC\uC9D0"
+    Aliases:
+    - enemy defeated
+    - "\uC0AC\uB9DD"
+    AllowedPrimaryModes:
+    - battle
+    IconId: skull
+    AccentHex: '#E56A54'
+    Deprecated: 0
+    ReplacementEventId: 
+    Payload:
+    - FieldId: subject
+      DisplayNameKo: "\uCC38\uAC00\uC790"
+      DescriptionKo: "\uC4F0\uB7EC\uC9C4 \uCC38\uAC00\uC790\uC758 \uC548\uC815\uC801\uC778
+        ID"
+      TypeId: subject_id
+      EditorControlId: participant_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: sourceActor
+      DisplayNameKo: "\uC6D0\uC778 Actor"
+      DescriptionKo: "\uC4F0\uB7EC\uC9D0\uC744 \uC720\uBC1C\uD55C \uC120\uD0DD\uC801
+        Actor ID"
+      TypeId: actor_id
+      EditorControlId: actor_picker
+      Required: 0
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - EventId: participant.hp_changed
+    Category: battle
+    DisplayNameKo: "\uCC38\uAC00\uC790 HP \uBCC0\uACBD"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 HP \uBE44\uC728\uC774 \uC774\uC804
+      \uAC12\uC5D0\uC11C \uD604\uC7AC \uAC12\uC73C\uB85C \uBCC0\uACBD\uB420 \uB54C
+      \uBC1C\uC0DD\uD55C\uB2E4."
+    UsageKo: "HP\uAC00 \uD2B9\uC815 \uC784\uACC4\uCE58\uB97C \uCC98\uC74C \uD1B5\uACFC\uD558\uB294
+      phase \uC804\uD658\uC774\uB098 \uD53C\uD574 \uBC18\uC751 \uADDC\uCE59\uC758
+      \uC774\uBCA4\uD2B8\uB85C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{subject}\uC758 HP\uAC00 {previousRatio}\uC5D0\uC11C {currentRatio}\uB85C
+      \uBC14\uB00C\uBA74"
+    Tags:
+    - "\uCC38\uAC00\uC790"
+    - HP
+    - "\uC784\uACC4\uCE58"
+    Aliases:
+    - hp changed
+    - "\uCCB4\uB825 \uBCC0\uD654"
+    AllowedPrimaryModes:
+    - battle
+    IconId: heart-pulse
+    AccentHex: '#E56A54'
+    Deprecated: 0
+    ReplacementEventId: 
+    Payload:
+    - FieldId: subject
+      DisplayNameKo: "\uCC38\uAC00\uC790"
+      DescriptionKo: "HP\uAC00 \uBCC0\uACBD\uB41C \uCC38\uAC00\uC790\uC758 \uC548\uC815\uC801\uC778
+        ID"
+      TypeId: subject_id
+      EditorControlId: participant_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: previousRatio
+      DisplayNameKo: "\uC774\uC804 HP \uBE44\uC728"
+      DescriptionKo: "\uBCC0\uACBD \uC804 HP \uBE44\uC728"
+      TypeId: ratio
+      EditorControlId: number
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 1
+      Maximum: 1
+      UnitKo: "\uBE44\uC728"
+    - FieldId: currentRatio
+      DisplayNameKo: "\uD604\uC7AC HP \uBE44\uC728"
+      DescriptionKo: "\uBCC0\uACBD \uD6C4 HP \uBE44\uC728"
+      TypeId: ratio
+      EditorControlId: number
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 1
+      Maximum: 1
+      UnitKo: "\uBE44\uC728"
+    - FieldId: sourceActor
+      DisplayNameKo: "\uC6D0\uC778 Actor"
+      DescriptionKo: "HP \uBCC0\uACBD\uC744 \uC720\uBC1C\uD55C \uC120\uD0DD\uC801
+        Actor ID"
+      TypeId: actor_id
+      EditorControlId: actor_picker
+      Required: 0
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - EventId: skill.completed
+    Category: battle
+    DisplayNameKo: "\uC2A4\uD0AC \uC885\uB8CC"
+    DescriptionKo: "\uD55C \uC2A4\uD0AC\uC758 \uD310\uC815\uACFC \uB85C\uCEEC \uC5F0\uCD9C
+      \uD750\uB984\uC774 \uC644\uB8CC\uB418\uC5C8\uC744 \uB54C \uBC1C\uC0DD\uD55C\uB2E4."
+    UsageKo: "\uACF5\uACA9 \uC2A4\uD0AC\uC774 \uC644\uC804\uD788 \uB05D\uB09C \uB4A4
+      \uB300\uC0AC\uB098 phase \uC804\uD658\uC744 \uC2DC\uC791\uD574\uC57C \uD560
+      \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{actor}\uAC00 \uC0AC\uC6A9\uD55C {skill} \uC2A4\uD0AC\uC774
+      \uB05D\uB098\uBA74"
+    Tags:
+    - "\uC2A4\uD0AC"
+    - "\uC644\uB8CC"
+    - "\uC804\uD22C"
+    Aliases:
+    - skill finished
+    - "\uACF5\uACA9 \uC885\uB8CC"
+    AllowedPrimaryModes:
+    - battle
+    IconId: sparkles
+    AccentHex: '#E56A54'
+    Deprecated: 0
+    ReplacementEventId: 
+    Payload:
+    - FieldId: skill
+      DisplayNameKo: "\uC2A4\uD0AC"
+      DescriptionKo: "\uC644\uB8CC\uB41C \uC2A4\uD0AC\uC758 \uC548\uC815\uC801\uC778
+        ID"
+      TypeId: skill_id
+      EditorControlId: skill_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: actor
+      DisplayNameKo: "\uC0AC\uC6A9\uC790"
+      DescriptionKo: "\uC2A4\uD0AC\uC744 \uC0AC\uC6A9\uD55C \uC120\uD0DD\uC801 Actor
+        ID"
+      TypeId: actor_id
+      EditorControlId: actor_picker
+      Required: 0
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: outcome
+      DisplayNameKo: "\uACB0\uACFC"
+      DescriptionKo: "\uC2A4\uD0AC\uC774 \uBCF4\uACE0\uD55C \uC120\uD0DD\uC801 \uACB0\uACFC
+        ID"
+      TypeId: outcome_id
+      EditorControlId: text
+      Required: 0
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - event
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  Conditions:
+  - ConditionId: event.participant
+    Category: common
+    DisplayNameKo: "\uC774\uBCA4\uD2B8 \uCC38\uAC00\uC790 \uC77C\uCE58"
+    DescriptionKo: "\uC774\uBCA4\uD2B8 payload\uC758 subject\uAC00 \uC120\uD0DD\uD55C
+      \uCC38\uAC00\uC790 ID\uC640 \uAC19\uC740\uC9C0 \uD655\uC778\uD55C\uB2E4."
+    UsageKo: "\uAC19\uC740 \uC774\uBCA4\uD2B8 \uC885\uB958\uB97C \uC5EC\uB7EC \uC801\uC774\uB098
+      \uC544\uAD70\uC774 \uBC1C\uC0DD\uC2DC\uD0AC \uC218 \uC788\uC744 \uB54C \uB300\uC0C1\uC744
+      \uC881\uD78C\uB2E4."
+    SentenceTemplateKo: "\uC774\uBCA4\uD2B8 \uCC38\uAC00\uC790\uAC00 {participant}\uC774\uACE0"
+    Tags:
+    - "\uC774\uBCA4\uD2B8"
+    - "\uCC38\uAC00\uC790"
+    - "\uB300\uC0C1"
+    Aliases:
+    - subject
+    - actor
+    RequiredContexts:
+    - event
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: user-round-check
+    AccentHex: '#4F8EDB'
+    Deprecated: 0
+    ReplacementConditionId: 
+    Parameters:
+    - FieldId: participant
+      DisplayNameKo: "\uCC38\uAC00\uC790"
+      DescriptionKo: "\uBE44\uAD50\uD560 \uC548\uC815\uC801\uC778 \uCC38\uAC00\uC790
+        ID"
+      TypeId: subject_id
+      EditorControlId: participant_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: "\uC608: zev"
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - ConditionId: module.outcome
+    Category: common
+    DisplayNameKo: "\uBAA8\uB4C8 \uACB0\uACFC \uC77C\uCE58"
+    DescriptionKo: "module.completed \uC774\uBCA4\uD2B8\uC758 \uBAA8\uB4C8 ID\uC640
+      \uC120\uD0DD\uC801 outcome ID\uB97C \uBE44\uAD50\uD55C\uB2E4."
+    UsageKo: "\uD2B9\uC815 \uBBF8\uB2C8\uAC8C\uC784\uC774\uB098 \uC804\uD22C \uBAA8\uB4C8\uC758
+      \uC2B9\uB9AC, \uC2E4\uD328, \uC2DC\uAC04 \uCD08\uACFC \uACB0\uACFC\uC5D0 \uBC18\uC751\uD560
+      \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{module} \uBAA8\uB4C8 \uACB0\uACFC\uAC00 {outcome}\uC774\uACE0"
+    Tags:
+    - "\uBAA8\uB4C8"
+    - "\uACB0\uACFC"
+    - "\uC644\uB8CC"
+    Aliases:
+    - module result
+    - outcome
+    RequiredContexts:
+    - event
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: gamepad-2
+    AccentHex: '#4F8EDB'
+    Deprecated: 0
+    ReplacementConditionId: 
+    Parameters:
+    - FieldId: module
+      DisplayNameKo: "\uBAA8\uB4C8"
+      DescriptionKo: "\uBE44\uAD50\uD560 Game Module ID"
+      TypeId: module_id
+      EditorControlId: module_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: outcome
+      DisplayNameKo: "\uACB0\uACFC"
+      DescriptionKo: "\uBE44\uAD50\uD560 \uC120\uD0DD\uC801 outcome ID. \uBE44\uC6B0\uBA74
+        \uBAA8\uB4E0 \uACB0\uACFC\uB97C \uD5C8\uC6A9\uD55C\uB2E4."
+      TypeId: outcome_id
+      EditorControlId: outcome_picker
+      Required: 0
+      DefaultValueJson: 
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - ConditionId: number.compare
+    Category: common
+    DisplayNameKo: "\uC22B\uC790 \uBE44\uAD50"
+    DescriptionKo: "\uC9C0\uC815\uD55C \uACBD\uB85C\uC758 \uC22B\uC790\uB97C \uAE30\uC900\uAC12\uACFC
+      \uBE44\uAD50\uD55C\uB2E4."
+    UsageKo: "\uCE74\uC6B4\uD2B8, \uBE44\uC728, \uC810\uC218\uCC98\uB7FC \uD55C \uC2DC\uC810\uC758
+      \uC22B\uC790 \uC0C1\uD0DC\uB97C \uBE44\uAD50\uD560 \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{path} \uAC12\uC774 {operator} {value}\uC774\uACE0"
+    Tags:
+    - "\uC22B\uC790"
+    - "\uBE44\uAD50"
+    - "\uC0C1\uD0DC"
+    Aliases:
+    - numeric compare
+    - "\uC218\uCE58"
+    RequiredContexts:
+    - event_or_context_value
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: between-horizontal-start
+    AccentHex: '#4F8EDB'
+    Deprecated: 0
+    ReplacementConditionId: 
+    Parameters:
+    - FieldId: path
+      DisplayNameKo: "\uAC12 \uACBD\uB85C"
+      DescriptionKo: "event.* \uB610\uB294 \uBA85\uC2DC\uC801\uC73C\uB85C \uACF5\uAE09\uB41C
+        context \uAC12 \uACBD\uB85C"
+      TypeId: value_path
+      EditorControlId: value_path_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: "\uC608: event.currentRatio"
+      ValueSources:
+      - literal
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: operator
+      DisplayNameKo: "\uBE44\uAD50 \uBC29\uC2DD"
+      DescriptionKo: "\uC22B\uC790 \uBE44\uAD50 \uC5F0\uC0B0"
+      TypeId: comparison_operator
+      EditorControlId: dropdown
+      Required: 1
+      DefaultValueJson: '"equal"'
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      Options:
+      - equal
+      - not_equal
+      - less
+      - less_or_equal
+      - greater
+      - greater_or_equal
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: value
+      DisplayNameKo: "\uAE30\uC900\uAC12"
+      DescriptionKo: "\uBE44\uAD50\uD560 \uC22B\uC790 \uAE30\uC900\uAC12"
+      TypeId: number
+      EditorControlId: number
+      Required: 1
+      DefaultValueJson: 0
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - ConditionId: number.crossed_below
+    Category: common
+    DisplayNameKo: "\uC784\uACC4\uCE58 \uC544\uB798\uB85C \uD1B5\uACFC"
+    DescriptionKo: "\uC774\uC804 \uAC12\uC740 \uC784\uACC4\uCE58\uBCF4\uB2E4 \uB192\uACE0
+      \uD604\uC7AC \uAC12\uC740 \uC784\uACC4\uCE58 \uC774\uD558\uC778\uC9C0 \uD655\uC778\uD55C\uB2E4."
+    UsageKo: "HP 50% phase \uC804\uD658\uCC98\uB7FC \uD55C \uBC88\uC758 \uBCC0\uD654\uB85C
+      \uC784\uACC4\uC120\uC744 \uCC98\uC74C \uB0B4\uB824\uAC14\uC744 \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{previousPath}\uC5D0\uC11C {currentPath}\uB85C \uBC14\uB00C\uBA70
+      {threshold} \uC544\uB798\uB97C \uD1B5\uACFC\uD588\uACE0"
+    Tags:
+    - "\uC22B\uC790"
+    - "\uC784\uACC4\uCE58"
+    - "\uBCC0\uD654"
+    Aliases:
+    - crossed below
+    - "\uD558\uD5A5 \uD1B5\uACFC"
+    RequiredContexts:
+    - event_or_context_value
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: arrow-down-to-line
+    AccentHex: '#4F8EDB'
+    Deprecated: 0
+    ReplacementConditionId: 
+    Parameters:
+    - FieldId: previousPath
+      DisplayNameKo: "\uC774\uC804 \uAC12 \uACBD\uB85C"
+      DescriptionKo: "\uBCC0\uACBD \uC804 \uC22B\uC790\uB97C \uC77D\uC744 \uACBD\uB85C"
+      TypeId: value_path
+      EditorControlId: value_path_picker
+      Required: 1
+      DefaultValueJson: '"event.previousRatio"'
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: currentPath
+      DisplayNameKo: "\uD604\uC7AC \uAC12 \uACBD\uB85C"
+      DescriptionKo: "\uBCC0\uACBD \uD6C4 \uC22B\uC790\uB97C \uC77D\uC744 \uACBD\uB85C"
+      TypeId: value_path
+      EditorControlId: value_path_picker
+      Required: 1
+      DefaultValueJson: '"event.currentRatio"'
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: threshold
+      DisplayNameKo: "\uC784\uACC4\uCE58"
+      DescriptionKo: "\uC544\uB798\uB85C \uD1B5\uACFC\uD588\uB294\uC9C0 \uD655\uC778\uD560
+        \uAE30\uC900\uAC12"
+      TypeId: number
+      EditorControlId: number
+      Required: 1
+      DefaultValueJson: 0.5
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - ConditionId: value.equals
+    Category: common
+    DisplayNameKo: "\uAC12 \uC77C\uCE58"
+    DescriptionKo: "\uC9C0\uC815\uD55C \uACBD\uB85C\uC758 \uD0C0\uC785 \uBCF4\uC874
+      \uAC12\uC774 \uAE30\uC900 JSON \uAC12\uACFC \uAC19\uC740\uC9C0 \uD655\uC778\uD55C\uB2E4."
+    UsageKo: "\uBB38\uC790\uC5F4, bool, \uC22B\uC790, null \uAC19\uC740 \uC77C\uBC18
+      \uAC12\uC744 \uC815\uD655\uD788 \uBE44\uAD50\uD560 \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{path} \uAC12\uC774 {value}\uC774\uACE0"
+    Tags:
+    - "\uAC12"
+    - "\uBE44\uAD50"
+    - "\uACF5\uD1B5"
+    Aliases:
+    - equals
+    - "\uAC19\uC74C"
+    RequiredContexts:
+    - event_or_context_value
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: equal
+    AccentHex: '#4F8EDB'
+    Deprecated: 0
+    ReplacementConditionId: 
+    Parameters:
+    - FieldId: path
+      DisplayNameKo: "\uAC12 \uACBD\uB85C"
+      DescriptionKo: "event.* \uB610\uB294 \uBA85\uC2DC\uC801\uC73C\uB85C \uACF5\uAE09\uB41C
+        context \uAC12 \uACBD\uB85C"
+      TypeId: value_path
+      EditorControlId: value_path_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: "\uC608: event.subject"
+      ValueSources:
+      - literal
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: value
+      DisplayNameKo: "\uAE30\uC900\uAC12"
+      DescriptionKo: "\uBE44\uAD50\uD560 \uD0C0\uC785 \uBCF4\uC874 JSON \uAC12"
+      TypeId: json
+      EditorControlId: typed_value
+      Required: 1
+      DefaultValueJson: null
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - ConditionId: flag.state
+    Category: progress
+    DisplayNameKo: "\uC800\uC7A5 Flag \uC0C1\uD0DC"
+    DescriptionKo: "\uBA85\uC2DC\uD55C \uC800\uC7A5 \uB610\uB294 \uC9C4\uD589 flag
+      \uACBD\uB85C\uC758 \uAC12\uC774 \uAE30\uC900 JSON \uAC12\uACFC \uAC19\uC740\uC9C0
+      \uD655\uC778\uD55C\uB2E4."
+    UsageKo: "\uBD84\uAE30 \uD574\uAE08, \uC774\uBBF8 \uBCF8 \uC5F0\uCD9C, \uD018\uC2A4\uD2B8
+      \uC9C4\uD589\uCC98\uB7FC \uC800\uC7A5\uB418\uB294 \uC0C1\uD0DC\uC5D0 \uBC18\uC751\uD560
+      \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "{flag} flag\uAC00 {value}\uC774\uACE0"
+    Tags:
+    - "\uC800\uC7A5"
+    - flag
+    - "\uC9C4\uD589"
+    Aliases:
+    - save flag
+    - event flag
+    RequiredContexts:
+    - save_state
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: flag
+    AccentHex: '#49A078'
+    Deprecated: 0
+    ReplacementConditionId: 
+    Parameters:
+    - FieldId: flag
+      DisplayNameKo: Flag
+      DescriptionKo: "flag. \uC811\uB450\uC0AC \uC5C6\uC774 \uC785\uB825\uD558\uB294
+        \uC548\uC815\uC801\uC778 flag ID"
+      TypeId: flag_id
+      EditorControlId: flag_picker
+      Required: 1
+      DefaultValueJson: 
+      PlaceholderKo: "\uC608: shooter.unlocked"
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: value
+      DisplayNameKo: "\uAE30\uC900\uAC12"
+      DescriptionKo: "\uBE44\uAD50\uD560 \uD0C0\uC785 \uBCF4\uC874 JSON \uAC12"
+      TypeId: json
+      EditorControlId: typed_value
+      Required: 1
+      DefaultValueJson: true
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+  - ConditionId: memory.meet_count
+    Category: progress
+    DisplayNameKo: "\uB9CC\uB0A8 \uD69F\uC218 \uBE44\uAD50"
+    DescriptionKo: "\uD604\uC7AC Encounter Memory\uC758 meetCount\uB97C \uAE30\uC900
+      \uC22B\uC790\uC640 \uBE44\uAD50\uD55C\uB2E4."
+    UsageKo: "\uAC19\uC740 \uC801\uC744 \uCC98\uC74C, \uB450 \uBC88\uC9F8, \uADF8
+      \uC774\uD6C4 \uB9CC\uB0AC\uC744 \uB54C \uC11C\uB85C \uB2E4\uB978 \uB300\uC0AC\uC640
+      \uD750\uB984\uC744 \uC120\uD0DD\uD560 \uB54C \uC0AC\uC6A9\uD55C\uB2E4."
+    SentenceTemplateKo: "\uC774 \uB9CC\uB0A8 \uD69F\uC218\uAC00 {operator} {value}\uC774\uACE0"
+    Tags:
+    - Encounter Memory
+    - "\uB9CC\uB0A8"
+    - "\uC800\uC7A5"
+    Aliases:
+    - meet count
+    - "\uC7AC\uD68C"
+    RequiredContexts:
+    - encounter_memory
+    AllowedPrimaryModes:
+    - battle
+    - overworld
+    IconId: history
+    AccentHex: '#49A078'
+    Deprecated: 0
+    ReplacementConditionId: 
+    Parameters:
+    - FieldId: operator
+      DisplayNameKo: "\uBE44\uAD50 \uBC29\uC2DD"
+      DescriptionKo: "\uB9CC\uB0A8 \uD69F\uC218 \uBE44\uAD50 \uC5F0\uC0B0"
+      TypeId: comparison_operator
+      EditorControlId: dropdown
+      Required: 1
+      DefaultValueJson: '"equal"'
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      Options:
+      - equal
+      - not_equal
+      - less
+      - less_or_equal
+      - greater
+      - greater_or_equal
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+    - FieldId: value
+      DisplayNameKo: "\uD69F\uC218"
+      DescriptionKo: "\uBE44\uAD50\uD560 \uB9CC\uB0A8 \uD69F\uC218"
+      TypeId: integer
+      EditorControlId: integer
+      Required: 1
+      DefaultValueJson: 1
+      PlaceholderKo: 
+      ValueSources:
+      - literal
+      - input
+      Options: []
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "\uD68C"

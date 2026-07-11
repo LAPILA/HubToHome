@@ -79,6 +79,13 @@ public sealed class TriggerConditionRegistry
         return registry;
     }
 
+    public List<string> GetRegisteredConditionIds()
+    {
+        var ids = new List<string>(_evaluators.Keys);
+        ids.Sort(StringComparer.Ordinal);
+        return ids;
+    }
+
     private bool TryEvaluateGroup(
         ScenarioTriggerConditionNodeData group,
         ScenarioTriggerEvaluationContext context,

@@ -1,0 +1,148 @@
+libraryId: "common-conditions"
+name: "공통 트리거 조건"
+description: "Scenario Event payload와 공통 런타임 값을 비교하는 공식 조건 계약"
+category: "common"
+order: 20
+accent: "#4F8EDB"
+conditions:
+  event.participant:
+    name: "이벤트 참가자 일치"
+    description: "이벤트 payload의 subject가 선택한 참가자 ID와 같은지 확인한다."
+    usage: "같은 이벤트 종류를 여러 적이나 아군이 발생시킬 수 있을 때 대상을 좁힌다."
+    sentence: "이벤트 참가자가 {participant}이고"
+    tags: ["이벤트", "참가자", "대상"]
+    aliases: ["subject", "actor"]
+    contexts: ["event"]
+    modes: ["battle", "overworld"]
+    icon: "user-round-check"
+    parameters:
+      participant:
+        name: "참가자"
+        description: "비교할 안정적인 참가자 ID"
+        type: "subject_id"
+        control: "participant_picker"
+        required: true
+        placeholder: "예: zev"
+        sources: ["literal", "input"]
+  module.outcome:
+    name: "모듈 결과 일치"
+    description: "module.completed 이벤트의 모듈 ID와 선택적 outcome ID를 비교한다."
+    usage: "특정 미니게임이나 전투 모듈의 승리, 실패, 시간 초과 결과에 반응할 때 사용한다."
+    sentence: "{module} 모듈 결과가 {outcome}이고"
+    tags: ["모듈", "결과", "완료"]
+    aliases: ["module result", "outcome"]
+    contexts: ["event"]
+    modes: ["battle", "overworld"]
+    icon: "gamepad-2"
+    parameters:
+      module:
+        name: "모듈"
+        description: "비교할 Game Module ID"
+        type: "module_id"
+        control: "module_picker"
+        required: true
+        sources: ["literal", "input"]
+      outcome:
+        name: "결과"
+        description: "비교할 선택적 outcome ID. 비우면 모든 결과를 허용한다."
+        type: "outcome_id"
+        control: "outcome_picker"
+        sources: ["literal", "input"]
+  number.compare:
+    name: "숫자 비교"
+    description: "지정한 경로의 숫자를 기준값과 비교한다."
+    usage: "카운트, 비율, 점수처럼 한 시점의 숫자 상태를 비교할 때 사용한다."
+    sentence: "{path} 값이 {operator} {value}이고"
+    tags: ["숫자", "비교", "상태"]
+    aliases: ["numeric compare", "수치"]
+    contexts: ["event_or_context_value"]
+    modes: ["battle", "overworld"]
+    icon: "between-horizontal-start"
+    parameters:
+      path:
+        name: "값 경로"
+        description: "event.* 또는 명시적으로 공급된 context 값 경로"
+        type: "value_path"
+        control: "value_path_picker"
+        required: true
+        placeholder: "예: event.currentRatio"
+        sources: ["literal"]
+      operator:
+        name: "비교 방식"
+        description: "숫자 비교 연산"
+        type: "comparison_operator"
+        control: "dropdown"
+        required: true
+        default: "\"equal\""
+        options: ["equal", "not_equal", "less", "less_or_equal", "greater", "greater_or_equal"]
+        sources: ["literal"]
+      value:
+        name: "기준값"
+        description: "비교할 숫자 기준값"
+        type: "number"
+        control: "number"
+        required: true
+        default: "0"
+        sources: ["literal", "input"]
+  number.crossed_below:
+    name: "임계치 아래로 통과"
+    description: "이전 값은 임계치보다 높고 현재 값은 임계치 이하인지 확인한다."
+    usage: "HP 50% phase 전환처럼 한 번의 변화로 임계선을 처음 내려갔을 때 사용한다."
+    sentence: "{previousPath}에서 {currentPath}로 바뀌며 {threshold} 아래를 통과했고"
+    tags: ["숫자", "임계치", "변화"]
+    aliases: ["crossed below", "하향 통과"]
+    contexts: ["event_or_context_value"]
+    modes: ["battle", "overworld"]
+    icon: "arrow-down-to-line"
+    parameters:
+      previousPath:
+        name: "이전 값 경로"
+        description: "변경 전 숫자를 읽을 경로"
+        type: "value_path"
+        control: "value_path_picker"
+        required: true
+        default: "\"event.previousRatio\""
+        sources: ["literal"]
+      currentPath:
+        name: "현재 값 경로"
+        description: "변경 후 숫자를 읽을 경로"
+        type: "value_path"
+        control: "value_path_picker"
+        required: true
+        default: "\"event.currentRatio\""
+        sources: ["literal"]
+      threshold:
+        name: "임계치"
+        description: "아래로 통과했는지 확인할 기준값"
+        type: "number"
+        control: "number"
+        required: true
+        default: "0.5"
+        sources: ["literal", "input"]
+  value.equals:
+    name: "값 일치"
+    description: "지정한 경로의 타입 보존 값이 기준 JSON 값과 같은지 확인한다."
+    usage: "문자열, bool, 숫자, null 같은 일반 값을 정확히 비교할 때 사용한다."
+    sentence: "{path} 값이 {value}이고"
+    tags: ["값", "비교", "공통"]
+    aliases: ["equals", "같음"]
+    contexts: ["event_or_context_value"]
+    modes: ["battle", "overworld"]
+    icon: "equal"
+    parameters:
+      path:
+        name: "값 경로"
+        description: "event.* 또는 명시적으로 공급된 context 값 경로"
+        type: "value_path"
+        control: "value_path_picker"
+        required: true
+        placeholder: "예: event.subject"
+        sources: ["literal"]
+      value:
+        name: "기준값"
+        description: "비교할 타입 보존 JSON 값"
+        type: "json"
+        control: "typed_value"
+        required: true
+        default: "null"
+        sources: ["literal", "input"]

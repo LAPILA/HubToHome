@@ -12,7 +12,14 @@ public sealed class TriggerFieldDefinition
     public string EditorControlId = string.Empty;
     public bool Required;
     public string DefaultValueJson = string.Empty;
+    public string PlaceholderKo = string.Empty;
+    public List<string> ValueSources = new List<string>();
     public List<string> Options = new List<string>();
+    public bool HasMinimum;
+    public double Minimum;
+    public bool HasMaximum;
+    public double Maximum;
+    public string UnitKo = string.Empty;
 }
 
 [Serializable]
@@ -22,8 +29,15 @@ public sealed class ScenarioEventDefinition
     public string Category = string.Empty;
     public string DisplayNameKo = string.Empty;
     [TextArea(1, 5)] public string DescriptionKo = string.Empty;
+    [TextArea(1, 5)] public string UsageKo = string.Empty;
     public string SentenceTemplateKo = string.Empty;
     public List<string> Tags = new List<string>();
+    public List<string> Aliases = new List<string>();
+    public List<string> AllowedPrimaryModes = new List<string>();
+    public string IconId = string.Empty;
+    public string AccentHex = string.Empty;
+    public bool Deprecated;
+    public string ReplacementEventId = string.Empty;
     public List<TriggerFieldDefinition> Payload = new List<TriggerFieldDefinition>();
 }
 
@@ -34,8 +48,16 @@ public sealed class TriggerConditionDefinition
     public string Category = string.Empty;
     public string DisplayNameKo = string.Empty;
     [TextArea(1, 5)] public string DescriptionKo = string.Empty;
+    [TextArea(1, 5)] public string UsageKo = string.Empty;
     public string SentenceTemplateKo = string.Empty;
     public List<string> Tags = new List<string>();
+    public List<string> Aliases = new List<string>();
+    public List<string> RequiredContexts = new List<string>();
+    public List<string> AllowedPrimaryModes = new List<string>();
+    public string IconId = string.Empty;
+    public string AccentHex = string.Empty;
+    public bool Deprecated;
+    public string ReplacementConditionId = string.Empty;
     public List<TriggerFieldDefinition> Parameters = new List<TriggerFieldDefinition>();
 }
 
