@@ -27,7 +27,7 @@ MonoBehaviour:
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/module.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/screen.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/timeline.actions.yaml
-  SourceHash: b11dfd9dcce6de341352c0ca31d63504253e9c969dad5a7e3cbeea9f69bc8a15
+  SourceHash: 46fab5b04b591bd974df9414c02190404af17d240972959b6796ac230c2a70d8
   Entries:
   - ActionId: battle.actor.drop_in
     Category: actor
@@ -1956,6 +1956,25 @@ MonoBehaviour:
       - all
       - any
       - race
+      PlaceholderKo: 
+    - Name: previewWinner
+      Type: blockRef
+      DisplayNameKo: "\uBBF8\uB9AC\uBCF4\uAE30 \uAE30\uC900 \uC790\uC2DD"
+      DescriptionKo: "any/race \uBE14\uB85D\uC744 \uC120\uD0DD \uC704\uCE58 \uC774\uC804\uC5D0
+        \uC900\uBE44\uD560 \uB54C \uC801\uC6A9\uD560 \uC9C1\uC811 \uC790\uC2DD Block
+        ID\uC785\uB2C8\uB2E4. all\uC5D0\uC11C\uB294 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+      Required: 0
+      DefaultValue: 
+      EditorControlId: block
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: 
+      ValueSources:
+      - literal
+      Options: []
       PlaceholderKo: 
     ExampleYaml: '- parallel: { policy: all, children: [] }'
     RequiredContexts:

@@ -8,3 +8,8 @@ public interface ICinematicStageRunner
 
     IEnumerator ReleaseStage(string stageId, ActionExecutionContext context);
 }
+
+public interface ICinematicStagePreparationRunner
+{
+    IEnumerator ApplyShotFinalState(string stageId, string shotId, ActionExecutionContext context);
+}

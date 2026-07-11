@@ -28,6 +28,12 @@ actions:
         default: "all"
         options: [all, any, race]
         sources: [literal]
+      previewWinner:
+        name: "미리보기 기준 자식"
+        description: "any/race 블록을 선택 위치 이전에 준비할 때 적용할 직접 자식 Block ID입니다. all에서는 사용하지 않습니다."
+        type: blockRef
+        control: block
+        sources: [literal]
   flow.wait:
     name: "기다리기"
     description: "지정한 시간 동안 다음 블록의 실행을 기다립니다."

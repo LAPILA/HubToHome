@@ -23,7 +23,7 @@
 - [x] Round-trip extensible Trigger Rules through scenario YAML.
 - [x] Add observable Execution Session.
 - [x] Add structured parallel policies and cancellation.
-- [ ] Add Preparation Run and safe preview state contracts.
+- [x] Add Preparation Run and safe preview state contracts.
 
 ## Editing Modules
 

@@ -15,6 +15,10 @@ The approved successor design is documented in `docs/plans/2026-07-12-sequence-m
 - Action Sequences gain typed inputs and remain finite orchestration; continuous gameplay remains inside Game Modules.
 - Runtime block highlighting, execution history, pause, resume, one-block step, cancel, and selected-block start must use `ActionExecutionSession` and `ActionPlayRequest`. Do not duplicate coroutine-state inference in the editor.
 - Nested sequence calls and parallel children retain their parent Block ID in trace events. The UI may group these visually, but must preserve event order and terminal failure/cancellation messages.
+- Safe Preview context creation is owned by `PreviewActionExecutionContextFactory`; do not hand the active production `ActionExecutionContext` to `PreparationRun`.
+- The editor owns one `EditorPreviewStateScope` from Preparation start through selected playback. Stop, failure, cancellation, domain reload, Play Mode transition, or window disposal must restore it exactly once.
+- A pending `PreparationInputRequest` is a visible paused state. Show the requested Block and accept a value or cancel; never inject a guessed value.
+- Playing from an `any`/`race` parallel prefix requires `previewWinner`. Offer a direct-child selector and explain that it affects preview setup only.
 
 ## Stable Block Identity
 

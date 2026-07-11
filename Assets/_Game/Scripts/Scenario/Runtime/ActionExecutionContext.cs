@@ -21,11 +21,12 @@ public sealed class ActionExecutionContext
     private ActionExecutionContext(
         ActionExecutionHandle handle,
         Dictionary<Type, object> services,
-        ActionExecutionContext valueParent)
+        ActionExecutionContext valueParent,
+        Dictionary<string, JToken> values = null)
     {
         Handle = handle ?? new ActionExecutionHandle();
         _services = services ?? new Dictionary<Type, object>();
-        _values = new Dictionary<string, JToken>(StringComparer.Ordinal);
+        _values = values ?? new Dictionary<string, JToken>(StringComparer.Ordinal);
         _valueParent = valueParent;
     }
 
@@ -113,6 +114,45 @@ public sealed class ActionExecutionContext
             ModuleId = ModuleId,
             ExecutionBlockId = ExecutionBlockId
         };
+    }
+
+    public ActionExecutionContext CreateExecutionScope(ActionExecutionHandle handle)
+    {
+        return new ActionExecutionContext(handle, _services, _valueParent, _values)
+        {
+            ScenarioId = ScenarioId,
+            PrimaryMode = PrimaryMode,
+            ModuleId = ModuleId,
+            ExecutionBlockId = ExecutionBlockId
+        };
+    }
+
+    public ActionExecutionContext CreateDetachedExecutionScope(ActionExecutionHandle handle)
+    {
+        var values = new Dictionary<string, JToken>(StringComparer.Ordinal);
+        CopyVisibleValues(values);
+        return new ActionExecutionContext(
+            handle,
+            new Dictionary<Type, object>(),
+            null,
+            values)
+        {
+            ScenarioId = ScenarioId,
+            PrimaryMode = PrimaryMode,
+            ModuleId = ModuleId,
+            ExecutionBlockId = ExecutionBlockId
+        };
+    }
+
+    private void CopyVisibleValues(Dictionary<string, JToken> destination)
+    {
+        _valueParent?.CopyVisibleValues(destination);
+        foreach (KeyValuePair<string, JToken> pair in _values)
+        {
+            destination[pair.Key] = pair.Value == null
+                ? JValue.CreateNull()
+                : pair.Value.DeepClone();
+        }
     }
 
     private static string NormalizePath(string path)

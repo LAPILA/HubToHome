@@ -12,7 +12,11 @@ public sealed class CinematicStageSubjectBinding
     public Transform Target;
 }
 
-public sealed class OverworldCinematicStage : MonoBehaviour, ICinematicStageRunner
+public sealed class OverworldCinematicStage : MonoBehaviour,
+    ICinematicStageRunner,
+    ICinematicStagePreparationRunner,
+    IPreviewStateParticipant,
+    IPreviewUndoObjectProvider
 {
     [SerializeField] private string _stageId = string.Empty;
     [SerializeField] private CinemachineCamera _cinematicCamera;
@@ -173,6 +177,43 @@ public sealed class OverworldCinematicStage : MonoBehaviour, ICinematicStageRunn
         _activeSequence = null;
     }
 
+    public IEnumerator ApplyShotFinalState(
+        string stageId,
+        string shotId,
+        ActionExecutionContext context)
+    {
+        ActionExecutionHandle handle = context != null ? context.Handle : null;
+        string normalizedStageId = Normalize(stageId);
+        if (!string.IsNullOrEmpty(normalizedStageId)
+            && !string.Equals(normalizedStageId, StageId, StringComparison.Ordinal))
+        {
+            handle?.Fail("Cinematic Stage ID is not owned by this stage: " + normalizedStageId);
+            yield break;
+        }
+
+        if (!TryGetShot(shotId, out CinematicShotAsset shot, out string error)
+            || !PrepareShot(shot, out error))
+        {
+            handle?.Fail(error);
+            yield break;
+        }
+
+        for (int i = 0; i < shot.Motions.Count; i++)
+        {
+            CinematicShotMotion motion = shot.Motions[i];
+            if (motion == null || !TryGetSubject(motion.SubjectId, out Transform target))
+            {
+                handle?.Fail("Cinematic Shot subject is unavailable: "
+                    + (motion != null ? motion.SubjectId : "<null>"));
+                yield break;
+            }
+
+            target.localPosition = motion.EndLocalPosition;
+        }
+
+        SetCameraSize(shot.EndOrthographicSize);
+    }
+
     public IEnumerator ReleaseStage(string stageId, ActionExecutionContext context)
     {
         string normalizedStageId = Normalize(stageId);
@@ -194,6 +235,82 @@ public sealed class OverworldCinematicStage : MonoBehaviour, ICinematicStageRunn
         {
             _cinematicCamera.Follow = null;
             _cinematicCamera.gameObject.SetActive(false);
+        }
+    }
+
+    public object CapturePreviewState()
+    {
+        if (_activeSequence != null
+            && _activeSequence.IsActive()
+            && !_activeSequence.IsComplete())
+        {
+            throw new InvalidOperationException(
+                "Cannot capture Overworld Cinematic Stage while a shot is playing.");
+        }
+
+        var subjectStates = new List<SubjectPreviewState>(_subjects.Count);
+        for (int i = 0; i < _subjects.Count; i++)
+        {
+            CinematicStageSubjectBinding binding = _subjects[i];
+            if (binding?.Target != null)
+            {
+                subjectStates.Add(new SubjectPreviewState(
+                    binding.Target,
+                    binding.Target.localPosition));
+            }
+        }
+
+        return new StagePreviewState(
+            _preparedShot,
+            _cinematicCamera != null && _cinematicCamera.gameObject.activeSelf,
+            _cinematicCamera != null ? _cinematicCamera.Follow : null,
+            GetCameraSize(),
+            subjectStates);
+    }
+
+    public void RestorePreviewState(object state)
+    {
+        if (!(state is StagePreviewState previewState))
+        {
+            return;
+        }
+
+        KillActiveSequence();
+        for (int i = 0; i < previewState.Subjects.Count; i++)
+        {
+            SubjectPreviewState subject = previewState.Subjects[i];
+            if (subject.Target != null)
+            {
+                subject.Target.localPosition = subject.LocalPosition;
+            }
+        }
+
+        _preparedShot = previewState.PreparedShot;
+        if (_cinematicCamera != null)
+        {
+            _cinematicCamera.Follow = previewState.CameraFollow;
+            SetCameraSize(previewState.CameraSize);
+            _cinematicCamera.gameObject.SetActive(previewState.CameraActive);
+        }
+    }
+
+    public IEnumerable<UnityEngine.Object> GetPreviewUndoObjects()
+    {
+        yield return this;
+        if (_cinematicCamera != null)
+        {
+            yield return _cinematicCamera;
+            yield return _cinematicCamera.gameObject;
+            yield return _cinematicCamera.transform;
+        }
+
+        for (int i = 0; i < _subjects.Count; i++)
+        {
+            CinematicStageSubjectBinding binding = _subjects[i];
+            if (binding?.Target != null)
+            {
+                yield return binding.Target;
+            }
         }
     }
 
@@ -324,5 +441,40 @@ public sealed class OverworldCinematicStage : MonoBehaviour, ICinematicStageRunn
     private static string Normalize(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
+
+    private sealed class StagePreviewState
+    {
+        public StagePreviewState(
+            CinematicShotAsset preparedShot,
+            bool cameraActive,
+            Transform cameraFollow,
+            float cameraSize,
+            List<SubjectPreviewState> subjects)
+        {
+            PreparedShot = preparedShot;
+            CameraActive = cameraActive;
+            CameraFollow = cameraFollow;
+            CameraSize = cameraSize;
+            Subjects = subjects ?? new List<SubjectPreviewState>();
+        }
+
+        public CinematicShotAsset PreparedShot { get; }
+        public bool CameraActive { get; }
+        public Transform CameraFollow { get; }
+        public float CameraSize { get; }
+        public List<SubjectPreviewState> Subjects { get; }
+    }
+
+    private sealed class SubjectPreviewState
+    {
+        public SubjectPreviewState(Transform target, Vector3 localPosition)
+        {
+            Target = target;
+            LocalPosition = localPosition;
+        }
+
+        public Transform Target { get; }
+        public Vector3 LocalPosition { get; }
     }
 }

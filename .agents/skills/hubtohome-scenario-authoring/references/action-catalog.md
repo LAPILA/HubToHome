@@ -91,6 +91,8 @@ actions:
 - `BattleScenarioActionRegistryFactory.CreateRegistry()` and `SceneActionSequenceContextFactory.CreateRegistry()` expose production registrations without scene state. `ActionAdapterContractScanner` must report adapter-without-catalog and catalog-without-adapter separately; `flow.parallel` is explicitly Director-owned.
 - The initial production library contains 28 contracts: 27 runtime adapters plus Director-owned `flow.parallel`. Any new registered Action must add its category source and consistency test in the same change.
 - `flow.parallel.parameters.policy` is a segmented enum with `all`, `any`, and `race`. Keep the default `all` for old sources. The Action Library description and generated runtime asset must be rebuilt whenever these completion semantics change.
+- `flow.parallel.parameters.previewWinner` is an optional direct-child Block ID used only by Preparation Run for `any` and `race`. Runtime combat does not use it. Without this explicit preview branch, selected-block Preparation must stop instead of guessing.
+- `preparation: apply_final_state` and `preparation: execute_isolated` are executable safety contracts, not editor labels. Add or update the matching `IActionPreparationAdapter` in the same change. `skip_presentation`, `require_input`, and `unsupported` must keep their documented fail/skip behavior.
 
 ## Categories
 
