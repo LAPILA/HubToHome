@@ -1,0 +1,60 @@
+# Sequence Maker Workbench Tasks
+
+## Foundation
+
+- [ ] Capture build, test, and current-editor baseline.
+- [ ] Add stable recursive Block IDs and duplication rules.
+- [ ] Round-trip Block IDs and sequence metadata through YAML.
+- [ ] Add typed Sequence Inputs and value bindings.
+- [ ] Add sequence calls and cycle validation.
+
+## Libraries
+
+- [ ] Deepen Action Library metadata.
+- [ ] Add deterministic Action Library YAML parser/writer/sync.
+- [ ] Publish production Action Library category sources.
+- [ ] Add Action adapter/catalog consistency validation.
+- [ ] Add Scenario Event and Trigger Condition data.
+- [ ] Add deterministic Trigger Library YAML parser/writer/sync.
+
+## Runtime
+
+- [ ] Map fixed Battle Event Rules into extensible Trigger Rules.
+- [ ] Round-trip extensible Trigger Rules through scenario YAML.
+- [ ] Add observable Execution Session.
+- [ ] Add structured parallel policies and cancellation.
+- [ ] Add Preparation Run and safe preview state contracts.
+
+## Editing Modules
+
+- [ ] Add recursive-safe command history.
+- [ ] Add validated atomic save and conflict detection.
+- [ ] Add editor recovery snapshots.
+
+## Workbench UI
+
+- [ ] Build UXML/USS workbench shell.
+- [ ] Add unified battle-flow and sequence navigation.
+- [ ] Add usage and impact index.
+- [ ] Add vertical nested block canvas.
+- [ ] Add multi-selection and standard edit operations.
+- [ ] Add Action picker and Action Library screen.
+- [ ] Add typed parameter and binding inspector.
+- [ ] Add sequence contract editor.
+- [ ] Add Trigger Rule editor and simulator.
+- [ ] Add Safe Preview and Live Test controls.
+- [ ] Add execution trace and Problems drawer.
+- [ ] Complete save, conflict, and recovery UX.
+- [ ] Reach feature parity and retire divergent editor behavior.
+
+## Verification And Architecture
+
+- [ ] Run focused and complete Scenario EditMode tests.
+- [ ] Run dotnet build and scoped diff validation.
+- [ ] Perform Unity MCP visual QA across target states and layouts.
+- [ ] Validate overworld subway Preparation Run and Live Test.
+- [ ] Validate cloned ZEV Trigger Rule and module transition flow.
+- [ ] Update project skill, docs, update log, and patch note.
+- [ ] Run `improve-codebase-architecture` review.
+- [ ] Implement accepted Strong architecture findings.
+- [ ] Re-run complete verification and finish handoff.

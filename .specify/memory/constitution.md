@@ -16,6 +16,8 @@
 
 Active feature: `002-sequence-maker-workbench`
 
-Current phase: `specify`
+Current phase: `plan`
 
 Primary design: `docs/plans/2026-07-12-sequence-maker-workbench-design.md`
+
+Primary plan: `docs/plans/2026-07-12-sequence-maker-workbench-implementation.md`
