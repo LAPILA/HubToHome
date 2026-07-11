@@ -21,6 +21,7 @@
         <ui:VisualElement name="context-bar" class="sm-context-bar">
             <ui:Label name="breadcrumb-label" text="편집 대상을 선택" class="sm-breadcrumb" />
             <ui:VisualElement class="sm-command-spacer" />
+            <ui:Button name="library-button" class="sm-command-button sm-library-open-button" text="액션" tooltip="Action Library 열기" />
             <ui:TextField name="search-field" class="sm-search-field" tooltip="현재 시퀀스 안에서 블록 검색" />
             <ui:Button name="density-button" class="sm-icon-button" tooltip="블록 표시 밀도 전환" />
             <ui:Button name="drawer-toggle-button" class="sm-icon-button" tooltip="아래 패널 열기 또는 닫기" />

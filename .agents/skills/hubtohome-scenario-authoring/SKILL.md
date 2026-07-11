@@ -75,6 +75,10 @@ Treat scenario YAML as the source of truth and ScriptableObject assets as the Un
 - 공식 세로 Block Flow는 `SequenceFlowProjection`을 통해 재귀 Action 트리를 표시한다. UI가 재귀 목록을 직접 변경하면 안 되며, 드래그 이동, 다중 선택, 복사/붙여넣기, 병렬 묶기, 교체, 추출은 모두 `SequenceEditCommandStack` 명령 하나로 실행되어야 한다.
 - 복제/붙여넣기는 새 Block ID를 발급하고, 순서 변경은 기존 Block ID를 보존한다. 부모와 자식이 동시에 선택된 삭제/이동은 최상위 선택만 처리해 같은 노드를 두 번 변경하지 않는다.
 - Battle Scenario 소유 시퀀스를 별도 시퀀스로 추출할 때는 새 `ActionSequenceAsset`을 Battle의 `Sequences`에 연결하고 원래 구간을 typed `sequence.call`로 교체한다. Undo는 참조와 원래 블록을 복원하되 생성된 에셋을 자동 삭제하지 않는다.
+- Action 추가와 교체는 `ActionPickerWindow` / `ActionLibraryView`를 사용한다. 한국어 이름, Action ID, 설명, 사용 시점, 태그, 별칭, 예시, 파라미터를 검색하며 현재 Primary Mode와 알려진 실행 context 호환성을 먼저 표시한다. Deprecated/Disabled/비호환 Action을 검색에서 숨기지 말고 정확한 사용 불가 사유를 보여준다.
+- Action 인스펙터는 `ActionCatalogParameter`를 `ParameterFieldFactory`로 변환한다. 숫자/시간/정수/bool/enum/color/vector/참조/목록/JSON을 타입에 맞는 UI로 표시하고 required, range, unit, quick edit 정보를 보존한다.
+- Literal과 binding 전환은 `ValueSourceField` 하나가 소유한다. binding은 반드시 `{ "$bind": "input.actor" }` 형태의 구조화 토큰으로 저장하고 임의 표현식 문자열을 만들지 않는다. 알려진 Sequence Input은 선택 목록으로 제공하되 event/session/memory/context 같은 경로는 새 ID를 직접 입력할 수 있어야 한다.
+- 인스펙터의 블록 이름, 메모, 활성화, 파라미터, raw JSON 적용과 Action 교체도 모두 `SequenceEditCommandStack`을 통과한다. Action 교체는 기존 Block ID를 유지하고 Action ID와 기본 파라미터를 하나의 transaction으로 변경한다.
 - 공식 Sequence Maker의 YAML 저장은 `SequenceSaveCoordinator` 하나를 사용한다. Battle Scenario와 독립 Action Sequence 차이는 `ISequenceSaveTarget` adapter가 감추며, UI가 기존 exporter의 직접 파일 쓰기 API를 호출하면 안 된다.
 - 저장 순서는 export validation -> 기존 source hash 충돌 확인 -> 같은 폴더 temp write/readback -> temp source reparse/catalog validation -> 교체 직전 hash 재확인 -> atomic replace/move -> metadata update다. 어느 검증이든 실패하면 기존 YAML과 runtime metadata를 그대로 둔다.
 - 외부 변경 충돌을 발견하면 기본 동작은 저장 중단이다. 명시적 overwrite는 사용자가 내용을 확인한 뒤에만 허용하며, 검증 중 원본이 다시 바뀌면 overwrite 승인 여부와 무관하게 다시 중단한다.

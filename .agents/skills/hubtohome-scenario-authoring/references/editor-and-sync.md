@@ -85,6 +85,10 @@ When adding or changing the pipeline:
 - 중앙 Block Flow는 `SequenceFlowCanvas`와 `SequenceFlowProjection`이 소유한다. 순차/병렬 구조, 중첩 깊이, 접기, 검색 시 조상 유지, 정확한 Block 단위 검증 배지는 projection 결과만 사용한다.
 - 표준 편집 동작은 다중 선택, 드래그 이동, 복사/잘라내기/붙여넣기, 복제, 삭제, 활성화, 병렬 묶기, Action 교체, 독립 Sequence 추출을 포함한다. 모든 데이터 변경은 command stack transaction이어야 하며 선택 상태는 안정적인 Block ID로 유지한다.
 - Block 카드는 catalog의 한국어 이름, category 색상, 요약 template, quick parameter, note, validation, breakpoint/bookmark를 표시한다. 구조 Block은 일반 Action과 구분하며 parallel policy를 `모두/하나/경쟁`으로 보여준다.
+- 삽입 rail과 인스펙터의 `교체`는 같은 `ActionPickerWindow`를 연다. Picker는 전체/즐겨찾기/최근/카테고리 탐색, 다중 metadata 검색, 호환 상태와 이유, 프로젝트 사용 수, 파라미터 설명, YAML 예시를 제공한다.
+- 검색 정렬은 compatible -> deprecated -> unavailable 순서를 우선하고 그 안에서 전체 이름/ID 일치, prefix, 부분 일치 점수를 적용한다. Deprecated/Disabled 항목은 발견 가능해야 하지만 새 삽입은 막는다.
+- `ActionInspectorView`는 전역 Action 설명/사용 시점과 현재 Block의 이름/메모/활성/파라미터를 분리한다. Action ID, Block ID, raw JSON, YAML 예시는 접힌 `개발자 정보`에 둔다.
+- 참조형 파라미터는 현재 Battle 참가자, dialogue/audio 매핑, Game Module, Timeline, 프로젝트 Sequence와 기존 사용 값을 후보로 보여주면서 custom stable ID 직접 입력도 허용한다.
 - The same window also accepts a mutually exclusive **독립 Action Sequence**. This mode has no Battle Event Rule panel and uses `ActionSequenceSourceSync` for preview, validation, source save, safe reimport, and export-as. The timeline, action inspector, catalog parameter forms, validation badges, and light edit controls must behave the same as scenario-owned sequences.
 - The editor now uses a three-panel board layout:
   - left: flow map with overview, rules, sequence list, and validation summary

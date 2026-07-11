@@ -38,8 +38,8 @@
 - [x] Add usage and impact index.
 - [x] Add vertical nested block canvas.
 - [x] Add multi-selection and standard edit operations.
-- [ ] Add Action picker and Action Library screen.
-- [ ] Add typed parameter and binding inspector.
+- [x] Add Action picker and Action Library screen.
+- [x] Add typed parameter and binding inspector.
 - [ ] Add sequence contract editor.
 - [ ] Add Trigger Rule editor and simulator.
 - [ ] Add Safe Preview and Live Test controls.

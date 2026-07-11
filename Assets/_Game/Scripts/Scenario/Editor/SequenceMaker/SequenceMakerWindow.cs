@@ -39,6 +39,7 @@ public sealed class SequenceMakerWindow : EditorWindow
     private Button _stepButton;
     private Button _stopButton;
     private Label _breadcrumbLabel;
+    private Button _libraryButton;
     private TextField _searchField;
     private Button _densityButton;
     private Button _drawerToggleButton;
@@ -49,6 +50,7 @@ public sealed class SequenceMakerWindow : EditorWindow
     private SequenceAssetIndex _assetIndex;
     private SequenceUsageIndex _usageIndex;
     private SequenceNavigatorHistory _navigatorHistory;
+    private ActionPickerHistory _actionPickerHistory;
     private Label _flowTitle;
     private Label _flowSubtitle;
     private VisualElement _flowContent;
@@ -84,6 +86,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         minSize = new Vector2(960f, 620f);
         _preferences = new EditorSequenceMakerPreferences();
         _navigatorHistory = new SequenceNavigatorHistory(_preferences);
+        _actionPickerHistory = new ActionPickerHistory(_preferences);
         _workspace = new SequenceMakerWorkspaceState();
         _workspace.LoadPreferences(_preferences);
         _workspace.Changed += OnWorkspaceChanged;
@@ -195,6 +198,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         _stepButton = Require<Button>("step-button");
         _stopButton = Require<Button>("stop-button");
         _breadcrumbLabel = Require<Label>("breadcrumb-label");
+        _libraryButton = Require<Button>("library-button");
         _searchField = Require<TextField>("search-field");
         _densityButton = Require<Button>("density-button");
         _drawerToggleButton = Require<Button>("drawer-toggle-button");
@@ -221,6 +225,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         SequenceMakerTheme.SetButtonIcon(_densityButton, "Settings", "D");
         SequenceMakerTheme.SetButtonIcon(_drawerToggleButton, "console.infoicon", "_");
         SequenceMakerTheme.SetButtonIcon(_drawerCloseButton, "winbtn_win_close", "X");
+        SequenceMakerTheme.PrependButtonIcon(_libraryButton, "d_UnityEditor.SceneHierarchyWindow");
 
         _playModeField.choices = new List<string> { "안전 미리보기", "Play Mode 테스트" };
         _playModeField.SetValueWithoutNotify("안전 미리보기");
@@ -231,6 +236,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         _redoButton.clicked += Redo;
         _validateButton.clicked += ValidateCurrent;
         _saveButton.clicked += () => SaveCurrent();
+        _libraryButton.clicked += OpenActionLibrary;
         _densityButton.clicked += ToggleDensity;
         _drawerToggleButton.clicked += () =>
             _workspace.SetDrawerOpen(!_workspace.IsDrawerOpen);
@@ -292,7 +298,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         _flowTitle = flowHeader.Q<Label>(className: "sm-panel-title");
         _flowSubtitle = flowHeader.Q<Label>(className: "sm-panel-subtitle");
         _flowCanvas = new SequenceFlowCanvas();
-        _flowCanvas.InsertRequested += ShowQuickActionMenu;
+        _flowCanvas.InsertRequested += ShowActionPicker;
         _flowCanvas.ExtractRequested += ExtractSelectionToSequence;
         _flowCanvas.InspectRequested += blockId =>
         {
@@ -361,6 +367,12 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RestoreTarget()
     {
+        if (_catalog == null)
+        {
+            _catalog = AssetDatabase.LoadAssetAtPath<ActionCatalogAsset>(
+                ProductionActionLibraryBuildCommand.GeneratedAssetPath);
+        }
+
         if (_serializedBattleScenario != null)
         {
             _workspace.SetBattleScenario(_serializedBattleScenario);
@@ -382,11 +394,6 @@ public sealed class SequenceMakerWindow : EditorWindow
             _workspace.SetStandaloneSequence(sequence);
         }
 
-        if (_catalog == null)
-        {
-            _catalog = AssetDatabase.LoadAssetAtPath<ActionCatalogAsset>(
-                ProductionActionLibraryBuildCommand.GeneratedAssetPath);
-        }
     }
 
     private void OnTargetFieldChanged(ChangeEvent<UnityEngine.Object> evt)
@@ -752,7 +759,7 @@ public sealed class SequenceMakerWindow : EditorWindow
             _searchField != null ? _searchField.value : string.Empty);
     }
 
-    private void ShowQuickActionMenu(SequenceInsertionRequest request)
+    private void ShowActionPicker(SequenceInsertionRequest request)
     {
         if (request == null || _workspace.SelectedSequence == null || _catalog == null)
         {
@@ -761,50 +768,138 @@ public sealed class SequenceMakerWindow : EditorWindow
             return;
         }
 
-        var entries = new List<ActionCatalogEntry>();
-        for (int i = 0; i < _catalog.Entries.Count; i++)
+        ActionPickerWindow.ShowPicker(
+            this,
+            _catalog,
+            BuildActionPickerContext(),
+            _actionPickerHistory,
+            InsertionDescription(request),
+            "이 위치에 추가",
+            entry => InsertCatalogAction(request, entry),
+            CountActionUsage);
+    }
+
+    private void OpenActionLibrary()
+    {
+        if (_catalog == null)
         {
-            if (_catalog.Entries[i] != null)
-            {
-                entries.Add(_catalog.Entries[i]);
-            }
+            SetStatus("공식 Action Library를 찾지 못했습니다.", true);
+            RenderStatus();
+            return;
         }
 
-        entries.Sort((left, right) =>
-        {
-            int category = StringComparer.OrdinalIgnoreCase.Compare(
-                left.Category,
-                right.Category);
-            return category != 0
-                ? category
-                : StringComparer.OrdinalIgnoreCase.Compare(
-                    left.DisplayNameKo,
-                    right.DisplayNameKo);
-        });
+        ActionPickerWindow.ShowPicker(
+            this,
+            _catalog,
+            BuildActionPickerContext(),
+            _actionPickerHistory,
+            "액션 라이브러리",
+            string.Empty,
+            null,
+            CountActionUsage);
+    }
 
-        var menu = new GenericMenu();
-        for (int i = 0; i < entries.Count; i++)
+    private void ShowReplaceActionPicker(ScenarioActionData action)
+    {
+        if (action == null || _catalog == null)
         {
-            ActionCatalogEntry entry = entries[i];
-            string category = string.IsNullOrWhiteSpace(entry.Category)
-                ? "기타"
-                : entry.Category;
-            string display = string.IsNullOrWhiteSpace(entry.DisplayNameKo)
-                ? entry.ActionId
-                : entry.DisplayNameKo;
-            GUIContent content = new GUIContent(category + "/" + display);
-            if (entry.Disabled || entry.Deprecated)
-            {
-                menu.AddDisabledItem(content);
-                continue;
-            }
-
-            ActionCatalogEntry captured = entry;
-            menu.AddItem(content, false, () =>
-                InsertCatalogAction(request, captured));
+            return;
         }
 
-        menu.ShowAsContext();
+        ActionPickerWindow.ShowPicker(
+            this,
+            _catalog,
+            BuildActionPickerContext(),
+            _actionPickerHistory,
+            "'" + ActionDisplayName(action, FindCatalogEntry(action.ActionId)) + "' 액션 교체",
+            "이 액션으로 교체",
+            entry => ReplaceCatalogAction(action, entry),
+            CountActionUsage);
+    }
+
+    private void ReplaceCatalogAction(
+        ScenarioActionData action,
+        ActionCatalogEntry entry)
+    {
+        SequenceEditCommandStack stack = GetCurrentEditStack();
+        if (stack == null || action == null || entry == null)
+        {
+            return;
+        }
+
+        try
+        {
+            using (SequenceEditTransaction transaction = stack.BeginTransaction("블록 액션 교체"))
+            {
+                stack.Execute(SequenceEditCommands.SetActionId(
+                    action.BlockId,
+                    entry.ActionId ?? string.Empty));
+                stack.Execute(SequenceEditCommands.SetParameters(
+                    action.BlockId,
+                    BuildDefaultParameters(entry).ToString(
+                        Newtonsoft.Json.Formatting.None)));
+                transaction.Commit();
+            }
+            _workspace.SelectBlock(action.BlockId);
+            SetStatus("액션 교체", false);
+            AfterEdit();
+        }
+        catch (Exception exception)
+        {
+            SetStatus(exception.Message, true);
+            RenderStatus();
+        }
+    }
+
+    private ActionPickerContext BuildActionPickerContext()
+    {
+        string primaryMode = _workspace.TargetKind == SequenceMakerTargetKind.BattleScenario
+            ? _workspace.BattleScenario?.PrimaryMode
+            : PrimaryModeFor(_workspace.SelectedSequence);
+        return new ActionPickerContext(primaryMode);
+    }
+
+    private string InsertionDescription(SequenceInsertionRequest request)
+    {
+        if (request == null || _workspace.SelectedSequence == null)
+        {
+            return "액션 추가";
+        }
+
+        int count = request.ParentBlockId.Length == 0
+            ? (_workspace.SelectedSequence.Actions?.Count ?? 0)
+            : ChildCount(request.ParentBlockId);
+        string location = request.InsertionIndex <= 0
+            ? "맨 앞"
+            : request.InsertionIndex >= count
+                ? "맨 뒤"
+                : (request.InsertionIndex + 1) + "번째";
+        if (string.IsNullOrEmpty(request.ParentBlockId))
+        {
+            return "시퀀스 " + location + "에 액션 추가";
+        }
+
+        string parentName = request.ParentBlockId;
+        if (SequenceBlockTree.TryFind(
+                _workspace.SelectedSequence,
+                request.ParentBlockId,
+                out SequenceBlockLocation parent))
+        {
+            parentName = ActionDisplayName(
+                parent.Action,
+                FindCatalogEntry(parent.Action.ActionId));
+        }
+        return "'" + parentName + "' 안 " + location + "에 액션 추가";
+    }
+
+    private int ChildCount(string parentBlockId)
+    {
+        return SequenceBlockTree.TryFind(
+                _workspace.SelectedSequence,
+                parentBlockId,
+                out SequenceBlockLocation parent)
+            ? parent.Action.Children?.Count ?? 0
+            : 0;
     }
 
     private void InsertCatalogAction(
@@ -1137,22 +1232,21 @@ public sealed class SequenceMakerWindow : EditorWindow
     private void RenderActionInspector(VisualElement body, ScenarioActionData action)
     {
         ActionCatalogEntry entry = FindCatalogEntry(action.ActionId);
-        AddInspectorHeading(
-            body,
-            ActionDisplayName(action, entry),
-            action.ActionId);
-        AddProperty(body, "블록 ID", action.BlockId);
-        if (entry != null)
+        var inspector = new ActionInspectorView();
+        inspector.ReplaceRequested += () => ShowReplaceActionPicker(action);
+        inspector.EditApplied += AfterEdit;
+        inspector.Error += message =>
         {
-            AddProperty(body, "설명", entry.DescriptionKo);
-            AddProperty(body, "사용 시점", entry.UsageKo);
-            AddProperty(body, "미리보기", entry.PreviewSupport.ToString());
-        }
-
-        AddProperty(body, "이 블록 이름", action.DesignerLabel);
-        AddProperty(body, "메모", action.Note);
-        AddProperty(body, "파라미터", action.ParametersJson);
-        AddProperty(body, "상태", action.Disabled ? "비활성" : "활성");
+            SetStatus(message, true);
+            RenderStatus();
+        };
+        inspector.Bind(
+            action,
+            entry,
+            GetCurrentEditStack(),
+            BuildParameterFieldContext(),
+            _lastValidation);
+        body.Add(inspector);
     }
 
     private void RenderSequenceInspector(VisualElement body, ActionSequenceAsset sequence)
@@ -1555,6 +1649,204 @@ public sealed class SequenceMakerWindow : EditorWindow
     private ActionCatalogEntry FindCatalogEntry(string actionId)
     {
         return _catalog != null ? _catalog.FindById(actionId) : null;
+    }
+
+    private ParameterFieldContext BuildParameterFieldContext()
+    {
+        var context = new ParameterFieldContext();
+        ActionSequenceAsset selected = _workspace.SelectedSequence;
+        if (selected?.Contract?.Inputs != null)
+        {
+            var inputs = new List<string>();
+            for (int i = 0; i < selected.Contract.Inputs.Count; i++)
+            {
+                string inputId = selected.Contract.Inputs[i]?.InputId;
+                if (!string.IsNullOrWhiteSpace(inputId))
+                {
+                    inputs.Add("input." + inputId.Trim());
+                }
+            }
+            context.AddBindingOptions("input", inputs);
+        }
+
+        BattleScenarioData battle = _workspace.BattleScenario;
+        if (battle != null)
+        {
+            context.AddReferenceOptions("actor", battle.PartyIds);
+            context.AddReferenceOptions("actor", battle.EnemyIds);
+            AddDialogueOptions(context, battle.Dialogues);
+            AddAudioOptions(context, battle.AudioClips);
+            context.AddReferenceOptions("module", new[] { battle.OpeningModule });
+            if (battle.TimelineCutsceneCatalog?.Cutscenes != null)
+            {
+                var cutscenes = new List<string>();
+                for (int i = 0; i < battle.TimelineCutsceneCatalog.Cutscenes.Count; i++)
+                {
+                    string cutsceneId = battle.TimelineCutsceneCatalog.Cutscenes[i]?.CutsceneId;
+                    if (!string.IsNullOrWhiteSpace(cutsceneId))
+                    {
+                        cutscenes.Add(cutsceneId.Trim());
+                    }
+                }
+                context.AddReferenceOptions("timeline", cutscenes);
+            }
+        }
+
+        if (_assetIndex?.Sequences != null)
+        {
+            var sequenceIds = new List<string>();
+            var seen = new HashSet<int>();
+            for (int i = 0; i < _assetIndex.Sequences.Count; i++)
+            {
+                ActionSequenceAsset sequence = _assetIndex.Sequences[i].Sequence;
+                if (sequence == null || !seen.Add(sequence.GetInstanceID()))
+                {
+                    continue;
+                }
+                if (!string.IsNullOrWhiteSpace(sequence.SequenceId))
+                {
+                    sequenceIds.Add(sequence.SequenceId.Trim());
+                }
+                CollectKnownReferenceValues(context, sequence.Actions);
+            }
+            context.AddReferenceOptions("sequence", sequenceIds);
+        }
+
+        return context;
+    }
+
+    private static void AddDialogueOptions(
+        ParameterFieldContext context,
+        IList<ScenarioDialogueReferenceData> dialogues)
+    {
+        var ids = new List<string>();
+        if (dialogues != null)
+        {
+            for (int i = 0; i < dialogues.Count; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(dialogues[i]?.DialogueId))
+                {
+                    ids.Add(dialogues[i].DialogueId.Trim());
+                }
+            }
+        }
+        context.AddReferenceOptions("dialogue", ids);
+    }
+
+    private static void AddAudioOptions(
+        ParameterFieldContext context,
+        IList<ScenarioAudioReferenceData> audioClips)
+    {
+        var ids = new List<string>();
+        if (audioClips != null)
+        {
+            for (int i = 0; i < audioClips.Count; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(audioClips[i]?.AudioId))
+                {
+                    ids.Add(audioClips[i].AudioId.Trim());
+                }
+            }
+        }
+        context.AddReferenceOptions("audio", ids);
+    }
+
+    private void CollectKnownReferenceValues(
+        ParameterFieldContext context,
+        IList<ScenarioActionData> actions)
+    {
+        if (actions == null)
+        {
+            return;
+        }
+        for (int i = 0; i < actions.Count; i++)
+        {
+            ScenarioActionData action = actions[i];
+            if (action == null)
+            {
+                continue;
+            }
+            ActionCatalogEntry entry = FindCatalogEntry(action.ActionId);
+            if (entry?.Parameters != null)
+            {
+                JObject parameters = ParseParameters(action.ParametersJson);
+                for (int j = 0; j < entry.Parameters.Count; j++)
+                {
+                    ActionCatalogParameter parameter = entry.Parameters[j];
+                    if (parameter == null
+                        || ParameterFieldFactory.ResolveKind(parameter) != ParameterEditorKind.Reference
+                        || !parameters.TryGetValue(parameter.Name, out JToken value)
+                        || value.Type != JTokenType.String)
+                    {
+                        continue;
+                    }
+                    context.AddReferenceOptions(
+                        ParameterFieldFactory.ControlKey(parameter),
+                        new[] { value.Value<string>() });
+                }
+            }
+            CollectKnownReferenceValues(context, action.Children);
+        }
+    }
+
+    private int CountActionUsage(string actionId)
+    {
+        if (string.IsNullOrWhiteSpace(actionId) || _assetIndex?.Sequences == null)
+        {
+            return 0;
+        }
+        int count = 0;
+        var seen = new HashSet<int>();
+        for (int i = 0; i < _assetIndex.Sequences.Count; i++)
+        {
+            ActionSequenceAsset sequence = _assetIndex.Sequences[i].Sequence;
+            if (sequence != null && seen.Add(sequence.GetInstanceID()))
+            {
+                count += CountActionUsage(sequence.Actions, actionId);
+            }
+        }
+        return count;
+    }
+
+    private static int CountActionUsage(
+        IList<ScenarioActionData> actions,
+        string actionId)
+    {
+        if (actions == null)
+        {
+            return 0;
+        }
+        int count = 0;
+        for (int i = 0; i < actions.Count; i++)
+        {
+            ScenarioActionData action = actions[i];
+            if (action == null)
+            {
+                continue;
+            }
+            if (string.Equals(action.ActionId, actionId, StringComparison.Ordinal))
+            {
+                count++;
+            }
+            count += CountActionUsage(action.Children, actionId);
+        }
+        return count;
+    }
+
+    private static JObject ParseParameters(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new JObject();
+        }
+        try
+        {
+            return JObject.Parse(json);
+        }
+        catch
+        {
+            return new JObject();
+        }
     }
 
     private bool IsSequenceInCurrentBattle(ActionSequenceAsset sequence)
