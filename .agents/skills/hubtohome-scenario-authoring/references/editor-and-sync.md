@@ -21,6 +21,7 @@ The approved successor design is documented in `docs/plans/2026-07-12-sequence-m
 - Source/runtime copy paths preserve Block IDs. User duplication must use `ScenarioBlockIdentity.CloneWithNewIds(...)` so the duplicate subtree receives independent identity.
 - New blocks created by an editor must receive a Block ID immediately. Reorder must never replace it.
 - `ScenarioBlockIdentity.ClonePreservingIds(...)` is the shared deep-copy path and also preserves `DesignerLabel`, `Note`, disabled state, parameters, and children.
+- `ActionSequenceAsset.Contract` owns description, usage, lifecycle, tags, and allowed Primary Modes. Source sync must preserve this contract for both scenario-owned and standalone sequences.
 
 ## Editor Goals
 

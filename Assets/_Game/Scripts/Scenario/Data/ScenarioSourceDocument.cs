@@ -44,5 +44,6 @@ public sealed class ScenarioSourceSequenceDocument
 {
     public string SequenceId = string.Empty;
     public string DisplayNameKo = string.Empty;
+    public ActionSequenceContractData Contract = new ActionSequenceContractData();
     public List<ScenarioActionData> Actions = new List<ScenarioActionData>();
 }

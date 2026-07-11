@@ -114,6 +114,35 @@ public class ScenarioBlockIdentityTests
         Assert.That(Guid.TryParseExact(clone.Children[0].BlockId, "N", out _), Is.True);
     }
 
+    [Test]
+    public void EnsureUniqueWithSeedProducesStableIdsForEquivalentLegacyTrees()
+    {
+        List<ScenarioActionData> first = MakeLegacyTree();
+        List<ScenarioActionData> second = MakeLegacyTree();
+
+        ScenarioBlockIdentity.EnsureUnique(first, "legacy.sequence");
+        ScenarioBlockIdentity.EnsureUnique(second, "legacy.sequence");
+
+        Assert.That(CollectIds(first), Is.EqualTo(CollectIds(second)));
+        Assert.That(CollectIds(first), Has.All.Matches<string>(id => Guid.TryParseExact(id, "N", out _)));
+    }
+
+    private static List<ScenarioActionData> MakeLegacyTree()
+    {
+        return new List<ScenarioActionData>
+        {
+            new ScenarioActionData
+            {
+                ActionId = "flow.parallel",
+                Children = new List<ScenarioActionData>
+                {
+                    new ScenarioActionData { ActionId = "flow.wait" },
+                    new ScenarioActionData { ActionId = "screen.fade" }
+                }
+            }
+        };
+    }
+
     private static List<string> CollectIds(List<ScenarioActionData> actions)
     {
         var ids = new List<string>();

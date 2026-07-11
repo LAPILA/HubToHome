@@ -66,11 +66,14 @@ public static class ActionSequenceSourceSync
             return result;
         }
 
+        ScenarioBlockIdentity.EnsureUnique(sequence.Actions);
+
         var document = new ActionSequenceSourceDocument
         {
             SequenceId = sequenceId,
             DisplayNameKo = sequence.DisplayNameKo ?? string.Empty,
-            PrimaryMode = Normalize(primaryMode)
+            PrimaryMode = Normalize(primaryMode),
+            Contract = ActionSequenceContractData.CopyOf(sequence.Contract)
         };
         if (string.IsNullOrEmpty(document.PrimaryMode))
         {
@@ -236,6 +239,7 @@ public static class ActionSequenceSourceSync
 
         target.SequenceId = source.SequenceId ?? string.Empty;
         target.DisplayNameKo = source.DisplayNameKo ?? string.Empty;
+        target.Contract = ActionSequenceContractData.CopyOf(source.Contract);
         target.Actions = CloneActions(source.Actions);
         CopyMetadata(source.Source, target.Source ?? (target.Source = new ScenarioSourceMetadata()));
     }
@@ -254,6 +258,7 @@ public static class ActionSequenceSourceSync
         {
             SequenceId = document.SequenceId,
             DisplayNameKo = document.DisplayNameKo,
+            Contract = ActionSequenceContractData.CopyOf(document.Contract),
             Actions = CloneActions(document.Actions)
         });
         return scenario;
@@ -302,6 +307,7 @@ public static class ActionSequenceSourceSync
             SequenceId = sequenceId,
             DisplayNameKo = selected.DisplayNameKo ?? scenario.TitleKo ?? string.Empty,
             PrimaryMode = string.IsNullOrWhiteSpace(scenario.PrimaryMode) ? DefaultPrimaryMode : scenario.PrimaryMode.Trim(),
+            Contract = ActionSequenceContractData.CopyOf(selected.Contract),
             Actions = CloneActions(selected.Actions)
         };
     }
@@ -315,7 +321,9 @@ public static class ActionSequenceSourceSync
     {
         target.SequenceId = document.SequenceId;
         target.DisplayNameKo = document.DisplayNameKo;
+        target.Contract = ActionSequenceContractData.CopyOf(document.Contract);
         target.Actions = CloneActions(document.Actions);
+        ScenarioBlockIdentity.EnsureUnique(target.Actions);
         ApplySourceMetadata(target, sourceText, sourcePath, importedAtUtc);
     }
 

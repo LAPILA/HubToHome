@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 
 public static class ScenarioBlockIdentity
 {
@@ -11,7 +13,15 @@ public static class ScenarioBlockIdentity
     public static void EnsureUnique(List<ScenarioActionData> actions)
     {
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
-        EnsureUnique(actions, seenIds);
+        EnsureUnique(actions, seenIds, string.Empty, string.Empty);
+    }
+
+    public static void EnsureUnique(
+        List<ScenarioActionData> actions,
+        string deterministicSeed)
+    {
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+        EnsureUnique(actions, seenIds, Normalize(deterministicSeed), string.Empty);
     }
 
     public static ScenarioActionData ClonePreservingIds(ScenarioActionData source)
@@ -26,7 +36,9 @@ public static class ScenarioBlockIdentity
 
     private static void EnsureUnique(
         List<ScenarioActionData> actions,
-        HashSet<string> seenIds)
+        HashSet<string> seenIds,
+        string deterministicSeed,
+        string parentPath)
     {
         if (actions == null)
         {
@@ -41,14 +53,17 @@ public static class ScenarioBlockIdentity
                 continue;
             }
 
+            string path = string.IsNullOrEmpty(parentPath)
+                ? i.ToString()
+                : parentPath + "/" + i;
             string blockId = Normalize(action.BlockId);
             if (string.IsNullOrEmpty(blockId) || !seenIds.Add(blockId))
             {
-                blockId = CreateUnique(seenIds);
+                blockId = CreateUnique(seenIds, deterministicSeed, path, action.ActionId);
             }
 
             action.BlockId = blockId;
-            EnsureUnique(action.Children, seenIds);
+            EnsureUnique(action.Children, seenIds, deterministicSeed, path);
         }
     }
 
@@ -85,8 +100,28 @@ public static class ScenarioBlockIdentity
         return clone;
     }
 
-    private static string CreateUnique(HashSet<string> seenIds)
+    private static string CreateUnique(
+        HashSet<string> seenIds,
+        string deterministicSeed,
+        string path,
+        string actionId)
     {
+        if (!string.IsNullOrEmpty(deterministicSeed))
+        {
+            int attempt = 0;
+            while (true)
+            {
+                string deterministicId = CreateDeterministic(
+                    deterministicSeed + "|" + path + "|" + Normalize(actionId) + "|" + attempt);
+                if (seenIds.Add(deterministicId))
+                {
+                    return deterministicId;
+                }
+
+                attempt++;
+            }
+        }
+
         string blockId;
         do
         {
@@ -95,6 +130,15 @@ public static class ScenarioBlockIdentity
         while (!seenIds.Add(blockId));
 
         return blockId;
+    }
+
+    private static string CreateDeterministic(string value)
+    {
+        using (SHA256 sha256 = SHA256.Create())
+        {
+            byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(value ?? string.Empty));
+            return BitConverter.ToString(hash, 0, 16).Replace("-", string.Empty).ToLowerInvariant();
+        }
     }
 
     private static string Normalize(string value)

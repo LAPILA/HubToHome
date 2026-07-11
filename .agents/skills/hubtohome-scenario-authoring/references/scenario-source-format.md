@@ -20,7 +20,13 @@ primaryMode: overworld
 sequences:
   overworld.intro.subway:
     title: "오버월드 시작 - 지하철 도착"
+    description: "오버월드 첫 진입에서 지하철 도착 장면을 보여준다."
+    usage: "Scene reveal 직후 한 번 실행한다."
+    status: ready
+    tags: [overworld, cinematic]
+    allowedPrimaryModes: [overworld]
     - cinematic.shot.play:
+      blockId: 11111111111111111111111111111111
       designerLabel: "지하철 도착 샷"
       stage: overworld.subway_intro
       shot: subway_arrival
@@ -40,6 +46,30 @@ sequences:
 ```
 
 Use `*.sequence.yaml` for standalone source paths. In Sequence Maker choose **독립 Action Sequence**, then use the same YAML validation, save, reimport, and export-as commands as a battle scenario. Do not hand-edit the Unity `.asset` managed-reference data.
+
+### Sequence Contract And Block Identity
+
+- Sequence metadata uses optional `description`, `usage`, `status`, `tags`, and `allowedPrimaryModes` keys. Missing metadata keeps legacy sources valid.
+- `status` values are `draft`, `ready`, and `deprecated`.
+- Every authored Action uses a stable `blockId`. Source/runtime copy and reorder preserve it; user duplication creates a new ID for the full duplicate subtree.
+- Legacy source without Block IDs receives deterministic IDs from sequence ID plus action-tree path during import. The next successful source save persists them.
+- Structural `parallel` blocks with metadata use the extended form below. The parser still accepts the legacy direct child-list form.
+
+```yaml
+- parallel:
+    blockId: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    designerLabel: "동시에 전환"
+    note: "카메라와 캐릭터를 함께 이동"
+    children:
+      - actor.move:
+          blockId: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          actor: zev
+          to: battle.center
+      - screen.fade:
+          blockId: cccccccccccccccccccccccccccccccc
+          mode: in
+          duration: 0.4
+```
 
 ## Parser Boundary
 

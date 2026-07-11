@@ -235,6 +235,7 @@ public sealed class ScenarioSourceRuntimeAssetReimportCommand
     {
         destination.SequenceId = source.SequenceId;
         destination.DisplayNameKo = source.DisplayNameKo;
+        destination.Contract = ActionSequenceContractData.CopyOf(source.Contract);
         CopyMetadata(source.Source, destination.Source ?? (destination.Source = new ScenarioSourceMetadata()));
         destination.Actions = CloneActions(source.Actions);
     }

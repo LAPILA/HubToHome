@@ -281,8 +281,10 @@ public sealed class ScenarioSourceImporter
             ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
             sequence.SequenceId = sourceSequence.SequenceId;
             sequence.DisplayNameKo = sourceSequence.DisplayNameKo;
+            sequence.Contract = ActionSequenceContractData.CopyOf(sourceSequence.Contract);
             sequence.Source = metadata;
             sequence.Actions = CloneActions(sourceSequence.Actions);
+            ScenarioBlockIdentity.EnsureUnique(sequence.Actions);
             scenario.Sequences.Add(sequence);
         }
     }

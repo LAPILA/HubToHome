@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -232,10 +233,13 @@ public sealed class ScenarioSourceExporter
                 continue;
             }
 
+            ScenarioBlockIdentity.EnsureUnique(sequence.Actions);
+
             document.Sequences.Add(new ScenarioSourceSequenceDocument
             {
                 SequenceId = sequence.SequenceId,
                 DisplayNameKo = sequence.DisplayNameKo,
+                Contract = ActionSequenceContractData.CopyOf(sequence.Contract),
                 Actions = CloneActions(sequence.Actions)
             });
         }
@@ -467,6 +471,35 @@ public sealed class ScenarioSourceYamlWriter
                 AppendKeyValue(builder, 2, "title", sequence.DisplayNameKo);
             }
 
+            ActionSequenceContractData contract = sequence.Contract;
+            if (contract != null)
+            {
+                if (!string.IsNullOrWhiteSpace(contract.DescriptionKo))
+                {
+                    AppendKeyValue(builder, 2, "description", contract.DescriptionKo);
+                }
+
+                if (!string.IsNullOrWhiteSpace(contract.UsageKo))
+                {
+                    AppendKeyValue(builder, 2, "usage", contract.UsageKo);
+                }
+
+                if (contract.Lifecycle != ActionSequenceLifecycle.Draft)
+                {
+                    AppendKeyValue(builder, 2, "status", contract.Lifecycle.ToString().ToLowerInvariant());
+                }
+
+                if (contract.Tags != null && contract.Tags.Count > 0)
+                {
+                    AppendInlineList(builder, 2, "tags", contract.Tags);
+                }
+
+                if (contract.AllowedPrimaryModes != null && contract.AllowedPrimaryModes.Count > 0)
+                {
+                    AppendInlineList(builder, 2, "allowedPrimaryModes", contract.AllowedPrimaryModes);
+                }
+            }
+
             WriteActions(builder, sequence.Actions, 2, validation, sequence.SequenceId);
         }
     }
@@ -495,26 +528,18 @@ public sealed class ScenarioSourceYamlWriter
             if (actionId == ActionDirector.ParallelActionId)
             {
                 AppendListItemKeyOnly(builder, indentLevel, "parallel");
-                WriteActions(builder, action.Children, indentLevel + 1, validation, ownerId);
+                WriteActionMetadata(builder, action, indentLevel + 1);
+                if (action.Children != null && action.Children.Count > 0)
+                {
+                    AppendKeyOnly(builder, indentLevel + 1, "children");
+                    WriteActions(builder, action.Children, indentLevel + 2, validation, ownerId);
+                }
+
                 continue;
             }
 
             AppendListItemKeyOnly(builder, indentLevel, actionId);
-            if (!string.IsNullOrWhiteSpace(action.DesignerLabel))
-            {
-                AppendKeyValue(builder, indentLevel + 1, "designerLabel", action.DesignerLabel);
-            }
-
-            if (!string.IsNullOrWhiteSpace(action.Note))
-            {
-                AppendKeyValue(builder, indentLevel + 1, "note", action.Note);
-            }
-
-            if (action.Disabled)
-            {
-                AppendKeyValue(builder, indentLevel + 1, "disabled", true);
-            }
-
+            WriteActionMetadata(builder, action, indentLevel + 1);
             JObject parameters = ParseParameters(action, validation, ownerId);
             if (parameters == null || parameters.Count == 0)
             {
@@ -525,6 +550,32 @@ public sealed class ScenarioSourceYamlWriter
             {
                 WriteParameter(builder, indentLevel + 1, property.Name, property.Value);
             }
+        }
+    }
+
+    private static void WriteActionMetadata(
+        StringBuilder builder,
+        ScenarioActionData action,
+        int indentLevel)
+    {
+        if (!string.IsNullOrWhiteSpace(action.BlockId))
+        {
+            AppendKeyValue(builder, indentLevel, "blockId", action.BlockId.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.DesignerLabel))
+        {
+            AppendKeyValue(builder, indentLevel, "designerLabel", action.DesignerLabel);
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.Note))
+        {
+            AppendKeyValue(builder, indentLevel, "note", action.Note);
+        }
+
+        if (action.Disabled)
+        {
+            AppendKeyValue(builder, indentLevel, "disabled", true);
         }
     }
 
@@ -1116,14 +1167,18 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
             index++;
             while (index < lines.Count
                 && lines[index].Indent == NestedIndent
-                && TryReadKeyValue(lines[index].Trimmed, out string sequenceKey, out string sequenceValue)
-                && sequenceKey == "title")
+                && TryReadKeyValue(lines[index].Trimmed, out string sequenceKey, out string sequenceValue))
             {
-                sequence.DisplayNameKo = ParseYamlString(sequenceValue);
+                if (!TryApplySequenceMetadata(sequence, sequenceKey, sequenceValue))
+                {
+                    break;
+                }
+
                 index++;
             }
 
             sequence.Actions = ParseActions(lines, ref index, NestedIndent, validation, sequence.SequenceId);
+            ScenarioBlockIdentity.EnsureUnique(sequence.Actions, sequence.SequenceId);
             document.Sequences.Add(sequence);
         }
 
@@ -1166,7 +1221,35 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
 
             if (action.ActionId == ActionDirector.ParallelActionId)
             {
-                action.Children = ParseActions(lines, ref index, indent + 2, validation, ownerId);
+                bool hasChildrenSection = false;
+                while (index < lines.Count && lines[index].Indent == indent + 2)
+                {
+                    if (!TryReadKeyValue(lines[index].Trimmed, out string metadataKey, out string metadataValue))
+                    {
+                        break;
+                    }
+
+                    if (metadataKey == "children")
+                    {
+                        index++;
+                        action.Children = ParseActions(lines, ref index, indent + 4, validation, ownerId);
+                        hasChildrenSection = true;
+                        break;
+                    }
+
+                    if (!TryApplyActionMetadata(action, metadataKey, metadataValue))
+                    {
+                        break;
+                    }
+
+                    index++;
+                }
+
+                if (!hasChildrenSection)
+                {
+                    action.Children = ParseActions(lines, ref index, indent + 2, validation, ownerId);
+                }
+
                 actions.Add(action);
                 continue;
             }
@@ -1177,19 +1260,7 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 if (lines[index].Indent > indent &&
                     TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
                 {
-                    if (key == "disabled")
-                    {
-                        action.Disabled = ParseBool(value);
-                    }
-                    else if (key == "designerLabel")
-                    {
-                        action.DesignerLabel = ParseYamlString(value);
-                    }
-                    else if (key == "note")
-                    {
-                        action.Note = ParseYamlString(value);
-                    }
-                    else
+                    if (!TryApplyActionMetadata(action, key, value))
                     {
                         parameters[key] = ParseYamlValue(value);
                     }
@@ -1208,6 +1279,76 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
         }
 
         return actions;
+    }
+
+    private static bool TryApplySequenceMetadata(
+        ScenarioSourceSequenceDocument sequence,
+        string key,
+        string value)
+    {
+        if (sequence.Contract == null)
+        {
+            sequence.Contract = new ActionSequenceContractData();
+        }
+
+        switch (key)
+        {
+            case "title":
+                sequence.DisplayNameKo = ParseYamlString(value);
+                return true;
+            case "description":
+                sequence.Contract.DescriptionKo = ParseYamlString(value);
+                return true;
+            case "usage":
+                sequence.Contract.UsageKo = ParseYamlString(value);
+                return true;
+            case "status":
+                sequence.Contract.Lifecycle = ParseSequenceLifecycle(value);
+                return true;
+            case "tags":
+                sequence.Contract.Tags = ParseInlineStringList(value);
+                return true;
+            case "allowedPrimaryModes":
+                sequence.Contract.AllowedPrimaryModes = ParseInlineStringList(value);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryApplyActionMetadata(
+        ScenarioActionData action,
+        string key,
+        string value)
+    {
+        switch (key)
+        {
+            case "blockId":
+                action.BlockId = ParseYamlString(value);
+                return true;
+            case "disabled":
+                action.Disabled = ParseBool(value);
+                return true;
+            case "designerLabel":
+                action.DesignerLabel = ParseYamlString(value);
+                return true;
+            case "note":
+                action.Note = ParseYamlString(value);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static ActionSequenceLifecycle ParseSequenceLifecycle(string value)
+    {
+        string normalized = ParseYamlString(value);
+        if (Enum.TryParse(normalized, true, out ActionSequenceLifecycle lifecycle))
+        {
+            return lifecycle;
+        }
+
+        return ActionSequenceLifecycle.Draft;
     }
 
     private static List<YamlLine> ReadLines(string sourceText)
