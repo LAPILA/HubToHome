@@ -395,18 +395,7 @@ public sealed class ScenarioSourceRuntimeAssetReimportCommand
 
     private static ScenarioActionData CloneAction(ScenarioActionData source)
     {
-        if (source == null)
-        {
-            return null;
-        }
-
-        return new ScenarioActionData
-        {
-            ActionId = source.ActionId,
-            ParametersJson = source.ParametersJson,
-            Disabled = source.Disabled,
-            Children = CloneActions(source.Children)
-        };
+        return ScenarioBlockIdentity.ClonePreservingIds(source);
     }
 
     private static void DestroyTemporaryScenario(BattleScenarioData scenario)

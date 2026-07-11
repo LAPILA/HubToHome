@@ -1248,6 +1248,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         ActionCatalogEntry entry = _catalog != null ? _catalog.FindById(actionId) : null;
         var action = new ScenarioActionData
         {
+            BlockId = ScenarioBlockIdentity.Create(),
             ActionId = actionId,
             ParametersJson = ScenarioAuthoringParameterView.CreateDefaultParameterJson(entry)
         };
@@ -1344,27 +1345,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private static ScenarioActionData CloneAction(ScenarioActionData source)
     {
-        if (source == null)
-        {
-            return null;
-        }
-
-        var clone = new ScenarioActionData
-        {
-            ActionId = source.ActionId,
-            ParametersJson = source.ParametersJson,
-            Disabled = source.Disabled
-        };
-
-        if (source.Children != null)
-        {
-            for (int i = 0; i < source.Children.Count; i++)
-            {
-                clone.Children.Add(CloneAction(source.Children[i]));
-            }
-        }
-
-        return clone;
+        return ScenarioBlockIdentity.CloneWithNewIds(source);
     }
 
     private static void RecordSequenceChange(ActionSequenceAsset sequence, string undoName)

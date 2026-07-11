@@ -280,6 +280,7 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
     internal ScenarioActionBlockDraft CreateDraft(string actionId, List<ScenarioActionBlockDraft> ownerList)
     {
         var draft = new ScenarioActionBlockDraft();
+        draft.BlockId = ScenarioBlockIdentity.Create();
         draft.OwnerList = ownerList;
         draft.ActionId = string.IsNullOrWhiteSpace(actionId) ? CreateDefaultActionId() : actionId.Trim();
         draft.RefreshCatalogViewRecursive(this, ownerList);
@@ -1120,6 +1121,9 @@ public sealed class ScenarioActionBlockDraft
 
     [NonSerialized] private ScenarioSequenceOdinEditorWindow _owner;
 
+    [HideInInspector]
+    public string BlockId = string.Empty;
+
     [ShowInInspector]
     [ReadOnly]
     [PropertyOrder(-30)]
@@ -1198,6 +1202,9 @@ public sealed class ScenarioActionBlockDraft
         List<ScenarioActionBlockDraft> ownerList)
     {
         var draft = new ScenarioActionBlockDraft();
+        draft.BlockId = action != null && !string.IsNullOrWhiteSpace(action.BlockId)
+            ? action.BlockId.Trim()
+            : ScenarioBlockIdentity.Create();
         draft.Enabled = action == null || !action.Disabled;
         draft.DesignerLabel = action != null ? action.DesignerLabel : string.Empty;
         draft.Note = action != null ? action.Note : string.Empty;
@@ -1233,6 +1240,7 @@ public sealed class ScenarioActionBlockDraft
     {
         var action = new ScenarioActionData
         {
+            BlockId = string.IsNullOrWhiteSpace(BlockId) ? ScenarioBlockIdentity.Create() : BlockId.Trim(),
             DesignerLabel = DesignerLabel ?? string.Empty,
             ActionId = ScenarioSequenceOdinEditorWindow.Normalize(ActionId),
             ParametersJson = BuildParametersJson(),
@@ -1252,6 +1260,7 @@ public sealed class ScenarioActionBlockDraft
     {
         var clone = new ScenarioActionBlockDraft
         {
+            BlockId = ScenarioBlockIdentity.Create(),
             Enabled = Enabled,
             DesignerLabel = DesignerLabel,
             Note = Note,

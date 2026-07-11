@@ -5,6 +5,9 @@ using UnityEngine;
 [Serializable]
 public sealed class ScenarioActionData
 {
+    [Tooltip("시퀀스 안에서 이 액션 블록을 식별하는 안정적인 ID입니다.")]
+    public string BlockId = string.Empty;
+
     [Tooltip("기획자가 읽기 쉬운 블록 표시명입니다. 비워두면 ActionId/카탈로그 이름을 사용합니다.")]
     public string DesignerLabel = string.Empty;
 

@@ -364,15 +364,7 @@ public static class ActionSequenceSourceSync
                 continue;
             }
 
-            copy.Add(new ScenarioActionData
-            {
-                DesignerLabel = action.DesignerLabel ?? string.Empty,
-                ActionId = action.ActionId ?? string.Empty,
-                ParametersJson = action.ParametersJson ?? "{}",
-                Note = action.Note ?? string.Empty,
-                Disabled = action.Disabled,
-                Children = CloneActions(action.Children)
-            });
+            copy.Add(ScenarioBlockIdentity.ClonePreservingIds(action));
         }
 
         return copy;

@@ -306,20 +306,7 @@ public sealed class ScenarioSourceImporter
 
     private static ScenarioActionData CloneAction(ScenarioActionData source)
     {
-        if (source == null)
-        {
-            return null;
-        }
-
-        return new ScenarioActionData
-        {
-            DesignerLabel = source.DesignerLabel,
-            ActionId = source.ActionId,
-            ParametersJson = source.ParametersJson,
-            Note = source.Note,
-            Disabled = source.Disabled,
-            Children = CloneActions(source.Children)
-        };
+        return ScenarioBlockIdentity.ClonePreservingIds(source);
     }
 
     private static string NormalizeId(string value)

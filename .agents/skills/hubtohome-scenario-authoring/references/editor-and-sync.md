@@ -14,6 +14,14 @@ The approved successor design is documented in `docs/plans/2026-07-12-sequence-m
 - `when` evolves from the fixed battle enum toward Scenario Event IDs plus catalog-backed Trigger Conditions.
 - Action Sequences gain typed inputs and remain finite orchestration; continuous gameplay remains inside Game Modules.
 
+## Stable Block Identity
+
+- `ScenarioActionData.BlockId` is the stable identity of one authored block.
+- Use `ScenarioBlockIdentity.EnsureUnique(...)` when migrating a complete sequence tree.
+- Source/runtime copy paths preserve Block IDs. User duplication must use `ScenarioBlockIdentity.CloneWithNewIds(...)` so the duplicate subtree receives independent identity.
+- New blocks created by an editor must receive a Block ID immediately. Reorder must never replace it.
+- `ScenarioBlockIdentity.ClonePreservingIds(...)` is the shared deep-copy path and also preserves `DesignerLabel`, `Note`, disabled state, parameters, and children.
+
 ## Editor Goals
 
 - Show scenario flow as rules and sequences, not raw serialized data.

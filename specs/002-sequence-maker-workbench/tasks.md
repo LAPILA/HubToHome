@@ -2,8 +2,8 @@
 
 ## Foundation
 
-- [ ] Capture build, test, and current-editor baseline.
-- [ ] Add stable recursive Block IDs and duplication rules.
+- [x] Capture build, test, and current-editor baseline.
+- [x] Add stable recursive Block IDs and duplication rules.
 - [ ] Round-trip Block IDs and sequence metadata through YAML.
 - [ ] Add typed Sequence Inputs and value bindings.
 - [ ] Add sequence calls and cycle validation.
