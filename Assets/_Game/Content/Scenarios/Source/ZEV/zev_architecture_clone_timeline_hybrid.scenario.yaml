@@ -1,0 +1,187 @@
+id: zev_architecture_clone_timeline_hybrid
+title: "ZEV 아키텍처 복제 전투 (Timeline Hybrid Sample)"
+primaryMode: battle
+openingModule: turn_qte
+memoryKey: zev_architecture_clone_timeline_hybrid
+
+participants:
+  party: [player]
+  enemies: [zev_architecture_clone]
+
+dialogues:
+  - id: zev.clone.opening_clash
+    dialogueData: Assets/_Game/Content/Dialogue/Data/Scenario/ZEV/ZEV_Clone_OpeningClash.asset
+  - id: zev.clone.opening_after
+    dialogueData: Assets/_Game/Content/Dialogue/Data/Scenario/ZEV/ZEV_Clone_OpeningAfter.asset
+  - id: zev.clone.phase2_intro
+    dialogueData: Assets/_Game/Content/Dialogue/Data/Scenario/ZEV/ZEV_Clone_Phase2Intro.asset
+  - id: zev.clone.shooter_start
+    dialogueData: Assets/_Game/Content/Dialogue/Data/Scenario/ZEV/ZEV_Clone_ShooterStart.asset
+  - id: zev.clone.shooter_victory
+    dialogueData: Assets/_Game/Content/Dialogue/Data/Scenario/ZEV/ZEV_Clone_ShooterVictory.asset
+
+audioClips:
+  - id: zev_clone_phase2
+    audioClip: Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta_part2.wav
+  - id: zev_clone_shooter_loop
+    audioClip: Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta.wav
+  - id: zev_clone_victory
+    audioClip: Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta_part1.wav
+
+rules:
+  - id: opening_clash_timeline_hybrid
+    when:
+      event: battle.started
+      timing: immediate
+      once: battle
+    do:
+      sequence: zev_clone_opening_clash_timeline_hybrid
+  - id: enter_clone_phase2_timeline_hybrid
+    when:
+      event: enemy.hp_crossed_below
+      enemy: zev_architecture_clone
+      threshold: 0.5
+      timing: after_current_skill
+      once: battle
+    do:
+      sequence: zev_clone_phase2_transition_timeline_hybrid
+  - id: shooter_clone_victory_timeline_hybrid
+    when:
+      event: module.completed
+      module: aim_shooter
+      outcome: victory
+      timing: after_current_module
+      once: battle
+    do:
+      sequence: zev_clone_shooter_victory_timeline_hybrid
+
+sequences:
+  zev_clone_opening_clash_timeline_hybrid:
+    - cinematic.letterbox:
+        mode: show
+        thickness: 0.14
+        duration: 0.18
+    - bgm.crossfade:
+        clip: zev_clone_shooter_loop
+        duration: 0.35
+    - timeline.play:
+        cutsceneId: zev_intro_clash
+        waitForComplete: true
+        lockInput: true
+        restoreCamera: true
+        skipIfMissing: true
+    - battle.actor.flip:
+        actor: zev_architecture_clone
+        mode: inverted
+    - battle.camera.focus:
+        subject: zev_architecture_clone
+        zoom: 4.55
+        duration: 0.18
+    - battle.actor.fake_attack:
+        actor: zev_architecture_clone
+        target: player
+        targetPose: parry
+        approach: 0.24
+        lunge: 0.11
+        hold: 0.08
+        recover: 0.16
+        impact: 0.82
+    - flow.wait:
+        duration: 0.08
+    - battle.actor.pose:
+        actor: player
+        pose: parry
+        duration: 0.12
+        impact: 0.2
+    - flow.wait:
+        duration: 0.12
+    - battle.actor.fake_attack:
+        actor: player
+        target: zev_architecture_clone
+        targetPose: guard
+        approach: 0.33
+        lunge: 0.12
+        hold: 0.08
+        recover: 0.18
+        impact: 0.64
+    - battle.actor.move_to:
+        actor: zev_architecture_clone
+        anchor: center
+        x: 0.52
+        y: 0
+        duration: 0.18
+        pose: move
+    - battle.actor.flip:
+        actor: zev_architecture_clone
+        mode: default
+    - dialogue.wait:
+        id: zev.clone.opening_clash
+    - battle.actor.pose:
+        actor: zev_architecture_clone
+        pose: ready
+        duration: 0.16
+        impact: 0
+    - dialogue.wait:
+        id: zev.clone.opening_after
+    - battle.actor.return_slots:
+        duration: 0.42
+    - battle.camera.reset:
+        duration: 0.36
+    - cinematic.letterbox:
+        mode: hide
+        thickness: 0
+        duration: 0.16
+
+  zev_clone_phase2_transition_timeline_hybrid:
+    - cinematic.letterbox:
+        mode: show
+        thickness: 0.16
+        duration: 0.2
+    - bgm.crossfade:
+        clip: zev_clone_phase2
+        duration: 0.8
+    - battle.camera.focus:
+        subject: zev_architecture_clone
+        zoom: 4.45
+        duration: 0.3
+    - battle.actor.pose:
+        actor: zev_architecture_clone
+        pose: ready
+        duration: 0.24
+        impact: 0.18
+    - dialogue.wait:
+        id: zev.clone.phase2_intro
+    - battle.actor.pose:
+        actor: zev_architecture_clone
+        pose: attack
+        duration: 0.18
+        impact: 0.55
+    - battle.camera.reset:
+        duration: 0.34
+    - battle.actor.pose:
+        actor: zev_architecture_clone
+        pose: ready
+        duration: 0.12
+        impact: 0
+    - flow.wait:
+        duration: 0.06
+    - cinematic.letterbox:
+        mode: hide
+        thickness: 0
+        duration: 0.18
+    - battle.camera.reset:
+        duration: 0.01
+
+  zev_clone_shooter_victory_timeline_hybrid:
+    - dialogue.wait:
+        id: zev.clone.shooter_victory
+    - bgm.crossfade:
+        clip: zev_clone_victory
+        duration: 0.4
+    - battle.participant.damage:
+        subject: zev_architecture_clone
+        amount: 999
+    - screen.fade:
+        mode: out
+        color: white
+        duration: 0.5
