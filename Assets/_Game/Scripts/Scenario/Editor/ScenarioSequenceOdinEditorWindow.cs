@@ -794,40 +794,7 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
 
     private static ActionCatalogEntry CloneEntry(ActionCatalogEntry source)
     {
-        var clone = new ActionCatalogEntry
-        {
-            ActionId = source.ActionId,
-            Category = source.Category,
-            DisplayNameKo = source.DisplayNameKo,
-            DescriptionKo = source.DescriptionKo,
-            RuntimeAdapterId = source.RuntimeAdapterId,
-            ExampleYaml = source.ExampleYaml,
-            Disabled = source.Disabled
-        };
-
-        if (source.Parameters != null)
-        {
-            for (int i = 0; i < source.Parameters.Count; i++)
-            {
-                ActionCatalogParameter parameter = source.Parameters[i];
-                if (parameter == null)
-                {
-                    continue;
-                }
-
-                clone.Parameters.Add(new ActionCatalogParameter
-                {
-                    Name = parameter.Name,
-                    Type = parameter.Type,
-                    DisplayNameKo = parameter.DisplayNameKo,
-                    DescriptionKo = parameter.DescriptionKo,
-                    Required = parameter.Required,
-                    DefaultValue = parameter.DefaultValue
-                });
-            }
-        }
-
-        return clone;
+        return ActionCatalogContractCopy.Entry(source);
     }
 
     private static ActionCatalogEntry CreateEntry(

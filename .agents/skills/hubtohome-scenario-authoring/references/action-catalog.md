@@ -4,6 +4,17 @@ The Action Catalog is the discoverable contract for actions. It is for both AI g
 
 ## Entry Shape
 
+The runtime/editor contract now includes more than the legacy identity fields. New and migrated entries should provide:
+
+- `descriptionKo`, `usageKo`, `summaryTemplateKo`, `tags`, and `aliases` for discovery and compact block summaries.
+- `requiredContexts` and `allowedPrimaryModes` for compatibility filtering.
+- `previewSupport` and `preparationPolicy` for Safe Preview and selected-block Preparation Run.
+- `deprecated` plus `replacementActionId` for guided migration.
+- Per parameter: stable `type`, `editorControl`, `quickEdit`, optional min/max/unit, fixed options, and allowed value sources.
+- Allowed value sources are `literal`, `input`, `event`, `session`, `memory`, `flag`, `context`, and `result`.
+
+Legacy assets missing these authoring fields remain executable and receive migration warnings. Invalid numeric ranges, duplicate parameter names, unsupported value sources, self-replacement, and Safe Preview without a preparation policy are errors.
+
 Each action needs:
 
 ```yaml

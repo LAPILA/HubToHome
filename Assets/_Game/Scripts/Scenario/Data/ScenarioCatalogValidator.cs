@@ -5,6 +5,17 @@ public static class ScenarioCatalogValidator
 {
     private const string DialogueWaitActionId = "dialogue.wait";
     private const string TimelinePlayActionId = "timeline.play";
+    private static readonly HashSet<string> SupportedValueSources = new HashSet<string>
+    {
+        "literal",
+        "input",
+        "event",
+        "session",
+        "memory",
+        "flag",
+        "context",
+        "result"
+    };
 
     public static ScenarioValidationResult Validate(ActionCatalogAsset catalog)
     {
@@ -142,6 +153,147 @@ public static class ScenarioCatalogValidator
         if (string.IsNullOrEmpty(Trim(entry.ExampleYaml)))
         {
             result.AddError("catalog.entry.example_yaml.required", "ExampleYaml is required.", objectId);
+        }
+
+        if (string.IsNullOrEmpty(Trim(entry.DescriptionKo)))
+        {
+            result.AddWarning("catalog.entry.description.missing", "Action description is missing.", objectId);
+        }
+
+        if (string.IsNullOrEmpty(Trim(entry.UsageKo)))
+        {
+            result.AddWarning("catalog.entry.usage.missing", "Action usage guidance is missing.", objectId);
+        }
+
+        if (string.IsNullOrEmpty(Trim(entry.SummaryTemplateKo)))
+        {
+            result.AddWarning("catalog.entry.summary_template.missing", "Action block summary template is missing.", objectId);
+        }
+
+        if (entry.Tags == null || entry.Tags.Count == 0)
+        {
+            result.AddWarning("catalog.entry.tags.missing", "Action search tags are missing.", objectId);
+        }
+
+        if (entry.RequiredContexts == null || entry.RequiredContexts.Count == 0)
+        {
+            result.AddWarning("catalog.entry.contexts.missing", "Action required contexts are not documented.", objectId);
+        }
+
+        if (entry.PreviewSupport == ActionPreviewSupport.SafePreview
+            && entry.PreparationPolicy == ActionPreparationPolicy.Unsupported)
+        {
+            result.AddError(
+                "catalog.entry.preparation_policy.required",
+                "Safe Preview actions require an explicit preparation policy.",
+                objectId);
+        }
+
+        if (entry.Deprecated)
+        {
+            string replacementId = Trim(entry.ReplacementActionId);
+            if (string.IsNullOrEmpty(replacementId))
+            {
+                result.AddWarning(
+                    "catalog.entry.replacement.missing",
+                    "Deprecated Action does not identify a replacement Action ID.",
+                    objectId);
+            }
+            else if (replacementId == actionId)
+            {
+                result.AddError(
+                    "catalog.entry.replacement.self",
+                    "Deprecated Action cannot replace itself.",
+                    objectId);
+            }
+        }
+
+        ValidateParameters(entry.Parameters, objectId, result);
+    }
+
+    private static void ValidateParameters(
+        List<ActionCatalogParameter> parameters,
+        string entryObjectId,
+        ScenarioValidationResult result)
+    {
+        if (parameters == null)
+        {
+            result.AddError("catalog.parameters.missing", "Action parameter list is missing.", entryObjectId);
+            return;
+        }
+
+        var seenNames = new HashSet<string>();
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            ActionCatalogParameter parameter = parameters[i];
+            string objectId = entryObjectId + ".parameters[" + i + "]";
+            if (parameter == null)
+            {
+                result.AddError("catalog.parameter.null", "Action parameter is null.", objectId);
+                continue;
+            }
+
+            string name = Trim(parameter.Name);
+            if (string.IsNullOrEmpty(name))
+            {
+                result.AddError("catalog.parameter.name.required", "Action parameter name is required.", objectId);
+            }
+            else if (!seenNames.Add(name))
+            {
+                result.AddError(
+                    "catalog.parameter.name.duplicate",
+                    "Duplicate Action parameter name: " + name,
+                    objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.Type)))
+            {
+                result.AddWarning("catalog.parameter.type.missing", "Action parameter type is missing.", objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.DisplayNameKo)))
+            {
+                result.AddWarning("catalog.parameter.display_name.missing", "Action parameter display name is missing.", objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.DescriptionKo)))
+            {
+                result.AddWarning("catalog.parameter.description.missing", "Action parameter description is missing.", objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.EditorControlId)))
+            {
+                result.AddWarning("catalog.parameter.editor_control.missing", "Action parameter editor control is missing.", objectId);
+            }
+
+            if (parameter.HasMinimum && parameter.HasMaximum && parameter.Minimum > parameter.Maximum)
+            {
+                result.AddError(
+                    "catalog.parameter.range.invalid",
+                    "Action parameter minimum cannot be greater than maximum.",
+                    objectId);
+            }
+
+            if (parameter.ValueSources == null || parameter.ValueSources.Count == 0)
+            {
+                result.AddWarning(
+                    "catalog.parameter.value_sources.missing",
+                    "Action parameter value sources are not documented.",
+                    objectId);
+                continue;
+            }
+
+            for (int sourceIndex = 0; sourceIndex < parameter.ValueSources.Count; sourceIndex++)
+            {
+                string source = Trim(parameter.ValueSources[sourceIndex]);
+                if (!SupportedValueSources.Contains(source))
+                {
+                    result.AddError(
+                        "catalog.parameter.value_source.unknown",
+                        "Unknown Action parameter value source: " + source,
+                        objectId);
+                }
+            }
         }
     }
 
