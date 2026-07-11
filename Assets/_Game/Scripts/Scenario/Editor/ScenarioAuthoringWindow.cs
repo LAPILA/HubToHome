@@ -14,6 +14,7 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private const string WindowTitle = "시퀀스 메이커";
 
     private ObjectField _scenarioField;
+    private ObjectField _standaloneSequenceField;
     private ObjectField _catalogField;
     private TextField _sourcePathField;
     private Label _statusLabel;
@@ -33,8 +34,10 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private Button _exportAsButton;
 
     private BattleScenarioData _scenario;
+    private ActionSequenceAsset _standaloneSequence;
     private ActionCatalogAsset _catalog;
     private ScenarioSourceYamlExportResult _lastExportResult;
+    private ActionSequenceSourceExportResult _lastStandaloneExportResult;
     private ScenarioValidationResult _cachedCatalogValidation;
     private ActionSequenceAsset _selectedSequence;
     private ScenarioActionData _selectedAction;
@@ -54,7 +57,30 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     public void CreateGUI()
     {
         BuildLayout();
+        ActionSequenceAsset selectedSequence = Selection.activeObject as ActionSequenceAsset;
+        if (selectedSequence != null)
+        {
+            SetStandaloneSequence(selectedSequence);
+            return;
+        }
+
         SetScenario(Selection.activeObject as BattleScenarioData);
+    }
+
+    private void OnSelectionChange()
+    {
+        ActionSequenceAsset selectedSequence = Selection.activeObject as ActionSequenceAsset;
+        if (selectedSequence != null && selectedSequence != _standaloneSequence)
+        {
+            SetStandaloneSequence(selectedSequence);
+            return;
+        }
+
+        BattleScenarioData selectedScenario = Selection.activeObject as BattleScenarioData;
+        if (selectedScenario != null && selectedScenario != _scenario)
+        {
+            SetScenario(selectedScenario);
+        }
     }
 
     private void BuildLayout()
@@ -85,6 +111,14 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         _scenarioField.style.flexGrow = 1;
         _scenarioField.RegisterValueChangedCallback(evt => SetScenario(evt.newValue as BattleScenarioData));
         toolbar.Add(_scenarioField);
+
+        _standaloneSequenceField = new ObjectField("독립 Action Sequence");
+        _standaloneSequenceField.objectType = typeof(ActionSequenceAsset);
+        _standaloneSequenceField.allowSceneObjects = false;
+        _standaloneSequenceField.style.flexGrow = 1;
+        _standaloneSequenceField.style.marginLeft = 8;
+        _standaloneSequenceField.RegisterValueChangedCallback(evt => SetStandaloneSequence(evt.newValue as ActionSequenceAsset));
+        toolbar.Add(_standaloneSequenceField);
 
         _refreshButton = new Button(RefreshAll) { text = "새로고침" };
         _refreshButton.style.marginLeft = 8;
@@ -207,6 +241,29 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         }
 
         _scenario = scenario;
+        if (scenario != null)
+        {
+            _standaloneSequence = null;
+            _standaloneSequenceField?.SetValueWithoutNotify(null);
+        }
+
+        RefreshAll();
+    }
+
+    private void SetStandaloneSequence(ActionSequenceAsset sequence)
+    {
+        if (_standaloneSequenceField != null && _standaloneSequenceField.value != sequence)
+        {
+            _standaloneSequenceField.SetValueWithoutNotify(sequence);
+        }
+
+        _standaloneSequence = sequence;
+        if (sequence != null)
+        {
+            _scenario = null;
+            _scenarioField?.SetValueWithoutNotify(null);
+        }
+
         RefreshAll();
     }
 
@@ -219,13 +276,13 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private void UpdateButtonState()
     {
-        bool hasScenario = _scenario != null;
-        _refreshButton?.SetEnabled(hasScenario);
-        _exportAsButton?.SetEnabled(hasScenario);
-        _validateSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
-        _reimportSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
-        _exportSourceButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
-        _saveAndReimportButton?.SetEnabled(hasScenario && !string.IsNullOrWhiteSpace(GetSourcePath()));
+        bool hasTarget = _scenario != null || _standaloneSequence != null;
+        _refreshButton?.SetEnabled(hasTarget);
+        _exportAsButton?.SetEnabled(hasTarget);
+        _validateSourceButton?.SetEnabled(hasTarget && !string.IsNullOrWhiteSpace(GetSourcePath()));
+        _reimportSourceButton?.SetEnabled(hasTarget && !string.IsNullOrWhiteSpace(GetSourcePath()));
+        _exportSourceButton?.SetEnabled(hasTarget && !string.IsNullOrWhiteSpace(GetSourcePath()));
+        _saveAndReimportButton?.SetEnabled(hasTarget && !string.IsNullOrWhiteSpace(GetSourcePath()));
     }
 
     private void RefreshSummary()
@@ -242,16 +299,22 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             _syncPanel.Add(_yamlPreviewField);
         }
 
-        if (_scenario == null)
+        if (_scenario == null && _standaloneSequence == null)
         {
-            AddInfo(_overviewPanel, "Battle Scenario Data를 선택하세요.");
+            AddInfo(_overviewPanel, "Battle Scenario Data 또는 독립 Action Sequence를 선택하세요.");
             AddInfo(_validationPanel, "검증할 시나리오가 없습니다.");
             AddInfo(_timelinePanel, "시퀀스를 선택하면 액션 타임라인이 표시됩니다.");
             AddInfo(_inspectorPanel, "액션을 선택하면 파라미터를 편집할 수 있습니다.");
             _sourcePathField.value = string.Empty;
             _cachedCatalogValidation = null;
             ClearSelection();
-            SetStatus("시나리오 에셋을 선택하면 개요와 YAML 미리보기가 표시됩니다.", MessageType.Info);
+            SetStatus("시나리오 또는 독립 시퀀스 에셋을 선택하면 개요와 YAML 미리보기가 표시됩니다.", MessageType.Info);
+            return;
+        }
+
+        if (_standaloneSequence != null)
+        {
+            RefreshStandaloneSequenceSummary();
             return;
         }
 
@@ -279,13 +342,25 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private void RefreshYamlPreview()
     {
+        if (_standaloneSequence != null)
+        {
+            _lastExportResult = null;
+            _lastStandaloneExportResult = ActionSequenceSourceSync.Export(_standaloneSequence);
+            _yamlPreviewField.value = _lastStandaloneExportResult.Text ?? string.Empty;
+            SetValidationStatus(_lastStandaloneExportResult.Validation, "독립 시퀀스 YAML 미리보기를 생성했습니다.");
+            UpdateButtonState();
+            return;
+        }
+
         if (_scenario == null)
         {
             _lastExportResult = null;
+            _lastStandaloneExportResult = null;
             _yamlPreviewField.value = string.Empty;
             return;
         }
 
+        _lastStandaloneExportResult = null;
         _lastExportResult = new ScenarioSourceYamlExportCommand().ExportToText(_scenario);
         _yamlPreviewField.value = _lastExportResult.Text ?? string.Empty;
         SetValidationStatus(_lastExportResult.Validation, "YAML 미리보기를 생성했습니다.");
@@ -368,6 +443,41 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
             _sequencesPanel.Add(row);
         }
+    }
+
+    private void RefreshStandaloneSequenceSummary()
+    {
+        _cachedCatalogValidation = _catalog != null
+            ? ScenarioCatalogValidator.ValidateSequence(_standaloneSequence, _catalog)
+            : null;
+        EnsureSelection();
+
+        _sourcePathField.value = GetSourcePath();
+        AddInfo(_overviewPanel, "형식", "독립 Action Sequence");
+        AddInfo(_overviewPanel, "ID", EmptyDash(_standaloneSequence.SequenceId));
+        AddInfo(_overviewPanel, "제목", EmptyDash(_standaloneSequence.DisplayNameKo));
+        AddInfo(_overviewPanel, "Primary Mode", ActionSequenceSourceSync.DefaultPrimaryMode);
+        AddInfo(_overviewPanel, "Source Hash", ShortHash(_standaloneSequence.Source != null ? _standaloneSequence.Source.SourceHash : string.Empty));
+        AddInfo(_rulesPanel, "전투 규칙과 분리된 전역/오버월드 시퀀스입니다.");
+
+        string title = EmptyDash(_standaloneSequence.SequenceId);
+        if (!string.IsNullOrWhiteSpace(_standaloneSequence.DisplayNameKo))
+        {
+            title += " / " + _standaloneSequence.DisplayNameKo.Trim();
+        }
+
+        Button row = new Button(() => SelectSequence(_standaloneSequence))
+        {
+            text = "▶ " + title + " · " + CountActions(_standaloneSequence.Actions) + "개 액션"
+        };
+        row.style.marginBottom = 4;
+        row.style.unityTextAlign = TextAnchor.MiddleLeft;
+        row.style.backgroundColor = new Color(0.16f, 0.30f, 0.42f);
+        _sequencesPanel.Add(row);
+
+        RenderSelectedSequenceTimeline();
+        RenderActionInspector();
+        RenderSyncAndValidation();
     }
 
     private void RenderSelectedSequenceTimeline()
@@ -536,6 +646,31 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private void EnsureSelection()
     {
+        if (_standaloneSequence != null)
+        {
+            if (_selectedSequence != _standaloneSequence)
+            {
+                _selectedSequence = _standaloneSequence;
+                _selectedAction = null;
+                _selectedActionList = null;
+                _selectedActionIndex = -1;
+                _selectedActionObjectId = string.Empty;
+            }
+
+            if (_selectedActionList == null
+                || _selectedActionIndex < 0
+                || _selectedActionIndex >= _selectedActionList.Count
+                || _selectedActionList[_selectedActionIndex] != _selectedAction)
+            {
+                _selectedAction = null;
+                _selectedActionList = null;
+                _selectedActionIndex = -1;
+                _selectedActionObjectId = string.Empty;
+            }
+
+            return;
+        }
+
         if (_scenario == null || _scenario.Sequences == null || _scenario.Sequences.Count == 0)
         {
             ClearSelection();
@@ -613,6 +748,12 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             AddValidationRows(_syncPanel, "YAML Export", _lastExportResult.Validation);
         }
 
+        if (_lastStandaloneExportResult != null && _lastStandaloneExportResult.Validation != null)
+        {
+            AddValidationRows(_validationPanel, "YAML Export", _lastStandaloneExportResult.Validation);
+            AddValidationRows(_syncPanel, "YAML Export", _lastStandaloneExportResult.Validation);
+        }
+
         if (_catalog == null)
         {
             AddInfo(_validationPanel, "Action Catalog", "선택되지 않아 카탈로그 기반 검증을 생략했습니다.");
@@ -642,7 +783,9 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
             string sourceHash = _scenario != null && _scenario.Source != null
                 ? (_scenario.Source.SourceHash ?? string.Empty).Trim()
-                : string.Empty;
+                : _standaloneSequence != null && _standaloneSequence.Source != null
+                    ? (_standaloneSequence.Source.SourceHash ?? string.Empty).Trim()
+                    : string.Empty;
             if (string.IsNullOrEmpty(sourceHash))
             {
                 return "저장된 source hash가 없어 stale 여부를 판단할 수 없습니다.";
@@ -864,6 +1007,22 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private void SaveToSourcePath()
     {
+        if (_standaloneSequence != null)
+        {
+            try
+            {
+                ActionSequenceSourceSync.SaveToSourcePath(_standaloneSequence);
+                RefreshAll();
+                SetStatus("독립 시퀀스 Source YAML을 저장하고 metadata를 갱신했습니다.", MessageType.Info);
+            }
+            catch (System.Exception exception)
+            {
+                SetStatus("독립 시퀀스 Source YAML 저장에 실패했습니다: " + exception.Message, MessageType.Error);
+            }
+
+            return;
+        }
+
         ScenarioSourceYamlExportResult result = new ScenarioSourceYamlExportCommand().ExportToSourcePath(_scenario);
         _lastExportResult = result;
         _yamlPreviewField.value = result.Text ?? string.Empty;
@@ -891,6 +1050,27 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         try
         {
             string text = File.ReadAllText(Path.GetFullPath(sourcePath));
+            if (_standaloneSequence != null)
+            {
+                ActionSequenceSourceImportResult standaloneResult = ActionSequenceSourceSync.Import(text, sourcePath);
+                if (standaloneResult.Success && _catalog != null)
+                {
+                    standaloneResult.Validation.Merge(ScenarioCatalogValidator.ValidateSequence(standaloneResult.Sequence, _catalog));
+                }
+
+                if (standaloneResult.Success)
+                {
+                    SetStatus("독립 시퀀스 원본 YAML 검증 성공: 액션 " + CountActions(standaloneResult.Sequence.Actions) + "개를 읽었습니다.", MessageType.Info);
+                }
+                else
+                {
+                    SetValidationStatus(standaloneResult.Validation, "독립 시퀀스 원본 YAML을 읽었습니다.");
+                }
+
+                DestroyTemporaryStandaloneSequence(standaloneResult.Sequence);
+                return;
+            }
+
             var resolver = new AssetDatabaseScenarioDialogueReferenceResolver();
             var importer = new ScenarioSourceImporter(
                 new ScenarioSourceYamlParser(),
@@ -922,6 +1102,22 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private void ReimportSourcePath()
     {
+        if (_standaloneSequence != null)
+        {
+            ActionSequenceSourceRuntimeAssetReimportResult standaloneResult = ActionSequenceSourceSync.ReimportFromSourcePath(
+                _standaloneSequence,
+                _catalog,
+                ActionSequenceSourceSync.DefaultPrimaryMode,
+                DateTime.UtcNow);
+            RefreshAll();
+            SetValidationStatus(
+                standaloneResult.Validation,
+                standaloneResult.Success
+                    ? "독립 시퀀스 원본 YAML을 런타임 에셋에 반영했습니다."
+                    : "독립 시퀀스 원본 YAML을 런타임 에셋에 반영하지 못했습니다.");
+            return;
+        }
+
         if (_scenario == null)
         {
             SetStatus("반영할 Battle Scenario Data를 선택하세요.", MessageType.Warning);
@@ -964,6 +1160,22 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private void SaveAndReimportSourcePath()
     {
+        if (_standaloneSequence != null)
+        {
+            try
+            {
+                ActionSequenceSourceSync.SaveToSourcePath(_standaloneSequence);
+            }
+            catch (System.Exception exception)
+            {
+                SetStatus("독립 시퀀스 저장 및 반영에 실패했습니다: " + exception.Message, MessageType.Error);
+                return;
+            }
+
+            ReimportSourcePath();
+            return;
+        }
+
         if (_scenario == null)
         {
             SetStatus("저장할 Battle Scenario Data를 선택하세요.", MessageType.Warning);
@@ -1203,16 +1415,28 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
         DestroyImmediate(scenario);
     }
 
+    private static void DestroyTemporaryStandaloneSequence(ActionSequenceAsset sequence)
+    {
+        if (sequence != null)
+        {
+            DestroyImmediate(sequence);
+        }
+    }
+
     private void ExportAs()
     {
-        if (_scenario == null)
+        if (_scenario == null && _standaloneSequence == null)
         {
             return;
         }
 
-        string defaultName = string.IsNullOrWhiteSpace(_scenario.ScenarioId)
-            ? "battle_scenario.scenario.yaml"
-            : _scenario.ScenarioId.Trim() + ".scenario.yaml";
+        string defaultName = _standaloneSequence != null
+            ? (string.IsNullOrWhiteSpace(_standaloneSequence.SequenceId)
+                ? "action_sequence.sequence.yaml"
+                : _standaloneSequence.SequenceId.Trim() + ".sequence.yaml")
+            : (string.IsNullOrWhiteSpace(_scenario.ScenarioId)
+                ? "battle_scenario.scenario.yaml"
+                : _scenario.ScenarioId.Trim() + ".scenario.yaml");
 
         string path = EditorUtility.SaveFilePanelInProject(
             "시나리오 YAML 내보내기",
@@ -1221,6 +1445,18 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
             "내보낼 Scenario Source YAML 경로를 선택하세요.");
         if (string.IsNullOrEmpty(path))
         {
+            return;
+        }
+
+        if (_standaloneSequence != null)
+        {
+            ActionSequenceSourceExportResult standaloneResult = ActionSequenceSourceSync.ExportToFile(_standaloneSequence, path);
+            _lastStandaloneExportResult = standaloneResult;
+            _yamlPreviewField.value = standaloneResult.Text ?? string.Empty;
+            _sourcePathField.value = path;
+            SetValidationStatus(
+                standaloneResult.Validation,
+                standaloneResult.Success ? "선택한 경로로 독립 시퀀스 YAML을 내보냈습니다." : "독립 시퀀스 YAML 내보내기에 실패했습니다.");
             return;
         }
 
@@ -1266,6 +1502,11 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
 
     private string GetSourcePath()
     {
+        if (_standaloneSequence != null && _standaloneSequence.Source != null)
+        {
+            return (_standaloneSequence.Source.SourcePath ?? string.Empty).Trim();
+        }
+
         return _scenario != null && _scenario.Source != null
             ? (_scenario.Source.SourcePath ?? string.Empty).Trim()
             : string.Empty;

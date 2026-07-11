@@ -49,6 +49,54 @@ Start with these categories:
 - `vfx`: spawn, attach, stop, pooled effect.
 - `flow`: wait, parallel, branch, cancel, marker.
 - `save`: set encounter memory, set flag, record outcome.
+- `cinematic`: scene-local Cinematic Stage preparation, reusable shot playback, and camera handoff.
+
+## Cinematic Stage Entries
+
+```yaml
+id: cinematic.shot.play
+category: cinematic
+displayNameKo: "시네마틱 샷 재생"
+summaryKo: "지정한 Cinematic Stage에서 카메라 레일과 여러 대상 모션을 동시에 재생합니다."
+runtimeAdapter: CinematicShotPlayActionAdapter
+params:
+  stage:
+    type: StageId
+    required: true
+  shot:
+    type: ShotId
+    required: true
+examples:
+  - cinematic.shot.play:
+      stage: overworld.subway_intro
+      shot: subway_arrival
+completion: "CinematicShotAsset의 모든 대상 모션과 카메라 렌즈 tween이 끝나면 완료됩니다."
+cancellation: "현재 shot tween만 중단하고 Stage를 해제할 수 있습니다."
+scope: "Overworld와 Battle 모두에서 씬-local stage가 제공될 때 사용 가능합니다."
+```
+
+```yaml
+id: cinematic.stage.prepare
+category: cinematic
+displayNameKo: "시네마틱 스테이지 준비"
+summaryKo: "전용 카메라, 카메라 레일, 대상의 시작 상태를 다음 shot에 맞춰 준비합니다."
+runtimeAdapter: CinematicStagePrepareActionAdapter
+params:
+  stage: { type: StageId, required: true }
+  shot: { type: ShotId, required: true }
+scope: "SceneLoader reveal gate 아래 또는 시퀀스 중 다음 shot 준비에 사용합니다."
+```
+
+```yaml
+id: cinematic.stage.release
+category: cinematic
+displayNameKo: "시네마틱 스테이지 해제"
+summaryKo: "전용 가상 카메라를 끄고 기본 게임 카메라로 돌려보냅니다."
+runtimeAdapter: CinematicStageReleaseActionAdapter
+params:
+  stage: { type: StageId, required: true }
+scope: "카메라 handoff가 필요한 모든 Primary Mode에서 사용 가능합니다."
+```
 
 ## Starter Entries
 

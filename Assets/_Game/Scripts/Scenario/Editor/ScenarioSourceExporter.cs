@@ -475,6 +475,11 @@ public sealed class ScenarioSourceYamlWriter
             }
 
             AppendKeyOnly(builder, 1, sequence.SequenceId);
+            if (!string.IsNullOrWhiteSpace(sequence.DisplayNameKo))
+            {
+                AppendKeyValue(builder, 2, "title", sequence.DisplayNameKo);
+            }
+
             WriteActions(builder, sequence.Actions, 2, validation, sequence.SequenceId);
         }
     }
@@ -1122,6 +1127,15 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 SequenceId = ParseYamlString(key)
             };
             index++;
+            while (index < lines.Count
+                && lines[index].Indent == NestedIndent
+                && TryReadKeyValue(lines[index].Trimmed, out string sequenceKey, out string sequenceValue)
+                && sequenceKey == "title")
+            {
+                sequence.DisplayNameKo = ParseYamlString(sequenceValue);
+                index++;
+            }
+
             sequence.Actions = ParseActions(lines, ref index, NestedIndent, validation, sequence.SequenceId);
             document.Sequences.Add(sequence);
         }

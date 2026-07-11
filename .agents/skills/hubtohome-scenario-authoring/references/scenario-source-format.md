@@ -9,6 +9,38 @@ Use YAML as HubToHome's source format for scenario flow. Runtime ScriptableObjec
 - `*.catalog.yaml`: stable IDs for actions, modules, actors, dialogue, audio, VFX, backgrounds, UI targets, and positions.
 - Unity `.asset`: generated or synchronized runtime representation.
 
+### Standalone Action Sequence Shape
+
+`ActionSequenceAsset` can now be source-backed without being owned by `BattleScenarioData`. The current lightweight parser deliberately reuses the existing deterministic scenario document envelope: top-level `id` and the matching key under `sequences` must be identical. `ActionSequenceSourceSync` owns export, import, metadata hash update, and safe runtime-asset replacement.
+
+```yaml
+id: overworld.intro.subway
+title: "오버월드 시작 - 지하철 도착"
+primaryMode: overworld
+sequences:
+  overworld.intro.subway:
+    title: "오버월드 시작 - 지하철 도착"
+    - cinematic.shot.play:
+      designerLabel: "지하철 도착 샷"
+      stage: overworld.subway_intro
+      shot: subway_arrival
+    - screen.fade:
+      designerLabel: "장면을 검게 전환"
+      mode: out
+      color: black
+      duration: 0.45
+    - cinematic.stage.release:
+      designerLabel: "시네마틱 카메라 해제"
+      stage: overworld.subway_intro
+    - screen.fade:
+      designerLabel: "오버월드 공개"
+      mode: in
+      color: black
+      duration: 0.55
+```
+
+Use `*.sequence.yaml` for standalone source paths. In Sequence Maker choose **독립 Action Sequence**, then use the same YAML validation, save, reimport, and export-as commands as a battle scenario. Do not hand-edit the Unity `.asset` managed-reference data.
+
 ## Parser Boundary
 
 Runtime and editor code must depend on `IScenarioSourceParser`, not directly on a concrete YAML package.
@@ -136,6 +168,8 @@ sequences:
 - Use `timing` explicitly when execution must wait for a skill, action, module, dialogue, or frame transition.
 - Use `battle.started` with `timing: immediate` for 전투 UI/참가자/시나리오 런타임 초기화 이후, opening Game Module(`openingModule`)이 시작되기 전에 재생할 오프닝 시네마틱/QTE Action Sequence. 이 규칙은 `subject`가 필요 없으며, Battle 쪽 `BattleScenarioExecutionGate.PublishBattleStarted(...)`를 통해 실행된다.
 - Use `parallel` for simultaneous actions; never imply concurrency from sibling ordering.
+- For an offstage scene cinematic, use `cinematic.shot.play` with stable `stage` and `shot` IDs. The scene trigger prepares the first shot under the SceneLoader cover; `cinematic.stage.prepare` remains available for later shots within the same sequence.
+- Use `cinematic.stage.release` before the reveal fade when returning to gameplay camera. The action must be paired with a `screen.fade` or another deliberate camera handoff beat when a visible camera cut would be distracting.
 - Keep dialogue as a waitable action, not a child of battle modules.
 - Keep save-bound facts in Encounter Memory, not in in-progress Battle Session State.
 - Runtime `flow.parallel` currently maps to `ActionDirector.ParallelActionId` and is handled as a director-level group action. In YAML, use `parallel:` for readability; the parser normalizes it to `flow.parallel`.

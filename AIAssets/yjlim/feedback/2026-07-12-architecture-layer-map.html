@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Architecture Layer Map</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:736px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Architecture Layer Map" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Architecture Layer Map&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(--background) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: light-dark(rgb(255 255 255), rgb(24 24 24));
+  --foreground: light-dark(rgb(26 28 31), rgb(255 255 255));
+  --card: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(rgb(255 255 255), rgb(45 45 45));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --primary-foreground: light-dark(rgb(255 255 255), rgb(13 13 13));
+  --secondary: light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%));
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: light-dark(
+    rgb(26 28 31 / 49.4%),
+    rgb(255 255 255 / 49.8%)
+  );
+  --accent: light-dark(rgb(229 242 255), rgb(13 39 63));
+  --accent-foreground: var(--primary);
+  --destructive: light-dark(rgb(226 85 7), rgb(255 133 73));
+  --border: light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%));
+  --input: light-dark(
+    rgb(26 28 31 / 11.8%),
+    color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+  );
+  --ring: light-dark(rgb(51 156 255), rgb(131 195 255 / 76%));
+  --font-size-base: 14px;
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: 12.5px;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+  --color-background-primary: var(--background);
+  --color-text-primary: var(--foreground);
+  --color-border-secondary: var(--border);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--viz-font-weight-medium);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;hubtohome-architecture-map&quot;&gt;
+  &lt;style&gt;
+    #hubtohome-architecture-map {
+      --ink: #16211f;
+      --paper: #f7f3ea;
+      --line: #c9c2b3;
+      --muted: #6a706b;
+      --mint: #107c70;
+      --mint-soft: #dceee8;
+      --coral: #c84b45;
+      --coral-soft: #f7e1dd;
+      --gold: #ad6e08;
+      --gold-soft: #f6ead2;
+      --violet: #6751a4;
+      --violet-soft: #e9e4f5;
+      box-sizing: border-box;
+      color: var(--ink);
+      font-family: &quot;Noto Sans KR&quot;, &quot;Malgun Gothic&quot;, sans-serif;
+      background: var(--paper);
+      min-height: 100%;
+      padding: 32px clamp(18px, 4vw, 64px) 48px;
+    }
+    #hubtohome-architecture-map *, #hubtohome-architecture-map *::before, #hubtohome-architecture-map *::after { box-sizing: inherit; }
+    #hubtohome-architecture-map .masthead { max-width: 1480px; margin: 0 auto 28px; display: flex; gap: 24px; justify-content: space-between; align-items: end; border-bottom: 2px solid var(--ink); padding-bottom: 17px; }
+    #hubtohome-architecture-map .eyebrow { margin: 0 0 8px; color: var(--mint); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+    #hubtohome-architecture-map h1 { margin: 0; font-size: clamp(28px, 4vw, 52px); line-height: 1.1; letter-spacing: 0; font-weight: 800; }
+    #hubtohome-architecture-map .subtitle { margin: 10px 0 0; color: var(--muted); max-width: 780px; line-height: 1.6; }
+    #hubtohome-architecture-map .legend { display: flex; gap: 12px; flex-wrap: wrap; justify-content: end; padding-bottom: 3px; }
+    #hubtohome-architecture-map .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+    #hubtohome-architecture-map .swatch { width: 12px; height: 12px; display: inline-block; border: 1px solid var(--ink); }
+    #hubtohome-architecture-map .swatch.actual { background: var(--mint-soft); border-color: var(--mint); }
+    #hubtohome-architecture-map .swatch.adapter { background: var(--gold-soft); border-color: var(--gold); }
+    #hubtohome-architecture-map .swatch.partial { background: var(--violet-soft); border-color: var(--violet); }
+    #hubtohome-architecture-map .map-shell { max-width: 1480px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 26px; }
+    #hubtohome-architecture-map .map { min-width: 0; }
+    #hubtohome-architecture-map .section-label { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: .05em; color: var(--muted); }
+    #hubtohome-architecture-map .section-label::after { content: &quot;&quot;; height: 1px; background: var(--line); flex: 1; }
+    #hubtohome-architecture-map .authoring { display: grid; grid-template-columns: 1fr 46px 1fr 46px 1fr; align-items: stretch; margin-bottom: 20px; }
+    #hubtohome-architecture-map .flow-arrow { display: flex; align-items: center; justify-content: center; color: var(--mint); font-size: 25px; font-weight: 600; }
+    #hubtohome-architecture-map .node { position: relative; border: 1px solid var(--line); background: rgba(255,255,255,.38); padding: 14px 15px 13px; min-height: 112px; cursor: pointer; text-align: left; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+    #hubtohome-architecture-map button.node { font: inherit; color: inherit; width: 100%; }
+    #hubtohome-architecture-map .node:hover, #hubtohome-architecture-map .node:focus-visible { transform: translateY(-2px); border-color: var(--ink); box-shadow: 5px 5px 0 rgba(22,33,31,.16); outline: 2px solid var(--mint); outline-offset: 2px; }
+    #hubtohome-architecture-map .node.active { border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); transform: translate(-2px, -2px); }
+    #hubtohome-architecture-map .node.actual { background: var(--mint-soft); border-color: var(--mint); }
+    #hubtohome-architecture-map .node.adapter { background: var(--gold-soft); border-color: var(--gold); }
+    #hubtohome-architecture-map .node.partial { background: var(--violet-soft); border-color: var(--violet); }
+    #hubtohome-architecture-map .node.neutral { background: rgba(255,255,255,.45); }
+    #hubtohome-architecture-map .node-kicker { display: block; color: var(--muted); font-size: 11px; font-weight: 700; margin-bottom: 7px; letter-spacing: .03em; }
+    #hubtohome-architecture-map .node h2, #hubtohome-architecture-map .node h3 { margin: 0; font-size: 17px; line-height: 1.24; font-weight: 800; }
+    #hubtohome-architecture-map .node p { margin: 7px 0 0; font-size: 12px; line-height: 1.45; color: #3c4844; }
+    #hubtohome-architecture-map .spine { margin: 4px 0 20px; display: grid; grid-template-columns: 1fr 48px minmax(245px, .9fr) 48px 1fr; align-items: center; }
+    #hubtohome-architecture-map .spine .node { min-height: 126px; }
+    #hubtohome-architecture-map .director { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    #hubtohome-architecture-map .director .node-kicker, #hubtohome-architecture-map .director p { color: #cfe2da; }
+    #hubtohome-architecture-map .director h2 { font-size: 22px; }
+    #hubtohome-architecture-map .primary-modes { margin-bottom: 20px; display: grid; grid-template-columns: 1fr 48px 1fr; align-items: stretch; }
+    #hubtohome-architecture-map .mode-divider { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .04em; }
+    #hubtohome-architecture-map .mode { min-height: 210px; }
+    #hubtohome-architecture-map .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    #hubtohome-architecture-map .chip { border-top: 1px solid currentColor; padding-top: 6px; font-size: 12px; line-height: 1.35; }
+    #hubtohome-architecture-map .chip strong { display: block; font-size: 12px; }
+    #hubtohome-architecture-map .dispatch { display: grid; grid-template-columns: 1.15fr 42px 1fr 42px 1fr; align-items: stretch; margin-bottom: 20px; }
+    #hubtohome-architecture-map .dispatch .node { min-height: 148px; }
+    #hubtohome-architecture-map .runtime-floor { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    #hubtohome-architecture-map .runtime-floor .node { min-height: 130px; }
+    #hubtohome-architecture-map .side { border-left: 1px solid var(--line); padding-left: 22px; }
+    #hubtohome-architecture-map .side h2 { margin: 0 0 10px; font-size: 18px; }
+    #hubtohome-architecture-map .detail { min-height: 350px; padding: 17px; background: var(--ink); color: var(--paper); }
+    #hubtohome-architecture-map .detail .detail-type { margin: 0 0 8px; color: #b9dace; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+    #hubtohome-architecture-map .detail h3 { margin: 0; font-size: 22px; line-height: 1.2; }
+    #hubtohome-architecture-map .detail p { margin: 12px 0; color: #d6e4de; font-size: 13px; line-height: 1.65; }
+    #hubtohome-architecture-map .detail ul { margin: 13px 0 0; padding: 0; list-style: none; }
+    #hubtohome-architecture-map .detail li { border-top: 1px solid rgba(247,243,234,.28); padding: 9px 0; font-size: 12px; line-height: 1.5; }
+    #hubtohome-architecture-map .detail code { font-family: Consolas, monospace; font-size: 11px; color: #ffe6a8; }
+    #hubtohome-architecture-map .scenario { margin-top: 22px; border-top: 2px solid var(--ink); padding-top: 17px; }
+    #hubtohome-architecture-map .scenario h2 { margin: 0 0 10px; font-size: 20px; }
+    #hubtohome-architecture-map .sequence { display: flex; align-items: stretch; flex-wrap: wrap; gap: 7px; }
+    #hubtohome-architecture-map .sequence-step { flex: 1 1 118px; min-width: 118px; border: 1px solid var(--line); padding: 10px; background: rgba(255,255,255,.32); font-size: 12px; line-height: 1.35; }
+    #hubtohome-architecture-map .sequence-step strong { display: block; margin-bottom: 3px; }
+    #hubtohome-architecture-map .sequence-step.event { background: var(--coral-soft); border-color: var(--coral); }
+    #hubtohome-architecture-map .sequence-step.action { background: var(--mint-soft); border-color: var(--mint); }
+    #hubtohome-architecture-map .sequence-step.module { background: var(--violet-soft); border-color: var(--violet); }
+    #hubtohome-architecture-map .scenario-note { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    #hubtohome-architecture-map .status { margin: 20px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.55; }
+    #hubtohome-architecture-map .status strong { color: var(--ink); }
+    @media (max-width: 980px) {
+      #hubtohome-architecture-map .masthead, #hubtohome-architecture-map .map-shell { display: block; }
+      #hubtohome-architecture-map .legend { justify-content: start; margin-top: 16px; }
+      #hubtohome-architecture-map .side { margin-top: 28px; border-left: 0; border-top: 1px solid var(--line); padding: 22px 0 0; }
+      #hubtohome-architecture-map .detail { min-height: auto; }
+    }
+    @media (max-width: 700px) {
+      #hubtohome-architecture-map { padding: 22px 14px 34px; }
+      #hubtohome-architecture-map .authoring, #hubtohome-architecture-map .spine, #hubtohome-architecture-map .primary-modes, #hubtohome-architecture-map .dispatch { grid-template-columns: 1fr; gap: 8px; }
+      #hubtohome-architecture-map .flow-arrow { min-height: 25px; transform: rotate(90deg); }
+      #hubtohome-architecture-map .mode-divider { writing-mode: horizontal-tb; transform: none; min-height: 24px; }
+      #hubtohome-architecture-map .runtime-floor, #hubtohome-architecture-map .mode-grid { grid-template-columns: 1fr; }
+    }
+  &lt;/style&gt;
+
+  &lt;header class=&quot;masthead&quot;&gt;
+    &lt;div&gt;
+      &lt;p class=&quot;eyebrow&quot;&gt;HUBTOHOME / SYSTEM MAP / 2026.07&lt;/p&gt;
+      &lt;h1&gt;게임 전체를 감싸는 상위 아키텍처&lt;/h1&gt;
+      &lt;p class=&quot;subtitle&quot;&gt;오버월드와 전투는 서로 다른 Primary Mode. 그 위에서 Action Sequence와 Action Director가 게임의 상황·연출·모듈 교체를 공통 문법으로 조율한다.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;legend&quot; aria-label=&quot;상태 범례&quot;&gt;
+      &lt;span class=&quot;legend-item&quot;&gt;&lt;i class=&quot;swatch actual&quot;&gt;&lt;/i&gt;현재 작동&lt;/span&gt;
+      &lt;span class=&quot;legend-item&quot;&gt;&lt;i class=&quot;swatch adapter&quot;&gt;&lt;/i&gt;기존 시스템 연결&lt;/span&gt;
+      &lt;span class=&quot;legend-item&quot;&gt;&lt;i class=&quot;swatch partial&quot;&gt;&lt;/i&gt;확장 중&lt;/span&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;main class=&quot;map-shell&quot;&gt;
+    &lt;section class=&quot;map&quot; aria-label=&quot;HubToHome 상위 아키텍처 지도&quot;&gt;
+      &lt;p class=&quot;section-label&quot;&gt;1. 만드는 층 / 사람이 읽고 AI가 다루는 데이터&lt;/p&gt;
+      &lt;div class=&quot;authoring&quot;&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;source&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;SOURCE OF TRUTH&lt;/span&gt;&lt;h2&gt;Scenario Source YAML&lt;/h2&gt;&lt;p&gt;전투 규칙, 시퀀스, 대사, 모듈 전환을 사람이 읽는 형태로 보관&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;flow-arrow&quot; aria-hidden=&quot;true&quot;&gt;→&lt;/div&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;runtimeAsset&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;UNITY REPRESENTATION&lt;/span&gt;&lt;h2&gt;Scenario Runtime Asset&lt;/h2&gt;&lt;p&gt;BattleScenarioData와 ActionSequenceAsset으로 동기화&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;flow-arrow&quot; aria-hidden=&quot;true&quot;&gt;→&lt;/div&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;editor&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;HUMAN SURFACE&lt;/span&gt;&lt;h2&gt;시퀀스 메이커&lt;/h2&gt;&lt;p&gt;카탈로그 기반 액션 편집, 검증, YAML 저장 및 안전 반영&lt;/p&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;p class=&quot;section-label&quot;&gt;2. 모든 환경이 만나는 공통 실행 축&lt;/p&gt;
+      &lt;div class=&quot;spine&quot;&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;rules&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;WHEN&lt;/span&gt;&lt;h2&gt;이벤트 · 규칙 평가&lt;/h2&gt;&lt;p&gt;HP 임계점, 스킬 종료, 모듈 결과, 첫 만남/재대결 기억을 판정&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;flow-arrow&quot; aria-hidden=&quot;true&quot;&gt;→&lt;/div&gt;
+        &lt;button class=&quot;node director architecture-node&quot; type=&quot;button&quot; data-key=&quot;director&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;GLOBAL ORCHESTRATOR&lt;/span&gt;&lt;h2&gt;Action Director&lt;/h2&gt;&lt;p&gt;순차 · 병렬 · 대기 · 취소를 관리하고, 어떤 환경에서도 같은 Action Sequence를 실행&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;flow-arrow&quot; aria-hidden=&quot;true&quot;&gt;→&lt;/div&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;registry&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;HOW&lt;/span&gt;&lt;h2&gt;Action Adapter Registry&lt;/h2&gt;&lt;p&gt;액션 ID를 구체적 실행 코드와 연결. 모듈/연출/기존 시스템의 결합점&lt;/p&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;p class=&quot;section-label&quot;&gt;3. Primary Mode / 플레이 가능한 두 공간&lt;/p&gt;
+      &lt;div class=&quot;primary-modes&quot;&gt;
+        &lt;button class=&quot;node neutral mode architecture-node&quot; type=&quot;button&quot; data-key=&quot;overworld&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;PRIMARY MODE A&lt;/span&gt;&lt;h2&gt;Overworld&lt;/h2&gt;&lt;p&gt;탐색, 방 이동, NPC, 상호작용, 저장, 마을 미니게임&lt;/p&gt;
+          &lt;div class=&quot;mode-grid&quot;&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;입력&lt;/strong&gt;GameInput / PlayerController&lt;/span&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;진입점&lt;/strong&gt;AreaTrigger / IInteractable&lt;/span&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;공통 호출&lt;/strong&gt;대사 · UI · 음악 · Action&lt;/span&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;전투 진입&lt;/strong&gt;BattleEncounterService&lt;/span&gt;&lt;/div&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;mode-divider&quot;&gt;같은 상위 실행 축을 공유&lt;/div&gt;
+        &lt;button class=&quot;node neutral mode architecture-node&quot; type=&quot;button&quot; data-key=&quot;battle&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;PRIMARY MODE B&lt;/span&gt;&lt;h2&gt;Battle&lt;/h2&gt;&lt;p&gt;전투 세션 안에서 QTE, 슈팅, 권투 등 Game Module을 교체하며 진행&lt;/p&gt;
+          &lt;div class=&quot;mode-grid&quot;&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;세션 진실&lt;/strong&gt;BattleSessionState&lt;/span&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;트리거&lt;/strong&gt;Execution Gate / Rule Runtime&lt;/span&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;공통 호출&lt;/strong&gt;대사 · UI · 음악 · 컷신&lt;/span&gt;&lt;span class=&quot;chip&quot;&gt;&lt;strong&gt;결과 복귀&lt;/strong&gt;Encounter Memory / Overworld&lt;/span&gt;&lt;/div&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;p class=&quot;section-label&quot;&gt;4. 실제 행동을 수행하는 실행 대상&lt;/p&gt;
+      &lt;div class=&quot;dispatch&quot;&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;presentation&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;CALLABLE ANYWHERE&lt;/span&gt;&lt;h2&gt;Presentation Service&lt;/h2&gt;&lt;p&gt;Dialogue · Audio · Screen Fade · Camera · Timeline · VFX · UI. 모듈에 종속되지 않고 어디서나 호출&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;flow-arrow&quot; aria-hidden=&quot;true&quot;&gt;↔&lt;/div&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;modules&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;REPLACEABLE GAMEPLAY&lt;/span&gt;&lt;h2&gt;Game Module Runner&lt;/h2&gt;&lt;p&gt;Registry가 ID로 모듈을 찾고 Enter / Exit / Start. 현재 모듈 상태는 Battle Session에 유지&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;flow-arrow&quot; aria-hidden=&quot;true&quot;&gt;↔&lt;/div&gt;
+        &lt;button class=&quot;node adapter architecture-node&quot; type=&quot;button&quot; data-key=&quot;legacy&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;MIGRATION BRIDGE&lt;/span&gt;&lt;h2&gt;기존 게임 시스템&lt;/h2&gt;&lt;p&gt;BattleManager · SkillData · QTEManager · DialogueManager · BattleUIController를 어댑터로 연결&lt;/p&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;p class=&quot;section-label&quot;&gt;5. 모듈을 바꿔도 유지되는 상태와 게임 바깥 저장&lt;/p&gt;
+      &lt;div class=&quot;runtime-floor&quot;&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;session&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;BATTLE-SCOPED&lt;/span&gt;&lt;h2&gt;Battle Session State&lt;/h2&gt;&lt;p&gt;HP/MP 스냅샷, 현재 모듈, 전투 플래그. 모듈을 바꿔도 전투가 끝날 때까지 유지&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;button class=&quot;node actual architecture-node&quot; type=&quot;button&quot; data-key=&quot;memory&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;SAVE-BOUND / OUTSIDE BATTLE&lt;/span&gt;&lt;h2&gt;Encounter Memory&lt;/h2&gt;&lt;p&gt;첫 만남, 재대결, 본 연출, 처치 여부. 전투 중간 상태는 저장하지 않음&lt;/p&gt;
+        &lt;/button&gt;
+        &lt;button class=&quot;node partial architecture-node&quot; type=&quot;button&quot; data-key=&quot;modulesNow&quot;&gt;
+          &lt;span class=&quot;node-kicker&quot;&gt;CURRENT MODULES&lt;/span&gt;&lt;h2&gt;turn_qte + aim_shooter&lt;/h2&gt;&lt;p&gt;QTE는 기존 전투를 감싼 호환 모듈. 슈팅은 입력/UI/발사체 확장을 위한 첫 shell&lt;/p&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;section class=&quot;scenario&quot; aria-labelledby=&quot;scenario-title&quot;&gt;
+        &lt;h2 id=&quot;scenario-title&quot;&gt;예시: QTE 전투에서 슈팅 전투로 바뀌는 순간&lt;/h2&gt;
+        &lt;div class=&quot;sequence&quot; aria-label=&quot;전투 모듈 전환 시나리오 흐름&quot;&gt;
+          &lt;div class=&quot;sequence-step event&quot;&gt;&lt;strong&gt;WHEN&lt;/strong&gt;적 HP 50% 아래 + 현재 스킬 종료&lt;/div&gt;
+          &lt;div class=&quot;sequence-step action&quot;&gt;&lt;strong&gt;RULE → SEQUENCE&lt;/strong&gt;phase2 규칙이 시퀀스 트리거&lt;/div&gt;
+          &lt;div class=&quot;sequence-step action&quot;&gt;&lt;strong&gt;DIRECTOR&lt;/strong&gt;BGM · 대사 · 페이드 순차 실행&lt;/div&gt;
+          &lt;div class=&quot;sequence-step module&quot;&gt;&lt;strong&gt;MODULE SWITCH&lt;/strong&gt;turn_qte Exit → aim_shooter Enter&lt;/div&gt;
+          &lt;div class=&quot;sequence-step action&quot;&gt;&lt;strong&gt;PRESENTATION&lt;/strong&gt;배경 · UI · 위치 · 애니메이션 전환&lt;/div&gt;
+          &lt;div class=&quot;sequence-step module&quot;&gt;&lt;strong&gt;MODULE START&lt;/strong&gt;aim_shooter가 입력과 전투 규칙 소유&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;p class=&quot;scenario-note&quot;&gt;중간의 대사는 플레이어가 넘길 때까지 Action Director가 기다린다. BGM/페이드/이동은 병렬 그룹으로 묶을 수도 있고, 전투 HP와 플래그는 Battle Session State에 계속 남는다.&lt;/p&gt;
+      &lt;/section&gt;
+
+      &lt;p class=&quot;status&quot;&gt;&lt;strong&gt;핵심 원칙:&lt;/strong&gt; 새로운 게임 규칙은 가능한 한 `BattleManager`의 조건문으로 늘리지 않는다. “언제(When)”는 Scenario Rule, “무엇을(Do)”는 Action Sequence, “어떻게(How)”는 Adapter / Module / Presentation Service에 둔다.&lt;/p&gt;
+    &lt;/section&gt;
+
+    &lt;aside class=&quot;side&quot; aria-label=&quot;선택한 레이어의 상세 설명&quot;&gt;
+      &lt;h2&gt;레이어 상세&lt;/h2&gt;
+      &lt;div class=&quot;detail&quot; id=&quot;architecture-detail&quot; aria-live=&quot;polite&quot;&gt;
+        &lt;p class=&quot;detail-type&quot;&gt;SELECT A LAYER&lt;/p&gt;
+        &lt;h3&gt;중앙 실행 축부터 보면 됨&lt;/h3&gt;
+        &lt;p&gt;카드를 클릭하면 해당 레이어의 책임, 실제 코드 축, 다른 시스템과의 연결을 보여준다.&lt;/p&gt;
+        &lt;ul&gt;&lt;li&gt;&lt;code&gt;Action Director&lt;/code&gt;가 공통 실행자&lt;/li&gt;&lt;li&gt;&lt;code&gt;Game Module&lt;/code&gt;은 바꿔 끼우는 게임 규칙&lt;/li&gt;&lt;li&gt;&lt;code&gt;Presentation Service&lt;/code&gt;는 어느 곳에서나 호출&lt;/li&gt;&lt;/ul&gt;
+      &lt;/div&gt;
+    &lt;/aside&gt;
+  &lt;/main&gt;
+
+  &lt;script&gt;
+    (function () {
+      const root = document.getElementById(&#x27;hubtohome-architecture-map&#x27;);
+      const detail = root.querySelector(&#x27;#architecture-detail&#x27;);
+      const nodes = root.querySelectorAll(&#x27;.architecture-node&#x27;);
+      const entries = {
+        source: { type: &#x27;AUTHORING TRUTH&#x27;, title: &#x27;Scenario Source YAML&#x27;, text: &#x27;전투·오버월드·연출의 흐름을 사람이 읽고 AI가 수정하기 쉬운 원본 데이터로 관리한다. 런타임 ScriptableObject는 이 원본을 실행 가능한 형태로 옮긴 결과다.&#x27;, facts: [&#x27;규칙의 When과 실행할 Sequence ID를 기록&#x27;, &#x27;액션 ID와 파라미터를 명시&#x27;, &#x27;Unity GUID/managed-reference 노이즈를 직접 편집할 필요 없음&#x27;] },
+        runtimeAsset: { type: &#x27;UNITY RUNTIME DATA&#x27;, title: &#x27;Scenario Runtime Asset&#x27;, text: &#x27;YAML을 검증해 BattleScenarioData와 ActionSequenceAsset으로 동기화한다. 런타임은 이 에셋을 읽는다.&#x27;, facts: [&#x27;안전 반영은 임시 import → 전체 검증 → 기존 에셋 갱신 순서&#x27;, &#x27;동일 SequenceId는 기존 sub-asset을 재사용&#x27;, &#x27;원본에서 사라진 sequence는 자동 삭제하지 않음&#x27;] },
+        editor: { type: &#x27;HUMAN EDITOR&#x27;, title: &#x27;시퀀스 메이커&#x27;, text: &#x27;사람이 YAML 원문 대신 시나리오 구조를 보고 액션 순서와 값만 가볍게 다루는 UI Toolkit 편집기다.&#x27;, facts: [&#x27;좌측: 규칙과 sequence / 중앙: timeline / 우측: action inspector&#x27;, &#x27;카탈로그에서 액션 선택, 삽입·복제·이동·비활성화&#x27;, &#x27;저장 및 반영: YAML 저장 + metadata sync + runtime asset reimport&#x27;] },
+        rules: { type: &#x27;WHEN&#x27;, title: &#x27;Battle Scenario Runtime + Rule&#x27;, text: &#x27;전투에서 일어난 사실을 규칙과 비교해, 지금 실행할지 혹은 현재 스킬/모듈이 끝난 뒤 실행할지를 결정한다.&#x27;, facts: [&#x27;HP 임계점, 스킬 종료, 모듈 완료, 전투 시작/종료 이벤트&#x27;, &#x27;Once 정책: PerBattle / PerEncounterMemory&#x27;, &#x27;BattleScenarioEventRouter가 지연 타이밍을 보존&#x27;] },
+        director: { type: &#x27;GLOBAL EXECUTION&#x27;, title: &#x27;Action Director&#x27;, text: &#x27;Action Sequence의 전역 실행자. 순차 실행이 기본이고 flow.parallel 하위 액션은 동시에 끝날 때까지 기다린다. 실패/취소도 한 Handle로 전파한다.&#x27;, facts: [&#x27;Overworld와 Battle 어느 쪽에서도 동일한 실행 모델&#x27;, &#x27;대사처럼 완료를 기다려야 하는 연출을 자연스럽게 멈춤&#x27;, &#x27;Unknown Action ID는 조용히 넘기지 않고 시퀀스를 실패 처리&#x27;] },
+        registry: { type: &#x27;HOW&#x27;, title: &#x27;Action Adapter Registry&#x27;, text: &#x27;데이터의 action ID를 실제 C# 실행 코드에 연결한다. 시나리오가 구체 매니저를 직접 알지 않도록 막는 경계다.&#x27;, facts: [&#x27;flow.wait / dialogue.wait / bgm.crossfade / screen.fade&#x27;, &#x27;module.switch / module.start / battle.skill.timeline&#x27;, &#x27;액션 추가 시 Catalog·검증·한국어 이름·Adapter를 함께 추가&#x27;] },
+        overworld: { type: &#x27;PRIMARY MODE&#x27;, title: &#x27;Overworld&#x27;, text: &#x27;플레이어가 돌아다니고 상호작용하는 최상위 공간이다. 미니게임이나 연출은 필요할 때 Action Sequence로 호출할 수 있다.&#x27;, facts: [&#x27;IInteractable / AreaTrigger / NPC / Room transition이 이벤트 출발점&#x27;, &#x27;BattleEncounterService로 전투 진입을 한 곳에 모음&#x27;, &#x27;현재 전투 모듈 전환은 Battle이 주 대상, Overworld 모듈은 같은 모델로 확장 가능&#x27;] },
+        battle: { type: &#x27;PRIMARY MODE&#x27;, title: &#x27;Battle&#x27;, text: &#x27;전투라는 최상위 공간 안에서만 QTE, 슈팅, 권투 같은 Game Module이 교체된다. Battle 자체와 Game Module을 같은 것으로 취급하지 않는다.&#x27;, facts: [&#x27;Execution Gate가 트리거 시퀀스 실행 중 전투 흐름을 멈춤&#x27;, &#x27;Battle Session State가 모듈을 넘어 상태 유지&#x27;, &#x27;전투 끝난 결과와 Encounter Memory만 저장 범위&#x27;] },
+        presentation: { type: &#x27;GLOBAL PRESENTATION&#x27;, title: &#x27;Presentation Service&#x27;, text: &#x27;대사·음악·화면·카메라·컷신·UI·VFX는 특정 전투 모듈의 부속물이 아니다. ActionExecutionContext의 좁은 service seam으로 호출한다.&#x27;, facts: [&#x27;DialogueManagerRunner: 클릭 완료까지 대기&#x27;, &#x27;AudioManagerActionRunner / ScreenTransitionRunner&#x27;, &#x27;Timeline은 고정 연출, 분기·저장·상태 정책은 Sequence가 소유&#x27;] },
+        modules: { type: &#x27;GAMEPLAY REPLACEMENT&#x27;, title: &#x27;Game Module Runner&#x27;, text: &#x27;module.switch와 module.start가 GameModuleRegistry에서 ID로 모듈을 찾아 교체한다. 모듈은 UI·입력·규칙을 묶되 전체 전투 흐름을 독점하지 않는다.&#x27;, facts: [&#x27;IGameModuleRuntime: Enter / Exit / Start&#x27;, &#x27;GameModuleRuntimeContext로 세션 읽기, 명령 요청, 결과 발행&#x27;, &#x27;완료 결과는 GameModuleCompleted 이벤트가 되어 다시 규칙 평가로 돌아감&#x27;] },
+        legacy: { type: &#x27;ADAPTER BOUNDARY&#x27;, title: &#x27;기존 게임 시스템&#x27;, text: &#x27;기존 코드를 버리지 않고, 새 레이어에서 부를 수 있게 어댑터로 감싼다. 그래서 QTE 전투와 SkillData가 지금도 정상 동작하면서 확장 구조에 포함된다.&#x27;, facts: [&#x27;BattleSkillTimelineRunner → SkillData.ActionTimeline&#x27;, &#x27;BattleTurnQteGameModuleRuntime → 기존 BattleManager의 QTE controller&#x27;, &#x27;BattleUIController / DialogueManager / AudioManager는 기존 소유권 유지&#x27;] },
+        session: { type: &#x27;BATTLE-SCOPED TRUTH&#x27;, title: &#x27;Battle Session State&#x27;, text: &#x27;전투가 끝날 때까지 유지되어야 하는 공통 사실. 개별 모듈의 private bool이 아니라 다른 모듈과 Sequence가 같이 볼 수 있는 상태다.&#x27;, facts: [&#x27;현재 모듈, opening module, 참가자 HP/MP snapshot&#x27;, &#x27;battle.flag.set / clear로 전투 플래그 관리&#x27;, &#x27;HP/MP 변경은 IBattleParticipantCommandRunner 경유&#x27;] },
+        memory: { type: &#x27;OUTSIDE-BATTLE SAVE&#x27;, title: &#x27;Encounter Memory&#x27;, text: &#x27;저장/로드는 전투 바깥 기준이다. 첫 만남인지, 어떤 비트를 봤는지, 승리했는지는 저장하지만 진행 중인 전투 상태는 복구하지 않는다.&#x27;, facts: [&#x27;SaveData.EncounterMemory에 저장&#x27;, &#x27;GlobalDataManager API로 읽고 쓰기&#x27;, &#x27;BattleEncounterMemoryRecorder가 전투 시작/결과와 연결&#x27;] },
+        modulesNow: { type: &#x27;CURRENT IMPLEMENTATION&#x27;, title: &#x27;현재 Game Module 상태&#x27;, text: &#x27;turn_qte는 기존 전투를 새 모듈 경계 안으로 옮긴 호환 구현. aim_shooter는 모듈 전환과 피해/결과 흐름을 검증한 첫 비-QTE shell이다.&#x27;, facts: [&#x27;turn_qte: 기존 QTE turn/action/defense 흐름 재사용&#x27;, &#x27;aim_shooter: 입력·발사체·VFX·전용 UI는 아직 확장 대상&#x27;, &#x27;다음 boxing/minigame도 같은 Registry/Context 계약으로 추가&#x27;] }
+      };
+      function show(entry) {
+        detail.innerHTML = &#x27;&lt;p class=&quot;detail-type&quot;&gt;&#x27; + entry.type + &#x27;&lt;/p&gt;&lt;h3&gt;&#x27; + entry.title + &#x27;&lt;/h3&gt;&lt;p&gt;&#x27; + entry.text + &#x27;&lt;/p&gt;&lt;ul&gt;&#x27; + entry.facts.map(function (fact) { return &#x27;&lt;li&gt;&#x27; + fact + &#x27;&lt;/li&gt;&#x27;; }).join(&#x27;&#x27;) + &#x27;&lt;/ul&gt;&#x27;;
+      }
+      nodes.forEach(function (node) {
+        node.addEventListener(&#x27;click&#x27;, function () {
+          nodes.forEach(function (item) { item.classList.remove(&#x27;active&#x27;); });
+          node.classList.add(&#x27;active&#x27;);
+          show(entries[node.dataset.key]);
+        });
+      });
+    }());
+  &lt;/script&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

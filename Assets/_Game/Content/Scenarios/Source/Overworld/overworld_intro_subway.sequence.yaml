@@ -1,0 +1,30 @@
+id: overworld.intro.subway
+title: "오버월드 시작 - 지하철 도착"
+primaryMode: overworld
+openingModule: ""
+memoryKey: ""
+
+participants:
+  party: []
+  enemies: []
+
+sequences:
+  overworld.intro.subway:
+    title: "오버월드 시작 - 지하철 도착"
+    - cinematic.shot.play:
+      designerLabel: "지하철 도착 샷"
+      stage: overworld.subway_intro
+      shot: subway_arrival
+    - screen.fade:
+      designerLabel: "장면을 검게 전환"
+      mode: out
+      color: black
+      duration: 0.45
+    - cinematic.stage.release:
+      designerLabel: "시네마틱 카메라 해제"
+      stage: overworld.subway_intro
+    - screen.fade:
+      designerLabel: "오버월드 공개"
+      mode: in
+      color: black
+      duration: 0.55
