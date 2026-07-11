@@ -105,6 +105,7 @@ Runtime and editor code must depend on `IScenarioSourceParser`, not directly on 
 
 - `ScenarioSourceYamlParser` currently reads the deterministic subset emitted by `ScenarioSourceYamlWriter`. It is intentionally lightweight and not a full YAML 1.2 implementation.
 - Until a broader YamlDotNet-backed parser is installed, source files must stay within the documented shape: scalar header fields, inline string lists, `dialogues`, `audioClips`, `rules`, `sequences`, action parameter scalars/inline primitive arrays, and `parallel` child lists.
+- Extended Trigger Rules support the documented recursive `conditions` subset (`all`, `any`, `not`, `condition`, `params`) and nested `do.inputs`. This is still a deterministic subset, not arbitrary YAML expressions.
 - Action parameters may be indented deeper than the action list item, including the common 4-space style shown in this document. The lightweight parser treats any more-deeply-indented `key: value` line under an action as that action's parameter until the indentation returns to the action level or above.
 - The authoring alias `parallel:` is parsed back to runtime action ID `flow.parallel`. Do not write both forms for the same group in one source file.
 - `MissingYamlScenarioSourceParser` remains the clear failure fallback when no concrete parser is provided.
@@ -163,6 +164,32 @@ rules:
     do:
       sequence: zev_shooter_victory
 
+  - id: phase2_extensible
+    name: "ZEV 2페이즈 전환"
+    when:
+      eventId: participant.hp_changed
+      timing: checkpoint
+      checkpoint: skill.finished
+      once: encounter_memory
+      conditions:
+        id: rule-root-id
+        all:
+          - id: participant-condition-id
+            condition: event.participant
+            params:
+              participant: zev
+          - id: threshold-condition-id
+            condition: number.crossed_below
+            params:
+              previousPath: event.previousRatio
+              currentPath: event.currentRatio
+              threshold: 0.5
+    do:
+      sequence: zev_phase2_transition
+      inputs:
+        enemy: ${event.subject}
+        ratio: ${event.currentRatio}
+
 sequences:
   zev_phase2_transition:
     - bgm.crossfade:
@@ -219,6 +246,11 @@ sequences:
 - In editor import/export, the current `AssetDatabaseScenarioDialogueReferenceResolver` also implements audio reference resolving/provider behavior. `audioClip` may be a unique AudioClip asset name, an `Assets/...` path with extension, or the same path without extension. If scenario runtime execution cannot find an ID in `BattleScenarioData.AudioClips`, `ResourcesAudioClipResolver` is used as a fallback.
 - `ScenarioSourceExporter` exports `BattleScenarioData` to `ScenarioSourceDocument`. `ScenarioSourceYamlWriter` serializes that document to deterministic `.scenario.yaml` text without Unity GUIDs, fileIDs, or managed-reference implementation names.
 - `ScenarioSourceYamlWriter` currently covers header fields, participants, `dialogues`, `audioClips`, `rules`, `module.completed` outcome rules, `sequences`, `flow.parallel`, and action `ParametersJson` object fields. Invalid action parameter JSON must produce `scenario.yaml.action.parameters.invalid`.
+- Existing compact rules use `when.event` and continue to import into `BattleScenarioData.Rules`. Extensible rules use `when.eventId` and import into `BattleScenarioData.TriggerRules`; do not silently convert old source text just because the compatibility mapper exists.
+- Extensible timing values are `immediate`, `after_current_action`, `after_current_skill`, `after_current_module`, and `checkpoint`. A checkpoint rule requires `checkpoint`.
+- Extensible once values are `always`, `session`, `encounter_memory`, and `save`. `save` persists only its fired rule ID through an external save-bound history bridge; it does not restore an in-progress battle.
+- Every Condition node has a stable `id`. `ScenarioTriggerIdentity` preserves IDs across round-trip and repairs missing/duplicate IDs deterministically from scenario/rule/tree path.
+- Condition `params` and Trigger `do.inputs` use typed YAML scalars and documented `${...}` bindings. Writer/importer normalize them to JSON objects in Runtime Assets.
 - `ScenarioSourceYamlExportCommand` wraps `ScenarioSourceExporter -> ScenarioSourceYamlWriter` and provides text/file export for editor tooling. It writes YAML text but does not mutate runtime asset metadata; editor save flows should write source and then run the normal import/sync path.
 - YAML parser round-trip is covered for the writer-supported subset through `ScenarioSourceYamlParser` and `ScenarioSourceSyncTests.YamlParserRoundTripsWriterOutputIntoBattleScenario`. Do not hand-roll a second writer or file save path in editor UI; reuse `ScenarioSourceYamlExportCommand`.
 - Keep `when` and `do` separate. `when` decides whether a beat fires; `do` names or inlines the Action Sequence.
@@ -236,7 +268,7 @@ sequences:
 - Use `battle.flag.set` and `battle.flag.clear` for temporary battle-scoped facts that must survive Game Module switches but should not be saved as mid-battle state. These actions require `flag`; `battle.flag.set` may also provide string `value` and defaults to `"true"`.
 - Use `cinematic.letterbox`, `battle.camera.focus`, `battle.camera.reset`, `battle.actor.pose`, `battle.actor.fake_attack`, and `battle.actor.return_slots` for battle-only cinematic beats such as boss clash intros and phase telegraphs. `battle.actor.fake_attack` is presentation-only and must not mutate HP/MP; use `battle.participant.damage` separately when real damage is intended. Catalog descriptions should make this distinction clear so Sequence Maker users do not confuse fake clash attacks with real combat damage.
 - Use `module.completed` rules for authored reactions to a Game Module finishing. `module` maps to the module ID reported by `IGameModuleEventSink.PublishGameModuleCompleted(...)`; `outcome` is optional and, when present, must match the reported outcome ID exactly. Leave `outcome` empty when any completion of that module should trigger the rule.
-- The current battle event rule IDs supported by the lightweight YAML importer/exporter are `battle.started`, `enemy.hp_crossed_below`, `enemy.defeated`, `skill.completed`, and `module.completed`. Only add new `event` values with importer/exporter, Sequence Maker labels, evaluator/runtime coverage, and tests in the same change.
+- The legacy compact `event` IDs remain `battle.started`, `enemy.hp_crossed_below`, `enemy.defeated`, `skill.completed`, and `module.completed`. New extensible rules use Trigger Library `eventId` values and do not require another central parser enum.
 
 ## Validation Expectations
 
@@ -251,6 +283,7 @@ Reject or warn on:
 - `dialogues` entries whose `dialogueData` / `DialogueDataId` cannot resolve unambiguously through `IScenarioDialogueReferenceResolver`; importer error code is `scenario.dialogue.unresolved`.
 - `audioClips` entries whose `audioClip` / `AudioClipId` cannot resolve unambiguously through `IScenarioAudioReferenceResolver`; importer error code is `scenario.audio.unresolved`.
 - Missing `once` on HP threshold rules unless repeat is intentional.
+- Trigger Rule Event ID, target Sequence, checkpoint ID when required, unique Condition Node IDs, valid Condition parameter JSON, valid target input JSON, and target Sequence Input keys.
 - Module switch without a matching module start/ready rule.
 - `module.completed` rule with an unknown module ID or an outcome ID that the module contract does not document.
 - Dialogue action that cannot wait for completion.

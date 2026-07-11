@@ -27,9 +27,17 @@ public sealed class ScenarioSourceAudioDocument
     public string AudioClipId = string.Empty;
 }
 
+public enum ScenarioSourceRuleKind
+{
+    LegacyBattle,
+    Trigger
+}
+
 public sealed class ScenarioSourceRuleDocument
 {
+    public ScenarioSourceRuleKind Kind = ScenarioSourceRuleKind.LegacyBattle;
     public string RuleId = string.Empty;
+    public string DisplayNameKo = string.Empty;
     public BattleEventType EventType = BattleEventType.None;
     public BattleRuleTiming Timing = BattleRuleTiming.Immediate;
     public BattleRuleOnceMode Once = BattleRuleOnceMode.PerBattle;
@@ -38,6 +46,17 @@ public sealed class ScenarioSourceRuleDocument
     public float ThresholdRatio = 0.5f;
     public string SequenceId = string.Empty;
     public bool Disabled;
+
+    public string TriggerEventId = string.Empty;
+    public ScenarioTriggerTiming TriggerTiming = ScenarioTriggerTiming.Immediate;
+    public string CheckpointId = string.Empty;
+    public ScenarioTriggerOnceScope TriggerOnce = ScenarioTriggerOnceScope.Session;
+    public ScenarioTriggerConditionNodeData Conditions = new ScenarioTriggerConditionNodeData
+    {
+        Kind = ScenarioConditionNodeKind.Group,
+        GroupMode = ScenarioConditionGroupMode.All
+    };
+    public string TargetInputsJson = "{}";
 }
 
 public sealed class ScenarioSourceSequenceDocument

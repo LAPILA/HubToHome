@@ -133,6 +133,7 @@ public sealed class ScenarioSourceRuntimeAssetReimportCommand
         CopyStrings(imported.PartyIds, target.PartyIds);
         CopyStrings(imported.EnemyIds, target.EnemyIds);
         CopyRules(imported.Rules, target.Rules);
+        CopyTriggerRules(imported.TriggerRules, target.TriggerRules);
         CopyDialogues(imported.Dialogues, target.Dialogues);
         CopyAudioClips(imported.AudioClips, target.AudioClips);
         ReplaceSequences(target, imported, result);
@@ -313,6 +314,27 @@ public sealed class ScenarioSourceRuntimeAssetReimportCommand
                 SequenceId = rule.SequenceId,
                 Disabled = rule.Disabled
             });
+        }
+    }
+
+    private static void CopyTriggerRules(
+        List<ScenarioTriggerRuleData> source,
+        List<ScenarioTriggerRuleData> destination)
+    {
+        if (destination == null)
+        {
+            return;
+        }
+
+        destination.Clear();
+        if (source == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < source.Count; i++)
+        {
+            destination.Add(ScenarioTriggerIdentity.CloneRule(source[i]));
         }
     }
 

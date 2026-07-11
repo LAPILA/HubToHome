@@ -20,7 +20,7 @@
 ## Runtime
 
 - [x] Map fixed Battle Event Rules into extensible Trigger Rules.
-- [ ] Round-trip extensible Trigger Rules through scenario YAML.
+- [x] Round-trip extensible Trigger Rules through scenario YAML.
 - [ ] Add observable Execution Session.
 - [ ] Add structured parallel policies and cancellation.
 - [ ] Add Preparation Run and safe preview state contracts.

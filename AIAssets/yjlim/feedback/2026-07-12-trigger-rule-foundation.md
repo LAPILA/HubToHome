@@ -49,3 +49,16 @@
 - 기존 전투 시나리오 회귀 테스트 42/42 통과.
 - Sequence Input 실행 연결 테스트를 포함한 Action Bridge 13/13 통과.
 - 지연 규칙은 실제 checkpoint에서 꺼내기 전에는 Encounter Memory에 실행 완료로 기록되지 않는다.
+
+## Scenario YAML 편집 범위
+
+- 기존 단순 전투 규칙 YAML은 모양을 바꾸지 않는다.
+- 새 규칙은 같은 `rules:` 안에서 `eventId`, timing, once, checkpoint, all/any/not 조건 블록, 대상 Sequence inputs를 작성할 수 있다.
+- Condition 블록마다 안정적인 ID가 있어 순서를 바꾸거나 중첩해도 같은 블록으로 유지된다.
+- `${event.subject}` 같은 binding을 Sequence Input으로 전달할 수 있다.
+- Unity Runtime Asset 재반영도 새 규칙과 중첩 조건을 deep copy한다.
+
+### YAML 검증
+
+- 확장 규칙 왕복 테스트 7/7 통과.
+- 기존 Scenario Source/검증 회귀 테스트 40/40 통과.
