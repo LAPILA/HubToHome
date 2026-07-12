@@ -58,3 +58,17 @@
 - [x] Run `improve-codebase-architecture` review.
 - [x] Implement accepted Strong architecture findings.
 - [x] Re-run complete verification and finish handoff.
+
+## Quality Hardening
+
+- [ ] Add real `SequenceMakerWindow` journey harness.
+- [ ] Reproduce target-scoped dirty/save/leave defects.
+- [ ] Deepen document ownership if reproduction proves policy leakage.
+- [ ] Fix shortcut and TextField focus routing.
+- [ ] Verify save, conflict, recovery, and editor lifecycle journeys.
+- [ ] Add deterministic command property and stress tests.
+- [ ] Run minimum/standard/wide visual layout matrix.
+- [ ] Verify Safe Preview and Live Test failure lifecycle.
+- [ ] Re-run Subway and ZEV runtime vertical slices.
+- [ ] Run architecture deepening review and implement Strong findings.
+- [ ] Complete requirement-by-requirement evidence audit and handoff.
