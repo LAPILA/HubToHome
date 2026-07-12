@@ -241,8 +241,8 @@ public sealed class SequenceMakerWindow : EditorWindow
         _statusLabel = Require<Label>("status-label");
         _sourceStatusLabel = Require<Label>("source-status-label");
 
-        SequenceMakerTheme.SetButtonIcon(_undoButton, "Undo", "U");
-        SequenceMakerTheme.SetButtonIcon(_redoButton, "Redo", "R");
+        SequenceMakerTheme.SetButtonIcon(_undoButton, "d_tab_prev", "←");
+        SequenceMakerTheme.SetButtonIcon(_redoButton, "d_tab_next", "→");
         SequenceMakerTheme.PrependButtonIcon(_validateButton, "TestPassed");
         SequenceMakerTheme.PrependButtonIcon(_saveButton, "SaveAs");
         SequenceMakerTheme.SetButtonIcon(_playButton, "d_PlayButton", ">");

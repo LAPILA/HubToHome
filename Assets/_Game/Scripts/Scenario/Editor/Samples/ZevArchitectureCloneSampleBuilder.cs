@@ -16,20 +16,6 @@ public static class ZevArchitectureCloneSampleBuilder
     private const string SourcePrefabAssetPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/ZEV_Prefab.prefab";
     private const string DialogueFolderPath = "Assets/_Game/Content/Dialogue/Data/Scenario/ZEV";
 
-    [MenuItem("HubToHome/Scenario/Samples/Rebuild ZEV Architecture Clone")]
-    [MenuItem("HubToHome/시나리오/샘플/ZEV 아키텍처 복제 에셋 재생성")]
-    public static void RebuildFromMenu()
-    {
-        ScenarioValidationResult validation = BuildAssets();
-        if (validation.HasErrors)
-        {
-            Debug.LogError("[ZEV Scenario Clone] 에셋 생성 실패:\n" + FormatValidation(validation));
-            return;
-        }
-
-        Debug.Log("[ZEV Scenario Clone] 에셋 생성을 완료했습니다.");
-    }
-
     public static ScenarioValidationResult BuildAssets()
     {
         var result = new ScenarioValidationResult();

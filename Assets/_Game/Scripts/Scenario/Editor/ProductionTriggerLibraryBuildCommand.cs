@@ -17,21 +17,6 @@ public static class ProductionTriggerLibraryBuildCommand
     public const string GeneratedRoot = "Assets/_Game/Content/Scenarios/TriggerLibrary/Generated";
     public const string GeneratedAssetPath = GeneratedRoot + "/TriggerLibrary.asset";
 
-    [MenuItem("HubToHome/시나리오/Trigger Library 다시 만들기")]
-    public static void RebuildFromMenu()
-    {
-        ProductionTriggerLibraryBuildResult result = Rebuild();
-        if (result.Success)
-        {
-            Selection.activeObject = result.Asset;
-            EditorGUIUtility.PingObject(result.Asset);
-            Debug.Log("[TriggerLibrary] 공식 Trigger Library를 다시 만들었습니다: " + GeneratedAssetPath);
-            return;
-        }
-
-        Debug.LogError("[TriggerLibrary] 재빌드 실패\n" + Format(result.Validation));
-    }
-
     public static ProductionTriggerLibraryBuildResult Rebuild()
     {
         var result = new ProductionTriggerLibraryBuildResult();
@@ -163,18 +148,4 @@ public static class ProductionTriggerLibraryBuildCommand
         return index >= 0 ? normalized.Substring(index) : normalized;
     }
 
-    private static string Format(ScenarioValidationResult validation)
-    {
-        var lines = new List<string>();
-        if (validation != null && validation.Messages != null)
-        {
-            for (int i = 0; i < validation.Messages.Count; i++)
-            {
-                ScenarioValidationMessage message = validation.Messages[i];
-                lines.Add(message.Severity + " " + message.Code + ": " + message.Message);
-            }
-        }
-
-        return string.Join("\n", lines);
-    }
 }

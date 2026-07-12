@@ -66,6 +66,18 @@ public sealed class SequenceMakerWindowJourneyTests
     }
 
     [Test]
+    public void UndoRedoButtonsUseDirectionalArrowIcons()
+    {
+        Button undo = _window.rootVisualElement.Q<Button>("undo-button");
+        Button redo = _window.rootVisualElement.Q<Button>("redo-button");
+
+        Assert.That(HasIconOrFallback(undo, "←"), Is.True);
+        Assert.That(HasIconOrFallback(redo, "→"), Is.True);
+        Assert.That(undo.tooltip, Is.EqualTo("실행 취소"));
+        Assert.That(redo.tooltip, Is.EqualTo("다시 실행"));
+    }
+
+    [Test]
     public void StandaloneTargetRendersSequenceFlowAndInspector()
     {
         ActionSequenceAsset sequence = CreateSequence("qa.standalone", "QA 독립 시퀀스");
@@ -317,5 +329,12 @@ public sealed class SequenceMakerWindowJourneyTests
             Guid.NewGuid().ToString("N")));
         _createdDirectories.Add(path);
         return path;
+    }
+
+    private static bool HasIconOrFallback(Button button, string fallback)
+    {
+        return button != null
+            && (button.Q<Image>(className: "sm-button-icon") != null
+                || string.Equals(button.text, fallback, StringComparison.Ordinal));
     }
 }

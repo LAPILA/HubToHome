@@ -127,6 +127,7 @@ Treat scenario YAML as the source of truth and ScriptableObject assets as the Un
 - 편집 대상을 떠날 때 현재 Runtime Asset 변경을 실제로 되돌리지 않는 선택지는 폐기로 부르지 않는다. 공식 선택지는 `YAML 저장 후 이동 / 취소 / 저장하지 않고 이동`이며, 변경이 Runtime Asset과 recovery에 남고 YAML에는 아직 저장되지 않았음을 알려야 한다.
 - Sequence Maker 문서 Undo/Redo는 텍스트 편집 포커스 밖에서만 실행한다. TextField 내부의 Ctrl/Cmd+Z, Ctrl/Cmd+Y는 UI Toolkit native text history에 남기고, Ctrl/Cmd+S는 포커스와 무관하게 현재 문서 저장으로 처리한다.
 - `SequenceRecoveryStore`는 자기 recovery root 내부의 metadata sibling `.yaml`만 읽고 복구하거나 삭제한다. Metadata의 `YamlFilePath`를 임의 경로로 신뢰하지 말고, metadata 파일명/SnapshotId, TargetType/TargetId, 영속 AssetPath를 현재 대상과 검증한다.
+- Action/Trigger Library 재생성은 사람용 Unity 메뉴가 아니다. Source YAML 계약을 변경한 AI 또는 파이프라인이 `ProductionActionLibraryBuildCommand.Rebuild()` / `ProductionTriggerLibraryBuildCommand.Rebuild()`를 호출하고 결과 validation을 확인한다. ZEV·지하철 sample builder도 discoverable menu 없이 테스트/유지보수 코드에서만 명시적으로 호출한다.
 - 공식 workbench는 상단 command bar, 단일 편집 대상, breadcrumb/search context bar, 좌측 탐색, 중앙 수직 block flow, 우측 inspector, 하단 Problems/실행 기록/YAML drawer, source/save status bar 구조를 유지한다. 창 안에 중복 제품 제목을 다시 넣지 않는다.
 - 프로젝트 탐색은 `SequenceAssetIndexCache`의 lazy/cached AssetDatabase snapshot을 사용한다. 전투 흐름, 시나리오 소유 시퀀스, 독립 시퀀스, 최근 작업, 즐겨찾기를 stable asset key로 식별하고 Project 변경 또는 명시적 refresh 때만 다시 스캔한다.
 - 이름 변경/삭제 영향과 `사용 위치`는 `SequenceUsageIndex`가 소유한다. 기존 Battle Rule, 확장 Trigger Rule, 재귀 `sequence.call`, Battle Scenario 소유 관계를 모두 스캔하며 누락 target과 잘못된 call JSON을 별도 진단한다. UI가 raw serialized tree를 직접 재검색하지 않는다.

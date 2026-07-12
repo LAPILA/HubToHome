@@ -17,21 +17,6 @@ public static class ProductionActionLibraryBuildCommand
     public const string GeneratedRoot = "Assets/_Game/Content/Scenarios/ActionLibrary/Generated";
     public const string GeneratedAssetPath = GeneratedRoot + "/ActionLibrary.asset";
 
-    [MenuItem("HubToHome/시나리오/Action Library 다시 만들기")]
-    public static void RebuildFromMenu()
-    {
-        ProductionActionLibraryBuildResult result = Rebuild();
-        if (result.Success)
-        {
-            Selection.activeObject = result.Asset;
-            EditorGUIUtility.PingObject(result.Asset);
-            Debug.Log("[ActionLibrary] 공식 Action Library를 다시 만들었습니다: " + GeneratedAssetPath);
-            return;
-        }
-
-        Debug.LogError("[ActionLibrary] 재빌드 실패\n" + Format(result.Validation));
-    }
-
     public static ProductionActionLibraryBuildResult Rebuild()
     {
         var result = new ProductionActionLibraryBuildResult();
@@ -142,18 +127,4 @@ public static class ProductionActionLibraryBuildCommand
         return index >= 0 ? normalized.Substring(index) : normalized;
     }
 
-    private static string Format(ScenarioValidationResult validation)
-    {
-        var lines = new List<string>();
-        if (validation != null && validation.Messages != null)
-        {
-            for (int i = 0; i < validation.Messages.Count; i++)
-            {
-                ScenarioValidationMessage message = validation.Messages[i];
-                lines.Add(message.Severity + " " + message.Code + ": " + message.Message);
-            }
-        }
-
-        return string.Join("\n", lines);
-    }
 }

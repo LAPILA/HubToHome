@@ -18,7 +18,6 @@ public static class OverworldSubwayCinematicSampleBuilder
     private const string StageId = "overworld.subway_intro";
     private const string ShotId = "subway_arrival";
 
-    [MenuItem("HubToHome/시나리오/샘플/오버월드 지하철 인트로 생성 또는 갱신")]
     public static void BuildOrUpdate()
     {
         Scene scene = SceneManager.GetActiveScene();
@@ -48,26 +47,6 @@ public static class OverworldSubwayCinematicSampleBuilder
         EditorSceneManager.SaveScene(scene);
         Selection.activeObject = sequence;
         Debug.Log("[OverworldSubwayCinematicSampleBuilder] 지하철 인트로 시퀀스와 OverworldScene 리그를 생성 또는 갱신했습니다. Catalog=" + catalog.name, sequence);
-    }
-
-    [MenuItem("HubToHome/시나리오/샘플/오버월드 지하철 인트로 재생 테스트")]
-    private static void ReplayInPlayMode()
-    {
-        if (!Application.isPlaying || SceneManager.GetActiveScene().name != "OverworldScene")
-        {
-            Debug.LogWarning("[OverworldSubwayCinematicSampleBuilder] Play Mode의 OverworldScene에서만 지하철 인트로를 재생 테스트할 수 있습니다.");
-            return;
-        }
-
-        if (SceneLoader.Instance == null)
-        {
-            Debug.LogError("[OverworldSubwayCinematicSampleBuilder] SceneLoader가 없어 재생 테스트를 시작할 수 없습니다.");
-            return;
-        }
-
-        GlobalDataManager.Instance?.SetFlag("overworld.intro.subway.completed", 0);
-        SceneLoader.Instance.LoadScene("OverworldScene", 0.1f);
-        Debug.Log("[OverworldSubwayCinematicSampleBuilder] 지하철 인트로 재생 테스트를 시작했습니다.");
     }
 
     private static ActionCatalogAsset BuildCatalog()

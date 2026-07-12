@@ -78,3 +78,11 @@
 - 최소, 표준, 와이드 창 크기 실제 픽셀 확인
 - Unity EditMode 전체 `522/522` 통과
 - ZEV 테스트 씬 Play Mode 전환 Probe 3단계 PASS, warning/error 0개
+
+## 메뉴와 실행 취소 표시 정리
+
+- 시나리오 메뉴에서 Library 재생성, ZEV 샘플 생성, 지하철 샘플 생성/테스트 메뉴 제거
+- 공식 시퀀스 메이커와 액션 라이브러리만 표시
+- Library 재생성 기능은 AI/자동화용 API로 유지
+- Undo/Redo 버튼을 좌우 화살표 아이콘으로 변경
+- Ctrl+Z, Ctrl+Y 단축키 지원 유지
