@@ -84,11 +84,8 @@ public sealed class BattleTweenCinematicService : IBattleTweenCinematicService
             BattleManager.SetGhostTrail(subject, true);
             BattleCinematicService.PlayPose(subject, string.IsNullOrWhiteSpace(pose) ? "move" : pose);
 
-            Sequence sequence = DOTween.Sequence()
-                .SetTarget(subject)
-                .Append(BattleCinematicService.StartMoveTween(subject, destination, duration, Ease.InOutSine));
-
-            IEnumerator routine = BattleCinematicService.WaitTween(sequence, handle);
+            Tween move = BattleCinematicService.StartMoveTween(subject, destination, duration, Ease.InOutSine);
+            IEnumerator routine = BattleCinematicService.WaitTween(move, handle);
             while (routine.MoveNext())
             {
                 yield return routine.Current;

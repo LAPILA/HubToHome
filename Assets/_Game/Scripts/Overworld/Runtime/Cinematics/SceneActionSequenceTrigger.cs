@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 /// 씬 전환 페이드 아래에서 Cinematic Stage를 준비하고, 화면 공개 직후 독립 Action Sequence를 재생합니다.
 /// 완료 여부는 GlobalDataManager의 event flag에만 기록하므로 전투 런타임 상태와 섞이지 않습니다.
 /// </summary>
-public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
+public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate, IActionSequenceLiveContextSource
 {
     [Header("시작 시퀀스")]
     [SerializeField] private ActionSequenceAsset _sequence;
@@ -26,6 +26,46 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
     public bool IsReadyToReveal
     {
         get { return _isReadyToReveal; }
+    }
+
+    public ActionSequenceAsset Sequence => _sequence;
+
+    public int LiveContextPriority => 50;
+
+    public string LiveContextLabel => "Scene Action Sequence Trigger: " + name;
+
+    public bool TryCreateLiveContext(
+        BattleScenarioData battle,
+        ActionSequenceAsset requestedSequence,
+        out ActionDirector director,
+        out ActionExecutionContext context,
+        out string error)
+    {
+        director = null;
+        context = null;
+        if (battle != null || _sequence == null || requestedSequence != _sequence)
+        {
+            error = string.Empty;
+            return false;
+        }
+        if (!Application.isPlaying)
+        {
+            error = "Play Mode에서만 씬 시퀀스를 실동작 테스트할 수 있습니다.";
+            return false;
+        }
+        if (_cinematicStage == null)
+        {
+            error = "실동작 테스트에 필요한 Cinematic Stage가 없습니다.";
+            return false;
+        }
+
+        director = SceneActionSequenceContextFactory.CreateDirector();
+        context = SceneActionSequenceContextFactory.Create(
+            _sequence,
+            _cinematicStage,
+            new ScreenTransitionRunner());
+        error = string.Empty;
+        return true;
     }
 
     private void Awake()

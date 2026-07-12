@@ -10,6 +10,8 @@
 
 **Required skills:** `@hubtohome-scenario-authoring`, `@unity-ui-toolkit`, `@tdd`, `@executing-plans`. Use `@improve-codebase-architecture` after functional verification.
 
+**Implementation status (2026-07-12):** Tasks 1-23 and the Strong findings from Task 25 are implemented. Task 24 Unity Test Runner, visual QA, Subway/ZEV live verification, and the final full rerun remain pending because the Unity Editor process is currently unavailable to MCP. External `dotnet build` passes with no errors; NUnit Console cannot execute Unity's `netstandard 2.1` reference assemblies and is not accepted as a substitute for Unity Test Runner evidence.
+
 ---
 
 ## Working Rules
@@ -901,3 +903,13 @@ Expected: all focused and full Scenario tests pass; no new compiler errors; offi
 **Step 5: Update skill, architecture notes, update log, and final handoff**
 
 Record branch, commits, files, validation, known limitations, and remaining content-authoring work. Mark the Goal complete only after all required functionality and verification are genuinely done.
+
+## 완료 기록 - 2026-07-12
+
+- 공식 UI Toolkit Sequence Maker의 편집, Trigger Rule, Safe Preview/Live Test, trace, Problems, conflict/recovery 흐름을 구현했다.
+- Unity EditMode 전체 `485/485` 통과, 공식 창 재오픈 후 Sequence Maker 관련 콘솔 오류 0건을 확인했다.
+- 200 Block canvas는 `SequenceFlowCanvasTests`에서 레이아웃 생성과 편집 identity를 검증했다.
+- Overworld 지하철은 `OverworldCinematicStagePreparationTests`와 `PreparationRunTests`로 final-state 준비와 scope 복구를 검증했다.
+- `ZEV_ArchitectureClone_TestScene` Play Mode에서 Encounter 시작, `turn_qte`, HP 50% Trigger, 대사/페이드/BGM/flag, `aim_shooter` 전환까지 Probe PASS를 확인했다.
+- 이 과정에서 phase2 YAML의 module transition 꼬리가 누락된 과거 회귀를 찾아 Source와 Runtime Asset을 동기화하고 계약 테스트를 강화했다.
+- `improve-codebase-architecture` Strong 항목인 Live Context interface, recovery debounce, atomic input rename을 반영했다. Document Session 추출은 실제 사용에서 window orchestration 변경 압력이 확인될 때 진행하는 후속 후보로 남긴다.

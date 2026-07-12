@@ -225,12 +225,34 @@ sequences:
         impact: 0
     - flow.wait:
         duration: 0.06
+    - screen.fade:
+        mode: out
+        color: black
+        duration: 0.25
+    - flow.wait:
+        duration: 0.1
+    - module.switch:
+        to: aim_shooter
     - cinematic.letterbox:
         mode: hide
         thickness: 0
         duration: 0.18
     - battle.camera.reset:
         duration: 0.01
+    - screen.fade:
+        mode: in
+        color: black
+        duration: 0.25
+    - dialogue.wait:
+        id: zev.clone.shooter_start
+    - bgm.crossfade:
+        clip: zev_clone_shooter_loop
+        duration: 0.6
+    - battle.flag.set:
+        flag: zev.clone.phase
+        value: shooter
+    - module.start:
+        module: aim_shooter
   zev_clone_shooter_victory:
     - dialogue.wait:
         id: zev.clone.shooter_victory

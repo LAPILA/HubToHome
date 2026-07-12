@@ -22,6 +22,16 @@ public enum SequenceMakerDensity
     Compact
 }
 
+public enum SequenceMakerSelectionKind
+{
+    None,
+    Battle,
+    Sequence,
+    Block,
+    TriggerRule,
+    LegacyRule
+}
+
 public interface ISequenceMakerPreferences
 {
     float GetFloat(string key, float defaultValue);
@@ -55,6 +65,8 @@ public sealed class SequenceMakerWorkspaceState
     public ActionSequenceAsset StandaloneSequence { get; private set; }
     public ActionSequenceAsset SelectedSequence { get; private set; }
     public string SelectedBlockId { get; private set; } = string.Empty;
+    public string SelectedTriggerRuleId { get; private set; } = string.Empty;
+    public int SelectedLegacyRuleIndex { get; private set; } = -1;
     public bool IsDirty { get; private set; }
     public bool IsDrawerOpen { get; private set; }
     public SequenceMakerDrawerTab DrawerTab { get; private set; } = SequenceMakerDrawerTab.Problems;
@@ -64,6 +76,18 @@ public sealed class SequenceMakerWorkspaceState
     public float DrawerHeight { get; private set; } = 190f;
 
     public bool HasTarget => TargetKind != SequenceMakerTargetKind.None;
+    public SequenceMakerSelectionKind SelectionKind
+    {
+        get
+        {
+            if (!HasTarget) return SequenceMakerSelectionKind.None;
+            if (SelectedLegacyRuleIndex >= 0) return SequenceMakerSelectionKind.LegacyRule;
+            if (!string.IsNullOrEmpty(SelectedTriggerRuleId)) return SequenceMakerSelectionKind.TriggerRule;
+            if (!string.IsNullOrEmpty(SelectedBlockId)) return SequenceMakerSelectionKind.Block;
+            if (SelectedSequence != null) return SequenceMakerSelectionKind.Sequence;
+            return SequenceMakerSelectionKind.Battle;
+        }
+    }
     public UnityEngine.Object ActiveTarget => TargetKind == SequenceMakerTargetKind.BattleScenario
         ? BattleScenario
         : (UnityEngine.Object)StandaloneSequence;
@@ -78,6 +102,8 @@ public sealed class SequenceMakerWorkspaceState
             || StandaloneSequence != null
             || SelectedSequence != selected
             || !string.IsNullOrEmpty(SelectedBlockId)
+            || !string.IsNullOrEmpty(SelectedTriggerRuleId)
+            || SelectedLegacyRuleIndex >= 0
             || IsDirty;
         if (!changed)
         {
@@ -91,6 +117,8 @@ public sealed class SequenceMakerWorkspaceState
         StandaloneSequence = null;
         SelectedSequence = selected;
         SelectedBlockId = string.Empty;
+        SelectedTriggerRuleId = string.Empty;
+        SelectedLegacyRuleIndex = -1;
         IsDirty = false;
         RaiseChanged();
     }
@@ -104,6 +132,8 @@ public sealed class SequenceMakerWorkspaceState
             || BattleScenario != null
             || SelectedSequence != sequence
             || !string.IsNullOrEmpty(SelectedBlockId)
+            || !string.IsNullOrEmpty(SelectedTriggerRuleId)
+            || SelectedLegacyRuleIndex >= 0
             || IsDirty;
         if (!changed)
         {
@@ -117,6 +147,8 @@ public sealed class SequenceMakerWorkspaceState
         StandaloneSequence = sequence;
         SelectedSequence = sequence;
         SelectedBlockId = string.Empty;
+        SelectedTriggerRuleId = string.Empty;
+        SelectedLegacyRuleIndex = -1;
         IsDirty = false;
         RaiseChanged();
     }
@@ -128,13 +160,17 @@ public sealed class SequenceMakerWorkspaceState
             return false;
         }
 
-        if (SelectedSequence == sequence)
+        if (SelectedSequence == sequence
+            && string.IsNullOrEmpty(SelectedTriggerRuleId)
+            && SelectedLegacyRuleIndex < 0)
         {
             return true;
         }
 
         SelectedSequence = sequence;
         SelectedBlockId = string.Empty;
+        SelectedTriggerRuleId = string.Empty;
+        SelectedLegacyRuleIndex = -1;
         RaiseChanged();
         return true;
     }
@@ -142,13 +178,57 @@ public sealed class SequenceMakerWorkspaceState
     public void SelectBlock(string blockId)
     {
         string normalized = Normalize(blockId);
-        if (string.Equals(SelectedBlockId, normalized, StringComparison.Ordinal))
+        if (string.Equals(SelectedBlockId, normalized, StringComparison.Ordinal)
+            && string.IsNullOrEmpty(SelectedTriggerRuleId)
+            && SelectedLegacyRuleIndex < 0)
         {
             return;
         }
 
         SelectedBlockId = normalized;
+        SelectedTriggerRuleId = string.Empty;
+        SelectedLegacyRuleIndex = -1;
         RaiseChanged();
+    }
+
+    public bool SelectTriggerRule(string ruleId)
+    {
+        string normalized = Normalize(ruleId);
+        if (TargetKind != SequenceMakerTargetKind.BattleScenario
+            || BattleScenario == null
+            || string.IsNullOrEmpty(normalized))
+        {
+            return false;
+        }
+        if (SelectedTriggerRuleId == normalized && SelectedLegacyRuleIndex < 0)
+        {
+            return true;
+        }
+        SelectedTriggerRuleId = normalized;
+        SelectedLegacyRuleIndex = -1;
+        SelectedBlockId = string.Empty;
+        RaiseChanged();
+        return true;
+    }
+
+    public bool SelectLegacyRule(int index)
+    {
+        if (TargetKind != SequenceMakerTargetKind.BattleScenario
+            || BattleScenario?.Rules == null
+            || index < 0
+            || index >= BattleScenario.Rules.Count)
+        {
+            return false;
+        }
+        if (SelectedLegacyRuleIndex == index && string.IsNullOrEmpty(SelectedTriggerRuleId))
+        {
+            return true;
+        }
+        SelectedLegacyRuleIndex = index;
+        SelectedTriggerRuleId = string.Empty;
+        SelectedBlockId = string.Empty;
+        RaiseChanged();
+        return true;
     }
 
     public void SetDirty(bool dirty)

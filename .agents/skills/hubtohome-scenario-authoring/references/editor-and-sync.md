@@ -4,7 +4,7 @@ The custom editor is the human-facing surface for scenario authoring. It must be
 
 ## Approved Workbench Redesign
 
-The approved successor design is documented in `docs/plans/2026-07-12-sequence-maker-workbench-design.md` and `specs/002-sequence-maker-workbench/spec.md`. It is not fully implemented yet. Do not deepen the old three-panel prototype with ad-hoc UI behavior that conflicts with this direction.
+The approved workbench is documented in `docs/plans/2026-07-12-sequence-maker-workbench-design.md` and `specs/002-sequence-maker-workbench/spec.md`. `SequenceMakerWindow` is the implemented official surface. Do not add authoring behavior to the retired three-panel or Odin implementations.
 
 - The UI Toolkit Sequence Maker becomes the one official workbench after feature parity; the Odin editor is a migration-only surface.
 - Humans directly edit Runtime Assets and explicitly save validated changes back to YAML. AI agents primarily edit YAML.
@@ -19,6 +19,10 @@ The approved successor design is documented in `docs/plans/2026-07-12-sequence-m
 - The editor owns one `EditorPreviewStateScope` from Preparation start through selected playback. Stop, failure, cancellation, domain reload, Play Mode transition, or window disposal must restore it exactly once.
 - A pending `PreparationInputRequest` is a visible paused state. Show the requested Block and accept a value or cancel; never inject a guessed value.
 - Playing from an `any`/`race` parallel prefix requires `previewWinner`. Offer a direct-child selector and explain that it affects preview setup only.
+- Event, Condition, and target Sequence fields use `SequenceReferencePickerPopup`; search must include stable ID, Korean name, description, category, tags, and aliases. Do not regress these fields to long `DropdownField` lists.
+- `SequencePlaybackController` owns Safe Preview and Play Mode Live Test state. Full Safe Preview runs preparation through the sequence; selected Safe Preview includes the target block's preparation. Selected Live Test fast-prepares preceding blocks in the real context, then runs the target block normally.
+- Runtime Play Mode contexts come from `IActionSequenceLiveContextSource`. Add a runtime adapter for a new Primary Mode/Game Module host instead of concrete lookups in `SequenceLiveContextRegistry`.
+- `SequenceProblemsView` owns severity filters, search, copy, and navigation by stable object ID. Validation UI should reuse it instead of rebuilding ad-hoc rows.
 
 ## Stable Block Identity
 
@@ -76,10 +80,13 @@ When adding or changing the pipeline:
 - YAML 저장은 `SequenceSaveCoordinator`를 거친다. `StandaloneSequenceSaveTarget`과 `BattleScenarioSaveTarget`이 export, temp source round-trip validation, metadata 반영 차이를 캡슐화한다.
 - 저장 성공 조건은 export 검증, source hash 충돌 확인, 같은 디렉터리 임시 파일 write/readback, 임시 파일 재파싱, 교체 직전 재충돌 확인, 원자적 replace/move가 모두 끝난 경우다. Metadata는 원본 교체 뒤에만 갱신한다.
 - 기존 source hash가 없는데 파일이 이미 있거나, 외부 편집으로 hash가 달라졌거나, 검증 중 파일이 다시 바뀌면 conflict로 중단한다. UI는 충돌을 숨기거나 기본 overwrite하지 않는다.
+- Unsaved Runtime Asset edits create debounced `SequenceRecoveryStore` snapshots under `Library/HubToHome/SequenceMakerRecovery`. Flush pending recovery before save, target changes, source reload, domain reload, and window close. Successful YAML save clears snapshots.
+- Conflict handling is rendered by `SequenceConflictView`. Reload source only after preserving a recovery snapshot; explicit overwrite must still pass temp write/readback, round-trip validation, and the late-conflict check.
+- Sequence Input ID rename uses `SequenceEditCommands.RenameSequenceInput` so the contract and recursive `{"$bind":"input.*"}` values change as one undoable command. Never leave a known binding broken for manual cleanup.
 - Dialogue mappings import from Source `dialogues` into `BattleScenarioData.Dialogues` through `IScenarioDialogueReferenceResolver`. The default editor-side resolver/provider is `AssetDatabaseScenarioDialogueReferenceResolver`, which resolves `dialogueData` by `DialogueData` asset name or `Assets/...` path, honors optional search folders, and treats duplicate name matches as unresolved. Runtime mappings preserve `ScenarioDialogueReferenceData.DialogueDataId`, and `ScenarioSourceExporter` can export `BattleScenarioData` back to `ScenarioSourceDocument` without exposing Unity GUIDs in the normal view.
 - YAML export now goes through `ScenarioSourceYamlExportCommand`, which composes `ScenarioSourceExporter` and `ScenarioSourceYamlWriter` and can write text to a target path. This command intentionally does not mutate `BattleScenarioData.Source`; the editor should save YAML, then run the normal import/sync path to update runtime asset metadata.
 - `SequenceMakerWindow` is the official Korean UI Toolkit Sequence Maker surface opened from `HubToHome/시나리오/시퀀스 메이커`. It loads `SequenceMakerWindow.uxml` and `SequenceMakerWindow.uss`, uses one `SequenceMakerWorkspaceState`, and owns the command bar, unified target field, navigator, vertical flow, inspector, bottom drawer, safe save, validation, and status feedback.
-- `ScenarioAuthoringWindow` remains temporarily available at `HubToHome/시나리오/개발/기존 시퀀스 메이커` until parity migration is complete. Do not add new official behavior there.
+- `ScenarioAuthoringWindow`의 기존 메뉴는 공식 `SequenceMakerWindow`로 전달한다. 옛 창에 새 기능을 추가하지 않는다.
 - `SequenceAssetIndexCache` lazily indexes Battle Scenario and Action Sequence assets and invalidates on `EditorApplication.projectChanged`. `SequenceNavigatorHistory` stores recent/favorite stable asset keys rather than mutable sequence IDs.
 - `SequenceUsageIndex` is the only workbench reference graph for scenario ownership, legacy/Trigger Rule targets, and recursive `sequence.call` targets. Use it before rename/delete, for `사용 위치`, and for missing-target diagnostics instead of ad-hoc AssetDatabase text searches.
 - 중앙 Block Flow는 `SequenceFlowCanvas`와 `SequenceFlowProjection`이 소유한다. 순차/병렬 구조, 중첩 깊이, 접기, 검색 시 조상 유지, 정확한 Block 단위 검증 배지는 projection 결과만 사용한다.
@@ -90,11 +97,7 @@ When adding or changing the pipeline:
 - `ActionInspectorView`는 전역 Action 설명/사용 시점과 현재 Block의 이름/메모/활성/파라미터를 분리한다. Action ID, Block ID, raw JSON, YAML 예시는 접힌 `개발자 정보`에 둔다.
 - 참조형 파라미터는 현재 Battle 참가자, dialogue/audio 매핑, Game Module, Timeline, 프로젝트 Sequence와 기존 사용 값을 후보로 보여주면서 custom stable ID 직접 입력도 허용한다.
 - The same window also accepts a mutually exclusive **독립 Action Sequence**. This mode has no Battle Event Rule panel and uses `ActionSequenceSourceSync` for preview, validation, source save, safe reimport, and export-as. The timeline, action inspector, catalog parameter forms, validation badges, and light edit controls must behave the same as scenario-owned sequences.
-- The editor now uses a three-panel board layout:
-  - left: flow map with overview, rules, sequence list, and validation summary
-  - center: selected sequence timeline with selectable action rows
-  - right: selected action inspector plus YAML/sync area
-- `ScenarioSequenceOdinEditorWindow` is the additional Odin-based block editor surface. It opens from `HubToHome/시나리오/Odin 시퀀스 에디터`, keeps `ScenarioAuthoringWindow` intact for YAML/sync work, and provides block-list editing for `ScenarioActionData` with `DesignerLabel`, `Enabled`, `Note`, typed parameter forms, nested children, duplicate/move/delete buttons, and validation summary text for designers who do not want to touch raw JSON.
+- `ScenarioSequenceOdinEditorWindow`는 과거 draft 변환 테스트를 위해 코드만 유지하는 migration-only 구현이다. 메뉴가 없으며 공식 편집 경로가 아니다.
 - The action inspector must prefer `ActionCatalogEntry.Parameters` for Korean labels, descriptions, required markers, type hints, and default values. When catalog metadata is incomplete, it may fall back to the current `ParametersJson` keys so existing authored data remains editable. Raw JSON editing should stay under an advanced foldout.
 - `timeline.play` authoring now depends on `BattleScenarioData.TimelineCutsceneCatalog`. The editor/validator must surface missing `cutsceneId`, missing catalog, missing `TimelineAsset`, and unresolved binding keys as precise validation messages rather than letting Timeline playback fail silently.
 - Timeline cutscene authoring may now also use `ScenarioTimelineSignalAsset` / `ScenarioTimelineSignalEmitter` for presentation-only timing hooks. Editor guidance must keep this rule explicit: Signal은 `sfx.play`, `camera.shake`, `vfx.spawn`, `actor.pose`, `ui.flash`까지만 담당하고, 시나리오 분기/세이브/퀘스트 확정 같은 상태 변경은 계속 Action Sequence가 소유한다.

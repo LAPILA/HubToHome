@@ -15,3 +15,5 @@
 - 종합 현황: `yjlim/feedback/2026-06-19-work-summary.md`
 - 다음 작업: `yjlim/TODO.md`
 - 시나리오 파이프라인 규칙: `.agents/skills/hubtohome-scenario-authoring/SKILL.md`
+- 공식 Sequence Maker 결정: `docs/adr/0006-single-sequence-maker-and-recoverable-runtime-editing.md`
+- Sequence Maker 구현 계획/상태: `specs/002-sequence-maker-workbench/tasks.md`

@@ -82,6 +82,10 @@ public class BattleTurnQteModuleControllerServiceTests
             _positionManagerObject = new GameObject("PositionManager");
             _positionManager = _positionManagerObject.AddComponent<PositionManager>();
             SetStaticProperty(typeof(PositionManager), "Instance", _positionManager);
+            SetPrivateField(
+                _positionManager,
+                "_playerDefaultPos",
+                new List<Transform> { _positionManagerObject.transform });
 
             _playerObject = new GameObject("Player");
             Player = _playerObject.AddComponent<PlayerCharacter>();
@@ -125,6 +129,13 @@ public class BattleTurnQteModuleControllerServiceTests
         {
             PropertyInfo property = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Static);
             property.GetSetMethod(true).Invoke(null, new[] { value });
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null);
+            field.SetValue(target, value);
         }
     }
 

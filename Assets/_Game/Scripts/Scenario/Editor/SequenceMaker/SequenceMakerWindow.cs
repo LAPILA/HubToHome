@@ -20,9 +20,12 @@ public sealed class SequenceMakerWindow : EditorWindow
     [SerializeField] private BattleScenarioData _serializedBattleScenario;
     [SerializeField] private ActionSequenceAsset _serializedStandaloneSequence;
     [SerializeField] private ActionCatalogAsset _catalog;
+    [SerializeField] private TriggerLibraryAsset _triggerLibrary;
 
     private readonly Dictionary<int, SequenceEditCommandStack> _editStacks =
         new Dictionary<int, SequenceEditCommandStack>();
+    private readonly Dictionary<int, BattleScenarioEditCommandStack> _battleEditStacks =
+        new Dictionary<int, BattleScenarioEditCommandStack>();
 
     private SequenceMakerWorkspaceState _workspace;
     private EditorSequenceMakerPreferences _preferences;
@@ -47,6 +50,7 @@ public sealed class SequenceMakerWindow : EditorWindow
     private VisualElement _navigatorPanel;
     private VisualElement _navigatorContent;
     private SequenceNavigatorView _navigatorView;
+    private TriggerRuleListView _ruleListView;
     private SequenceAssetIndex _assetIndex;
     private SequenceUsageIndex _usageIndex;
     private SequenceNavigatorHistory _navigatorHistory;
@@ -55,6 +59,7 @@ public sealed class SequenceMakerWindow : EditorWindow
     private Label _flowSubtitle;
     private VisualElement _flowContent;
     private SequenceFlowCanvas _flowCanvas;
+    private TriggerRuleEditorView _ruleEditorView;
     private VisualElement _inspectorContent;
     private VisualElement _drawer;
     private VisualElement _drawerContent;
@@ -69,6 +74,14 @@ public sealed class SequenceMakerWindow : EditorWindow
     private string _yamlPreview = string.Empty;
     private string _statusText = "준비됨";
     private bool _statusHasError;
+    private SequencePlaybackController _playback;
+    private SequenceRecoveryStore _recoveryStore;
+    private readonly List<SequenceRecoverySnapshot> _recoveries =
+        new List<SequenceRecoverySnapshot>();
+    private SequenceSourceConflict _lastConflict;
+    private bool _hasExternalAssetChanges;
+    private bool _recoveryPending;
+    private double _recoveryDueAt;
 
     [MenuItem(MenuPath)]
     public static void Open()
@@ -90,6 +103,11 @@ public sealed class SequenceMakerWindow : EditorWindow
         _workspace = new SequenceMakerWorkspaceState();
         _workspace.LoadPreferences(_preferences);
         _workspace.Changed += OnWorkspaceChanged;
+        _playback?.Dispose();
+        _playback = new SequencePlaybackController();
+        _playback.Changed += OnPlaybackChanged;
+        _playback.TraceChanged += OnPlaybackTraceChanged;
+        _recoveryStore = new SequenceRecoveryStore();
 
         BuildVisualTree();
         BindControls();
@@ -102,6 +120,14 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void OnDisable()
     {
+        FlushRecovery();
+        if (_playback != null)
+        {
+            _playback.Changed -= OnPlaybackChanged;
+            _playback.TraceChanged -= OnPlaybackTraceChanged;
+            _playback.Dispose();
+            _playback = null;
+        }
         if (_workspace == null)
         {
             return;
@@ -237,6 +263,11 @@ public sealed class SequenceMakerWindow : EditorWindow
         _validateButton.clicked += ValidateCurrent;
         _saveButton.clicked += () => SaveCurrent();
         _libraryButton.clicked += OpenActionLibrary;
+        _playButton.clicked += () => PlayCurrent(false);
+        _playSelectedButton.clicked += () => PlayCurrent(true);
+        _pauseButton.clicked += () => _playback?.PauseOrResume();
+        _stepButton.clicked += () => _playback?.Step();
+        _stopButton.clicked += () => _playback?.Stop();
         _densityButton.clicked += ToggleDensity;
         _drawerToggleButton.clicked += () =>
             _workspace.SetDrawerOpen(!_workspace.IsDrawerOpen);
@@ -249,7 +280,7 @@ public sealed class SequenceMakerWindow : EditorWindow
             _workspace.SetDrawer(SequenceMakerDrawerTab.Yaml, true);
         _searchField.RegisterValueChangedCallback(_ => RenderFlow());
 
-        SetPlaybackControlsEnabled(false);
+        RenderPlaybackControls();
     }
 
     private void BuildWorkspacePanels()
@@ -272,6 +303,15 @@ public sealed class SequenceMakerWindow : EditorWindow
             "sm-panel--navigator",
             out _navigatorContent,
             false);
+        _ruleListView = new TriggerRuleListView();
+        _ruleListView.AddRequested += AddTriggerRule;
+        _ruleListView.TriggerRuleSelected += SelectTriggerRule;
+        _ruleListView.LegacyRuleSelected += SelectLegacyRule;
+        _ruleListView.DuplicateRequested += DuplicateTriggerRule;
+        _ruleListView.DeleteRequested += DeleteTriggerRule;
+        _ruleListView.MoveRequested += MoveTriggerRule;
+        _ruleListView.ConvertLegacyRequested += ConvertLegacyRule;
+        _navigatorContent.Add(_ruleListView);
         _navigatorView = new SequenceNavigatorView();
         _navigatorView.OpenRequested += OpenFromNavigator;
         _navigatorView.RefreshRequested += () =>
@@ -314,6 +354,15 @@ public sealed class SequenceMakerWindow : EditorWindow
         _flowCanvas.SaveRequested += () => SaveCurrent();
         _flowCanvas.Changed += AfterEdit;
         _flowContent.Add(_flowCanvas);
+        _ruleEditorView = new TriggerRuleEditorView();
+        _ruleEditorView.EditApplied += AfterBattleEdit;
+        _ruleEditorView.ConvertLegacyRequested += ConvertLegacyRule;
+        _ruleEditorView.Error += message =>
+        {
+            SetStatus(message, true);
+            RenderStatus();
+        };
+        _flowContent.Add(_ruleEditorView);
         right.Add(flowPanel);
 
         VisualElement inspectorPanel = CreatePanel(
@@ -371,6 +420,12 @@ public sealed class SequenceMakerWindow : EditorWindow
         {
             _catalog = AssetDatabase.LoadAssetAtPath<ActionCatalogAsset>(
                 ProductionActionLibraryBuildCommand.GeneratedAssetPath);
+        }
+
+        if (_triggerLibrary == null)
+        {
+            _triggerLibrary = AssetDatabase.LoadAssetAtPath<TriggerLibraryAsset>(
+                ProductionTriggerLibraryBuildCommand.GeneratedAssetPath);
         }
 
         if (_serializedBattleScenario != null)
@@ -438,6 +493,9 @@ public sealed class SequenceMakerWindow : EditorWindow
             _serializedStandaloneSequence = null;
         }
 
+        _lastConflict = null;
+        _hasExternalAssetChanges = false;
+
         SequenceAssetIndexEntry opened = _assetIndex?.FindByAsset(_workspace.ActiveTarget);
         if (opened != null)
         {
@@ -445,6 +503,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         }
 
         RefreshDerivedState(true);
+        RefreshRecoveries();
         RenderAll();
     }
 
@@ -454,6 +513,8 @@ public sealed class SequenceMakerWindow : EditorWindow
         {
             return true;
         }
+
+        FlushRecovery();
 
         int choice = EditorUtility.DisplayDialogComplex(
             "저장되지 않은 시퀀스",
@@ -558,7 +619,7 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RenderCommandState()
     {
-        SequenceEditCommandStack stack = GetCurrentEditStack();
+        ISequenceMakerEditHistory stack = GetActiveEditHistory();
         _undoButton?.SetEnabled(stack != null && stack.CanUndo);
         _redoButton?.SetEnabled(stack != null && stack.CanRedo);
         if (_undoButton != null)
@@ -579,6 +640,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         _validateButton?.SetEnabled(hasTarget);
         _saveButton?.SetEnabled(hasTarget && !string.IsNullOrWhiteSpace(SourcePath()));
         _playModeField?.SetEnabled(hasTarget);
+        RenderPlaybackControls();
     }
 
     private void RenderBreadcrumb()
@@ -599,6 +661,20 @@ public sealed class SequenceMakerWindow : EditorWindow
                 ? _workspace.BattleScenario.TitleKo
                 : string.Empty, TargetId())
             : "독립 시퀀스";
+        if (_workspace.SelectionKind == SequenceMakerSelectionKind.TriggerRule)
+        {
+            ScenarioTriggerRuleData rule = FindTriggerRule(_workspace.SelectedTriggerRuleId);
+            _breadcrumbLabel.text = target + "  /  이벤트 규칙  /  "
+                + DisplayName(rule?.DisplayNameKo, rule?.RuleId);
+            return;
+        }
+        if (_workspace.SelectionKind == SequenceMakerSelectionKind.LegacyRule)
+        {
+            _breadcrumbLabel.text = target + "  /  기존 호환 규칙  /  "
+                + (_workspace.SelectedLegacyRuleIndex + 1);
+            return;
+        }
+
         string sequence = _workspace.SelectedSequence != null
             ? DisplayName(
                 _workspace.SelectedSequence.DisplayNameKo,
@@ -617,6 +693,11 @@ public sealed class SequenceMakerWindow : EditorWindow
             return;
         }
 
+        _ruleListView?.Bind(
+            _workspace.BattleScenario,
+            _triggerLibrary,
+            _workspace.SelectedTriggerRuleId,
+            _workspace.SelectedLegacyRuleIndex);
         _navigatorView.Bind(
             _assetIndex,
             _usageIndex,
@@ -704,6 +785,119 @@ public sealed class SequenceMakerWindow : EditorWindow
         RenderAll();
     }
 
+    private void SelectTriggerRule(string ruleId)
+    {
+        if (_workspace.SelectTriggerRule(ruleId))
+        {
+            RenderAll();
+        }
+    }
+
+    private void SelectLegacyRule(int index)
+    {
+        if (_workspace.SelectLegacyRule(index))
+        {
+            RenderAll();
+        }
+    }
+
+    private void AddTriggerRule()
+    {
+        BattleScenarioEditCommandStack stack = GetCurrentBattleEditStack();
+        if (stack == null)
+        {
+            return;
+        }
+
+        string eventId = FirstEventId();
+        string sequenceId = _workspace.BattleScenario?.Sequences != null
+            && _workspace.BattleScenario.Sequences.Count > 0
+            ? _workspace.BattleScenario.Sequences[0]?.SequenceId ?? string.Empty
+            : string.Empty;
+        ScenarioTriggerRuleData rule = ScenarioTriggerRuleFactory.Create(eventId, sequenceId);
+        rule.RuleId = UniqueRuleId(rule.RuleId);
+        stack.Execute(BattleScenarioEditCommands.AddTriggerRule(rule));
+        _workspace.SelectTriggerRule(rule.RuleId);
+        AfterBattleEdit();
+    }
+
+    private void DuplicateTriggerRule(string ruleId)
+    {
+        ScenarioTriggerRuleData source = FindTriggerRule(ruleId);
+        BattleScenarioEditCommandStack stack = GetCurrentBattleEditStack();
+        if (source == null || stack == null)
+        {
+            return;
+        }
+
+        ScenarioTriggerRuleData clone = ScenarioTriggerRuleFactory.CloneWithNewIds(
+            source,
+            UniqueRuleId(ruleId + ".copy"));
+        int sourceIndex = FindTriggerRuleIndex(ruleId);
+        stack.Execute(BattleScenarioEditCommands.AddTriggerRule(clone, sourceIndex + 1));
+        _workspace.SelectTriggerRule(clone.RuleId);
+        AfterBattleEdit();
+    }
+
+    private void DeleteTriggerRule(string ruleId)
+    {
+        ScenarioTriggerRuleData rule = FindTriggerRule(ruleId);
+        BattleScenarioEditCommandStack stack = GetCurrentBattleEditStack();
+        if (rule == null || stack == null)
+        {
+            return;
+        }
+        if (!EditorUtility.DisplayDialog(
+                "이벤트 규칙 삭제",
+                "'" + DisplayName(rule.DisplayNameKo, rule.RuleId) + "' 규칙을 삭제할까요?",
+                "삭제",
+                "취소"))
+        {
+            return;
+        }
+
+        int index = FindTriggerRuleIndex(ruleId);
+        stack.Execute(BattleScenarioEditCommands.DeleteTriggerRule(ruleId));
+        SelectNearestTriggerRule(index);
+        AfterBattleEdit();
+    }
+
+    private void MoveTriggerRule(string ruleId, int targetIndex)
+    {
+        BattleScenarioEditCommandStack stack = GetCurrentBattleEditStack();
+        if (stack == null || FindTriggerRule(ruleId) == null)
+        {
+            return;
+        }
+        stack.Execute(BattleScenarioEditCommands.MoveTriggerRule(ruleId, targetIndex));
+        _workspace.SelectTriggerRule(ruleId);
+        AfterBattleEdit();
+    }
+
+    private void ConvertLegacyRule(int index)
+    {
+        BattleScenarioData battle = _workspace.BattleScenario;
+        BattleScenarioEditCommandStack stack = GetCurrentBattleEditStack();
+        if (battle?.Rules == null || index < 0 || index >= battle.Rules.Count || stack == null)
+        {
+            return;
+        }
+        if (!BattleTriggerRuleCompatibilityMapper.TryMap(
+                battle.Rules[index],
+                out ScenarioTriggerRuleData mapped,
+                out string error))
+        {
+            SetStatus(error, true);
+            RenderStatus();
+            return;
+        }
+
+        mapped.RuleId = UniqueRuleId(mapped.RuleId);
+        stack.Execute(BattleScenarioEditCommands.ConvertLegacyRule(index, mapped));
+        _workspace.SelectTriggerRule(mapped.RuleId);
+        AfterBattleEdit();
+    }
+
     private BattleScenarioData FindFirstOwner(SequenceAssetIndexEntry entry)
     {
         if (entry == null || entry.OwningScenarioIds.Count == 0 || _assetIndex == null)
@@ -731,8 +925,19 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RenderFlow()
     {
-        if (_flowCanvas == null)
+        if (_flowCanvas == null || _ruleEditorView == null)
         {
+            return;
+        }
+
+        bool editingRule = _workspace.SelectionKind == SequenceMakerSelectionKind.TriggerRule
+            || _workspace.SelectionKind == SequenceMakerSelectionKind.LegacyRule;
+        _flowCanvas.style.display = editingRule ? DisplayStyle.None : DisplayStyle.Flex;
+        _ruleEditorView.style.display = editingRule ? DisplayStyle.Flex : DisplayStyle.None;
+
+        if (editingRule)
+        {
+            RenderRuleFlow();
             return;
         }
 
@@ -757,6 +962,33 @@ public sealed class SequenceMakerWindow : EditorWindow
             _catalog,
             _lastValidation,
             _searchField != null ? _searchField.value : string.Empty);
+    }
+
+    private void RenderRuleFlow()
+    {
+        BattleScenarioData battle = _workspace.BattleScenario;
+        if (_workspace.SelectionKind == SequenceMakerSelectionKind.TriggerRule)
+        {
+            ScenarioTriggerRuleData rule = FindTriggerRule(_workspace.SelectedTriggerRuleId);
+            _flowTitle.text = DisplayName(rule?.DisplayNameKo, rule?.RuleId);
+            _flowSubtitle.text = "WHEN 조건을 만족하면 DO 시퀀스 실행";
+            _ruleEditorView.BindTriggerRule(
+                battle,
+                rule,
+                _triggerLibrary,
+                BuildParameterFieldContext(),
+                GetCurrentBattleEditStack(),
+                _lastValidation);
+            return;
+        }
+
+        int index = _workspace.SelectedLegacyRuleIndex;
+        BattleEventRuleData legacy = battle?.Rules != null && index >= 0 && index < battle.Rules.Count
+            ? battle.Rules[index]
+            : null;
+        _flowTitle.text = "기존 호환 규칙";
+        _flowSubtitle.text = "확장 Trigger Rule로 변환한 뒤 편집 가능";
+        _ruleEditorView.BindLegacyRule(battle, legacy, index, _triggerLibrary);
     }
 
     private void ShowActionPicker(SequenceInsertionRequest request)
@@ -1213,7 +1445,15 @@ public sealed class SequenceMakerWindow : EditorWindow
 
         var body = new VisualElement();
         body.AddToClassList("sm-inspector-content");
-        if (TryGetSelectedAction(out ScenarioActionData action))
+        if (_workspace.SelectionKind == SequenceMakerSelectionKind.TriggerRule)
+        {
+            RenderRuleInspector(body, FindTriggerRule(_workspace.SelectedTriggerRuleId));
+        }
+        else if (_workspace.SelectionKind == SequenceMakerSelectionKind.LegacyRule)
+        {
+            RenderLegacyRuleInspector(body);
+        }
+        else if (TryGetSelectedAction(out ScenarioActionData action))
         {
             RenderActionInspector(body, action);
         }
@@ -1251,22 +1491,50 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RenderSequenceInspector(VisualElement body, ActionSequenceAsset sequence)
     {
-        AddInspectorHeading(
-            body,
-            DisplayName(sequence.DisplayNameKo, sequence.SequenceId),
-            sequence.SequenceId);
-        ActionSequenceContractData contract = sequence.Contract ?? new ActionSequenceContractData();
-        AddProperty(body, "설명", contract.DescriptionKo);
-        AddProperty(body, "사용 시점", contract.UsageKo);
-        AddProperty(body, "상태", contract.Lifecycle.ToString());
-        AddProperty(body, "태그", contract.Tags != null ? string.Join(", ", contract.Tags) : string.Empty);
-        AddProperty(
-            body,
-            "사용 가능 모드",
-            contract.AllowedPrimaryModes != null
-                ? string.Join(", ", contract.AllowedPrimaryModes)
-                : string.Empty);
-        AddProperty(body, "입력", contract.Inputs != null ? contract.Inputs.Count + "개" : "0개");
+        var inspector = new SequenceInspectorView();
+        inspector.EditApplied += AfterEdit;
+        inspector.Error += message =>
+        {
+            SetStatus(message, true);
+            RenderStatus();
+        };
+        inspector.Bind(
+            sequence,
+            GetCurrentEditStack(),
+            _usageIndex,
+            _catalog);
+        body.Add(inspector);
+    }
+
+    private void RenderRuleInspector(VisualElement body, ScenarioTriggerRuleData rule)
+    {
+        if (rule == null)
+        {
+            body.Add(CreateEmptyState("규칙 없음", "왼쪽에서 이벤트 규칙을 다시 선택"));
+            return;
+        }
+        AddInspectorHeading(body, DisplayName(rule.DisplayNameKo, rule.RuleId), rule.RuleId);
+        ScenarioEventDefinition eventDefinition = _triggerLibrary?.FindEvent(rule.EventId);
+        AddProperty(body, "이벤트", DisplayName(eventDefinition?.DisplayNameKo, rule.EventId));
+        AddProperty(body, "설명", eventDefinition?.DescriptionKo);
+        AddProperty(body, "사용 시점", eventDefinition?.UsageKo);
+        AddProperty(body, "실행 시퀀스", DisplayName(
+            FindBattleSequence(rule.SequenceId)?.DisplayNameKo,
+            rule.SequenceId));
+        AddProperty(body, "실행 정책", TriggerRuleSentenceFormatter.FormatCompact(rule, _triggerLibrary));
+        AddProperty(body, "상태", rule.Disabled ? "꺼짐" : "실행 가능");
+    }
+
+    private void RenderLegacyRuleInspector(VisualElement body)
+    {
+        int index = _workspace.SelectedLegacyRuleIndex;
+        BattleEventRuleData rule = _workspace.BattleScenario?.Rules != null
+            && index >= 0 && index < _workspace.BattleScenario.Rules.Count
+            ? _workspace.BattleScenario.Rules[index]
+            : null;
+        AddInspectorHeading(body, "기존 호환 규칙", rule?.RuleId ?? string.Empty);
+        AddProperty(body, "상태", "읽기 전용");
+        AddProperty(body, "편집 방법", "중앙의 '확장 규칙으로 변환'을 사용");
     }
 
     private void RenderBattleInspector(VisualElement body, BattleScenarioData battle)
@@ -1314,9 +1582,10 @@ public sealed class SequenceMakerWindow : EditorWindow
         switch (_workspace.DrawerTab)
         {
             case SequenceMakerDrawerTab.Trace:
-                _drawerContent.Add(CreateEmptyState("실행 기록 없음", ""));
+                RenderExecutionTrace();
                 break;
             case SequenceMakerDrawerTab.Yaml:
+                RenderSourceSafety();
                 var yaml = new TextField
                 {
                     multiline = true,
@@ -1334,37 +1603,164 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RenderProblems()
     {
-        if (_lastValidation == null || _lastValidation.Messages.Count == 0)
+        var problems = new SequenceProblemsView();
+        problems.ProblemSelected += NavigateToProblem;
+        problems.Bind(_lastValidation);
+        _drawerContent.Add(problems);
+    }
+
+    private void NavigateToProblem(ScenarioValidationMessage message)
+    {
+        string objectId = message?.ObjectId?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(objectId))
         {
-            _drawerContent.Add(CreateEmptyState("문제 없음", ""));
             return;
+        }
+        if (FindTriggerRule(objectId) != null)
+        {
+            _workspace.SelectTriggerRule(objectId);
+            RenderAll();
+            return;
+        }
+
+        ActionSequenceAsset sequence = FindSequenceContainingObject(objectId);
+        if (sequence != null)
+        {
+            _workspace.TrySelectSequence(sequence);
+            if (SequenceBlockTree.Contains(sequence, objectId))
+            {
+                _workspace.SelectBlock(objectId);
+            }
+            RenderAll();
+            return;
+        }
+        SetStatus("문제 대상 위치를 자동으로 찾지 못했습니다: " + objectId, false);
+        RenderStatus();
+    }
+
+    private ActionSequenceAsset FindSequenceContainingObject(string objectId)
+    {
+        if (_workspace.StandaloneSequence != null
+            && (_workspace.StandaloneSequence.SequenceId == objectId
+                || SequenceBlockTree.Contains(_workspace.StandaloneSequence, objectId)))
+        {
+            return _workspace.StandaloneSequence;
+        }
+        List<ActionSequenceAsset> sequences = _workspace.BattleScenario?.Sequences;
+        if (sequences == null)
+        {
+            return null;
+        }
+        for (int i = 0; i < sequences.Count; i++)
+        {
+            ActionSequenceAsset sequence = sequences[i];
+            if (sequence != null
+                && (sequence.SequenceId == objectId || SequenceBlockTree.Contains(sequence, objectId)))
+            {
+                return sequence;
+            }
+        }
+        return null;
+    }
+
+    private void RenderExecutionTrace()
+    {
+        if (_playback == null || _playback.Trace.Count == 0)
+        {
+            _drawerContent.Add(CreateEmptyState("실행 기록 없음", "미리보기 또는 Play Mode 테스트를 실행"));
+            return;
+        }
+
+        var header = new VisualElement();
+        header.AddToClassList("sm-trace-header");
+        var state = new Label(PlaybackStateLabel(_playback.State));
+        state.AddToClassList("sm-trace-state");
+        state.EnableInClassList("is-error", _playback.State == SequencePlaybackState.Failed
+            || _playback.State == SequencePlaybackState.Blocked);
+        header.Add(state);
+        var status = new Label(_playback.StatusMessage);
+        status.AddToClassList("sm-trace-status");
+        header.Add(status);
+        var clear = new Button(() => _playback.ClearTrace()) { text = "기록 지우기" };
+        clear.AddToClassList("sm-small-command");
+        header.Add(clear);
+        _drawerContent.Add(header);
+
+        if (_playback.State == SequencePlaybackState.WaitingForInput
+            && _playback.PendingInput != null)
+        {
+            var inputBox = new VisualElement();
+            inputBox.AddToClassList("sm-preview-input");
+            inputBox.Add(new Label(_playback.PendingInput.Prompt));
+            var input = new TextField("JSON 값") { value = "null", isDelayed = true };
+            inputBox.Add(input);
+            var apply = new Button(() =>
+            {
+                try
+                {
+                    Newtonsoft.Json.Linq.JToken value =
+                        Newtonsoft.Json.Linq.JToken.Parse(input.value ?? "null");
+                    _playback.ProvidePreviewInput(value);
+                }
+                catch (Exception exception)
+                {
+                    SetStatus("미리보기 입력 JSON 오류: " + exception.Message, true);
+                    RenderStatus();
+                }
+            }) { text = "입력하고 계속" };
+            apply.AddToClassList("sm-rule-primary-small");
+            inputBox.Add(apply);
+            _drawerContent.Add(inputBox);
         }
 
         var scroll = new ScrollView(ScrollViewMode.Vertical);
         scroll.style.flexGrow = 1f;
-        for (int i = 0; i < _lastValidation.Messages.Count; i++)
+        IReadOnlyList<SequencePlaybackTraceEntry> trace = _playback.Trace;
+        for (int i = 0; i < trace.Count; i++)
         {
-            ScenarioValidationMessage message = _lastValidation.Messages[i];
-            var row = new VisualElement();
-            row.AddToClassList("sm-problem-row");
-            var icon = new Label(message.Severity == ScenarioValidationSeverity.Error
-                ? "!"
-                : message.Severity == ScenarioValidationSeverity.Warning ? "!" : "i");
-            icon.AddToClassList("sm-problem-icon");
-            icon.AddToClassList(message.Severity == ScenarioValidationSeverity.Error
-                ? "sm-problem-icon--error"
-                : message.Severity == ScenarioValidationSeverity.Warning
-                    ? "sm-problem-icon--warning"
-                    : "sm-problem-icon--info");
-            row.Add(icon);
-            var copy = new Label(message.Message);
-            copy.AddToClassList("sm-problem-copy");
-            copy.tooltip = message.Code + "\n" + message.ObjectId;
+            SequencePlaybackTraceEntry entry = trace[i];
+            var row = new Button(() => SelectTraceBlock(entry.BlockId));
+            row.AddToClassList("sm-trace-row");
+            row.EnableInClassList("is-error", entry.Status.IndexOf("fail", StringComparison.OrdinalIgnoreCase) >= 0
+                || entry.Status.IndexOf("block", StringComparison.OrdinalIgnoreCase) >= 0);
+            var order = new Label(entry.Order.ToString("00"));
+            order.AddToClassList("sm-trace-order");
+            row.Add(order);
+            var copy = new VisualElement();
+            copy.style.flexGrow = 1f;
+            var title = new Label(string.IsNullOrWhiteSpace(entry.BlockId)
+                ? entry.Status
+                : entry.BlockId + "  ·  " + entry.Status);
+            title.AddToClassList("sm-trace-title");
+            copy.Add(title);
+            if (!string.IsNullOrWhiteSpace(entry.ActionId)
+                || !string.IsNullOrWhiteSpace(entry.Message))
+            {
+                var detail = new Label(entry.ActionId
+                    + (string.IsNullOrWhiteSpace(entry.Message) ? string.Empty : "  " + entry.Message));
+                detail.AddToClassList("sm-trace-detail");
+                copy.Add(detail);
+            }
             row.Add(copy);
             scroll.Add(row);
         }
-
         _drawerContent.Add(scroll);
+    }
+
+    private void RenderSourceSafety()
+    {
+        if (_lastConflict == null && _recoveries.Count == 0)
+        {
+            return;
+        }
+        var safety = new SequenceConflictView();
+        safety.ReloadSourceRequested += ReloadSourceFromDisk;
+        safety.OverwriteSourceRequested += () => SaveCurrent(true);
+        safety.OpenSourceRequested += OpenSourceFile;
+        safety.RestoreRecoveryRequested += RestoreRecovery;
+        safety.DeleteRecoveryRequested += DeleteRecovery;
+        safety.Bind(_lastConflict, _recoveries, SourcePath(), _yamlPreview);
+        _drawerContent.Add(safety);
     }
 
     private void RenderStatus()
@@ -1418,7 +1814,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         RenderAll();
     }
 
-    private bool SaveCurrent()
+    private bool SaveCurrent(bool overwriteExternalChanges = false)
     {
         ISequenceSaveTarget target = CreateSaveTarget();
         if (target == null)
@@ -1428,10 +1824,22 @@ public sealed class SequenceMakerWindow : EditorWindow
             return false;
         }
 
-        SequenceSaveResult result = new SequenceSaveCoordinator().Save(target);
+        FlushRecovery();
+
+        if (overwriteExternalChanges)
+        {
+            CaptureRecovery();
+        }
+        SequenceSaveResult result = new SequenceSaveCoordinator().Save(
+            target,
+            new SequenceSaveOptions
+            {
+                OverwriteExternalChanges = overwriteExternalChanges
+            });
         _lastValidation = result.Validation ?? new ScenarioValidationResult();
         if (!result.Success)
         {
+            _lastConflict = result.Conflict;
             string status = result.Status == SequenceSaveStatus.Conflict
                 ? "YAML 외부 변경 충돌"
                 : result.ErrorMessage;
@@ -1445,12 +1853,23 @@ public sealed class SequenceMakerWindow : EditorWindow
             return false;
         }
 
+        _lastConflict = null;
+
         foreach (SequenceEditCommandStack stack in _editStacks.Values)
+        {
+            stack.MarkSaved();
+        }
+        foreach (BattleScenarioEditCommandStack stack in _battleEditStacks.Values)
         {
             stack.MarkSaved();
         }
 
         _workspace.SetDirty(false);
+        _hasExternalAssetChanges = false;
+        _recoveryStore?.Clear(target);
+        _recoveries.Clear();
+        _recoveryPending = false;
+        EditorApplication.update -= TickRecovery;
         SetStatus("YAML 저장 완료", false);
         RefreshYamlPreview();
         RenderAll();
@@ -1476,20 +1895,189 @@ public sealed class SequenceMakerWindow : EditorWindow
         return null;
     }
 
+    private void CaptureRecovery()
+    {
+        ISequenceSaveTarget target = CreateSaveTarget();
+        if (target == null || _recoveryStore == null)
+        {
+            return;
+        }
+        try
+        {
+            _recoveryStore.Capture(target);
+            RefreshRecoveries();
+        }
+        catch (Exception exception)
+        {
+            _lastValidation.AddWarning(
+                "sequence.recovery.capture.failed",
+                "로컬 복구 기록을 남기지 못했습니다: " + exception.Message,
+                TargetId());
+        }
+    }
+
+    private void ScheduleRecovery()
+    {
+        _recoveryPending = true;
+        _recoveryDueAt = EditorApplication.timeSinceStartup + 0.75d;
+        EditorApplication.update -= TickRecovery;
+        EditorApplication.update += TickRecovery;
+    }
+
+    private void TickRecovery()
+    {
+        if (!_recoveryPending || EditorApplication.timeSinceStartup < _recoveryDueAt)
+        {
+            return;
+        }
+        FlushRecovery();
+    }
+
+    private void FlushRecovery()
+    {
+        EditorApplication.update -= TickRecovery;
+        if (!_recoveryPending)
+        {
+            return;
+        }
+        _recoveryPending = false;
+        CaptureRecovery();
+    }
+
+    private void RefreshRecoveries()
+    {
+        _recoveries.Clear();
+        ISequenceSaveTarget target = CreateSaveTarget();
+        if (target == null || _recoveryStore == null)
+        {
+            return;
+        }
+        _recoveries.AddRange(_recoveryStore.List(target));
+    }
+
+    private void ReloadSourceFromDisk()
+    {
+        CaptureRecovery();
+        ScenarioValidationResult validation;
+        if (_workspace.BattleScenario != null)
+        {
+            validation = new ScenarioSourceRuntimeAssetReimportCommand()
+                .ReimportFromSourcePath(_workspace.BattleScenario, _catalog)
+                .Validation;
+        }
+        else if (_workspace.StandaloneSequence != null)
+        {
+            validation = ActionSequenceSourceSync.ReimportFromSourcePath(
+                _workspace.StandaloneSequence,
+                _catalog,
+                PrimaryModeFor(_workspace.StandaloneSequence)).Validation;
+        }
+        else
+        {
+            return;
+        }
+
+        _lastValidation = validation ?? new ScenarioValidationResult();
+        if (_lastValidation.HasErrors)
+        {
+            SetStatus("YAML 다시 불러오기 실패", true);
+            _workspace.SetDrawer(SequenceMakerDrawerTab.Problems, true);
+            RenderAll();
+            return;
+        }
+        ResetCurrentEditHistory();
+        _hasExternalAssetChanges = false;
+        _lastConflict = null;
+        _workspace.SetDirty(false);
+        RefreshIndexes(true);
+        RefreshYamlPreview();
+        RefreshCatalogValidation();
+        RefreshRecoveries();
+        SetStatus("디스크 YAML을 다시 불러옴", false);
+        RenderAll();
+    }
+
+    private void RestoreRecovery(SequenceRecoverySnapshot snapshot)
+    {
+        SequenceRecoveryResult result = _recoveryStore.Restore(
+            snapshot,
+            _workspace.ActiveTarget,
+            _catalog);
+        _lastValidation = result.Validation ?? new ScenarioValidationResult();
+        if (!result.Success)
+        {
+            SetStatus("복구 실패: " + result.Error, true);
+            _workspace.SetDrawer(SequenceMakerDrawerTab.Problems, true);
+            RenderAll();
+            return;
+        }
+        ResetCurrentEditHistory();
+        _hasExternalAssetChanges = true;
+        _lastConflict = null;
+        _workspace.SetDirty(true);
+        RefreshIndexes(true);
+        RefreshYamlPreview();
+        RefreshCatalogValidation();
+        RefreshRecoveries();
+        SetStatus("복구 기록을 런타임 에셋에 반영함. Ctrl+S로 YAML 저장", false);
+        RenderAll();
+    }
+
+    private void DeleteRecovery(SequenceRecoverySnapshot snapshot)
+    {
+        _recoveryStore?.Delete(snapshot);
+        RefreshRecoveries();
+        RenderDrawer();
+    }
+
+    private void OpenSourceFile()
+    {
+        string path = SourcePath();
+        if (!string.IsNullOrWhiteSpace(path) && File.Exists(Path.GetFullPath(path)))
+        {
+            EditorUtility.OpenWithDefaultApp(Path.GetFullPath(path));
+        }
+    }
+
+    private void ResetCurrentEditHistory()
+    {
+        if (_workspace.BattleScenario != null)
+        {
+            _battleEditStacks.Remove(_workspace.BattleScenario.GetInstanceID());
+            if (_workspace.BattleScenario.Sequences != null)
+            {
+                for (int i = 0; i < _workspace.BattleScenario.Sequences.Count; i++)
+                {
+                    ActionSequenceAsset sequence = _workspace.BattleScenario.Sequences[i];
+                    if (sequence != null)
+                    {
+                        _editStacks.Remove(sequence.GetInstanceID());
+                    }
+                }
+            }
+        }
+        else if (_workspace.StandaloneSequence != null)
+        {
+            _editStacks.Remove(_workspace.StandaloneSequence.GetInstanceID());
+        }
+    }
+
     private void Undo()
     {
-        SequenceEditCommandStack stack = GetCurrentEditStack();
+        ISequenceMakerEditHistory stack = GetActiveEditHistory();
         if (stack != null && stack.Undo())
         {
+            RestorePreferredRuleSelection();
             AfterEdit();
         }
     }
 
     private void Redo()
     {
-        SequenceEditCommandStack stack = GetCurrentEditStack();
+        ISequenceMakerEditHistory stack = GetActiveEditHistory();
         if (stack != null && stack.Redo())
         {
+            RestorePreferredRuleSelection();
             AfterEdit();
         }
     }
@@ -1500,7 +2088,14 @@ public sealed class SequenceMakerWindow : EditorWindow
         RefreshYamlPreview();
         RefreshCatalogValidation();
         SetStatus("편집됨", false);
+        ScheduleRecovery();
         RenderAll();
+    }
+
+    private void AfterBattleEdit()
+    {
+        RestorePreferredRuleSelection();
+        AfterEdit();
     }
 
     private void ToggleDensity()
@@ -1510,13 +2105,136 @@ public sealed class SequenceMakerWindow : EditorWindow
             : SequenceMakerDensity.Compact);
     }
 
-    private void SetPlaybackControlsEnabled(bool enabled)
+    private void PlayCurrent(bool selectedBlockOnly)
     {
-        _playButton?.SetEnabled(enabled);
-        _playSelectedButton?.SetEnabled(enabled);
-        _pauseButton?.SetEnabled(enabled);
-        _stepButton?.SetEnabled(enabled);
-        _stopButton?.SetEnabled(enabled);
+        ActionSequenceAsset sequence = PlaybackSequence();
+        if (sequence == null)
+        {
+            SetStatus("재생할 Action Sequence가 없습니다.", true);
+            RenderStatus();
+            return;
+        }
+        string blockId = selectedBlockOnly ? _workspace.SelectedBlockId : string.Empty;
+        if (selectedBlockOnly && string.IsNullOrWhiteSpace(blockId))
+        {
+            SetStatus("먼저 재생을 시작할 블록을 선택하세요.", true);
+            RenderStatus();
+            return;
+        }
+
+        RefreshCatalogValidation();
+        if (_lastValidation.HasErrors)
+        {
+            SetStatus("오류를 해결한 뒤 재생할 수 있습니다.", true);
+            _workspace.SetDrawer(SequenceMakerDrawerTab.Problems, true);
+            RenderAll();
+            return;
+        }
+
+        bool live = _playModeField != null && _playModeField.index == 1;
+        bool started = live
+            ? _playback.StartLiveTest(
+                _workspace.BattleScenario,
+                sequence,
+                _catalog,
+                blockId)
+            : _playback.StartSafePreview(
+                _workspace.BattleScenario,
+                sequence,
+                _catalog,
+                blockId);
+        _workspace.SetDrawer(SequenceMakerDrawerTab.Trace, true);
+        SetStatus(
+            started ? (live ? "Play Mode 테스트 시작" : "안전 미리보기 시작")
+                : _playback.StatusMessage,
+            !started);
+        RenderAll();
+    }
+
+    private ActionSequenceAsset PlaybackSequence()
+    {
+        if (_workspace.SelectionKind == SequenceMakerSelectionKind.TriggerRule)
+        {
+            return FindBattleSequence(FindTriggerRule(_workspace.SelectedTriggerRuleId)?.SequenceId);
+        }
+        return _workspace.SelectedSequence;
+    }
+
+    private void RenderPlaybackControls()
+    {
+        if (_playback == null)
+        {
+            return;
+        }
+        bool hasSequence = PlaybackSequence() != null;
+        bool active = _playback.IsActive;
+        _playButton?.SetEnabled(hasSequence && !active);
+        _playSelectedButton?.SetEnabled(
+            hasSequence
+            && !active
+            && !string.IsNullOrWhiteSpace(_workspace?.SelectedBlockId));
+        _pauseButton?.SetEnabled(_playback.CanPause);
+        _stepButton?.SetEnabled(_playback.CanStep);
+        _stopButton?.SetEnabled(_playback.CanStop);
+        _playModeField?.SetEnabled(hasSequence && !active);
+        if (_pauseButton != null)
+        {
+            _pauseButton.tooltip = _playback.State == SequencePlaybackState.Paused
+                ? "계속"
+                : "일시정지";
+        }
+    }
+
+    private void OnPlaybackChanged()
+    {
+        RenderPlaybackControls();
+        if (_workspace != null && _workspace.DrawerTab == SequenceMakerDrawerTab.Trace)
+        {
+            RenderDrawer();
+        }
+        if (_playback != null && !string.IsNullOrWhiteSpace(_playback.StatusMessage))
+        {
+            SetStatus(
+                _playback.StatusMessage,
+                _playback.State == SequencePlaybackState.Failed
+                    || _playback.State == SequencePlaybackState.Blocked);
+            RenderStatus();
+        }
+    }
+
+    private void OnPlaybackTraceChanged()
+    {
+        if (_workspace != null && _workspace.DrawerTab == SequenceMakerDrawerTab.Trace)
+        {
+            RenderDrawer();
+        }
+    }
+
+    private void SelectTraceBlock(string blockId)
+    {
+        if (string.IsNullOrWhiteSpace(blockId)
+            || !SequenceBlockTree.Contains(_workspace.SelectedSequence, blockId))
+        {
+            return;
+        }
+        _workspace.SelectBlock(blockId);
+        RenderAll();
+    }
+
+    private static string PlaybackStateLabel(SequencePlaybackState state)
+    {
+        switch (state)
+        {
+            case SequencePlaybackState.Preparing: return "준비 중";
+            case SequencePlaybackState.Running: return "실행 중";
+            case SequencePlaybackState.Paused: return "일시정지";
+            case SequencePlaybackState.WaitingForInput: return "입력 대기";
+            case SequencePlaybackState.Succeeded: return "완료";
+            case SequencePlaybackState.Blocked: return "안전 차단";
+            case SequencePlaybackState.Failed: return "실패";
+            case SequencePlaybackState.Canceled: return "취소";
+            default: return "대기";
+        }
     }
 
     private void OnWorkspaceChanged()
@@ -1583,8 +2301,46 @@ public sealed class SequenceMakerWindow : EditorWindow
         }
     }
 
+    private BattleScenarioEditCommandStack GetCurrentBattleEditStack()
+    {
+        BattleScenarioData battle = _workspace != null ? _workspace.BattleScenario : null;
+        if (battle == null)
+        {
+            return null;
+        }
+
+        int id = battle.GetInstanceID();
+        if (_battleEditStacks.TryGetValue(id, out BattleScenarioEditCommandStack stack))
+        {
+            return stack;
+        }
+
+        stack = new BattleScenarioEditCommandStack(battle);
+        stack.Changed += _ =>
+        {
+            _workspace.SetDirty(AnyEditStackDirty());
+            RenderCommandState();
+            RenderStatus();
+        };
+        _battleEditStacks.Add(id, stack);
+        return stack;
+    }
+
+    private ISequenceMakerEditHistory GetActiveEditHistory()
+    {
+        return _workspace != null
+            && (_workspace.SelectionKind == SequenceMakerSelectionKind.TriggerRule
+                || _workspace.SelectionKind == SequenceMakerSelectionKind.LegacyRule)
+            ? GetCurrentBattleEditStack()
+            : GetCurrentEditStack();
+    }
+
     private bool AnyEditStackDirty()
     {
+        if (_hasExternalAssetChanges)
+        {
+            return true;
+        }
         foreach (SequenceEditCommandStack stack in _editStacks.Values)
         {
             if (stack.IsDirty)
@@ -1593,7 +2349,126 @@ public sealed class SequenceMakerWindow : EditorWindow
             }
         }
 
+        foreach (BattleScenarioEditCommandStack stack in _battleEditStacks.Values)
+        {
+            if (stack.IsDirty)
+            {
+                return true;
+            }
+        }
+
         return false;
+    }
+
+    private ScenarioTriggerRuleData FindTriggerRule(string ruleId)
+    {
+        int index = FindTriggerRuleIndex(ruleId);
+        return index >= 0 ? _workspace.BattleScenario.TriggerRules[index] : null;
+    }
+
+    private int FindTriggerRuleIndex(string ruleId)
+    {
+        List<ScenarioTriggerRuleData> rules = _workspace?.BattleScenario?.TriggerRules;
+        if (rules == null || string.IsNullOrWhiteSpace(ruleId))
+        {
+            return -1;
+        }
+        for (int i = 0; i < rules.Count; i++)
+        {
+            if (string.Equals(rules[i]?.RuleId, ruleId, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private ActionSequenceAsset FindBattleSequence(string sequenceId)
+    {
+        List<ActionSequenceAsset> sequences = _workspace?.BattleScenario?.Sequences;
+        if (sequences == null)
+        {
+            return null;
+        }
+        for (int i = 0; i < sequences.Count; i++)
+        {
+            if (string.Equals(sequences[i]?.SequenceId, sequenceId, StringComparison.Ordinal))
+            {
+                return sequences[i];
+            }
+        }
+        return null;
+    }
+
+    private string FirstEventId()
+    {
+        if (_triggerLibrary?.Events == null)
+        {
+            return string.Empty;
+        }
+        for (int i = 0; i < _triggerLibrary.Events.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(_triggerLibrary.Events[i]?.EventId))
+            {
+                return _triggerLibrary.Events[i].EventId;
+            }
+        }
+        return string.Empty;
+    }
+
+    private string UniqueRuleId(string preferred)
+    {
+        string root = string.IsNullOrWhiteSpace(preferred) ? "rule.new" : preferred.Trim();
+        string candidate = root;
+        int suffix = 2;
+        while (FindTriggerRuleIndex(candidate) >= 0)
+        {
+            candidate = root + "." + suffix++;
+        }
+        return candidate;
+    }
+
+    private void SelectNearestTriggerRule(int preferredIndex)
+    {
+        List<ScenarioTriggerRuleData> rules = _workspace?.BattleScenario?.TriggerRules;
+        if (rules != null && rules.Count > 0)
+        {
+            int index = Math.Max(0, Math.Min(preferredIndex, rules.Count - 1));
+            _workspace.SelectTriggerRule(rules[index].RuleId);
+            return;
+        }
+        if ((_workspace?.BattleScenario?.Rules?.Count ?? 0) > 0)
+        {
+            _workspace.SelectLegacyRule(0);
+            return;
+        }
+        _workspace?.TrySelectSequence(_workspace.SelectedSequence);
+    }
+
+    private void RestorePreferredRuleSelection()
+    {
+        if (_workspace?.BattleScenario == null)
+        {
+            return;
+        }
+        BattleScenarioEditCommandStack stack = GetCurrentBattleEditStack();
+        if (!string.IsNullOrWhiteSpace(stack?.PreferredRuleId)
+            && FindTriggerRule(stack.PreferredRuleId) != null)
+        {
+            _workspace.SelectTriggerRule(stack.PreferredRuleId);
+            return;
+        }
+        if (_workspace.SelectionKind == SequenceMakerSelectionKind.TriggerRule
+            && FindTriggerRule(_workspace.SelectedTriggerRuleId) == null)
+        {
+            SelectNearestTriggerRule(0);
+        }
+        else if (_workspace.SelectionKind == SequenceMakerSelectionKind.LegacyRule
+            && (_workspace.BattleScenario.Rules == null
+                || _workspace.SelectedLegacyRuleIndex >= _workspace.BattleScenario.Rules.Count))
+        {
+            SelectNearestTriggerRule(0);
+        }
     }
 
     private void CaptureLayoutDimensions()

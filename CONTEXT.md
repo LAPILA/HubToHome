@@ -154,6 +154,10 @@ _Avoid_: embedding arbitrary code expressions in scenario data.
 An observable run of an Action Sequence with current Action Block ID, lifecycle, pause, step, cancellation, completion result, and diagnostics.
 _Avoid_: treating sequence execution as a fire-and-forget coroutine with no author-facing state.
 
+**Action Sequence Live Context Source**:
+A runtime scene owner that can provide an Action Director, Action Execution Context, coroutine host, priority, and human-readable label for Sequence Maker Play Mode testing. `BattleManager` and `SceneActionSequenceTrigger` are the first two adapters through `IActionSequenceLiveContextSource`; the editor discovers the Interface and does not branch on concrete Primary Modes or scene bridge types.
+_Avoid_: adding `if battle`, `if overworld`, or one-off minigame lookups inside Sequence Maker playback code.
+
 **Preparation Run**:
 An editor-only fast-forward of blocks preceding a selected start block, used to establish required preview or test state without replaying their full presentation. Production gameplay does not use Preparation Run semantics.
 _Avoid_: applying real save, reward, or scene-transition side effects while preparing an editor preview.

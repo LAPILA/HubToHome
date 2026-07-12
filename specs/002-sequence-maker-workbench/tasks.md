@@ -29,7 +29,7 @@
 
 - [x] Add recursive-safe command history.
 - [x] Add validated atomic save and conflict detection.
-- [ ] Add editor recovery snapshots.
+- [x] Add editor recovery snapshots.
 
 ## Workbench UI
 
@@ -40,21 +40,21 @@
 - [x] Add multi-selection and standard edit operations.
 - [x] Add Action picker and Action Library screen.
 - [x] Add typed parameter and binding inspector.
-- [ ] Add sequence contract editor.
-- [ ] Add Trigger Rule editor and simulator.
-- [ ] Add Safe Preview and Live Test controls.
-- [ ] Add execution trace and Problems drawer.
-- [ ] Complete save, conflict, and recovery UX.
-- [ ] Reach feature parity and retire divergent editor behavior.
+- [x] Add sequence contract editor.
+- [x] Add Trigger Rule editor and simulator.
+- [x] Add Safe Preview and Live Test controls.
+- [x] Add execution trace and Problems drawer.
+- [x] Complete save, conflict, and recovery UX.
+- [x] Reach feature parity and retire divergent editor behavior.
 
 ## Verification And Architecture
 
-- [ ] Run focused and complete Scenario EditMode tests.
-- [ ] Run dotnet build and scoped diff validation.
-- [ ] Perform Unity MCP visual QA across target states and layouts.
-- [ ] Validate overworld subway Preparation Run and Live Test.
-- [ ] Validate cloned ZEV Trigger Rule and module transition flow.
-- [ ] Update project skill, docs, update log, and patch note.
-- [ ] Run `improve-codebase-architecture` review.
-- [ ] Implement accepted Strong architecture findings.
-- [ ] Re-run complete verification and finish handoff.
+- [x] Run focused and complete Scenario EditMode tests.
+- [x] Run dotnet build and scoped diff validation.
+- [x] Perform Unity MCP visual QA across target states and layouts.
+- [x] Validate overworld subway Preparation Run and Live Test.
+- [x] Validate cloned ZEV Trigger Rule and module transition flow.
+- [x] Update project skill, docs, update log, and patch note.
+- [x] Run `improve-codebase-architecture` review.
+- [x] Implement accepted Strong architecture findings.
+- [x] Re-run complete verification and finish handoff.

@@ -11,7 +11,7 @@ using Sirenix.OdinInspector;
 /// 전투의 전체 흐름을 제어하는 중앙 매니저 (Singleton & State Machine 기반).
 /// 옵저버(Observer) 패턴을 활용하여 UI와의 결합도를 낮췄습니다.
 /// </summary>
-public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost
+public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost, IActionSequenceLiveContextSource
 {
     public static BattleManager Instance { get; private set; }
 
@@ -128,6 +128,57 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
 
     public IBattleAimShooterModuleController AimShooterModuleController => _aimShooterModuleController;
+
+    public int LiveContextPriority => 100;
+
+    public string LiveContextLabel => "현재 BattleManager";
+
+    public bool TryCreateLiveContext(
+        BattleScenarioData requestedScenario,
+        ActionSequenceAsset sequence,
+        out ActionDirector director,
+        out ActionExecutionContext context,
+        out string error)
+    {
+        director = null;
+        context = null;
+        if (requestedScenario == null || sequence == null
+            || requestedScenario.Sequences == null
+            || !requestedScenario.Sequences.Contains(sequence))
+        {
+            error = string.Empty;
+            return false;
+        }
+        if (!Application.isPlaying)
+        {
+            error = "Play Mode에서만 Battle 시퀀스를 실동작 테스트할 수 있습니다.";
+            return false;
+        }
+        if (_battleScenarioRuntime == null || !_battleScenarioRuntime.HasScenario)
+        {
+            error = "현재 BattleManager에 실행 중인 Battle Scenario가 없습니다.";
+            return false;
+        }
+        if (requestedScenario != null
+            && _battleScenarioRuntime.ScenarioData != requestedScenario)
+        {
+            error = "현재 전투의 Battle Scenario와 Sequence Maker 대상이 다릅니다.";
+            return false;
+        }
+
+        BattleScenarioData activeScenario = _battleScenarioRuntime.ScenarioData;
+        if (activeScenario.Sequences == null
+            || !activeScenario.Sequences.Contains(sequence))
+        {
+            error = "선택한 Action Sequence가 현재 전투 Scenario에 속하지 않습니다.";
+            return false;
+        }
+
+        director = CreateBattleScenarioActionDirector();
+        context = CreateBattleScenarioActionContext();
+        error = string.Empty;
+        return true;
+    }
 
     public void SetBattleScenarioData(BattleScenarioData scenarioData)
     {

@@ -29,6 +29,18 @@ public sealed class SequenceEditChange
     public bool IsDirty { get; }
 }
 
+public interface ISequenceMakerEditHistory
+{
+    bool CanUndo { get; }
+    bool CanRedo { get; }
+    bool IsDirty { get; }
+    string UndoLabel { get; }
+    string RedoLabel { get; }
+    bool Undo();
+    bool Redo();
+    void MarkSaved();
+}
+
 public interface ISequenceEditCommand
 {
     string Name { get; }
@@ -40,7 +52,7 @@ public interface ISequenceEditCommand
     void Undo(ActionSequenceAsset sequence);
 }
 
-public sealed class SequenceEditCommandStack
+public sealed class SequenceEditCommandStack : ISequenceMakerEditHistory
 {
     private readonly ActionSequenceAsset _sequence;
     private readonly List<HistoryEntry> _undo = new List<HistoryEntry>();

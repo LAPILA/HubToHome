@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 public static class SequenceEditCommands
 {
@@ -96,6 +98,228 @@ public static class SequenceEditCommands
             callBlock,
             owner,
             extractedSequence);
+    }
+
+    public static ISequenceEditCommand SetSequenceDisplayName(string displayNameKo)
+    {
+        return new SetSequenceDisplayNameCommand(displayNameKo);
+    }
+
+    public static ISequenceEditCommand SetSequenceContract(ActionSequenceContractData contract)
+    {
+        return new SetSequenceContractCommand(contract);
+    }
+
+    public static ISequenceEditCommand RenameSequenceInput(
+        string previousInputId,
+        string nextInputId,
+        ActionSequenceContractData nextContract)
+    {
+        return new RenameSequenceInputCommand(
+            previousInputId,
+            nextInputId,
+            nextContract);
+    }
+}
+
+internal sealed class SetSequenceDisplayNameCommand : ISequenceEditCommand
+{
+    private readonly string _next;
+    private string _previous;
+
+    public SetSequenceDisplayNameCommand(string displayNameKo)
+    {
+        _next = displayNameKo ?? string.Empty;
+    }
+
+    public string Name => "시퀀스 이름 변경";
+    public string PreferredSelectionBlockId => string.Empty;
+
+    public void Execute(ActionSequenceAsset sequence)
+    {
+        _previous = sequence.DisplayNameKo ?? string.Empty;
+        sequence.DisplayNameKo = _next;
+    }
+
+    public void Undo(ActionSequenceAsset sequence)
+    {
+        sequence.DisplayNameKo = _previous ?? string.Empty;
+    }
+}
+
+internal sealed class SetSequenceContractCommand : ISequenceEditCommand
+{
+    private readonly ActionSequenceContractData _next;
+    private ActionSequenceContractData _previous;
+
+    public SetSequenceContractCommand(ActionSequenceContractData contract)
+    {
+        _next = ActionSequenceContractData.CopyOf(contract);
+    }
+
+    public string Name => "시퀀스 계약 변경";
+    public string PreferredSelectionBlockId => string.Empty;
+
+    public void Execute(ActionSequenceAsset sequence)
+    {
+        _previous = ActionSequenceContractData.CopyOf(sequence.Contract);
+        sequence.Contract = ActionSequenceContractData.CopyOf(_next);
+    }
+
+    public void Undo(ActionSequenceAsset sequence)
+    {
+        sequence.Contract = ActionSequenceContractData.CopyOf(_previous);
+    }
+}
+
+internal sealed class RenameSequenceInputCommand : ISequenceEditCommand
+{
+    private readonly string _previousInputId;
+    private readonly string _nextInputId;
+    private readonly ActionSequenceContractData _nextContract;
+    private readonly List<ParameterSnapshot> _previousParameters =
+        new List<ParameterSnapshot>();
+    private ActionSequenceContractData _previousContract;
+    private bool _captured;
+
+    public RenameSequenceInputCommand(
+        string previousInputId,
+        string nextInputId,
+        ActionSequenceContractData nextContract)
+    {
+        _previousInputId = Normalize(previousInputId);
+        _nextInputId = Normalize(nextInputId);
+        _nextContract = ActionSequenceContractData.CopyOf(nextContract);
+    }
+
+    public string Name => "시퀀스 입력 ID와 binding 변경";
+    public string PreferredSelectionBlockId => string.Empty;
+
+    public void Execute(ActionSequenceAsset sequence)
+    {
+        if (!_captured)
+        {
+            _previousContract = ActionSequenceContractData.CopyOf(sequence.Contract);
+            Capture(sequence.Actions);
+            _captured = true;
+        }
+        sequence.Contract = ActionSequenceContractData.CopyOf(_nextContract);
+        RewriteBindings(sequence.Actions, "input." + _previousInputId, "input." + _nextInputId);
+    }
+
+    public void Undo(ActionSequenceAsset sequence)
+    {
+        sequence.Contract = ActionSequenceContractData.CopyOf(_previousContract);
+        for (int i = 0; i < _previousParameters.Count; i++)
+        {
+            ParameterSnapshot snapshot = _previousParameters[i];
+            if (SequenceBlockTree.TryFind(sequence, snapshot.BlockId, out SequenceBlockLocation location))
+            {
+                location.Action.ParametersJson = snapshot.ParametersJson;
+            }
+        }
+    }
+
+    private void Capture(IList<ScenarioActionData> actions)
+    {
+        if (actions == null)
+        {
+            return;
+        }
+        for (int i = 0; i < actions.Count; i++)
+        {
+            ScenarioActionData action = actions[i];
+            if (action == null)
+            {
+                continue;
+            }
+            _previousParameters.Add(new ParameterSnapshot(
+                action.BlockId,
+                action.ParametersJson));
+            Capture(action.Children);
+        }
+    }
+
+    private static void RewriteBindings(
+        IList<ScenarioActionData> actions,
+        string previousPath,
+        string nextPath)
+    {
+        if (actions == null || string.IsNullOrEmpty(previousPath)
+            || string.IsNullOrEmpty(nextPath))
+        {
+            return;
+        }
+        for (int i = 0; i < actions.Count; i++)
+        {
+            ScenarioActionData action = actions[i];
+            if (action == null)
+            {
+                continue;
+            }
+            try
+            {
+                JToken root = string.IsNullOrWhiteSpace(action.ParametersJson)
+                    ? new JObject()
+                    : JToken.Parse(action.ParametersJson);
+                if (Rewrite(root, previousPath, nextPath))
+                {
+                    action.ParametersJson = root.ToString(Formatting.None);
+                }
+            }
+            catch
+            {
+                // Existing malformed JSON remains untouched and is reported by validation.
+            }
+            RewriteBindings(action.Children, previousPath, nextPath);
+        }
+    }
+
+    private static bool Rewrite(JToken token, string previousPath, string nextPath)
+    {
+        bool changed = false;
+        if (token is JObject objectValue)
+        {
+            JToken binding = objectValue["$bind"];
+            if (binding?.Type == JTokenType.String
+                && string.Equals(
+                    binding.Value<string>(),
+                    previousPath,
+                    StringComparison.Ordinal))
+            {
+                objectValue["$bind"] = nextPath;
+                changed = true;
+            }
+            foreach (JProperty property in objectValue.Properties())
+            {
+                changed |= Rewrite(property.Value, previousPath, nextPath);
+            }
+        }
+        else if (token is JArray array)
+        {
+            for (int i = 0; i < array.Count; i++)
+            {
+                changed |= Rewrite(array[i], previousPath, nextPath);
+            }
+        }
+        return changed;
+    }
+
+    private static string Normalize(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
+
+    private sealed class ParameterSnapshot
+    {
+        public ParameterSnapshot(string blockId, string parametersJson)
+        {
+            BlockId = blockId ?? string.Empty;
+            ParametersJson = parametersJson ?? string.Empty;
+        }
+
+        public string BlockId { get; }
+        public string ParametersJson { get; }
     }
 }
 

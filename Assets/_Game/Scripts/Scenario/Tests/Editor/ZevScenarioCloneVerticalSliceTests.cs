@@ -47,6 +47,10 @@ public class ZevScenarioCloneVerticalSliceTests
         AssertParameter(phase2.Actions[0], "mode", "show");
         AssertParameter(phase2.Actions[1], "clip", "zev_clone_phase2");
         AssertParameter(phase2.Actions[4], "id", "zev.clone.phase2_intro");
+        Assert.That(phase2.Actions.Exists(action => action.ActionId == ModuleSwitchActionAdapter.Id && HasStringParameter(action, "to", BattleAimShooterGameModuleRuntime.Id)), Is.True);
+        Assert.That(phase2.Actions.Exists(action => action.ActionId == "battle.flag.set" && HasStringParameter(action, "flag", "zev.clone.phase") && HasStringParameter(action, "value", "shooter")), Is.True);
+        Assert.That(phase2.Actions.Exists(action => action.ActionId == ModuleStartActionAdapter.Id && HasStringParameter(action, "module", BattleAimShooterGameModuleRuntime.Id)), Is.True);
+        Assert.That(phase2.Actions.Exists(action => action.ActionId == "dialogue.wait" && HasStringParameter(action, "id", "zev.clone.shooter_start")), Is.True);
         AssertParameter(victory.Actions[0], "id", "zev.clone.shooter_victory");
         AssertParameter(victory.Actions[2], "subject", ZevArchitectureCloneSampleBuilder.EnemyCloneId);
 

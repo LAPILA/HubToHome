@@ -12,7 +12,8 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
     private ActionCatalogAsset _builtinCatalog;
     private ActionCatalogAsset _mergedCatalogCache;
 
-    [MenuItem("HubToHome/시나리오/Odin 시퀀스 에디터")]
+    // Migration-only implementation retained for old draft conversion tests.
+    // SequenceMakerWindow is the sole discoverable authoring surface.
     private static void OpenWindow()
     {
         ScenarioSequenceOdinEditorWindow window = GetWindow<ScenarioSequenceOdinEditorWindow>();
@@ -1361,7 +1362,7 @@ public sealed class ScenarioActionBlockDraft
 
     private string BuildParametersJson()
     {
-        if (HasUnknownAction())
+        if (Parameters == null || Parameters.Count == 0)
         {
             try
             {

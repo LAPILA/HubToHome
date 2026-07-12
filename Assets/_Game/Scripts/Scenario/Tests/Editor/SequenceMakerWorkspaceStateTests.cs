@@ -113,6 +113,53 @@ public class SequenceMakerWorkspaceStateTests
     }
 
     [Test]
+    public void TriggerRuleSelectionClearsBlockAndReportsRuleSelectionKind()
+    {
+        BattleScenarioData battle = CreateBattle("battle", CreateSequence("opening"));
+        battle.TriggerRules.Add(new ScenarioTriggerRuleData { RuleId = "phase.two" });
+        var state = new SequenceMakerWorkspaceState();
+        state.SetBattleScenario(battle);
+        state.SelectBlock("intro.block");
+
+        bool selected = state.SelectTriggerRule(" phase.two ");
+
+        Assert.That(selected, Is.True);
+        Assert.That(state.SelectedTriggerRuleId, Is.EqualTo("phase.two"));
+        Assert.That(state.SelectedBlockId, Is.Empty);
+        Assert.That(state.SelectionKind, Is.EqualTo(SequenceMakerSelectionKind.TriggerRule));
+    }
+
+    [Test]
+    public void SelectingSequenceAfterRuleReturnsToSequenceSelection()
+    {
+        ActionSequenceAsset sequence = CreateSequence("opening");
+        BattleScenarioData battle = CreateBattle("battle", sequence);
+        battle.TriggerRules.Add(new ScenarioTriggerRuleData { RuleId = "phase.two" });
+        var state = new SequenceMakerWorkspaceState();
+        state.SetBattleScenario(battle);
+        state.SelectTriggerRule("phase.two");
+
+        bool selected = state.TrySelectSequence(sequence);
+
+        Assert.That(selected, Is.True);
+        Assert.That(state.SelectedTriggerRuleId, Is.Empty);
+        Assert.That(state.SelectionKind, Is.EqualTo(SequenceMakerSelectionKind.Sequence));
+    }
+
+    [Test]
+    public void LegacyRuleSelectionRejectsOutOfRangeIndex()
+    {
+        BattleScenarioData battle = CreateBattle("battle", CreateSequence("opening"));
+        battle.Rules.Add(new BattleEventRuleData { RuleId = "legacy" });
+        var state = new SequenceMakerWorkspaceState();
+        state.SetBattleScenario(battle);
+
+        Assert.That(state.SelectLegacyRule(1), Is.False);
+        Assert.That(state.SelectLegacyRule(0), Is.True);
+        Assert.That(state.SelectionKind, Is.EqualTo(SequenceMakerSelectionKind.LegacyRule));
+    }
+
+    [Test]
     public void DirtyStateCanReturnToCleanAfterSave()
     {
         var state = new SequenceMakerWorkspaceState();

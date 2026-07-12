@@ -1,151 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-2819460196705268571
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
-  m_Name: zev_clone_opening_clash
-  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
-  SequenceId: zev_clone_opening_clash
-  DisplayNameKo: ""
-  Source:
-    SourcePath: Assets/_Game/Content/Scenarios/Source/ZEV/zev_architecture_clone.scenario.yaml
-    SourceHash: 71033672f16ed4c243a694298a2aed9115178a6da1c91fbb71213df47bee522a
-    ImportedAtIso8601: 2026-07-07T13:18:24.0000000Z
-  Actions:
-  - ActionId: cinematic.letterbox
-    ParametersJson: '{"mode":"show","thickness":0.14,"duration":0.18}'
-    Disabled: 0
-    Children: []
-  - ActionId: bgm.crossfade
-    ParametersJson: '{"clip":"zev_clone_shooter_loop","duration":0.35}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.move_to
-    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"enemy_slot","x":0,"y":4.2,"duration":0,"pose":"move"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.camera.focus
-    ParametersJson: '{"subject":"zev_architecture_clone","zoom":4.9,"duration":0.28}'
-    Disabled: 0
-    Children: []
-  - ActionId: flow.wait
-    ParametersJson: '{"duration":0.16}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.drop_in
-    ParametersJson: '{"actor":"zev_architecture_clone","height":0,"hang":0.35,"fall":0.52,"settle":0.28,"impact":1.15}'
-    Disabled: 0
-    Children: []
-  - ActionId: flow.wait
-    ParametersJson: '{"duration":0.16}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.camera.reset
-    ParametersJson: '{"duration":0.28}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.move_to
-    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"center","x":0.52,"y":0,"duration":0.36,"pose":"move"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.move_to
-    ParametersJson: '{"actor":"player_001","anchor":"center","x":-0.52,"y":0,"duration":0.32,"pose":"move"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.camera.focus
-    ParametersJson: '{"subject":"zev_architecture_clone","zoom":4.25,"duration":0.28}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.fake_attack
-    ParametersJson: '{"actor":"zev_architecture_clone","target":"player_001","targetPose":"parry","approach":0.32,"lunge":0.12,"hold":0.09,"recover":0.18,"impact":0.72}'
-    Disabled: 0
-    Children: []
-  - ActionId: flow.wait
-    ParametersJson: '{"duration":0.08}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.pose
-    ParametersJson: '{"actor":"player_001","pose":"parry","duration":0.12,"impact":0.18}'
-    Disabled: 0
-    Children: []
-  - ActionId: flow.wait
-    ParametersJson: '{"duration":0.1}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.move_to
-    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"center","x":-0.92,"y":0,"duration":0.18,"pose":"move_back"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.flip
-    ParametersJson: '{"actor":"zev_architecture_clone","mode":"inverted"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.camera.focus
-    ParametersJson: '{"subject":"zev_architecture_clone","zoom":4.55,"duration":0.18}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.fake_attack
-    ParametersJson: '{"actor":"zev_architecture_clone","target":"player_001","targetPose":"parry","approach":0.24,"lunge":0.11,"hold":0.08,"recover":0.16,"impact":0.82}'
-    Disabled: 0
-    Children: []
-  - ActionId: flow.wait
-    ParametersJson: '{"duration":0.08}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.pose
-    ParametersJson: '{"actor":"player_001","pose":"parry","duration":0.12,"impact":0.2}'
-    Disabled: 0
-    Children: []
-  - ActionId: flow.wait
-    ParametersJson: '{"duration":0.12}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.fake_attack
-    ParametersJson: '{"actor":"player_001","target":"zev_architecture_clone","targetPose":"guard","approach":0.33,"lunge":0.12,"hold":0.08,"recover":0.18,"impact":0.64}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.move_to
-    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"center","x":0.52,"y":0,"duration":0.18,"pose":"move"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.flip
-    ParametersJson: '{"actor":"zev_architecture_clone","mode":"default"}'
-    Disabled: 0
-    Children: []
-  - ActionId: dialogue.wait
-    ParametersJson: '{"id":"zev.clone.opening_clash"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.pose
-    ParametersJson: '{"actor":"zev_architecture_clone","pose":"ready","duration":0.16,"impact":0}'
-    Disabled: 0
-    Children: []
-  - ActionId: dialogue.wait
-    ParametersJson: '{"id":"zev.clone.opening_after"}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.actor.return_slots
-    ParametersJson: '{"duration":0.42}'
-    Disabled: 0
-    Children: []
-  - ActionId: battle.camera.reset
-    ParametersJson: '{"duration":0.36}'
-    Disabled: 0
-    Children: []
-  - ActionId: cinematic.letterbox
-    ParametersJson: '{"mode":"hide","thickness":0,"duration":0.16}'
-    Disabled: 0
-    Children: []
-  references:
-    version: 2
-    RefIds: []
 --- !u!114 &-6356561025629056243
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -159,54 +13,396 @@ MonoBehaviour:
   m_Name: zev_clone_phase2_transition
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: zev_clone_phase2_transition
-  DisplayNameKo: ""
+  DisplayNameKo: 
+  Contract:
+    DescriptionKo: 
+    UsageKo: 
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/ZEV/zev_architecture_clone.scenario.yaml
-    SourceHash: 71033672f16ed4c243a694298a2aed9115178a6da1c91fbb71213df47bee522a
-    ImportedAtIso8601: 2026-07-07T13:18:24.0000000Z
+    SourceHash: 34f8aa674767352c2dfc8f90eb0a51ede8f0f4a368b233066d073cce3779de37
+    ImportedAtIso8601: 2026-07-12T05:49:09.3806046Z
   Actions:
-  - ActionId: cinematic.letterbox
+  - BlockId: f254c636145bd339caef80b0dda62015
+    DesignerLabel: 
+    ActionId: cinematic.letterbox
     ParametersJson: '{"mode":"show","thickness":0.16,"duration":0.2}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: bgm.crossfade
+  - BlockId: 46ba386c80da77caffaceda3c2296c2e
+    DesignerLabel: 
+    ActionId: bgm.crossfade
     ParametersJson: '{"clip":"zev_clone_phase2","duration":0.8}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: battle.camera.focus
+  - BlockId: 20bb82330f8b65c7a3f3d8b7cff72fe4
+    DesignerLabel: 
+    ActionId: battle.camera.focus
     ParametersJson: '{"subject":"zev_architecture_clone","zoom":4.45,"duration":0.3}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: battle.actor.pose
+  - BlockId: 77c9be7aa2c10cbe81aedcf76e5de4b6
+    DesignerLabel: 
+    ActionId: battle.actor.pose
     ParametersJson: '{"actor":"zev_architecture_clone","pose":"ready","duration":0.24,"impact":0.18}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: dialogue.wait
+  - BlockId: fe3bcadd897b6dbce5ee410e8f7c3b03
+    DesignerLabel: 
+    ActionId: dialogue.wait
     ParametersJson: '{"id":"zev.clone.phase2_intro"}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: battle.actor.pose
+  - BlockId: 46291fdc0eeea21723d3fdd4fd248f51
+    DesignerLabel: 
+    ActionId: battle.actor.pose
     ParametersJson: '{"actor":"zev_architecture_clone","pose":"attack","duration":0.18,"impact":0.55}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: battle.camera.reset
+  - BlockId: 234388f6ddcd5ad6d4821e81d47497a3
+    DesignerLabel: 
+    ActionId: battle.camera.reset
     ParametersJson: '{"duration":0.34}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: battle.actor.pose
+  - BlockId: 1546a52312e502fdc65697875b040fd5
+    DesignerLabel: 
+    ActionId: battle.actor.pose
     ParametersJson: '{"actor":"zev_architecture_clone","pose":"ready","duration":0.12,"impact":0}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: flow.wait
+  - BlockId: 593a63bbf79ed718c48c8dbf256f5b8c
+    DesignerLabel: 
+    ActionId: flow.wait
     ParametersJson: '{"duration":0.06}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: cinematic.letterbox
+  - BlockId: 155e54137b42bc6955c1a4e28447ca8d
+    DesignerLabel: 
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"black","duration":0.25}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 41d58aaff005d2aa0d622d2be39a839c
+    DesignerLabel: 
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.1}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: ca235d2367f6ed49f1ab0ebf9713cf72
+    DesignerLabel: 
+    ActionId: module.switch
+    ParametersJson: '{"to":"aim_shooter"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 5f1f1018f7d8545d02e57e6a133f3e56
+    DesignerLabel: 
+    ActionId: cinematic.letterbox
     ParametersJson: '{"mode":"hide","thickness":0,"duration":0.18}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: battle.camera.reset
+  - BlockId: daf91e15063c3c1ea92cc122e9c9115d
+    DesignerLabel: 
+    ActionId: battle.camera.reset
     ParametersJson: '{"duration":0.01}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 012b63d2a30a56b94b961e587ffad053
+    DesignerLabel: 
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"black","duration":0.25}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: a5581836307d1362f26b5ddb0899f567
+    DesignerLabel: 
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"zev.clone.shooter_start"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: a1ee48056d59c2c59b4c032bf0ea8548
+    DesignerLabel: 
+    ActionId: bgm.crossfade
+    ParametersJson: '{"clip":"zev_clone_shooter_loop","duration":0.6}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 02ff50efce00c8bfdb7ca9be36217880
+    DesignerLabel: 
+    ActionId: battle.flag.set
+    ParametersJson: '{"flag":"zev.clone.phase","value":"shooter"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 3610b963c9c68a0798f2ce34f4f5493c
+    DesignerLabel: 
+    ActionId: module.start
+    ParametersJson: '{"module":"aim_shooter"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &-2819460196705268571
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: zev_clone_opening_clash
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: zev_clone_opening_clash
+  DisplayNameKo: 
+  Contract:
+    DescriptionKo: 
+    UsageKo: 
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/ZEV/zev_architecture_clone.scenario.yaml
+    SourceHash: 34f8aa674767352c2dfc8f90eb0a51ede8f0f4a368b233066d073cce3779de37
+    ImportedAtIso8601: 2026-07-12T05:49:09.3806046Z
+  Actions:
+  - BlockId: b583753edc8fb07984ca84243e541f19
+    DesignerLabel: 
+    ActionId: cinematic.letterbox
+    ParametersJson: '{"mode":"show","thickness":0.14,"duration":0.18}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: e6c5e01922d46d0c48fc188daf268fdf
+    DesignerLabel: 
+    ActionId: bgm.crossfade
+    ParametersJson: '{"clip":"zev_clone_shooter_loop","duration":0.35}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 89f5a3b12c612308802b17d8509ec079
+    DesignerLabel: 
+    ActionId: battle.actor.move_to
+    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"enemy_slot","x":0,"y":4.2,"duration":0,"pose":"move"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: f2fdd6c5f3ab7cc75bf9088ff623e8f0
+    DesignerLabel: 
+    ActionId: battle.camera.focus
+    ParametersJson: '{"subject":"zev_architecture_clone","zoom":4.9,"duration":0.28}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: f4fd31eb6efdf7c40b7e68041c6d3309
+    DesignerLabel: 
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.16}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: f00cfc2be0172ba2be9b7d508d2c823c
+    DesignerLabel: 
+    ActionId: battle.actor.drop_in
+    ParametersJson: '{"actor":"zev_architecture_clone","height":0,"hang":0.35,"fall":0.52,"settle":0.28,"impact":1.15}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: ac9ae30a773e8e656f333de3fe95aa5a
+    DesignerLabel: 
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.16}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 51468b024c95e14eaa6e0b1245581fa5
+    DesignerLabel: 
+    ActionId: battle.camera.reset
+    ParametersJson: '{"duration":0.28}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 2312b19c2ee4cda60bb943d9536f34e1
+    DesignerLabel: 
+    ActionId: battle.actor.move_to
+    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"center","x":0.52,"y":0,"duration":0.36,"pose":"move"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: f97c5559d9e22a0630dc9e03fe95f4d1
+    DesignerLabel: 
+    ActionId: battle.actor.move_to
+    ParametersJson: '{"actor":"player","anchor":"center","x":-0.52,"y":0,"duration":0.32,"pose":"move"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 44bf25adedd217cc94477232841efd9e
+    DesignerLabel: 
+    ActionId: battle.camera.focus
+    ParametersJson: '{"subject":"zev_architecture_clone","zoom":4.25,"duration":0.28}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: d3cf82f64897735763ab46adf14391c4
+    DesignerLabel: 
+    ActionId: battle.actor.fake_attack
+    ParametersJson: '{"actor":"zev_architecture_clone","target":"player","targetPose":"parry","approach":0.32,"lunge":0.12,"hold":0.09,"recover":0.18,"impact":0.72}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: cd674ffe12c717ea71d5cc1b04bc34b2
+    DesignerLabel: 
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.08}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 65bf803bbf42d9591511159560eca4c8
+    DesignerLabel: 
+    ActionId: battle.actor.pose
+    ParametersJson: '{"actor":"player","pose":"parry","duration":0.12,"impact":0.18}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 8d92c774900a41adc3f07b7d9abf3aca
+    DesignerLabel: 
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.1}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 0be5f110e51622fbad05d4952d6c251d
+    DesignerLabel: 
+    ActionId: battle.actor.move_to
+    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"center","x":-0.92,"y":0,"duration":0.18,"pose":"move_back"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 079c8c1129553cfaa88a1188898ce06b
+    DesignerLabel: 
+    ActionId: battle.actor.flip
+    ParametersJson: '{"actor":"zev_architecture_clone","mode":"inverted"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: e388c858ff2e1c3dd61725383f7c8317
+    DesignerLabel: 
+    ActionId: battle.camera.focus
+    ParametersJson: '{"subject":"zev_architecture_clone","zoom":4.55,"duration":0.18}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 7d438d21a929399e424efa0e5cb805b6
+    DesignerLabel: 
+    ActionId: battle.actor.fake_attack
+    ParametersJson: '{"actor":"zev_architecture_clone","target":"player","targetPose":"parry","approach":0.24,"lunge":0.11,"hold":0.08,"recover":0.16,"impact":0.82}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: e90569f8df9da73fbd7ac14f9335c701
+    DesignerLabel: 
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.08}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: f1ca2793a32bc9cbb7c96c7c21d453b4
+    DesignerLabel: 
+    ActionId: battle.actor.pose
+    ParametersJson: '{"actor":"player","pose":"parry","duration":0.12,"impact":0.2}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 972baef6cf55c0a5fa0b1a154ccd6b22
+    DesignerLabel: 
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.12}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: e2ee15cb48980dfa9a5c75b5d54571d0
+    DesignerLabel: 
+    ActionId: battle.actor.fake_attack
+    ParametersJson: '{"actor":"player_001","target":"zev_architecture_clone","targetPose":"guard","approach":0.33,"lunge":0.12,"hold":0.08,"recover":0.18,"impact":0.64}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: fb4a3c20cbe74866834625294739c57e
+    DesignerLabel: 
+    ActionId: battle.actor.move_to
+    ParametersJson: '{"actor":"zev_architecture_clone","anchor":"center","x":0.52,"y":0,"duration":0.18,"pose":"move"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 64fac9e6e84c93fc11392f38b4e20b76
+    DesignerLabel: 
+    ActionId: battle.actor.flip
+    ParametersJson: '{"actor":"zev_architecture_clone","mode":"default"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 14a31b81a238aa1b4fe9aa4afc9e81ad
+    DesignerLabel: 
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"zev.clone.opening_clash"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 9f5633d7fe8b34aab4a23d9e984dbc8e
+    DesignerLabel: 
+    ActionId: battle.actor.pose
+    ParametersJson: '{"actor":"zev_architecture_clone","pose":"ready","duration":0.16,"impact":0}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 2b3d5e3761119cc9240a6c54684efe9c
+    DesignerLabel: 
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"zev.clone.opening_after"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 8f3ac965e4f057d87a2965944e3beb31
+    DesignerLabel: 
+    ActionId: battle.actor.return_slots
+    ParametersJson: '{"duration":0.42}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 336e3b38bd8f0c284c6411e9984ca2d3
+    DesignerLabel: 
+    ActionId: battle.camera.reset
+    ParametersJson: '{"duration":0.36}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: a5b4474d6eed48b15c108c1ccc9880f0
+    DesignerLabel: 
+    ActionId: cinematic.letterbox
+    ParametersJson: '{"mode":"hide","thickness":0,"duration":0.16}'
+    Note: 
     Disabled: 0
     Children: []
   references:
@@ -231,8 +427,8 @@ MonoBehaviour:
   MemoryKey: zev_architecture_clone
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/ZEV/zev_architecture_clone.scenario.yaml
-    SourceHash: 71033672f16ed4c243a694298a2aed9115178a6da1c91fbb71213df47bee522a
-    ImportedAtIso8601: 2026-07-07T13:18:24.0000000Z
+    SourceHash: 34f8aa674767352c2dfc8f90eb0a51ede8f0f4a368b233066d073cce3779de37
+    ImportedAtIso8601: 2026-07-12T05:49:09.3806046Z
   PartyIds:
   - player
   EnemyIds:
@@ -242,8 +438,8 @@ MonoBehaviour:
     EventType: 5
     Timing: 0
     Once: 1
-    SubjectId: ""
-    OutcomeId: ""
+    SubjectId: 
+    OutcomeId: 
     ThresholdRatio: 0.5
     SequenceId: zev_clone_opening_clash
     Disabled: 0
@@ -265,6 +461,7 @@ MonoBehaviour:
     ThresholdRatio: 0.5
     SequenceId: zev_clone_shooter_victory
     Disabled: 0
+  TriggerRules: []
   Sequences:
   - {fileID: -2819460196705268571}
   - {fileID: -6356561025629056243}
@@ -295,6 +492,10 @@ MonoBehaviour:
   - AudioId: zev_clone_victory
     AudioClipId: Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta_part1.wav
     Clip: {fileID: 8300000, guid: 861b23652179354408af65bf7ab5a63d, type: 3}
+  TimelineCutsceneCatalog: {fileID: 0}
+  references:
+    version: 2
+    RefIds: []
 --- !u!114 &1681976409109841405
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -308,26 +509,45 @@ MonoBehaviour:
   m_Name: zev_clone_shooter_victory
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: zev_clone_shooter_victory
-  DisplayNameKo: ""
+  DisplayNameKo: 
+  Contract:
+    DescriptionKo: 
+    UsageKo: 
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/ZEV/zev_architecture_clone.scenario.yaml
-    SourceHash: 71033672f16ed4c243a694298a2aed9115178a6da1c91fbb71213df47bee522a
-    ImportedAtIso8601: 2026-07-07T13:18:24.0000000Z
+    SourceHash: 34f8aa674767352c2dfc8f90eb0a51ede8f0f4a368b233066d073cce3779de37
+    ImportedAtIso8601: 2026-07-12T05:49:09.3806046Z
   Actions:
-  - ActionId: dialogue.wait
+  - BlockId: 1c47ed368b7e7370f539c3a75b3f67c9
+    DesignerLabel: 
+    ActionId: dialogue.wait
     ParametersJson: '{"id":"zev.clone.shooter_victory"}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: bgm.crossfade
+  - BlockId: e6d1130377a457649478968c608b3ccd
+    DesignerLabel: 
+    ActionId: bgm.crossfade
     ParametersJson: '{"clip":"zev_clone_victory","duration":0.4}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: battle.participant.damage
+  - BlockId: a596179cc6d958e30b9b33e9e0a550eb
+    DesignerLabel: 
+    ActionId: battle.participant.damage
     ParametersJson: '{"subject":"zev_architecture_clone","amount":999}'
+    Note: 
     Disabled: 0
     Children: []
-  - ActionId: screen.fade
+  - BlockId: a8eb76b5561b8ac50bece8742155acc2
+    DesignerLabel: 
+    ActionId: screen.fade
     ParametersJson: '{"mode":"out","color":"white","duration":0.5}'
+    Note: 
     Disabled: 0
     Children: []
   references:

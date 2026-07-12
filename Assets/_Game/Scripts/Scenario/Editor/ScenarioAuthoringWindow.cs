@@ -48,10 +48,9 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     [MenuItem("HubToHome/시나리오/개발/기존 시퀀스 메이커")]
     public static void Open()
     {
-        ScenarioAuthoringWindow window = GetWindow<ScenarioAuthoringWindow>();
-        window.titleContent = new GUIContent(WindowTitle);
-        window.minSize = new Vector2(760f, 560f);
-        window.Show();
+        SequenceMakerWindow.Open();
+        Debug.LogWarning(
+            "[Sequence Maker] 기존 편집기는 종료되었습니다. 공식 UI Toolkit Sequence Maker를 열었습니다.");
     }
 
     public void CreateGUI()
