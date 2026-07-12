@@ -11,20 +11,36 @@ participants:
 sequences:
   overworld.intro.subway:
     title: "오버월드 시작 - 지하철 도착"
+    - flow.wait:
+      blockId: 71f1765e5ea34e92b34e05d915a351bb
+      designerLabel: "밝아진 장면을 잠시 보여주기"
+      duration: 0.75
     - cinematic.shot.play:
+      blockId: e9edf0c6de28a24ee71c835f006b7472
       designerLabel: "지하철 도착 샷"
       stage: overworld.subway_intro
       shot: subway_arrival
+    - flow.wait:
+      blockId: 6b4fa74647b54c67955cb6d413787119
+      designerLabel: "기차가 지나간 뒤 잠시 유지"
+      duration: 0.35
     - screen.fade:
+      blockId: b5bb54204504bfc31561265f70d6bb12
       designerLabel: "장면을 검게 전환"
       mode: out
       color: black
-      duration: 0.45
+      duration: 1.0
+    - flow.wait:
+      blockId: 30ff38e5c30f4ea7a8da3fbf69d62f31
+      designerLabel: "암전 상태로 2초 대기"
+      duration: 2.0
     - cinematic.stage.release:
+      blockId: 53ded3c03b3354382420a42936098066
       designerLabel: "시네마틱 카메라 해제"
       stage: overworld.subway_intro
     - screen.fade:
+      blockId: b6e1fe60c3a1ad8d136f55dfbe26a137
       designerLabel: "오버월드 공개"
       mode: in
       color: black
-      duration: 0.55
+      duration: 0.9

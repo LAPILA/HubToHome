@@ -130,10 +130,12 @@ examples:
   - cinematic.shot.play:
       stage: overworld.subway_intro
       shot: subway_arrival
-completion: "CinematicShotAsset의 모든 대상 모션과 카메라 렌즈 tween이 끝나면 완료됩니다."
+completion: "CinematicShotAsset의 모든 대상 모션과 CameraDelay를 포함한 카메라 렌즈 tween이 끝나면 완료됩니다."
 cancellation: "현재 shot tween만 중단하고 Stage를 해제할 수 있습니다."
 scope: "Overworld와 Battle 모두에서 씬-local stage가 제공될 때 사용 가능합니다."
 ```
+
+`CinematicShotAsset.CameraDelay`와 camera rail `CinematicShotMotion.Delay`를 같은 값으로 두면 대상은 먼저 움직이고 카메라 추적과 줌은 나중에 함께 시작할 수 있습니다. 지하철 도착 샷은 화면 밖에서 출발한 기차가 중앙에 접근하는 `4.45초`를 사용합니다.
 
 ```yaml
 id: cinematic.stage.prepare

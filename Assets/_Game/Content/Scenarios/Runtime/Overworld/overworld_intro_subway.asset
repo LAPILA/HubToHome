@@ -14,33 +14,65 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: overworld.intro.subway
   DisplayNameKo: "\uC624\uBC84\uC6D4\uB4DC \uC2DC\uC791 - \uC9C0\uD558\uCCA0 \uB3C4\uCC29"
+  Contract:
+    DescriptionKo:
+    UsageKo:
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/overworld_intro_subway.sequence.yaml
-    SourceHash: a1060067a5a82bdbf4c87df1c38bce4ca4c1e4cb76266cb9ffe7e0820f0b9d8a
-    ImportedAtIso8601: 2026-07-11T17:22:10.9859541Z
+    SourceHash: 86de2b6979c90387024dd6e878d8dca8e8b3d94bb54970bf07d32a000084151e
+    ImportedAtIso8601: 2026-07-12T14:25:10.0314917Z
   Actions:
-  - DesignerLabel: "\uC9C0\uD558\uCCA0 \uB3C4\uCC29 \uC0F7"
+  - BlockId: 71f1765e5ea34e92b34e05d915a351bb
+    DesignerLabel: "\uBC1D\uC544\uC9C4 \uC7A5\uBA74\uC744 \uC7A0\uC2DC \uBCF4\uC5EC\uC8FC\uAE30"
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.75}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: e9edf0c6de28a24ee71c835f006b7472
+    DesignerLabel: "\uC9C0\uD558\uCCA0 \uB3C4\uCC29 \uC0F7"
     ActionId: cinematic.shot.play
     ParametersJson: '{"stage":"overworld.subway_intro","shot":"subway_arrival"}'
-    Note: 
+    Note:
     Disabled: 0
     Children: []
-  - DesignerLabel: "\uC7A5\uBA74\uC744 \uAC80\uAC8C \uC804\uD658"
+  - BlockId: 6b4fa74647b54c67955cb6d413787119
+    DesignerLabel: "\uAE30\uCC28\uAC00 \uC9C0\uB098\uAC04 \uB4A4 \uC7A0\uC2DC \uC720\uC9C0"
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.35}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: b5bb54204504bfc31561265f70d6bb12
+    DesignerLabel: "\uC7A5\uBA74\uC744 \uAC80\uAC8C \uC804\uD658"
     ActionId: screen.fade
-    ParametersJson: '{"mode":"out","color":"black","duration":0.45}'
-    Note: 
+    ParametersJson: '{"mode":"out","color":"black","duration":1.0}'
+    Note:
     Disabled: 0
     Children: []
-  - DesignerLabel: "\uC2DC\uB124\uB9C8\uD2F1 \uCE74\uBA54\uB77C \uD574\uC81C"
+  - BlockId: 30ff38e5c30f4ea7a8da3fbf69d62f31
+    DesignerLabel: "\uC554\uC804 \uC0C1\uD0DC\uB85C 2\uCD08 \uB300\uAE30"
+    ActionId: flow.wait
+    ParametersJson: '{"duration":2.0}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: 53ded3c03b3354382420a42936098066
+    DesignerLabel: "\uC2DC\uB124\uB9C8\uD2F1 \uCE74\uBA54\uB77C \uD574\uC81C"
     ActionId: cinematic.stage.release
     ParametersJson: '{"stage":"overworld.subway_intro"}'
-    Note: 
+    Note:
     Disabled: 0
     Children: []
-  - DesignerLabel: "\uC624\uBC84\uC6D4\uB4DC \uACF5\uAC1C"
+  - BlockId: b6e1fe60c3a1ad8d136f55dfbe26a137
+    DesignerLabel: "\uC624\uBC84\uC6D4\uB4DC \uACF5\uAC1C"
     ActionId: screen.fade
-    ParametersJson: '{"mode":"in","color":"black","duration":0.55}'
-    Note: 
+    ParametersJson: '{"mode":"in","color":"black","duration":0.9}'
+    Note:
     Disabled: 0
     Children: []
   references:

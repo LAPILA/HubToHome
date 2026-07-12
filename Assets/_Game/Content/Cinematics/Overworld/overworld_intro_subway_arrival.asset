@@ -16,20 +16,22 @@ MonoBehaviour:
   ShotId: subway_arrival
   DisplayNameKo: "\uC9C0\uD558\uCCA0 \uB3C4\uCC29 \uCE74\uBA54\uB77C \uC774\uB3D9"
   CameraRailSubjectId: camera_rail
-  StartOrthographicSize: 7
-  EndOrthographicSize: 4.8
-  CameraDuration: 6
+  StartOrthographicSize: 10
+  EndOrthographicSize: 7
+  CameraDelay: 4.45
+  CameraDuration: 3.55
   CameraEase: 4
+  CameraPositionDamping: {x: 0, y: 0, z: 0}
   Motions:
   - SubjectId: subway
-    StartLocalPosition: {x: -15, y: 0, z: 0}
-    EndLocalPosition: {x: 22, y: 0, z: 0}
+    StartLocalPosition: {x: -30, y: 0, z: 0}
+    EndLocalPosition: {x: 24, y: 0, z: 0}
     Delay: 0
-    Duration: 6
+    Duration: 8
     Ease: 1
   - SubjectId: camera_rail
-    StartLocalPosition: {x: 0, y: 0, z: 0}
-    EndLocalPosition: {x: 18, y: 0, z: 0}
-    Delay: 0
-    Duration: 6
-    Ease: 4
+    StartLocalPosition: {x: -2.0625, y: 3.75, z: 0}
+    EndLocalPosition: {x: 21.9, y: 3.75, z: 0}
+    Delay: 4.45
+    Duration: 3.55
+    Ease: 1

@@ -161,7 +161,9 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
             () => GetCameraSize(),
             SetCameraSize,
             shot.EndOrthographicSize,
-            shot.CameraDuration).SetEase(shot.CameraEase));
+            shot.CameraDuration)
+            .SetDelay(Mathf.Max(0f, shot.CameraDelay))
+            .SetEase(shot.CameraEase));
 
         while (_activeSequence != null && _activeSequence.IsActive() && !_activeSequence.IsComplete())
         {
@@ -223,19 +225,39 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
             yield break;
         }
 
-        Release();
-        yield break;
+        CinemachineBrain brain = ReleaseImmediate();
+        if (brain == null || !Application.isPlaying)
+        {
+            yield break;
+        }
+
+        // The release action runs under the black cover.  Let Cinemachine select the
+        // gameplay camera once, then remove any stale follow damping before fade-in.
+        yield return null;
+        if (brain.ActiveVirtualCamera is CinemachineVirtualCameraBase activeCamera)
+        {
+            activeCamera.CancelDamping(true);
+        }
     }
 
     public void Release()
     {
+        ReleaseImmediate();
+    }
+
+    private CinemachineBrain ReleaseImmediate()
+    {
         KillActiveSequence();
         _preparedShot = null;
+        CinemachineBrain brain = FindStageBrain();
         if (_cinematicCamera != null)
         {
             _cinematicCamera.Follow = null;
             _cinematicCamera.gameObject.SetActive(false);
         }
+
+        brain?.ResetState();
+        return brain;
     }
 
     public object CapturePreviewState()
@@ -265,6 +287,7 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
             _cinematicCamera != null && _cinematicCamera.gameObject.activeSelf,
             _cinematicCamera != null ? _cinematicCamera.Follow : null,
             GetCameraSize(),
+            GetCameraPositionDamping(),
             subjectStates);
     }
 
@@ -290,6 +313,7 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
         {
             _cinematicCamera.Follow = previewState.CameraFollow;
             SetCameraSize(previewState.CameraSize);
+            SetCameraPositionDamping(previewState.CameraPositionDamping);
             _cinematicCamera.gameObject.SetActive(previewState.CameraActive);
         }
     }
@@ -348,10 +372,10 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
         }
 
         KillActiveSequence();
-        _cinematicCamera.gameObject.SetActive(true);
         _cinematicCamera.Follow = railTarget;
         _preparedShot = shot;
         SetCameraSize(shot.StartOrthographicSize);
+        SetCameraPositionDamping(shot.CameraPositionDamping);
         for (int i = 0; i < shot.Motions.Count; i++)
         {
             CinematicShotMotion motion = shot.Motions[i];
@@ -362,7 +386,18 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
             }
         }
 
+        _cinematicCamera.gameObject.SetActive(true);
+        _cinematicCamera.CancelDamping(true);
+        FindStageBrain()?.ResetState();
+
         return true;
+    }
+
+    private CinemachineBrain FindStageBrain()
+    {
+        return _cinematicCamera != null
+            ? CinemachineCore.FindPotentialTargetBrain(_cinematicCamera)
+            : null;
     }
 
     private bool TryGetShot(string shotId, out CinematicShotAsset shot, out string error)
@@ -423,6 +458,32 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
         }
     }
 
+    private Vector3 GetCameraPositionDamping()
+    {
+        CinemachineFollow follow = _cinematicCamera != null
+            ? _cinematicCamera.GetComponent<CinemachineFollow>()
+            : null;
+        return follow != null ? follow.TrackerSettings.PositionDamping : Vector3.zero;
+    }
+
+    private void SetCameraPositionDamping(Vector3 damping)
+    {
+        CinemachineFollow follow = _cinematicCamera != null
+            ? _cinematicCamera.GetComponent<CinemachineFollow>()
+            : null;
+        if (follow == null)
+        {
+            return;
+        }
+
+        var settings = follow.TrackerSettings;
+        settings.PositionDamping = new Vector3(
+            Mathf.Max(0f, damping.x),
+            Mathf.Max(0f, damping.y),
+            Mathf.Max(0f, damping.z));
+        follow.TrackerSettings = settings;
+    }
+
     private void KillActiveSequence()
     {
         if (_activeSequence != null && _activeSequence.IsActive())
@@ -450,12 +511,14 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
             bool cameraActive,
             Transform cameraFollow,
             float cameraSize,
+            Vector3 cameraPositionDamping,
             List<SubjectPreviewState> subjects)
         {
             PreparedShot = preparedShot;
             CameraActive = cameraActive;
             CameraFollow = cameraFollow;
             CameraSize = cameraSize;
+            CameraPositionDamping = cameraPositionDamping;
             Subjects = subjects ?? new List<SubjectPreviewState>();
         }
 
@@ -463,6 +526,7 @@ public sealed class OverworldCinematicStage : MonoBehaviour,
         public bool CameraActive { get; }
         public Transform CameraFollow { get; }
         public float CameraSize { get; }
+        public Vector3 CameraPositionDamping { get; }
         public List<SubjectPreviewState> Subjects { get; }
     }
 

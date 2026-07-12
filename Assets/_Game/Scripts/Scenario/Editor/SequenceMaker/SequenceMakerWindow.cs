@@ -256,7 +256,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         SequenceMakerTheme.SetButtonIcon(_stopButton, "d_PreMatQuad", "[]");
         SequenceMakerTheme.SetButtonIcon(_densityButton, "Settings", "D");
         SequenceMakerTheme.SetButtonIcon(_drawerToggleButton, "console.infoicon", "_");
-        SequenceMakerTheme.SetButtonIcon(_drawerCloseButton, "winbtn_win_close", "X");
+        _drawerCloseButton.text = "X";
 
         _playModeField.choices = new List<string> { "안전 미리보기", "Play Mode 테스트" };
         _playModeField.SetValueWithoutNotify("안전 미리보기");

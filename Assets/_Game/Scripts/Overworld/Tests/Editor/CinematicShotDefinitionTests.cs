@@ -44,4 +44,38 @@ public class CinematicShotDefinitionTests
         Assert.That(result.HasErrors, Is.False);
         Object.DestroyImmediate(shot);
     }
+
+    [Test]
+    public void ValidateDefinition_RejectsNegativeCameraDelay()
+    {
+        CinematicShotAsset shot = ScriptableObject.CreateInstance<CinematicShotAsset>();
+        shot.ShotId = "negative_delay";
+        shot.StageId = "overworld.arrival";
+        shot.CameraRailSubjectId = "camera_rail";
+        shot.CameraDelay = -0.1f;
+        shot.Motions.Add(new CinematicShotMotion { SubjectId = "camera_rail" });
+
+        ScenarioValidationResult result = shot.ValidateDefinition();
+
+        Assert.That(result.Messages.Exists(message => message.Code == "cinematic.shot.camera.invalid"), Is.True);
+        Object.DestroyImmediate(shot);
+    }
+
+    [Test]
+    public void ValidateDefinition_RejectsNegativeCameraPositionDamping()
+    {
+        CinematicShotAsset shot = ScriptableObject.CreateInstance<CinematicShotAsset>();
+        shot.ShotId = "negative_damping";
+        shot.StageId = "overworld.arrival";
+        shot.CameraRailSubjectId = "camera_rail";
+        shot.CameraPositionDamping = new Vector3(-0.1f, 0f, 0f);
+        shot.Motions.Add(new CinematicShotMotion { SubjectId = "camera_rail" });
+
+        ScenarioValidationResult result = shot.ValidateDefinition();
+
+        Assert.That(
+            result.Messages.Exists(message => message.Code == "cinematic.shot.camera.damping.invalid"),
+            Is.True);
+        Object.DestroyImmediate(shot);
+    }
 }

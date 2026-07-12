@@ -80,10 +80,13 @@ public static class OverworldSubwayCinematicSampleBuilder
         sequence.Source.SourcePath = SourcePath;
         sequence.Actions = new List<ScenarioActionData>
         {
+            Action("밝아진 장면을 잠시 보여주기", "flow.wait", "{\"duration\":0.75}"),
             Action("지하철 도착 샷", "cinematic.shot.play", "{\"stage\":\"overworld.subway_intro\",\"shot\":\"subway_arrival\"}"),
-            Action("장면을 검게 전환", "screen.fade", "{\"mode\":\"out\",\"color\":\"black\",\"duration\":0.45}"),
+            Action("기차가 지나간 뒤 잠시 유지", "flow.wait", "{\"duration\":0.35}"),
+            Action("장면을 검게 전환", "screen.fade", "{\"mode\":\"out\",\"color\":\"black\",\"duration\":1.0}"),
+            Action("암전 상태로 2초 대기", "flow.wait", "{\"duration\":2.0}"),
             Action("시네마틱 카메라 해제", "cinematic.stage.release", "{\"stage\":\"overworld.subway_intro\"}"),
-            Action("오버월드 공개", "screen.fade", "{\"mode\":\"in\",\"color\":\"black\",\"duration\":0.55}")
+            Action("오버월드 공개", "screen.fade", "{\"mode\":\"in\",\"color\":\"black\",\"duration\":0.9}")
         };
         EditorUtility.SetDirty(sequence);
         return sequence;
@@ -97,27 +100,30 @@ public static class OverworldSubwayCinematicSampleBuilder
         shot.ShotId = ShotId;
         shot.DisplayNameKo = "지하철 도착 카메라 이동";
         shot.CameraRailSubjectId = "camera_rail";
-        shot.StartOrthographicSize = 7f;
-        shot.EndOrthographicSize = 4.8f;
-        shot.CameraDuration = 6f;
+        shot.StartOrthographicSize = 10f;
+        shot.EndOrthographicSize = 7f;
+        shot.CameraDelay = 4.45f;
+        shot.CameraDuration = 3.55f;
         shot.CameraEase = DG.Tweening.Ease.InOutSine;
+        shot.CameraPositionDamping = Vector3.zero;
         shot.Motions = new List<CinematicShotMotion>
         {
             new CinematicShotMotion
             {
                 SubjectId = "subway",
-                StartLocalPosition = new Vector3(-15f, 0f, 0f),
-                EndLocalPosition = new Vector3(22f, 0f, 0f),
-                Duration = 6f,
+                StartLocalPosition = new Vector3(-30f, 0f, 0f),
+                EndLocalPosition = new Vector3(24f, 0f, 0f),
+                Duration = 8f,
                 Ease = DG.Tweening.Ease.Linear
             },
             new CinematicShotMotion
             {
                 SubjectId = "camera_rail",
-                StartLocalPosition = Vector3.zero,
-                EndLocalPosition = new Vector3(18f, 0f, 0f),
-                Duration = 6f,
-                Ease = DG.Tweening.Ease.InOutSine
+                StartLocalPosition = new Vector3(-2.0625f, 3.75f, 0f),
+                EndLocalPosition = new Vector3(21.9f, 3.75f, 0f),
+                Delay = 4.45f,
+                Duration = 3.55f,
+                Ease = DG.Tweening.Ease.Linear
             }
         };
         EditorUtility.SetDirty(shot);
@@ -140,7 +146,7 @@ public static class OverworldSubwayCinematicSampleBuilder
         }
 
         Transform rail = FindOrCreateChild(stageObject.transform, "CameraRail");
-        rail.localPosition = Vector3.zero;
+        rail.localPosition = new Vector3(0f, 3.75f, 0f);
         GameObject subway = GameObject.Find("Subway");
         if (subway == null)
         {
@@ -148,7 +154,7 @@ public static class OverworldSubwayCinematicSampleBuilder
         }
 
         subway.transform.SetParent(stageObject.transform, false);
-        subway.transform.localPosition = new Vector3(-15f, 0f, 0f);
+        subway.transform.localPosition = new Vector3(-30f, 0f, 0f);
 
         Transform cameraTransform = FindOrCreateChild(stageObject.transform, "CinematicCamera_Subway");
         cameraTransform.localPosition = new Vector3(0f, 0f, -1f);
@@ -158,10 +164,15 @@ public static class OverworldSubwayCinematicSampleBuilder
             camera = cameraTransform.gameObject.AddComponent<CinemachineCamera>();
         }
 
-        if (cameraTransform.GetComponent<CinemachineFollow>() == null)
+        CinemachineFollow follow = cameraTransform.GetComponent<CinemachineFollow>();
+        if (follow == null)
         {
-            cameraTransform.gameObject.AddComponent<CinemachineFollow>();
+            follow = cameraTransform.gameObject.AddComponent<CinemachineFollow>();
         }
+
+        var trackerSettings = follow.TrackerSettings;
+        trackerSettings.PositionDamping = shot.CameraPositionDamping;
+        follow.TrackerSettings = trackerSettings;
 
         camera.Priority = new PrioritySettings { Enabled = true, Value = 100 };
         camera.Lens.ModeOverride = LensSettings.OverrideModes.Orthographic;

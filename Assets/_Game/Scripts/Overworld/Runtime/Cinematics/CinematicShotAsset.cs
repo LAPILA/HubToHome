@@ -31,8 +31,12 @@ public sealed class CinematicShotAsset : ScriptableObject
 
     [Min(0.01f)] public float StartOrthographicSize = 6f;
     [Min(0.01f)] public float EndOrthographicSize = 4.5f;
+    [Min(0f)] public float CameraDelay;
     [Min(0.01f)] public float CameraDuration = 1f;
     public Ease CameraEase = Ease.InOutSine;
+
+    [Tooltip("카메라가 rail을 따라갈 때 적용할 Cinemachine 위치 damping입니다.")]
+    public Vector3 CameraPositionDamping = Vector3.one;
 
     [Tooltip("동시에 움직일 stage subject 목록입니다.")]
     public List<CinematicShotMotion> Motions = new List<CinematicShotMotion>();
@@ -56,9 +60,19 @@ public sealed class CinematicShotAsset : ScriptableObject
             result.AddError("cinematic.shot.camera_rail.required", "Cinematic Shot requires CameraRailSubjectId.", shotId);
         }
 
-        if (StartOrthographicSize <= 0f || EndOrthographicSize <= 0f || CameraDuration <= 0f)
+        if (StartOrthographicSize <= 0f || EndOrthographicSize <= 0f || CameraDelay < 0f || CameraDuration <= 0f)
         {
-            result.AddError("cinematic.shot.camera.invalid", "Cinematic Shot camera sizes and duration must be greater than zero.", shotId);
+            result.AddError("cinematic.shot.camera.invalid", "Cinematic Shot camera sizes and duration must be greater than zero and delay must be non-negative.", shotId);
+        }
+
+        if (CameraPositionDamping.x < 0f
+            || CameraPositionDamping.y < 0f
+            || CameraPositionDamping.z < 0f)
+        {
+            result.AddError(
+                "cinematic.shot.camera.damping.invalid",
+                "Cinematic Shot camera position damping must be non-negative.",
+                shotId);
         }
 
         var subjectIds = new HashSet<string>();
