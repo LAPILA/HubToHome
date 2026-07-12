@@ -51,7 +51,6 @@ public class PlayerController : MonoBehaviour
     private Collider2D[] _colliders;
     private Vector3        _originalLocalPos;
     private Vector3        _originalLocalScale;
-    private bool _defenseReactionLocked;
     private float _lastDefenseAttemptTime = -999f;
     private Vector3 _battleDefenseAnchorPosition;
     private int _baseSortingOrder;
@@ -64,6 +63,7 @@ public class PlayerController : MonoBehaviour
     private bool _defenseInputWindowOpen;
     private bool _preemptiveAttackInProgress;
     private readonly Collider2D[] _preemptiveAttackHits = new Collider2D[12];
+    private ContactFilter2D _preemptiveAttackContactFilter;
 
     private Animator Animator
     {
@@ -105,6 +105,13 @@ public class PlayerController : MonoBehaviour
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _vfx            = GetComponent<CharacterVFX>();
         _colliders      = GetComponents<Collider2D>();
+
+        _preemptiveAttackContactFilter = new ContactFilter2D
+        {
+            useLayerMask = true,
+            layerMask = _enemyLayerMask,
+            useTriggers = Physics2D.queriesHitTriggers
+        };
 
         if (_spriteRenderer != null)
         {
@@ -153,7 +160,7 @@ public class PlayerController : MonoBehaviour
 
         // 오버월드 옵션(Config) 호출
         if (GameInput.MenuPressed)
-            UIManager.Instance.OpenPanel("OverWorldPanel");
+            UIManager.Instance.OpenPanel(UIPanelId.Overworld);
     }
 
     private void LateUpdate()
@@ -412,7 +419,7 @@ public class PlayerController : MonoBehaviour
 
     private IPreemptiveAttackTarget FindPreemptiveAttackTarget()
     {
-        int hitCount = Physics2D.OverlapCircleNonAlloc(transform.position, Mathf.Max(0f, _attackRange), _preemptiveAttackHits, _enemyLayerMask);
+        int hitCount = Physics2D.OverlapCircle(transform.position, Mathf.Max(0f, _attackRange), _preemptiveAttackContactFilter, _preemptiveAttackHits);
         IPreemptiveAttackTarget bestTarget = null;
         float bestDistanceSqr = float.MaxValue;
 
@@ -497,7 +504,6 @@ public class PlayerController : MonoBehaviour
 
         if (active)
         {
-            _defenseReactionLocked = false;
             _lastDefenseAttemptTime = -999f;
             _battleDefenseAnchorPosition = transform.position;
             _moveInput = Vector2.zero;
@@ -512,7 +518,6 @@ public class PlayerController : MonoBehaviour
         else
         {
             _preemptiveAttackInProgress = false;
-            _defenseReactionLocked = false;
             _lastDefenseAttemptTime = -999f;
             _moveInput = Vector2.zero;
             _prevLeft = _prevRight = _prevUp = _prevDown = false;
@@ -601,9 +606,8 @@ public class PlayerController : MonoBehaviour
     public void ExecuteParry(bool ignoreCooldown = false)
     {
         ResetDefenseVisualStateOnly();
-        _defenseReactionLocked = true;
         TriggerParryAttemptAnim();
-        _defenseVisualTween = DOVirtual.DelayedCall(0.22f, () => _defenseReactionLocked = false).SetUpdate(true);
+        _defenseVisualTween = DOTween.Sequence().SetUpdate(true).AppendInterval(0.22f);
     }
 
     public void ExecuteDodge(bool ignoreCooldown = false)
@@ -643,7 +647,6 @@ public class PlayerController : MonoBehaviour
 
     private void ResetDefenseVisualStateOnly()
     {
-        _defenseReactionLocked = false;
 
         _defenseVisualTween?.Kill();
         _defenseVisualTween = null;
@@ -666,7 +669,6 @@ public class PlayerController : MonoBehaviour
 
     private void PlayDodgeAttempt()
     {
-        _defenseReactionLocked = true;
         Vector3 anchor = _battleDefenseAnchorPosition;
         Vector3 dodgeDir = -GetFacingVector(); // 뒤로 빠지기
         _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
@@ -684,20 +686,17 @@ public class PlayerController : MonoBehaviour
         {
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
-            _defenseReactionLocked = false;
         });
         seq.OnKill(() =>
         {
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
-            _defenseReactionLocked = false;
         });
         _defenseVisualTween = seq;
     }
 
     private void PlayJumpAttempt()
     {
-        _defenseReactionLocked = true;
         Vector3 anchor = _battleDefenseAnchorPosition;
         _vfx?.Play(CharacterVFX.VFXAction.Jump_Dust);
 
@@ -718,21 +717,18 @@ public class PlayerController : MonoBehaviour
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
             transform.localScale = baseScale;
-            _defenseReactionLocked = false;
         });
         seq.OnKill(() =>
         {
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
             transform.localScale = baseScale;
-            _defenseReactionLocked = false;
         });
         _defenseVisualTween = seq;
     }
 
     public void ResetDefenseReactionLock()
     {
-        _defenseReactionLocked = false;
         _lastDefenseAttemptTime = -999f;
         _bufferedDefenseInput = DefenseInput.None;
         _defenseInputWindowOpen = false;
@@ -752,7 +748,6 @@ public class PlayerController : MonoBehaviour
     public void PrepareDefenseWindow()
     {
         _battleDefenseAnchorPosition = transform.position;
-        _defenseReactionLocked = false;
         _bufferedDefenseInput = DefenseInput.None;
         _lastDefenseAttemptTime = -999f;
         _defenseInputWindowOpen = true;
@@ -761,7 +756,6 @@ public class PlayerController : MonoBehaviour
     public void SnapToBattleAnchor(Vector3 worldPosition, bool playIdle = true)
     {
         _battleDefenseAnchorPosition = worldPosition;
-        _defenseReactionLocked = false;
         _lastDefenseAttemptTime = -999f;
         _defenseVisualTween?.Kill();
         _defenseVisualTween = null;

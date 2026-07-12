@@ -24,6 +24,8 @@ public sealed class TimelineCutscenePlaybackLifetime : MonoBehaviour
     private GameState _previousState = GameState.Exploration;
     private bool _restoreState;
     private bool _restoreCamera;
+    private ICameraPresentationService _cameraService;
+    private CameraControlLease _cameraLease;
     private bool _cleanupCompleted;
     private bool _stopRequested;
     private bool _isSubscribed;
@@ -39,6 +41,8 @@ public sealed class TimelineCutscenePlaybackLifetime : MonoBehaviour
         GameState previousState,
         bool restoreState,
         bool restoreCamera,
+        ICameraPresentationService cameraService,
+        CameraControlLease cameraLease,
         Action onCleanupCompleted)
     {
         _director = director;
@@ -48,6 +52,8 @@ public sealed class TimelineCutscenePlaybackLifetime : MonoBehaviour
         _previousState = previousState;
         _restoreState = restoreState;
         _restoreCamera = restoreCamera;
+        _cameraService = cameraService;
+        _cameraLease = cameraLease;
         _onCleanupCompleted = onCleanupCompleted;
 
         if (_director != null)
@@ -117,6 +123,8 @@ public sealed class TimelineCutscenePlaybackLifetime : MonoBehaviour
             _director = null;
         }
 
+        ReleaseCameraControl();
+
         if (_restoreCamera)
         {
             CameraController.Instance?.ResetCamera(0.25f);
@@ -147,6 +155,18 @@ public sealed class TimelineCutscenePlaybackLifetime : MonoBehaviour
     private void OnDestroy()
     {
         Unsubscribe();
+        ReleaseCameraControl();
+    }
+
+    private void ReleaseCameraControl()
+    {
+        if (_cameraService != null && _cameraLease.IsValid)
+        {
+            _cameraService.ReleaseTimelineControl(_cameraLease);
+        }
+
+        _cameraService = null;
+        _cameraLease = CameraControlLease.None;
     }
 
     private void Unsubscribe()
@@ -231,6 +251,15 @@ public sealed class TimelineCutsceneRunner : ITimelineCutsceneRunner
             yield break;
         }
 
+        ICameraPresentationService cameraService = CameraController.Instance;
+        CameraControlLease cameraLease = CameraControlLease.None;
+        if (cameraService != null && cameraService.IsReady
+            && !cameraService.TryAcquireTimelineControl(this, out cameraLease, out string cameraError))
+        {
+            Fail(handle, cameraError);
+            yield break;
+        }
+
         GameStateManager stateManager = GameStateManager.Instance;
         GameState previousState = stateManager != null ? stateManager.CurrentState : GameState.Exploration;
         bool shouldRestoreState = lockInput && stateManager != null;
@@ -244,6 +273,7 @@ public sealed class TimelineCutsceneRunner : ITimelineCutsceneRunner
         TimelineCutscenePlaybackLifetime lifetime = null;
         bool cleanupCompleted = false;
         bool handedOffToLifetime = false;
+        bool cameraLeaseHandedOff = false;
 
         try
         {
@@ -259,7 +289,10 @@ public sealed class TimelineCutsceneRunner : ITimelineCutsceneRunner
                 previousState,
                 shouldRestoreState,
                 restoreCamera,
+                cameraService,
+                cameraLease,
                 () => cleanupCompleted = true);
+            cameraLeaseHandedOff = true;
 
             ScenarioTimelineSignalReceiver signalReceiver = directorObject.AddComponent<ScenarioTimelineSignalReceiver>();
             signalReceiver.Initialize(_bindingSource, _battleCinematicRunner, _battleTweenCinematicService);
@@ -335,6 +368,11 @@ public sealed class TimelineCutsceneRunner : ITimelineCutsceneRunner
                         stateManager.ChangeState(previousState);
                     }
                 }
+            }
+
+            if (!cameraLeaseHandedOff && cameraService != null && cameraLease.IsValid)
+            {
+                cameraService.ReleaseTimelineControl(cameraLease);
             }
         }
     }

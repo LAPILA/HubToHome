@@ -53,36 +53,137 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
         }
     }
 
-    public IEnumerator FocusCamera(string subjectId, float zoom, float duration, ActionExecutionHandle handle)
+    public IEnumerator FocusCamera(
+        string subjectId,
+        float zoom,
+        float duration,
+        CameraShotStyle style,
+        ActionExecutionHandle handle)
     {
         CharacterBase subject = FindParticipantOrSkip(subjectId);
         if (subject == null)
         {
+            handle?.Fail("battle.camera.focus subject was not found: " + subjectId);
             yield break;
         }
 
         CameraController cameraController = CameraController.Instance;
         if (cameraController == null)
         {
-            SafeWarn("battle.camera.focus skipped because CameraController.Instance is missing.");
+            handle?.Fail("battle.camera.focus requires CameraController.");
             yield break;
         }
 
-        cameraController.ZoomOnTransform(subject.transform, Mathf.Max(0.5f, zoom), Mathf.Max(0f, duration));
-        yield return WaitRealtime(duration, handle);
+        if (!cameraController.TryFocus(
+                subject.transform,
+                zoom,
+                style,
+                duration,
+                CameraControlLease.None,
+                out CameraCommandToken token,
+                out string error))
+        {
+            handle?.Fail(error);
+            yield break;
+        }
+
+        Action<ActionExecutionHandle> onCanceled = null;
+        onCanceled = _ =>
+        {
+            if (handle != null)
+            {
+                handle.CancellationRequested -= onCanceled;
+            }
+            cameraController.Cancel(token, true);
+        };
+        if (handle != null)
+        {
+            handle.CancellationRequested += onCanceled;
+        }
+
+        IEnumerator waitRoutine = WaitRealtime(duration, handle);
+        while (waitRoutine.MoveNext())
+        {
+            yield return waitRoutine.Current;
+        }
+
+        if (handle != null)
+        {
+            handle.CancellationRequested -= onCanceled;
+        }
     }
 
-    public IEnumerator ResetCamera(float duration, ActionExecutionHandle handle)
+    public IEnumerator ResetCamera(float duration, CameraShotStyle style, ActionExecutionHandle handle)
     {
         CameraController cameraController = CameraController.Instance;
         if (cameraController == null)
         {
-            SafeWarn("battle.camera.reset skipped because CameraController.Instance is missing.");
+            handle?.Fail("battle.camera.reset requires CameraController.");
             yield break;
         }
 
-        cameraController.ResetCamera(Mathf.Max(0f, duration));
-        yield return WaitRealtime(duration, handle);
+        if (!cameraController.TryReset(
+                duration,
+                style,
+                CameraControlLease.None,
+                out CameraCommandToken token,
+                out string error))
+        {
+            handle?.Fail(error);
+            yield break;
+        }
+
+        Action<ActionExecutionHandle> onCanceled = null;
+        onCanceled = _ =>
+        {
+            if (handle != null)
+            {
+                handle.CancellationRequested -= onCanceled;
+            }
+            cameraController.Cancel(token, true);
+        };
+        if (handle != null)
+        {
+            handle.CancellationRequested += onCanceled;
+        }
+
+        IEnumerator waitRoutine = WaitRealtime(duration, handle);
+        while (waitRoutine.MoveNext())
+        {
+            yield return waitRoutine.Current;
+        }
+
+        if (handle != null)
+        {
+            handle.CancellationRequested -= onCanceled;
+        }
+    }
+
+    public IEnumerator ShakeCamera(
+        Vector3 direction,
+        float intensity,
+        float duration,
+        CameraShakeSafety safety,
+        ActionExecutionHandle handle)
+    {
+        CameraController cameraController = CameraController.Instance;
+        if (cameraController == null)
+        {
+            handle?.Fail("battle.camera.shake requires CameraController.");
+            yield break;
+        }
+
+        if (!cameraController.TryImpulse(direction, intensity, duration, safety, out string error))
+        {
+            handle?.Fail(error);
+            yield break;
+        }
+
+        IEnumerator waitRoutine = WaitRealtime(duration, handle);
+        while (waitRoutine.MoveNext())
+        {
+            yield return waitRoutine.Current;
+        }
     }
 
     public IEnumerator PlayActorPose(string subjectId, string pose, float duration, float impact, ActionExecutionHandle handle)
@@ -100,7 +201,11 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
             CameraController.Instance?.PlayHeavySlam(Vector3.right, Mathf.Max(0f, impact), true);
         }
 
-        yield return WaitRealtime(duration, handle);
+        IEnumerator waitRoutine = WaitRealtime(duration, handle);
+        while (waitRoutine.MoveNext())
+        {
+            yield return waitRoutine.Current;
+        }
     }
 
     public IEnumerator SetActorFlip(string subjectId, string mode, ActionExecutionHandle handle)

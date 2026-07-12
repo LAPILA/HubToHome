@@ -681,31 +681,6 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         CompleteAction();
     }
 
-    private IEnumerator RunRoutine()
-    {
-        if (_host == null)
-        {
-            yield break;
-        }
-
-        _host.RequestNarration(new BattleNarrationMessage("도망을 시도했다...", BattleNarrationStyle.Normal, BattleNarrationPriority.High, 0.2f, true));
-        yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
-
-        bool success = Random.value < 0.6f;
-        _host.RequestNarration(new BattleNarrationMessage(success ? "도망에 성공했다!" : "도망에 실패했다...", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
-        yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
-
-        if (success)
-        {
-            Debug.LogWarning("[BattleTurnQteModuleControllerService] Run action succeeded, but battle escape resolution still lives in BattleManager. Ensure orchestration path remains wired.");
-            CompleteAction();
-        }
-        else
-        {
-            CompleteAction();
-        }
-    }
-
     private IEnumerator ExecuteEnemySequenceSkill(EnemyCharacter enemy, SkillData skill)
     {
         if (_host == null || enemy == null || skill == null || skill.ActionTimeline == null || skill.ActionTimeline.Count == 0)

@@ -43,7 +43,7 @@ public class TitleMenuManager : MonoBehaviour
         Cursor.visible = false;
         #endif
 
-        bool hasSaveData = PlayerPrefs.HasKey("SaveFileExists");
+        bool hasSaveData = SaveManager.HasAnySave();
 
         if (!hasSaveData && _btnContinue != null)
         {

@@ -38,15 +38,24 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
     private static readonly FieldInfo BattleScenarioExecutionGateField = typeof(BattleManager).GetField(
         "_battleScenarioExecutionGate",
         BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo AcceptsTurnQteInputField = typeof(BattleUIController).GetField(
+        "_acceptsTurnQteInput",
+        BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo ScenarioCinematicModeField = typeof(BattleUIController).GetField(
+        "_isScenarioCinematicMode",
+        BindingFlags.Instance | BindingFlags.NonPublic);
 
     [SerializeField] private bool _autoStartEncounter = true;
     [SerializeField] private bool _autoTriggerPhaseTransition = true;
     [SerializeField] private string _expectedEnemyId = "zev_architecture_clone";
     [SerializeField] private string _probeEncounterId = "zev_architecture_clone_scene_probe";
     [SerializeField] private float _startupTimeoutSeconds = 2f;
+    [SerializeField] private float _openingSequenceTimeoutSeconds = 30f;
     [SerializeField] private float _phaseTransitionTimeoutSeconds = 8f;
 
+    private bool _probeRunning;
     private bool _phaseSequenceRunning;
+    private int _phaseDialoguesObserved;
 
     private IEnumerator Start()
     {
@@ -113,6 +122,8 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
 
         Debug.Log(LogPrefix + " PASS: clone prefab started encounter with scenario=" + scenario.ScenarioId + " enemy=" + enemies[0].EnemyId);
 
+        _probeRunning = true;
+        StartCoroutine(AutoCompleteDialogueWhileProbeRuns());
         yield return WaitForBattleSceneRuntime(enemies[0], scenario);
     }
 
@@ -234,6 +245,21 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
             yield break;
         }
 
+        yield return null;
+        float openingDeadline = Time.realtimeSinceStartup + Mathf.Max(1f, _openingSequenceTimeoutSeconds);
+        while (gate.IsExecuting
+            || battleManager.CurrentState == BattleState.Init
+            || (DialogueManager.Instance != null && DialogueManager.Instance.IsPlaying))
+        {
+            if (Time.realtimeSinceStartup > openingDeadline)
+            {
+                Debug.LogError(LogPrefix + " Opening scenario sequence timed out before phase transition. state=" + battleManager.CurrentState);
+                yield break;
+            }
+
+            yield return null;
+        }
+
         int previousHp = battleEnemy.CurrentHP;
         int targetHp = Mathf.FloorToInt(battleEnemy.MaxHP * 0.4f);
         int damage = Mathf.Max(0, previousHp - targetHp);
@@ -249,8 +275,8 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
             battleEnemy.MaxHP,
             BattleRuleTiming.AfterCurrentSkill);
 
+        _phaseDialoguesObserved = 0;
         _phaseSequenceRunning = true;
-        StartCoroutine(AutoCompleteDialogueWhilePhaseRuns());
         IEnumerator flushRoutine = gate.Flush(BattleRuleTiming.AfterCurrentSkill);
         float deadline = Time.realtimeSinceStartup + Mathf.Max(1f, _phaseTransitionTimeoutSeconds);
         while (flushRoutine.MoveNext())
@@ -275,9 +301,46 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
             yield break;
         }
 
-        if (moduleRunner.CurrentModuleId != BattleAimShooterGameModuleRuntime.Id)
+        if (moduleRunner.CurrentModuleId != BattleTurnQteGameModuleRuntime.Id)
         {
-            Debug.LogError(LogPrefix + " Phase transition did not switch module. actual=" + moduleRunner.CurrentModuleId);
+            Debug.LogError(LogPrefix + " Phase transition left the playable turn_qte module. actual=" + moduleRunner.CurrentModuleId);
+            yield break;
+        }
+
+        BattleUIController battleUi = BattleUIController.Instance;
+        bool acceptsTurnQteInput = battleUi != null
+            && AcceptsTurnQteInputField != null
+            && (bool)AcceptsTurnQteInputField.GetValue(battleUi);
+        if (!acceptsTurnQteInput)
+        {
+            Debug.LogError(LogPrefix + " Phase transition did not restore turn_qte input/UI ownership.");
+            yield break;
+        }
+
+        bool cinematicModeActive = battleUi != null
+            && ScenarioCinematicModeField != null
+            && (bool)ScenarioCinematicModeField.GetValue(battleUi);
+        if (cinematicModeActive)
+        {
+            Debug.LogError(LogPrefix + " Phase transition left scenario cinematic mode active.");
+            yield break;
+        }
+
+        CameraController cameraController = CameraController.Instance;
+        PositionManager positionManager = PositionManager.Instance;
+        bool cameraCentered = cameraController != null
+            && cameraController.VirtualCamera != null
+            && positionManager != null
+            && cameraController.VirtualCamera.Follow == positionManager.CenterTransform;
+        if (!cameraCentered)
+        {
+            Debug.LogError(LogPrefix + " Phase transition did not restore the camera to battle center.");
+            yield break;
+        }
+
+        if (_phaseDialoguesObserved < 2)
+        {
+            Debug.LogError(LogPrefix + " Phase transition did not start all authored dialogues. observed=" + _phaseDialoguesObserved);
             yield break;
         }
 
@@ -291,22 +354,33 @@ public sealed class ZevArchitectureCloneSceneProbe : MonoBehaviour
             yield break;
         }
 
-        Debug.Log(LogPrefix + " PASS: HP threshold triggered sequence and switched module=" + moduleRunner.CurrentModuleId + " flag=zev.clone.phase:" + flagValue);
+        Debug.Log(LogPrefix + " PASS: HP threshold sequence restored gameplay module=" + moduleRunner.CurrentModuleId + " dialogues=" + _phaseDialoguesObserved + " input=true camera=center flag=zev.clone.phase:" + flagValue);
     }
 
-    private IEnumerator AutoCompleteDialogueWhilePhaseRuns()
+    private IEnumerator AutoCompleteDialogueWhileProbeRuns()
     {
-        while (_phaseSequenceRunning)
+        while (_probeRunning)
         {
             DialogueManager dialogueManager = DialogueManager.Instance;
             if (dialogueManager != null && dialogueManager.IsPlaying)
             {
+                if (_phaseSequenceRunning)
+                {
+                    _phaseDialoguesObserved++;
+                }
+
                 yield return null;
                 dialogueManager.EndDialogue();
             }
 
             yield return null;
         }
+    }
+
+    private void OnDestroy()
+    {
+        _probeRunning = false;
+        _phaseSequenceRunning = false;
     }
 
     private static T ReadField<T>(FieldInfo field, DialogueBattleNPC source)

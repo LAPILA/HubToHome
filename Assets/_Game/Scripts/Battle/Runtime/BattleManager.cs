@@ -49,6 +49,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [SerializeField] private int _maxTurnQueueSize = 8;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("실제로 UI에 노출할 턴 대기열 아이콘 수")]
     [SerializeField] private int _visibleTurnQueueSize = 4;
+    [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("도망 기본 성공 확률")]
+    [SerializeField, Range(0f, 1f)] private float _runSuccessChance = 0.6f;
 
     [Header("Seamless & Scene Settings")]
     [Tooltip("체크 시 전용 배틀 씬으로 동작하며, Start()에서 자동으로 전투 셋업을 시작합니다.")]
@@ -102,7 +104,6 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     // 캐싱된 대기 시간 (가비지 최적화)
     private readonly WaitForSeconds _waitShort  = new WaitForSeconds(0.4f);
-    private readonly WaitForSeconds _waitMedium = new WaitForSeconds(0.8f);
 
     private PlayerCharacter _pendingActor;
     private PlayerMenuAction _pendingAction;
@@ -158,40 +159,15 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         CameraController.Instance?.SetTarget(focus);
     }
 
-    private List<CharacterBase> GetVisiblePredictedTurnQueue()
-    {
-        List<CharacterBase> visible = new List<CharacterBase>();
-
-        if (_turnQueue.Count == 0) return visible;
-
-        for (int i = _currentActorIndex; i < _turnQueue.Count && visible.Count < _visibleTurnQueueSize; i++)
-        {
-            CharacterBase actor = _turnQueue[i];
-            if (actor != null && actor.IsAlive)
-                visible.Add(actor);
-        }
-
-        if (visible.Count >= _visibleTurnQueueSize)
-            return visible;
-
-        List<CharacterBase> aliveActors = new List<CharacterBase>();
-        foreach (var p in _playerParty) if (p != null && p.IsAlive) aliveActors.Add(p);
-        foreach (var e in _enemies) if (e != null && e.IsAlive) aliveActors.Add(e);
-
-        aliveActors.Sort((a, b) => b.SPD.CompareTo(a.SPD));
-        int refillIndex = 0;
-        while (visible.Count < _visibleTurnQueueSize && aliveActors.Count > 0)
-        {
-            visible.Add(aliveActors[refillIndex % aliveActors.Count]);
-            refillIndex++;
-        }
-
-        return visible;
-    }
-
     private void BroadcastVisibleTurnQueue()
     {
-        OnTurnQueueUpdated?.Invoke(GetVisiblePredictedTurnQueue());
+        List<CharacterBase> visibleQueue = BattleTurnQueueProjection.BuildVisible(
+            _turnQueue,
+            _currentActorIndex,
+            _visibleTurnQueueSize,
+            _playerParty,
+            _enemies);
+        OnTurnQueueUpdated?.Invoke(visibleQueue);
     }
 
     private IEnumerator WaitForNarrationToFinish()
@@ -228,14 +204,20 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         BattleUIController.Instance?.NormalizeForCurrentResolution();
         Canvas.ForceUpdateCanvases();
-        CameraController.Instance?.ResetCamera(0f);
+
+        CameraController cameraController = CameraController.Instance;
+        if (cameraController != null && PositionManager.Instance != null)
+        {
+            cameraController.SetDefaultTarget(PositionManager.Instance.CenterTransform, true);
+        }
+        cameraController?.ResetCamera(0f);
 
         yield return null;
         yield return new WaitForEndOfFrame();
 
         Canvas.ForceUpdateCanvases();
         BattleUIController.Instance?.NormalizeForCurrentResolution();
-        CameraController.Instance?.ResetCamera(0f);
+        cameraController?.ResetCamera(0f);
 
         if (_battleUICanvas != null && _battleUICanvas.TryGetComponent(out RectTransform battleUiRect))
             LayoutRebuilder.ForceRebuildLayoutImmediate(battleUiRect);
@@ -419,6 +401,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         registry.Register(new CinematicLetterboxActionAdapter());
         registry.Register(new BattleCameraFocusActionAdapter());
         registry.Register(new BattleCameraResetActionAdapter());
+        registry.Register(new BattleCameraShakeActionAdapter());
         registry.Register(new BattleActorPoseActionAdapter());
         registry.Register(new BattleActorFlipActionAdapter());
         registry.Register(new BattleActorMoveActionAdapter());
@@ -1477,7 +1460,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         RequestNarration(new BattleNarrationMessage("도망을 시도했다...", BattleNarrationStyle.Normal, BattleNarrationPriority.High, 0.2f, true));
         yield return StartCoroutine(WaitForNarrationToFinish());
 
-        bool success = UnityEngine.Random.value < 0.6f;
+        bool success = BattleRunPolicy.IsSuccessful(_runSuccessChance, UnityEngine.Random.value);
         RequestNarration(new BattleNarrationMessage(success ? "도망에 성공했다!" : "도망에 실패했다...", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
         yield return StartCoroutine(WaitForNarrationToFinish());
 
@@ -1653,17 +1636,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
         else if (item.ActionType == EffectActionType.ApplyStatus)
         {
-            // 하드코딩된 스트링 대신 상수나 Enum을 사용하는 것이 이상적이나, 기존 데이터 호환을 위해 유지
-            StatusEffect eff = item.StatusEffectID switch { 
-                "Burn" => new BurnEffect(item.StatusDurationTurns), 
-                "Poison" => new PoisonEffect(item.StatusDurationTurns), 
-                "Freeze" => new FreezeEffect(item.StatusDurationTurns), 
-                "Bind" => new BindEffect(item.StatusDurationTurns), 
-                "Stun" => new StunEffect(item.StatusDurationTurns),
-                "Berserk" => new BerserkEffect(item.StatusDurationTurns),
-                _ => null 
-            };
-            if (eff != null) target.AddEffect(eff);
+            if (StatusEffectFactory.TryCreate(item.StatusEffectID, item.StatusDurationTurns, out StatusEffect effect))
+            {
+                target.AddEffect(effect);
+            }
+            else
+            {
+                Debug.LogWarning($"[BattleManager] 등록되지 않은 상태이상 ID입니다: {item.StatusEffectID}");
+            }
         }
     }
 

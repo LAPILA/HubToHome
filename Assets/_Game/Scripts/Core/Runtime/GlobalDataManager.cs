@@ -42,7 +42,7 @@ public class GlobalDataManager : MonoBehaviour
 
     #region [ Position & Scene Data ]
     public string LastOverworldScene;
-    public string SpawnScene { get; set; } = "OverworldScene";
+    public string SpawnScene { get; set; } = SceneName.Overworld;
     public string CurrentRoomId { get; set; } = string.Empty;
     public string SpawnPointId { get; set; } = string.Empty;
     public float  SpawnX     { get; set; } = 0f;
@@ -332,7 +332,7 @@ public class GlobalDataManager : MonoBehaviour
         var data = new SaveData
         {
             playerName       = PlayerName, // 🚨 세이브 데이터에 이름 추가!
-            currentScene     = SpawnScene,
+            currentScene     = NormalizeSceneName(SpawnScene),
             currentRoomId    = CurrentRoomId,
             spawnPointId     = SpawnPointId,
             playerX          = SpawnX,
@@ -351,36 +351,56 @@ public class GlobalDataManager : MonoBehaviour
 
     public void FromSaveData(SaveData data)
     {
-        PlayerName   = data.playerName; // 🚨 이름 불러오기!
-        SpawnScene   = data.currentScene;
-        CurrentRoomId = data.currentRoomId;
-        SpawnPointId = data.spawnPointId;
-        SpawnX       = data.playerX;
-        SpawnY       = data.playerY;
-        LookingDir   = data.lookingDirection;
+        if (data == null)
+        {
+            Debug.LogWarning("[GlobalDataManager] 비어 있는 SaveData는 불러올 수 없습니다.");
+            return;
+        }
+
+        PlayerName = data.playerName ?? string.Empty;
+        SpawnScene = NormalizeSceneName(data.currentScene);
+        CurrentRoomId = data.currentRoomId ?? string.Empty;
+        SpawnPointId = data.spawnPointId ?? string.Empty;
+        SpawnX = data.playerX;
+        SpawnY = data.playerY;
+        LookingDir = data.lookingDirection;
 
         _inventoryDict.Clear();
-        foreach (var kv in data.InventoryDict) _inventoryDict[kv.Key] = kv.Value;
+        if (data.InventoryDict != null)
+        {
+            foreach (KeyValuePair<string, int> entry in data.InventoryDict)
+            {
+                _inventoryDict[entry.Key] = entry.Value;
+            }
+        }
 
         _eventFlags.Clear();
-        foreach (var kv in data.eventFlags) _eventFlags[kv.Key] = kv.Value;
+        if (data.eventFlags != null)
+        {
+            foreach (KeyValuePair<string, int> entry in data.eventFlags)
+            {
+                _eventFlags[entry.Key] = entry.Value;
+            }
+        }
 
         _encounterMemory.Clear();
         if (data.EncounterMemory != null)
         {
-            foreach (var kv in data.EncounterMemory)
+            foreach (KeyValuePair<string, EncounterMemorySaveData> entry in data.EncounterMemory)
             {
-                string encounterId = NormalizeEncounterId(kv.Key);
+                string encounterId = NormalizeEncounterId(entry.Key);
                 if (string.IsNullOrEmpty(encounterId))
                 {
                     continue;
                 }
 
-                _encounterMemory[encounterId] = CloneEncounterMemory(kv.Value, encounterId);
+                _encounterMemory[encounterId] = CloneEncounterMemory(entry.Value, encounterId);
             }
         }
 
-        Party = new List<CharacterSaveData>(data.PartyData);
+        Party = data.PartyData != null
+            ? new List<CharacterSaveData>(data.PartyData)
+            : new List<CharacterSaveData>();
         Money = Mathf.Max(0, data.Money);
     }
 
@@ -452,6 +472,11 @@ public class GlobalDataManager : MonoBehaviour
     private static string NormalizeEncounterId(string encounterId)
     {
         return string.IsNullOrWhiteSpace(encounterId) ? string.Empty : encounterId.Trim();
+    }
+
+    private static string NormalizeSceneName(string sceneName)
+    {
+        return string.IsNullOrWhiteSpace(sceneName) ? SceneName.Overworld : sceneName.Trim();
     }
     #endregion
 }

@@ -406,18 +406,32 @@ public sealed class BattleTweenCinematicService : IBattleTweenCinematicService
             yield break;
         }
 
-        float clampedDuration = Mathf.Max(0f, duration);
-        Sequence sequence = DOTween.Sequence()
-            .SetUpdate(true)
-            .SetTarget(tweenTarget ?? controller)
-            .AppendCallback(() => controller.PlayHeavySlam(direction, Mathf.Max(0f, intensity), lockHorizontal));
-
-        if (clampedDuration > 0f)
+        Vector3 safeDirection = lockHorizontal
+            ? new Vector3(direction.x, 0f, 0f)
+            : direction;
+        if (safeDirection.sqrMagnitude <= 0.000001f)
         {
-            sequence.AppendInterval(clampedDuration);
+            safeDirection = Vector3.right;
+        }
+        if (!controller.TryImpulse(
+                safeDirection,
+                intensity,
+                Mathf.Max(0.01f, duration),
+                CameraShakeSafety.GameplaySafe,
+                out string error))
+        {
+            if (handle != null)
+            {
+                handle.Fail(error);
+            }
+            else
+            {
+                BattleCinematicService.SafeWarn(error);
+            }
+            yield break;
         }
 
-        IEnumerator routine = BattleCinematicService.WaitTween(sequence, handle);
+        IEnumerator routine = BattleCinematicService.WaitRealtime(duration, handle);
         while (routine.MoveNext())
         {
             yield return routine.Current;

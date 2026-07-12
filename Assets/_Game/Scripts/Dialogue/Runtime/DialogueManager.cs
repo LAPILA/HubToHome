@@ -176,7 +176,7 @@ public class DialogueManager : MonoBehaviour
         bool useDedicatedBattleScene = encounterContext != null && encounterContext.UseDedicatedBattleScene;
         string battleSceneName = encounterContext != null && !string.IsNullOrWhiteSpace(encounterContext.BattleSceneName)
             ? encounterContext.BattleSceneName
-            : "BattleScene";
+            : SceneName.Battle;
         float battleFadeDuration = encounterContext != null && encounterContext.BattleSceneFadeDuration > 0f
             ? encounterContext.BattleSceneFadeDuration
             : 0.08f;

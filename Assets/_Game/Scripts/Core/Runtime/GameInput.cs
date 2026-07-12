@@ -79,44 +79,50 @@ public static class GameInput
             return;
         }
 
-        _player = _asset.FindActionMap("Player", true);
-        _ui = _asset.FindActionMap("UI", true);
-        _battle = _asset.FindActionMap("Battle", true);
-        _dialogue = _asset.FindActionMap("Dialogue", true);
-        _config = _asset.FindActionMap("Config", true);
+        InputSystem_Actions.PlayerActions playerActions = _generatedActions.Player;
+        InputSystem_Actions.UIActions uiActions = _generatedActions.UI;
+        InputSystem_Actions.BattleActions battleActions = _generatedActions.Battle;
+        InputSystem_Actions.DialogueActions dialogueActions = _generatedActions.Dialogue;
+        InputSystem_Actions.ConfigActions configActions = _generatedActions.Config;
 
-        _playerMove = _player.FindAction("Move", true);
-        _playerConfirm = _player.FindAction("Confirm", true);
-        _playerCancel = _player.FindAction("Cancel", true);
-        _playerMenu = _player.FindAction("Menu", true);
-        _playerRun = _player.FindAction("Run", true);
+        _player = playerActions.Get();
+        _ui = uiActions.Get();
+        _battle = battleActions.Get();
+        _dialogue = dialogueActions.Get();
+        _config = configActions.Get();
 
-        _uiNavigate = _ui.FindAction("Navigate", true);
-        _uiSubmit = _ui.FindAction("Submit", true);
-        _uiCancel = _ui.FindAction("Cancel", true);
-        _uiMenu = _ui.FindAction("Menu", true);
+        _playerMove = playerActions.Move;
+        _playerConfirm = playerActions.Confirm;
+        _playerCancel = playerActions.Cancel;
+        _playerMenu = playerActions.Menu;
+        _playerRun = playerActions.Run;
 
-        _battleNavigate = _battle.FindAction("Navigate", true);
-        _battleConfirm = _battle.FindAction("Confirm", true);
-        _battleCancel = _battle.FindAction("Cancel", true);
-        _qteZ = _battle.FindAction("QTE_Z", true);
-        _qteX = _battle.FindAction("QTE_X", true);
-        _qteC = _battle.FindAction("QTE_C", true);
+        _uiNavigate = uiActions.Navigate;
+        _uiSubmit = uiActions.Submit;
+        _uiCancel = uiActions.Cancel;
+        _uiMenu = uiActions.Menu;
 
-        _dialogueAdvance = _dialogue.FindAction("Advance", true);
-        _choice1 = _dialogue.FindAction("Choice1", true);
-        _choice2 = _dialogue.FindAction("Choice2", true);
-        _choice3 = _dialogue.FindAction("Choice3", true);
-        _langKR = _dialogue.FindAction("LanguageKR", true);
-        _langEN = _dialogue.FindAction("LanguageEN", true);
-        _langJP = _dialogue.FindAction("LanguageJP", true);
-        _langCN = _dialogue.FindAction("LanguageCN", true);
+        _battleNavigate = battleActions.Navigate;
+        _battleConfirm = battleActions.Confirm;
+        _battleCancel = battleActions.Cancel;
+        _qteZ = battleActions.QTE_Z;
+        _qteX = battleActions.QTE_X;
+        _qteC = battleActions.QTE_C;
 
-        _configNavigate = _config.FindAction("Navigate", true);
-        _configAdjust = _config.FindAction("Adjust", true);
-        _configSubmit = _config.FindAction("Submit", true);
-        _configBack = _config.FindAction("Back", true);
-        _configReset = _config.FindAction("ResetDefaults", true);
+        _dialogueAdvance = dialogueActions.Advance;
+        _choice1 = dialogueActions.Choice1;
+        _choice2 = dialogueActions.Choice2;
+        _choice3 = dialogueActions.Choice3;
+        _langKR = dialogueActions.LanguageKR;
+        _langEN = dialogueActions.LanguageEN;
+        _langJP = dialogueActions.LanguageJP;
+        _langCN = dialogueActions.LanguageCN;
+
+        _configNavigate = configActions.Navigate;
+        _configAdjust = configActions.Adjust;
+        _configSubmit = configActions.Submit;
+        _configBack = configActions.Back;
+        _configReset = configActions.ResetDefaults;
 
         ApplySavedKeyBindings();
 

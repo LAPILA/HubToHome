@@ -57,6 +57,8 @@ public sealed class BattleScenarioActionBridge
 
             ActionExecutionHandle childHandle = new ActionExecutionHandle(
                 MakeExecutionId(trigger, i));
+            Action<ActionExecutionHandle> cancelChild = _ => childHandle.Cancel("Parent battle scenario execution was canceled.");
+            parentHandle.CancellationRequested += cancelChild;
             ActionExecutionContext childContext = context.CreateChild(childHandle);
             IEnumerator routine = _director.Play(sequence, childContext);
 
@@ -69,6 +71,7 @@ public sealed class BattleScenarioActionBridge
                 }
                 catch (Exception exception)
                 {
+                    parentHandle.CancellationRequested -= cancelChild;
                     parentHandle.Fail("Battle scenario action sequence threw.", exception);
                     yield break;
                 }
@@ -80,6 +83,8 @@ public sealed class BattleScenarioActionBridge
 
                 yield return routine.Current;
             }
+
+            parentHandle.CancellationRequested -= cancelChild;
 
             if (childHandle.Status == ActionExecutionStatus.Failed)
             {

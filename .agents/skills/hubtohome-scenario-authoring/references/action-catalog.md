@@ -151,6 +151,108 @@ scope: "Overworld, Battle, transition, cinematic에서 호출 가능한 Presenta
 ```
 
 ```yaml
+id: battle.camera.focus
+category: camera
+displayNameKo: "전투 카메라 포커스"
+summaryKo: "전투 참가자를 추적 대상으로 삼고 지정한 줌과 연출 스타일로 전환합니다."
+runtimeAdapter: BattleCameraFocusActionAdapter
+params:
+  subject:
+    type: ActorId
+    required: true
+  zoom:
+    type: Float
+    required: false
+    default: 3.2
+    validation: "0보다 커야 합니다."
+  duration:
+    type: Float
+    required: false
+    default: 0.2
+    validation: "0 이상이어야 합니다."
+  style:
+    type: String
+    required: false
+    default: dynamic
+    validation: "static / dynamic / gameplay_safe"
+examples:
+  - battle.camera.focus:
+      subject: zev_architecture_clone
+      zoom: 4.45
+      duration: 0.3
+      style: dynamic
+completion: "Cinemachine 추적 대상, 구도, 렌즈 전환이 요청된 뒤 duration 대기가 끝나면 완료됩니다."
+cancellation: "취소되면 현재 카메라 명령을 무효화하고 등록된 전투 중앙 대상으로 복귀합니다."
+runtimeBinding: "`IBattleCinematicRunner`가 `ICameraPresentationService`로 위임합니다. CinemachineCamera Transform을 직접 순간 이동하지 않습니다."
+scope: "Battle 전용 Presentation action입니다."
+```
+
+```yaml
+id: battle.camera.reset
+category: camera
+displayNameKo: "전투 카메라 복귀"
+summaryKo: "카메라를 PositionManager가 등록한 전투 중앙 대상으로 복귀시킵니다."
+runtimeAdapter: BattleCameraResetActionAdapter
+params:
+  duration:
+    type: Float
+    required: false
+    default: 0.35
+    validation: "0 이상이어야 합니다."
+  style:
+    type: String
+    required: false
+    default: gameplay_safe
+    validation: "static / dynamic / gameplay_safe"
+examples:
+  - battle.camera.reset:
+      duration: 0.34
+      style: gameplay_safe
+completion: "중앙 추적 대상과 지정 스타일을 적용한 뒤 duration 대기가 끝나면 완료됩니다."
+cancellation: "취소되면 최신 명령 토큰만 무효화하며 중앙 대상은 유지합니다."
+runtimeBinding: "전투 시작 시 `BattleManager`가 `PositionManager.CenterTransform`을 기본 대상으로 등록합니다."
+scope: "Battle 전용 Presentation action입니다."
+```
+
+```yaml
+id: battle.camera.shake
+category: camera
+displayNameKo: "전투 카메라 흔들림"
+summaryKo: "Cinemachine Impulse로 짧은 타격 흔들림을 발생시킵니다."
+runtimeAdapter: BattleCameraShakeActionAdapter
+params:
+  direction:
+    type: String
+    required: true
+    validation: "left / right / up / down"
+  intensity:
+    type: Float
+    required: false
+    default: 0.5
+    validation: "0보다 커야 합니다."
+  duration:
+    type: Float
+    required: false
+    default: 0.12
+    validation: "0보다 커야 합니다."
+  safety:
+    type: String
+    required: false
+    default: gameplay_safe
+    validation: "gameplay_safe / cinematic"
+examples:
+  - battle.camera.shake:
+      direction: right
+      intensity: 0.55
+      duration: 0.12
+      safety: gameplay_safe
+completion: "Impulse 요청 후 duration 대기가 끝나면 완료됩니다."
+cancellation: "즉시 명령형 action이므로 실행 전 취소된 경우에만 중단됩니다."
+runtimeBinding: "`ICameraPresentationService`가 사용자 화면 흔들림 설정과 스타일별 최대 세기를 적용합니다. gameplay_safe는 패링 가독성을 우선합니다."
+scope: "Battle 전용 Presentation action입니다."
+```
+
+```yaml
 id: module.switch
 category: module
 displayNameKo: "전투 모듈 전환"

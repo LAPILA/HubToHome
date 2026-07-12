@@ -1,12 +1,17 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions; // 정규식 추가
+using System.Text.RegularExpressions;
 
 public enum LanguageType { KR, EN, JP, CN }
 
 public class LocalizationManager : MonoBehaviour
 {
+    private const string LocalizationResourcePath = "LocalizationTable";
+    private const int LocalizationColumnCount = 5;
+    private const string CsvSeparatorPattern = @",(?=(?:[^""]*""[^""]*"")*[^""]*$)";
+
+    private static readonly Regex CsvSeparatorRegex = new Regex(CsvSeparatorPattern);
     public static LocalizationManager Instance { get; private set; }
     public static event Action<LanguageType> LanguageChanged;
 
@@ -28,26 +33,21 @@ public class LocalizationManager : MonoBehaviour
         _localizedText = new Dictionary<string, Dictionary<LanguageType, string>>();
         
         // .csv 파일 로드 (Resources 폴더)
-        TextAsset textData = Resources.Load<TextAsset>("LocalizationTable");
+        TextAsset textData = Resources.Load<TextAsset>(LocalizationResourcePath);
         if (textData == null)
         {
             Debug.LogError("🚨 Resources/LocalizationTable.csv 파일을 찾을 수 없습니다!");
             return;
         }
 
-        // 🚨 CSV 파싱 정규식: 쉼표로 분리하되, 큰따옴표("") 안의 쉼표는 무시함
-        // 대사 속에 쉼표가 있어도 안전하게 한 문장으로 가져옵니다.
-        string pattern = @",(?=(?:[^""]*""[^""]*"")*[^""]*$)";
-        Regex regex = new Regex(pattern);
-
         string[] lines = textData.text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
         
         for (int i = 1; i < lines.Length; i++)
         {
             // 정규식으로 줄 나누기
-            string[] cols = regex.Split(lines[i]);
+            string[] cols = CsvSeparatorRegex.Split(lines[i]);
             
-            if (cols.Length < 5) continue;
+            if (cols.Length < LocalizationColumnCount) continue;
 
             // 큰따옴표 제거 및 줄바꿈 복구
             string key = CleanCSVCell(cols[0]);
@@ -66,7 +66,7 @@ public class LocalizationManager : MonoBehaviour
     }
 
     // CSV 특유의 큰따옴표(")와 줄바꿈(\n)을 정리해주는 유틸리티
-    private string CleanCSVCell(string cell)
+    private static string CleanCSVCell(string cell)
     {
         string clean = cell.Trim();
         if (clean.StartsWith("\"") && clean.EndsWith("\""))
@@ -91,15 +91,11 @@ public class LocalizationManager : MonoBehaviour
     {
         if (CurrentLanguage == newLang)
         {
-            PlayerPrefs.SetInt("Config.Language", (int)newLang);
-            PlayerPrefs.Save();
             LanguageChanged?.Invoke(newLang);
             return;
         }
 
         CurrentLanguage = newLang;
-        PlayerPrefs.SetInt("Config.Language", (int)newLang);
-        PlayerPrefs.Save();
         LanguageChanged?.Invoke(newLang);
         Debug.Log($"언어 변경: {newLang}");
     }

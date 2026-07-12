@@ -58,4 +58,17 @@ public static class SaveManager
     }
 
     public static bool Exists(int slotIndex) => File.Exists(GetPath(slotIndex));
+
+    public static bool HasAnySave()
+    {
+        for (int slotIndex = 0; slotIndex < ManualSlotCount; slotIndex++)
+        {
+            if (Exists(slotIndex))
+            {
+                return true;
+            }
+        }
+
+        return Exists(AutoSlotIndex);
+    }
 }

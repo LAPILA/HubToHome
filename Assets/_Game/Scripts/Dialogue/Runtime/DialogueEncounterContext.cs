@@ -11,7 +11,7 @@ public class DialogueEncounterContext
     public AudioClip OverrideBattleBGM;
     public BattleScenarioData BattleScenarioData;
     public bool UseDedicatedBattleScene;
-    public string BattleSceneName = "BattleScene";
+    public string BattleSceneName = SceneName.Battle;
     public float BattleSceneFadeDuration = 0.08f;
     public string EncounterIdOverride;
     public bool DefeatEnemyOnVictory;

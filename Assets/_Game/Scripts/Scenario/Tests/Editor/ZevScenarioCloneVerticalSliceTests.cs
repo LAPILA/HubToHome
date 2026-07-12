@@ -47,6 +47,16 @@ public class ZevScenarioCloneVerticalSliceTests
         AssertParameter(phase2.Actions[0], "mode", "show");
         AssertParameter(phase2.Actions[1], "clip", "zev_clone_phase2");
         AssertParameter(phase2.Actions[4], "id", "zev.clone.phase2_intro");
+        Assert.That(
+            phase2.Actions.Exists(action => action.ActionId == ModuleSwitchActionAdapter.Id
+                && HasStringParameter(action, "to", BattleAimShooterGameModuleRuntime.Id)),
+            Is.False,
+            "ZEV phase 2 must not hand input to aim_shooter until its concrete input/UI loop exists.");
+        Assert.That(
+            phase2.Actions.Exists(action => action.ActionId == ModuleStartActionAdapter.Id
+                && HasStringParameter(action, "module", BattleAimShooterGameModuleRuntime.Id)),
+            Is.False,
+            "ZEV phase 2 must return to the active turn_qte flow instead of starting the aim_shooter shell.");
         AssertParameter(victory.Actions[0], "id", "zev.clone.shooter_victory");
         AssertParameter(victory.Actions[2], "subject", ZevArchitectureCloneSampleBuilder.EnemyCloneId);
 

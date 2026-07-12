@@ -30,6 +30,35 @@ public static class ZevArchitectureCloneSampleBuilder
         Debug.Log("[ZEV Scenario Clone] 에셋 생성을 완료했습니다.");
     }
 
+    [MenuItem("HubToHome/Scenario/Camera/Sync ZEV Camera Scenario")]
+    [MenuItem("HubToHome/시나리오/카메라/ZEV 카메라 시나리오 동기화")]
+    public static void SyncCameraScenarioAssets()
+    {
+        ActionCatalogAsset catalog = CreateOrUpdateCatalog();
+        BattleScenarioData scenario = AssetDatabase.LoadAssetAtPath<BattleScenarioData>(ScenarioAssetPath);
+        if (scenario == null)
+        {
+            Debug.LogError("[ZEV Camera] Runtime scenario asset is missing: " + ScenarioAssetPath);
+            return;
+        }
+
+        scenario.Source.SourcePath = SourcePath;
+        EditorUtility.SetDirty(scenario);
+        var command = new ScenarioSourceRuntimeAssetReimportCommand();
+        ScenarioSourceRuntimeAssetReimportResult reimport = command.ReimportFromSourcePath(
+            scenario,
+            catalog,
+            DateTime.UtcNow);
+        if (reimport.Validation.HasErrors)
+        {
+            Debug.LogError("[ZEV Camera] Scenario sync failed:\\n" + FormatValidation(reimport.Validation));
+            return;
+        }
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.ImportAsset(ScenarioAssetPath);
+        Debug.Log("[ZEV Camera] Catalog and runtime scenario synchronized.");
+    }
     public static ScenarioValidationResult BuildAssets()
     {
         var result = new ScenarioValidationResult();
@@ -277,6 +306,7 @@ public static class ZevArchitectureCloneSampleBuilder
         AddEntry(catalog, "cinematic.letterbox", "cinematic", "시네마틱 레터박스", "CinematicLetterboxActionAdapter", "- cinematic.letterbox:\n    mode: show\n    thickness: 0.14\n    duration: 0.18");
         AddEntry(catalog, "battle.camera.focus", "cinematic", "전투 카메라 포커스", "BattleCameraFocusActionAdapter", "- battle.camera.focus:\n    subject: zev_architecture_clone\n    zoom: 4.75\n    duration: 0.42");
         AddEntry(catalog, "battle.camera.reset", "cinematic", "전투 카메라 복귀", "BattleCameraResetActionAdapter", "- battle.camera.reset:\n    duration: 0.25");
+        AddEntry(catalog, "battle.camera.shake", "camera", "전투 카메라 흔들림", "BattleCameraShakeActionAdapter", "- battle.camera.shake:\n    direction: right\n    intensity: 0.55\n    duration: 0.12\n    safety: gameplay_safe");
         AddEntry(catalog, "battle.actor.pose", "cinematic", "전투 액터 포즈", "BattleActorPoseActionAdapter", "- battle.actor.pose:\n    actor: zev_architecture_clone\n    pose: strong_skill\n    duration: 0.28\n    impact: 0.6");
         AddEntry(catalog, "battle.actor.flip", "cinematic", "전투 액터 좌우 반전", "BattleActorFlipActionAdapter", "- battle.actor.flip:\n    actor: zev_architecture_clone\n    mode: inverted");
         AddEntry(catalog, "battle.actor.move_to", "cinematic", "전투 액터 이동", "BattleActorMoveActionAdapter", "- battle.actor.move_to:\n    actor: zev_architecture_clone\n    anchor: center\n    x: 0.55\n    y: 0\n    duration: 0.32\n    pose: move");
@@ -341,9 +371,17 @@ public static class ZevArchitectureCloneSampleBuilder
                 parameters.Add(Parameter("subject", "String", "대상", "카메라가 포커스할 전투 참가자 ID입니다.", true, string.Empty));
                 parameters.Add(Parameter("zoom", "Float", "줌", "OrthographicSize 기준 값입니다. 작을수록 더 줌인됩니다.", false, "4.75"));
                 parameters.Add(Parameter("duration", "Float", "시간", "포커스 이동 시간(초)입니다.", false, "0.42"));
+                parameters.Add(Parameter("style", "String", "연출 스타일", "static, dynamic, gameplay_safe 중 하나입니다.", false, "dynamic"));
                 break;
             case "battle.camera.reset":
                 parameters.Add(Parameter("duration", "Float", "시간", "기본 전투 카메라로 돌아가는 시간(초)입니다.", false, "0.25"));
+                parameters.Add(Parameter("style", "String", "복귀 스타일", "static, dynamic, gameplay_safe 중 하나입니다.", false, "gameplay_safe"));
+                break;
+            case "battle.camera.shake":
+                parameters.Add(Parameter("direction", "String", "방향", "left, right, up, down 중 하나입니다.", true, "right"));
+                parameters.Add(Parameter("intensity", "Float", "강도", "0보다 큰 흔들림 강도입니다.", true, "0.55"));
+                parameters.Add(Parameter("duration", "Float", "시간", "0보다 큰 흔들림 시간(초)입니다.", true, "0.12"));
+                parameters.Add(Parameter("safety", "String", "안전 모드", "gameplay_safe 또는 cinematic입니다.", false, "gameplay_safe"));
                 break;
             case "battle.actor.pose":
                 parameters.Add(Parameter("actor", "String", "액터", "포즈를 취할 전투 참가자 ID입니다.", true, EnemyCloneId));

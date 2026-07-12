@@ -27,7 +27,7 @@ public class CharacterSaveData
 public class SaveData
 {
     // ── 1. 위치 정보 ──
-    public string currentScene = "OverworldScene";
+    public string currentScene = SceneName.Overworld;
     public string currentRoomId = "";
     public string spawnPointId = "";
     public float  playerX = 0f;

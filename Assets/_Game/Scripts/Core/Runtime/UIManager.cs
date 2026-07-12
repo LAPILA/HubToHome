@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// UI 패널 열기/닫기를 총괄하는 싱글톤 매니저.
@@ -33,10 +34,10 @@ public class UIManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         // 글로벌 패널 기본 등록
-        if (_pausePanel != null) RegisterPanel("Pause", _pausePanel);
-        if (_saveLoadPanel != null) RegisterPanel("SaveLoad", _saveLoadPanel);
+        if (_pausePanel != null) RegisterPanel(UIPanelId.Pause, _pausePanel);
+        if (_saveLoadPanel != null) RegisterPanel(UIPanelId.SaveLoad, _saveLoadPanel);
         if (_overworldPanel != null)
-            RegisterPanel("OverWorldPanel", _overworldPanel, _fitOverworldPanelToPixelPerfectSafeArea);
+            RegisterPanel(UIPanelId.Overworld, _overworldPanel, _fitOverworldPanelToPixelPerfectSafeArea);
     }
 
     private void Update()
@@ -152,6 +153,7 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
     private RectTransform _root;
     private RectTransform _safeAreaRoot;
     private Canvas _canvas;
+    private PixelPerfectCamera _cachedPixelPerfectCamera;
     private Vector2 _lastCanvasSize;
     private Vector2 _lastReferenceResolution;
     private int _lastScreenWidth;
@@ -182,6 +184,18 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
 
     private void OnEnable()
     {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        ApplyNow();
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        _cachedPixelPerfectCamera = null;
         ApplyNow();
     }
 
@@ -350,7 +364,12 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
 
     private PixelPerfectCamera ResolvePixelPerfectCamera()
     {
-        PixelPerfectCamera[] cameras = FindObjectsByType<PixelPerfectCamera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        if (_cachedPixelPerfectCamera != null && _cachedPixelPerfectCamera.isActiveAndEnabled)
+            return _cachedPixelPerfectCamera;
+
+        PixelPerfectCamera[] cameras = FindObjectsByType<PixelPerfectCamera>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
         PixelPerfectCamera firstEnabled = null;
 
         for (int i = 0; i < cameras.Length; i++)
@@ -360,12 +379,16 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
 
             if (!string.IsNullOrEmpty(_preferredPixelPerfectCameraName)
                 && camera.name == _preferredPixelPerfectCameraName)
+            {
+                _cachedPixelPerfectCamera = camera;
                 return camera;
+            }
 
             firstEnabled ??= camera;
         }
 
-        return firstEnabled;
+        _cachedPixelPerfectCamera = firstEnabled;
+        return _cachedPixelPerfectCamera;
     }
 
     private static bool IsValid(Vector2 size)

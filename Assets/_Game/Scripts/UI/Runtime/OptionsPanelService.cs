@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public static class OptionsPanelService
 {
-    public const string PanelId = "Config";
+    public const string PanelId = UIPanelId.Config;
 
     private static ConfigPanelUI _cachedPanel;
 

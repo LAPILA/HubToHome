@@ -214,7 +214,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             if (!_isAllyTargeting && _enemyTopPivots.TryGetValue(targetChar as EnemyCharacter, out Transform savedPivot)) {
                 targetTf = savedPivot;
             } else {
-                targetTf = targetChar.GetPivot("Top") ?? targetChar.transform;
+                targetTf = targetChar.GetPivot(CharacterPivotId.Top) ?? targetChar.transform;
             }
 
             Vector3 targetWorldPos = targetTf.position + _cursorOffset;
@@ -268,7 +268,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _enemyTopPivots.Clear();
         foreach (var enemy in enemies)
         {
-            if (enemy != null) _enemyTopPivots[enemy] = GetPivot(enemy.transform, "Top");
+            if (enemy != null) _enemyTopPivots[enemy] = enemy.GetPivot(CharacterPivotId.Top);
         }
     }
 
@@ -688,12 +688,6 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         return _scenarioFlashOverlay;
     }
 
-    private Transform GetPivot(Transform root, string pivotName)
-    {
-        Transform[] allChildren = root.GetComponentsInChildren<Transform>(true);
-        foreach (var child in allChildren) if (child.name == pivotName) return child;
-        return null;
-    }
 
     private Sprite GetBattlePortrait(CharacterBase actor)
     {

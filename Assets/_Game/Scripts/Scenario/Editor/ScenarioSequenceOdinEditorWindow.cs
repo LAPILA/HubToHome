@@ -539,17 +539,29 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
             "camera",
             "전투 카메라 포커스",
             nameof(BattleCameraFocusActionAdapter),
-            "battle.camera.focus:\n  subject: zev\n  zoom: 3.2\n  duration: 0.2",
+            "battle.camera.focus:\n  subject: zev\n  zoom: 3.2\n  duration: 0.2\n  style: dynamic",
             CreateParameter("subject", "actorId", "대상 ActorKey", "PartyIds/EnemyIds 기준 subject", true, string.Empty),
             CreateParameter("zoom", "float", "줌", "Orthographic size", false, "3.2"),
-            CreateParameter("duration", "float", "시간", "포커스 시간", false, "0.2")));
+            CreateParameter("duration", "float", "시간", "포커스 시간", false, "0.2"),
+            CreateParameter("style", "string", "연출 스타일", "static / dynamic / gameplay_safe", false, "dynamic")));
         _builtinCatalog.Entries.Add(CreateEntry(
             BattleCameraResetActionAdapter.Id,
             "camera",
             "전투 카메라 리셋",
             nameof(BattleCameraResetActionAdapter),
-            "battle.camera.reset:\n  duration: 0.35",
-            CreateParameter("duration", "float", "시간", "리셋 시간", false, "0.35")));
+            "battle.camera.reset:\n  duration: 0.35\n  style: gameplay_safe",
+            CreateParameter("duration", "float", "시간", "리셋 시간", false, "0.35"),
+            CreateParameter("style", "string", "연출 스타일", "static / dynamic / gameplay_safe", false, "gameplay_safe")));
+        _builtinCatalog.Entries.Add(CreateEntry(
+            BattleCameraShakeActionAdapter.Id,
+            "camera",
+            "전투 카메라 흔들림",
+            nameof(BattleCameraShakeActionAdapter),
+            "battle.camera.shake:\n  direction: right\n  intensity: 0.55\n  duration: 0.12\n  safety: gameplay_safe",
+            CreateParameter("direction", "string", "방향", "left / right / up / down", true, "right"),
+            CreateParameter("intensity", "float", "세기", "Cinemachine Impulse 세기", false, "0.5"),
+            CreateParameter("duration", "float", "시간", "Impulse 지속 시간", false, "0.12"),
+            CreateParameter("safety", "string", "안전 모드", "gameplay_safe / cinematic", false, "gameplay_safe")));
         _builtinCatalog.Entries.Add(CreateEntry(
             BattleActorPoseActionAdapter.Id,
             "battle",

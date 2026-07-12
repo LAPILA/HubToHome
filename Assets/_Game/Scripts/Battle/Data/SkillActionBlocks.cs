@@ -168,9 +168,9 @@ public class Action_Move : SkillActionBlock
         {
             switch (Destination)
             {
-                case MoveDest.TargetFront: targetPos = mainTarget.GetPivot("Front").position; break;
-                case MoveDest.TargetBack:  targetPos = mainTarget.GetPivot("Back").position; break;
-                case MoveDest.TargetTop:   targetPos = mainTarget.GetPivot("Top").position; break;
+                case MoveDest.TargetFront: targetPos = mainTarget.GetPivot(CharacterPivotId.Front).position; break;
+                case MoveDest.TargetBack:  targetPos = mainTarget.GetPivot(CharacterPivotId.Back).position; break;
+                case MoveDest.TargetTop:   targetPos = mainTarget.GetPivot(CharacterPivotId.Top).position; break;
             }
         }
         else if (Destination == MoveDest.Center && pm != null) targetPos = pm.GetCenterPos();
@@ -258,17 +258,14 @@ public class Action_ApplyStatus : SkillActionBlock
         {
             if (!target.IsAlive) continue;
 
-            StatusEffect eff = StatusID switch { 
-                "Burn" => new BurnEffect(DurationTurns), 
-                "Poison" => new PoisonEffect(DurationTurns), 
-                "Freeze" => new FreezeEffect(DurationTurns), 
-                "Bind" => new BindEffect(DurationTurns), 
-                "Stun" => new StunEffect(DurationTurns),
-                "Berserk" => new BerserkEffect(DurationTurns),
-                _ => null 
-            };
-            
-            if (eff != null) target.AddEffect(eff);
+            if (StatusEffectFactory.TryCreate(StatusID, DurationTurns, out StatusEffect effect))
+            {
+                target.AddEffect(effect);
+            }
+            else
+            {
+                Debug.LogWarning($"[Action_ApplyStatus] 등록되지 않은 상태이상 ID입니다: {StatusID}");
+            }
         }
         yield break;
     }
@@ -330,11 +327,11 @@ public class Action_VFX : SkillActionBlock
 
         switch (Pivot)
         {
-            case VfxPivot.ActorCenter:  spawnPos = context.Actor.GetPivot("Center").position; break;
-            case VfxPivot.ActorFront:   spawnPos = context.Actor.GetPivot("Front").position; break;
-            case VfxPivot.TargetCenter: if (target != null) spawnPos = target.GetPivot("Center").position; break;
-            case VfxPivot.TargetBottom: if (target != null) spawnPos = target.GetPivot("Bottom").position; break;
-            case VfxPivot.TargetTop:    if (target != null) spawnPos = target.GetPivot("Top").position; break;
+            case VfxPivot.ActorCenter:  spawnPos = context.Actor.GetPivot(CharacterPivotId.Center).position; break;
+            case VfxPivot.ActorFront:   spawnPos = context.Actor.GetPivot(CharacterPivotId.Front).position; break;
+            case VfxPivot.TargetCenter: if (target != null) spawnPos = target.GetPivot(CharacterPivotId.Center).position; break;
+            case VfxPivot.TargetBottom: if (target != null) spawnPos = target.GetPivot(CharacterPivotId.Bottom).position; break;
+            case VfxPivot.TargetTop:    if (target != null) spawnPos = target.GetPivot(CharacterPivotId.Top).position; break;
         }
 
         Quaternion rotation = UseActorRotation ? context.Actor.transform.rotation : Quaternion.identity;
@@ -375,7 +372,7 @@ public class Action_DefenseWindow : SkillActionBlock
     [ShowIf("UseTelegraph")]
     public string TelegraphAnimatorTriggerName = "";
     [ShowIf("UseTelegraph")]
-    public string TelegraphAttachPivotName = "Back";
+    public string TelegraphAttachPivotName = CharacterPivotId.Back;
     [LabelText("전조 지속 시간")]
     [MinValue(0.05f)] public float TelegraphDuration = 0.8f;
     [LabelText("전조 후 준비 시간")]
@@ -544,8 +541,8 @@ public class Action_Projectile : SkillActionBlock
     {
         if (ProjectilePrefab == null || context.MainTarget == null) yield break;
 
-        Vector3 startPos = context.Actor.GetPivot("Center").position;
-        Vector3 endPos = context.MainTarget.GetPivot("Center").position;
+        Vector3 startPos = context.Actor.GetPivot(CharacterPivotId.Center).position;
+        Vector3 endPos = context.MainTarget.GetPivot(CharacterPivotId.Center).position;
 
         // 🚨 풀링 시스템 호환 및 에러 수정
         GameObject proj;
@@ -610,7 +607,7 @@ public class Action_SequentialMelee : SkillActionBlock
         {
             if (!target.IsAlive) continue;
 
-            Vector3 targetPos = target.GetPivot("Front").position;
+            Vector3 targetPos = target.GetPivot(CharacterPivotId.Front).position;
 
             if (ghostTrail != null) ghostTrail.SetTrailActive(true);
             yield return context.Actor.transform.DOMove(targetPos, DashSpeed).SetEase(Ease.OutExpo).WaitForCompletion();
@@ -622,8 +619,8 @@ public class Action_SequentialMelee : SkillActionBlock
             if (HitVfxPrefab != null)
             {
                 GameObject hitVfx;
-                if (ObjectPoolManager.Instance != null) hitVfx = ObjectPoolManager.Instance.Spawn(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
-                else hitVfx = GameObject.Instantiate(HitVfxPrefab, target.GetPivot("Center").position, Quaternion.identity);
+                if (ObjectPoolManager.Instance != null) hitVfx = ObjectPoolManager.Instance.Spawn(HitVfxPrefab, target.GetPivot(CharacterPivotId.Center).position, Quaternion.identity);
+                else hitVfx = GameObject.Instantiate(HitVfxPrefab, target.GetPivot(CharacterPivotId.Center).position, Quaternion.identity);
                 CharacterVFX.ApplyRuntimeAudioNormalization(hitVfx);
             }
             

@@ -48,7 +48,9 @@ public class ItemData : ScriptableObject
 
     [BoxGroup("Status Effect (디버프/버프)")]
     [Tooltip("ApplyStatus일 경우 부여할 상태이상")]
-    public string StatusEffectID = ""; 
+    [ValueDropdown("@StatusEffectFactory.KnownIds")]
+    [ValidateInput("@string.IsNullOrEmpty(StatusEffectID) || StatusEffectFactory.IsKnown(StatusEffectID)", "등록되지 않은 상태이상 ID입니다.")]
+    public string StatusEffectID = "";
     
     [BoxGroup("Status Effect (디버프/버프)")]
     [Tooltip("상태이상 지속 턴 수")]

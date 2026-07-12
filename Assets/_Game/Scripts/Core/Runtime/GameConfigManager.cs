@@ -25,6 +25,10 @@ public class GameConfigManager : MonoBehaviour
 
     public const float DefaultVolume = 0.8f;
     public const float BgmOutputCompensation = 0.2f;
+    public const float DefaultTextSpeed = 1f;
+    public const float DefaultScreenShake = 1f;
+    public const int DefaultTargetFps = 60;
+    public const LanguageType DefaultLanguage = LanguageType.KR;
 
     private const string MasterVolumeKey = "Config.MasterVolume";
     private const string BgmVolumeKey = "Config.BGMVolume";
@@ -44,12 +48,12 @@ public class GameConfigManager : MonoBehaviour
     public float BgmVolume { get; private set; } = DefaultVolume;
     public float SfxVolume { get; private set; } = DefaultVolume;
     public bool IsFullscreen { get; private set; } = false;
-    public LanguageType Language { get; private set; } = LanguageType.KR;
-    public float TextSpeed { get; private set; } = 1f;
+    public LanguageType Language { get; private set; } = DefaultLanguage;
+    public float TextSpeed { get; private set; } = DefaultTextSpeed;
     public bool AutoAdvance { get; private set; } = false;
-    public float ScreenShake { get; private set; } = 1f;
+    public float ScreenShake { get; private set; } = DefaultScreenShake;
     public bool UseVSync { get; private set; } = false;
-    public int TargetFps { get; private set; } = 60;
+    public int TargetFps { get; private set; } = DefaultTargetFps;
 
     private void Awake()
     {
@@ -75,12 +79,12 @@ public class GameConfigManager : MonoBehaviour
         BgmVolume = PlayerPrefs.GetFloat(BgmVolumeKey, DefaultVolume);
         SfxVolume = PlayerPrefs.GetFloat(SfxVolumeKey, DefaultVolume);
         IsFullscreen = PlayerPrefs.GetInt(FullscreenKey, 0) == 1;
-        Language = (LanguageType)PlayerPrefs.GetInt(LanguageKey, (int)LanguageType.KR);
-        TextSpeed = PlayerPrefs.GetFloat(TextSpeedKey, 1f);
+        Language = (LanguageType)PlayerPrefs.GetInt(LanguageKey, (int)DefaultLanguage);
+        TextSpeed = PlayerPrefs.GetFloat(TextSpeedKey, DefaultTextSpeed);
         AutoAdvance = PlayerPrefs.GetInt(AutoAdvanceKey, 0) == 1;
-        ScreenShake = PlayerPrefs.GetFloat(ScreenShakeKey, 1f);
+        ScreenShake = PlayerPrefs.GetFloat(ScreenShakeKey, DefaultScreenShake);
         UseVSync = PlayerPrefs.GetInt(VSyncKey, 0) == 1;
-        TargetFps = PlayerPrefs.GetInt(TargetFpsKey, 60);
+        TargetFps = PlayerPrefs.GetInt(TargetFpsKey, DefaultTargetFps);
     }
 
     public void Save()
@@ -200,12 +204,12 @@ public class GameConfigManager : MonoBehaviour
         BgmVolume = DefaultVolume;
         SfxVolume = DefaultVolume;
         IsFullscreen = false;
-        Language = LanguageType.KR;
-        TextSpeed = 1f;
+        Language = DefaultLanguage;
+        TextSpeed = DefaultTextSpeed;
         AutoAdvance = false;
-        ScreenShake = 1f;
+        ScreenShake = DefaultScreenShake;
         UseVSync = false;
-        TargetFps = 60;
+        TargetFps = DefaultTargetFps;
 
         foreach (ConfigurableAction action in Enum.GetValues(typeof(ConfigurableAction)))
         {

@@ -39,6 +39,8 @@ public abstract class CharacterBase : MonoBehaviour
 
     protected readonly List<StatusEffect> _activeEffects = new List<StatusEffect>();
     private readonly Dictionary<string, GameObject> _activeLoopVFX = new Dictionary<string, GameObject>();
+    private readonly Dictionary<string, Transform> _pivotCache =
+        new Dictionary<string, Transform>(StringComparer.Ordinal);
 
     protected virtual void Awake()
     {
@@ -80,10 +82,27 @@ public abstract class CharacterBase : MonoBehaviour
         return GetComponentInChildren<BattleSpeechBubble>(true);
     }
 
+    public bool TryGetPivot(string pivotName, out Transform pivot)
+    {
+        pivot = null;
+        if (string.IsNullOrWhiteSpace(pivotName))
+        {
+            return false;
+        }
+
+        if (_pivotCache.TryGetValue(pivotName, out pivot))
+        {
+            return pivot != null;
+        }
+
+        pivot = transform.Find(CharacterPivotId.GetPath(pivotName));
+        _pivotCache[pivotName] = pivot;
+        return pivot != null;
+    }
+
     public Transform GetPivot(string pivotName)
     {
-        Transform pivot = transform.Find($"Pivots/{pivotName}");
-        return pivot != null ? pivot : transform;
+        return TryGetPivot(pivotName, out Transform pivot) ? pivot : transform;
     }
 
     // ── 1. 스탯 계산 (LINQ 제거, for문 최적화) ──────────────────────────────

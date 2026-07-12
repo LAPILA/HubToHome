@@ -144,6 +144,7 @@ sequences:
         subject: zev_architecture_clone
         zoom: 4.45
         duration: 0.3
+        style: dynamic
     - battle.actor.pose:
         actor: zev_architecture_clone
         pose: ready
@@ -155,9 +156,12 @@ sequences:
         actor: zev_architecture_clone
         pose: attack
         duration: 0.18
-        impact: 0.55
-    - battle.camera.reset:
-        duration: 0.34
+        impact: 0
+    - battle.camera.shake:
+        direction: right
+        intensity: 0.55
+        duration: 0.12
+        safety: gameplay_safe
     - battle.actor.pose:
         actor: zev_architecture_clone
         pose: ready
@@ -165,12 +169,31 @@ sequences:
         impact: 0
     - flow.wait:
         duration: 0.06
+    - screen.fade:
+        mode: out
+        color: black
+        duration: 0.18
+
+    - battle.flag.set:
+        flag: zev.clone.phase
+        value: shooter
+    - battle.camera.reset:
+        duration: 0
+        style: gameplay_safe
+    - screen.fade:
+        mode: in
+        color: black
+        duration: 0.18
+    - dialogue.wait:
+        id: zev.clone.shooter_start
     - cinematic.letterbox:
         mode: hide
         thickness: 0
         duration: 0.18
-    - battle.camera.reset:
-        duration: 0.01
+    - bgm.crossfade:
+        clip: zev_clone_shooter_loop
+        duration: 0.6
+
 
   zev_clone_shooter_victory_timeline_hybrid:
     - dialogue.wait:

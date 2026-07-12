@@ -93,7 +93,7 @@ public static class BattleEncounterService
         List<EnemyData> encounterEnemies,
         AudioClip overrideBattleBgm = null,
         bool useDedicatedBattleScene = false,
-        string battleSceneName = "BattleScene",
+        string battleSceneName = SceneName.Battle,
         float battleSceneFadeDuration = 0.08f,
         string encounterId = null,
         bool defeatsOnVictory = false,
@@ -130,7 +130,7 @@ public static class BattleEncounterService
 
         if (useDedicatedBattleScene)
         {
-            SceneLoader.Instance?.LoadScene(string.IsNullOrWhiteSpace(battleSceneName) ? "BattleScene" : battleSceneName, battleSceneFadeDuration);
+            SceneLoader.Instance?.LoadScene(string.IsNullOrWhiteSpace(battleSceneName) ? SceneName.Battle : battleSceneName, battleSceneFadeDuration);
             return true;
         }
 
@@ -141,7 +141,7 @@ public static class BattleEncounterService
             return true;
         }
 
-        SceneLoader.Instance?.LoadScene(string.IsNullOrWhiteSpace(battleSceneName) ? "BattleScene" : battleSceneName, battleSceneFadeDuration);
+        SceneLoader.Instance?.LoadScene(string.IsNullOrWhiteSpace(battleSceneName) ? SceneName.Battle : battleSceneName, battleSceneFadeDuration);
         return true;
     }
 }

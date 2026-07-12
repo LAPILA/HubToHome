@@ -8,6 +8,8 @@ public sealed class ActionExecutionHandle
         Result = ActionExecutionResult.NotStarted();
     }
 
+    public event Action<ActionExecutionHandle> CancellationRequested;
+
     public string ExecutionId { get; }
     public ActionExecutionStatus Status { get; private set; } = ActionExecutionStatus.NotStarted;
     public ActionExecutionResult Result { get; private set; }
@@ -25,7 +27,14 @@ public sealed class ActionExecutionHandle
 
     public void Cancel(string message = "Action execution was canceled.")
     {
+        if (IsCancellationRequested)
+        {
+            return;
+        }
+
         IsCancellationRequested = true;
+        CancellationRequested?.Invoke(this);
+        CancellationRequested = null;
         if (!IsDone)
         {
             MarkCanceled(message);

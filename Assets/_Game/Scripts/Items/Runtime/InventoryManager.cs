@@ -84,8 +84,13 @@ public class InventoryManager : MonoBehaviour
         // 2. 상태이상 로직 (ApplyStatus)
         if (item.ActionType == EffectActionType.ApplyStatus && !string.IsNullOrEmpty(item.StatusEffectID))
         {
-            // TODO: 나중에 StatusFactory를 통해 문자열로 상태이상 클래스 매핑 로직을 작성해야 합니다.
-            Debug.Log($"[Inventory] {target.name}에게 {item.StatusEffectID} 상태이상 부여 (기능 구현 대기 중)");
+            if (!StatusEffectFactory.TryCreate(item.StatusEffectID, item.StatusDurationTurns, out StatusEffect effect))
+            {
+                Debug.LogWarning($"[Inventory] 등록되지 않은 상태이상 ID입니다: {item.StatusEffectID}");
+                return;
+            }
+
+            target.AddEffect(effect);
         }
     }
 

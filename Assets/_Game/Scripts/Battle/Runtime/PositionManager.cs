@@ -88,8 +88,8 @@ public class PositionManager : MonoBehaviour
         if (target == null) return Vector3.zero;
 
         // 1. 타겟에게 Front 피벗이 명시적으로 세팅되어 있다면 그 위치를 우선 사용
-        Transform frontPivot = target.transform.Find("Pivots/Front");
-        if (frontPivot != null) return frontPivot.position;
+        if (target.TryGetPivot(CharacterPivotId.Front, out Transform frontPivot))
+            return frontPivot.position;
 
         // 2. 피벗이 없을 경우 기본 수학적 계산 (거리를 살짝 띄움)
         // 아군이면 왼쪽(-1)으로 전진하여 적을 타격, 적군이면 오른쪽(+1)으로 전진하여 아군을 타격

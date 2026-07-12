@@ -7,9 +7,11 @@ public interface IBattleCinematicRunner
 {
     IEnumerator SetLetterbox(bool visible, float thickness, float duration, ActionExecutionHandle handle);
 
-    IEnumerator FocusCamera(string subjectId, float zoom, float duration, ActionExecutionHandle handle);
+    IEnumerator FocusCamera(string subjectId, float zoom, float duration, CameraShotStyle style, ActionExecutionHandle handle);
 
-    IEnumerator ResetCamera(float duration, ActionExecutionHandle handle);
+    IEnumerator ResetCamera(float duration, CameraShotStyle style, ActionExecutionHandle handle);
+
+    IEnumerator ShakeCamera(Vector3 direction, float intensity, float duration, CameraShakeSafety safety, ActionExecutionHandle handle);
 
     IEnumerator PlayActorPose(string subjectId, string pose, float duration, float impact, ActionExecutionHandle handle);
 
@@ -90,51 +92,28 @@ public sealed class CinematicLetterboxActionAdapter : IActionAdapter
 public sealed class BattleCameraFocusActionAdapter : IActionAdapter
 {
     public const string Id = "battle.camera.focus";
-
-    public string ActionId
-    {
-        get { return Id; }
-    }
+    public string ActionId => Id;
 
     public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
     {
         IBattleCinematicRunner runner = context.GetService<IBattleCinematicRunner>();
         if (runner == null)
         {
-            BattleCinematicActionAdapterSafety.Warn("battle.camera.focus skipped because IBattleCinematicRunner is missing.");
+            context.Handle.Fail("IBattleCinematicRunner is missing for battle.camera.focus.");
             yield break;
         }
 
-        string subject;
-        string error;
-        if (!ScenarioActionParameterReader.TryGetString(action, "subject", out subject, out error))
+        if (!BattleCameraActionParsing.TryReadRequiredString(action, "subject", out string subject, out string error)
+            || !BattleCameraActionParsing.TryReadPositiveFloat(action, "zoom", 3.2f, out float zoom, out error)
+            || !BattleCameraActionParsing.TryReadNonNegativeFloat(action, "duration", 0.2f, out float duration, out error)
+            || !BattleCameraActionParsing.TryReadStyle(action, "style", CameraShotStyle.Dynamic, out CameraShotStyle style, out error))
         {
-            BattleCinematicActionAdapterSafety.Warn(error);
+            context.Handle.Fail(error);
             yield break;
         }
 
-        if (string.IsNullOrWhiteSpace(subject))
-        {
-            BattleCinematicActionAdapterSafety.Warn("battle.camera.focus skipped because parameter 'subject' is missing.");
-            yield break;
-        }
-
-        float zoom;
-        if (!ScenarioActionParameterReader.TryGetFloat(action, "zoom", 3.2f, out zoom, out error))
-        {
-            BattleCinematicActionAdapterSafety.Warn(error);
-            zoom = 3.2f;
-        }
-
-        float duration;
-        if (!ScenarioActionParameterReader.TryGetFloat(action, "duration", 0.2f, out duration, out error))
-        {
-            BattleCinematicActionAdapterSafety.Warn(error);
-            duration = 0.2f;
-        }
-
-        IEnumerator routine = runner.FocusCamera(subject.Trim(), zoom, duration, context.Handle);
-        while (routine.MoveNext())
+        IEnumerator routine = runner.FocusCamera(subject, zoom, duration, style, context.Handle);
+        while (!context.Handle.IsDone && routine.MoveNext())
         {
             yield return routine.Current;
         }
@@ -144,34 +123,154 @@ public sealed class BattleCameraFocusActionAdapter : IActionAdapter
 public sealed class BattleCameraResetActionAdapter : IActionAdapter
 {
     public const string Id = "battle.camera.reset";
-
-    public string ActionId
-    {
-        get { return Id; }
-    }
+    public string ActionId => Id;
 
     public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
     {
         IBattleCinematicRunner runner = context.GetService<IBattleCinematicRunner>();
         if (runner == null)
         {
-            BattleCinematicActionAdapterSafety.Warn("battle.camera.reset skipped because IBattleCinematicRunner is missing.");
+            context.Handle.Fail("IBattleCinematicRunner is missing for battle.camera.reset.");
             yield break;
         }
 
-        string error;
-        float duration;
-        if (!ScenarioActionParameterReader.TryGetFloat(action, "duration", 0.35f, out duration, out error))
+        if (!BattleCameraActionParsing.TryReadNonNegativeFloat(action, "duration", 0.35f, out float duration, out string error)
+            || !BattleCameraActionParsing.TryReadStyle(action, "style", CameraShotStyle.GameplaySafe, out CameraShotStyle style, out error))
         {
-            BattleCinematicActionAdapterSafety.Warn(error);
-            duration = 0.35f;
+            context.Handle.Fail(error);
+            yield break;
         }
 
-        IEnumerator routine = runner.ResetCamera(duration, context.Handle);
-        while (routine.MoveNext())
+        IEnumerator routine = runner.ResetCamera(duration, style, context.Handle);
+        while (!context.Handle.IsDone && routine.MoveNext())
         {
             yield return routine.Current;
         }
+    }
+}
+
+public sealed class BattleCameraShakeActionAdapter : IActionAdapter
+{
+    public const string Id = "battle.camera.shake";
+    public string ActionId => Id;
+
+    public IEnumerator Execute(ScenarioActionData action, ActionExecutionContext context)
+    {
+        IBattleCinematicRunner runner = context.GetService<IBattleCinematicRunner>();
+        if (runner == null)
+        {
+            context.Handle.Fail("IBattleCinematicRunner is missing for battle.camera.shake.");
+            yield break;
+        }
+
+        if (!BattleCameraActionParsing.TryReadDirection(action, out Vector3 direction, out string error)
+            || !BattleCameraActionParsing.TryReadPositiveFloat(action, "intensity", 0.5f, out float intensity, out error)
+            || !BattleCameraActionParsing.TryReadPositiveFloat(action, "duration", 0.12f, out float duration, out error)
+            || !BattleCameraActionParsing.TryReadSafety(action, out CameraShakeSafety safety, out error))
+        {
+            context.Handle.Fail(error);
+            yield break;
+        }
+
+        IEnumerator routine = runner.ShakeCamera(direction, intensity, duration, safety, context.Handle);
+        while (!context.Handle.IsDone && routine.MoveNext())
+        {
+            yield return routine.Current;
+        }
+    }
+}
+
+internal static class BattleCameraActionParsing
+{
+    public static bool TryReadRequiredString(ScenarioActionData action, string name, out string value, out string error)
+    {
+        if (!ScenarioActionParameterReader.TryGetString(action, name, out value, out error)
+            || string.IsNullOrWhiteSpace(value))
+        {
+            error = string.IsNullOrWhiteSpace(error) ? "Parameter '" + name + "' is required." : error;
+            value = string.Empty;
+            return false;
+        }
+
+        value = value.Trim();
+        return true;
+    }
+
+    public static bool TryReadPositiveFloat(ScenarioActionData action, string name, float fallback, out float value, out string error)
+    {
+        if (!ScenarioActionParameterReader.TryGetFloat(action, name, fallback, out value, out error))
+            return false;
+        if (value > 0f)
+            return true;
+        error = "Parameter '" + name + "' must be greater than zero.";
+        return false;
+    }
+
+    public static bool TryReadNonNegativeFloat(ScenarioActionData action, string name, float fallback, out float value, out string error)
+    {
+        if (!ScenarioActionParameterReader.TryGetFloat(action, name, fallback, out value, out error))
+            return false;
+        if (value >= 0f)
+            return true;
+        error = "Parameter '" + name + "' must be zero or greater.";
+        return false;
+    }
+
+    public static bool TryReadStyle(ScenarioActionData action, string name, CameraShotStyle fallback, out CameraShotStyle style, out string error)
+    {
+        style = fallback;
+        if (!ScenarioActionParameterReader.TryGetString(action, name, out string raw, out error))
+            return false;
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+
+        string normalized = raw.Trim().Replace("-", "_").ToLowerInvariant();
+        switch (normalized)
+        {
+            case "static": style = CameraShotStyle.Static; return true;
+            case "dynamic": style = CameraShotStyle.Dynamic; return true;
+            case "gameplay_safe":
+            case "gameplaysafe": style = CameraShotStyle.GameplaySafe; return true;
+            default:
+                error = "Unknown camera style: " + raw;
+                return false;
+        }
+    }
+
+    public static bool TryReadDirection(ScenarioActionData action, out Vector3 direction, out string error)
+    {
+        direction = Vector3.zero;
+        if (!TryReadRequiredString(action, "direction", out string raw, out error))
+            return false;
+        switch (raw.ToLowerInvariant())
+        {
+            case "left": direction = Vector3.left; return true;
+            case "right": direction = Vector3.right; return true;
+            case "up": direction = Vector3.up; return true;
+            case "down": direction = Vector3.down; return true;
+            default:
+                error = "Unknown camera shake direction: " + raw;
+                return false;
+        }
+    }
+
+    public static bool TryReadSafety(ScenarioActionData action, out CameraShakeSafety safety, out string error)
+    {
+        safety = CameraShakeSafety.GameplaySafe;
+        if (!ScenarioActionParameterReader.TryGetString(action, "safety", out string raw, out error))
+            return false;
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+        string normalized = raw.Trim().Replace("-", "_").ToLowerInvariant();
+        if (normalized == "gameplay_safe" || normalized == "gameplaysafe")
+            return true;
+        if (normalized == "cinematic")
+        {
+            safety = CameraShakeSafety.Cinematic;
+            return true;
+        }
+        error = "Unknown camera shake safety: " + raw;
+        return false;
     }
 }
 
