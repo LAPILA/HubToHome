@@ -41,29 +41,6 @@ public static class SequenceMakerTheme
         button[0].AddToClassList("sm-button-icon");
     }
 
-    public static void PrependButtonIcon(Button button, string iconName)
-    {
-        if (button == null)
-        {
-            return;
-        }
-
-        Texture image = EditorGUIUtility.IconContent(iconName)?.image;
-        if (image == null)
-        {
-            return;
-        }
-
-        var icon = new Image
-        {
-            image = image,
-            scaleMode = ScaleMode.ScaleToFit
-        };
-        icon.AddToClassList("sm-button-icon");
-        icon.style.marginRight = 4f;
-        button.Insert(0, icon);
-    }
-
     public static void SetSaveState(VisualElement dot, bool isDirty, bool hasError)
     {
         if (dot == null)

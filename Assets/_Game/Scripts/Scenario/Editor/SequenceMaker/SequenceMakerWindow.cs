@@ -243,8 +243,6 @@ public sealed class SequenceMakerWindow : EditorWindow
 
         SequenceMakerTheme.SetButtonIcon(_undoButton, "d_tab_prev", "←");
         SequenceMakerTheme.SetButtonIcon(_redoButton, "d_tab_next", "→");
-        SequenceMakerTheme.PrependButtonIcon(_validateButton, "TestPassed");
-        SequenceMakerTheme.PrependButtonIcon(_saveButton, "SaveAs");
         SequenceMakerTheme.SetButtonIcon(_playButton, "d_PlayButton", ">");
         SequenceMakerTheme.SetButtonIcon(_playSelectedButton, "d_PlayButton On", ">|");
         SequenceMakerTheme.SetButtonIcon(_pauseButton, "PauseButton", "||");
@@ -253,7 +251,6 @@ public sealed class SequenceMakerWindow : EditorWindow
         SequenceMakerTheme.SetButtonIcon(_densityButton, "Settings", "D");
         SequenceMakerTheme.SetButtonIcon(_drawerToggleButton, "console.infoicon", "_");
         SequenceMakerTheme.SetButtonIcon(_drawerCloseButton, "winbtn_win_close", "X");
-        SequenceMakerTheme.PrependButtonIcon(_libraryButton, "d_UnityEditor.SceneHierarchyWindow");
 
         _playModeField.choices = new List<string> { "안전 미리보기", "Play Mode 테스트" };
         _playModeField.SetValueWithoutNotify("안전 미리보기");

@@ -77,6 +77,20 @@ public sealed class SequenceMakerWindowJourneyTests
         Assert.That(redo.tooltip, Is.EqualTo("다시 실행"));
     }
 
+    [TestCase("validate-button", "검증")]
+    [TestCase("save-button", "저장")]
+    [TestCase("library-button", "액션")]
+    public void LabeledCommandButtonsRenderAsClearTextCommands(
+        string buttonName,
+        string expectedLabel)
+    {
+        Button button = _window.rootVisualElement.Q<Button>(buttonName);
+
+        Assert.That(button, Is.Not.Null);
+        Assert.That(button.text, Is.EqualTo(expectedLabel));
+        Assert.That(button.Q<Image>(className: "sm-button-icon"), Is.Null);
+    }
+
     [Test]
     public void StandaloneTargetRendersSequenceFlowAndInspector()
     {
