@@ -2954,6 +2954,37 @@ public sealed class SequenceMakerWindow : EditorWindow
         _statusHasError = isError;
     }
 
+    internal SequenceMakerWorkspaceState WorkspaceForTests => _workspace;
+    internal string StatusForTests => _statusText;
+    internal bool StatusHasErrorForTests => _statusHasError;
+
+    internal void SetTargetForTests(UnityEngine.Object target)
+    {
+        SetTarget(target);
+    }
+
+    internal SequenceEditCommandStack GetSequenceHistoryForTests()
+    {
+        return GetCurrentEditStack();
+    }
+
+    internal BattleScenarioEditCommandStack GetBattleHistoryForTests()
+    {
+        return GetCurrentBattleEditStack();
+    }
+
+    internal void SelectTriggerRuleForTests(string ruleId)
+    {
+        _workspace.SelectTriggerRule(ruleId);
+        RenderAll();
+    }
+
+    internal void RefreshForTests()
+    {
+        RefreshDerivedState(true);
+        RenderAll();
+    }
+
     private T Require<T>(string name) where T : VisualElement
     {
         T element = _root.Q<T>(name);

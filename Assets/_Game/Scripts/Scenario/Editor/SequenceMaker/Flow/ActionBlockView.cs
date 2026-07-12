@@ -257,12 +257,25 @@ public class ActionBlockView : VisualElement
 
     private static Texture ResolveIcon(ActionBlockSummary summary)
     {
-        Texture icon = !string.IsNullOrWhiteSpace(summary.IconId)
-            ? EditorGUIUtility.IconContent(summary.IconId)?.image
-            : null;
-        return icon != null
-            ? icon
-            : EditorGUIUtility.IconContent(
-                summary.IsStructural ? "UnityEditor.HierarchyWindow" : "ScriptableObject Icon")?.image;
+        string iconName = ResolveUnityIconName(summary.IconId, summary.IsStructural);
+        return EditorGUIUtility.IconContent(iconName)?.image;
+    }
+
+    private static string ResolveUnityIconName(string stableIconId, bool structural)
+    {
+        switch ((stableIconId ?? string.Empty).Trim().ToLowerInvariant())
+        {
+            case "music":
+                return "AudioClip Icon";
+            case "message-square":
+                return "console.infoicon";
+            case "play":
+                return "d_PlayButton";
+            case "move":
+            case "arrow-down-to-line":
+                return "MoveTool";
+            default:
+                return structural ? "UnityEditor.HierarchyWindow" : "ScriptableObject Icon";
+        }
     }
 }
