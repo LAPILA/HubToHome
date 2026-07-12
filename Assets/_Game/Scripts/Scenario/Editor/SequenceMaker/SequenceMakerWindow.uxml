@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="sequence-maker-root" class="sm-root">
+        <ui:VisualElement name="command-bar" class="sm-command-bar">
+            <ui:VisualElement name="target-field-host" class="sm-target-field-host" />
+            <ui:VisualElement class="sm-command-divider" />
+            <ui:Button name="undo-button" class="sm-icon-button" tooltip="실행 취소" />
+            <ui:Button name="redo-button" class="sm-icon-button" tooltip="다시 실행" />
+            <ui:VisualElement class="sm-command-divider" />
+            <ui:Button name="validate-button" text="검증" class="sm-command-button" tooltip="현재 편집 대상을 검증" />
+            <ui:Button name="save-button" text="저장" class="sm-command-button sm-command-button--primary" tooltip="Runtime Asset 변경을 YAML에 안전하게 저장" />
+            <ui:VisualElement class="sm-command-spacer" />
+            <ui:DropdownField name="play-mode-field" class="sm-play-mode" />
+            <ui:Button name="play-button" class="sm-icon-button sm-icon-button--play" tooltip="처음부터 재생" />
+            <ui:Button name="play-selected-button" class="sm-icon-button" tooltip="선택 블록부터 준비 후 재생" />
+            <ui:Button name="pause-button" class="sm-icon-button" tooltip="일시정지 또는 재개" />
+            <ui:Button name="step-button" class="sm-icon-button" tooltip="다음 블록 한 개 실행" />
+            <ui:Button name="stop-button" class="sm-icon-button" tooltip="실행 중지" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="context-bar" class="sm-context-bar">
+            <ui:Label name="breadcrumb-label" text="편집 대상을 선택" class="sm-breadcrumb" />
+            <ui:VisualElement class="sm-command-spacer" />
+            <ui:Button name="library-button" class="sm-command-button sm-library-open-button" text="액션" tooltip="Action Library 열기" />
+            <ui:TextField name="search-field" class="sm-search-field" tooltip="현재 시퀀스 안에서 블록 검색" />
+            <ui:Button name="density-button" class="sm-icon-button" tooltip="블록 표시 밀도 전환" />
+            <ui:Button name="drawer-toggle-button" class="sm-icon-button" tooltip="아래 패널 열기 또는 닫기" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="content-stack" class="sm-content-stack">
+            <ui:VisualElement name="workspace-host" class="sm-workspace-host" />
+            <ui:VisualElement name="drawer" class="sm-drawer">
+                <ui:VisualElement class="sm-drawer-tabs">
+                    <ui:Button name="problems-tab" text="문제" class="sm-drawer-tab" />
+                    <ui:Button name="trace-tab" text="실행 기록" class="sm-drawer-tab" />
+                    <ui:Button name="yaml-tab" text="YAML" class="sm-drawer-tab" />
+                    <ui:VisualElement class="sm-command-spacer" />
+                    <ui:Button name="drawer-close-button" class="sm-icon-button sm-icon-button--small" tooltip="아래 패널 닫기" />
+                </ui:VisualElement>
+                <ui:VisualElement name="drawer-content" class="sm-drawer-content" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="status-bar" class="sm-status-bar">
+            <ui:VisualElement name="save-state-dot" class="sm-status-dot" />
+            <ui:Label name="status-label" text="준비됨" class="sm-status-label" />
+            <ui:VisualElement class="sm-command-spacer" />
+            <ui:Label name="source-status-label" class="sm-source-status" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

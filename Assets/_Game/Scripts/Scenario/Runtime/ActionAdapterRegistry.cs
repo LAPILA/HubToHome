@@ -31,6 +31,13 @@ public sealed class ActionAdapterRegistry
         return _adapters.TryGetValue(Normalize(actionId), out adapter);
     }
 
+    public List<string> GetRegisteredActionIds()
+    {
+        var ids = new List<string>(_adapters.Keys);
+        ids.Sort(StringComparer.Ordinal);
+        return ids;
+    }
+
     public bool Unregister(string actionId)
     {
         return _adapters.Remove(Normalize(actionId));

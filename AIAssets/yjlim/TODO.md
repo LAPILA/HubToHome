@@ -21,6 +21,7 @@
 
 ## P2 - 시나리오 파이프라인 실사용 검증
 
+- [ ] Title -> Intro -> Overworld 첫 진입에서 지하철 시네마틱 재생 후, 저장 재진입 시 `overworld.intro.subway.completed` 플래그로 건너뛰는지 수동 확인
 - [ ] Sequence Maker에서 ZEV clone scenario 열기 → 액션 편집 → 저장 및 반영 → runtime asset 반영 확인
 - [ ] Scenario Source YAML과 generated ScriptableObject가 stale 상태로 갈라지지 않는지 반복 검증
 - [ ] Catalog validation에서 누락된 action parameter metadata / Korean label / example 정리

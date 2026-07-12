@@ -79,7 +79,7 @@ The game's save/load scope. Current planning saves outside battle only; battle r
 _Avoid_: treating mid-battle state as save-bound.
 
 **Battle Event Rule**:
-An authored rule owned primarily by an Encounter Definition or Battle Scenario Data, deciding when a Battle Event should trigger from Battle Session State, Encounter Memory, or Game Module outcomes.
+The legacy battle-specialized authored rule represented by `BattleEventRuleData`. Runtime construction maps it once into the general Trigger Rule model so existing assets retain behavior while new work uses stable Scenario Event IDs and Trigger Conditions.
 _Avoid_: embedding enemy phase changes inside one skill timeline or hard-coding them inside a specific combat module.
 
 **Battle Event**:
@@ -114,9 +114,69 @@ _Avoid_: making humans edit runtime asset serialization directly to author scena
 The Korean human-facing Unity editor surface for viewing, validating, reordering, inserting, and lightly editing Scenario Source-backed flow.
 _Avoid_: exposing raw GUIDs, fileIDs, or managed reference internals as the normal editing experience.
 
+**Sequence Maker Document Session**:
+The editor-side Module that owns target-scoped Sequence/Battle command histories, saved checkpoints, and recovery-restored dirty state for the official Sequence Maker. A standalone save checkpoints one Sequence; a Battle save checkpoints that Battle and its contained Sequences without changing unrelated open documents.
+_Avoid_: computing dirty state across every history the Window has ever opened, or marking every history saved after one target succeeds.
+
 **Action Catalog**:
 The discoverable catalog of Action grammar, Korean labels, parameters, examples, validation expectations, and runtime adapter ownership.
 _Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.
+
+**Action Library**:
+The human-facing resolved collection of Action Catalog definitions used to search, understand, configure, validate, and preview Actions. Multiple owned catalogs may contribute to one library, but one stable Action ID has only one active contract.
+_Avoid_: asking a normal Sequence Maker user to choose a catalog asset manually or treating an undocumented runtime adapter as discoverable authoring grammar.
+
+**Action Block ID**:
+The stable identity of one authored Action instance inside an Action Sequence. It remains the same when the block is reordered and is distinct from the Action ID that names the Action type.
+_Avoid_: identifying authored blocks only by list index, display name, or current hierarchy path.
+
+**Sequence Input**:
+A typed value accepted by a reusable Action Sequence and supplied by its caller, triggering event, or supported execution context.
+_Avoid_: duplicating an entire sequence only to substitute an actor, position, dialogue, duration, or similar authored value.
+
+**Value Binding**:
+A constrained reference such as `${input.actor}` that resolves an Action parameter from an explicit execution-context value. Runtime data stores it as `{"$bind":"input.actor"}` and supports only documented roots; it is not an expression language.
+_Avoid_: evaluating arbitrary expressions, reflection paths, or scene-object lookups from scenario data.
+
+**Sequence Call**:
+The `sequence.call` Action that runs another Action Sequence by stable ID, binds only its declared Sequence Inputs into a child execution context, and propagates completion, failure, and cancellation to the caller.
+_Avoid_: copying shared beats between scenarios or allowing recursive call graphs.
+
+**Trigger Rule**:
+The general `when -> do` rule that observes one Scenario Event, evaluates Conditions and execution policy, then requests an Action Sequence with typed target inputs. Existing Battle Event Rules are mapped compatibility inputs to this runtime rather than a second evaluator layer.
+_Avoid_: requiring every new rule to add one central enum member and a new set of unrelated optional fields.
+
+**Scenario Event**:
+A stable, typed description of something that occurred in a domain system and may be observed by Trigger Rules, such as participant HP changing, a Game Module completing, or an interaction beginning.
+_Avoid_: using an unrestricted global string event bus or letting scenario code own the domain behavior that emits the event.
+
+**Trigger Condition**:
+A typed predicate used by a Trigger Rule to compare Scenario Event payload, session state, Encounter Memory, or other explicitly supported read-only state.
+_Avoid_: embedding arbitrary code expressions in scenario data.
+
+**Execution Session**:
+An observable run of an Action Sequence with current Action Block ID, lifecycle, pause, step, cancellation, completion result, and diagnostics.
+_Avoid_: treating sequence execution as a fire-and-forget coroutine with no author-facing state.
+
+**Action Sequence Live Context Source**:
+A runtime scene owner that can provide an Action Director, Action Execution Context, coroutine host, priority, and human-readable label for Sequence Maker Play Mode testing. `BattleManager` and `SceneActionSequenceTrigger` are the first two adapters through `IActionSequenceLiveContextSource`; the editor discovers the Interface and does not branch on concrete Primary Modes or scene bridge types.
+_Avoid_: adding `if battle`, `if overworld`, or one-off minigame lookups inside Sequence Maker playback code.
+
+**Preparation Run**:
+An editor-only fast-forward of blocks preceding a selected start block, used to establish required preview or test state without replaying their full presentation. Production gameplay does not use Preparation Run semantics.
+_Avoid_: applying real save, reward, or scene-transition side effects while preparing an editor preview.
+
+**Cinematic Stage**:
+A scene-local, offstage presentation rig that owns a temporary Cinemachine camera, named subject bindings, and reusable Cinematic Shots. It prepares under SceneLoader's black reveal gate, takes camera ownership only while a sequence requests it, then releases back to the normal gameplay camera.
+_Avoid_: hiding gameplay actors with `SetActive`, duplicating scenes for short transitions, or making culling layers the default way to separate a cinematic from gameplay.
+
+**Cinematic Shot**:
+A reusable ScriptableObject definition inside a Cinematic Stage: camera rail subject, orthographic lens motion, and parallel subject motions. It is invoked from an Action Sequence through stable `stage` and `shot` IDs.
+_Avoid_: embedding individual transform tween values in a scene trigger or treating Timeline as mandatory for every camera movement.
+
+**Scene Action Sequence Trigger**:
+A scene-local bridge that prepares a Cinematic Stage while `SceneLoader` holds the screen covered, then starts a standalone Action Sequence after `SceneRevealCompleted`. Optional one-shot completion is an `eventFlags` value in `GlobalDataManager`, so it is saved outside battle without restoring an in-progress sequence.
+_Avoid_: writing scene-intro completion into Battle Session State or starting presentation before its camera/subjects are prepared.
 
 **Turn QTE Combat Module**:
 The migrated Game Module for the existing QTE/turn battle. `turn_qte` starts through the Game Module Runner, and `BattleTurnQteGameModuleRuntime` delegates to `IBattleTurnQteModuleController`. Battle's current controller owns QTE lifecycle, turn calculation, turn advancement, player/enemy turn begin, player input, player attack/skill/item execution, enemy action, defense QTE resolution, action completion, inactive-module guards, and pending QTE cleanup. It still lives as a nested adapter in `BattleManager` so it can safely use existing serialized fields, event bridges, battle presentation helpers, and legacy `SkillData.ActionTimeline` blocks without scene or asset migration.

@@ -40,10 +40,6 @@ public static class RoomMapSampleBuilder
     private const string TemplateRoot = MapRoot + "/Templates";
 
     private const string DesignerGuidePath = SceneWorldRoot + "/README_OverworldMapGuide.md";
-    private const string ZevCloneEnemyAssetPath = "Assets/_Game/Content/Characters/EnemyDB/ZEV/Enemy_ZEV_ArchitectureClone.asset";
-    private const string ZevCloneScenarioAssetPath = "Assets/_Game/Content/Scenarios/Generated/ZEV/ZEV_ArchitectureClone_BattleScenario.asset";
-    private const string ZevClonePrefabAssetPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/ZEV_ArchitectureClone_Prefab.prefab";
-
     [MenuItem("HubToHome/오버월드/맵 생성/기본 Room 샘플 생성")]
     public static void CreateBasicSample()
     {
@@ -507,10 +503,8 @@ public static class RoomMapSampleBuilder
         CreateBlock("Cave Mouth", root.transform, new Vector3(1.8f, 0.65f, -0.1f), new Vector3(1.7f, 1.3f, 0.1f), new Color(0.03f, 0.03f, 0.045f)).AddComponent<BoxCollider2D>();
         CreateBlock("Torch Left", root.transform, new Vector3(0.55f, 1.1f, -0.2f), new Vector3(0.22f, 0.7f, 0.1f), new Color(1.0f, 0.42f, 0.12f));
         CreateBlock("Torch Right", root.transform, new Vector3(3.05f, 1.1f, -0.2f), new Vector3(0.22f, 0.7f, 0.1f), new Color(1.0f, 0.42f, 0.12f));
-        CreateSignMarker(root.transform, roomId, "dungeon.warning_sign", new Vector3(-1.2f, 1.55f, 0f), "* 구조체 복제체 격리 구역.\n* Z 상호작용 전투, 시나리오 2페이즈, BattleScene 전환을 모두 확인한다.", false, string.Empty);
+        CreateSignMarker(root.transform, roomId, "dungeon.warning_sign", new Vector3(-1.2f, 1.55f, 0f), "* 앞은 아직 정비되지 않은 던전 구역이다.", false, string.Empty);
         CreateHazardMarker(root.transform, roomId, "dungeon.ember_floor", new Vector3(0.55f, 0.45f, 0f), 12, 0.65f, false);
-        CreatePlotPointMarker(root.transform, roomId, "dungeon.clone_cutscene_intro", new Vector3(0.3f, -1.25f, 0f), AreaPlotTriggerMode.OnEnter, "* 컷씬 테스트: 화면이 어두워지고 복제체가 고개를 든다.\n* 실제 전환은 ZEV Architecture Clone BattleScenario의 Action Sequence에서 검증한다.", true, "mapfield.dungeon.clone_intro.seen");
-        CreateZevArchitectureCloneEncounter(root.transform, roomId, new Vector3(2.1f, -0.45f, 0f));
         CreateSpawnPoint("Spawn_From_Forest", root.transform, returnSpawnId, new Vector3(-3.2f, 0f, 0f), FacingDirection.Right);
         CreateSpawnPoint("Spawn_To_Forest", root.transform, doorSpawnId, new Vector3(-3.85f, 0f, 0f), FacingDirection.Left);
         CreateDoorPlaceholder("Door", root.transform, new Vector3(-4.15f, 0f, 0f), new Vector3(0.45f, 1.5f, 0.1f), new Color(0.16f, 0.16f, 0.20f));
@@ -763,33 +757,6 @@ public static class RoomMapSampleBuilder
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
-    private static void CreateZevArchitectureCloneEncounter(Transform parent, string roomId, Vector3 localPosition)
-    {
-        GameObject clonePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ZevClonePrefabAssetPath);
-        if (clonePrefab != null)
-        {
-            GameObject cloneInstance = (GameObject)PrefabUtility.InstantiatePrefab(clonePrefab);
-            cloneInstance.name = "ZEV_ArchitectureClone_EncounterActor";
-            cloneInstance.transform.SetParent(parent);
-            cloneInstance.transform.localPosition = localPosition;
-            cloneInstance.transform.localScale = Vector3.one;
-        }
-
-        OverworldEnemyMarker marker = CreateAreaMarker<OverworldEnemyMarker>(parent, roomId, "dungeon.zev_architecture_clone_enemy", localPosition + new Vector3(0f, -0.75f, 0f), "ZEV Architecture Clone Battle", "ZEV clone battle/scenario entry marker", false, string.Empty);
-        EnemyData enemy = AssetDatabase.LoadAssetAtPath<EnemyData>(ZevCloneEnemyAssetPath);
-        BattleScenarioData scenario = AssetDatabase.LoadAssetAtPath<BattleScenarioData>(ZevCloneScenarioAssetPath);
-        SerializedObject serialized = new SerializedObject(marker);
-        serialized.FindProperty("enemyId").stringValue = "zev_architecture_clone";
-        serialized.FindProperty("enemyLevel").intValue = 1;
-        serialized.FindProperty("battleEncounterId").stringValue = "mapfield.dungeon.zev_architecture_clone";
-        serialized.FindProperty("enemyData").objectReferenceValue = enemy;
-        serialized.FindProperty("battleScenarioData").objectReferenceValue = scenario;
-        serialized.FindProperty("useDedicatedBattleScene").boolValue = true;
-        serialized.FindProperty("battleSceneName").stringValue = "BattleScene";
-        serialized.FindProperty("battleFadeDuration").floatValue = 0.08f;
-        serialized.ApplyModifiedPropertiesWithoutUndo();
-    }
-
     private static void CreateSpawnPoint(string name, Transform parent, string spawnPointId, Vector3 localPosition, FacingDirection facing)
     {
         GameObject spawn = new GameObject(name);
@@ -930,7 +897,6 @@ public static class RoomMapSampleBuilder
             + "- Room Prefab: `Prefabs/Rooms`\n"
             + "- AreaConnectionMarker: Gate <-> Village <-> Inn / Shop / House / ForestPath <-> DungeonEntrance\n"
             + "- 테스트용 Area Marker: NPC, Sign, Item, SavePoint, Vendor, Puzzle, Hazard, ShortcutDoor, Sublocation, PlotPoint, Enemy\n"
-            + "- 전투 테스트: `Room_MapField_DungeonEntrance`에 `ZEV_ArchitectureClone_Prefab` 인스턴스와 `OverworldEnemyMarker`를 함께 배치합니다.\n\n"
             + "## 기본 생성 룸 7개\n\n"
             + "1. `Room_MapField_Gate`\n"
             + "2. `Room_MapField_Village`\n"

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -189,31 +190,60 @@ public sealed class ScenarioSourceExporter
 
     private static void CopyRules(BattleScenarioData scenario, ScenarioSourceDocument document)
     {
-        if (scenario.Rules == null)
+        if (scenario.Rules != null)
         {
-            return;
+            for (int i = 0; i < scenario.Rules.Count; i++)
+            {
+                BattleEventRuleData rule = scenario.Rules[i];
+                if (rule == null)
+                {
+                    continue;
+                }
+
+                document.Rules.Add(new ScenarioSourceRuleDocument
+                {
+                    Kind = ScenarioSourceRuleKind.LegacyBattle,
+                    RuleId = rule.RuleId,
+                    EventType = rule.EventType,
+                    Timing = rule.Timing,
+                    Once = rule.Once,
+                    SubjectId = rule.SubjectId,
+                    OutcomeId = rule.OutcomeId,
+                    ThresholdRatio = rule.ThresholdRatio,
+                    SequenceId = rule.SequenceId,
+                    Disabled = rule.Disabled
+                });
+            }
         }
 
-        for (int i = 0; i < scenario.Rules.Count; i++)
+        if (scenario.TriggerRules != null)
         {
-            BattleEventRuleData rule = scenario.Rules[i];
-            if (rule == null)
+            for (int i = 0; i < scenario.TriggerRules.Count; i++)
             {
-                continue;
-            }
+                ScenarioTriggerRuleData rule = scenario.TriggerRules[i];
+                if (rule == null)
+                {
+                    continue;
+                }
 
-            document.Rules.Add(new ScenarioSourceRuleDocument
-            {
-                RuleId = rule.RuleId,
-                EventType = rule.EventType,
-                Timing = rule.Timing,
-                Once = rule.Once,
-                SubjectId = rule.SubjectId,
-                OutcomeId = rule.OutcomeId,
-                ThresholdRatio = rule.ThresholdRatio,
-                SequenceId = rule.SequenceId,
-                Disabled = rule.Disabled
-            });
+                ScenarioTriggerIdentity.EnsureUnique(
+                    rule.Conditions,
+                    scenario.ScenarioId + "|" + rule.RuleId);
+                document.Rules.Add(new ScenarioSourceRuleDocument
+                {
+                    Kind = ScenarioSourceRuleKind.Trigger,
+                    RuleId = rule.RuleId,
+                    DisplayNameKo = rule.DisplayNameKo,
+                    TriggerEventId = rule.EventId,
+                    TriggerTiming = rule.Timing,
+                    CheckpointId = rule.CheckpointId,
+                    TriggerOnce = rule.Once,
+                    Conditions = ScenarioTriggerIdentity.ClonePreservingIds(rule.Conditions),
+                    SequenceId = rule.SequenceId,
+                    TargetInputsJson = rule.TargetInputsJson,
+                    Disabled = rule.Disabled
+                });
+            }
         }
     }
 
@@ -232,10 +262,13 @@ public sealed class ScenarioSourceExporter
                 continue;
             }
 
+            ScenarioBlockIdentity.EnsureUnique(sequence.Actions);
+
             document.Sequences.Add(new ScenarioSourceSequenceDocument
             {
                 SequenceId = sequence.SequenceId,
                 DisplayNameKo = sequence.DisplayNameKo,
+                Contract = ActionSequenceContractData.CopyOf(sequence.Contract),
                 Actions = CloneActions(sequence.Actions)
             });
         }
@@ -260,20 +293,7 @@ public sealed class ScenarioSourceExporter
 
     private static ScenarioActionData CloneAction(ScenarioActionData source)
     {
-        if (source == null)
-        {
-            return null;
-        }
-
-        return new ScenarioActionData
-        {
-            DesignerLabel = source.DesignerLabel,
-            ActionId = source.ActionId,
-            ParametersJson = source.ParametersJson,
-            Note = source.Note,
-            Disabled = source.Disabled,
-            Children = CloneActions(source.Children)
-        };
+        return ScenarioBlockIdentity.ClonePreservingIds(source);
     }
 
     private static string NormalizeId(string value)
@@ -325,7 +345,7 @@ public sealed class ScenarioSourceYamlWriter
         WriteParticipants(builder, document);
         WriteDialogues(builder, document);
         WriteAudioClips(builder, document);
-        WriteRules(builder, document);
+        WriteRules(builder, document, result.Validation);
         WriteSequences(builder, document, result.Validation);
 
         result.Text = builder.ToString();
@@ -396,7 +416,10 @@ public sealed class ScenarioSourceYamlWriter
         builder.AppendLine();
     }
 
-    private static void WriteRules(StringBuilder builder, ScenarioSourceDocument document)
+    private static void WriteRules(
+        StringBuilder builder,
+        ScenarioSourceDocument document,
+        ScenarioValidationResult validation)
     {
         if (document.Rules == null || document.Rules.Count == 0)
         {
@@ -409,6 +432,12 @@ public sealed class ScenarioSourceYamlWriter
             ScenarioSourceRuleDocument rule = document.Rules[i];
             if (rule == null)
             {
+                continue;
+            }
+
+            if (rule.Kind == ScenarioSourceRuleKind.Trigger)
+            {
+                WriteTriggerRule(builder, rule, validation);
                 continue;
             }
 
@@ -427,6 +456,150 @@ public sealed class ScenarioSourceYamlWriter
         }
 
         builder.AppendLine();
+    }
+
+    private static void WriteTriggerRule(
+        StringBuilder builder,
+        ScenarioSourceRuleDocument rule,
+        ScenarioValidationResult validation)
+    {
+        AppendListItemKeyValue(builder, 1, "id", rule.RuleId);
+        if (!string.IsNullOrWhiteSpace(rule.DisplayNameKo))
+        {
+            AppendKeyValue(builder, 2, "name", rule.DisplayNameKo);
+        }
+
+        AppendKeyOnly(builder, 2, "when");
+        AppendKeyValue(builder, 3, "eventId", rule.TriggerEventId);
+        AppendKeyValue(builder, 3, "timing", FormatTriggerTiming(rule.TriggerTiming));
+        if (rule.TriggerTiming == ScenarioTriggerTiming.Checkpoint)
+        {
+            AppendKeyValue(builder, 3, "checkpoint", rule.CheckpointId);
+        }
+
+        AppendKeyValue(builder, 3, "once", FormatTriggerOnce(rule.TriggerOnce));
+        AppendKeyOnly(builder, 3, "conditions");
+        WriteConditionNode(builder, rule.Conditions, 4, validation, rule.RuleId, includeId: true);
+
+        AppendKeyOnly(builder, 2, "do");
+        AppendKeyValue(builder, 3, "sequence", rule.SequenceId);
+        JObject targetInputs = ParseRuleJsonObject(
+            rule.TargetInputsJson,
+            "scenario.yaml.rule.inputs.invalid",
+            "Trigger Rule target inputs must be a JSON object before YAML export.",
+            rule.RuleId,
+            validation);
+        if (targetInputs != null && targetInputs.Count > 0)
+        {
+            AppendKeyOnly(builder, 3, "inputs");
+            foreach (JProperty property in targetInputs.Properties())
+            {
+                WriteParameter(builder, 4, property.Name, property.Value);
+            }
+        }
+
+        if (rule.Disabled)
+        {
+            AppendKeyValue(builder, 2, "disabled", true);
+        }
+    }
+
+    private static void WriteConditionNode(
+        StringBuilder builder,
+        ScenarioTriggerConditionNodeData node,
+        int indentLevel,
+        ScenarioValidationResult validation,
+        string ruleId,
+        bool includeId)
+    {
+        if (node == null)
+        {
+            validation.AddError(
+                "scenario.yaml.rule.conditions.missing",
+                "Trigger Rule condition root is missing.",
+                ruleId);
+            return;
+        }
+
+        if (includeId)
+        {
+            AppendKeyValue(builder, indentLevel, "id", node.NodeId);
+        }
+
+        if (node.Negate)
+        {
+            AppendKeyValue(builder, indentLevel, "not", true);
+        }
+
+        if (node.Kind == ScenarioConditionNodeKind.Group)
+        {
+            string groupKey = node.GroupMode == ScenarioConditionGroupMode.Any ? "any" : "all";
+            AppendKeyOnly(builder, indentLevel, groupKey);
+            if (node.Children == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < node.Children.Count; i++)
+            {
+                ScenarioTriggerConditionNodeData child = node.Children[i];
+                if (child == null)
+                {
+                    validation.AddError(
+                        "scenario.yaml.rule.condition.null",
+                        "Trigger Rule condition child is null.",
+                        ruleId);
+                    continue;
+                }
+
+                AppendListItemKeyValue(builder, indentLevel + 1, "id", child.NodeId);
+                WriteConditionNode(
+                    builder,
+                    child,
+                    indentLevel + 2,
+                    validation,
+                    ruleId,
+                    includeId: false);
+            }
+
+            return;
+        }
+
+        AppendKeyValue(builder, indentLevel, "condition", node.ConditionId);
+        JObject parameters = ParseRuleJsonObject(
+            node.ParametersJson,
+            "scenario.yaml.rule.condition.parameters.invalid",
+            "Trigger Condition parameters must be a JSON object before YAML export.",
+            ruleId + ".condition:" + node.NodeId,
+            validation);
+        if (parameters == null || parameters.Count == 0)
+        {
+            return;
+        }
+
+        AppendKeyOnly(builder, indentLevel, "params");
+        foreach (JProperty property in parameters.Properties())
+        {
+            WriteParameter(builder, indentLevel + 1, property.Name, property.Value);
+        }
+    }
+
+    private static JObject ParseRuleJsonObject(
+        string text,
+        string code,
+        string message,
+        string objectId,
+        ScenarioValidationResult validation)
+    {
+        try
+        {
+            return string.IsNullOrWhiteSpace(text) ? new JObject() : JObject.Parse(text);
+        }
+        catch (System.Exception exception)
+        {
+            validation.AddError(code, message + " " + exception.Message, objectId);
+            return null;
+        }
     }
 
     private static void WriteRuleSubject(StringBuilder builder, ScenarioSourceRuleDocument rule)
@@ -475,7 +648,97 @@ public sealed class ScenarioSourceYamlWriter
             }
 
             AppendKeyOnly(builder, 1, sequence.SequenceId);
+            if (!string.IsNullOrWhiteSpace(sequence.DisplayNameKo))
+            {
+                AppendKeyValue(builder, 2, "title", sequence.DisplayNameKo);
+            }
+
+            ActionSequenceContractData contract = sequence.Contract;
+            if (contract != null)
+            {
+                if (!string.IsNullOrWhiteSpace(contract.DescriptionKo))
+                {
+                    AppendKeyValue(builder, 2, "description", contract.DescriptionKo);
+                }
+
+                if (!string.IsNullOrWhiteSpace(contract.UsageKo))
+                {
+                    AppendKeyValue(builder, 2, "usage", contract.UsageKo);
+                }
+
+                if (contract.Lifecycle != ActionSequenceLifecycle.Draft)
+                {
+                    AppendKeyValue(builder, 2, "status", contract.Lifecycle.ToString().ToLowerInvariant());
+                }
+
+                if (contract.Tags != null && contract.Tags.Count > 0)
+                {
+                    AppendInlineList(builder, 2, "tags", contract.Tags);
+                }
+
+                if (contract.AllowedPrimaryModes != null && contract.AllowedPrimaryModes.Count > 0)
+                {
+                    AppendInlineList(builder, 2, "allowedPrimaryModes", contract.AllowedPrimaryModes);
+                }
+
+                WriteSequenceInputs(builder, contract.Inputs, 2);
+            }
+
             WriteActions(builder, sequence.Actions, 2, validation, sequence.SequenceId);
+        }
+    }
+
+    private static void WriteSequenceInputs(
+        StringBuilder builder,
+        List<SequenceInputDefinition> inputs,
+        int indentLevel)
+    {
+        if (inputs == null || inputs.Count == 0)
+        {
+            return;
+        }
+
+        AppendKeyOnly(builder, indentLevel, "inputs");
+        for (int i = 0; i < inputs.Count; i++)
+        {
+            SequenceInputDefinition input = inputs[i];
+            if (input == null)
+            {
+                continue;
+            }
+
+            AppendListItemKeyValue(builder, indentLevel + 1, "id", input.InputId);
+            if (!string.IsNullOrWhiteSpace(input.DisplayNameKo))
+            {
+                AppendKeyValue(builder, indentLevel + 2, "name", input.DisplayNameKo);
+            }
+
+            if (!string.IsNullOrWhiteSpace(input.DescriptionKo))
+            {
+                AppendKeyValue(builder, indentLevel + 2, "description", input.DescriptionKo);
+            }
+
+            AppendKeyValue(builder, indentLevel + 2, "type", input.TypeId);
+            if (input.Required)
+            {
+                AppendKeyValue(builder, indentLevel + 2, "required", true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(input.DefaultValueJson))
+            {
+                try
+                {
+                    WriteParameter(
+                        builder,
+                        indentLevel + 2,
+                        "default",
+                        JToken.Parse(input.DefaultValueJson));
+                }
+                catch (System.Exception)
+                {
+                    AppendKeyValue(builder, indentLevel + 2, "defaultJson", input.DefaultValueJson);
+                }
+            }
         }
     }
 
@@ -503,26 +766,18 @@ public sealed class ScenarioSourceYamlWriter
             if (actionId == ActionDirector.ParallelActionId)
             {
                 AppendListItemKeyOnly(builder, indentLevel, "parallel");
-                WriteActions(builder, action.Children, indentLevel + 1, validation, ownerId);
+                WriteActionMetadata(builder, action, indentLevel + 1);
+                if (action.Children != null && action.Children.Count > 0)
+                {
+                    AppendKeyOnly(builder, indentLevel + 1, "children");
+                    WriteActions(builder, action.Children, indentLevel + 2, validation, ownerId);
+                }
+
                 continue;
             }
 
             AppendListItemKeyOnly(builder, indentLevel, actionId);
-            if (!string.IsNullOrWhiteSpace(action.DesignerLabel))
-            {
-                AppendKeyValue(builder, indentLevel + 1, "designerLabel", action.DesignerLabel);
-            }
-
-            if (!string.IsNullOrWhiteSpace(action.Note))
-            {
-                AppendKeyValue(builder, indentLevel + 1, "note", action.Note);
-            }
-
-            if (action.Disabled)
-            {
-                AppendKeyValue(builder, indentLevel + 1, "disabled", true);
-            }
-
+            WriteActionMetadata(builder, action, indentLevel + 1);
             JObject parameters = ParseParameters(action, validation, ownerId);
             if (parameters == null || parameters.Count == 0)
             {
@@ -533,6 +788,32 @@ public sealed class ScenarioSourceYamlWriter
             {
                 WriteParameter(builder, indentLevel + 1, property.Name, property.Value);
             }
+        }
+    }
+
+    private static void WriteActionMetadata(
+        StringBuilder builder,
+        ScenarioActionData action,
+        int indentLevel)
+    {
+        if (!string.IsNullOrWhiteSpace(action.BlockId))
+        {
+            AppendKeyValue(builder, indentLevel, "blockId", action.BlockId.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.DesignerLabel))
+        {
+            AppendKeyValue(builder, indentLevel, "designerLabel", action.DesignerLabel);
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.Note))
+        {
+            AppendKeyValue(builder, indentLevel, "note", action.Note);
+        }
+
+        if (action.Disabled)
+        {
+            AppendKeyValue(builder, indentLevel, "disabled", true);
         }
     }
 
@@ -562,6 +843,12 @@ public sealed class ScenarioSourceYamlWriter
 
     private static void WriteParameter(StringBuilder builder, int indentLevel, string key, JToken value)
     {
+        if (ScenarioValueBinding.TryRead(value, out string bindingPath, out _))
+        {
+            AppendRawKeyValue(builder, indentLevel, key, ScenarioValueBinding.ToExpression(bindingPath));
+            return;
+        }
+
         if (value == null || value.Type == JTokenType.Null)
         {
             AppendKeyValue(builder, indentLevel, key, string.Empty);
@@ -802,6 +1089,29 @@ public sealed class ScenarioSourceYamlWriter
         }
     }
 
+    private static string FormatTriggerTiming(ScenarioTriggerTiming timing)
+    {
+        switch (timing)
+        {
+            case ScenarioTriggerTiming.AfterCurrentAction: return "after_current_action";
+            case ScenarioTriggerTiming.AfterCurrentSkill: return "after_current_skill";
+            case ScenarioTriggerTiming.AfterCurrentModule: return "after_current_module";
+            case ScenarioTriggerTiming.Checkpoint: return "checkpoint";
+            default: return "immediate";
+        }
+    }
+
+    private static string FormatTriggerOnce(ScenarioTriggerOnceScope once)
+    {
+        switch (once)
+        {
+            case ScenarioTriggerOnceScope.Always: return "always";
+            case ScenarioTriggerOnceScope.EncounterMemory: return "encounter_memory";
+            case ScenarioTriggerOnceScope.Save: return "save";
+            default: return "session";
+        }
+    }
+
     private static string Normalize(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
@@ -879,7 +1189,7 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                     index = ParseAudioClips(lines, index + 1, document);
                     break;
                 case "rules":
-                    index = ParseRules(lines, index + 1, document);
+                    index = ParseRules(lines, index + 1, document, result.Validation);
                     break;
                 case "sequences":
                     index = ParseSequences(lines, index + 1, document, result.Validation);
@@ -998,7 +1308,11 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
         return index;
     }
 
-    private static int ParseRules(List<YamlLine> lines, int index, ScenarioSourceDocument document)
+    private static int ParseRules(
+        List<YamlLine> lines,
+        int index,
+        ScenarioSourceDocument document,
+        ScenarioValidationResult validation)
     {
         while (index < lines.Count && lines[index].Indent > TopLevelIndent)
         {
@@ -1023,14 +1337,19 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 {
                     if (key == "when")
                     {
-                        index = ParseRuleWhen(lines, index + 1, rule);
+                        index = ParseRuleWhen(lines, index + 1, rule, validation);
                         continue;
                     }
 
                     if (key == "do")
                     {
-                        index = ParseRuleDo(lines, index + 1, rule);
+                        index = ParseRuleDo(lines, index + 1, rule, validation);
                         continue;
+                    }
+
+                    if (key == "name")
+                    {
+                        rule.DisplayNameKo = ParseYamlString(value);
                     }
 
                     if (key == "disabled")
@@ -1042,13 +1361,24 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 index++;
             }
 
+            if (rule.Kind == ScenarioSourceRuleKind.Trigger)
+            {
+                ScenarioTriggerIdentity.EnsureUnique(
+                    rule.Conditions,
+                    document.Id + "|" + rule.RuleId);
+            }
+
             document.Rules.Add(rule);
         }
 
         return index;
     }
 
-    private static int ParseRuleWhen(List<YamlLine> lines, int index, ScenarioSourceRuleDocument rule)
+    private static int ParseRuleWhen(
+        List<YamlLine> lines,
+        int index,
+        ScenarioSourceRuleDocument rule,
+        ScenarioValidationResult validation)
     {
         while (index < lines.Count && lines[index].Indent > NestedIndent)
         {
@@ -1059,6 +1389,10 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 {
                     case "event":
                         rule.EventType = ParseEventType(value);
+                        break;
+                    case "eventId":
+                        rule.Kind = ScenarioSourceRuleKind.Trigger;
+                        rule.TriggerEventId = ParseYamlString(value);
                         break;
                     case "enemy":
                     case "module":
@@ -1072,10 +1406,26 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                         break;
                     case "timing":
                         rule.Timing = ParseTiming(value);
+                        rule.TriggerTiming = ParseTriggerTiming(value);
                         break;
                     case "once":
                         rule.Once = ParseOnce(value);
+                        rule.TriggerOnce = ParseTriggerOnce(value);
                         break;
+                    case "checkpoint":
+                        rule.Kind = ScenarioSourceRuleKind.Trigger;
+                        rule.CheckpointId = ParseYamlString(value);
+                        break;
+                    case "conditions":
+                        rule.Kind = ScenarioSourceRuleKind.Trigger;
+                        index++;
+                        rule.Conditions = ParseConditionNode(
+                            lines,
+                            ref index,
+                            NestedIndent + 4,
+                            validation,
+                            rule.RuleId);
+                        continue;
                 }
             }
 
@@ -1085,15 +1435,47 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
         return index;
     }
 
-    private static int ParseRuleDo(List<YamlLine> lines, int index, ScenarioSourceRuleDocument rule)
+    private static int ParseRuleDo(
+        List<YamlLine> lines,
+        int index,
+        ScenarioSourceRuleDocument rule,
+        ScenarioValidationResult validation)
     {
         while (index < lines.Count && lines[index].Indent > NestedIndent)
         {
             if (lines[index].Indent == NestedIndent + 2 &&
-                TryReadKeyValue(lines[index].Trimmed, out string key, out string value) &&
-                key == "sequence")
+                TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
             {
-                rule.SequenceId = ParseYamlString(value);
+                if (key == "sequence")
+                {
+                    rule.SequenceId = ParseYamlString(value);
+                }
+                else if (key == "inputs")
+                {
+                    rule.Kind = ScenarioSourceRuleKind.Trigger;
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        JToken parsed = ParseYamlValue(value);
+                        if (parsed is JObject inlineInputs)
+                        {
+                            rule.TargetInputsJson = inlineInputs.ToString(Newtonsoft.Json.Formatting.None);
+                        }
+                        else
+                        {
+                            validation.AddError(
+                                "scenario.yaml.rule.inputs.invalid",
+                                "Trigger Rule inputs must be a YAML/JSON object.",
+                                rule.RuleId);
+                        }
+                    }
+                    else
+                    {
+                        index++;
+                        JObject inputs = ParseParameterMap(lines, ref index, NestedIndent + 4);
+                        rule.TargetInputsJson = inputs.ToString(Newtonsoft.Json.Formatting.None);
+                        continue;
+                    }
+                }
             }
 
             index++;
@@ -1122,11 +1504,235 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 SequenceId = ParseYamlString(key)
             };
             index++;
+            while (index < lines.Count
+                && lines[index].Indent == NestedIndent
+                && TryReadKeyValue(lines[index].Trimmed, out string sequenceKey, out string sequenceValue))
+            {
+                if (sequenceKey == "inputs")
+                {
+                    index++;
+                    if (sequence.Contract == null)
+                    {
+                        sequence.Contract = new ActionSequenceContractData();
+                    }
+
+                    sequence.Contract.Inputs = ParseSequenceInputs(
+                        lines,
+                        ref index,
+                        NestedIndent + 2,
+                        validation,
+                        sequence.SequenceId);
+                    continue;
+                }
+
+                if (!TryApplySequenceMetadata(sequence, sequenceKey, sequenceValue))
+                {
+                    break;
+                }
+
+                index++;
+            }
+
             sequence.Actions = ParseActions(lines, ref index, NestedIndent, validation, sequence.SequenceId);
+            ScenarioBlockIdentity.EnsureUnique(sequence.Actions, sequence.SequenceId);
             document.Sequences.Add(sequence);
         }
 
         return index;
+    }
+
+    private static ScenarioTriggerConditionNodeData ParseConditionNode(
+        List<YamlLine> lines,
+        ref int index,
+        int fieldIndent,
+        ScenarioValidationResult validation,
+        string ruleId)
+    {
+        var node = new ScenarioTriggerConditionNodeData
+        {
+            Kind = ScenarioConditionNodeKind.Condition,
+            ParametersJson = "{}"
+        };
+        while (index < lines.Count && lines[index].Indent >= fieldIndent)
+        {
+            YamlLine line = lines[index];
+            if (line.Indent != fieldIndent || line.Trimmed.StartsWith("- "))
+            {
+                break;
+            }
+
+            if (!TryReadKeyValue(line.Trimmed, out string key, out string value))
+            {
+                index++;
+                continue;
+            }
+
+            switch (key)
+            {
+                case "id":
+                    node.NodeId = ParseYamlString(value);
+                    index++;
+                    break;
+                case "not":
+                    node.Negate = ParseBool(value);
+                    index++;
+                    break;
+                case "condition":
+                    node.Kind = ScenarioConditionNodeKind.Condition;
+                    node.ConditionId = ParseYamlString(value);
+                    index++;
+                    break;
+                case "params":
+                    index++;
+                    node.ParametersJson = ParseParameterMap(lines, ref index, fieldIndent + 2)
+                        .ToString(Newtonsoft.Json.Formatting.None);
+                    break;
+                case "all":
+                case "any":
+                    node.Kind = ScenarioConditionNodeKind.Group;
+                    node.GroupMode = key == "any"
+                        ? ScenarioConditionGroupMode.Any
+                        : ScenarioConditionGroupMode.All;
+                    index++;
+                    node.Children = ParseConditionChildren(
+                        lines,
+                        ref index,
+                        fieldIndent + 2,
+                        validation,
+                        ruleId);
+                    break;
+                default:
+                    validation.AddError(
+                        "scenario.yaml.rule.condition.field.unknown",
+                        "Unknown Trigger Condition field: " + key,
+                        ruleId);
+                    index++;
+                    break;
+            }
+        }
+
+        return node;
+    }
+
+    private static List<ScenarioTriggerConditionNodeData> ParseConditionChildren(
+        List<YamlLine> lines,
+        ref int index,
+        int listIndent,
+        ScenarioValidationResult validation,
+        string ruleId)
+    {
+        var children = new List<ScenarioTriggerConditionNodeData>();
+        while (index < lines.Count
+            && lines[index].Indent == listIndent
+            && lines[index].Trimmed.StartsWith("- "))
+        {
+            var child = new ScenarioTriggerConditionNodeData();
+            if (TryReadListItemKeyValue(lines[index].Trimmed, out string key, out string value)
+                && key == "id")
+            {
+                child.NodeId = ParseYamlString(value);
+            }
+            else
+            {
+                validation.AddError(
+                    "scenario.yaml.rule.condition.id.required",
+                    "Condition list items must start with '- id:'.",
+                    ruleId);
+            }
+
+            index++;
+            ScenarioTriggerConditionNodeData body = ParseConditionNode(
+                lines,
+                ref index,
+                listIndent + 2,
+                validation,
+                ruleId);
+            body.NodeId = child.NodeId;
+            children.Add(body);
+        }
+
+        return children;
+    }
+
+    private static JObject ParseParameterMap(
+        List<YamlLine> lines,
+        ref int index,
+        int fieldIndent)
+    {
+        var result = new JObject();
+        while (index < lines.Count && lines[index].Indent == fieldIndent)
+        {
+            if (!TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
+            {
+                break;
+            }
+
+            result[key] = ParseYamlValue(value);
+            index++;
+        }
+
+        return result;
+    }
+
+    private static List<SequenceInputDefinition> ParseSequenceInputs(
+        List<YamlLine> lines,
+        ref int index,
+        int listIndent,
+        ScenarioValidationResult validation,
+        string ownerId)
+    {
+        var inputs = new List<SequenceInputDefinition>();
+        while (index < lines.Count
+            && lines[index].Indent == listIndent
+            && lines[index].Trimmed.StartsWith("- ", StringComparison.Ordinal))
+        {
+            if (!TryReadListItemKeyValue(lines[index].Trimmed, out string key, out string value)
+                || key != "id")
+            {
+                validation.AddError(
+                    "sequence.input.id.required",
+                    "Each sequence input must start with '- id:'.",
+                    ownerId);
+                index++;
+                continue;
+            }
+
+            var input = new SequenceInputDefinition { InputId = ParseYamlString(value) };
+            index++;
+            while (index < lines.Count
+                && lines[index].Indent == listIndent + 2
+                && TryReadKeyValue(lines[index].Trimmed, out string inputKey, out string inputValue))
+            {
+                switch (inputKey)
+                {
+                    case "name":
+                        input.DisplayNameKo = ParseYamlString(inputValue);
+                        break;
+                    case "description":
+                        input.DescriptionKo = ParseYamlString(inputValue);
+                        break;
+                    case "type":
+                        input.TypeId = ParseYamlString(inputValue);
+                        break;
+                    case "required":
+                        input.Required = ParseBool(inputValue);
+                        break;
+                    case "default":
+                        input.DefaultValueJson = ParseYamlValue(inputValue)
+                            .ToString(Newtonsoft.Json.Formatting.None);
+                        break;
+                    case "defaultJson":
+                        input.DefaultValueJson = ParseYamlString(inputValue);
+                        break;
+                }
+
+                index++;
+            }
+
+            inputs.Add(input);
+        }
+
+        return inputs;
     }
 
     private static List<ScenarioActionData> ParseActions(
@@ -1165,7 +1771,35 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
 
             if (action.ActionId == ActionDirector.ParallelActionId)
             {
-                action.Children = ParseActions(lines, ref index, indent + 2, validation, ownerId);
+                bool hasChildrenSection = false;
+                while (index < lines.Count && lines[index].Indent == indent + 2)
+                {
+                    if (!TryReadKeyValue(lines[index].Trimmed, out string metadataKey, out string metadataValue))
+                    {
+                        break;
+                    }
+
+                    if (metadataKey == "children")
+                    {
+                        index++;
+                        action.Children = ParseActions(lines, ref index, indent + 4, validation, ownerId);
+                        hasChildrenSection = true;
+                        break;
+                    }
+
+                    if (!TryApplyActionMetadata(action, metadataKey, metadataValue))
+                    {
+                        break;
+                    }
+
+                    index++;
+                }
+
+                if (!hasChildrenSection)
+                {
+                    action.Children = ParseActions(lines, ref index, indent + 2, validation, ownerId);
+                }
+
                 actions.Add(action);
                 continue;
             }
@@ -1176,19 +1810,7 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 if (lines[index].Indent > indent &&
                     TryReadKeyValue(lines[index].Trimmed, out string key, out string value))
                 {
-                    if (key == "disabled")
-                    {
-                        action.Disabled = ParseBool(value);
-                    }
-                    else if (key == "designerLabel")
-                    {
-                        action.DesignerLabel = ParseYamlString(value);
-                    }
-                    else if (key == "note")
-                    {
-                        action.Note = ParseYamlString(value);
-                    }
-                    else
+                    if (!TryApplyActionMetadata(action, key, value))
                     {
                         parameters[key] = ParseYamlValue(value);
                     }
@@ -1207,6 +1829,76 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
         }
 
         return actions;
+    }
+
+    private static bool TryApplySequenceMetadata(
+        ScenarioSourceSequenceDocument sequence,
+        string key,
+        string value)
+    {
+        if (sequence.Contract == null)
+        {
+            sequence.Contract = new ActionSequenceContractData();
+        }
+
+        switch (key)
+        {
+            case "title":
+                sequence.DisplayNameKo = ParseYamlString(value);
+                return true;
+            case "description":
+                sequence.Contract.DescriptionKo = ParseYamlString(value);
+                return true;
+            case "usage":
+                sequence.Contract.UsageKo = ParseYamlString(value);
+                return true;
+            case "status":
+                sequence.Contract.Lifecycle = ParseSequenceLifecycle(value);
+                return true;
+            case "tags":
+                sequence.Contract.Tags = ParseInlineStringList(value);
+                return true;
+            case "allowedPrimaryModes":
+                sequence.Contract.AllowedPrimaryModes = ParseInlineStringList(value);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryApplyActionMetadata(
+        ScenarioActionData action,
+        string key,
+        string value)
+    {
+        switch (key)
+        {
+            case "blockId":
+                action.BlockId = ParseYamlString(value);
+                return true;
+            case "disabled":
+                action.Disabled = ParseBool(value);
+                return true;
+            case "designerLabel":
+                action.DesignerLabel = ParseYamlString(value);
+                return true;
+            case "note":
+                action.Note = ParseYamlString(value);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static ActionSequenceLifecycle ParseSequenceLifecycle(string value)
+    {
+        string normalized = ParseYamlString(value);
+        if (Enum.TryParse(normalized, true, out ActionSequenceLifecycle lifecycle))
+        {
+            return lifecycle;
+        }
+
+        return ActionSequenceLifecycle.Draft;
     }
 
     private static List<YamlLine> ReadLines(string sourceText)
@@ -1264,6 +1956,25 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
     private static JToken ParseYamlValue(string value)
     {
         string scalar = value == null ? string.Empty : value.Trim();
+        string parsedString = ParseYamlString(scalar);
+        if (ScenarioValueBinding.TryParseExpression(parsedString, out JObject binding))
+        {
+            return binding;
+        }
+
+        if ((scalar.StartsWith("{") && scalar.EndsWith("}"))
+            || (scalar.StartsWith("[") && scalar.EndsWith("]")))
+        {
+            try
+            {
+                return JToken.Parse(scalar);
+            }
+            catch (System.Exception)
+            {
+                // Fall through to the constrained YAML scalar/list parser.
+            }
+        }
+
         if (scalar.StartsWith("[") && scalar.EndsWith("]"))
         {
             var array = new JArray();
@@ -1296,7 +2007,7 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
             return floatValue;
         }
 
-        return ParseYamlString(scalar);
+        return parsedString;
     }
 
     private static string NormalizeActionId(string actionId)
@@ -1435,6 +2146,29 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                 return BattleRuleOnceMode.PerEncounterMemory;
             default:
                 return BattleRuleOnceMode.PerBattle;
+        }
+    }
+
+    private static ScenarioTriggerTiming ParseTriggerTiming(string value)
+    {
+        switch (ParseYamlString(value))
+        {
+            case "after_current_action": return ScenarioTriggerTiming.AfterCurrentAction;
+            case "after_current_skill": return ScenarioTriggerTiming.AfterCurrentSkill;
+            case "after_current_module": return ScenarioTriggerTiming.AfterCurrentModule;
+            case "checkpoint": return ScenarioTriggerTiming.Checkpoint;
+            default: return ScenarioTriggerTiming.Immediate;
+        }
+    }
+
+    private static ScenarioTriggerOnceScope ParseTriggerOnce(string value)
+    {
+        switch (ParseYamlString(value))
+        {
+            case "always": return ScenarioTriggerOnceScope.Always;
+            case "encounter_memory": return ScenarioTriggerOnceScope.EncounterMemory;
+            case "save": return ScenarioTriggerOnceScope.Save;
+            default: return ScenarioTriggerOnceScope.Session;
         }
     }
 

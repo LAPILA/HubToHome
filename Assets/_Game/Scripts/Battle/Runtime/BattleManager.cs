@@ -11,7 +11,7 @@ using Sirenix.OdinInspector;
 /// 전투의 전체 흐름을 제어하는 중앙 매니저 (Singleton & State Machine 기반).
 /// 옵저버(Observer) 패턴을 활용하여 UI와의 결합도를 낮췄습니다.
 /// </summary>
-public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost
+public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost, IActionSequenceLiveContextSource
 {
     public static BattleManager Instance { get; private set; }
 
@@ -104,6 +104,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     // 캐싱된 대기 시간 (가비지 최적화)
     private readonly WaitForSeconds _waitShort  = new WaitForSeconds(0.4f);
+    private readonly WaitForSeconds _waitMedium = new WaitForSeconds(0.8f);
 
     private PlayerCharacter _pendingActor;
     private PlayerMenuAction _pendingAction;
@@ -129,6 +130,57 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
 
     public IBattleAimShooterModuleController AimShooterModuleController => _aimShooterModuleController;
+
+    public int LiveContextPriority => 100;
+
+    public string LiveContextLabel => "현재 BattleManager";
+
+    public bool TryCreateLiveContext(
+        BattleScenarioData requestedScenario,
+        ActionSequenceAsset sequence,
+        out ActionDirector director,
+        out ActionExecutionContext context,
+        out string error)
+    {
+        director = null;
+        context = null;
+        if (requestedScenario == null || sequence == null
+            || requestedScenario.Sequences == null
+            || !requestedScenario.Sequences.Contains(sequence))
+        {
+            error = string.Empty;
+            return false;
+        }
+        if (!Application.isPlaying)
+        {
+            error = "Play Mode에서만 Battle 시퀀스를 실동작 테스트할 수 있습니다.";
+            return false;
+        }
+        if (_battleScenarioRuntime == null || !_battleScenarioRuntime.HasScenario)
+        {
+            error = "현재 BattleManager에 실행 중인 Battle Scenario가 없습니다.";
+            return false;
+        }
+        if (requestedScenario != null
+            && _battleScenarioRuntime.ScenarioData != requestedScenario)
+        {
+            error = "현재 전투의 Battle Scenario와 Sequence Maker 대상이 다릅니다.";
+            return false;
+        }
+
+        BattleScenarioData activeScenario = _battleScenarioRuntime.ScenarioData;
+        if (activeScenario.Sequences == null
+            || !activeScenario.Sequences.Contains(sequence))
+        {
+            error = "선택한 Action Sequence가 현재 전투 Scenario에 속하지 않습니다.";
+            return false;
+        }
+
+        director = CreateBattleScenarioActionDirector();
+        context = CreateBattleScenarioActionContext();
+        error = string.Empty;
+        return true;
+    }
 
     public void SetBattleScenarioData(BattleScenarioData scenarioData)
     {
@@ -393,32 +445,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private static ActionDirector CreateBattleScenarioActionDirector()
     {
-        var registry = new ActionAdapterRegistry();
-        registry.Register(new FlowWaitActionAdapter());
-        registry.Register(new DialogueWaitActionAdapter());
-        registry.Register(new BgmCrossfadeActionAdapter());
-        registry.Register(new ScreenFadeActionAdapter());
-        registry.Register(new CinematicLetterboxActionAdapter());
-        registry.Register(new BattleCameraFocusActionAdapter());
-        registry.Register(new BattleCameraResetActionAdapter());
-        registry.Register(new BattleCameraShakeActionAdapter());
-        registry.Register(new BattleActorPoseActionAdapter());
-        registry.Register(new BattleActorFlipActionAdapter());
-        registry.Register(new BattleActorMoveActionAdapter());
-        registry.Register(new BattleActorDropInActionAdapter());
-        registry.Register(new BattleActorFakeAttackActionAdapter());
-        registry.Register(new BattleActorReturnSlotsActionAdapter());
-        registry.Register(new ModuleSwitchActionAdapter());
-        registry.Register(new ModuleStartActionAdapter());
-        registry.Register(new BattleSkillTimelineActionAdapter());
-        registry.Register(new BattleParticipantDamageActionAdapter());
-        registry.Register(new BattleParticipantHealHpActionAdapter());
-        registry.Register(new BattleParticipantHealMpActionAdapter());
-        registry.Register(new BattleParticipantConsumeMpActionAdapter());
-        registry.Register(new BattleFlagSetActionAdapter());
-        registry.Register(new BattleFlagClearActionAdapter());
-        registry.Register(new TimelinePlayActionAdapter());
-        return new ActionDirector(registry);
+        return BattleScenarioActionRegistryFactory.CreateDirector();
     }
 
     private ActionExecutionContext CreateBattleScenarioActionContext()

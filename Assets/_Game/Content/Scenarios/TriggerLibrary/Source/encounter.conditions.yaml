@@ -1,0 +1,64 @@
+libraryId: "encounter-conditions"
+name: "진행 상태 조건"
+description: "Encounter Memory와 저장 flag를 읽는 공식 조건 계약"
+category: "progress"
+order: 30
+accent: "#49A078"
+conditions:
+  flag.state:
+    name: "저장 Flag 상태"
+    description: "명시한 저장 또는 진행 flag 경로의 값이 기준 JSON 값과 같은지 확인한다."
+    usage: "분기 해금, 이미 본 연출, 퀘스트 진행처럼 저장되는 상태에 반응할 때 사용한다."
+    sentence: "{flag} flag가 {value}이고"
+    tags: ["저장", "flag", "진행"]
+    aliases: ["save flag", "event flag"]
+    contexts: ["save_state"]
+    modes: ["battle", "overworld"]
+    icon: "flag"
+    parameters:
+      flag:
+        name: "Flag"
+        description: "flag. 접두사 없이 입력하는 안정적인 flag ID"
+        type: "flag_id"
+        control: "flag_picker"
+        required: true
+        placeholder: "예: shooter.unlocked"
+        sources: ["literal", "input"]
+      value:
+        name: "기준값"
+        description: "비교할 타입 보존 JSON 값"
+        type: "json"
+        control: "typed_value"
+        required: true
+        default: "true"
+        sources: ["literal", "input"]
+  memory.meet_count:
+    name: "만남 횟수 비교"
+    description: "현재 Encounter Memory의 meetCount를 기준 숫자와 비교한다."
+    usage: "같은 적을 처음, 두 번째, 그 이후 만났을 때 서로 다른 대사와 흐름을 선택할 때 사용한다."
+    sentence: "이 만남 횟수가 {operator} {value}이고"
+    tags: ["Encounter Memory", "만남", "저장"]
+    aliases: ["meet count", "재회"]
+    contexts: ["encounter_memory"]
+    modes: ["battle", "overworld"]
+    icon: "history"
+    parameters:
+      operator:
+        name: "비교 방식"
+        description: "만남 횟수 비교 연산"
+        type: "comparison_operator"
+        control: "dropdown"
+        required: true
+        default: "\"equal\""
+        options: ["equal", "not_equal", "less", "less_or_equal", "greater", "greater_or_equal"]
+        sources: ["literal"]
+      value:
+        name: "횟수"
+        description: "비교할 만남 횟수"
+        type: "integer"
+        control: "integer"
+        required: true
+        default: "1"
+        sources: ["literal", "input"]
+        min: 0
+        unit: "회"

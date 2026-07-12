@@ -1,0 +1,223 @@
+libraryId: battle
+name: "전투"
+description: "전투 참가자의 스킬, HP/MP, 임시 플래그를 명시적으로 변경합니다."
+category: battle
+order: 90
+accent: "#D35D68"
+actions:
+  battle.flag.clear:
+    name: "전투 플래그 지우기"
+    description: "현재 전투 동안 공유되는 임시 플래그를 제거합니다."
+    usage: "Game Module 전환 후 더 이상 유지하면 안 되는 전투 한정 상태를 정리할 때 사용합니다."
+    summary: "전투 플래그 {flag} 제거"
+    runtimeAdapter: BattleFlagClearActionAdapter
+    tags: [battle, flag, state]
+    aliases: [상태삭제, 플래그해제]
+    contexts: [battle_flag_store]
+    modes: [battle]
+    preview: live_only
+    preparation: unsupported
+    icon: flag-off
+    example: "- battle.flag.clear: { flag: shooter.unlocked }"
+    parameters:
+      flag:
+        name: "플래그"
+        description: "제거할 전투 한정 플래그 ID입니다."
+        type: flagRef
+        control: flag
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+  battle.flag.set:
+    name: "전투 플래그 설정"
+    description: "Game Module이 바뀌어도 현재 전투 동안 유지되는 임시 값을 기록합니다."
+    usage: "페이즈 진입, 기능 해금, 적의 행동 변화처럼 저장 파일에는 남기지 않을 전투 상태에 사용합니다."
+    summary: "전투 플래그 {flag} = {value}"
+    runtimeAdapter: BattleFlagSetActionAdapter
+    tags: [battle, flag, state]
+    aliases: [상태설정, 플래그]
+    contexts: [battle_flag_store]
+    modes: [battle]
+    preview: live_only
+    preparation: unsupported
+    icon: flag
+    example: "- battle.flag.set: { flag: shooter.unlocked, value: phase2 }"
+    parameters:
+      flag:
+        name: "플래그"
+        description: "설정할 전투 한정 플래그 ID입니다."
+        type: flagRef
+        control: flag
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      value:
+        name: "값"
+        description: "플래그에 기록할 문자열 값이며 생략하면 true입니다."
+        type: string
+        control: text
+        default: "true"
+        sources: [literal, input, event, session, context, result]
+  battle.participant.consume_mp:
+    name: "MP 소비"
+    description: "전투 참가자의 MP를 지정한 양만큼 소비하도록 전투 명령 계층에 요청합니다."
+    usage: "Game Module이나 시나리오 액션에서 스킬 비용을 실제 전투 상태에 반영할 때 사용합니다."
+    summary: "{subject} MP -{amount}"
+    runtimeAdapter: BattleParticipantConsumeMpActionAdapter
+    tags: [battle, participant, mp]
+    aliases: [마나소비, 비용]
+    contexts: [battle_participant_commands]
+    modes: [battle]
+    preview: live_only
+    preparation: unsupported
+    icon: minus-circle
+    example: "- battle.participant.consume_mp: { subject: player, amount: 10 }"
+    parameters:
+      subject:
+        name: "대상"
+        description: "MP를 소비할 전투 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      amount:
+        name: "양"
+        description: "소비할 양의 정수 MP입니다."
+        type: int
+        control: integer
+        required: true
+        quick: true
+        min: 1
+        sources: [literal, input, event, session, context, result]
+  battle.participant.damage:
+    name: "피해 적용"
+    description: "전투 참가자에게 실제 HP 피해를 적용하도록 전투 명령 계층에 요청합니다."
+    usage: "슈팅, 권투, 미니게임 또는 시나리오 이벤트가 실제 전투 피해를 만들어야 할 때 사용합니다."
+    summary: "{subject} HP -{amount}"
+    runtimeAdapter: BattleParticipantDamageActionAdapter
+    tags: [battle, participant, damage]
+    aliases: [데미지, 피해]
+    contexts: [battle_participant_commands]
+    modes: [battle]
+    preview: live_only
+    preparation: unsupported
+    icon: heart-crack
+    example: "- battle.participant.damage: { subject: zev, amount: 25 }"
+    parameters:
+      subject:
+        name: "대상"
+        description: "피해를 받을 전투 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      amount:
+        name: "피해량"
+        description: "적용할 양의 정수 피해량입니다."
+        type: int
+        control: integer
+        required: true
+        quick: true
+        min: 1
+        sources: [literal, input, event, session, context, result]
+  battle.participant.heal_hp:
+    name: "HP 회복"
+    description: "전투 참가자의 HP를 지정한 양만큼 회복하도록 전투 명령 계층에 요청합니다."
+    usage: "시나리오 보상, 회복 Game Module, 특수 이벤트가 실제 HP를 회복할 때 사용합니다."
+    summary: "{subject} HP +{amount}"
+    runtimeAdapter: BattleParticipantHealHpActionAdapter
+    tags: [battle, participant, heal]
+    aliases: [체력회복, 힐]
+    contexts: [battle_participant_commands]
+    modes: [battle]
+    preview: live_only
+    preparation: unsupported
+    icon: heart-plus
+    example: "- battle.participant.heal_hp: { subject: player, amount: 20 }"
+    parameters:
+      subject:
+        name: "대상"
+        description: "HP를 회복할 전투 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      amount:
+        name: "회복량"
+        description: "적용할 양의 정수 HP 회복량입니다."
+        type: int
+        control: integer
+        required: true
+        quick: true
+        min: 1
+        sources: [literal, input, event, session, context, result]
+  battle.participant.heal_mp:
+    name: "MP 회복"
+    description: "전투 참가자의 MP를 지정한 양만큼 회복하도록 전투 명령 계층에 요청합니다."
+    usage: "시나리오 보상이나 특수 Game Module이 실제 MP를 회복할 때 사용합니다."
+    summary: "{subject} MP +{amount}"
+    runtimeAdapter: BattleParticipantHealMpActionAdapter
+    tags: [battle, participant, mp, heal]
+    aliases: [마나회복, MP회복]
+    contexts: [battle_participant_commands]
+    modes: [battle]
+    preview: live_only
+    preparation: unsupported
+    icon: sparkles
+    example: "- battle.participant.heal_mp: { subject: player, amount: 10 }"
+    parameters:
+      subject:
+        name: "대상"
+        description: "MP를 회복할 전투 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      amount:
+        name: "회복량"
+        description: "적용할 양의 정수 MP 회복량입니다."
+        type: int
+        control: integer
+        required: true
+        quick: true
+        min: 1
+        sources: [literal, input, event, session, context, result]
+  battle.skill.timeline:
+    name: "기존 스킬 타임라인 실행"
+    description: "현재 SkillData의 기존 ActionTimeline 블록을 호환 어댑터를 통해 실행합니다."
+    usage: "QTE 전투에서 이미 만든 스킬 연출과 피해 로직을 새 시나리오 흐름 안에 포함할 때만 사용합니다. 전체 전투 흐름을 이 액션 안에 넣지 않습니다."
+    summary: "{actor} 스킬 {skill}"
+    runtimeAdapter: BattleSkillTimelineActionAdapter
+    tags: [battle, skill, qte, compatibility]
+    aliases: [스킬실행, 기존스킬]
+    contexts: [skill_timeline_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: unsupported
+    icon: wand-sparkles
+    example: "- battle.skill.timeline: { skill: slash, actor: player, targets: [zev] }"
+    parameters:
+      skill:
+        name: "스킬"
+        description: "실행할 SkillData의 안정적인 스킬 ID입니다."
+        type: skillRef
+        control: skill
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      actor:
+        name: "사용자"
+        description: "스킬을 사용할 전투 참가자 ID이며 생략하면 현재 행동자를 사용합니다."
+        type: actorRef
+        control: actor
+        sources: [literal, input, event, session, context]
+      targets:
+        name: "대상 목록"
+        description: "명시적인 대상 ID 목록이며 생략하면 SkillData의 TargetType을 따릅니다."
+        type: actorRef[]
+        control: actor_list
+        sources: [literal, input, event, session, context]

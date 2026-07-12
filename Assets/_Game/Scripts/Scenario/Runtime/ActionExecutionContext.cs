@@ -1,26 +1,33 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 public sealed class ActionExecutionContext
 {
     private readonly Dictionary<Type, object> _services;
+    private readonly Dictionary<string, JToken> _values;
+    private readonly ActionExecutionContext _valueParent;
 
     public ActionExecutionContext()
-        : this(new ActionExecutionHandle(), new Dictionary<Type, object>())
+        : this(new ActionExecutionHandle(), new Dictionary<Type, object>(), null)
     {
     }
 
     public ActionExecutionContext(ActionExecutionHandle handle)
-        : this(handle, new Dictionary<Type, object>())
+        : this(handle, new Dictionary<Type, object>(), null)
     {
     }
 
     private ActionExecutionContext(
         ActionExecutionHandle handle,
-        Dictionary<Type, object> services)
+        Dictionary<Type, object> services,
+        ActionExecutionContext valueParent,
+        Dictionary<string, JToken> values = null)
     {
         Handle = handle ?? new ActionExecutionHandle();
         _services = services ?? new Dictionary<Type, object>();
+        _values = values ?? new Dictionary<string, JToken>(StringComparer.Ordinal);
+        _valueParent = valueParent;
     }
 
     public ActionExecutionHandle Handle { get; }
@@ -28,6 +35,7 @@ public sealed class ActionExecutionContext
     public string ScenarioId { get; set; } = string.Empty;
     public string PrimaryMode { get; set; } = string.Empty;
     public string ModuleId { get; set; } = string.Empty;
+    public string ExecutionBlockId { get; set; } = string.Empty;
 
     public void SetService<TService>(TService service)
         where TService : class
@@ -63,13 +71,92 @@ public sealed class ActionExecutionContext
         return TryGetService(out service) ? service : null;
     }
 
+    public void SetValue(string path, JToken value)
+    {
+        string normalized = NormalizePath(path);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            throw new ArgumentException("Context value path is required.", nameof(path));
+        }
+
+        _values[normalized] = value == null ? JValue.CreateNull() : value.DeepClone();
+    }
+
+    public bool TryGetValue(string path, out JToken value)
+    {
+        string normalized = NormalizePath(path);
+        if (_values.TryGetValue(normalized, out JToken local))
+        {
+            value = local.DeepClone();
+            return true;
+        }
+
+        if (_valueParent != null)
+        {
+            return _valueParent.TryGetValue(normalized, out value);
+        }
+
+        value = null;
+        return false;
+    }
+
+    public bool RemoveLocalValue(string path)
+    {
+        return _values.Remove(NormalizePath(path));
+    }
+
     public ActionExecutionContext CreateChild(ActionExecutionHandle handle)
     {
-        return new ActionExecutionContext(handle, _services)
+        return new ActionExecutionContext(handle, _services, this)
         {
             ScenarioId = ScenarioId,
             PrimaryMode = PrimaryMode,
-            ModuleId = ModuleId
+            ModuleId = ModuleId,
+            ExecutionBlockId = ExecutionBlockId
         };
+    }
+
+    public ActionExecutionContext CreateExecutionScope(ActionExecutionHandle handle)
+    {
+        return new ActionExecutionContext(handle, _services, _valueParent, _values)
+        {
+            ScenarioId = ScenarioId,
+            PrimaryMode = PrimaryMode,
+            ModuleId = ModuleId,
+            ExecutionBlockId = ExecutionBlockId
+        };
+    }
+
+    public ActionExecutionContext CreateDetachedExecutionScope(ActionExecutionHandle handle)
+    {
+        var values = new Dictionary<string, JToken>(StringComparer.Ordinal);
+        CopyVisibleValues(values);
+        return new ActionExecutionContext(
+            handle,
+            new Dictionary<Type, object>(),
+            null,
+            values)
+        {
+            ScenarioId = ScenarioId,
+            PrimaryMode = PrimaryMode,
+            ModuleId = ModuleId,
+            ExecutionBlockId = ExecutionBlockId
+        };
+    }
+
+    private void CopyVisibleValues(Dictionary<string, JToken> destination)
+    {
+        _valueParent?.CopyVisibleValues(destination);
+        foreach (KeyValuePair<string, JToken> pair in _values)
+        {
+            destination[pair.Key] = pair.Value == null
+                ? JValue.CreateNull()
+                : pair.Value.DeepClone();
+        }
+    }
+
+    private static string NormalizePath(string path)
+    {
+        return string.IsNullOrWhiteSpace(path) ? string.Empty : path.Trim();
     }
 }

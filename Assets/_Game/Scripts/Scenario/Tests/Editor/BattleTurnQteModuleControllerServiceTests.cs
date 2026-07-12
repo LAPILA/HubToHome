@@ -82,6 +82,10 @@ public class BattleTurnQteModuleControllerServiceTests
             _positionManagerObject = new GameObject("PositionManager");
             _positionManager = _positionManagerObject.AddComponent<PositionManager>();
             SetStaticProperty(typeof(PositionManager), "Instance", _positionManager);
+            SetPrivateField(
+                _positionManager,
+                "_playerDefaultPos",
+                new List<Transform> { _positionManagerObject.transform });
 
             _playerObject = new GameObject("Player");
             Player = _playerObject.AddComponent<PlayerCharacter>();
@@ -100,15 +104,6 @@ public class BattleTurnQteModuleControllerServiceTests
             enemyData.EnemyName = "ZEV";
             Enemy.Setup(enemyData);
             _assets.Add(enemyData);
-
-            SetPrivateField(
-                _positionManager,
-                "_playerDefaultPos",
-                new List<Transform> { _playerObject.transform });
-            SetPrivateField(
-                _positionManager,
-                "_enemyDefaultPos",
-                new List<Transform> { _enemyObject.transform });
 
             Host = new FakeTurnQteHost(Player, Enemy);
         }
@@ -138,9 +133,7 @@ public class BattleTurnQteModuleControllerServiceTests
 
         private static void SetPrivateField(object target, string fieldName, object value)
         {
-            FieldInfo field = target.GetType().GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(field, Is.Not.Null);
             field.SetValue(target, value);
         }

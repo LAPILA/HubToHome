@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 public sealed class BattleScenarioActionBridge
 {
@@ -60,6 +61,29 @@ public sealed class BattleScenarioActionBridge
             Action<ActionExecutionHandle> cancelChild = _ => childHandle.Cancel("Parent battle scenario execution was canceled.");
             parentHandle.CancellationRequested += cancelChild;
             ActionExecutionContext childContext = context.CreateChild(childHandle);
+            JObject targetInputs;
+            try
+            {
+                targetInputs = string.IsNullOrWhiteSpace(trigger.TargetInputsJson)
+                    ? new JObject()
+                    : JObject.Parse(trigger.TargetInputsJson);
+            }
+            catch (Exception exception)
+            {
+                parentHandle.Fail("Trigger target inputs are invalid for rule '" + trigger.RuleId + "'.", exception);
+                yield break;
+            }
+
+            if (!SequenceInputBinder.TryBindInputs(
+                    sequence.Contract?.Inputs,
+                    targetInputs,
+                    childContext,
+                    out string inputError))
+            {
+                parentHandle.Fail("Trigger input binding failed for rule '" + trigger.RuleId + "': " + inputError);
+                yield break;
+            }
+
             IEnumerator routine = _director.Play(sequence, childContext);
 
             while (!childHandle.IsDone && !parentHandle.IsCancellationRequested)

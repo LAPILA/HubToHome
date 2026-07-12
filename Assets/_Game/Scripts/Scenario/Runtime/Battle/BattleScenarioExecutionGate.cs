@@ -75,6 +75,37 @@ public sealed class BattleScenarioExecutionGate : IGameModuleEventSink
             timing));
     }
 
+    public void PublishEnemyDefeated(
+        string subjectId,
+        string sourceActorId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentAction)
+    {
+        if (_runtime != null)
+        {
+            Enqueue(_runtime.PublishEnemyDefeated(subjectId, sourceActorId, timing));
+        }
+    }
+
+    public void PublishSkillCompleted(
+        string skillId,
+        string sourceActorId = "",
+        string outcomeId = "",
+        BattleRuleTiming timing = BattleRuleTiming.AfterCurrentSkill)
+    {
+        if (_runtime != null)
+        {
+            Enqueue(_runtime.PublishSkillCompleted(skillId, sourceActorId, outcomeId, timing));
+        }
+    }
+
+    public void PublishScenarioEvent(ScenarioEventData scenarioEvent)
+    {
+        if (_runtime != null)
+        {
+            Enqueue(_runtime.PublishScenarioEvent(scenarioEvent));
+        }
+    }
+
     public IEnumerator Flush(BattleRuleTiming timing)
     {
         if (_runtime == null)
@@ -83,6 +114,21 @@ public sealed class BattleScenarioExecutionGate : IGameModuleEventSink
         }
 
         Enqueue(_runtime.Flush(timing));
+        IEnumerator playRoutine = PlayReadyTriggers();
+        while (playRoutine.MoveNext())
+        {
+            yield return playRoutine.Current;
+        }
+    }
+
+    public IEnumerator FlushCheckpoint(string checkpointId)
+    {
+        if (_runtime == null)
+        {
+            yield break;
+        }
+
+        Enqueue(_runtime.FlushCheckpoint(checkpointId));
         IEnumerator playRoutine = PlayReadyTriggers();
         while (playRoutine.MoveNext())
         {

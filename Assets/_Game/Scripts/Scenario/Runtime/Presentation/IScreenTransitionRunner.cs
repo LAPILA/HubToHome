@@ -36,7 +36,7 @@ public sealed class ScreenTransitionRunner : IScreenTransitionRunner
         yield return overlay.FadeTo(fadeColor, targetAlpha, duration, handle);
     }
 
-    private static bool TryResolveTargetAlpha(string mode, out float targetAlpha)
+    internal static bool TryResolveTargetAlpha(string mode, out float targetAlpha)
     {
         targetAlpha = 0f;
         if (string.IsNullOrWhiteSpace(mode))
@@ -61,7 +61,7 @@ public sealed class ScreenTransitionRunner : IScreenTransitionRunner
         }
     }
 
-    private static bool TryResolveColor(string color, out Color fadeColor)
+    internal static bool TryResolveColor(string color, out Color fadeColor)
     {
         fadeColor = Color.black;
         if (string.IsNullOrWhiteSpace(color))

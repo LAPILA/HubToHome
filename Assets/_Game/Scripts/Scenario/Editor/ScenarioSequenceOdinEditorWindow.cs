@@ -12,7 +12,8 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
     private ActionCatalogAsset _builtinCatalog;
     private ActionCatalogAsset _mergedCatalogCache;
 
-    [MenuItem("HubToHome/시나리오/Odin 시퀀스 에디터")]
+    // Migration-only implementation retained for old draft conversion tests.
+    // SequenceMakerWindow is the sole discoverable authoring surface.
     private static void OpenWindow()
     {
         ScenarioSequenceOdinEditorWindow window = GetWindow<ScenarioSequenceOdinEditorWindow>();
@@ -280,6 +281,7 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
     internal ScenarioActionBlockDraft CreateDraft(string actionId, List<ScenarioActionBlockDraft> ownerList)
     {
         var draft = new ScenarioActionBlockDraft();
+        draft.BlockId = ScenarioBlockIdentity.Create();
         draft.OwnerList = ownerList;
         draft.ActionId = string.IsNullOrWhiteSpace(actionId) ? CreateDefaultActionId() : actionId.Trim();
         draft.RefreshCatalogViewRecursive(this, ownerList);
@@ -805,40 +807,7 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
 
     private static ActionCatalogEntry CloneEntry(ActionCatalogEntry source)
     {
-        var clone = new ActionCatalogEntry
-        {
-            ActionId = source.ActionId,
-            Category = source.Category,
-            DisplayNameKo = source.DisplayNameKo,
-            DescriptionKo = source.DescriptionKo,
-            RuntimeAdapterId = source.RuntimeAdapterId,
-            ExampleYaml = source.ExampleYaml,
-            Disabled = source.Disabled
-        };
-
-        if (source.Parameters != null)
-        {
-            for (int i = 0; i < source.Parameters.Count; i++)
-            {
-                ActionCatalogParameter parameter = source.Parameters[i];
-                if (parameter == null)
-                {
-                    continue;
-                }
-
-                clone.Parameters.Add(new ActionCatalogParameter
-                {
-                    Name = parameter.Name,
-                    Type = parameter.Type,
-                    DisplayNameKo = parameter.DisplayNameKo,
-                    DescriptionKo = parameter.DescriptionKo,
-                    Required = parameter.Required,
-                    DefaultValue = parameter.DefaultValue
-                });
-            }
-        }
-
-        return clone;
+        return ActionCatalogContractCopy.Entry(source);
     }
 
     private static ActionCatalogEntry CreateEntry(
@@ -1132,6 +1101,9 @@ public sealed class ScenarioActionBlockDraft
 
     [NonSerialized] private ScenarioSequenceOdinEditorWindow _owner;
 
+    [HideInInspector]
+    public string BlockId = string.Empty;
+
     [ShowInInspector]
     [ReadOnly]
     [PropertyOrder(-30)]
@@ -1210,6 +1182,9 @@ public sealed class ScenarioActionBlockDraft
         List<ScenarioActionBlockDraft> ownerList)
     {
         var draft = new ScenarioActionBlockDraft();
+        draft.BlockId = action != null && !string.IsNullOrWhiteSpace(action.BlockId)
+            ? action.BlockId.Trim()
+            : ScenarioBlockIdentity.Create();
         draft.Enabled = action == null || !action.Disabled;
         draft.DesignerLabel = action != null ? action.DesignerLabel : string.Empty;
         draft.Note = action != null ? action.Note : string.Empty;
@@ -1245,6 +1220,7 @@ public sealed class ScenarioActionBlockDraft
     {
         var action = new ScenarioActionData
         {
+            BlockId = string.IsNullOrWhiteSpace(BlockId) ? ScenarioBlockIdentity.Create() : BlockId.Trim(),
             DesignerLabel = DesignerLabel ?? string.Empty,
             ActionId = ScenarioSequenceOdinEditorWindow.Normalize(ActionId),
             ParametersJson = BuildParametersJson(),
@@ -1264,6 +1240,7 @@ public sealed class ScenarioActionBlockDraft
     {
         var clone = new ScenarioActionBlockDraft
         {
+            BlockId = ScenarioBlockIdentity.Create(),
             Enabled = Enabled,
             DesignerLabel = DesignerLabel,
             Note = Note,
@@ -1397,7 +1374,7 @@ public sealed class ScenarioActionBlockDraft
 
     private string BuildParametersJson()
     {
-        if (HasUnknownAction())
+        if (Parameters == null || Parameters.Count == 0)
         {
             try
             {

@@ -4,6 +4,17 @@ The Action Catalog is the discoverable contract for actions. It is for both AI g
 
 ## Entry Shape
 
+The runtime/editor contract now includes more than the legacy identity fields. New and migrated entries should provide:
+
+- `descriptionKo`, `usageKo`, `summaryTemplateKo`, `tags`, and `aliases` for discovery and compact block summaries.
+- `requiredContexts` and `allowedPrimaryModes` for compatibility filtering.
+- `previewSupport` and `preparationPolicy` for Safe Preview and selected-block Preparation Run.
+- `deprecated` plus `replacementActionId` for guided migration.
+- Per parameter: stable `type`, `editorControl`, `quickEdit`, optional min/max/unit, fixed options, and allowed value sources.
+- Allowed value sources are `literal`, `input`, `event`, `session`, `memory`, `flag`, `context`, and `result`.
+
+Legacy assets missing these authoring fields remain executable and receive migration warnings. Invalid numeric ranges, duplicate parameter names, unsupported value sources, self-replacement, and Safe Preview without a preparation policy are errors.
+
 Each action needs:
 
 ```yaml
@@ -34,6 +45,55 @@ examples:
       duration: 0.4
 ```
 
+## Category Source Files
+
+Official Action Library source files use `*.actions.yaml` and one category per file. The deterministic shape is:
+
+```yaml
+libraryId: flow
+name: "흐름"
+description: "시퀀스 실행 순서와 시간 제어"
+category: flow
+order: 10
+accent: "#4FA3FF"
+actions:
+  flow.wait:
+    name: "기다리기"
+    description: "지정한 시간 동안 다음 블록 실행을 기다립니다."
+    usage: "연출 사이 간격이 필요할 때 사용합니다."
+    summary: "{duration}초 기다리기"
+    runtimeAdapter: FlowWaitActionAdapter
+    tags: [flow, timing]
+    contexts: [clock]
+    preview: safe_preview
+    preparation: skip_presentation
+    example: "- flow.wait: { duration: 1.0 }"
+    parameters:
+      duration:
+        name: "시간"
+        description: "기다릴 초 단위 시간"
+        type: duration
+        control: number
+        quick: true
+        default: "0"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event]
+```
+
+- Use two spaces per level and quoted one-line text. The writer escapes newlines inside quoted values.
+- `ActionLibrarySourceParser` and `ActionLibrarySourceWriter` own this constrained format; do not parse these files from UI code.
+- `ResolvedActionLibrary` merges category documents, sorts by category and Action ID, and reports duplicate IDs with both source paths.
+- `ActionLibrarySourceSync.ApplyToAsset` validates a temporary catalog first and mutates the generated target only after every source and merged contract has no errors.
+- `ActionCatalogAsset.SourcePaths` and `SourceHash` identify the exact generated source set. Do not hand-edit the generated catalog as the durable source.
+- Production category sources live under `Assets/_Game/Content/Scenarios/ActionLibrary/Source/`; the generated official catalog is `Assets/_Game/Content/Scenarios/ActionLibrary/Generated/ActionLibrary.asset`.
+- Rebuild through `HubToHome/시나리오/Action Library 다시 만들기` or `ProductionActionLibraryBuildCommand.Rebuild()`. Both paths parse every category, merge, validate adapter coverage, and then replace the generated asset.
+- `BattleScenarioActionRegistryFactory.CreateRegistry()` and `SceneActionSequenceContextFactory.CreateRegistry()` expose production registrations without scene state. `ActionAdapterContractScanner` must report adapter-without-catalog and catalog-without-adapter separately; `flow.parallel` is explicitly Director-owned.
+- The initial production library contains 28 contracts: 27 runtime adapters plus Director-owned `flow.parallel`. Any new registered Action must add its category source and consistency test in the same change.
+- `flow.parallel.parameters.policy` is a segmented enum with `all`, `any`, and `race`. Keep the default `all` for old sources. The Action Library description and generated runtime asset must be rebuilt whenever these completion semantics change.
+- `flow.parallel.parameters.previewWinner` is an optional direct-child Block ID used only by Preparation Run for `any` and `race`. Runtime combat does not use it. Without this explicit preview branch, selected-block Preparation must stop instead of guessing.
+- `preparation: apply_final_state` and `preparation: execute_isolated` are executable safety contracts, not editor labels. Add or update the matching `IActionPreparationAdapter` in the same change. `skip_presentation`, `require_input`, and `unsupported` must keep their documented fail/skip behavior.
+
 ## Categories
 
 Start with these categories:
@@ -49,6 +109,56 @@ Start with these categories:
 - `vfx`: spawn, attach, stop, pooled effect.
 - `flow`: wait, parallel, branch, cancel, marker.
 - `save`: set encounter memory, set flag, record outcome.
+- `cinematic`: scene-local Cinematic Stage preparation, reusable shot playback, and camera handoff.
+
+## Cinematic Stage Entries
+
+```yaml
+id: cinematic.shot.play
+category: cinematic
+displayNameKo: "시네마틱 샷 재생"
+summaryKo: "지정한 Cinematic Stage에서 카메라 레일과 여러 대상 모션을 동시에 재생합니다."
+runtimeAdapter: CinematicShotPlayActionAdapter
+params:
+  stage:
+    type: StageId
+    required: true
+  shot:
+    type: ShotId
+    required: true
+examples:
+  - cinematic.shot.play:
+      stage: overworld.subway_intro
+      shot: subway_arrival
+completion: "CinematicShotAsset의 모든 대상 모션과 CameraDelay를 포함한 카메라 렌즈 tween이 끝나면 완료됩니다."
+cancellation: "현재 shot tween만 중단하고 Stage를 해제할 수 있습니다."
+scope: "Overworld와 Battle 모두에서 씬-local stage가 제공될 때 사용 가능합니다."
+```
+
+`CinematicShotAsset.CameraDelay`와 camera rail `CinematicShotMotion.Delay`를 같은 값으로 두면 대상은 먼저 움직이고 카메라 추적과 줌은 나중에 함께 시작할 수 있습니다. 지하철 도착 샷은 화면 밖에서 출발한 기차가 중앙에 접근하는 `4.45초`를 사용합니다.
+
+```yaml
+id: cinematic.stage.prepare
+category: cinematic
+displayNameKo: "시네마틱 스테이지 준비"
+summaryKo: "전용 카메라, 카메라 레일, 대상의 시작 상태를 다음 shot에 맞춰 준비합니다."
+runtimeAdapter: CinematicStagePrepareActionAdapter
+params:
+  stage: { type: StageId, required: true }
+  shot: { type: ShotId, required: true }
+scope: "SceneLoader reveal gate 아래 또는 시퀀스 중 다음 shot 준비에 사용합니다."
+```
+
+```yaml
+id: cinematic.stage.release
+category: cinematic
+displayNameKo: "시네마틱 스테이지 해제"
+summaryKo: "전용 가상 카메라를 끄고 기본 게임 카메라로 돌려보냅니다."
+runtimeAdapter: CinematicStageReleaseActionAdapter
+params:
+  stage: { type: StageId, required: true }
+scope: "카메라 handoff가 필요한 모든 Primary Mode에서 사용 가능합니다."
+```
 
 ## Starter Entries
 

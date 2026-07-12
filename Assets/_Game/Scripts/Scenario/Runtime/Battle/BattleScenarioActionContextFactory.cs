@@ -18,6 +18,10 @@ public static class BattleScenarioActionContextFactory
         context.ScenarioId = scenarioData != null ? scenarioData.ScenarioId : string.Empty;
         context.PrimaryMode = scenarioData != null ? scenarioData.PrimaryMode : "battle";
         context.ModuleId = ResolveModuleId(scenarioData, gameModuleActionRunner, battleSessionState);
+        if (scenarioData != null && scenarioData.Sequences != null)
+        {
+            context.SetService<IActionSequenceResolver>(new ActionSequenceListResolver(scenarioData.Sequences));
+        }
 
         var dialogueRunner = new DialogueManagerRunner(dialogueManager);
         if (scenarioData != null)

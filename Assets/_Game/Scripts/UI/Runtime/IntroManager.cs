@@ -9,6 +9,7 @@ public class IntroManager : MonoBehaviour
     
     [Header("다음 스테이지")]
     [SerializeField] private string _nextSceneName = "02_OverworldScene";
+    [SerializeField, Min(0f)] private float _nextSceneFadeDuration = 1f;
 
     private NameInputUI _nameInput;
     private string _originalPart2Text;
@@ -63,7 +64,7 @@ public class IntroManager : MonoBehaviour
             if (_introPart2 != null && _introPart2.Nodes.Count > 0)
                 _introPart2.Nodes[0].DefaultText = _originalPart2Text;
 
-            SceneLoader.Instance?.LoadScene(_nextSceneName);
+            SceneLoader.Instance?.LoadScene(_nextSceneName, _nextSceneFadeDuration);
         });
     }
 }

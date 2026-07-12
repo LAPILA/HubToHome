@@ -5,6 +5,17 @@ public static class ScenarioCatalogValidator
 {
     private const string DialogueWaitActionId = "dialogue.wait";
     private const string TimelinePlayActionId = "timeline.play";
+    private static readonly HashSet<string> SupportedValueSources = new HashSet<string>
+    {
+        "literal",
+        "input",
+        "event",
+        "session",
+        "memory",
+        "flag",
+        "context",
+        "result"
+    };
 
     public static ScenarioValidationResult Validate(ActionCatalogAsset catalog)
     {
@@ -68,6 +79,9 @@ public static class ScenarioCatalogValidator
 
             ValidateSequenceActions(sequence, entryMap, dialogueRegistry, scenario, scenario.TimelineCutsceneCatalog, result);
         }
+
+        result.Merge(SequenceCallGraphValidator.Validate(scenario.Sequences));
+        ValidateTriggerRules(scenario, result);
 
         return result;
     }
@@ -140,6 +154,147 @@ public static class ScenarioCatalogValidator
         if (string.IsNullOrEmpty(Trim(entry.ExampleYaml)))
         {
             result.AddError("catalog.entry.example_yaml.required", "ExampleYaml is required.", objectId);
+        }
+
+        if (string.IsNullOrEmpty(Trim(entry.DescriptionKo)))
+        {
+            result.AddWarning("catalog.entry.description.missing", "Action description is missing.", objectId);
+        }
+
+        if (string.IsNullOrEmpty(Trim(entry.UsageKo)))
+        {
+            result.AddWarning("catalog.entry.usage.missing", "Action usage guidance is missing.", objectId);
+        }
+
+        if (string.IsNullOrEmpty(Trim(entry.SummaryTemplateKo)))
+        {
+            result.AddWarning("catalog.entry.summary_template.missing", "Action block summary template is missing.", objectId);
+        }
+
+        if (entry.Tags == null || entry.Tags.Count == 0)
+        {
+            result.AddWarning("catalog.entry.tags.missing", "Action search tags are missing.", objectId);
+        }
+
+        if (entry.RequiredContexts == null || entry.RequiredContexts.Count == 0)
+        {
+            result.AddWarning("catalog.entry.contexts.missing", "Action required contexts are not documented.", objectId);
+        }
+
+        if (entry.PreviewSupport == ActionPreviewSupport.SafePreview
+            && entry.PreparationPolicy == ActionPreparationPolicy.Unsupported)
+        {
+            result.AddError(
+                "catalog.entry.preparation_policy.required",
+                "Safe Preview actions require an explicit preparation policy.",
+                objectId);
+        }
+
+        if (entry.Deprecated)
+        {
+            string replacementId = Trim(entry.ReplacementActionId);
+            if (string.IsNullOrEmpty(replacementId))
+            {
+                result.AddWarning(
+                    "catalog.entry.replacement.missing",
+                    "Deprecated Action does not identify a replacement Action ID.",
+                    objectId);
+            }
+            else if (replacementId == actionId)
+            {
+                result.AddError(
+                    "catalog.entry.replacement.self",
+                    "Deprecated Action cannot replace itself.",
+                    objectId);
+            }
+        }
+
+        ValidateParameters(entry.Parameters, objectId, result);
+    }
+
+    private static void ValidateParameters(
+        List<ActionCatalogParameter> parameters,
+        string entryObjectId,
+        ScenarioValidationResult result)
+    {
+        if (parameters == null)
+        {
+            result.AddError("catalog.parameters.missing", "Action parameter list is missing.", entryObjectId);
+            return;
+        }
+
+        var seenNames = new HashSet<string>();
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            ActionCatalogParameter parameter = parameters[i];
+            string objectId = entryObjectId + ".parameters[" + i + "]";
+            if (parameter == null)
+            {
+                result.AddError("catalog.parameter.null", "Action parameter is null.", objectId);
+                continue;
+            }
+
+            string name = Trim(parameter.Name);
+            if (string.IsNullOrEmpty(name))
+            {
+                result.AddError("catalog.parameter.name.required", "Action parameter name is required.", objectId);
+            }
+            else if (!seenNames.Add(name))
+            {
+                result.AddError(
+                    "catalog.parameter.name.duplicate",
+                    "Duplicate Action parameter name: " + name,
+                    objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.Type)))
+            {
+                result.AddWarning("catalog.parameter.type.missing", "Action parameter type is missing.", objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.DisplayNameKo)))
+            {
+                result.AddWarning("catalog.parameter.display_name.missing", "Action parameter display name is missing.", objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.DescriptionKo)))
+            {
+                result.AddWarning("catalog.parameter.description.missing", "Action parameter description is missing.", objectId);
+            }
+
+            if (string.IsNullOrEmpty(Trim(parameter.EditorControlId)))
+            {
+                result.AddWarning("catalog.parameter.editor_control.missing", "Action parameter editor control is missing.", objectId);
+            }
+
+            if (parameter.HasMinimum && parameter.HasMaximum && parameter.Minimum > parameter.Maximum)
+            {
+                result.AddError(
+                    "catalog.parameter.range.invalid",
+                    "Action parameter minimum cannot be greater than maximum.",
+                    objectId);
+            }
+
+            if (parameter.ValueSources == null || parameter.ValueSources.Count == 0)
+            {
+                result.AddWarning(
+                    "catalog.parameter.value_sources.missing",
+                    "Action parameter value sources are not documented.",
+                    objectId);
+                continue;
+            }
+
+            for (int sourceIndex = 0; sourceIndex < parameter.ValueSources.Count; sourceIndex++)
+            {
+                string source = Trim(parameter.ValueSources[sourceIndex]);
+                if (!SupportedValueSources.Contains(source))
+                {
+                    result.AddError(
+                        "catalog.parameter.value_source.unknown",
+                        "Unknown Action parameter value source: " + source,
+                        objectId);
+                }
+            }
         }
     }
 
@@ -217,6 +372,235 @@ public static class ScenarioCatalogValidator
         }
     }
 
+    private static void ValidateTriggerRules(
+        BattleScenarioData scenario,
+        ScenarioValidationResult result)
+    {
+        if (scenario.TriggerRules == null)
+        {
+            result.AddError(
+                "scenario.trigger_rules.missing",
+                "Battle Scenario Trigger Rules list is missing.",
+                scenario.ScenarioId);
+            return;
+        }
+
+        var ruleIds = new HashSet<string>();
+        var sequenceMap = new Dictionary<string, ActionSequenceAsset>();
+        if (scenario.Sequences != null)
+        {
+            for (int i = 0; i < scenario.Sequences.Count; i++)
+            {
+                ActionSequenceAsset sequence = scenario.Sequences[i];
+                if (sequence != null && !string.IsNullOrWhiteSpace(sequence.SequenceId))
+                {
+                    sequenceMap[sequence.SequenceId.Trim()] = sequence;
+                }
+            }
+        }
+
+        for (int i = 0; i < scenario.TriggerRules.Count; i++)
+        {
+            ScenarioTriggerRuleData rule = scenario.TriggerRules[i];
+            string location = scenario.ScenarioId + ".triggerRules[" + i + "]";
+            if (rule == null)
+            {
+                result.AddError("scenario.trigger_rule.null", "Trigger Rule is null.", location);
+                continue;
+            }
+
+            string ruleId = Trim(rule.RuleId);
+            if (string.IsNullOrEmpty(ruleId))
+            {
+                result.AddError("scenario.trigger_rule.id.required", "Trigger Rule ID is required.", location);
+            }
+            else if (!ruleIds.Add(ruleId))
+            {
+                result.AddError("scenario.trigger_rule.id.duplicate", "Duplicate Trigger Rule ID: " + ruleId, location);
+            }
+
+            if (string.IsNullOrEmpty(Trim(rule.EventId)))
+            {
+                result.AddError("scenario.trigger_rule.event.required", "Trigger Rule Event ID is required.", location);
+            }
+
+            if (rule.Timing == ScenarioTriggerTiming.Checkpoint
+                && string.IsNullOrEmpty(Trim(rule.CheckpointId)))
+            {
+                result.AddError(
+                    "scenario.trigger_rule.checkpoint.required",
+                    "Checkpoint timing requires a checkpoint ID.",
+                    location);
+            }
+
+            string sequenceId = Trim(rule.SequenceId);
+            if (string.IsNullOrEmpty(sequenceId))
+            {
+                result.AddError("scenario.trigger_rule.sequence.required", "Trigger Rule target Sequence ID is required.", location);
+            }
+            else if (!sequenceMap.TryGetValue(sequenceId, out ActionSequenceAsset sequence))
+            {
+                result.AddError(
+                    "scenario.trigger_rule.sequence.missing",
+                    "Trigger Rule target Sequence was not found: " + sequenceId,
+                    location);
+            }
+            else
+            {
+                ValidateTriggerInputs(rule, sequence, result, location);
+            }
+
+            var nodeIds = new HashSet<string>();
+            ValidateTriggerConditionNode(rule.Conditions, nodeIds, result, location + ".conditions");
+        }
+    }
+
+    private static void ValidateTriggerConditionNode(
+        ScenarioTriggerConditionNodeData node,
+        HashSet<string> nodeIds,
+        ScenarioValidationResult result,
+        string location)
+    {
+        if (node == null)
+        {
+            result.AddError("scenario.trigger_condition.missing", "Trigger Condition node is missing.", location);
+            return;
+        }
+
+        string nodeId = Trim(node.NodeId);
+        if (string.IsNullOrEmpty(nodeId))
+        {
+            result.AddError("scenario.trigger_condition.id.required", "Trigger Condition node ID is required.", location);
+        }
+        else if (!nodeIds.Add(nodeId))
+        {
+            result.AddError("scenario.trigger_condition.id.duplicate", "Duplicate Trigger Condition node ID: " + nodeId, location);
+        }
+
+        if (node.Kind == ScenarioConditionNodeKind.Group)
+        {
+            if (node.Children == null)
+            {
+                result.AddError("scenario.trigger_condition.children.missing", "Condition Group children list is missing.", location);
+                return;
+            }
+
+            for (int i = 0; i < node.Children.Count; i++)
+            {
+                ValidateTriggerConditionNode(node.Children[i], nodeIds, result, location + ".children[" + i + "]");
+            }
+
+            return;
+        }
+
+        if (string.IsNullOrEmpty(Trim(node.ConditionId)))
+        {
+            result.AddError("scenario.trigger_condition.type.required", "Trigger Condition ID is required.", location);
+        }
+
+        try
+        {
+            JObject.Parse(string.IsNullOrWhiteSpace(node.ParametersJson) ? "{}" : node.ParametersJson);
+        }
+        catch (System.Exception exception)
+        {
+            result.AddError(
+                "scenario.trigger_condition.parameters.invalid",
+                "Trigger Condition parameters must be a JSON object: " + exception.Message,
+                location);
+        }
+    }
+
+    private static void ValidateTriggerInputs(
+        ScenarioTriggerRuleData rule,
+        ActionSequenceAsset sequence,
+        ScenarioValidationResult result,
+        string location)
+    {
+        JObject inputs;
+        try
+        {
+            inputs = JObject.Parse(string.IsNullOrWhiteSpace(rule.TargetInputsJson) ? "{}" : rule.TargetInputsJson);
+        }
+        catch (System.Exception exception)
+        {
+            result.AddError(
+                "scenario.trigger_rule.inputs.invalid",
+                "Trigger Rule target inputs must be a JSON object: " + exception.Message,
+                location);
+            return;
+        }
+
+        var definitions = new Dictionary<string, SequenceInputDefinition>();
+        if (sequence.Contract?.Inputs != null)
+        {
+            for (int i = 0; i < sequence.Contract.Inputs.Count; i++)
+            {
+                SequenceInputDefinition definition = sequence.Contract.Inputs[i];
+                if (definition != null && !string.IsNullOrWhiteSpace(definition.InputId))
+                {
+                    definitions[definition.InputId.Trim()] = definition;
+                }
+            }
+        }
+
+        foreach (JProperty property in inputs.Properties())
+        {
+            if (!definitions.ContainsKey(property.Name))
+            {
+                result.AddError(
+                    "scenario.trigger_rule.input.unknown",
+                    "Trigger Rule provides unknown Sequence Input: " + property.Name,
+                    location);
+            }
+
+            ValidateBindings(property.Value, result, location + ".inputs." + property.Name);
+        }
+
+        foreach (KeyValuePair<string, SequenceInputDefinition> pair in definitions)
+        {
+            SequenceInputDefinition definition = pair.Value;
+            if (definition.Required
+                && string.IsNullOrWhiteSpace(definition.DefaultValueJson)
+                && inputs.Property(pair.Key) == null)
+            {
+                result.AddError(
+                    "scenario.trigger_rule.input.required",
+                    "Trigger Rule is missing required Sequence Input: " + pair.Key,
+                    location);
+            }
+        }
+    }
+
+    private static void ValidateBindings(
+        JToken token,
+        ScenarioValidationResult result,
+        string location)
+    {
+        if (token == null)
+        {
+            return;
+        }
+
+        if (ScenarioValueBinding.HasMarker(token))
+        {
+            if (!ScenarioValueBinding.TryRead(token, out _, out string error))
+            {
+                result.AddError("scenario.trigger_rule.binding.invalid", error, location);
+            }
+
+            return;
+        }
+
+        if (token is JContainer container)
+        {
+            foreach (JToken child in container.Children())
+            {
+                ValidateBindings(child is JProperty property ? property.Value : child, result, location);
+            }
+        }
+    }
+
     private static void ValidateCatalogParameters(
         ScenarioActionData action,
         ActionCatalogEntry entry,
@@ -266,6 +650,16 @@ public static class ScenarioCatalogValidator
                     "scenario.action.parameter.required",
                     "Required parameter is blank: " + parameterName,
                     objectId);
+                continue;
+            }
+
+            if (ScenarioValueBinding.HasMarker(token))
+            {
+                if (!ScenarioValueBinding.TryRead(token, out _, out string bindingError))
+                {
+                    result.AddError("scenario.action.parameter.binding", bindingError, objectId);
+                }
+
                 continue;
             }
 

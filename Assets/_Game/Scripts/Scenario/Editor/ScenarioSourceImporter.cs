@@ -113,6 +113,7 @@ public sealed class ScenarioSourceImporter
     private static void CopyRules(ScenarioSourceDocument document, BattleScenarioData scenario)
     {
         scenario.Rules.Clear();
+        scenario.TriggerRules.Clear();
         if (document.Rules == null)
         {
             return;
@@ -123,6 +124,29 @@ public sealed class ScenarioSourceImporter
             ScenarioSourceRuleDocument rule = document.Rules[i];
             if (rule == null)
             {
+                continue;
+            }
+
+            if (rule.Kind == ScenarioSourceRuleKind.Trigger)
+            {
+                ScenarioTriggerConditionNodeData conditions =
+                    ScenarioTriggerIdentity.ClonePreservingIds(rule.Conditions);
+                ScenarioTriggerIdentity.EnsureUnique(
+                    conditions,
+                    document.Id + "|" + rule.RuleId);
+                scenario.TriggerRules.Add(new ScenarioTriggerRuleData
+                {
+                    RuleId = rule.RuleId,
+                    DisplayNameKo = rule.DisplayNameKo,
+                    EventId = rule.TriggerEventId,
+                    Timing = rule.TriggerTiming,
+                    CheckpointId = rule.CheckpointId,
+                    Once = rule.TriggerOnce,
+                    Conditions = conditions,
+                    SequenceId = rule.SequenceId,
+                    TargetInputsJson = rule.TargetInputsJson,
+                    Disabled = rule.Disabled
+                });
                 continue;
             }
 
@@ -281,8 +305,10 @@ public sealed class ScenarioSourceImporter
             ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
             sequence.SequenceId = sourceSequence.SequenceId;
             sequence.DisplayNameKo = sourceSequence.DisplayNameKo;
+            sequence.Contract = ActionSequenceContractData.CopyOf(sourceSequence.Contract);
             sequence.Source = metadata;
             sequence.Actions = CloneActions(sourceSequence.Actions);
+            ScenarioBlockIdentity.EnsureUnique(sequence.Actions);
             scenario.Sequences.Add(sequence);
         }
     }
@@ -306,20 +332,7 @@ public sealed class ScenarioSourceImporter
 
     private static ScenarioActionData CloneAction(ScenarioActionData source)
     {
-        if (source == null)
-        {
-            return null;
-        }
-
-        return new ScenarioActionData
-        {
-            DesignerLabel = source.DesignerLabel,
-            ActionId = source.ActionId,
-            ParametersJson = source.ParametersJson,
-            Note = source.Note,
-            Disabled = source.Disabled,
-            Children = CloneActions(source.Children)
-        };
+        return ScenarioBlockIdentity.ClonePreservingIds(source);
     }
 
     private static string NormalizeId(string value)

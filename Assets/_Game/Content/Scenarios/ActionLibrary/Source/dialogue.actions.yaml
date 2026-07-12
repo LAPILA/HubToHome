@@ -1,0 +1,30 @@
+libraryId: dialogue
+name: "대화"
+description: "공통 대화 시스템을 호출하고 플레이어 입력이 끝날 때까지 기다립니다."
+category: dialogue
+order: 20
+accent: "#D58ACB"
+actions:
+  dialogue.wait:
+    name: "대화하고 기다리기"
+    description: "등록된 대화를 시작하고 모든 문장과 선택 처리가 끝날 때까지 시퀀스를 멈춥니다."
+    usage: "마을, 전투, 시네마틱 어디서든 플레이어가 읽고 넘겨야 하는 대화에 사용합니다."
+    summary: "대화 {id}"
+    runtimeAdapter: DialogueWaitActionAdapter
+    tags: [dialogue, presentation, wait]
+    aliases: [대사, 말하기, conversation]
+    contexts: [dialogue_runner]
+    modes: [overworld, battle]
+    preview: safe_preview
+    preparation: require_input
+    icon: message-square
+    example: "- dialogue.wait: { id: zev.phase2_intro }"
+    parameters:
+      id:
+        name: "대화 ID"
+        description: "Scenario의 dialogue 목록이나 공통 대화 카탈로그에 등록된 ID입니다."
+        type: dialogueRef
+        control: dialogue
+        required: true
+        quick: true
+        sources: [literal, input, event, memory, context]

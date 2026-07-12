@@ -13,6 +13,12 @@ public class SceneLoader : MonoBehaviour
 {
     public static SceneLoader Instance { get; private set; }
 
+    /// <summary>
+    /// 씬 전환용 검은 페이드가 완전히 사라진 직후 호출됩니다.
+    /// 씬 안의 시작 연출은 이 시점부터 실행해 첫 프레임을 안전하게 준비할 수 있습니다.
+    /// </summary>
+    public event System.Action<string> SceneRevealCompleted;
+
     [Header("Fade UI")]
     [SerializeField] private CanvasGroup _fadeCanvas;
     private bool _isLoading;
@@ -77,6 +83,7 @@ public class SceneLoader : MonoBehaviour
         yield return _fadeCanvas.DOFade(0f, inDuration).SetUpdate(true).WaitForCompletion();
 
         _fadeCanvas.blocksRaycasts = false;
+        SceneRevealCompleted?.Invoke(sceneName);
         _isLoading = false;
     }
 

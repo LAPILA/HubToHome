@@ -1,0 +1,162 @@
+libraryId: "battle-events"
+name: "전투 이벤트"
+description: "전투와 Game Module에서 발생하는 공식 Scenario Event 계약"
+category: "battle"
+order: 10
+accent: "#E56A54"
+events:
+  battle.checkpoint:
+    name: "전투 체크포인트 도달"
+    description: "전투 흐름이 이름 있는 안전 실행 지점에 도달했을 때 발생한다."
+    usage: "현재 액션, 스킬, 모듈이 끝난 뒤처럼 지연 규칙을 정확한 지점에서 풀 때 사용한다."
+    sentence: "전투가 {checkpoint} 체크포인트에 도달하면"
+    tags: ["전투", "체크포인트", "지연"]
+    aliases: ["checkpoint", "flush"]
+    modes: ["battle"]
+    icon: "flag"
+    payload:
+      checkpoint:
+        name: "체크포인트"
+        description: "도달한 체크포인트의 안정적인 ID"
+        type: "checkpoint_id"
+        control: "checkpoint_picker"
+        required: true
+        placeholder: "예: skill.finished"
+        sources: ["event"]
+  battle.started:
+    name: "전투 시작"
+    description: "Battle Scenario가 초기화되고 시작 흐름을 실행할 준비가 되었을 때 발생한다."
+    usage: "첫 대사, 시작 연출, 오프닝 모듈 준비처럼 전투 진입 직후 한 번 실행할 규칙에 사용한다."
+    sentence: "전투가 시작되면"
+    tags: ["전투", "시작", "오프닝"]
+    aliases: ["battle start", "전투 진입"]
+    modes: ["battle"]
+    icon: "swords"
+    payload:
+      subject:
+        name: "대상"
+        description: "전투 시작 이벤트의 주체 ID"
+        type: "subject_id"
+        control: "subject_picker"
+        default: "\"battle\""
+        sources: ["event"]
+  module.completed:
+    name: "게임 모듈 완료"
+    description: "QTE, 슈팅, 권투, 미니게임 같은 Game Module이 하나의 결과를 보고했을 때 발생한다."
+    usage: "모듈 결과에 따라 다음 시퀀스, 다른 모듈, 전투 종료 흐름을 선택할 때 사용한다."
+    sentence: "{module} 모듈이 {outcome} 결과로 끝나면"
+    tags: ["모듈", "완료", "결과"]
+    aliases: ["module result", "미니게임 완료"]
+    modes: ["battle", "overworld"]
+    icon: "gamepad-2"
+    payload:
+      module:
+        name: "모듈"
+        description: "완료를 보고한 Game Module ID"
+        type: "module_id"
+        control: "module_picker"
+        required: true
+        placeholder: "예: aim_shooter"
+        sources: ["event"]
+      outcome:
+        name: "결과"
+        description: "모듈이 보고한 선택적 결과 ID"
+        type: "outcome_id"
+        control: "outcome_picker"
+        placeholder: "예: victory"
+        sources: ["event"]
+  participant.defeated:
+    name: "참가자 쓰러짐"
+    description: "전투 참가자의 HP가 0이 되어 쓰러진 상태로 전환될 때 발생한다."
+    usage: "적 처치 대사, 쓰러짐 연출, 전투 결과 전환처럼 사망 이후 흐름을 시작할 때 사용한다."
+    sentence: "{subject} 참가자가 쓰러지면"
+    tags: ["참가자", "HP", "쓰러짐"]
+    aliases: ["enemy defeated", "사망"]
+    modes: ["battle"]
+    icon: "skull"
+    payload:
+      subject:
+        name: "참가자"
+        description: "쓰러진 참가자의 안정적인 ID"
+        type: "subject_id"
+        control: "participant_picker"
+        required: true
+        sources: ["event"]
+      sourceActor:
+        name: "원인 Actor"
+        description: "쓰러짐을 유발한 선택적 Actor ID"
+        type: "actor_id"
+        control: "actor_picker"
+        sources: ["event"]
+  participant.hp_changed:
+    name: "참가자 HP 변경"
+    description: "전투 참가자의 HP 비율이 이전 값에서 현재 값으로 변경될 때 발생한다."
+    usage: "HP가 특정 임계치를 처음 통과하는 phase 전환이나 피해 반응 규칙의 이벤트로 사용한다."
+    sentence: "{subject}의 HP가 {previousRatio}에서 {currentRatio}로 바뀌면"
+    tags: ["참가자", "HP", "임계치"]
+    aliases: ["hp changed", "체력 변화"]
+    modes: ["battle"]
+    icon: "heart-pulse"
+    payload:
+      subject:
+        name: "참가자"
+        description: "HP가 변경된 참가자의 안정적인 ID"
+        type: "subject_id"
+        control: "participant_picker"
+        required: true
+        sources: ["event"]
+      previousRatio:
+        name: "이전 HP 비율"
+        description: "변경 전 HP 비율"
+        type: "ratio"
+        control: "number"
+        required: true
+        sources: ["event"]
+        min: 0
+        max: 1
+        unit: "비율"
+      currentRatio:
+        name: "현재 HP 비율"
+        description: "변경 후 HP 비율"
+        type: "ratio"
+        control: "number"
+        required: true
+        sources: ["event"]
+        min: 0
+        max: 1
+        unit: "비율"
+      sourceActor:
+        name: "원인 Actor"
+        description: "HP 변경을 유발한 선택적 Actor ID"
+        type: "actor_id"
+        control: "actor_picker"
+        sources: ["event"]
+  skill.completed:
+    name: "스킬 종료"
+    description: "한 스킬의 판정과 로컬 연출 흐름이 완료되었을 때 발생한다."
+    usage: "공격 스킬이 완전히 끝난 뒤 대사나 phase 전환을 시작해야 할 때 사용한다."
+    sentence: "{actor}가 사용한 {skill} 스킬이 끝나면"
+    tags: ["스킬", "완료", "전투"]
+    aliases: ["skill finished", "공격 종료"]
+    modes: ["battle"]
+    icon: "sparkles"
+    payload:
+      skill:
+        name: "스킬"
+        description: "완료된 스킬의 안정적인 ID"
+        type: "skill_id"
+        control: "skill_picker"
+        required: true
+        sources: ["event"]
+      actor:
+        name: "사용자"
+        description: "스킬을 사용한 선택적 Actor ID"
+        type: "actor_id"
+        control: "actor_picker"
+        sources: ["event"]
+      outcome:
+        name: "결과"
+        description: "스킬이 보고한 선택적 결과 ID"
+        type: "outcome_id"
+        control: "text"
+        sources: ["event"]

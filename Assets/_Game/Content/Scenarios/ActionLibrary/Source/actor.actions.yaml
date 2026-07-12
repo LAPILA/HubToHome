@@ -1,0 +1,327 @@
+libraryId: actor
+name: "캐릭터"
+description: "전투 캐릭터의 위치, 방향, 포즈와 연출 동작을 제어합니다."
+category: actor
+order: 70
+accent: "#D2A84D"
+actions:
+  battle.actor.drop_in:
+    name: "캐릭터 낙하 등장"
+    description: "캐릭터를 위쪽에서 떨어뜨려 충격과 함께 전투 위치에 등장시킵니다."
+    usage: "보스 난입이나 강한 착지 등 세로 방향 등장 연출에 사용합니다."
+    summary: "{actor} 낙하 등장 · 높이 {height}"
+    runtimeAdapter: BattleActorDropInActionAdapter
+    tags: [actor, battle, entrance]
+    aliases: [낙하, 착지, 등장]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: arrow-down-to-line
+    example: "- battle.actor.drop_in: { actor: zev, height: 3.5, fall: 0.22 }"
+    parameters:
+      actor:
+        name: "캐릭터"
+        description: "등장시킬 전투 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      height:
+        name: "시작 높이"
+        description: "현재 위치 위쪽의 시작 거리입니다."
+        type: number
+        control: number
+        default: "3.5"
+        sources: [literal, input, event, context]
+      hang:
+        name: "공중 대기"
+        description: "낙하 전 공중에서 머무는 시간입니다."
+        type: duration
+        control: number
+        default: "0.18"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      fall:
+        name: "낙하 시간"
+        description: "바닥까지 내려오는 시간입니다."
+        type: duration
+        control: number
+        default: "0.22"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      settle:
+        name: "착지 안정 시간"
+        description: "착지 후 기본 상태로 안정되는 시간입니다."
+        type: duration
+        control: number
+        default: "0.12"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      impact:
+        name: "충격 강도"
+        description: "착지 시 화면과 캐릭터에 적용할 연출 강도입니다."
+        type: number
+        control: slider
+        default: "1.1"
+        min: 0
+        sources: [literal, input, event, context]
+  battle.actor.fake_attack:
+    name: "연출용 공격"
+    description: "공격자와 대상을 움직이고 피격 포즈를 재생하지만 실제 HP는 변경하지 않습니다."
+    usage: "대사 중 충돌이나 페이즈 연출처럼 피해 계산과 분리된 가짜 공격에만 사용합니다."
+    summary: "{actor} → {target} 연출 공격"
+    runtimeAdapter: BattleActorFakeAttackActionAdapter
+    tags: [actor, battle, attack, presentation]
+    aliases: [가짜공격, 충돌연출]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: sword
+    example: "- battle.actor.fake_attack: { actor: player, target: zev, targetPose: hurt }"
+    parameters:
+      actor:
+        name: "공격자"
+        description: "공격 동작을 재생할 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      target:
+        name: "대상"
+        description: "피격 연출을 받을 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      targetPose:
+        name: "대상 포즈"
+        description: "공격이 닿았을 때 대상에게 적용할 포즈 ID입니다."
+        type: animationRef
+        control: animation
+        default: "hurt"
+        sources: [literal, input, event, context]
+      approach:
+        name: "접근 거리"
+        description: "공격자가 대상에게 접근할 거리 비율입니다."
+        type: number
+        control: number
+        default: "0.85"
+        min: 0
+        sources: [literal, input, event, context]
+      lunge:
+        name: "돌진 시간"
+        description: "공격자가 파고드는 시간입니다."
+        type: duration
+        control: number
+        default: "0.12"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      hold:
+        name: "타격 정지"
+        description: "충돌 순간을 유지할 시간입니다."
+        type: duration
+        control: number
+        default: "0.05"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      recover:
+        name: "복귀 시간"
+        description: "공격자가 원래 위치로 돌아오는 시간입니다."
+        type: duration
+        control: number
+        default: "0.18"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      impact:
+        name: "충격 강도"
+        description: "타격 순간의 연출 강도입니다."
+        type: number
+        control: slider
+        default: "0.6"
+        min: 0
+        sources: [literal, input, event, context]
+  battle.actor.flip:
+    name: "캐릭터 방향 변경"
+    description: "전투 캐릭터의 좌우 방향 상태를 변경합니다."
+    usage: "상대를 바라보게 하거나 연출 중 기본 방향을 뒤집을 때 사용합니다."
+    summary: "{actor} 방향 {mode}"
+    runtimeAdapter: BattleActorFlipActionAdapter
+    tags: [actor, battle, direction]
+    aliases: [뒤집기, 좌우반전]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: flip-horizontal
+    example: "- battle.actor.flip: { actor: zev, mode: flipped }"
+    parameters:
+      actor:
+        name: "캐릭터"
+        description: "방향을 바꿀 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      mode:
+        name: "방향 상태"
+        description: "default 또는 flipped 방향 상태입니다."
+        type: enum
+        control: segmented
+        default: "default"
+        sources: [literal, input, event, context]
+        options: [default, flipped]
+  battle.actor.move_to:
+    name: "캐릭터 이동"
+    description: "전투 캐릭터를 기준 앵커와 오프셋으로 지정한 위치까지 이동합니다."
+    usage: "페이즈 전환 중 참가자 재배치나 대사 연출의 위치 변경에 사용합니다."
+    summary: "{actor} → {anchor} ({x}, {y})"
+    runtimeAdapter: BattleActorMoveActionAdapter
+    tags: [actor, battle, movement]
+    aliases: [이동, 위치변경]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: move
+    example: "- battle.actor.move_to: { actor: zev, anchor: center, x: 0, y: 0, duration: 0.25 }"
+    parameters:
+      actor:
+        name: "캐릭터"
+        description: "이동할 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      anchor:
+        name: "기준 위치"
+        description: "current 또는 전투 연출이 지원하는 앵커 ID입니다."
+        type: positionRef
+        control: position
+        default: "current"
+        quick: true
+        sources: [literal, input, event, context]
+      x:
+        name: "X 오프셋"
+        description: "기준 위치에서 가로 방향으로 더할 거리입니다."
+        type: number
+        control: number
+        default: "0"
+        sources: [literal, input, event, context]
+      y:
+        name: "Y 오프셋"
+        description: "기준 위치에서 세로 방향으로 더할 거리입니다."
+        type: number
+        control: number
+        default: "0"
+        sources: [literal, input, event, context]
+      duration:
+        name: "이동 시간"
+        description: "목표 위치까지 이동할 초 단위 시간입니다."
+        type: duration
+        control: number
+        quick: true
+        default: "0.25"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      pose:
+        name: "이동 포즈"
+        description: "이동 중 재생할 포즈 또는 애니메이션 ID입니다."
+        type: animationRef
+        control: animation
+        default: "move"
+        sources: [literal, input, event, context]
+      impact:
+        name: "도착 충격"
+        description: "도착 순간의 연출 강도입니다."
+        type: number
+        control: slider
+        default: "0"
+        min: 0
+        sources: [literal, input, event, context]
+  battle.actor.pose:
+    name: "캐릭터 포즈"
+    description: "전투 캐릭터에게 지정한 포즈 또는 애니메이션 상태를 적용합니다."
+    usage: "대사 감정, 피격, 준비 자세처럼 연출용 상태를 명시할 때 사용합니다."
+    summary: "{actor} 포즈 {pose}"
+    runtimeAdapter: BattleActorPoseActionAdapter
+    tags: [actor, battle, animation]
+    aliases: [애니메이션, 자세]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: accessibility
+    example: "- battle.actor.pose: { actor: zev, pose: angry, duration: 0.25 }"
+    parameters:
+      actor:
+        name: "캐릭터"
+        description: "포즈를 적용할 참가자 ID입니다."
+        type: actorRef
+        control: actor
+        required: true
+        quick: true
+        sources: [literal, input, event, session, context]
+      pose:
+        name: "포즈"
+        description: "재생할 포즈 또는 애니메이션 ID입니다."
+        type: animationRef
+        control: animation
+        default: "idle"
+        quick: true
+        sources: [literal, input, event, context]
+      duration:
+        name: "전환 시간"
+        description: "새 포즈로 전환할 시간입니다."
+        type: duration
+        control: number
+        default: "0.25"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]
+      impact:
+        name: "충격 강도"
+        description: "포즈 전환에 더할 연출 강도입니다."
+        type: number
+        control: slider
+        default: "0"
+        min: 0
+        sources: [literal, input, event, context]
+  battle.actor.return_slots:
+    name: "캐릭터 전투 위치 복귀"
+    description: "모든 전투 캐릭터를 각자의 기본 전투 슬롯으로 되돌립니다."
+    usage: "공격이나 시네마틱 재배치가 끝난 뒤 정상 전투 구도로 복귀할 때 사용합니다."
+    summary: "전투 슬롯으로 {duration}초 복귀"
+    runtimeAdapter: BattleActorReturnSlotsActionAdapter
+    tags: [actor, battle, reset]
+    aliases: [위치복귀, 슬롯복귀]
+    contexts: [battle_cinematic_runner]
+    modes: [battle]
+    preview: live_only
+    preparation: apply_final_state
+    icon: undo-2
+    example: "- battle.actor.return_slots: { duration: 0.28 }"
+    parameters:
+      duration:
+        name: "복귀 시간"
+        description: "기본 슬롯으로 이동할 초 단위 시간입니다."
+        type: duration
+        control: number
+        quick: true
+        default: "0.28"
+        min: 0
+        unit: "초"
+        sources: [literal, input, event, context]

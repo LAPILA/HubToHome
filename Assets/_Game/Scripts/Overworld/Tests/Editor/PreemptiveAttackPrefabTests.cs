@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class PreemptiveAttackPrefabTests
 {
-    private const string PlayerPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Player_Base.prefab";
+    private const string PlayerPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Player/Player_Base.prefab";
     private const string ZevPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/ZEV_Prefab.prefab";
 
     [Test]

@@ -14,8 +14,10 @@
 
 ## Current Feature
 
-Active feature: `001-scenario-authoring`
+Active feature: `002-sequence-maker-workbench`
 
-Current phase: `implement`
+Current phase: `plan`
 
-Primary plan: `docs/plans/2026-06-14-scenario-authoring-architecture-implementation.md`
+Primary design: `docs/plans/2026-07-12-sequence-maker-workbench-design.md`
+
+Primary plan: `docs/plans/2026-07-12-sequence-maker-workbench-implementation.md`

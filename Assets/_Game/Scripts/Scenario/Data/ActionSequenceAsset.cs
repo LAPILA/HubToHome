@@ -10,6 +10,9 @@ public sealed class ActionSequenceAsset : ScriptableObject
     [Tooltip("에디터에 표시할 한국어 이름입니다.")]
     public string DisplayNameKo = string.Empty;
 
+    [Tooltip("사람이 읽는 설명, 용도, 태그와 실행 가능 범위입니다.")]
+    public ActionSequenceContractData Contract = new ActionSequenceContractData();
+
     [Tooltip("이 런타임 에셋을 만든 Scenario Source 정보입니다.")]
     public ScenarioSourceMetadata Source = new ScenarioSourceMetadata();
 
