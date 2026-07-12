@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -110,6 +111,94 @@ public class SequenceRecoveryStoreTests
         Assert.That(result.Success, Is.False);
         Assert.That(result.Error, Does.Contain("해시"));
         Assert.That(_sequence.DisplayNameKo, Is.EqualTo("현재 편집"));
+    }
+
+    [Test]
+    public void SnapshotForDifferentTargetIsRejectedWithoutChangingTarget()
+    {
+        var store = new SequenceRecoveryStore(_root);
+        SequenceRecoverySnapshot snapshot = store.Capture(_target);
+        ActionSequenceAsset other = ScriptableObject.CreateInstance<ActionSequenceAsset>();
+        other.SequenceId = "recovery.other";
+        other.DisplayNameKo = "다른 대상";
+        other.Actions.Add(new ScenarioActionData
+        {
+            BlockId = "other-wait",
+            ActionId = FlowWaitActionAdapter.Id,
+            ParametersJson = "{\"duration\":1}"
+        });
+
+        try
+        {
+            SequenceRecoveryResult result = store.Restore(snapshot, other, null);
+
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Error, Does.Contain("대상"));
+            Assert.That(other.DisplayNameKo, Is.EqualTo("다른 대상"));
+            Assert.That(other.Actions[0].BlockId, Is.EqualTo("other-wait"));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(other);
+        }
+    }
+
+    [Test]
+    public void MetadataCannotRedirectSnapshotOutsideRecoveryRoot()
+    {
+        var store = new SequenceRecoveryStore(_root);
+        SequenceRecoverySnapshot captured = store.Capture(_target);
+        string outsidePath = Path.Combine(
+            Path.GetDirectoryName(_root),
+            "outside-" + Guid.NewGuid().ToString("N") + ".yaml");
+        File.WriteAllText(outsidePath, File.ReadAllText(captured.YamlFilePath));
+        string metadataPath = Path.ChangeExtension(captured.YamlFilePath, ".json");
+        captured.YamlFilePath = outsidePath;
+        File.WriteAllText(
+            metadataPath,
+            JsonConvert.SerializeObject(captured, Formatting.Indented));
+
+        try
+        {
+            Assert.That(store.List(_target), Is.Empty);
+            Assert.That(File.Exists(outsidePath), Is.True);
+        }
+        finally
+        {
+            if (File.Exists(outsidePath))
+            {
+                File.Delete(outsidePath);
+            }
+        }
+    }
+
+    [Test]
+    public void RestoreRejectsSnapshotFileOutsideRecoveryRoot()
+    {
+        var store = new SequenceRecoveryStore(_root);
+        SequenceRecoverySnapshot captured = store.Capture(_target);
+        string outsidePath = Path.Combine(
+            Path.GetDirectoryName(_root),
+            "outside-" + Guid.NewGuid().ToString("N") + ".yaml");
+        File.Copy(captured.YamlFilePath, outsidePath);
+        captured.YamlFilePath = outsidePath;
+        _sequence.DisplayNameKo = "현재 편집";
+
+        try
+        {
+            SequenceRecoveryResult result = store.Restore(captured, _sequence, null);
+
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Error, Does.Contain("저장소"));
+            Assert.That(_sequence.DisplayNameKo, Is.EqualTo("현재 편집"));
+        }
+        finally
+        {
+            if (File.Exists(outsidePath))
+            {
+                File.Delete(outsidePath);
+            }
+        }
     }
 
     [Test]

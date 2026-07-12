@@ -2919,6 +2919,19 @@ public sealed class SequenceMakerWindow : EditorWindow
         return SaveCurrent(overwriteExternalChanges);
     }
 
+    internal int RecoveryCountForTests => _recoveries.Count;
+
+    internal void SetRecoveryStoreForTests(SequenceRecoveryStore store)
+    {
+        _recoveryStore = store;
+        RefreshRecoveries();
+    }
+
+    internal void CaptureRecoveryForTests()
+    {
+        CaptureRecovery();
+    }
+
     private T Require<T>(string name) where T : VisualElement
     {
         T element = _root.Q<T>(name);

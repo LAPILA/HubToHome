@@ -562,6 +562,11 @@ public sealed class SequencePlaybackController : IDisposable
         }
     }
 
+    internal void TickSafePreviewForTests()
+    {
+        TickSafePreview();
+    }
+
     internal static ActionSequenceAsset BuildPreparationSequence(
         ActionSequenceAsset source,
         string throughBlockId,

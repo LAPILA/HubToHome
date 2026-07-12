@@ -114,6 +114,10 @@ _Avoid_: making humans edit runtime asset serialization directly to author scena
 The Korean human-facing Unity editor surface for viewing, validating, reordering, inserting, and lightly editing Scenario Source-backed flow.
 _Avoid_: exposing raw GUIDs, fileIDs, or managed reference internals as the normal editing experience.
 
+**Sequence Maker Document Session**:
+The editor-side Module that owns target-scoped Sequence/Battle command histories, saved checkpoints, and recovery-restored dirty state for the official Sequence Maker. A standalone save checkpoints one Sequence; a Battle save checkpoints that Battle and its contained Sequences without changing unrelated open documents.
+_Avoid_: computing dirty state across every history the Window has ever opened, or marking every history saved after one target succeeds.
+
 **Action Catalog**:
 The discoverable catalog of Action grammar, Korean labels, parameters, examples, validation expectations, and runtime adapter ownership.
 _Avoid_: adding actions that only exist as undocumented C# classes or one-off YAML keys.

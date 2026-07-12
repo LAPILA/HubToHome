@@ -21,6 +21,7 @@ Play Mode testing needs real Battle, Overworld, and future minigame execution co
 - `SequenceMakerDocumentSession` owns target-scoped Sequence/Battle histories, saved checkpoints, and recovery-restored dirty state. The Window only asks for the active document state.
 - A standalone save checkpoints only that Sequence. A Battle save checkpoints the Battle rule history and histories of Sequences contained by that Battle; unrelated open documents remain dirty.
 - Unsaved edits create debounced recovery snapshots under `Library/HubToHome/SequenceMakerRecovery`, never under `Assets` and never as repository truth.
+- Recovery metadata may only resolve to its sibling YAML inside the configured recovery root. Restore and delete must reject path redirection and mismatched target identity.
 - Conflict UX must expose reload, inspected explicit overwrite, source opening, and recovery restore. It must never silently overwrite external YAML.
 - Runtime owners expose Play Mode test contexts through `IActionSequenceLiveContextSource`. Sequence Maker discovers that Interface rather than concrete Battle/Overworld classes.
 - Renaming a Sequence Input updates its contract and every recursive `${input.*}` binding in one undoable edit.
@@ -30,6 +31,7 @@ Play Mode testing needs real Battle, Overworld, and future minigame execution co
 - New editor behavior belongs only in the official UI Toolkit workbench.
 - New Primary Modes and scene-local systems can support Live Test by implementing one runtime Interface; editor playback code stays unchanged.
 - Recovery snapshots are disposable local safety state. Successful YAML save clears them.
+- Corrupt or redirected recovery metadata is ignored; it cannot read, restore, or delete files outside the recovery root.
 - Runtime Asset and YAML can still differ while a human is editing, but dirty/conflict/recovery state remains visible and recoverable.
 - The official workbench remains the UI composition root, while document ownership policy is isolated in `SequenceMakerDocumentSession`. Further extraction must follow similarly cohesive behavior boundaries rather than pass-through wrappers.
 

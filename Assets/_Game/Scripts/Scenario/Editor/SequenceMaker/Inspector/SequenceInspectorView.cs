@@ -55,7 +55,8 @@ public sealed class SequenceInspectorView : VisualElement
             value = _sequence.SequenceId ?? string.Empty,
             isReadOnly = true
         };
-        id.tooltip = "YAML, 규칙, sequence.call이 사용하는 안정적인 ID입니다. 일반 편집에서는 변경하지 않습니다.";
+        id.tooltip = "현재 ID: " + id.value
+            + "\nYAML, 규칙, sequence.call이 사용하는 안정적인 ID입니다. 일반 편집에서는 변경하지 않습니다.";
         Add(id);
         AddUsageImpact();
 

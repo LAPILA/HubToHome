@@ -8,6 +8,17 @@
 
 **Tech Stack:** Unity 6 Editor, C#, NUnit EditMode, UI Toolkit, Unity MCP, Newtonsoft JSON, deterministic scenario YAML, PowerShell capture tooling.
 
+## Completion Evidence
+
+- Target-scoped dirty/save/leave defects reproduced and fixed through `SequenceMakerDocumentSession`.
+- TextField-native and document-level shortcuts separated through `SequenceMakerShortcutRouter`.
+- Save failure, external conflict, explicit overwrite, UI recreation, recovery retention/clear, target identity, and recovery-root confinement covered by Window/Store journeys.
+- 100 deterministic random command histories round-trip through complete Undo/Redo; 1,000 Block projection remains addressable inside the editor budget.
+- Safe Preview validation failure, success, stop, restart, and EditMode Live Test fail-closed lifecycle covered.
+- Minimum 976x685, standard 1500x950, and wide 2100x1100 layouts inspected from real Unity pixels.
+- Unity EditMode `522/522`, Runtime/Editor builds error 0, and ZEV Play Mode probe 3/3 PASS with warning/error 0.
+- Architecture report: `C:/Users/Enou/AppData/Local/Temp/architecture-review-20260712-154820.html`.
+
 ---
 
 ## Operating Rules
@@ -385,4 +396,3 @@ docs: record sequence maker quality assurance
 ```
 
 Do not push without explicit human approval.
-

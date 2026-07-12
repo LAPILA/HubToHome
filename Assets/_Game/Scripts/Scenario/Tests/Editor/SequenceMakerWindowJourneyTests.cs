@@ -10,6 +10,7 @@ public sealed class SequenceMakerWindowJourneyTests
 {
     private readonly List<Object> _created = new List<Object>();
     private readonly List<string> _createdFiles = new List<string>();
+    private readonly List<string> _createdDirectories = new List<string>();
     private SequenceMakerWindow _window;
     private Object _previousSelection;
 
@@ -43,6 +44,14 @@ public sealed class SequenceMakerWindowJourneyTests
             }
         }
         _createdFiles.Clear();
+        for (int i = 0; i < _createdDirectories.Count; i++)
+        {
+            if (Directory.Exists(_createdDirectories[i]))
+            {
+                Directory.Delete(_createdDirectories[i], true);
+            }
+        }
+        _createdDirectories.Clear();
         UnityEditor.Selection.activeObject = _previousSelection;
     }
 
@@ -226,6 +235,43 @@ public sealed class SequenceMakerWindowJourneyTests
             Is.EqualTo("재생성 뒤에도 미저장"));
     }
 
+    [Test]
+    public void FailedSaveKeepsRecoverySnapshot()
+    {
+        string recoveryRoot = CreateTemporaryDirectory();
+        ActionSequenceAsset sequence = CreateSequence("qa.recovery.failed", "실패 복구");
+        _window.SetRecoveryStoreForTests(new SequenceRecoveryStore(recoveryRoot));
+        _window.SetTargetForTests(sequence);
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("복구할 변경"));
+        _window.CaptureRecoveryForTests();
+        Assert.That(_window.RecoveryCountForTests, Is.EqualTo(1));
+
+        Assert.That(_window.SaveCurrentForTests(), Is.False);
+
+        Assert.That(_window.RecoveryCountForTests, Is.EqualTo(1));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True);
+    }
+
+    [Test]
+    public void SuccessfulSaveClearsCurrentRecoverySnapshots()
+    {
+        string recoveryRoot = CreateTemporaryDirectory();
+        ActionSequenceAsset sequence = CreateSequence("qa.recovery.saved", "성공 복구");
+        sequence.Source.SourcePath = CreateTemporarySourcePath();
+        _window.SetRecoveryStoreForTests(new SequenceRecoveryStore(recoveryRoot));
+        _window.SetTargetForTests(sequence);
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("저장할 변경"));
+        _window.CaptureRecoveryForTests();
+        Assert.That(_window.RecoveryCountForTests, Is.EqualTo(1));
+
+        Assert.That(_window.SaveCurrentForTests(), Is.True, _window.StatusForTests);
+
+        Assert.That(_window.RecoveryCountForTests, Is.EqualTo(0));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.False);
+    }
+
     private ActionSequenceAsset CreateSequence(string id, string displayName)
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
@@ -260,5 +306,16 @@ public sealed class SequenceMakerWindowJourneyTests
             Guid.NewGuid().ToString("N") + ".sequence.yaml");
         _createdFiles.Add(Path.GetFullPath(path));
         return path.Replace('\\', '/');
+    }
+
+    private string CreateTemporaryDirectory()
+    {
+        string path = Path.GetFullPath(Path.Combine(
+            "Library",
+            "HubToHome",
+            "SequenceMakerQA",
+            Guid.NewGuid().ToString("N")));
+        _createdDirectories.Add(path);
+        return path;
     }
 }

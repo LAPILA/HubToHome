@@ -114,8 +114,19 @@ public sealed class SequenceRecoveryStore
                 SequenceRecoverySnapshot snapshot =
                     JsonConvert.DeserializeObject<SequenceRecoverySnapshot>(
                         File.ReadAllText(files[i], Encoding.UTF8));
-                if (snapshot != null && File.Exists(snapshot.YamlFilePath))
+                string expectedYamlPath = Path.ChangeExtension(files[i], ".yaml");
+                if (snapshot != null
+                    && string.Equals(
+                        snapshot.SnapshotId,
+                        Path.GetFileNameWithoutExtension(files[i]),
+                        StringComparison.Ordinal)
+                    && PathsEqual(snapshot.YamlFilePath, expectedYamlPath)
+                    && IsManagedYamlPath(expectedYamlPath)
+                    && MatchesTarget(snapshot, target.RuntimeAsset)
+                    && File.Exists(expectedYamlPath))
                 {
+                    snapshot.YamlFilePath = Path.GetFullPath(expectedYamlPath)
+                        .Replace('\\', '/');
                     snapshots.Add(snapshot);
                 }
             }
@@ -134,9 +145,24 @@ public sealed class SequenceRecoveryStore
         ActionCatalogAsset catalog)
     {
         var result = new SequenceRecoveryResult { Snapshot = snapshot };
-        if (snapshot == null || target == null || !File.Exists(snapshot.YamlFilePath))
+        if (snapshot == null || target == null)
         {
             result.Error = "복구 스냅샷 또는 대상 에셋을 찾지 못했습니다.";
+            return result;
+        }
+        if (!IsManagedYamlPath(snapshot.YamlFilePath))
+        {
+            result.Error = "복구 스냅샷이 Sequence Maker 복구 저장소 밖을 가리킵니다.";
+            return result;
+        }
+        if (!File.Exists(snapshot.YamlFilePath))
+        {
+            result.Error = "복구 스냅샷 또는 대상 에셋을 찾지 못했습니다.";
+            return result;
+        }
+        if (!MatchesTarget(snapshot, target))
+        {
+            result.Error = "복구 스냅샷의 대상 정보가 현재 에셋과 일치하지 않습니다.";
             return result;
         }
         try
@@ -189,9 +215,51 @@ public sealed class SequenceRecoveryStore
         return result;
     }
 
+    private static bool MatchesTarget(
+        SequenceRecoverySnapshot snapshot,
+        UnityEngine.Object target)
+    {
+        string targetType;
+        string targetId;
+        if (target is BattleScenarioData battle)
+        {
+            targetType = "battle";
+            targetId = battle.ScenarioId ?? string.Empty;
+        }
+        else if (target is ActionSequenceAsset sequence)
+        {
+            targetType = "sequence";
+            targetId = sequence.SequenceId ?? string.Empty;
+        }
+        else
+        {
+            return false;
+        }
+
+        if (!string.Equals(
+                snapshot.TargetType,
+                targetType,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                snapshot.TargetId,
+                targetId,
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string currentAssetPath = AssetDatabase.GetAssetPath(target) ?? string.Empty;
+        return string.IsNullOrWhiteSpace(snapshot.AssetPath)
+            || string.IsNullOrWhiteSpace(currentAssetPath)
+            || string.Equals(
+                snapshot.AssetPath.Replace('\\', '/'),
+                currentAssetPath.Replace('\\', '/'),
+                StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Delete(SequenceRecoverySnapshot snapshot)
     {
-        if (snapshot == null)
+        if (snapshot == null || !IsManagedYamlPath(snapshot.YamlFilePath))
         {
             return;
         }
@@ -227,6 +295,51 @@ public sealed class SequenceRecoveryStore
                 target.RuntimeAsset.GetType().FullName + "|" + (target.TargetId ?? string.Empty));
         }
         return Path.GetFullPath(Path.Combine(_root, key));
+    }
+
+    private bool IsManagedYamlPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)
+            || !string.Equals(
+                Path.GetExtension(path),
+                ".yaml",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        string root = Path.GetFullPath(_root)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(path);
+        }
+        catch
+        {
+            return false;
+        }
+        return fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool PathsEqual(string left, string right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+        try
+        {
+            return string.Equals(
+                Path.GetFullPath(left),
+                Path.GetFullPath(right),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void WriteAtomic(string path, string text)
