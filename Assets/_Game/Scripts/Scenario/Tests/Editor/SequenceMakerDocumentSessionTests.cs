@@ -120,7 +120,9 @@ public sealed class SequenceMakerDocumentSessionTests
         SequenceMakerLeaveIntent expected)
     {
         Assert.That(SequenceMakerLeavePrompt.FromDialogChoice(choice), Is.EqualTo(expected));
-        Assert.That(SequenceMakerLeavePrompt.KeepLocalLabel, Does.Contain("유지"));
+        Assert.That(SequenceMakerLeavePrompt.SaveLabel, Is.EqualTo("YAML 저장 후 이동"));
+        Assert.That(SequenceMakerLeavePrompt.KeepLocalLabel, Is.EqualTo("저장하지 않고 이동"));
+        Assert.That(SequenceMakerLeavePrompt.Title, Does.Contain("YAML"));
         Assert.That(SequenceMakerLeavePrompt.Message, Does.Contain("Runtime Asset"));
         Assert.That(SequenceMakerLeavePrompt.Message, Does.Contain("복구 기록"));
     }

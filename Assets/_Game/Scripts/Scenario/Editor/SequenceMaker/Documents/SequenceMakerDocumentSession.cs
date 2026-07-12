@@ -11,12 +11,13 @@ public enum SequenceMakerLeaveIntent
 
 public static class SequenceMakerLeavePrompt
 {
-    public const string Title = "저장되지 않은 시퀀스";
+    public const string Title = "YAML에 저장되지 않은 변경";
     public const string Message =
-        "현재 변경은 Runtime Asset과 복구 기록에 유지됩니다. YAML에 저장하지 않고 다른 대상을 열까요?";
-    public const string SaveLabel = "저장";
+        "현재 변경은 Runtime Asset에 적용되어 있지만 YAML에는 아직 저장되지 않았습니다.\n\n"
+        + "다른 편집 대상으로 이동해도 변경은 로컬 복구 기록에 남습니다.";
+    public const string SaveLabel = "YAML 저장 후 이동";
     public const string CancelLabel = "취소";
-    public const string KeepLocalLabel = "로컬 변경 유지하고 이동";
+    public const string KeepLocalLabel = "저장하지 않고 이동";
 
     public static SequenceMakerLeaveIntent FromDialogChoice(int choice)
     {
