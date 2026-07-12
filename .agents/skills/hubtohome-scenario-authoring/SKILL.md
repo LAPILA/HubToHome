@@ -135,9 +135,9 @@ Treat scenario YAML as the source of truth and ScriptableObject assets as the Un
 - 삭제는 비연쇄 방식이다. Trigger Rule, legacy Battle Rule, 다른 `sequence.call`, 다른 Battle 소유권, 동일 Battle의 중복 소유, 빈 Sequence ID, source path 누락, usage index 누락이 하나라도 있으면 차단한다. 현재 Battle의 정상 소유 관계 한 건만 차단 대상에서 제외한다.
 - Battle 소유 Sequence 삭제 순서는 recovery capture -> Battle 목록 제거 -> `BattleScenarioSaveTarget` 안전 저장 -> Runtime sub-asset 제거다. YAML 저장 실패는 원래 목록 index로 복원한다. YAML 저장 뒤 sub-asset 제거만 실패하면 source가 이미 반영된 부분 완료 상태이므로 Window는 인덱스와 선택을 다시 읽고 recovery 위치를 안내해야 한다.
 - 독립 Sequence 삭제는 export/round-trip validation -> source hash 일치 -> recovery capture -> YAML 제거 -> Runtime Asset 제거 순서다. Runtime Asset 제거가 실패하면 YAML과 `.meta`의 원본 byte를 복원한다. 외부 변경이나 기준 hash 누락을 overwrite하지 않는다.
-- 완전 삭제 확인창은 Sequence ID와 source path, 제거 범위를 표시하고 `취소`를 기본 동작으로 둔다. 참조를 자동 수정하거나 함께 삭제하지 않는다.
+- 완전 삭제 확인창은 Sequence ID와 source path, 제거 범위를 표시하고 `완전 삭제 / 취소` 두 버튼만 둔다. 참조를 자동 수정하거나 함께 삭제하지 않는다.
 - Sequence 삭제를 막는 Trigger/legacy Rule은 선택한 규칙 편집 화면의 `위험 작업 > 규칙 삭제`에서 직접 제거할 수 있어야 한다. 왼쪽 목록의 작은 삭제 아이콘만 유일한 경로로 두지 않는다.
-- Rule 삭제는 `BattleScenarioEditCommandStack`을 사용한다. Trigger Rule은 Rule ID, legacy Rule은 index와 전체 값 복사본으로 제거하며 Undo가 원래 위치와 값을 복구해야 한다. 삭제 확인은 취소가 기본이고 Rule만 제거하며 대상 Sequence는 유지한다.
+- Rule 삭제는 `BattleScenarioEditCommandStack`을 사용한다. Trigger Rule은 Rule ID, legacy Rule은 index와 전체 값 복사본으로 제거하며 Undo가 원래 위치와 값을 복구해야 한다. 삭제 확인창은 `규칙 삭제 / 취소` 두 버튼만 표시하고 Rule만 제거하며 대상 Sequence는 유지한다.
 - Rule 삭제 성공 후 해당 Rule이 참조하던 Sequence를 선택하고 `SequenceUsageIndex`를 즉시 다시 계산한다. 사용자는 창을 다시 열지 않고 바로 Sequence 삭제 가능 여부를 확인할 수 있어야 한다.
 - `BattleSkillTimelineRunner` only runs the legacy skill timeline blocks. Post-skill actor reset, camera reset, narration waits, turn ending, and phase/module transition policy must remain in the surrounding battle or Action Sequence flow.
 - Scenario validation must use `ScenarioCatalogValidator.ValidateBattleScenario(...)` for full battle scenarios, not only `ValidateSequence(...)`, so `dialogue.wait` IDs are checked against `BattleScenarioData.Dialogues` before runtime.

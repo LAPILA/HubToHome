@@ -113,3 +113,4 @@
 - Ctrl+Z로 규칙과 원래 순서 복구
 - 규칙 삭제 직후 Sequence 삭제 차단 상태 갱신
 - Unity EditMode 전체 `555/555` 통과
+- 규칙/Sequence 삭제 확인창의 불필요한 `No` 버튼 제거

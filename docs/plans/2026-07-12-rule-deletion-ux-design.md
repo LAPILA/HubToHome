@@ -15,7 +15,7 @@ Action Sequence 삭제가 규칙 참조 때문에 차단될 때 사용자는 해
 
 - 버튼 이름은 `규칙 삭제`다.
 - 삭제 전에 규칙 이름/ID와 실행 대상 Sequence를 보여준다.
-- 확인창의 기본 동작은 `취소`다.
+- 확인창은 `규칙 삭제 / 취소` 두 버튼만 표시한다.
 - 삭제는 `BattleScenarioEditCommandStack` 명령으로 실행해 Undo/Redo와 dirty/recovery/save 흐름을 유지한다.
 - Trigger Rule은 안정적인 Rule ID로 삭제한다.
 - legacy Rule은 현재 index의 값을 복사해 제거하고 Undo 시 정확한 원래 index에 복구한다.

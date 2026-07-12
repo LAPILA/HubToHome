@@ -913,13 +913,11 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private static bool ConfirmRuleDeletion(string title, string message)
     {
-        int choice = EditorUtility.DisplayDialogComplex(
+        return EditorUtility.DisplayDialog(
             title,
             message,
-            "취소",
             "규칙 삭제",
-            string.Empty);
-        return choice == 1;
+            "취소");
     }
 
     private void MoveTriggerRule(string ruleId, int targetIndex)
@@ -1652,13 +1650,11 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private static bool ConfirmSequenceDeletion(string title, string message)
     {
-        int choice = EditorUtility.DisplayDialogComplex(
+        return EditorUtility.DisplayDialog(
             title,
             message,
-            "취소",
             "완전 삭제",
-            string.Empty);
-        return choice == 1;
+            "취소");
     }
 
     private void RenderRuleInspector(VisualElement body, ScenarioTriggerRuleData rule)
