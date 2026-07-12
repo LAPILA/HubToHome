@@ -26,6 +26,8 @@ public sealed class TriggerRuleEditorView : VisualElement
     public event Action EditApplied;
     public event Action<string> Error;
     public event Action<int> ConvertLegacyRequested;
+    public event Action<string> DeleteTriggerRequested;
+    public event Action<int> DeleteLegacyRequested;
 
     public void BindTriggerRule(
         BattleScenarioData battle,
@@ -91,6 +93,9 @@ public sealed class TriggerRuleEditorView : VisualElement
         AddConditionTree();
         AddDoSection();
         AddSimulator();
+        AddDangerZone(
+            _rule.SequenceId,
+            () => DeleteTriggerRequested?.Invoke(_rule.RuleId));
     }
 
     private void AddHeader()
@@ -510,6 +515,9 @@ public sealed class TriggerRuleEditorView : VisualElement
                 out string error))
         {
             Add(DefinitionHelp(error, string.Empty));
+            AddDangerZone(
+                _legacyRule.SequenceId,
+                () => DeleteLegacyRequested?.Invoke(_legacyIndex));
             return;
         }
         var sentence = new Label(TriggerRuleSentenceFormatter.Format(
@@ -528,6 +536,32 @@ public sealed class TriggerRuleEditorView : VisualElement
         };
         convert.AddToClassList("sm-rule-primary-small");
         Add(convert);
+        AddDangerZone(
+            mapped.SequenceId,
+            () => DeleteLegacyRequested?.Invoke(_legacyIndex));
+    }
+
+    private void AddDangerZone(string sequenceId, Action delete)
+    {
+        var section = new VisualElement();
+        section.AddToClassList("sm-rule-danger");
+        var title = new Label("위험 작업");
+        title.AddToClassList("sm-rule-danger-title");
+        section.Add(title);
+        string target = SequenceDisplayName(sequenceId);
+        var description = new Label(
+            "이 규칙을 삭제하면 더 이상 '" + target + "' 시퀀스를 실행하지 않습니다.");
+        description.AddToClassList("sm-rule-danger-copy");
+        section.Add(description);
+        var button = new Button(delete)
+        {
+            name = "rule-delete-button",
+            text = "규칙 삭제",
+            tooltip = "이 규칙만 삭제합니다. 시퀀스는 삭제하지 않습니다."
+        };
+        button.AddToClassList("sm-rule-delete-command");
+        section.Add(button);
+        Add(section);
     }
 
     private void AddCondition(string parentId)

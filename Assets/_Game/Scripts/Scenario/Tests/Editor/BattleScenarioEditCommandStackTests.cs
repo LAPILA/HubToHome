@@ -104,6 +104,37 @@ public class BattleScenarioEditCommandStackTests
     }
 
     [Test]
+    public void LegacyDeleteUndoRedoPreservesExactRuleAndIndex()
+    {
+        _battle.Rules.Add(new BattleEventRuleData { RuleId = "legacy.first" });
+        _battle.Rules.Add(new BattleEventRuleData
+        {
+            RuleId = "legacy.target",
+            EventType = BattleEventType.EnemyHpCrossedBelow,
+            SubjectId = "zev",
+            OutcomeId = "phase.two",
+            ThresholdRatio = 0.5f,
+            SequenceId = "phase.two.sequence",
+            Disabled = true
+        });
+        _battle.Rules.Add(new BattleEventRuleData { RuleId = "legacy.last" });
+        var stack = new BattleScenarioEditCommandStack(_battle);
+
+        stack.Execute(BattleScenarioEditCommands.DeleteLegacyRule(1));
+
+        Assert.That(_battle.Rules, Has.Count.EqualTo(2));
+        Assert.That(_battle.Rules[1].RuleId, Is.EqualTo("legacy.last"));
+        Assert.That(stack.Undo(), Is.True);
+        Assert.That(_battle.Rules[1].RuleId, Is.EqualTo("legacy.target"));
+        Assert.That(_battle.Rules[1].SequenceId, Is.EqualTo("phase.two.sequence"));
+        Assert.That(_battle.Rules[1].ThresholdRatio, Is.EqualTo(0.5f));
+        Assert.That(_battle.Rules[1].Disabled, Is.True);
+        Assert.That(stack.Redo(), Is.True);
+        Assert.That(_battle.Rules, Has.Count.EqualTo(2));
+        Assert.That(_battle.Rules[1].RuleId, Is.EqualTo("legacy.last"));
+    }
+
+    [Test]
     public void SequenceContractCommandPreservesInputDefinitionsAcrossUndo()
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();

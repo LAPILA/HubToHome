@@ -137,6 +137,11 @@ public static class BattleScenarioEditCommands
         return new DeleteTriggerRuleCommand(ruleId);
     }
 
+    public static IBattleScenarioEditCommand DeleteLegacyRule(int index)
+    {
+        return new DeleteLegacyRuleCommand(index);
+    }
+
     public static IBattleScenarioEditCommand MoveTriggerRule(string ruleId, int targetIndex)
     {
         return new MoveTriggerRuleCommand(ruleId, targetIndex);
@@ -378,6 +383,39 @@ internal sealed class MoveTriggerRuleCommand : IBattleScenarioEditCommand
     }
 }
 
+internal sealed class DeleteLegacyRuleCommand : IBattleScenarioEditCommand
+{
+    private readonly int _index;
+    private BattleEventRuleData _removed;
+
+    public DeleteLegacyRuleCommand(int index)
+    {
+        _index = index;
+    }
+
+    public string Name => "기존 규칙 삭제";
+    public string PreferredRuleId => string.Empty;
+
+    public void Execute(BattleScenarioData scenario)
+    {
+        if (scenario?.Rules == null || _index < 0 || _index >= scenario.Rules.Count)
+        {
+            throw new InvalidOperationException("삭제할 기존 규칙을 찾지 못했습니다.");
+        }
+
+        _removed = ConvertLegacyTriggerRuleCommand.CopyLegacy(scenario.Rules[_index]);
+        scenario.Rules.RemoveAt(_index);
+    }
+
+    public void Undo(BattleScenarioData scenario)
+    {
+        scenario.Rules = scenario.Rules ?? new List<BattleEventRuleData>();
+        scenario.Rules.Insert(
+            Math.Max(0, Math.Min(_index, scenario.Rules.Count)),
+            ConvertLegacyTriggerRuleCommand.CopyLegacy(_removed));
+    }
+}
+
 internal sealed class ConvertLegacyTriggerRuleCommand : IBattleScenarioEditCommand
 {
     private readonly int _legacyIndex;
@@ -418,7 +456,7 @@ internal sealed class ConvertLegacyTriggerRuleCommand : IBattleScenarioEditComma
             CopyLegacy(_legacy));
     }
 
-    private static BattleEventRuleData CopyLegacy(BattleEventRuleData source)
+    internal static BattleEventRuleData CopyLegacy(BattleEventRuleData source)
     {
         if (source == null)
         {

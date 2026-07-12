@@ -82,3 +82,5 @@
 - [x] Refresh workspace after successful or partially committed Battle deletion.
 - [x] Verify real standalone assets and Battle sub-assets through AssetDatabase fixtures.
 - [x] Run full EditMode regression and visual UI inspection.
+- [x] Add direct Trigger and legacy Rule deletion from selected rule editors.
+- [x] Return to the referenced Sequence and refresh stale usage blockers after Rule deletion.

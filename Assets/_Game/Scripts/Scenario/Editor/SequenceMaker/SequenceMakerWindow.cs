@@ -79,6 +79,7 @@ public sealed class SequenceMakerWindow : EditorWindow
     private double _recoveryDueAt;
     private ISequenceDeletionService _deletionService;
     private Func<string, string, bool> _confirmDeletion;
+    private Func<string, string, bool> _confirmRuleDeletion;
 
     [MenuItem(MenuPath)]
     public static void Open()
@@ -110,6 +111,7 @@ public sealed class SequenceMakerWindow : EditorWindow
         _recoveryStore = new SequenceRecoveryStore();
         _deletionService = _deletionService ?? new SequenceDeletionCoordinator();
         _confirmDeletion = _confirmDeletion ?? ConfirmSequenceDeletion;
+        _confirmRuleDeletion = _confirmRuleDeletion ?? ConfirmRuleDeletion;
 
         BuildVisualTree();
         BindControls();
@@ -360,6 +362,8 @@ public sealed class SequenceMakerWindow : EditorWindow
         _ruleEditorView = new TriggerRuleEditorView();
         _ruleEditorView.EditApplied += AfterBattleEdit;
         _ruleEditorView.ConvertLegacyRequested += ConvertLegacyRule;
+        _ruleEditorView.DeleteTriggerRequested += DeleteTriggerRule;
+        _ruleEditorView.DeleteLegacyRequested += DeleteLegacyRule;
         _ruleEditorView.Error += message =>
         {
             SetStatus(message, true);
@@ -850,19 +854,72 @@ public sealed class SequenceMakerWindow : EditorWindow
         {
             return;
         }
-        if (!EditorUtility.DisplayDialog(
-                "이벤트 규칙 삭제",
-                "'" + DisplayName(rule.DisplayNameKo, rule.RuleId) + "' 규칙을 삭제할까요?",
-                "삭제",
-                "취소"))
+        string sequenceId = rule.SequenceId ?? string.Empty;
+        string message = "규칙: " + DisplayName(rule.DisplayNameKo, rule.RuleId)
+            + "\n실행 시퀀스: " + DisplayName(
+                FindBattleSequence(sequenceId)?.DisplayNameKo,
+                sequenceId)
+            + "\n\n이 규칙만 삭제하며 시퀀스는 유지합니다.";
+        if (!(_confirmRuleDeletion?.Invoke("이벤트 규칙 삭제", message) ?? false))
         {
             return;
         }
 
         int index = FindTriggerRuleIndex(ruleId);
         stack.Execute(BattleScenarioEditCommands.DeleteTriggerRule(ruleId));
-        SelectNearestTriggerRule(index);
+        SelectReferencedSequenceOrFallback(sequenceId, index);
         AfterBattleEdit();
+    }
+
+    private void DeleteLegacyRule(int index)
+    {
+        BattleScenarioData battle = _workspace.BattleScenario;
+        BattleScenarioEditCommandStack stack = GetCurrentBattleEditStack();
+        if (battle?.Rules == null || index < 0 || index >= battle.Rules.Count || stack == null)
+        {
+            return;
+        }
+
+        BattleEventRuleData rule = battle.Rules[index];
+        string ruleName = string.IsNullOrWhiteSpace(rule?.RuleId)
+            ? "기존 규칙 " + (index + 1)
+            : rule.RuleId;
+        string sequenceId = rule?.SequenceId ?? string.Empty;
+        string message = "규칙: " + ruleName
+            + "\n실행 시퀀스: " + DisplayName(
+                FindBattleSequence(sequenceId)?.DisplayNameKo,
+                sequenceId)
+            + "\n\n이 규칙만 삭제하며 시퀀스는 유지합니다.";
+        if (!(_confirmRuleDeletion?.Invoke("기존 규칙 삭제", message) ?? false))
+        {
+            return;
+        }
+
+        stack.Execute(BattleScenarioEditCommands.DeleteLegacyRule(index));
+        SelectReferencedSequenceOrFallback(sequenceId, index);
+        AfterBattleEdit();
+    }
+
+    private void SelectReferencedSequenceOrFallback(string sequenceId, int preferredRuleIndex)
+    {
+        ActionSequenceAsset sequence = FindBattleSequence(sequenceId);
+        if (sequence != null && _workspace.TrySelectSequence(sequence))
+        {
+            return;
+        }
+
+        SelectNearestTriggerRule(preferredRuleIndex);
+    }
+
+    private static bool ConfirmRuleDeletion(string title, string message)
+    {
+        int choice = EditorUtility.DisplayDialogComplex(
+            title,
+            message,
+            "취소",
+            "규칙 삭제",
+            string.Empty);
+        return choice == 1;
     }
 
     private void MoveTriggerRule(string ruleId, int targetIndex)
@@ -2156,11 +2213,51 @@ public sealed class SequenceMakerWindow : EditorWindow
     private void AfterEdit()
     {
         _workspace.SetDirty(AnyEditStackDirty());
+        RefreshUsageIndexForCurrentWorkspace();
         RefreshYamlPreview();
         RefreshCatalogValidation();
         SetStatus("편집됨", false);
         ScheduleRecovery();
         RenderAll();
+    }
+
+    private void RefreshUsageIndexForCurrentWorkspace()
+    {
+        var battles = new List<BattleScenarioData>();
+        var sequences = new List<ActionSequenceAsset>();
+        if (_assetIndex != null)
+        {
+            for (int i = 0; i < _assetIndex.BattleFlows.Count; i++)
+            {
+                AddDistinct(battles, _assetIndex.BattleFlows[i].BattleScenario);
+            }
+            for (int i = 0; i < _assetIndex.Sequences.Count; i++)
+            {
+                AddDistinct(sequences, _assetIndex.Sequences[i].Sequence);
+            }
+        }
+
+        BattleScenarioData currentBattle = _workspace?.BattleScenario;
+        AddDistinct(battles, currentBattle);
+        if (currentBattle?.Sequences != null)
+        {
+            for (int i = 0; i < currentBattle.Sequences.Count; i++)
+            {
+                AddDistinct(sequences, currentBattle.Sequences[i]);
+            }
+        }
+        AddDistinct(sequences, _workspace?.StandaloneSequence);
+
+        _usageIndex = SequenceUsageIndex.Build(SequenceAssetIndex.Build(battles, sequences));
+    }
+
+    private static void AddDistinct<T>(List<T> destination, T value)
+        where T : UnityEngine.Object
+    {
+        if (value != null && !destination.Contains(value))
+        {
+            destination.Add(value);
+        }
     }
 
     private void AfterBattleEdit()
@@ -3002,6 +3099,27 @@ public sealed class SequenceMakerWindow : EditorWindow
     {
         _workspace.SelectTriggerRule(ruleId);
         RenderAll();
+    }
+
+    internal void SelectLegacyRuleForTests(int index)
+    {
+        _workspace.SelectLegacyRule(index);
+        RenderAll();
+    }
+
+    internal void SetRuleDeletionConfirmationForTests(Func<string, string, bool> confirmation)
+    {
+        _confirmRuleDeletion = confirmation;
+    }
+
+    internal void DeleteTriggerRuleForTests(string ruleId)
+    {
+        DeleteTriggerRule(ruleId);
+    }
+
+    internal void DeleteLegacyRuleForTests(int index)
+    {
+        DeleteLegacyRule(index);
     }
 
     internal void RefreshForTests()

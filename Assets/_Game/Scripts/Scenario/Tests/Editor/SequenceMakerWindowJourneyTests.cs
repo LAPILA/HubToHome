@@ -271,6 +271,130 @@ public sealed class SequenceMakerWindowJourneyTests
     }
 
     [Test]
+    public void TriggerRuleEditorShowsDirectDeleteCommand()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.rule.trigger.sequence", "규칙 대상");
+        BattleScenarioData battle = CreateBattle("qa.rule.trigger.battle", sequence);
+        battle.TriggerRules.Add(new ScenarioTriggerRuleData
+        {
+            RuleId = "qa.rule.trigger",
+            DisplayNameKo = "직접 삭제할 이벤트 규칙",
+            SequenceId = sequence.SequenceId
+        });
+        _window.SetTargetForTests(battle);
+
+        _window.SelectTriggerRuleForTests("qa.rule.trigger");
+
+        Button delete = _window.rootVisualElement.Q<Button>("rule-delete-button");
+        Assert.That(delete, Is.Not.Null);
+        Assert.That(delete.text, Is.EqualTo("규칙 삭제"));
+        Assert.That(delete.enabledSelf, Is.True);
+    }
+
+    [Test]
+    public void LegacyRuleEditorShowsDirectDeleteCommand()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.rule.legacy.sequence", "기존 규칙 대상");
+        BattleScenarioData battle = CreateBattle("qa.rule.legacy.battle", sequence);
+        battle.Rules.Add(new BattleEventRuleData
+        {
+            RuleId = "qa.rule.legacy",
+            SequenceId = sequence.SequenceId
+        });
+        _window.SetTargetForTests(battle);
+
+        _window.SelectLegacyRuleForTests(0);
+
+        Button delete = _window.rootVisualElement.Q<Button>("rule-delete-button");
+        Assert.That(delete, Is.Not.Null);
+        Assert.That(delete.text, Is.EqualTo("규칙 삭제"));
+        Assert.That(delete.enabledSelf, Is.True);
+    }
+
+    [Test]
+    public void CancelledRuleDeletionKeepsRuleAndSelection()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.rule.cancel.sequence", "취소 대상");
+        BattleScenarioData battle = CreateBattle("qa.rule.cancel.battle", sequence);
+        battle.TriggerRules.Add(new ScenarioTriggerRuleData
+        {
+            RuleId = "qa.rule.cancel",
+            DisplayNameKo = "삭제 취소 규칙",
+            SequenceId = sequence.SequenceId
+        });
+        _window.SetTargetForTests(battle);
+        _window.SelectTriggerRuleForTests("qa.rule.cancel");
+        _window.SetRuleDeletionConfirmationForTests((_, __) => false);
+
+        _window.DeleteTriggerRuleForTests("qa.rule.cancel");
+
+        Assert.That(battle.TriggerRules, Has.Count.EqualTo(1));
+        Assert.That(_window.WorkspaceForTests.SelectedTriggerRuleId, Is.EqualTo("qa.rule.cancel"));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.False);
+    }
+
+    [Test]
+    public void TriggerRuleDeletionReturnsToSequenceAndRemovesDeleteBlocker()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.rule.delete.trigger.sequence", "이벤트 규칙 대상");
+        sequence.Source.SourcePath = "Assets/qa.rule.delete.trigger.sequence.yaml";
+        BattleScenarioData battle = CreateBattle("qa.rule.delete.trigger.battle", sequence);
+        battle.Source.SourcePath = "Assets/qa.rule.delete.trigger.battle.scenario.yaml";
+        battle.TriggerRules.Add(new ScenarioTriggerRuleData
+        {
+            RuleId = "qa.rule.delete.trigger",
+            DisplayNameKo = "삭제할 이벤트 규칙",
+            SequenceId = sequence.SequenceId
+        });
+        _window.SetTargetForTests(battle);
+        _window.SetUsageIndexForTests(SequenceUsageIndex.Build(SequenceAssetIndex.Build(
+            new[] { battle },
+            new[] { sequence })));
+        _window.SelectTriggerRuleForTests("qa.rule.delete.trigger");
+        _window.SetRuleDeletionConfirmationForTests((_, __) => true);
+
+        _window.DeleteTriggerRuleForTests("qa.rule.delete.trigger");
+
+        Assert.That(battle.TriggerRules, Is.Empty);
+        Assert.That(_window.WorkspaceForTests.SelectedSequence, Is.SameAs(sequence));
+        Assert.That(_window.WorkspaceForTests.SelectionKind, Is.EqualTo(SequenceMakerSelectionKind.Sequence));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True);
+        Assert.That(_window.rootVisualElement.Q<Button>("delete-sequence-button").enabledSelf, Is.True);
+        Assert.That(_window.GetBattleHistoryForTests().Undo(), Is.True);
+        Assert.That(battle.TriggerRules, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void LegacyRuleDeletionReturnsToSequenceAndCanUndo()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.rule.delete.legacy.sequence", "기존 규칙 대상");
+        sequence.Source.SourcePath = "Assets/qa.rule.delete.legacy.sequence.yaml";
+        BattleScenarioData battle = CreateBattle("qa.rule.delete.legacy.battle", sequence);
+        battle.Source.SourcePath = "Assets/qa.rule.delete.legacy.battle.scenario.yaml";
+        battle.Rules.Add(new BattleEventRuleData
+        {
+            RuleId = "qa.rule.delete.legacy",
+            SequenceId = sequence.SequenceId
+        });
+        _window.SetTargetForTests(battle);
+        _window.SetUsageIndexForTests(SequenceUsageIndex.Build(SequenceAssetIndex.Build(
+            new[] { battle },
+            new[] { sequence })));
+        _window.SelectLegacyRuleForTests(0);
+        _window.SetRuleDeletionConfirmationForTests((_, __) => true);
+
+        _window.DeleteLegacyRuleForTests(0);
+
+        Assert.That(battle.Rules, Is.Empty);
+        Assert.That(_window.WorkspaceForTests.SelectedSequence, Is.SameAs(sequence));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True);
+        Assert.That(_window.rootVisualElement.Q<Button>("delete-sequence-button").enabledSelf, Is.True);
+        Assert.That(_window.GetBattleHistoryForTests().Undo(), Is.True);
+        Assert.That(battle.Rules, Has.Count.EqualTo(1));
+        Assert.That(battle.Rules[0].RuleId, Is.EqualTo("qa.rule.delete.legacy"));
+    }
+
+    [Test]
     public void SwitchingToCleanTargetDoesNotInheritDirtyHistoryFromPreviousTarget()
     {
         ActionSequenceAsset first = CreateSequence("qa.first", "첫 번째");

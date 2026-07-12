@@ -2591,3 +2591,40 @@
 .sm-sequence-delete-command:disabled {
     opacity: 0.45;
 }
+
+/* Rule deletion */
+.sm-rule-danger {
+    margin-top: 18px;
+    padding-top: 12px;
+    border-top-width: 1px;
+    border-top-color: #714942;
+}
+
+.sm-rule-danger-title {
+    margin-bottom: 5px;
+    color: #edaaa0;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.sm-rule-danger-copy {
+    color: #a99b96;
+    white-space: normal;
+}
+
+.sm-rule-delete-command {
+    min-height: 29px;
+    margin-top: 9px;
+    padding: 5px 10px;
+    border-width: 1px;
+    border-radius: 4px;
+    border-color: #91574e;
+    background-color: #5d3733;
+    color: #f2c2ba;
+    -unity-font-style: bold;
+}
+
+.sm-rule-delete-command:hover {
+    border-color: #c9786b;
+    background-color: #714039;
+}

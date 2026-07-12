@@ -101,3 +101,15 @@
 - Runtime Asset 삭제 실패 시 독립 YAML과 meta 원본 복원
 - 참조 자동 삭제 없음
 - Unity EditMode 전체 `549/549` 통과
+
+## 규칙 삭제 흐름 개선
+
+- Trigger Rule 편집 화면에 `위험 작업 > 규칙 삭제` 추가
+- 기존 호환 규칙 편집 화면에도 동일한 삭제 버튼 추가
+- 불완전한 기존 규칙도 삭제 가능
+- 규칙 이름과 실행 Sequence를 확인한 뒤 삭제
+- 규칙만 삭제하고 Sequence는 유지
+- 삭제 후 실행 대상 Sequence로 자동 이동
+- Ctrl+Z로 규칙과 원래 순서 복구
+- 규칙 삭제 직후 Sequence 삭제 차단 상태 갱신
+- Unity EditMode 전체 `555/555` 통과
