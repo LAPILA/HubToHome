@@ -15,7 +15,7 @@ Play Mode testing needs real Battle, Overworld, and future minigame execution co
 ## Decision
 
 - `SequenceMakerWindow` is the sole discoverable authoring surface.
-- The legacy `ScenarioAuthoringWindow` menu forwards to the official workbench.
+- The legacy `ScenarioAuthoringWindow` has no discoverable menu. Only the official workbench is exposed.
 - The Odin implementation remains source-only for migration tests and has no authoring menu.
 - Runtime Asset edits use recursive command histories and explicit validated YAML save.
 - `SequenceMakerDocumentSession` owns target-scoped Sequence/Battle histories, saved checkpoints, and recovery-restored dirty state. The Window only asks for the active document state.

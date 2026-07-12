@@ -45,14 +45,6 @@ public sealed class ScenarioAuthoringWindow : EditorWindow
     private int _selectedActionIndex = -1;
     private string _selectedActionObjectId = string.Empty;
 
-    [MenuItem("HubToHome/시나리오/개발/기존 시퀀스 메이커")]
-    public static void Open()
-    {
-        SequenceMakerWindow.Open();
-        Debug.LogWarning(
-            "[Sequence Maker] 기존 편집기는 종료되었습니다. 공식 UI Toolkit Sequence Maker를 열었습니다.");
-    }
-
     public void CreateGUI()
     {
         BuildLayout();
