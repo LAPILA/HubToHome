@@ -62,9 +62,9 @@
 ## Quality Hardening
 
 - [x] Add real `SequenceMakerWindow` journey harness.
-- [ ] Reproduce target-scoped dirty/save/leave defects.
-- [ ] Deepen document ownership if reproduction proves policy leakage.
-- [ ] Fix shortcut and TextField focus routing.
+- [x] Reproduce target-scoped dirty/save/leave defects.
+- [x] Deepen document ownership if reproduction proves policy leakage.
+- [x] Fix shortcut and TextField focus routing.
 - [ ] Verify save, conflict, recovery, and editor lifecycle journeys.
 - [ ] Add deterministic command property and stress tests.
 - [ ] Run minimum/standard/wide visual layout matrix.

@@ -18,6 +18,8 @@ Play Mode testing needs real Battle, Overworld, and future minigame execution co
 - The legacy `ScenarioAuthoringWindow` menu forwards to the official workbench.
 - The Odin implementation remains source-only for migration tests and has no authoring menu.
 - Runtime Asset edits use recursive command histories and explicit validated YAML save.
+- `SequenceMakerDocumentSession` owns target-scoped Sequence/Battle histories, saved checkpoints, and recovery-restored dirty state. The Window only asks for the active document state.
+- A standalone save checkpoints only that Sequence. A Battle save checkpoints the Battle rule history and histories of Sequences contained by that Battle; unrelated open documents remain dirty.
 - Unsaved edits create debounced recovery snapshots under `Library/HubToHome/SequenceMakerRecovery`, never under `Assets` and never as repository truth.
 - Conflict UX must expose reload, inspected explicit overwrite, source opening, and recovery restore. It must never silently overwrite external YAML.
 - Runtime owners expose Play Mode test contexts through `IActionSequenceLiveContextSource`. Sequence Maker discovers that Interface rather than concrete Battle/Overworld classes.
@@ -29,7 +31,7 @@ Play Mode testing needs real Battle, Overworld, and future minigame execution co
 - New Primary Modes and scene-local systems can support Live Test by implementing one runtime Interface; editor playback code stays unchanged.
 - Recovery snapshots are disposable local safety state. Successful YAML save clears them.
 - Runtime Asset and YAML can still differ while a human is editing, but dirty/conflict/recovery state remains visible and recoverable.
-- The official workbench is a large composition root. Further extraction should deepen document-session policy rather than split methods into pass-through wrappers.
+- The official workbench remains the UI composition root, while document ownership policy is isolated in `SequenceMakerDocumentSession`. Further extraction must follow similarly cohesive behavior boundaries rather than pass-through wrappers.
 
 ## Rejected Alternatives
 

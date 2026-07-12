@@ -1,11 +1,15 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
 
 public sealed class SequenceMakerWindowJourneyTests
 {
     private readonly List<Object> _created = new List<Object>();
+    private readonly List<string> _createdFiles = new List<string>();
     private SequenceMakerWindow _window;
     private Object _previousSelection;
 
@@ -31,6 +35,14 @@ public sealed class SequenceMakerWindowJourneyTests
             Object.DestroyImmediate(_created[i]);
         }
         _created.Clear();
+        for (int i = 0; i < _createdFiles.Count; i++)
+        {
+            if (File.Exists(_createdFiles[i]))
+            {
+                File.Delete(_createdFiles[i]);
+            }
+        }
+        _createdFiles.Clear();
         UnityEditor.Selection.activeObject = _previousSelection;
     }
 
@@ -101,6 +113,119 @@ public sealed class SequenceMakerWindowJourneyTests
         Assert.That(_window.rootVisualElement.Q<TriggerRuleEditorView>(), Is.Not.Null);
     }
 
+    [Test]
+    public void SwitchingToCleanTargetDoesNotInheritDirtyHistoryFromPreviousTarget()
+    {
+        ActionSequenceAsset first = CreateSequence("qa.first", "첫 번째");
+        ActionSequenceAsset second = CreateSequence("qa.second", "두 번째");
+        _window.SetTargetForTests(first);
+        SequenceEditCommandStack firstHistory = _window.GetSequenceHistoryForTests();
+        firstHistory.Execute(SequenceEditCommands.SetSequenceDisplayName("수정된 첫 번째"));
+        _window.RefreshForTests();
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True);
+
+        _window.SetTargetForTests(second);
+
+        Assert.That(_window.WorkspaceForTests.ActiveTarget, Is.SameAs(second));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.False,
+            "활성 대상의 dirty 상태는 이전에 열었던 다른 target history에서 상속되면 안 됩니다.");
+    }
+
+    [Test]
+    public void SavingCurrentTargetDoesNotMarkOtherTargetHistoryAsSaved()
+    {
+        ActionSequenceAsset first = CreateSequence("qa.save.first", "저장 대상 A");
+        ActionSequenceAsset second = CreateSequence("qa.save.second", "저장 대상 B");
+        second.Source.SourcePath = CreateTemporarySourcePath();
+
+        _window.SetTargetForTests(first);
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("수정된 저장 대상 A"));
+        _window.SetTargetForTests(second);
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("수정된 저장 대상 B"));
+        _window.RefreshForTests();
+
+        Assert.That(_window.SaveCurrentForTests(), Is.True, _window.StatusForTests);
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.False);
+
+        _window.SetTargetForTests(first);
+
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True,
+            "현재 target 저장이 다른 target의 미저장 history까지 저장 완료로 바꾸면 안 됩니다.");
+    }
+
+    [Test]
+    public void FailedSaveKeepsCurrentTargetDirty()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.save.failure", "저장 실패");
+        _window.SetTargetForTests(sequence);
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("저장되지 않은 변경"));
+        _window.RefreshForTests();
+
+        Assert.That(_window.SaveCurrentForTests(), Is.False);
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True);
+        Assert.That(_window.StatusHasErrorForTests, Is.True);
+    }
+
+    [Test]
+    public void ExternalYamlModificationBlocksSaveAndKeepsDirty()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.save.conflict", "충돌 테스트");
+        sequence.Source.SourcePath = CreateTemporarySourcePath();
+        _window.SetTargetForTests(sequence);
+        Assert.That(_window.SaveCurrentForTests(), Is.True, _window.StatusForTests);
+        File.AppendAllText(Path.GetFullPath(sequence.Source.SourcePath), "\n# external change");
+
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("로컬 변경"));
+        _window.RefreshForTests();
+
+        Assert.That(_window.SaveCurrentForTests(), Is.False);
+        Assert.That(_window.StatusForTests, Is.EqualTo("YAML 외부 변경 충돌"));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True);
+    }
+
+    [Test]
+    public void ExplicitOverwriteAfterConflictSavesCurrentTarget()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.save.overwrite", "덮어쓰기 테스트");
+        sequence.Source.SourcePath = CreateTemporarySourcePath();
+        _window.SetTargetForTests(sequence);
+        Assert.That(_window.SaveCurrentForTests(), Is.True, _window.StatusForTests);
+        File.AppendAllText(Path.GetFullPath(sequence.Source.SourcePath), "\n# external change");
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("덮어쓸 로컬 변경"));
+        _window.RefreshForTests();
+        Assert.That(_window.SaveCurrentForTests(), Is.False);
+
+        Assert.That(_window.SaveCurrentForTests(true), Is.True, _window.StatusForTests);
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.False);
+        Assert.That(
+            File.ReadAllText(Path.GetFullPath(sequence.Source.SourcePath)),
+            Does.Contain("덮어쓸 로컬 변경"));
+    }
+
+    [Test]
+    public void RecreatingVisualTreeKeepsDirtyTargetSession()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.recreate", "재생성 테스트");
+        _window.SetTargetForTests(sequence);
+        _window.GetSequenceHistoryForTests().Execute(
+            SequenceEditCommands.SetSequenceDisplayName("재생성 뒤에도 미저장"));
+        _window.RefreshForTests();
+
+        _window.CreateGUI();
+
+        Assert.That(_window.WorkspaceForTests.ActiveTarget, Is.SameAs(sequence));
+        Assert.That(_window.WorkspaceForTests.IsDirty, Is.True);
+        VisualElement flowPanel =
+            _window.rootVisualElement.Q<VisualElement>(className: "sm-panel--flow");
+        Assert.That(flowPanel.Q<Label>(className: "sm-panel-title")?.text,
+            Is.EqualTo("재생성 뒤에도 미저장"));
+    }
+
     private ActionSequenceAsset CreateSequence(string id, string displayName)
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
@@ -124,5 +249,16 @@ public sealed class SequenceMakerWindowJourneyTests
         battle.Sequences.AddRange(sequences);
         _created.Add(battle);
         return battle;
+    }
+
+    private string CreateTemporarySourcePath()
+    {
+        string path = Path.Combine(
+            "Library",
+            "HubToHome",
+            "SequenceMakerQA",
+            Guid.NewGuid().ToString("N") + ".sequence.yaml");
+        _createdFiles.Add(Path.GetFullPath(path));
+        return path.Replace('\\', '/');
     }
 }

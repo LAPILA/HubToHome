@@ -22,12 +22,8 @@ public sealed class SequenceMakerWindow : EditorWindow
     [SerializeField] private ActionCatalogAsset _catalog;
     [SerializeField] private TriggerLibraryAsset _triggerLibrary;
 
-    private readonly Dictionary<int, SequenceEditCommandStack> _editStacks =
-        new Dictionary<int, SequenceEditCommandStack>();
-    private readonly Dictionary<int, BattleScenarioEditCommandStack> _battleEditStacks =
-        new Dictionary<int, BattleScenarioEditCommandStack>();
-
     private SequenceMakerWorkspaceState _workspace;
+    private SequenceMakerDocumentSession _documentSession;
     private EditorSequenceMakerPreferences _preferences;
     private VisualElement _root;
     private ObjectField _targetField;
@@ -79,7 +75,6 @@ public sealed class SequenceMakerWindow : EditorWindow
     private readonly List<SequenceRecoverySnapshot> _recoveries =
         new List<SequenceRecoverySnapshot>();
     private SequenceSourceConflict _lastConflict;
-    private bool _hasExternalAssetChanges;
     private bool _recoveryPending;
     private double _recoveryDueAt;
 
@@ -103,6 +98,9 @@ public sealed class SequenceMakerWindow : EditorWindow
         _workspace = new SequenceMakerWorkspaceState();
         _workspace.LoadPreferences(_preferences);
         _workspace.Changed += OnWorkspaceChanged;
+        _documentSession = _documentSession ?? new SequenceMakerDocumentSession();
+        _documentSession.Changed -= OnDocumentSessionChanged;
+        _documentSession.Changed += OnDocumentSessionChanged;
         _playback?.Dispose();
         _playback = new SequencePlaybackController();
         _playback.Changed += OnPlaybackChanged;
@@ -136,6 +134,10 @@ public sealed class SequenceMakerWindow : EditorWindow
         CaptureLayoutDimensions();
         _workspace.SavePreferences(_preferences ?? new EditorSequenceMakerPreferences());
         _workspace.Changed -= OnWorkspaceChanged;
+        if (_documentSession != null)
+        {
+            _documentSession.Changed -= OnDocumentSessionChanged;
+        }
     }
 
     private void OnSelectionChange()
@@ -494,7 +496,6 @@ public sealed class SequenceMakerWindow : EditorWindow
         }
 
         _lastConflict = null;
-        _hasExternalAssetChanges = false;
 
         SequenceAssetIndexEntry opened = _assetIndex?.FindByAsset(_workspace.ActiveTarget);
         if (opened != null)
@@ -517,17 +518,18 @@ public sealed class SequenceMakerWindow : EditorWindow
         FlushRecovery();
 
         int choice = EditorUtility.DisplayDialogComplex(
-            "저장되지 않은 시퀀스",
-            "현재 편집 내용을 YAML에 저장하지 않고 다른 대상을 열까요?",
-            "저장",
-            "취소",
-            "저장하지 않음");
-        if (choice == 0)
+            SequenceMakerLeavePrompt.Title,
+            SequenceMakerLeavePrompt.Message,
+            SequenceMakerLeavePrompt.SaveLabel,
+            SequenceMakerLeavePrompt.CancelLabel,
+            SequenceMakerLeavePrompt.KeepLocalLabel);
+        SequenceMakerLeaveIntent intent = SequenceMakerLeavePrompt.FromDialogChoice(choice);
+        if (intent == SequenceMakerLeaveIntent.SaveAndLeave)
         {
             return SaveCurrent();
         }
 
-        return choice == 2;
+        return intent == SequenceMakerLeaveIntent.KeepLocalChangesAndLeave;
     }
 
     private void RefreshDerivedState(bool refreshValidation)
@@ -1855,17 +1857,9 @@ public sealed class SequenceMakerWindow : EditorWindow
 
         _lastConflict = null;
 
-        foreach (SequenceEditCommandStack stack in _editStacks.Values)
-        {
-            stack.MarkSaved();
-        }
-        foreach (BattleScenarioEditCommandStack stack in _battleEditStacks.Values)
-        {
-            stack.MarkSaved();
-        }
+        _documentSession.MarkSaved(_workspace);
 
         _workspace.SetDirty(false);
-        _hasExternalAssetChanges = false;
         _recoveryStore?.Clear(target);
         _recoveries.Clear();
         _recoveryPending = false;
@@ -1986,7 +1980,6 @@ public sealed class SequenceMakerWindow : EditorWindow
             return;
         }
         ResetCurrentEditHistory();
-        _hasExternalAssetChanges = false;
         _lastConflict = null;
         _workspace.SetDirty(false);
         RefreshIndexes(true);
@@ -2012,7 +2005,7 @@ public sealed class SequenceMakerWindow : EditorWindow
             return;
         }
         ResetCurrentEditHistory();
-        _hasExternalAssetChanges = true;
+        _documentSession.SetExternalChanges(_workspace.ActiveTarget, true);
         _lastConflict = null;
         _workspace.SetDirty(true);
         RefreshIndexes(true);
@@ -2041,25 +2034,7 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void ResetCurrentEditHistory()
     {
-        if (_workspace.BattleScenario != null)
-        {
-            _battleEditStacks.Remove(_workspace.BattleScenario.GetInstanceID());
-            if (_workspace.BattleScenario.Sequences != null)
-            {
-                for (int i = 0; i < _workspace.BattleScenario.Sequences.Count; i++)
-                {
-                    ActionSequenceAsset sequence = _workspace.BattleScenario.Sequences[i];
-                    if (sequence != null)
-                    {
-                        _editStacks.Remove(sequence.GetInstanceID());
-                    }
-                }
-            }
-        }
-        else if (_workspace.StandaloneSequence != null)
-        {
-            _editStacks.Remove(_workspace.StandaloneSequence.GetInstanceID());
-        }
+        _documentSession?.Reset(_workspace);
     }
 
     private void Undo()
@@ -2244,55 +2219,36 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void OnKeyDown(KeyDownEvent evt)
     {
-        bool command = evt.ctrlKey || evt.commandKey;
-        if (!command)
+        VisualElement focused = _root?.panel?.focusController?.focusedElement as VisualElement;
+        SequenceMakerShortcutCommand command = SequenceMakerShortcutRouter.Resolve(
+            evt.keyCode,
+            evt.ctrlKey,
+            evt.commandKey,
+            evt.shiftKey,
+            focused);
+        switch (command)
         {
-            return;
+            case SequenceMakerShortcutCommand.Save:
+                SaveCurrent();
+                break;
+            case SequenceMakerShortcutCommand.Undo:
+                Undo();
+                break;
+            case SequenceMakerShortcutCommand.Redo:
+                Redo();
+                break;
+            default:
+                return;
         }
-
-        if (evt.keyCode == KeyCode.S)
-        {
-            SaveCurrent();
-            evt.StopPropagation();
-        }
-        else if (evt.keyCode == KeyCode.Z && !evt.shiftKey)
-        {
-            Undo();
-            evt.StopPropagation();
-        }
-        else if (evt.keyCode == KeyCode.Y
-            || (evt.keyCode == KeyCode.Z && evt.shiftKey))
-        {
-            Redo();
-            evt.StopPropagation();
-        }
+        evt.StopPropagation();
     }
 
     private SequenceEditCommandStack GetCurrentEditStack()
     {
         ActionSequenceAsset sequence = _workspace != null ? _workspace.SelectedSequence : null;
-        if (sequence == null)
-        {
-            return null;
-        }
-
-        int id = sequence.GetInstanceID();
-        if (_editStacks.TryGetValue(id, out SequenceEditCommandStack stack))
-        {
-            return stack;
-        }
-
         try
         {
-            stack = new SequenceEditCommandStack(sequence);
-            stack.Changed += _ =>
-            {
-                _workspace.SetDirty(AnyEditStackDirty());
-                RenderCommandState();
-                RenderStatus();
-            };
-            _editStacks.Add(id, stack);
-            return stack;
+            return _documentSession?.GetSequenceHistory(sequence);
         }
         catch (Exception exception)
         {
@@ -2304,26 +2260,7 @@ public sealed class SequenceMakerWindow : EditorWindow
     private BattleScenarioEditCommandStack GetCurrentBattleEditStack()
     {
         BattleScenarioData battle = _workspace != null ? _workspace.BattleScenario : null;
-        if (battle == null)
-        {
-            return null;
-        }
-
-        int id = battle.GetInstanceID();
-        if (_battleEditStacks.TryGetValue(id, out BattleScenarioEditCommandStack stack))
-        {
-            return stack;
-        }
-
-        stack = new BattleScenarioEditCommandStack(battle);
-        stack.Changed += _ =>
-        {
-            _workspace.SetDirty(AnyEditStackDirty());
-            RenderCommandState();
-            RenderStatus();
-        };
-        _battleEditStacks.Add(id, stack);
-        return stack;
+        return _documentSession?.GetBattleHistory(battle);
     }
 
     private ISequenceMakerEditHistory GetActiveEditHistory()
@@ -2337,27 +2274,19 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private bool AnyEditStackDirty()
     {
-        if (_hasExternalAssetChanges)
+        return _documentSession != null && _documentSession.IsDirty(_workspace);
+    }
+
+    private void OnDocumentSessionChanged()
+    {
+        if (_workspace == null)
         {
-            return true;
-        }
-        foreach (SequenceEditCommandStack stack in _editStacks.Values)
-        {
-            if (stack.IsDirty)
-            {
-                return true;
-            }
+            return;
         }
 
-        foreach (BattleScenarioEditCommandStack stack in _battleEditStacks.Values)
-        {
-            if (stack.IsDirty)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        _workspace.SetDirty(AnyEditStackDirty());
+        RenderCommandState();
+        RenderStatus();
     }
 
     private ScenarioTriggerRuleData FindTriggerRule(string ruleId)
@@ -2983,6 +2912,11 @@ public sealed class SequenceMakerWindow : EditorWindow
     {
         RefreshDerivedState(true);
         RenderAll();
+    }
+
+    internal bool SaveCurrentForTests(bool overwriteExternalChanges = false)
+    {
+        return SaveCurrent(overwriteExternalChanges);
     }
 
     private T Require<T>(string name) where T : VisualElement

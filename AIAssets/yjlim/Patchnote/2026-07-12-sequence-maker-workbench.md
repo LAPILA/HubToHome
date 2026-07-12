@@ -54,3 +54,14 @@
 - Overworld 지하철 Preparation Run final-state/복구 검증 통과
 - ZEV 복제 테스트 씬 Play Mode에서 `turn_qte -> HP Trigger -> aim_shooter` 전환 PASS
 - ZEV phase2 YAML에서 누락됐던 fade, module switch/start, shooter 대사/BGM, battle flag를 복원하고 Runtime Asset 재동기화
+
+## 편집 안정성 강화
+
+- 여러 시퀀스를 번갈아 열어도 현재 시퀀스의 미저장 상태만 표시
+- 한 시퀀스를 저장해도 다른 시퀀스의 Undo/미저장 상태 유지
+- Battle 저장 시 해당 Battle과 포함 시퀀스만 저장 완료 처리
+- `저장하지 않음` 대신 실제 동작에 맞는 `로컬 변경 유지하고 이동` 안내
+- 텍스트 입력 중 Ctrl+Z/Ctrl+Y는 글자 편집에 사용
+- 캔버스 포커스의 Ctrl+Z/Ctrl+Y는 시퀀스 편집에 사용
+- 저장 실패, 외부 YAML 충돌, 명시적 덮어쓰기, 창 UI 재생성 회귀 검증 추가
+- Unity EditMode 전체 `512/512` 통과
