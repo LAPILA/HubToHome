@@ -72,3 +72,13 @@
 - [x] Re-run Subway and ZEV runtime vertical slices.
 - [x] Run architecture deepening review and implement Strong findings.
 - [x] Complete requirement-by-requirement evidence audit and handoff.
+
+## Safe Sequence Deletion
+
+- [x] Add reference-blocked, non-cascading deletion analysis.
+- [x] Add Battle YAML-first deletion with exact-index rollback.
+- [x] Add standalone hash conflict checks and exact source-byte restoration.
+- [x] Add Korean Sequence Inspector danger zone and cancel-first confirmation.
+- [x] Refresh workspace after successful or partially committed Battle deletion.
+- [x] Verify real standalone assets and Battle sub-assets through AssetDatabase fixtures.
+- [x] Run full EditMode regression and visual UI inspection.

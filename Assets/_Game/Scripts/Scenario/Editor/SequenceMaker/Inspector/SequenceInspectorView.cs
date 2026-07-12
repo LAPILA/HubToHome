@@ -16,6 +16,7 @@ public sealed class SequenceInspectorView : VisualElement
     private SequenceEditCommandStack _commands;
     private SequenceUsageIndex _usage;
     private ActionCatalogAsset _catalog;
+    private SequenceDeletionAnalysis _deletion;
 
     public SequenceInspectorView()
     {
@@ -24,17 +25,20 @@ public sealed class SequenceInspectorView : VisualElement
 
     public event Action EditApplied;
     public event Action<string> Error;
+    public event Action DeleteRequested;
 
     public void Bind(
         ActionSequenceAsset sequence,
         SequenceEditCommandStack commands,
         SequenceUsageIndex usage,
-        ActionCatalogAsset catalog)
+        ActionCatalogAsset catalog,
+        SequenceDeletionAnalysis deletion = null)
     {
         _sequence = sequence;
         _commands = commands;
         _usage = usage;
         _catalog = catalog;
+        _deletion = deletion;
         Render();
     }
 
@@ -125,6 +129,86 @@ public sealed class SequenceInspectorView : VisualElement
 
         AddCapabilities();
         AddInputSection(contract);
+        AddDangerZone();
+    }
+
+    private void AddDangerZone()
+    {
+        if (_deletion == null)
+        {
+            return;
+        }
+
+        var section = new VisualElement();
+        section.AddToClassList("sm-sequence-danger");
+        var title = new Label("위험 작업");
+        title.AddToClassList("sm-sequence-danger-title");
+        section.Add(title);
+
+        string scope = _deletion.Kind == SequenceDeletionKind.BattleOwned
+            ? "Battle YAML 목록과 Runtime sub-asset에서 이 시퀀스를 제거합니다."
+            : "독립 YAML과 Runtime Asset을 함께 제거합니다.";
+        var description = new Label(scope + " 자동으로 참조를 지우지는 않습니다.");
+        description.AddToClassList("sm-sequence-danger-copy");
+        section.Add(description);
+
+        int blockCount = _deletion.BlockingUsages.Count + _deletion.BlockingReasons.Count;
+        if (blockCount > 0)
+        {
+            var blocked = new Label(blockCount + "개 문제 때문에 삭제할 수 없음");
+            blocked.AddToClassList("sm-sequence-danger-blocked");
+            section.Add(blocked);
+            for (int i = 0; i < _deletion.BlockingReasons.Count; i++)
+            {
+                section.Add(DangerDetail(_deletion.BlockingReasons[i]));
+            }
+            for (int i = 0; i < _deletion.BlockingUsages.Count; i++)
+            {
+                section.Add(DangerDetail(FormatUsage(_deletion.BlockingUsages[i])));
+            }
+        }
+
+        var delete = new Button(() => DeleteRequested?.Invoke())
+        {
+            name = "delete-sequence-button",
+            text = "시퀀스 완전 삭제",
+            tooltip = _deletion.CanDelete
+                ? "복구 기록을 만든 뒤 YAML과 Runtime Asset에서 제거"
+                : "위 문제를 먼저 해결해야 삭제할 수 있습니다."
+        };
+        delete.AddToClassList("sm-sequence-delete-command");
+        delete.SetEnabled(_deletion.CanDelete);
+        section.Add(delete);
+        Add(section);
+    }
+
+    private static Label DangerDetail(string text)
+    {
+        var label = new Label("- " + (text ?? string.Empty));
+        label.AddToClassList("sm-sequence-danger-detail");
+        return label;
+    }
+
+    private static string FormatUsage(SequenceUsageRecord usage)
+    {
+        if (usage == null)
+        {
+            return "알 수 없는 참조";
+        }
+
+        switch (usage.Kind)
+        {
+            case SequenceUsageKind.TriggerRule:
+                return "이벤트 규칙 " + usage.SourceRuleId;
+            case SequenceUsageKind.LegacyBattleRule:
+                return "기존 전투 규칙 " + usage.SourceRuleId;
+            case SequenceUsageKind.SequenceCall:
+                return "시퀀스 " + usage.SourceSequenceId + " / 블록 " + usage.SourceBlockId;
+            case SequenceUsageKind.ScenarioOwnership:
+                return "Battle Scenario " + usage.SourceScenarioId;
+            default:
+                return usage.Kind.ToString();
+        }
     }
 
     private void AddUsageImpact()

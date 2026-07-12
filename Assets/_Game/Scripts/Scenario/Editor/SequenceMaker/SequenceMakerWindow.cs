@@ -77,6 +77,8 @@ public sealed class SequenceMakerWindow : EditorWindow
     private SequenceSourceConflict _lastConflict;
     private bool _recoveryPending;
     private double _recoveryDueAt;
+    private ISequenceDeletionService _deletionService;
+    private Func<string, string, bool> _confirmDeletion;
 
     [MenuItem(MenuPath)]
     public static void Open()
@@ -106,6 +108,8 @@ public sealed class SequenceMakerWindow : EditorWindow
         _playback.Changed += OnPlaybackChanged;
         _playback.TraceChanged += OnPlaybackTraceChanged;
         _recoveryStore = new SequenceRecoveryStore();
+        _deletionService = _deletionService ?? new SequenceDeletionCoordinator();
+        _confirmDeletion = _confirmDeletion ?? ConfirmSequenceDeletion;
 
         BuildVisualTree();
         BindControls();
@@ -1490,8 +1494,16 @@ public sealed class SequenceMakerWindow : EditorWindow
 
     private void RenderSequenceInspector(VisualElement body, ActionSequenceAsset sequence)
     {
+        BattleScenarioData owner = _workspace.TargetKind == SequenceMakerTargetKind.BattleScenario
+            ? _workspace.BattleScenario
+            : null;
+        SequenceDeletionAnalysis deletion = SequenceDeletionCoordinator.Analyze(
+            sequence,
+            owner,
+            _usageIndex);
         var inspector = new SequenceInspectorView();
         inspector.EditApplied += AfterEdit;
+        inspector.DeleteRequested += DeleteSelectedSequence;
         inspector.Error += message =>
         {
             SetStatus(message, true);
@@ -1501,8 +1513,95 @@ public sealed class SequenceMakerWindow : EditorWindow
             sequence,
             GetCurrentEditStack(),
             _usageIndex,
-            _catalog);
+            _catalog,
+            deletion);
         body.Add(inspector);
+    }
+
+    private void DeleteSelectedSequence()
+    {
+        ActionSequenceAsset sequence = _workspace.SelectedSequence;
+        BattleScenarioData battle = _workspace.TargetKind == SequenceMakerTargetKind.BattleScenario
+            ? _workspace.BattleScenario
+            : null;
+        SequenceDeletionAnalysis analysis = SequenceDeletionCoordinator.Analyze(
+            sequence,
+            battle,
+            _usageIndex);
+        if (!analysis.CanDelete)
+        {
+            SetStatus("참조 또는 원본 문제 때문에 시퀀스를 삭제할 수 없음", true);
+            RenderInspector();
+            RenderStatus();
+            return;
+        }
+
+        string sequenceId = sequence.SequenceId ?? string.Empty;
+        string sourcePath = battle != null
+            ? battle.Source?.SourcePath ?? string.Empty
+            : sequence.Source?.SourcePath ?? string.Empty;
+        string message = "Sequence ID: " + sequenceId
+            + "\nYAML: " + sourcePath
+            + (battle != null
+                ? "\nBattle 목록과 Runtime sub-asset에서 제거"
+                : "\n독립 YAML과 Runtime Asset을 제거")
+            + "\n\n참조는 자동으로 삭제하지 않습니다.";
+        if (!(_confirmDeletion?.Invoke("시퀀스 완전 삭제", message) ?? false))
+        {
+            SetStatus("시퀀스 삭제 취소", false);
+            RenderStatus();
+            return;
+        }
+
+        SequenceDeletionResult result = _deletionService.Delete(
+            sequence,
+            battle,
+            _usageIndex,
+            _catalog);
+        _lastValidation = result.Validation ?? new ScenarioValidationResult();
+        if (!result.Success)
+        {
+            if (result.SourceCommitted && battle != null)
+            {
+                ResetCurrentEditHistory();
+                SequenceAssetIndexCache.MarkDirty();
+                RefreshIndexes(true);
+                SetTarget(battle);
+            }
+            SetStatus("시퀀스 삭제 실패: " + result.ErrorMessage, true);
+            if (_lastValidation.HasErrors)
+            {
+                _workspace.SetDrawer(SequenceMakerDrawerTab.Problems, true);
+            }
+            RenderAll();
+            return;
+        }
+
+        ResetCurrentEditHistory();
+        _lastConflict = null;
+        SequenceAssetIndexCache.MarkDirty();
+        RefreshIndexes(true);
+        if (battle != null)
+        {
+            SetTarget(battle);
+        }
+        else
+        {
+            SetTarget(null);
+        }
+        SetStatus("시퀀스 삭제 완료: " + sequenceId, false);
+        RenderAll();
+    }
+
+    private static bool ConfirmSequenceDeletion(string title, string message)
+    {
+        int choice = EditorUtility.DisplayDialogComplex(
+            title,
+            message,
+            "취소",
+            "완전 삭제",
+            string.Empty);
+        return choice == 1;
     }
 
     private void RenderRuleInspector(VisualElement body, ScenarioTriggerRuleData rule)
@@ -2922,6 +3021,27 @@ public sealed class SequenceMakerWindow : EditorWindow
     {
         _recoveryStore = store;
         RefreshRecoveries();
+    }
+
+    internal void SetDeletionServiceForTests(ISequenceDeletionService service)
+    {
+        _deletionService = service;
+    }
+
+    internal void SetDeletionConfirmationForTests(Func<string, string, bool> confirmation)
+    {
+        _confirmDeletion = confirmation;
+    }
+
+    internal void SetUsageIndexForTests(SequenceUsageIndex usage)
+    {
+        _usageIndex = usage;
+        RenderAll();
+    }
+
+    internal void DeleteSelectedSequenceForTests()
+    {
+        DeleteSelectedSequence();
     }
 
     internal void CaptureRecoveryForTests()

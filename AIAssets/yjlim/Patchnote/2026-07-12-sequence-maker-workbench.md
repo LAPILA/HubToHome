@@ -87,3 +87,17 @@
 - Undo/Redo 버튼을 좌우 화살표 아이콘으로 변경
 - Ctrl+Z, Ctrl+Y 단축키 지원 유지
 - 검증, 저장, 액션 버튼의 겹치는 아이콘을 제거하고 명확한 텍스트 버튼으로 정리
+
+## 시퀀스 완전 삭제
+
+- Sequence 설정 아래 `위험 작업` 추가
+- 독립 Sequence의 YAML과 Runtime Asset 함께 삭제
+- Battle Sequence의 YAML 목록과 Runtime sub-asset 함께 삭제
+- 이벤트 규칙, 기존 전투 규칙, 다른 Sequence 호출, 다른 Battle 소유 중이면 삭제 차단
+- 참조 위치와 차단 개수 표시
+- 삭제 전 복구 기록 생성
+- Battle YAML 저장 실패 시 원래 순서 복원
+- 독립 YAML 외부 변경 감지 시 삭제 차단
+- Runtime Asset 삭제 실패 시 독립 YAML과 meta 원본 복원
+- 참조 자동 삭제 없음
+- Unity EditMode 전체 `549/549` 통과

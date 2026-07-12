@@ -131,6 +131,11 @@ Treat scenario YAML as the source of truth and ScriptableObject assets as the Un
 - 공식 workbench는 상단 command bar, 단일 편집 대상, breadcrumb/search context bar, 좌측 탐색, 중앙 수직 block flow, 우측 inspector, 하단 Problems/실행 기록/YAML drawer, source/save status bar 구조를 유지한다. 창 안에 중복 제품 제목을 다시 넣지 않는다.
 - 프로젝트 탐색은 `SequenceAssetIndexCache`의 lazy/cached AssetDatabase snapshot을 사용한다. 전투 흐름, 시나리오 소유 시퀀스, 독립 시퀀스, 최근 작업, 즐겨찾기를 stable asset key로 식별하고 Project 변경 또는 명시적 refresh 때만 다시 스캔한다.
 - 이름 변경/삭제 영향과 `사용 위치`는 `SequenceUsageIndex`가 소유한다. 기존 Battle Rule, 확장 Trigger Rule, 재귀 `sequence.call`, Battle Scenario 소유 관계를 모두 스캔하며 누락 target과 잘못된 call JSON을 별도 진단한다. UI가 raw serialized tree를 직접 재검색하지 않는다.
+- Action Sequence 완전 삭제는 공식 Sequence Maker 인스펙터의 `위험 작업`에서만 실행한다. `SequenceDeletionCoordinator`가 참조 분석, recovery, YAML/Runtime Asset 제거 순서를 소유하며 UI가 파일이나 sub-asset을 직접 삭제하면 안 된다.
+- 삭제는 비연쇄 방식이다. Trigger Rule, legacy Battle Rule, 다른 `sequence.call`, 다른 Battle 소유권, 동일 Battle의 중복 소유, 빈 Sequence ID, source path 누락, usage index 누락이 하나라도 있으면 차단한다. 현재 Battle의 정상 소유 관계 한 건만 차단 대상에서 제외한다.
+- Battle 소유 Sequence 삭제 순서는 recovery capture -> Battle 목록 제거 -> `BattleScenarioSaveTarget` 안전 저장 -> Runtime sub-asset 제거다. YAML 저장 실패는 원래 목록 index로 복원한다. YAML 저장 뒤 sub-asset 제거만 실패하면 source가 이미 반영된 부분 완료 상태이므로 Window는 인덱스와 선택을 다시 읽고 recovery 위치를 안내해야 한다.
+- 독립 Sequence 삭제는 export/round-trip validation -> source hash 일치 -> recovery capture -> YAML 제거 -> Runtime Asset 제거 순서다. Runtime Asset 제거가 실패하면 YAML과 `.meta`의 원본 byte를 복원한다. 외부 변경이나 기준 hash 누락을 overwrite하지 않는다.
+- 완전 삭제 확인창은 Sequence ID와 source path, 제거 범위를 표시하고 `취소`를 기본 동작으로 둔다. 참조를 자동 수정하거나 함께 삭제하지 않는다.
 - `BattleSkillTimelineRunner` only runs the legacy skill timeline blocks. Post-skill actor reset, camera reset, narration waits, turn ending, and phase/module transition policy must remain in the surrounding battle or Action Sequence flow.
 - Scenario validation must use `ScenarioCatalogValidator.ValidateBattleScenario(...)` for full battle scenarios, not only `ValidateSequence(...)`, so `dialogue.wait` IDs are checked against `BattleScenarioData.Dialogues` before runtime.
 - Disabled actions are skipped at execution time but should still stay visible in authoring tools.

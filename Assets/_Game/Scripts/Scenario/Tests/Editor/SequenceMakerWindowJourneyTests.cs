@@ -109,6 +109,128 @@ public sealed class SequenceMakerWindowJourneyTests
     }
 
     [Test]
+    public void SequenceInspectorShowsEnabledDangerCommandWhenDeletionIsSafe()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.delete.safe", "삭제 가능");
+        sequence.Source.SourcePath = "Assets/qa.delete.safe.sequence.yaml";
+
+        _window.SetTargetForTests(sequence);
+
+        Button delete = _window.rootVisualElement.Q<Button>("delete-sequence-button");
+        Assert.That(delete, Is.Not.Null);
+        Assert.That(delete.text, Is.EqualTo("시퀀스 완전 삭제"));
+        Assert.That(delete.enabledSelf, Is.True);
+        Assert.That(_window.rootVisualElement.Q<Label>(className: "sm-sequence-danger-title")?.text,
+            Is.EqualTo("위험 작업"));
+    }
+
+    [Test]
+    public void SequenceInspectorDisablesDeletionAndShowsReferenceCount()
+    {
+        ActionSequenceAsset target = CreateSequence("qa.delete.target", "삭제 대상");
+        target.Source.SourcePath = "Assets/qa.delete.target.sequence.yaml";
+        ActionSequenceAsset caller = CreateSequence("qa.delete.caller", "호출자");
+        caller.Actions.Add(new ScenarioActionData
+        {
+            BlockId = "call-target",
+            ActionId = SequenceCallActionAdapter.Id,
+            ParametersJson = "{\"sequence\":\"qa.delete.target\"}"
+        });
+        SequenceUsageIndex usage = SequenceUsageIndex.Build(SequenceAssetIndex.Build(
+            Array.Empty<BattleScenarioData>(),
+            new[] { target, caller }));
+
+        _window.SetTargetForTests(target);
+        _window.SetUsageIndexForTests(usage);
+
+        Button delete = _window.rootVisualElement.Q<Button>("delete-sequence-button");
+        Assert.That(delete.enabledSelf, Is.False);
+        Assert.That(_window.rootVisualElement.Q<Label>(className: "sm-sequence-danger-blocked")?.text,
+            Is.EqualTo("1개 문제 때문에 삭제할 수 없음"));
+    }
+
+    [Test]
+    public void CancelledDeletionKeepsCurrentSequenceAndDoesNotCallService()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.delete.cancel", "취소 대상");
+        sequence.Source.SourcePath = "Assets/qa.delete.cancel.sequence.yaml";
+        var service = new FakeDeletionService { ResultStatus = SequenceDeletionStatus.Succeeded };
+        _window.SetTargetForTests(sequence);
+        _window.SetDeletionServiceForTests(service);
+        _window.SetDeletionConfirmationForTests((_, __) => false);
+
+        _window.DeleteSelectedSequenceForTests();
+
+        Assert.That(service.CallCount, Is.EqualTo(0));
+        Assert.That(_window.WorkspaceForTests.SelectedSequence, Is.SameAs(sequence));
+        Assert.That(_window.StatusForTests, Is.EqualTo("시퀀스 삭제 취소"));
+    }
+
+    [Test]
+    public void FailedDeletionKeepsCurrentSequenceAndShowsError()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.delete.failure", "실패 대상");
+        sequence.Source.SourcePath = "Assets/qa.delete.failure.sequence.yaml";
+        var service = new FakeDeletionService
+        {
+            ResultStatus = SequenceDeletionStatus.RuntimeAssetDeleteFailed,
+            Error = "asset failed"
+        };
+        _window.SetTargetForTests(sequence);
+        _window.SetDeletionServiceForTests(service);
+        _window.SetDeletionConfirmationForTests((_, __) => true);
+
+        _window.DeleteSelectedSequenceForTests();
+
+        Assert.That(service.CallCount, Is.EqualTo(1));
+        Assert.That(_window.WorkspaceForTests.SelectedSequence, Is.SameAs(sequence));
+        Assert.That(_window.StatusHasErrorForTests, Is.True);
+        Assert.That(_window.StatusForTests, Does.Contain("asset failed"));
+    }
+
+    [Test]
+    public void SuccessfulStandaloneDeletionClearsWorkspace()
+    {
+        ActionSequenceAsset sequence = CreateSequence("qa.delete.success", "성공 대상");
+        sequence.Source.SourcePath = "Assets/qa.delete.success.sequence.yaml";
+        var service = new FakeDeletionService { ResultStatus = SequenceDeletionStatus.Succeeded };
+        _window.SetTargetForTests(sequence);
+        _window.SetDeletionServiceForTests(service);
+        _window.SetDeletionConfirmationForTests((_, __) => true);
+
+        _window.DeleteSelectedSequenceForTests();
+
+        Assert.That(service.CallCount, Is.EqualTo(1));
+        Assert.That(_window.WorkspaceForTests.HasTarget, Is.False);
+        Assert.That(_window.StatusForTests, Is.EqualTo("시퀀스 삭제 완료: qa.delete.success"));
+    }
+
+    [Test]
+    public void BattlePartialDeletionRefreshesSelectionAfterYamlWasCommitted()
+    {
+        ActionSequenceAsset target = CreateSequence("qa.delete.partial", "부분 삭제 대상");
+        ActionSequenceAsset remaining = CreateSequence("qa.delete.remaining", "남은 시퀀스");
+        BattleScenarioData battle = CreateBattle("qa.delete.battle", target, remaining);
+        battle.Source.SourcePath = "Assets/qa.delete.battle.scenario.yaml";
+        var service = new FakeDeletionService
+        {
+            ResultStatus = SequenceDeletionStatus.RuntimeAssetDeleteFailed,
+            Error = "sub-asset failed",
+            SourceCommitted = true,
+            RemoveFromBattle = true
+        };
+        _window.SetTargetForTests(battle);
+        _window.SetDeletionServiceForTests(service);
+        _window.SetDeletionConfirmationForTests((_, __) => true);
+
+        _window.DeleteSelectedSequenceForTests();
+
+        Assert.That(_window.WorkspaceForTests.BattleScenario, Is.SameAs(battle));
+        Assert.That(_window.WorkspaceForTests.SelectedSequence, Is.SameAs(remaining));
+        Assert.That(_window.StatusHasErrorForTests, Is.True);
+    }
+
+    [Test]
     public void BattleTargetSelectsFirstSequenceAndShowsRuleNavigator()
     {
         ActionSequenceAsset sequence = CreateSequence("qa.opening", "오프닝");
@@ -350,5 +472,34 @@ public sealed class SequenceMakerWindowJourneyTests
         return button != null
             && (button.Q<Image>(className: "sm-button-icon") != null
                 || string.Equals(button.text, fallback, StringComparison.Ordinal));
+    }
+
+    private sealed class FakeDeletionService : ISequenceDeletionService
+    {
+        public int CallCount { get; private set; }
+        public SequenceDeletionStatus ResultStatus { get; set; }
+        public string Error { get; set; } = string.Empty;
+        public bool SourceCommitted { get; set; }
+        public bool RemoveFromBattle { get; set; }
+
+        public SequenceDeletionResult Delete(
+            ActionSequenceAsset sequence,
+            BattleScenarioData owningBattle,
+            SequenceUsageIndex usage,
+            ActionCatalogAsset catalog = null)
+        {
+            CallCount++;
+            if (RemoveFromBattle && owningBattle != null)
+            {
+                owningBattle.Sequences.Remove(sequence);
+            }
+            return new SequenceDeletionResult
+            {
+                Status = ResultStatus,
+                ErrorMessage = Error,
+                SourceCommitted = SourceCommitted,
+                Analysis = SequenceDeletionCoordinator.Analyze(sequence, owningBattle, usage)
+            };
+        }
     }
 }

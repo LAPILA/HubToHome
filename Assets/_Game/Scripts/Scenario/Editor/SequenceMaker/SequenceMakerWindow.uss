@@ -2537,3 +2537,57 @@
     font-size: 10px;
     white-space: normal;
 }
+
+/* Sequence deletion */
+.sm-sequence-danger {
+    margin-top: 18px;
+    padding-top: 12px;
+    border-top-width: 1px;
+    border-top-color: #714942;
+}
+
+.sm-sequence-danger-title {
+    margin-bottom: 5px;
+    color: #edaaa0;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.sm-sequence-danger-copy,
+.sm-sequence-danger-detail {
+    color: #a99b96;
+    white-space: normal;
+}
+
+.sm-sequence-danger-blocked {
+    margin-top: 7px;
+    margin-bottom: 3px;
+    color: #efb29e;
+    -unity-font-style: bold;
+}
+
+.sm-sequence-danger-detail {
+    margin: 1px 0 1px 4px;
+    font-size: 10px;
+}
+
+.sm-sequence-delete-command {
+    min-height: 29px;
+    margin-top: 9px;
+    padding: 5px 10px;
+    border-width: 1px;
+    border-radius: 4px;
+    border-color: #91574e;
+    background-color: #5d3733;
+    color: #f2c2ba;
+    -unity-font-style: bold;
+}
+
+.sm-sequence-delete-command:hover {
+    border-color: #c9786b;
+    background-color: #714039;
+}
+
+.sm-sequence-delete-command:disabled {
+    opacity: 0.45;
+}
