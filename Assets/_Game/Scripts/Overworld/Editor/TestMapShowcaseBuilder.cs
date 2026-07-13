@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -24,11 +25,14 @@ public static class TestMapShowcaseBuilder
     private const string ZevEnemyDataPath = "Assets/_Game/Content/Characters/EnemyDB/ZEV/Enemy_ZEV.asset";
     private const string TestNpcSpritePath = "Assets/_Game/Content/Art/Samples/TestNPC.png";
     private const string WhiteSpritePath = "Assets/_Game/Content/Maps/_Generated/RoomMap_WhiteSquare.png";
-    private const string LabelFontPath = "Assets/_Game/Presentation/UI/Fonts/NeoDunggeunmoPro-Regular.ttf";
+    private const string LabelFontPath = "Assets/_Game/Presentation/UI/Fonts/Silver SDF.asset";
     private const string AreaId = "testmap.qa";
 
     private const float HalfWidth = 32f;
-    private const float HalfHeight = 20f;
+    private const float MapBottom = -20f;
+    private const float MapTop = 28f;
+    private static float MapHeight => MapTop - MapBottom;
+    private static float MapCenterY => (MapTop + MapBottom) * 0.5f;
 
     private static readonly Color BackgroundColor = new Color(0.035f, 0.045f, 0.055f, 1f);
     private static readonly Color HubColor = new Color(0.16f, 0.19f, 0.22f, 1f);
@@ -36,6 +40,7 @@ public static class TestMapShowcaseBuilder
     private static readonly Color ScaleZoneColor = new Color(0.20f, 0.17f, 0.23f, 1f);
     private static readonly Color SystemZoneColor = new Color(0.20f, 0.22f, 0.16f, 1f);
     private static readonly Color CombatZoneColor = new Color(0.25f, 0.13f, 0.14f, 1f);
+    private static readonly Color SpriteDropZoneColor = new Color(0.12f, 0.15f, 0.24f, 1f);
     private static readonly Color WallColor = new Color(0.48f, 0.52f, 0.57f, 1f);
     private static readonly Color TextColor = new Color(0.94f, 0.95f, 0.92f, 1f);
 
@@ -43,7 +48,7 @@ public static class TestMapShowcaseBuilder
     private static Sprite _testNpcSprite;
     private static Sprite _playerSprite;
     private static Sprite _zevSprite;
-    private static Font _labelFont;
+    private static TMP_FontAsset _labelFont;
 
     private enum StationVisual
     {
@@ -122,7 +127,7 @@ public static class TestMapShowcaseBuilder
     {
         _whiteSprite = AssetDatabase.LoadAssetAtPath<Sprite>(WhiteSpritePath);
         _testNpcSprite = AssetDatabase.LoadAssetAtPath<Sprite>(TestNpcSpritePath);
-        _labelFont = AssetDatabase.LoadAssetAtPath<Font>(LabelFontPath);
+        _labelFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(LabelFontPath);
 
         GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
         SpriteRenderer playerRenderer = playerPrefab != null ? playerPrefab.GetComponent<SpriteRenderer>() : null;
@@ -136,25 +141,28 @@ public static class TestMapShowcaseBuilder
             throw new InvalidOperationException("TestMap 블록용 공용 스프라이트를 찾지 못했습니다: " + WhiteSpritePath);
         if (_testNpcSprite == null)
             throw new InvalidOperationException("TestNPC 스프라이트를 찾지 못했습니다: " + TestNpcSpritePath);
+        if (_labelFont == null)
+            throw new InvalidOperationException("TestMap TMP 폰트를 찾지 못했습니다: " + LabelFontPath);
     }
 
     private static GameObject BuildEnvironment(Transform environment, Transform labels)
     {
-        CreateBlock("Map_Background", environment, Vector3.zero, new Vector2(HalfWidth * 2f, HalfHeight * 2f), BackgroundColor, "Background", -1000);
+        CreateBlock("Map_Background", environment, new Vector3(0f, MapCenterY), new Vector2(HalfWidth * 2f, MapHeight), BackgroundColor, "Background", -1000);
 
         CreateBlock("Zone_A_NPC_Dialogue", environment, new Vector3(-17f, 10.25f, 0f), new Vector2(28f, 14.5f), NpcZoneColor, "Background", -900);
         CreateBlock("Zone_B_Sprite_Scale", environment, new Vector3(17f, 10.25f, 0f), new Vector2(28f, 14.5f), ScaleZoneColor, "Background", -900);
         CreateBlock("Zone_C_System_Markers", environment, new Vector3(-17f, -10.25f, 0f), new Vector2(28f, 14.5f), SystemZoneColor, "Background", -900);
         CreateBlock("Zone_D_Combat_Collision", environment, new Vector3(17f, -10.25f, 0f), new Vector2(28f, 14.5f), CombatZoneColor, "Background", -900);
+        BuildSpriteDropYard(environment, labels);
 
-        CreateBlock("Hub_Vertical_Path", environment, Vector3.zero, new Vector2(6f, 40f), HubColor, "Background", -850);
+        CreateBlock("Hub_Vertical_Path", environment, new Vector3(0f, MapCenterY), new Vector2(6f, MapHeight), HubColor, "Background", -850);
         CreateBlock("Hub_Horizontal_Path", environment, Vector3.zero, new Vector2(64f, 6f), HubColor, "Background", -850);
         CreateBlock("Hub_Center", environment, Vector3.zero, new Vector2(8f, 8f), new Color(0.24f, 0.28f, 0.31f), "Background", -800);
 
-        CreateBlock("OuterWall_Top", environment, new Vector3(0f, HalfHeight - 0.35f), new Vector2(64f, 0.7f), WallColor, "Default", 0, true);
-        CreateBlock("OuterWall_Bottom", environment, new Vector3(0f, -HalfHeight + 0.35f), new Vector2(64f, 0.7f), WallColor, "Default", 0, true);
-        CreateBlock("OuterWall_Left", environment, new Vector3(-HalfWidth + 0.35f, 0f), new Vector2(0.7f, 40f), WallColor, "Default", 0, true);
-        CreateBlock("OuterWall_Right", environment, new Vector3(HalfWidth - 0.35f, 0f), new Vector2(0.7f, 40f), WallColor, "Default", 0, true);
+        CreateBlock("OuterWall_Top", environment, new Vector3(0f, MapTop - 0.35f), new Vector2(64f, 0.7f), WallColor, "Default", 0, true);
+        CreateBlock("OuterWall_Bottom", environment, new Vector3(0f, MapBottom + 0.35f), new Vector2(64f, 0.7f), WallColor, "Default", 0, true);
+        CreateBlock("OuterWall_Left", environment, new Vector3(-HalfWidth + 0.35f, MapCenterY), new Vector2(0.7f, MapHeight), WallColor, "Default", 0, true);
+        CreateBlock("OuterWall_Right", environment, new Vector3(HalfWidth - 0.35f, MapCenterY), new Vector2(0.7f, MapHeight), WallColor, "Default", 0, true);
 
         CreateBlock("Divider_North_Left", environment, new Vector3(-17f, 2.75f), new Vector2(25f, 0.35f), new Color(0.38f, 0.76f, 0.66f), "Default", 0);
         CreateBlock("Divider_North_Right", environment, new Vector3(17f, 2.75f), new Vector2(25f, 0.35f), new Color(0.72f, 0.48f, 0.74f), "Default", 0);
@@ -172,6 +180,47 @@ public static class TestMapShowcaseBuilder
         return bounds.gameObject;
     }
 
+    private static void BuildSpriteDropYard(Transform environment, Transform labels)
+    {
+        const float yardY = 23f;
+        CreateBlock("Zone_E_Sprite_Drop_Yard", environment, new Vector3(0f, yardY), new Vector2(60f, 8.4f), SpriteDropZoneColor, "Background", -900);
+        CreateBlock("SpriteDropYard_Baseline", environment, new Vector3(0f, 20.05f), new Vector2(58f, 0.055f), new Color(0.93f, 0.94f, 0.80f, 0.65f), "Default", 35);
+
+        for (int x = -28; x <= 28; x += 2)
+        {
+            float alpha = x == 0 ? 0.26f : 0.10f;
+            CreateBlock("SpriteDropYard_Grid_V_" + x, environment, new Vector3(x, yardY), new Vector2(0.03f, 7.3f), new Color(0.78f, 0.84f, 0.96f, alpha), "Default", 25);
+        }
+
+        for (int i = 0; i <= 7; i++)
+        {
+            float y = 19.5f + i;
+            float alpha = i == 0 ? 0.24f : 0.09f;
+            CreateBlock("SpriteDropYard_Grid_H_" + i, environment, new Vector3(0f, y), new Vector2(58f, 0.03f), new Color(0.78f, 0.84f, 0.96f, alpha), "Default", 25);
+        }
+
+        CreateText("Zone_E_Title", labels, new Vector3(0f, 26.45f), "E  SPRITE DROP YARD", 0.085f, new Color(0.76f, 0.84f, 1f), 5200);
+        CreateText("Zone_E_Usage", labels, new Vector3(0f, 25.55f), "DRAG TEMP SPRITES HERE   |   FEET ON BASELINE   |   GRID = 1 WORLD UNIT", 0.047f, new Color(0.86f, 0.89f, 0.98f), 5200);
+        CreateText("Zone_E_Ruler", labels, new Vector3(0f, 19.25f), "Use this upper strip for rough sprite scale checks before making prefabs.", 0.04f, new Color(0.80f, 0.84f, 0.91f), 5200);
+
+        CreateSpriteDropSlot(environment, "DropSlot_PlayerNpc", new Vector3(-23.5f, 23f), new Vector2(8f, 6f), "NPC / PLAYER\n1-2u tall", new Color(0.48f, 0.95f, 0.75f));
+        CreateSpriteDropSlot(environment, "DropSlot_NormalEnemy", new Vector3(-8f, 23f), new Vector2(8f, 6f), "NORMAL ENEMY\n1-3u tall", new Color(1f, 0.58f, 0.55f));
+        CreateSpriteDropSlot(environment, "DropSlot_BossWide", new Vector3(8f, 23f), new Vector2(10f, 6f), "BOSS / WIDE\n2-5u wide", new Color(1f, 0.78f, 0.38f));
+        CreateSpriteDropSlot(environment, "DropSlot_PropBg", new Vector3(24f, 23f), new Vector2(8f, 6f), "PROP / BG\nno collider", new Color(0.72f, 0.64f, 1f));
+    }
+
+    private static void CreateSpriteDropSlot(Transform parent, string name, Vector3 center, Vector2 size, string label, Color accent)
+    {
+        Color fill = new Color(accent.r, accent.g, accent.b, 0.075f);
+        Color line = new Color(accent.r, accent.g, accent.b, 0.58f);
+        CreateBlock(name + "_Fill", parent, center, size, fill, "Default", 30);
+        CreateBlock(name + "_Top", parent, center + new Vector3(0f, size.y * 0.5f), new Vector2(size.x, 0.06f), line, "Default", 36);
+        CreateBlock(name + "_Bottom", parent, center - new Vector3(0f, size.y * 0.5f), new Vector2(size.x, 0.06f), line, "Default", 36);
+        CreateBlock(name + "_Left", parent, center - new Vector3(size.x * 0.5f, 0f), new Vector2(0.06f, size.y), line, "Default", 36);
+        CreateBlock(name + "_Right", parent, center + new Vector3(size.x * 0.5f, 0f), new Vector2(0.06f, size.y), line, "Default", 36);
+        CreateBlock(name + "_FeetLine", parent, new Vector3(center.x, 20.05f), new Vector2(size.x - 0.6f, 0.08f), new Color(1f, 1f, 1f, 0.55f), "Default", 38);
+        CreateText(name + "_Label", parent, center + new Vector3(0f, -2.25f), label, 0.04f, new Color(0.92f, 0.94f, 0.98f), 5200);
+    }
     private static PolygonCollider2D CreateCameraBounds(Transform parent)
     {
         GameObject boundsObject = new GameObject("CameraBounds_QA_Map");
@@ -181,10 +230,10 @@ public static class TestMapShowcaseBuilder
         bounds.pathCount = 1;
         bounds.SetPath(0, new[]
         {
-            new Vector2(-HalfWidth + 0.7f, -HalfHeight + 0.7f),
-            new Vector2(-HalfWidth + 0.7f, HalfHeight - 0.7f),
-            new Vector2(HalfWidth - 0.7f, HalfHeight - 0.7f),
-            new Vector2(HalfWidth - 0.7f, -HalfHeight + 0.7f)
+            new Vector2(-HalfWidth + 0.7f, MapBottom + 0.7f),
+            new Vector2(-HalfWidth + 0.7f, MapTop - 0.7f),
+            new Vector2(HalfWidth - 0.7f, MapTop - 0.7f),
+            new Vector2(HalfWidth - 0.7f, MapBottom + 0.7f)
         });
         return bounds;
     }
@@ -523,13 +572,78 @@ public static class TestMapShowcaseBuilder
         configure?.Invoke(so);
         so.ApplyModifiedPropertiesWithoutUndo();
 
-        BuildStationVisual(root.transform, visual, label, accent, characterSprite);
+        BuildStationVisual(root.transform, markerType, visual, label, accent, oneShot, characterSprite);
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
         UnityEngine.Object.DestroyImmediate(root);
         return prefab;
     }
 
-    private static void BuildStationVisual(Transform root, StationVisual visual, string label, Color accent, Sprite characterSprite)
+    private static string GetMarkerShortName(AreaMarkerType markerType)
+    {
+        switch (markerType)
+        {
+            case AreaMarkerType.Connection:
+                return "LINK";
+            case AreaMarkerType.Enemy:
+                return "ENEMY";
+            case AreaMarkerType.Hazard:
+                return "HAZARD";
+            case AreaMarkerType.Puzzle:
+                return "PUZZLE";
+            case AreaMarkerType.Vendor:
+                return "VENDOR";
+            case AreaMarkerType.ShortcutDoor:
+                return "DOOR";
+            case AreaMarkerType.NPC:
+                return "NPC";
+            case AreaMarkerType.Item:
+                return "ITEM";
+            case AreaMarkerType.Sign:
+                return "SIGN";
+            case AreaMarkerType.SavePoint:
+                return "SAVE";
+            case AreaMarkerType.PlotPoint:
+                return "PLOT";
+            case AreaMarkerType.Sublocation:
+                return "SUB MAP";
+            default:
+                return markerType.ToString().ToUpperInvariant();
+        }
+    }
+
+    private static string GetMarkerUsageText(AreaMarkerType markerType, bool oneShot)
+    {
+        switch (markerType)
+        {
+            case AreaMarkerType.NPC:
+                return oneShot ? "Z TALK / ONCE" : "Z TALK / REPEAT";
+            case AreaMarkerType.Sign:
+                return "Z READ";
+            case AreaMarkerType.PlotPoint:
+                return oneShot ? "ENTER / ONCE" : "ENTER TRIGGER";
+            case AreaMarkerType.Item:
+                return "Z PICKUP / ONCE";
+            case AreaMarkerType.SavePoint:
+                return "Z SAVE SLOT 0";
+            case AreaMarkerType.Puzzle:
+                return "Z SET FLAG";
+            case AreaMarkerType.ShortcutDoor:
+                return "Z DOOR / LOCK";
+            case AreaMarkerType.Vendor:
+                return "Z SHOP HOOK";
+            case AreaMarkerType.Connection:
+                return "Z MAP LINK";
+            case AreaMarkerType.Sublocation:
+                return "Z SUB MAP";
+            case AreaMarkerType.Hazard:
+                return "TOUCH KNOCKBACK";
+            case AreaMarkerType.Enemy:
+                return "Z BATTLE MARKER";
+            default:
+                return "Z INTERACT";
+        }
+    }
+    private static void BuildStationVisual(Transform root, AreaMarkerType markerType, StationVisual visual, string label, Color accent, bool oneShot, Sprite characterSprite)
     {
         CreateBlock("Base", root, new Vector3(0f, -0.52f), new Vector2(1.45f, 0.22f), new Color(accent.r * 0.55f, accent.g * 0.55f, accent.b * 0.55f, 1f), "Characters", 0);
 
@@ -578,9 +692,20 @@ public static class TestMapShowcaseBuilder
                 break;
         }
 
-        CreateText("Station_Label", root, new Vector3(0f, -0.98f), label, 0.038f, TextColor, 5300);
+        CreateBlock("Station_TypePlate", root, new Vector3(0f, 1.08f), new Vector2(1.75f, 0.34f), new Color(0.015f, 0.018f, 0.024f, 0.78f), "Default", 5290);
+        CreateText("Station_TypeBadge", root, new Vector3(0f, 1.08f), GetMarkerShortName(markerType), 0.032f, accent, 5300);
+        CreateBlock("Station_LabelPlate", root, new Vector3(0f, -1.24f), new Vector2(2.85f, 0.78f), new Color(0.015f, 0.018f, 0.024f, 0.82f), "Default", 5290);
+        CreateText("Station_Label", root, new Vector3(0f, -1.04f), label, 0.04f, TextColor, 5300);
+        CreateText("Station_Use", root, new Vector3(0f, -1.39f), GetMarkerUsageText(markerType, oneShot), 0.03f, new Color(0.78f, 0.84f, 0.88f), 5300);
     }
 
+    private static void CreateMarkerNote(Transform parent, string name, Vector3 position, string title, string body, Color accent, float width = 4.8f, float height = 1.35f)
+    {
+        CreateBlock(name + "_Plate", parent, position, new Vector2(width, height), new Color(0.015f, 0.018f, 0.024f, 0.78f), "Default", 5150);
+        CreateBlock(name + "_Accent", parent, position - new Vector3(width * 0.5f - 0.08f, 0f), new Vector2(0.12f, height - 0.18f), accent, "Default", 5160);
+        CreateText(name + "_Title", parent, position + new Vector3(0f, 0.30f), title, 0.04f, accent, 5200);
+        CreateText(name + "_Body", parent, position + new Vector3(0f, -0.25f), body, 0.031f, new Color(0.86f, 0.89f, 0.91f), 5200);
+    }
     private static void BuildNpcAndDialogueZone(Transform parent, Dictionary<string, GameObject> prefabs)
     {
         GameObject zone = CreateGroup("A_NPC_AND_DIALOGUE", parent);
@@ -588,6 +713,11 @@ public static class TestMapShowcaseBuilder
         PlacePrefab(prefabs["npc_one_shot"], zone.transform, new Vector3(-17f, 10.5f));
         PlacePrefab(prefabs["sign"], zone.transform, new Vector3(-10f, 10.5f));
         PlacePrefab(prefabs["plot"], zone.transform, new Vector3(-5.2f, 6.1f));
+
+        CreateMarkerNote(zone.transform, "Note_NPC_Repeat", new Vector3(-24f, 13.55f), "NPC / Repeat", "Z: dialogue repeats\ninput should return", new Color(0.35f, 0.95f, 0.62f));
+        CreateMarkerNote(zone.transform, "Note_NPC_OneShot", new Vector3(-17f, 13.55f), "NPC / One-shot", "Z: talks once\nflag blocks repeat", new Color(0.36f, 0.72f, 1f));
+        CreateMarkerNote(zone.transform, "Note_Sign", new Vector3(-10f, 13.55f), "Sign", "Z: read text\nrepeat is allowed", new Color(0.95f, 0.68f, 0.25f));
+        CreateMarkerNote(zone.transform, "Note_Plot", new Vector3(-5.2f, 8.7f), "Plot Point", "enter trigger\nlocks after once", new Color(1f, 0.32f, 0.82f));
 
         CreateText("NPC_Test_Hint", zone.transform, new Vector3(-17f, 6.2f), "REPEAT   ONE-SHOT   SIGN   AUTO-PLOT", 0.05f, new Color(0.70f, 0.96f, 0.84f), 5200);
     }
@@ -603,6 +733,14 @@ public static class TestMapShowcaseBuilder
         PlacePrefab(prefabs["connection"], zone.transform, new Vector3(-19f, -14.2f));
         PlacePrefab(prefabs["sublocation"], zone.transform, new Vector3(-10f, -14.2f));
 
+        CreateMarkerNote(zone.transform, "Note_Item", new Vector3(-27f, -5.75f), "Item", "Z: pickup x3\nthen one-shot flag", Color.white, 4.6f);
+        CreateMarkerNote(zone.transform, "Note_Save", new Vector3(-21f, -5.75f), "SAVE", "Z: save slot 0\nreal save write", new Color(0.24f, 1f, 1f), 4.6f);
+        CreateMarkerNote(zone.transform, "Note_Puzzle", new Vector3(-15f, -5.75f), "Puzzle", "Z: set solved flag\nunlocks shortcut", new Color(0.70f, 0.42f, 1f), 4.6f);
+        CreateMarkerNote(zone.transform, "Note_Shortcut", new Vector3(-8f, -5.75f), "Shortcut", "Z: locked first\ntry after puzzle", new Color(0.36f, 0.94f, 0.62f), 4.8f);
+        CreateMarkerNote(zone.transform, "Note_Vendor", new Vector3(-27f, -11.65f), "Vendor", "Z: shop hook\nlogs vendor/shop id", new Color(1f, 0.84f, 0.25f), 4.6f);
+        CreateMarkerNote(zone.transform, "Note_Connection", new Vector3(-19f, -11.65f), "Connection", "Z: map link\nreloads TestMap", new Color(0.48f, 0.82f, 1f), 4.8f);
+        CreateMarkerNote(zone.transform, "Note_Sublocation", new Vector3(-10f, -11.65f), "Sublocation", "Z: sub map link\nreturns to spawn", new Color(0.70f, 0.68f, 1f), 4.8f);
+
         CreateText("System_Test_Order", zone.transform, new Vector3(-17f, -17.05f), "PUZZLE FIRST -> SHORTCUT UNLOCKS   |   DOORS RELOAD THIS MAP", 0.044f, new Color(0.90f, 0.94f, 0.59f), 5200);
     }
 
@@ -611,6 +749,9 @@ public static class TestMapShowcaseBuilder
         GameObject zone = CreateGroup("D_COMBAT_AND_COLLISION", parent);
         PlacePrefab(prefabs["enemy"], zone.transform, new Vector3(8f, -8.4f));
         PlacePrefab(prefabs["hazard"], zone.transform, new Vector3(27f, -8.4f));
+        CreateMarkerNote(zone.transform, "Note_EnemyMarker", new Vector3(8f, -5.85f), "Enemy Marker", "Z: battle marker\ndata-driven test", new Color(1f, 0.45f, 0.45f));
+        CreateMarkerNote(zone.transform, "Note_ZevPrefab", new Vector3(17f, -5.85f), "ZEV Prefab", "touch: normal\nF: preemptive", new Color(1f, 0.62f, 0.62f));
+        CreateMarkerNote(zone.transform, "Note_Hazard", new Vector3(27f, -5.85f), "Hazard", "touch: knockback\nHP not wired yet", new Color(1f, 0.42f, 0.18f));
 
         GameObject zevPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ZevPrefabPath);
         if (zevPrefab != null)
@@ -634,7 +775,7 @@ public static class TestMapShowcaseBuilder
             ApplyStaticYSort(zev);
         }
 
-        CreateText("Combat_Hint", zone.transform, new Vector3(17f, -5.6f), "Z MARKER BATTLE     TOUCH = NORMAL     F = PREEMPTIVE", 0.048f, new Color(1f, 0.72f, 0.67f), 5200);
+        CreateText("Combat_Hint", zone.transform, new Vector3(17f, -4.55f), "READ EACH PLATE: MARKER BATTLE / ZEV TOUCH / F PREEMPTIVE / HAZARD", 0.04f, new Color(1f, 0.72f, 0.67f), 5200);
 
         GameObject collision = CreateGroup("Collision_And_YSort_Course", environment);
         CreateBlock("CollisionWall_Left", collision.transform, new Vector3(7.5f, -14.8f), new Vector2(0.7f, 5.4f), new Color(0.54f, 0.57f, 0.62f), "Characters", 0, true);
@@ -802,30 +943,26 @@ public static class TestMapShowcaseBuilder
         renderer.sortingOrder = 1;
     }
 
-    private static TextMesh CreateText(string name, Transform parent, Vector3 position, string value, float characterSize, Color color, int sortingOrder)
+    private static TextMeshPro CreateText(string name, Transform parent, Vector3 position, string value, float characterSize, Color color, int sortingOrder)
     {
-        GameObject go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        go.transform.position = position;
-        TextMesh text = go.AddComponent<TextMesh>();
-        if (_labelFont != null)
-            text.font = _labelFont;
+        GameObject go = new GameObject(name, typeof(RectTransform));
+        RectTransform rectTransform = go.GetComponent<RectTransform>();
+        rectTransform.SetParent(parent, false);
+        rectTransform.position = position;
+        rectTransform.sizeDelta = new Vector2(1000f, 100f);
+        rectTransform.localScale = Vector3.one * characterSize;
+
+        TextMeshPro text = go.AddComponent<TextMeshPro>();
+        text.font = _labelFont;
         text.text = value;
-        text.anchor = TextAnchor.MiddleCenter;
-        text.alignment = TextAlignment.Center;
+        text.alignment = TextAlignmentOptions.Center;
         text.fontSize = 64;
-        text.characterSize = characterSize;
         text.color = color;
         text.richText = false;
-
-        MeshRenderer renderer = go.GetComponent<MeshRenderer>();
-        if (renderer != null)
-        {
-            if (_labelFont != null)
-                renderer.sharedMaterial = _labelFont.material;
-            renderer.sortingLayerName = "Default";
-            renderer.sortingOrder = sortingOrder;
-        }
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.sortingLayerID = SortingLayer.NameToID("Default");
+        text.sortingOrder = sortingOrder;
 
         return text;
     }

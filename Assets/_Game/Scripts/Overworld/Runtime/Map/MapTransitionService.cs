@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -52,11 +53,30 @@ public class MapTransitionService : MonoBehaviour
             : GameState.Exploration;
         _isTransitioning = true;
         GameStateManager.Instance?.ChangeState(GameState.Cutscene);
-        StartCoroutine(CoTransition(request, player, previousState));
+
+        if (request.TransitionType == MapTransitionType.Scene)
+            BeginSceneTransition(request, player, previousState);
+        else
+            StartCoroutine(CoRoomTransition(request, player, previousState));
+
         return true;
     }
 
-    private IEnumerator CoTransition(
+    private void BeginSceneTransition(
+        MapTransitionRequest request,
+        PlayerController player,
+        GameState previousState)
+    {
+        player ??= FindFirstObjectByType<PlayerController>();
+
+        DepartureState departureState = DepartureState.Capture(GlobalDataManager.Instance);
+        SaveDepartureState(player, request);
+        BeginSceneLoad(
+            request,
+            result => CompleteSceneTransition(this, result, departureState, previousState));
+    }
+
+    private IEnumerator CoRoomTransition(
         MapTransitionRequest request,
         PlayerController player,
         GameState previousState)
@@ -66,68 +86,91 @@ public class MapTransitionService : MonoBehaviour
         DepartureState departureState = DepartureState.Capture(GlobalDataManager.Instance);
         SaveDepartureState(player, request);
 
-        SceneLoadResult result = SceneLoadResult.Succeeded;
-        if (request.TransitionType == MapTransitionType.Scene)
-        {
-            yield return CoLoadScene(request, value => result = value);
-        }
-        else
-        {
-            if (request.FadeDuration > 0f)
-                yield return new WaitForSecondsRealtime(request.FadeDuration);
-            result = CoLoadRoom(request, player);
-        }
+        if (request.FadeDuration > 0f)
+            yield return new WaitForSecondsRealtime(request.FadeDuration);
 
+        SceneLoadResult result = CoLoadRoom(request, player);
         if (result != SceneLoadResult.Succeeded)
             departureState.Restore(GlobalDataManager.Instance);
 
-        GameState restoreState = previousState == GameState.Paused
-            ? GameState.Exploration
-            : previousState;
-        GameStateManager.Instance?.ChangeState(restoreState);
+        RestoreGameState(previousState);
         _isTransitioning = false;
     }
 
-    protected virtual IEnumerator CoLoadScene(
+    protected virtual void BeginSceneLoad(
         MapTransitionRequest request,
         Action<SceneLoadResult> onCompleted)
     {
         if (string.IsNullOrWhiteSpace(request.TargetSceneName))
         {
             onCompleted?.Invoke(SceneLoadResult.InvalidScene);
-            yield break;
+            return;
         }
 
         if (SceneLoader.Instance != null)
         {
-            SceneLoadOperation operation = SceneLoader.Instance.LoadSceneWithResult(
+            SceneLoader.Instance.LoadSceneWithResult(
                 request.TargetSceneName,
-                request.FadeDuration);
-            while (!operation.IsDone)
-                yield return null;
-
-            onCompleted?.Invoke(operation.Result);
-            yield break;
+                request.FadeDuration,
+                onCompleted);
+            return;
         }
 
         if (!Application.CanStreamedLevelBeLoaded(request.TargetSceneName))
         {
             Debug.LogError($"[MapTransitionService] Build Settings에서 씬을 찾을 수 없습니다. Scene={request.TargetSceneName}", this);
             onCompleted?.Invoke(SceneLoadResult.InvalidScene);
-            yield break;
+            return;
         }
 
-        AsyncOperation loadOperation = SceneManager.LoadSceneAsync(request.TargetSceneName);
-        if (loadOperation == null)
+        UnityAction<Scene, LoadSceneMode> sceneLoaded = null;
+        sceneLoaded = (scene, _) =>
         {
-            onCompleted?.Invoke(SceneLoadResult.LoadFailed);
-            yield break;
+            if (!string.Equals(scene.name, request.TargetSceneName, StringComparison.Ordinal))
+                return;
+
+            SceneManager.sceneLoaded -= sceneLoaded;
+            onCompleted?.Invoke(SceneLoadResult.Succeeded);
+        };
+        SceneManager.sceneLoaded += sceneLoaded;
+
+        AsyncOperation loadOperation = null;
+        try
+        {
+            loadOperation = SceneManager.LoadSceneAsync(request.TargetSceneName);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
         }
 
-        while (!loadOperation.isDone)
-            yield return null;
+        if (loadOperation != null)
+            return;
 
-        onCompleted?.Invoke(SceneLoadResult.Succeeded);
+        SceneManager.sceneLoaded -= sceneLoaded;
+        onCompleted?.Invoke(SceneLoadResult.LoadFailed);
+    }
+
+    private static void CompleteSceneTransition(
+        MapTransitionService owner,
+        SceneLoadResult result,
+        DepartureState departureState,
+        GameState previousState)
+    {
+        if (result != SceneLoadResult.Succeeded)
+            departureState.Restore(GlobalDataManager.Instance);
+
+        RestoreGameState(previousState);
+        if (owner != null)
+            owner._isTransitioning = false;
+    }
+
+    private static void RestoreGameState(GameState previousState)
+    {
+        GameState restoreState = previousState == GameState.Paused
+            ? GameState.Exploration
+            : previousState;
+        GameStateManager.Instance?.ChangeState(restoreState);
     }
 
     private SceneLoadResult CoLoadRoom(MapTransitionRequest request, PlayerController player)

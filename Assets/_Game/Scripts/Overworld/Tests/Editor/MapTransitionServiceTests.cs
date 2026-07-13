@@ -30,6 +30,10 @@ public class MapTransitionServiceTests
         _globalData = CreateComponent<GlobalDataManager>("GlobalDataManager");
         _gameState = CreateComponent<GameStateManager>("GameStateManager");
         _service = CreateComponent<MapTransitionServiceTestDouble>("MapTransitionService");
+        SetStaticInstance(typeof(GlobalDataManager), _globalData);
+        SetStaticInstance(typeof(GameStateManager), _gameState);
+        SetStaticInstance(typeof(MapTransitionService), _service);
+
         _player = CreateComponent<PlayerController>("Player");
         _player.gameObject.SetActive(false);
         _player.transform.position = new Vector3(12f, 34f, 0f);
@@ -72,6 +76,23 @@ public class MapTransitionServiceTests
         Assert.That(_service.IsTransitioning, Is.False);
         Assert.That(_globalData.SpawnScene, Is.EqualTo("TargetScene"));
         Assert.That(_globalData.SpawnPointId, Is.EqualTo("ArrivalSpawn"));
+    }
+
+    [Test]
+    public void SceneTransition_CompletionRestoresStateAfterSceneLocalServiceIsDestroyed()
+    {
+        MapTransitionRequest request = CreateSceneRequest("ArrivalSpawn");
+
+        Assert.That(_service.TryRequestTransition(request, _player), Is.True);
+        Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Cutscene));
+
+        Action<SceneLoadResult> completion = _service.TakePendingCompletion();
+        GameObject serviceObject = _service.gameObject;
+        UnityEngine.Object.DestroyImmediate(serviceObject);
+
+        completion?.Invoke(SceneLoadResult.Succeeded);
+
+        Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Exploration));
     }
 
     [UnityTest]
@@ -222,26 +243,29 @@ public class MapTransitionServiceTests
 
 public sealed class MapTransitionServiceTestDouble : MapTransitionService
 {
-    private bool _completeRequested;
-    private SceneLoadResult _result;
+    private Action<SceneLoadResult> _pendingCompletion;
 
     public bool HasPendingLoad { get; private set; }
 
     public void Complete(SceneLoadResult result)
     {
-        _result = result;
-        _completeRequested = true;
+        Action<SceneLoadResult> completion = TakePendingCompletion();
+        completion?.Invoke(result);
     }
 
-    protected override IEnumerator CoLoadScene(
+    public Action<SceneLoadResult> TakePendingCompletion()
+    {
+        Action<SceneLoadResult> completion = _pendingCompletion;
+        _pendingCompletion = null;
+        HasPendingLoad = false;
+        return completion;
+    }
+
+    protected override void BeginSceneLoad(
         MapTransitionRequest request,
         Action<SceneLoadResult> onCompleted)
     {
         HasPendingLoad = true;
-        while (!_completeRequested)
-            yield return null;
-
-        onCompleted?.Invoke(_result);
-        HasPendingLoad = false;
+        _pendingCompletion = onCompleted;
     }
 }
