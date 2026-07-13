@@ -15,16 +15,11 @@ public sealed class EditorPreviewStateScope : IPreviewStateScope, IDisposable
         new Dictionary<IPreviewStateParticipant, CapturedState>(ReferenceComparer.Instance);
     private readonly List<CapturedState> _restoreOrder = new List<CapturedState>();
     private readonly List<string> _restoreErrors = new List<string>();
-    private readonly int _undoGroup;
-    private bool _hasUndoRecords;
     private bool _disposed;
 
     public EditorPreviewStateScope(bool safePreview = true)
     {
         IsSafePreview = safePreview;
-        Undo.IncrementCurrentGroup();
-        _undoGroup = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName("Sequence Maker Safe Preview");
         AssemblyReloadEvents.beforeAssemblyReload += Restore;
         EditorApplication.quitting += Restore;
         EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
@@ -101,27 +96,6 @@ public sealed class EditorPreviewStateScope : IPreviewStateScope, IDisposable
         var captured = new CapturedState(Normalize(key), participant, state);
         _captured.Add(participant, captured);
         _restoreOrder.Add(captured);
-        if (participant is IPreviewUndoObjectProvider objectProvider)
-        {
-            var objects = new List<UnityEngine.Object>();
-            IEnumerable<UnityEngine.Object> candidates = objectProvider.GetPreviewUndoObjects();
-            if (candidates != null)
-            {
-                foreach (UnityEngine.Object candidate in candidates)
-                {
-                    if (candidate != null && !objects.Contains(candidate))
-                    {
-                        objects.Add(candidate);
-                    }
-                }
-            }
-
-            if (objects.Count > 0)
-            {
-                Undo.RegisterCompleteObjectUndo(objects.ToArray(), "Sequence Maker Safe Preview");
-                _hasUndoRecords = true;
-            }
-        }
 
         error = string.Empty;
         return true;
@@ -153,11 +127,6 @@ public sealed class EditorPreviewStateScope : IPreviewStateScope, IDisposable
 
         _restoreOrder.Clear();
         _captured.Clear();
-        if (_hasUndoRecords)
-        {
-            Undo.RevertAllDownToGroup(_undoGroup);
-            _hasUndoRecords = false;
-        }
     }
 
     public void Dispose()

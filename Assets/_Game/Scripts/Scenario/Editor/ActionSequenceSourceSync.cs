@@ -66,7 +66,14 @@ public static class ActionSequenceSourceSync
             return result;
         }
 
-        ScenarioBlockIdentity.EnsureUnique(sequence.Actions);
+        if (!ScenarioBlockIdentity.TryValidateUnique(sequence.Actions, out string identityError))
+        {
+            result.Validation.AddError(
+                "sequence.source.block_id.invalid",
+                identityError,
+                sequenceId);
+            return result;
+        }
 
         var document = new ActionSequenceSourceDocument
         {
@@ -141,8 +148,10 @@ public static class ActionSequenceSourceSync
 
         try
         {
-            string normalizedPath = NormalizePath(sourcePath);
-            string sourceText = File.ReadAllText(Path.GetFullPath(normalizedPath));
+            if (!ScenarioSourcePathPolicy.TryNormalize(sourcePath, out string normalizedPath, out string pathError))
+                throw new InvalidOperationException(pathError);
+
+            string sourceText = File.ReadAllText(ScenarioSourcePathPolicy.RequireAbsolute(normalizedPath));
             return ReimportFromText(target, sourceText, normalizedPath, catalog, primaryMode, importedAtUtc);
         }
         catch (Exception exception)
@@ -197,8 +206,10 @@ public static class ActionSequenceSourceSync
             throw new InvalidOperationException("Action Sequence source export validation failed.");
         }
 
-        string sourcePath = NormalizePath(sequence.Source.SourcePath);
-        File.WriteAllText(Path.GetFullPath(sourcePath), exportResult.Text);
+        if (!ScenarioSourcePathPolicy.TryNormalize(sequence.Source.SourcePath, out string sourcePath, out string pathError))
+            throw new InvalidOperationException(pathError);
+
+        File.WriteAllText(ScenarioSourcePathPolicy.RequireAbsolute(sourcePath), exportResult.Text);
         ApplySourceMetadata(sequence, exportResult.Text, sourcePath, DateTime.UtcNow);
         EditorUtility.SetDirty(sequence);
     }
@@ -224,7 +235,13 @@ public static class ActionSequenceSourceSync
             return result;
         }
 
-        File.WriteAllText(Path.GetFullPath(normalizedPath), result.Text);
+        if (!ScenarioSourcePathPolicy.TryNormalize(normalizedPath, out normalizedPath, out string pathError))
+        {
+            result.Validation.AddError("sequence.export.path.unsafe", pathError, sequence != null ? sequence.SequenceId : string.Empty);
+            return result;
+        }
+
+        File.WriteAllText(ScenarioSourcePathPolicy.RequireAbsolute(normalizedPath), result.Text);
         ApplySourceMetadata(sequence, result.Text, normalizedPath, DateTime.UtcNow);
         EditorUtility.SetDirty(sequence);
         return result;

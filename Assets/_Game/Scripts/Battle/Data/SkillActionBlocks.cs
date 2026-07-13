@@ -288,25 +288,38 @@ public class Action_QTE : SkillActionBlock
 
     public override IEnumerator Execute(SkillContext context)
     {
-        if (Nodes == null || Nodes.Count == 0) yield break;
+        if (Nodes == null || Nodes.Count == 0 || QTEManager.Instance == null)
+            yield break;
 
-        bool qteFinished = false;
         int successCount = 0;
+        QteExecution execution = QTEManager.Instance.StartSequenceQTEWithResult(
+            Nodes,
+            TimeLimit,
+            (success, _) => successCount = success);
 
-        QTEManager.Instance.StartSequenceQTE(Nodes, TimeLimit, (success, total) => {
-            successCount = success;
-            qteFinished = true;
-        });
+        try
+        {
+            yield return new WaitUntil(() => execution.IsDone);
+            if (execution.Termination == QteTermination.Cancelled
+                || execution.Termination == QteTermination.Failed)
+            {
+                yield break;
+            }
 
-        yield return new WaitUntil(() => qteFinished);
-
-        float ratio = (float)successCount / Nodes.Count;
-        context.CurrentDamageMultiplier = Mathf.Lerp(FailMultiplier, SuccessMultiplier, ratio);
-        context.IsPerfectQTE = (successCount == Nodes.Count);
-
-        yield return new WaitForSeconds(0.2f); 
+            float ratio = (float)successCount / Nodes.Count;
+            context.CurrentDamageMultiplier = Mathf.Lerp(FailMultiplier, SuccessMultiplier, ratio);
+            context.IsPerfectQTE = successCount == Nodes.Count;
+            yield return new WaitForSeconds(0.2f);
+        }
+        finally
+        {
+            if (!execution.IsDone)
+                QTEManager.Instance?.Cancel(execution);
+        }
     }
 }
+
+
 
 [System.Serializable]
 [TypeInfoBox("이펙트(VFX)를 재생합니다. ObjectPoolManager를 지원합니다.")]
@@ -434,83 +447,104 @@ public class Action_DefenseWindow : SkillActionBlock
 
     public override IEnumerator Execute(SkillContext context)
     {
-        if (!(context.Actor is EnemyCharacter enemy) || context.Targets == null || context.Targets.Count == 0)
-            yield break;
-
-        if (PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow)
+        if (!(context.Actor is EnemyCharacter enemy)
+            || context.Targets == null
+            || context.Targets.Count == 0)
         {
-            GameObject previewTelegraph = SpawnTelegraph(context.Actor);
+            yield break;
+        }
 
-            if (TelegraphDuration > 0f)
-                yield return new WaitForSeconds(TelegraphDuration);
+        GameObject telegraph = null;
+        PlayerController targetController = null;
+        QteExecution execution = null;
 
-            DespawnTelegraph(previewTelegraph);
+        try
+        {
+            if (PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow)
+            {
+                telegraph = SpawnTelegraph(context.Actor);
+                if (TelegraphDuration > 0f)
+                    yield return new WaitForSeconds(TelegraphDuration);
+                if (DelayAfter > 0f)
+                    yield return new WaitForSeconds(DelayAfter);
+                yield break;
+            }
+
+            if (DefenseOpenDelay > 0f)
+                yield return new WaitForSeconds(DefenseOpenDelay);
+
+            telegraph = SpawnTelegraph(context.Actor);
+            CharacterBase target = context.Targets[0];
+            targetController = GetPlayerController(target);
+            DefenseInput finalInput = DefenseInput.None;
+            QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
+
+            targetController?.PrepareDefenseWindow();
+            if (QTEManager.Instance == null)
+                yield break;
+
+            execution = QTEManager.Instance.StartDefenseQTEWithResult(
+                TimeWindow,
+                1.0f,
+                (input, grade) =>
+                {
+                    finalInput = input;
+                    finalGrade = grade;
+                });
+
+            if (!string.IsNullOrWhiteSpace(AttackAnimTriggerName))
+                enemy.PlaySkillAnim(AttackAnimTriggerName, EnemyCharacter.HashSkill);
+
+            if (AttackAnimDelay > 0f)
+                yield return new WaitForSeconds(AttackAnimDelay);
+
+            yield return new WaitUntil(() => execution.IsDone);
+            if (execution.Termination == QteTermination.Cancelled
+                || execution.Termination == QteTermination.Failed)
+            {
+                yield break;
+            }
+
+            bool success = finalGrade != QTEManager.QTEGrade.Miss && IsMatch(finalInput);
+            if (success)
+            {
+                targetController?.ConfirmDefenseSuccess(finalInput);
+                context.CurrentDamageMultiplier = 0f;
+
+                if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
+                {
+                    yield return targetController != null
+                        ? targetController.WaitForDefenseVisualComplete(0.5f)
+                        : null;
+                }
+
+                if (finalInput == DefenseInput.Parry
+                    && finalGrade == QTEManager.QTEGrade.Perfect
+                    && target is PlayerCharacter playerTarget
+                    && BattleManager.Instance != null)
+                {
+                    playerTarget.HealMP(BattleManager.Instance._mpOnParryPerfect);
+                    BattleManager.Instance.InvokeMPChangedEvent(playerTarget, playerTarget.CurrentMP);
+                }
+            }
+            else
+            {
+                context.CurrentDamageMultiplier *= FailDamageMultiplier;
+                if (ShakeOnFail)
+                    CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.35f, true);
+            }
 
             if (DelayAfter > 0f)
                 yield return new WaitForSeconds(DelayAfter);
-
-            yield break;
         }
-
-        float openDelay = DefenseOpenDelay;
-        float timeWindow = TimeWindow;
-
-        if (openDelay > 0f)
-            yield return new WaitForSeconds(openDelay);
-
-        GameObject activeTelegraph = SpawnTelegraph(context.Actor);
-
-        CharacterBase target = context.Targets[0];
-        PlayerController targetCtrl = GetPlayerController(target);
-
-        bool qteFinished = false;
-        DefenseInput finalInput = DefenseInput.None;
-        QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
-
-        targetCtrl?.PrepareDefenseWindow();
-        QTEManager.Instance.StartDefenseQTE(timeWindow, 1.0f, (input, grade) =>
+        finally
         {
-            finalInput = input;
-            finalGrade = grade;
-            qteFinished = true;
-        });
+            if (execution != null && !execution.IsDone)
+                QTEManager.Instance?.Cancel(execution);
 
-        if (!string.IsNullOrWhiteSpace(AttackAnimTriggerName))
-            enemy.PlaySkillAnim(AttackAnimTriggerName, EnemyCharacter.HashSkill);
-
-        if (AttackAnimDelay > 0f)
-            yield return new WaitForSeconds(AttackAnimDelay);
-
-        yield return new WaitUntil(() => qteFinished);
-        DespawnTelegraph(activeTelegraph);
-
-        bool success = finalGrade != QTEManager.QTEGrade.Miss && IsMatch(finalInput);
-        if (success)
-        {
-            targetCtrl?.ConfirmDefenseSuccess(finalInput);
-            context.CurrentDamageMultiplier = 0f;
-
-            if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
-                yield return targetCtrl != null ? targetCtrl.WaitForDefenseVisualComplete(0.5f) : null;
-
-            if (finalInput == DefenseInput.Parry && finalGrade == QTEManager.QTEGrade.Perfect && target is PlayerCharacter playerTarget)
-            {
-                playerTarget.HealMP(BattleManager.Instance._mpOnParryPerfect);
-                BattleManager.Instance.InvokeMPChangedEvent(playerTarget, playerTarget.CurrentMP);
-            }
+            DespawnTelegraph(telegraph);
+            targetController?.ResetDefenseReactionLock();
         }
-        else
-        {
-            context.CurrentDamageMultiplier *= FailDamageMultiplier;
-        }
-
-        if (!success && ShakeOnFail)
-            CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.35f, true);
-
-        if (DelayAfter > 0f)
-            yield return new WaitForSeconds(DelayAfter);
-
-        targetCtrl?.ResetDefenseReactionLock();
     }
 
     private bool IsMatch(DefenseInput input)

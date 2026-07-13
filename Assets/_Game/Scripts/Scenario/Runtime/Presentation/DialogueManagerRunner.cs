@@ -60,6 +60,15 @@ public sealed class DialogueManagerRunner : IDialogueRunner
             throw new InvalidOperationException("Dialogue has no nodes: " + dialogueId);
         }
 
+        for (int i = 0; i < dialogue.Nodes.Count; i++)
+        {
+            if (dialogue.Nodes[i] == null)
+            {
+                throw new InvalidOperationException(
+                    "Dialogue contains null node at index " + i + ": " + dialogueId);
+            }
+        }
+
         DialogueManager manager = ResolveManager();
         if (manager == null)
         {

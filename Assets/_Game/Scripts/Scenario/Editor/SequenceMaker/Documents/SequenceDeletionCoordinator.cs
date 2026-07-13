@@ -271,6 +271,16 @@ public sealed class SequenceDeletionCoordinator : ISequenceDeletionService
             return failed;
         }
 
+        if (!_assets.IsSubAsset(sequence))
+        {
+            SequenceDeletionResult detached = Result(
+                SequenceDeletionStatus.Succeeded,
+                analysis,
+                string.Empty);
+            detached.SaveResult = save;
+            detached.SourceCommitted = true;
+            return detached;
+        }
         if (!_assets.DeleteRuntimeAsset(sequence, out string assetError))
         {
             SequenceDeletionResult failed = Result(
@@ -569,10 +579,7 @@ internal sealed class AssetDatabaseSequenceDeletionStore : ISequenceDeletionAsse
 
     private static string Absolute(string path)
     {
-        string normalized = Normalize(path);
-        return Path.IsPathRooted(normalized)
-            ? normalized
-            : Path.GetFullPath(normalized);
+        return ScenarioSourcePathPolicy.RequireProjectYamlAbsolute(path);
     }
 
     private static string Normalize(string path)

@@ -217,6 +217,8 @@ public class BattleTurnQteModuleControllerServiceTests
         public void EmitMpChanged(PlayerCharacter player, int newMp) { }
         public void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) { }
         public void PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing) { }
+        public void PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor) { }
+        public void PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor) { }
         public IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing) { FlushCalls++; yield break; }
         public SkillData ResolveEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action) => null;
         public EnemyAttackType ResolveEnemySkillAttackType(SkillData skill) => EnemyAttackType.MeleeClose;

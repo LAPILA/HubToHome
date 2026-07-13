@@ -24,6 +24,53 @@ public static class ScenarioBlockIdentity
         EnsureUnique(actions, seenIds, Normalize(deterministicSeed), string.Empty);
     }
 
+    public static bool TryValidateUnique(
+        List<ScenarioActionData> actions,
+        out string error)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        return TryValidateUnique(actions, seen, string.Empty, out error);
+    }
+
+    private static bool TryValidateUnique(
+        List<ScenarioActionData> actions,
+        HashSet<string> seen,
+        string parentPath,
+        out string error)
+    {
+        error = string.Empty;
+        if (actions == null)
+            return true;
+
+        for (int i = 0; i < actions.Count; i++)
+        {
+            ScenarioActionData action = actions[i];
+            if (action == null)
+                continue;
+
+            string path = string.IsNullOrEmpty(parentPath)
+                ? i.ToString()
+                : parentPath + "/" + i;
+            string blockId = Normalize(action.BlockId);
+            if (string.IsNullOrEmpty(blockId))
+            {
+                error = "Action Block ID is missing at " + path + ".";
+                return false;
+            }
+
+            if (!seen.Add(blockId))
+            {
+                error = "Duplicate Action Block ID '" + blockId + "' at " + path + ".";
+                return false;
+            }
+
+            if (!TryValidateUnique(action.Children, seen, path, out error))
+                return false;
+        }
+
+        return true;
+    }
+
     public static ScenarioActionData ClonePreservingIds(ScenarioActionData source)
     {
         return Clone(source, preserveIds: true);

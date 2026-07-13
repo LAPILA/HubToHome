@@ -51,9 +51,11 @@ public sealed class ScenarioSourceRuntimeAssetReimportCommand
 
         try
         {
-            string fullPath = Path.GetFullPath(sourcePath);
-            string sourceText = File.ReadAllText(fullPath);
-            return ReimportFromText(target, sourceText, sourcePath, catalog, importedAtUtc);
+            if (!ScenarioSourcePathPolicy.TryNormalize(sourcePath, out string safePath, out string pathError))
+                throw new InvalidOperationException(pathError);
+
+            string sourceText = File.ReadAllText(ScenarioSourcePathPolicy.RequireAbsolute(safePath));
+            return ReimportFromText(target, sourceText, safePath, catalog, importedAtUtc);
         }
         catch (Exception exception)
         {

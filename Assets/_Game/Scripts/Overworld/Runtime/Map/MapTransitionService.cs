@@ -1,10 +1,10 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Room 기반 맵 전환의 중심 서비스입니다.
-/// DoorTransition, 컷씬, 이벤트는 이 서비스에 요청만 보내고 실제 전환 규칙은 여기서 통합 관리합니다.
+/// Room/Scene 맵 전환의 수명주기와 도착 상태를 통합 관리합니다.
 /// </summary>
 public class MapTransitionService : MonoBehaviour
 {
@@ -16,7 +16,9 @@ public class MapTransitionService : MonoBehaviour
 
     private bool _isTransitioning;
 
-    private void Awake()
+    public bool IsTransitioning => _isTransitioning;
+
+    protected virtual void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
@@ -25,61 +27,110 @@ public class MapTransitionService : MonoBehaviour
 
     public void RequestTransition(MapTransitionRequest request, PlayerController player = null)
     {
-        if (_isTransitioning) return;
+        TryRequestTransition(request, player);
+    }
+
+    public bool TryRequestTransition(MapTransitionRequest request, PlayerController player = null)
+    {
+        if (_isTransitioning)
+            return false;
+
         if (request == null)
         {
             Debug.LogError("[MapTransitionService] TransitionRequest가 null입니다.");
-            return;
+            return false;
         }
 
         if (!request.IsValid(out string error))
         {
             Debug.LogError($"[MapTransitionService] 잘못된 맵 전환 요청입니다. Error={error}", this);
-            return;
+            return false;
         }
 
-        StartCoroutine(CoTransition(request, player));
+        GameState previousState = GameStateManager.Instance != null
+            ? GameStateManager.Instance.CurrentState
+            : GameState.Exploration;
+        _isTransitioning = true;
+        GameStateManager.Instance?.ChangeState(GameState.Cutscene);
+        StartCoroutine(CoTransition(request, player, previousState));
+        return true;
     }
 
-    private IEnumerator CoTransition(MapTransitionRequest request, PlayerController player)
+    private IEnumerator CoTransition(
+        MapTransitionRequest request,
+        PlayerController player,
+        GameState previousState)
     {
-        _isTransitioning = true;
         player ??= FindFirstObjectByType<PlayerController>();
 
-        GameState previousState = GameStateManager.Instance != null ? GameStateManager.Instance.CurrentState : GameState.Exploration;
-        GameStateManager.Instance?.ChangeState(GameState.Cutscene);
-
+        DepartureState departureState = DepartureState.Capture(GlobalDataManager.Instance);
         SaveDepartureState(player, request);
-        yield return new WaitForSecondsRealtime(Mathf.Max(0f, request.FadeDuration));
 
+        SceneLoadResult result = SceneLoadResult.Succeeded;
         if (request.TransitionType == MapTransitionType.Scene)
-            yield return CoLoadScene(request);
+        {
+            yield return CoLoadScene(request, value => result = value);
+        }
         else
-            yield return CoLoadRoom(request, player);
+        {
+            if (request.FadeDuration > 0f)
+                yield return new WaitForSecondsRealtime(request.FadeDuration);
+            result = CoLoadRoom(request, player);
+        }
 
-        GameStateManager.Instance?.ChangeState(previousState == GameState.Paused ? GameState.Exploration : previousState);
+        if (result != SceneLoadResult.Succeeded)
+            departureState.Restore(GlobalDataManager.Instance);
+
+        GameState restoreState = previousState == GameState.Paused
+            ? GameState.Exploration
+            : previousState;
+        GameStateManager.Instance?.ChangeState(restoreState);
         _isTransitioning = false;
     }
 
-    private IEnumerator CoLoadScene(MapTransitionRequest request)
+    protected virtual IEnumerator CoLoadScene(
+        MapTransitionRequest request,
+        Action<SceneLoadResult> onCompleted)
     {
         if (string.IsNullOrWhiteSpace(request.TargetSceneName))
         {
-            Debug.LogError("[MapTransitionService] TargetSceneName이 비어 있습니다.");
+            onCompleted?.Invoke(SceneLoadResult.InvalidScene);
             yield break;
         }
 
         if (SceneLoader.Instance != null)
         {
-            SceneLoader.Instance.LoadScene(request.TargetSceneName, request.FadeDuration);
+            SceneLoadOperation operation = SceneLoader.Instance.LoadSceneWithResult(
+                request.TargetSceneName,
+                request.FadeDuration);
+            while (!operation.IsDone)
+                yield return null;
+
+            onCompleted?.Invoke(operation.Result);
             yield break;
         }
 
-        SceneManager.LoadScene(request.TargetSceneName);
-        yield return null;
+        if (!Application.CanStreamedLevelBeLoaded(request.TargetSceneName))
+        {
+            Debug.LogError($"[MapTransitionService] Build Settings에서 씬을 찾을 수 없습니다. Scene={request.TargetSceneName}", this);
+            onCompleted?.Invoke(SceneLoadResult.InvalidScene);
+            yield break;
+        }
+
+        AsyncOperation loadOperation = SceneManager.LoadSceneAsync(request.TargetSceneName);
+        if (loadOperation == null)
+        {
+            onCompleted?.Invoke(SceneLoadResult.LoadFailed);
+            yield break;
+        }
+
+        while (!loadOperation.isDone)
+            yield return null;
+
+        onCompleted?.Invoke(SceneLoadResult.Succeeded);
     }
 
-    private IEnumerator CoLoadRoom(MapTransitionRequest request, PlayerController player)
+    private SceneLoadResult CoLoadRoom(MapTransitionRequest request, PlayerController player)
     {
         if (_roomContainer == null)
             _roomContainer = FindFirstObjectByType<RoomContainer>();
@@ -87,33 +138,35 @@ public class MapTransitionService : MonoBehaviour
         if (_roomContainer == null)
         {
             Debug.LogError("[MapTransitionService] RoomContainer가 씬에 없습니다.");
-            yield break;
+            return SceneLoadResult.LoadFailed;
         }
 
         RoomInstance room = _roomContainer.LoadRoom(request.TargetRoom, player);
         ApplyArrival(player, request);
         room?.ConfigureCamera(player != null ? player : FindFirstObjectByType<PlayerController>());
         SuppressArrivalDoor(request.TargetSpawnPointId);
-        yield return null;
-
         ApplyRoomPresentation(request.TargetRoom, room);
+        return SceneLoadResult.Succeeded;
     }
 
     private static void SaveDepartureState(PlayerController player, MapTransitionRequest request)
     {
-        if (GlobalDataManager.Instance == null) return;
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global == null) return;
 
         if (player != null)
             player.SavePositionToGlobal();
 
-        GlobalDataManager.Instance.SpawnScene = request.TransitionType == MapTransitionType.Scene
+        global.SpawnScene = request.TransitionType == MapTransitionType.Scene
             ? request.TargetSceneName
             : SceneManager.GetActiveScene().name;
-        GlobalDataManager.Instance.CurrentRoomId = request.TargetRoom != null ? request.TargetRoom.RoomId : string.Empty;
-        GlobalDataManager.Instance.SpawnPointId = request.TargetSpawnPointId;
+        global.CurrentRoomId = request.TransitionType == MapTransitionType.Scene
+            ? request.TargetAreaId ?? string.Empty
+            : request.TargetRoom != null ? request.TargetRoom.RoomId : string.Empty;
+        global.SpawnPointId = request.TargetSpawnPointId;
 
         if (request.FacingAfterEnter != FacingDirection.Keep)
-            GlobalDataManager.Instance.LookingDir = (int)request.FacingAfterEnter;
+            global.LookingDir = (int)request.FacingAfterEnter;
     }
 
     private static void ApplyArrival(PlayerController player, MapTransitionRequest request)
@@ -138,11 +191,13 @@ public class MapTransitionService : MonoBehaviour
             Debug.LogWarning($"[MapTransitionService] SpawnPoint를 찾지 못했습니다. Id={request.TargetSpawnPointId}");
         }
 
-        if (GlobalDataManager.Instance != null)
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global != null)
         {
-            GlobalDataManager.Instance.SpawnX = player.transform.position.x;
-            GlobalDataManager.Instance.SpawnY = player.transform.position.y;
-            GlobalDataManager.Instance.LookingDir = player.FacingDirection;
+            global.SpawnX = player.transform.position.x;
+            global.SpawnY = player.transform.position.y;
+            global.LookingDir = player.FacingDirection;
+            global.SpawnPointId = string.Empty;
         }
     }
 
@@ -161,8 +216,7 @@ public class MapTransitionService : MonoBehaviour
         else if (!definition.KeepCurrentBgm)
             AudioManager.Instance?.FadeOutBGM(definition.BgmFadeDuration);
 
-        PlayerController player = FindFirstObjectByType<PlayerController>();
-        room?.ConfigureCamera(player);
+        room?.ConfigureCamera(FindFirstObjectByType<PlayerController>());
     }
 
     private void SuppressArrivalDoor(string spawnPointId)
@@ -174,20 +228,55 @@ public class MapTransitionService : MonoBehaviour
         for (int i = 0; i < doors.Length; i++)
         {
             if (doors[i] == null) continue;
-
-            float distance = Vector2.Distance(doors[i].transform.position, spawnPoint.transform.position);
-            if (distance <= 1.5f)
+            if (Vector2.Distance(doors[i].transform.position, spawnPoint.transform.position) <= 1.5f)
                 doors[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
         }
 
-        AreaConnectionMarker[] connectionMarkers = FindObjectsByType<AreaConnectionMarker>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-        for (int i = 0; i < connectionMarkers.Length; i++)
+        AreaConnectionMarker[] markers = FindObjectsByType<AreaConnectionMarker>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < markers.Length; i++)
         {
-            if (connectionMarkers[i] == null) continue;
+            if (markers[i] == null) continue;
+            if (Vector2.Distance(markers[i].transform.position, spawnPoint.transform.position) <= 1.5f)
+                markers[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
+        }
+    }
 
-            float distance = Vector2.Distance(connectionMarkers[i].transform.position, spawnPoint.transform.position);
-            if (distance <= 1.5f)
-                connectionMarkers[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    private readonly struct DepartureState
+    {
+        private readonly string _spawnScene;
+        private readonly string _roomId;
+        private readonly string _spawnPointId;
+        private readonly float _spawnX;
+        private readonly float _spawnY;
+        private readonly int _lookingDir;
+
+        private DepartureState(GlobalDataManager global)
+        {
+            _spawnScene = global != null ? global.SpawnScene : string.Empty;
+            _roomId = global != null ? global.CurrentRoomId : string.Empty;
+            _spawnPointId = global != null ? global.SpawnPointId : string.Empty;
+            _spawnX = global != null ? global.SpawnX : 0f;
+            _spawnY = global != null ? global.SpawnY : 0f;
+            _lookingDir = global != null ? global.LookingDir : 0;
+        }
+
+        public static DepartureState Capture(GlobalDataManager global) => new DepartureState(global);
+
+        public void Restore(GlobalDataManager global)
+        {
+            if (global == null) return;
+            global.SpawnScene = _spawnScene;
+            global.CurrentRoomId = _roomId;
+            global.SpawnPointId = _spawnPointId;
+            global.SpawnX = _spawnX;
+            global.SpawnY = _spawnY;
+            global.LookingDir = _lookingDir;
         }
     }
 }

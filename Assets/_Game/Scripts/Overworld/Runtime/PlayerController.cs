@@ -539,11 +539,24 @@ public class PlayerController : MonoBehaviour
 
     public void LoadPositionFromGlobal()
     {
-        if (GlobalDataManager.Instance == null) return;
-        transform.position = new Vector3(
-            GlobalDataManager.Instance.SpawnX,
-            GlobalDataManager.Instance.SpawnY, 0f);
-        FacingDirection = GlobalDataManager.Instance.LookingDir;
+        GlobalDataManager global = GlobalDataManager.Instance
+            ?? FindFirstObjectByType<GlobalDataManager>(FindObjectsInactive.Include);
+        if (global == null) return;
+
+        string spawnPointId = global.SpawnPointId;
+        if (!string.IsNullOrWhiteSpace(spawnPointId)
+            && SpawnPoint.TryFind(spawnPointId, out SpawnPoint spawnPoint)
+            && spawnPoint != null)
+        {
+            transform.position = spawnPoint.transform.position;
+        }
+        else
+        {
+            transform.position = new Vector3(global.SpawnX, global.SpawnY, 0f);
+        }
+
+        FacingDirection = global.LookingDir;
+        global.SpawnPointId = string.Empty;
     }
 
     // ── 액션 쿨타임 체크 ──────────────────────────────────────
@@ -553,7 +566,6 @@ public class PlayerController : MonoBehaviour
         _lastActionTime = Time.time;
         return true;
     }
-
     // ── 전투 액션 실행 ────────────────────────────────────────
     /// <summary>전투 애니메이션 트리거 + 대응 이펙트 재생</summary>
     public void PlayBattleAnim(int triggerHash)

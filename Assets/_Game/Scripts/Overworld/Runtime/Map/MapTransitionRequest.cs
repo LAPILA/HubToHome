@@ -12,6 +12,7 @@ public class MapTransitionRequest
     public string TargetSceneName;
     public RoomDefinition TargetRoom;
     public string TargetSpawnPointId;
+    public string TargetAreaId;
 
     [Header("Arrival")]
     public FacingDirection FacingAfterEnter = FacingDirection.Keep;

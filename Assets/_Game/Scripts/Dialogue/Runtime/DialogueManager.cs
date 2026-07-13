@@ -45,13 +45,25 @@ public class DialogueManager : MonoBehaviour
 
         if (data == null)
         {
-            LogDialogueConsole("StartDialogue ignored: data is null");
+            LogDialogueConsole("StartDialogue rejected: data is null");
+            onComplete?.Invoke();
             return;
         }
 
-        if (data.Nodes.Count == 0)
+        if (data.Nodes == null || data.Nodes.Count == 0)
         {
-            LogDialogueConsole($"StartDialogue ignored: no nodes data={GetDialogueName(data)}");
+            LogDialogueConsole($"StartDialogue rejected: no nodes data={GetDialogueName(data)}");
+            onComplete?.Invoke();
+            return;
+        }
+
+        for (int i = 0; i < data.Nodes.Count; i++)
+        {
+            if (data.Nodes[i] != null)
+                continue;
+
+            LogDialogueConsole($"StartDialogue rejected: null node data={GetDialogueName(data)} index={i}");
+            onComplete?.Invoke();
             return;
         }
 
@@ -97,7 +109,12 @@ public class DialogueManager : MonoBehaviour
 
     private void PlayNode(DialogueNode node)
     {
-        if (node == null) return;
+        if (node == null)
+        {
+            LogDialogueConsole($"null DialogueNode를 만나 대화를 종료합니다. Data={GetDialogueName(_currentDialogue)} Index={_currentNodeIndex}");
+            EndDialogue();
+            return;
+        }
 
         LogDialogueConsole($"PlayNode data={GetDialogueName(_currentDialogue)} index={_currentNodeIndex} speaker={node.Speaker} key={node.LocalizationKey} event={node.EventTriggerID}");
 

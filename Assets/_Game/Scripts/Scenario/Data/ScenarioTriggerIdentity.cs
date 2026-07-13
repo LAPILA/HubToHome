@@ -18,6 +18,49 @@ public static class ScenarioTriggerIdentity
         EnsureUnique(root, seen, Normalize(deterministicSeed), "root");
     }
 
+    public static bool TryValidateUnique(
+        ScenarioTriggerConditionNodeData root,
+        out string error)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        return TryValidateUnique(root, seen, "root", out error);
+    }
+
+    private static bool TryValidateUnique(
+        ScenarioTriggerConditionNodeData node,
+        HashSet<string> seen,
+        string path,
+        out string error)
+    {
+        error = string.Empty;
+        if (node == null)
+            return true;
+
+        string nodeId = Normalize(node.NodeId);
+        if (string.IsNullOrEmpty(nodeId))
+        {
+            error = "Trigger Condition ID is missing at " + path + ".";
+            return false;
+        }
+
+        if (!seen.Add(nodeId))
+        {
+            error = "Duplicate Trigger Condition ID '" + nodeId + "' at " + path + ".";
+            return false;
+        }
+
+        if (node.Children == null)
+            return true;
+
+        for (int i = 0; i < node.Children.Count; i++)
+        {
+            if (!TryValidateUnique(node.Children[i], seen, path + "/" + i, out error))
+                return false;
+        }
+
+        return true;
+    }
+
     public static ScenarioTriggerConditionNodeData ClonePreservingIds(
         ScenarioTriggerConditionNodeData source)
     {

@@ -53,8 +53,8 @@ public sealed class ScenarioSourceExporter
         CopyStrings(scenario.EnemyIds, document.EnemyIds);
         CopyDialogues(scenario, document, dialogueIdProvider, validation);
         CopyAudioClips(scenario, document, audioIdProvider, validation);
-        CopyRules(scenario, document);
-        CopySequences(scenario, document);
+        CopyRules(scenario, document, validation);
+        CopySequences(scenario, document, validation);
 
         return document;
     }
@@ -188,7 +188,7 @@ public sealed class ScenarioSourceExporter
         }
     }
 
-    private static void CopyRules(BattleScenarioData scenario, ScenarioSourceDocument document)
+    private static void CopyRules(BattleScenarioData scenario, ScenarioSourceDocument document, ScenarioValidationResult validation)
     {
         if (scenario.Rules != null)
         {
@@ -226,9 +226,13 @@ public sealed class ScenarioSourceExporter
                     continue;
                 }
 
-                ScenarioTriggerIdentity.EnsureUnique(
-                    rule.Conditions,
-                    scenario.ScenarioId + "|" + rule.RuleId);
+                if (!ScenarioTriggerIdentity.TryValidateUnique(rule.Conditions, out string identityError))
+                {
+                    validation?.AddError(
+                        "scenario.export.trigger_identity.invalid",
+                        identityError,
+                        rule.RuleId);
+                }
                 document.Rules.Add(new ScenarioSourceRuleDocument
                 {
                     Kind = ScenarioSourceRuleKind.Trigger,
@@ -247,7 +251,7 @@ public sealed class ScenarioSourceExporter
         }
     }
 
-    private static void CopySequences(BattleScenarioData scenario, ScenarioSourceDocument document)
+    private static void CopySequences(BattleScenarioData scenario, ScenarioSourceDocument document, ScenarioValidationResult validation)
     {
         if (scenario.Sequences == null)
         {
@@ -262,7 +266,13 @@ public sealed class ScenarioSourceExporter
                 continue;
             }
 
-            ScenarioBlockIdentity.EnsureUnique(sequence.Actions);
+            if (!ScenarioBlockIdentity.TryValidateUnique(sequence.Actions, out string identityError))
+            {
+                validation?.AddError(
+                    "scenario.export.block_identity.invalid",
+                    identityError,
+                    sequence.SequenceId);
+            }
 
             document.Sequences.Add(new ScenarioSourceSequenceDocument
             {
@@ -2256,13 +2266,14 @@ public sealed class SystemScenarioSourceTextFileWriter : IScenarioSourceTextFile
 {
     public void WriteAllText(string path, string text)
     {
-        string directory = Path.GetDirectoryName(path);
+        string absolutePath = ScenarioSourcePathPolicy.RequireAbsolute(path);
+        string directory = Path.GetDirectoryName(absolutePath);
         if (!string.IsNullOrEmpty(directory))
         {
             Directory.CreateDirectory(directory);
         }
 
-        File.WriteAllText(path, text ?? string.Empty, Encoding.UTF8);
+        File.WriteAllText(absolutePath, text ?? string.Empty, new UTF8Encoding(false));
     }
 }
 
@@ -2332,6 +2343,23 @@ public sealed class ScenarioSourceYamlExportCommand
                 "A target .scenario.yaml path is required.",
                 scenario != null ? scenario.ScenarioId : string.Empty);
             return result;
+        }
+
+        if (_fileWriter is SystemScenarioSourceTextFileWriter)
+        {
+            if (!ScenarioSourcePathPolicy.TryNormalize(
+                    result.TargetPath,
+                    out string safePath,
+                    out string pathError))
+            {
+                result.Validation.AddError(
+                    "scenario.yaml.export.path.unsafe",
+                    pathError,
+                    result.TargetPath);
+                return result;
+            }
+
+            result.TargetPath = safePath;
         }
 
         try

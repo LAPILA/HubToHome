@@ -122,6 +122,8 @@ public class ActionSequenceSourceSyncTests
             }
         });
 
+        ScenarioBlockIdentity.EnsureUnique(source.Actions, source.SequenceId);
+
         ActionSequenceSourceExportResult exportResult = ActionSequenceSourceSync.Export(source, "overworld");
         ActionSequenceSourceImportResult importResult = ActionSequenceSourceSync.Import(
             exportResult.Text,

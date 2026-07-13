@@ -129,6 +129,22 @@ public sealed class SequenceSaveCoordinator
                 "저장할 YAML 경로가 필요합니다.");
         }
 
+        if (_fileSystem is SystemSequenceSourceFileSystem)
+        {
+            if (!ScenarioSourcePathPolicy.TryNormalize(
+                    result.SourcePath,
+                    out string safeSourcePath,
+                    out string pathError))
+            {
+                result.Validation.AddError(
+                    "sequence.save.path.unsafe",
+                    pathError,
+                    target.TargetId);
+                return Fail(result, SequenceSaveStatus.InvalidTarget, pathError);
+            }
+
+            result.SourcePath = safeSourcePath;
+        }
         SequenceSaveExportResult export;
         try
         {

@@ -66,44 +66,37 @@ public static class AreaMarkerRuntimeService
         string targetSpawnId,
         float fadeDuration)
     {
-        if (mapTransition != null && mapTransition.IsValid(out string _))
+        MapTransitionRequest request = mapTransition;
+        if (request == null || !request.IsValid(out _))
         {
-            if (MapTransitionService.Instance == null)
+            if (string.IsNullOrWhiteSpace(targetSceneName))
             {
-                Debug.LogError("[AreaMarkerRuntimeService] MapTransitionService가 씬에 없어 Room 이동을 실행할 수 없습니다.", owner);
+                Debug.LogWarning("[AreaMarkerRuntimeService] targetSceneName과 MapTransition이 모두 비어 있어 이동할 수 없습니다.", owner);
                 return false;
             }
 
-            MapTransitionService.Instance.RequestTransition(mapTransition, player);
-            Debug.Log($"[AreaMarkerRuntimeService] 맵 이동 요청: type={mapTransition.TransitionType}, room={mapTransition.TargetRoom}, scene={mapTransition.TargetSceneName}, spawn={mapTransition.TargetSpawnPointId}", owner);
-            return true;
+            request = new MapTransitionRequest
+            {
+                TransitionType = MapTransitionType.Scene,
+                TargetSceneName = targetSceneName,
+                TargetSpawnPointId = targetSpawnId,
+                FadeDuration = fadeDuration
+            };
         }
 
-        if (string.IsNullOrWhiteSpace(targetSceneName))
+        if (MapTransitionService.Instance == null)
         {
-            Debug.LogWarning("[AreaMarkerRuntimeService] targetSceneName과 MapTransition이 모두 비어 있어 이동할 수 없습니다.", owner);
+            Debug.LogError("[AreaMarkerRuntimeService] MapTransitionService가 씬에 없어 이동을 실행할 수 없습니다.", owner);
             return false;
         }
 
-        player?.SavePositionToGlobal();
-        if (GlobalDataManager.Instance != null)
+        bool accepted = MapTransitionService.Instance.TryRequestTransition(request, player);
+        if (accepted)
         {
-            GlobalDataManager.Instance.SpawnScene = targetSceneName;
-            GlobalDataManager.Instance.SpawnPointId = targetSpawnId;
-            if (player != null)
-            {
-                GlobalDataManager.Instance.SpawnX = player.transform.position.x;
-                GlobalDataManager.Instance.SpawnY = player.transform.position.y;
-            }
+            Debug.Log($"[AreaMarkerRuntimeService] 맵 이동 요청: type={request.TransitionType}, room={request.TargetRoom}, scene={request.TargetSceneName}, spawn={request.TargetSpawnPointId}", owner);
         }
 
-        if (SceneLoader.Instance != null)
-            SceneLoader.Instance.LoadScene(targetSceneName, fadeDuration);
-        else
-            SceneManager.LoadScene(targetSceneName);
-
-        Debug.Log($"[AreaMarkerRuntimeService] 씬 이동 요청: scene={targetSceneName}, spawn={targetSpawnId}", owner);
-        return true;
+        return accepted;
     }
 
     public static bool TryStartEncounter(
@@ -193,24 +186,33 @@ public static class AreaMarkerRuntimeService
         string targetSpawnId,
         float fadeDuration)
     {
-        if (GlobalDataManager.Instance != null)
-        {
-            GlobalDataManager.Instance.CurrentRoomId = targetAreaId;
-            GlobalDataManager.Instance.SpawnPointId = targetSpawnId;
-        }
-
         if (string.IsNullOrWhiteSpace(targetSceneName))
         {
             Debug.LogWarning("[AreaMarkerRuntimeService] targetSceneName이 비어 있어 sublocation 이동을 실행할 수 없습니다.", owner);
             return false;
         }
 
-        if (SceneLoader.Instance != null)
-            SceneLoader.Instance.LoadScene(targetSceneName, fadeDuration);
-        else
-            SceneManager.LoadScene(targetSceneName);
+        if (MapTransitionService.Instance == null)
+        {
+            Debug.LogError("[AreaMarkerRuntimeService] MapTransitionService가 씬에 없어 sublocation 이동을 실행할 수 없습니다.", owner);
+            return false;
+        }
 
-        Debug.Log($"[AreaMarkerRuntimeService] 내부맵 이동 요청: scene={targetSceneName}, area={targetAreaId}, spawn={targetSpawnId}", owner);
-        return true;
+        var request = new MapTransitionRequest
+        {
+            TransitionType = MapTransitionType.Scene,
+            TargetSceneName = targetSceneName,
+            TargetAreaId = targetAreaId,
+            TargetSpawnPointId = targetSpawnId,
+            FadeDuration = fadeDuration
+        };
+
+        bool accepted = MapTransitionService.Instance.TryRequestTransition(request);
+        if (accepted)
+        {
+            Debug.Log($"[AreaMarkerRuntimeService] 내부맵 이동 요청: scene={targetSceneName}, area={targetAreaId}, spawn={targetSpawnId}", owner);
+        }
+
+        return accepted;
     }
 }

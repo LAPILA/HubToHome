@@ -93,30 +93,33 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
                 yield break;
             }
 
-            while (routine != null)
+            try
             {
-                if (handle != null && (handle.IsDone || handle.IsCancellationRequested))
+                while (routine != null)
                 {
-                    yield break;
-                }
+                    if (handle != null && (handle.IsDone || handle.IsCancellationRequested))
+                        yield break;
 
-                bool moved;
-                try
-                {
-                    moved = routine.MoveNext();
-                }
-                catch (Exception exception)
-                {
-                    Fail(handle, "battle.skill.timeline block threw.", exception);
-                    yield break;
-                }
+                    bool moved;
+                    try
+                    {
+                        moved = routine.MoveNext();
+                    }
+                    catch (Exception exception)
+                    {
+                        Fail(handle, "battle.skill.timeline block threw.", exception);
+                        yield break;
+                    }
 
-                if (!moved)
-                {
-                    break;
-                }
+                    if (!moved)
+                        break;
 
-                yield return routine.Current;
+                    yield return routine.Current;
+                }
+            }
+            finally
+            {
+                (routine as IDisposable)?.Dispose();
             }
 
             if (skillContext.StopTimelineExecution)

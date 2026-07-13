@@ -1,31 +1,80 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using DG.Tweening;
 
 public interface ISceneRevealGate
 {
     bool IsReadyToReveal { get; }
 }
 
+public enum SceneLoadResult
+{
+    None,
+    RejectedBusy,
+    InvalidScene,
+    LoadFailed,
+    CancelledBeforeActivation,
+    Succeeded
+}
+
+public sealed class SceneLoadOperation
+{
+    private readonly Action<SceneLoadResult> _onCompleted;
+
+    internal SceneLoadOperation(Action<SceneLoadResult> onCompleted = null)
+    {
+        _onCompleted = onCompleted;
+    }
+
+    public bool IsDone { get; private set; }
+    public bool IsCancellationRequested { get; private set; }
+    public SceneLoadResult Result { get; private set; } = SceneLoadResult.None;
+
+    public bool Cancel()
+    {
+        if (IsDone)
+            return false;
+
+        IsCancellationRequested = true;
+        return true;
+    }
+
+    internal void Complete(SceneLoadResult result)
+    {
+        if (IsDone)
+            return;
+
+        Result = result;
+        IsDone = true;
+        try
+        {
+            _onCompleted?.Invoke(result);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+}
+
 public class SceneLoader : MonoBehaviour
 {
     public static SceneLoader Instance { get; private set; }
 
-    /// <summary>
-    /// 씬 전환용 검은 페이드가 완전히 사라진 직후 호출됩니다.
-    /// 씬 안의 시작 연출은 이 시점부터 실행해 첫 프레임을 안전하게 준비할 수 있습니다.
-    /// </summary>
-    public event System.Action<string> SceneRevealCompleted;
+    public event Action<string> SceneRevealCompleted;
 
     [Header("Fade UI")]
     [SerializeField] private CanvasGroup _fadeCanvas;
-    private bool _isLoading;
-    [SerializeField] private UnityEngine.UI.Image _fadeImage; // Flash 연출 시 색상 변경용
+    [SerializeField] private UnityEngine.UI.Image _fadeImage;
     [SerializeField] private float _sceneRevealGateTimeout = 5f;
 
-    private void Awake()
+    private bool _isLoading;
+    private SceneLoadOperation _activeOperation;
+
+    protected virtual void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
@@ -40,51 +89,191 @@ public class SceneLoader : MonoBehaviour
 
     public void LoadScene(string sceneName, float fadeDuration = 0.5f)
     {
-        StartCoroutine(FadeAndLoad(sceneName, fadeDuration, Color.black));
+        LoadSceneWithResult(sceneName, fadeDuration);
     }
 
     public void LoadBattleScene(string sceneName)
     {
-        // 스타일: 전투 진입 시 하얗게 번쩍임!
-        StartCoroutine(FadeAndLoad(sceneName, 0.1f, Color.white, isFlash: true));
+        StartLoad(sceneName, 0.1f, Color.white, true, null);
     }
 
-    private IEnumerator FadeAndLoad(string sceneName, float duration, Color fadeColor, bool isFlash = false)
+    public SceneLoadOperation LoadSceneWithResult(
+        string sceneName,
+        float fadeDuration = 0.5f,
+        Action<SceneLoadResult> onCompleted = null)
     {
-        if (_isLoading) yield break;
-        _isLoading = true;
+        return StartLoad(sceneName, fadeDuration, Color.black, false, onCompleted);
+    }
 
-        if (_fadeCanvas == null)
+    private SceneLoadOperation StartLoad(
+        string sceneName,
+        float duration,
+        Color fadeColor,
+        bool isFlash,
+        Action<SceneLoadResult> onCompleted)
+    {
+        var operation = new SceneLoadOperation(onCompleted);
+        if (_isLoading)
         {
-            SceneManager.LoadScene(sceneName);
-            _isLoading = false;
+            operation.Complete(SceneLoadResult.RejectedBusy);
+            return operation;
+        }
+
+        if (!IsSceneLoadable(sceneName))
+        {
+            Debug.Log($"[SceneLoader] Build Settings에서 씬을 찾을 수 없습니다. Scene={sceneName}", this);
+            operation.Complete(SceneLoadResult.InvalidScene);
+            return operation;
+        }
+
+        _isLoading = true;
+        _activeOperation = operation;
+        StartCoroutine(FadeAndLoad(sceneName, Mathf.Max(0f, duration), fadeColor, isFlash, operation));
+        return operation;
+    }
+
+    protected virtual bool IsSceneLoadable(string sceneName)
+    {
+        return !string.IsNullOrWhiteSpace(sceneName)
+            && Application.CanStreamedLevelBeLoaded(sceneName);
+    }
+
+    protected virtual AsyncOperation BeginLoadSceneAsync(string sceneName)
+    {
+        return SceneManager.LoadSceneAsync(sceneName);
+    }
+
+    private IEnumerator FadeAndLoad(
+        string sceneName,
+        float duration,
+        Color fadeColor,
+        bool isFlash,
+        SceneLoadOperation operation)
+    {
+        float previousAlpha = _fadeCanvas != null ? _fadeCanvas.alpha : 0f;
+        bool previousBlocksRaycasts = _fadeCanvas != null && _fadeCanvas.blocksRaycasts;
+        Color previousColor = _fadeImage != null ? _fadeImage.color : Color.black;
+        bool sceneActivated = false;
+
+        if (_fadeCanvas != null)
+        {
+            _fadeCanvas.blocksRaycasts = true;
+            if (_fadeImage != null)
+                _fadeImage.color = fadeColor;
+
+            yield return FadeCanvasTo(1f, duration);
+        }
+
+        if (operation.IsCancellationRequested)
+        {
+            RestoreFade(previousAlpha, previousBlocksRaycasts, previousColor);
+            Finish(operation, SceneLoadResult.CancelledBeforeActivation);
             yield break;
         }
 
-        _fadeCanvas.blocksRaycasts = true;
-        
-        if (_fadeImage != null) _fadeImage.color = fadeColor;
-        _fadeCanvas.DOKill(); // 진행 중인 페이드 취소
+        AsyncOperation loadOperation = null;
+        try
+        {
+            loadOperation = BeginLoadSceneAsync(sceneName);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+        }
 
-        // SetUpdate(true)를 통해 게임이 일시정지 상태라도 화면이 넘어가게 보장
-        yield return _fadeCanvas.DOFade(1f, duration).SetUpdate(true).WaitForCompletion();
+        if (loadOperation == null)
+        {
+            RestoreFade(previousAlpha, previousBlocksRaycasts, previousColor);
+            Finish(operation, SceneLoadResult.LoadFailed);
+            yield break;
+        }
 
-        var op = SceneManager.LoadSceneAsync(sceneName);
-        op.allowSceneActivation = false;
+        loadOperation.allowSceneActivation = false;
+        while (loadOperation.progress < 0.9f)
+        {
+            yield return null;
+        }
 
-        while (op.progress < 0.9f) yield return null;
-
-        op.allowSceneActivation = true;
+        loadOperation.allowSceneActivation = true;
+        sceneActivated = true;
         yield return null;
         yield return StartCoroutine(WaitForSceneRevealGate(sceneName));
 
-        // Flash 연출이면 페이드 인을 살짝 더 길게 가져감
-        float inDuration = isFlash ? 0.3f : duration;
-        yield return _fadeCanvas.DOFade(0f, inDuration).SetUpdate(true).WaitForCompletion();
+        float revealDuration = isFlash ? 0.3f : duration;
+        if (_fadeCanvas != null)
+        {
+            yield return FadeCanvasTo(0f, revealDuration);
+            _fadeCanvas.blocksRaycasts = false;
+        }
 
-        _fadeCanvas.blocksRaycasts = false;
-        SceneRevealCompleted?.Invoke(sceneName);
-        _isLoading = false;
+        try
+        {
+            SceneRevealCompleted?.Invoke(sceneName);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+        }
+
+        Finish(operation, sceneActivated ? SceneLoadResult.Succeeded : SceneLoadResult.LoadFailed);
+    }
+
+    private IEnumerator FadeCanvasTo(float targetAlpha, float duration)
+    {
+        if (_fadeCanvas == null)
+            yield break;
+
+        float clampedDuration = Mathf.Max(0f, duration);
+        if (clampedDuration <= 0f)
+        {
+            _fadeCanvas.alpha = targetAlpha;
+            yield break;
+        }
+
+        _fadeCanvas.DOKill();
+        Tween tween = _fadeCanvas.DOFade(targetAlpha, clampedDuration).SetUpdate(true);
+        if (tween != null)
+        {
+            yield return tween.WaitForCompletion();
+            yield break;
+        }
+
+        float startAlpha = _fadeCanvas.alpha;
+        float elapsed = 0f;
+        while (elapsed < clampedDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            _fadeCanvas.alpha = Mathf.Lerp(
+                startAlpha,
+                targetAlpha,
+                Mathf.Clamp01(elapsed / clampedDuration));
+            yield return null;
+        }
+
+        _fadeCanvas.alpha = targetAlpha;
+    }
+
+    private void Finish(SceneLoadOperation operation, SceneLoadResult result)
+    {
+        if (ReferenceEquals(_activeOperation, operation))
+        {
+            _activeOperation = null;
+            _isLoading = false;
+        }
+
+        operation?.Complete(result);
+    }
+
+    private void RestoreFade(float alpha, bool blocksRaycasts, Color color)
+    {
+        if (_fadeCanvas == null)
+            return;
+
+        _fadeCanvas.DOKill();
+        _fadeCanvas.alpha = Mathf.Clamp01(alpha);
+        _fadeCanvas.blocksRaycasts = blocksRaycasts;
+        if (_fadeImage != null)
+            _fadeImage.color = color;
     }
 
     private IEnumerator WaitForSceneRevealGate(string sceneName)
@@ -103,9 +292,6 @@ public class SceneLoader : MonoBehaviour
             yield break;
 
         List<ISceneRevealGate> gates = FindRevealGates(loadedScene);
-        if (gates.Count == 0)
-            yield break;
-
         while (!AreAllRevealGatesReady(gates))
         {
             if (IsRevealGateTimedOut(startedAt))
@@ -120,12 +306,13 @@ public class SceneLoader : MonoBehaviour
 
     private bool IsRevealGateTimedOut(float startedAt)
     {
-        return _sceneRevealGateTimeout > 0f && Time.unscaledTime - startedAt >= _sceneRevealGateTimeout;
+        return _sceneRevealGateTimeout > 0f
+            && Time.unscaledTime - startedAt >= _sceneRevealGateTimeout;
     }
 
     private static List<ISceneRevealGate> FindRevealGates(Scene scene)
     {
-        List<ISceneRevealGate> gates = new List<ISceneRevealGate>();
+        var gates = new List<ISceneRevealGate>();
         if (!scene.IsValid() || !scene.isLoaded)
             return gates;
 
@@ -147,7 +334,7 @@ public class SceneLoader : MonoBehaviour
     {
         for (int i = 0; i < gates.Count; i++)
         {
-            if (gates[i] is Object unityObject && unityObject == null)
+            if (gates[i] is UnityEngine.Object unityObject && unityObject == null)
                 continue;
 
             if (!gates[i].IsReadyToReveal)
@@ -155,5 +342,17 @@ public class SceneLoader : MonoBehaviour
         }
 
         return true;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+
+        if (_fadeCanvas != null)
+            _fadeCanvas.DOKill();
+
+        if (_activeOperation != null && !_activeOperation.IsDone)
+            Finish(_activeOperation, SceneLoadResult.LoadFailed);
     }
 }

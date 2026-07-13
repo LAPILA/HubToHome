@@ -5,6 +5,7 @@ using UnityEngine;
 using DG.Tweening;
 using Unity.Cinemachine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using Sirenix.OdinInspector;
 
 /// <summary>
@@ -119,6 +120,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private BattleScenarioData _pendingBattleScenarioData;
     private BattleScenarioRuntime _battleScenarioRuntime;
     private BattleScenarioExecutionGate _battleScenarioExecutionGate;
+    private IBattleParticipantIdRegistry _battleParticipantIdRegistry;
+    private readonly HashSet<CharacterBase> _scenarioDefeatPublished = new HashSet<CharacterBase>();
     private IGameModuleActionRunner _battleGameModuleActionRunner;
     private IBattleParticipantCommandRunner _battleParticipantCommandRunner;
     private IBattleCinematicRunner _battleCinematicRunner;
@@ -328,6 +331,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         BattleEncounterMemoryRecorder.RecordBattleStarted(scenarioData, global, fallbackEncounterId);
         _battleScenarioRuntime = BattleEncounterMemoryRecorder.CreateRuntime(scenarioData, global, fallbackEncounterId);
+        _battleParticipantIdRegistry = new BattleParticipantIdRegistry();
+        BattleScenarioSubjectResolver.SetRegistry(_battleParticipantIdRegistry);
+        _scenarioDefeatPublished.Clear();
         _battleParticipantCommandRunner = new BattleParticipantCommandService(this);
         _battleTweenCinematicService = new BattleTweenCinematicService(this);
         _battleCinematicRunner = new BattleCinematicService(this, _battleTweenCinematicService);
@@ -392,6 +398,37 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             timing);
     }
 
+    private void PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor)
+    {
+        if (_battleScenarioExecutionGate == null
+            || !(target is EnemyCharacter)
+            || target.IsAlive
+            || !_scenarioDefeatPublished.Add(target))
+        {
+            return;
+        }
+
+        _battleScenarioExecutionGate.PublishEnemyDefeated(
+            BattleScenarioSubjectResolver.ResolveSubjectId(target),
+            BattleScenarioSubjectResolver.ResolveSubjectId(sourceActor),
+            BattleRuleTiming.AfterCurrentAction);
+    }
+
+    private void PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor)
+    {
+        if (_battleScenarioExecutionGate == null
+            || skill == null
+            || string.IsNullOrWhiteSpace(skill.SkillID))
+        {
+            return;
+        }
+
+        _battleScenarioExecutionGate.PublishSkillCompleted(
+            skill.SkillID,
+            BattleScenarioSubjectResolver.ResolveSubjectId(sourceActor),
+            string.Empty,
+            BattleRuleTiming.AfterCurrentSkill);
+    }
     private IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing)
     {
         if (_battleScenarioExecutionGate == null)
@@ -479,6 +516,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         {
             return;
         }
+
+        _battleParticipantIdRegistry?.Rebuild(_playerParty, _enemies);
 
         var participants = new List<BattleParticipantSnapshot>();
         for (int i = 0; i < _playerParty.Count; i++)
@@ -622,6 +661,11 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         }
 
         string normalized = subjectId.Trim();
+        if (_battleParticipantIdRegistry != null
+            && _battleParticipantIdRegistry.TryResolve(normalized, out CharacterBase registered))
+        {
+            return registered;
+        }
         for (int i = 0; i < _playerParty.Count; i++)
         {
             PlayerCharacter player = _playerParty[i];
@@ -695,6 +739,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _isReadyToReveal = !_isDedicatedBattleScene;
     }
 
+    private void OnDestroy()
+    {
+        BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
+        if (Instance == this)
+            Instance = null;
+    }
     private void Start() 
     {
         BattleNarrationFormatter.Config = _battleNarrationConfig;
@@ -1380,6 +1430,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     void IBattleTurnQteHost.EmitMpChanged(PlayerCharacter player, int newMp) => InvokeMPChangedEvent(player, newMp);
     void IBattleTurnQteHost.EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) => NotifyDamageDealt(target, damage, isPerfect);
     void IBattleTurnQteHost.PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing) => PublishEnemyHpScenarioEvent(target, previousHp, currentHp, maxHp, timing);
+    void IBattleTurnQteHost.PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor) => PublishEnemyDefeatedScenarioEvent(target, sourceActor);
+    void IBattleTurnQteHost.PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor) => PublishSkillCompletedScenarioEvent(skill, sourceActor);
     IEnumerator IBattleTurnQteHost.FlushBattleScenarioEvents(BattleRuleTiming timing) => FlushBattleScenarioEvents(timing);
     SkillData IBattleTurnQteHost.ResolveEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action) => GetEnemySequenceSkill(enemy, action);
     EnemyAttackType IBattleTurnQteHost.ResolveEnemySkillAttackType(SkillData skill) => ResolveEnemySkillAttackType(skill);
@@ -1584,9 +1636,26 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         if (_isDedicatedBattleScene)
         {
-            string returnScene = GlobalDataManager.Instance.LastOverworldScene;
-            GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
-            SceneLoader.Instance?.LoadScene(!string.IsNullOrEmpty(returnScene) ? returnScene : _fallbackSceneName);
+            GlobalDataManager global = GlobalDataManager.Instance;
+            string returnScene = global != null ? global.LastOverworldScene : string.Empty;
+            global?.EndOverworldEnemyEncounterContext();
+
+            string destination = !string.IsNullOrWhiteSpace(returnScene)
+                ? returnScene
+                : _fallbackSceneName;
+            if (string.IsNullOrWhiteSpace(destination)
+                || !Application.CanStreamedLevelBeLoaded(destination))
+            {
+                Debug.LogWarning(
+                    $"[BattleManager] 복귀 씬 '{destination}'을 로드할 수 없어 {SceneName.Overworld}(으)로 대체합니다.",
+                    this);
+                destination = SceneName.Overworld;
+            }
+
+            if (SceneLoader.Instance != null)
+                SceneLoader.Instance.LoadScene(destination);
+            else
+                SceneManager.LoadScene(destination);
         }
         else
         {

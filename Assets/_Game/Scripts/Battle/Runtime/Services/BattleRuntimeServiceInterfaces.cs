@@ -194,6 +194,10 @@ public interface IBattleTurnQteHost
 
     void PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing);
 
+    void PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor);
+
+    void PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor);
+
     IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing);
 
     SkillData ResolveEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action);

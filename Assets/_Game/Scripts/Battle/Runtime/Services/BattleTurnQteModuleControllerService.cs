@@ -249,20 +249,40 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 enemy.PlayBasicAttackEffect();
                 enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
 
-                bool qteFinished = false;
                 DefenseInput finalInput = DefenseInput.None;
                 QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
 
                 targetCtrl?.PrepareDefenseWindow();
-                QTEManager.Instance.StartDefenseQTE(_host.EnemyDefenseQteWindow, 1.0f, (input, grade) =>
+                QteExecution qteExecution = QTEManager.Instance != null
+                    ? QTEManager.Instance.StartDefenseQTEWithResult(
+                        _host.EnemyDefenseQteWindow,
+                        1.0f,
+                        (input, grade) =>
+                        {
+                            finalInput = input;
+                            finalGrade = grade;
+                        })
+                    : null;
+
+                if (qteExecution == null)
                 {
-                    finalInput = input;
-                    finalGrade = grade;
-                    qteFinished = true;
-                });
+                    targetCtrl?.ResetDefenseReactionLock();
+                    _host.SetActorForeground(enemy, false);
+                    CompleteAction();
+                    yield break;
+                }
+
                 yield return new WaitForSeconds(_host.EnemyAttackVisualDuration);
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
-                yield return new WaitUntil(() => qteFinished);
+                yield return new WaitUntil(() => qteExecution.IsDone);
+
+                if (qteExecution.Termination == QteTermination.Cancelled
+                    || qteExecution.Termination == QteTermination.Failed)
+                {
+                    targetCtrl?.ResetDefenseReactionLock();
+                    _host.SetActorForeground(enemy, false);
+                    yield break;
+                }
 
                 if (finalGrade == QTEManager.QTEGrade.Miss)
                 {
@@ -506,6 +526,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
         _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
         _host.EmitDamageNotificationOnly(target, dmg, false);
+        _host.PublishEnemyDefeatedScenarioEvent(target, actor);
 
         yield return new WaitForSeconds(_host.PlayerAttackRecoverDelay);
         BattleManager.SetGhostTrail(actor, false);
@@ -572,6 +593,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
+        var scenarioTargets = new List<CharacterBase>(targets);
         Vector3 originalPos = PositionManager.Instance.GetPlayerDefaultPos(FindPlayerIndex(actor));
         var context = new SkillContext
         {
@@ -610,6 +632,10 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             _host.SetActorForeground(actor, false);
         }
 
+        for (int i = 0; i < scenarioTargets.Count; i++)
+            _host.PublishEnemyDefeatedScenarioEvent(scenarioTargets[i], actor);
+
+        _host.PublishSkillCompletedScenarioEvent(skill, actor);
         actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
         CameraController.Instance?.ResetCamera(0.4f);
         yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
