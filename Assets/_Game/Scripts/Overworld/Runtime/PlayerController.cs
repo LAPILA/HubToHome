@@ -480,6 +480,16 @@ public class PlayerController : MonoBehaviour
         TryCrossFadeOverworldIdle();
     }
 
+    public void CompletePreemptiveAttackWithoutBattle()
+    {
+        ResetOverworldAttackAnimation();
+        StopOverworldMovement();
+        _preemptiveAttackInProgress = false;
+        if (State != PlayerState.InBattle)
+            State = PlayerState.Idle;
+        GameStateManager.Instance?.ChangeState(GameState.Exploration);
+    }
+
     private void TryCrossFadeOverworldIdle()
     {
         if (_anim == null) return;

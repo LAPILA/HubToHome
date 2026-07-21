@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
   SkillName: "\uC5F0\uCC38"
-  SkillID: skill_001
+  SkillID: zev.combo_slash
   Description: "\uAC00\uB85C \uC138\uB85C \uB9C8\uBB34\uB9AC!"
   UsageProfile: 2
   MPCost: 0

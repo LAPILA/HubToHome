@@ -41,6 +41,35 @@ public class PositionManager : MonoBehaviour
         Instance = this;
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    public bool IsConfigured(out string error)
+    {
+        if (_playerDefaultPos == null || _playerDefaultPos.Count == 0 || _playerDefaultPos[0] == null)
+        {
+            error = "PlayerDefaultPos[0]이 필요합니다.";
+            return false;
+        }
+
+        if (_enemyDefaultPos == null || _enemyDefaultPos.Count == 0 || _enemyDefaultPos[0] == null)
+        {
+            error = "EnemyDefaultPos[0]이 필요합니다.";
+            return false;
+        }
+
+        if (_centerPos == null)
+        {
+            error = "CenterPos가 필요합니다.";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
     // ── 🚨 안전한 리스트 접근 헬퍼 (Index Out of Range 원천 차단) ──
     private Vector3 GetSafePosition(List<Transform> list, int index, string listName)
     {

@@ -22,6 +22,19 @@ public readonly struct CameraControlLease : IEquatable<CameraControlLease>
     public override int GetHashCode() => Version;
 }
 
+public readonly struct CameraDefaultTargetSnapshot
+{
+    public CameraDefaultTargetSnapshot(Transform target, bool useGameplaySafeReset)
+    {
+        Target = target;
+        UseGameplaySafeReset = useGameplaySafeReset;
+    }
+
+    public Transform Target { get; }
+    public bool UseGameplaySafeReset { get; }
+    public bool IsValid => Target != null;
+}
+
 public interface IScreenShakeScaleProvider
 {
     float Scale { get; }
@@ -44,6 +57,8 @@ public interface ICameraPresentationService
     bool IsReady { get; }
     Transform DefaultTarget { get; }
     void SetDefaultTarget(Transform target, bool useGameplaySafeReset = false);
+    CameraDefaultTargetSnapshot CaptureDefaultTarget();
+    void RestoreDefaultTarget(CameraDefaultTargetSnapshot snapshot, float duration);
     bool TryAcquireTimelineControl(object owner, out CameraControlLease lease, out string error);
     void ReleaseTimelineControl(CameraControlLease lease);
     bool TryFocus(Transform target, float zoom, CameraShotStyle style, float duration,

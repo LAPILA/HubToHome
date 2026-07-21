@@ -152,6 +152,26 @@ public class PlayerCharacter : CharacterBase
 
         ApplyCharacterData();
 
+        if (saveData.EquippedSkillIDs != null && saveData.EquippedSkillIDs.Count > 0)
+        {
+            var resolvedSkills = new List<SkillData>();
+            for (int i = 0; i < saveData.EquippedSkillIDs.Count; i++)
+            {
+                string skillId = saveData.EquippedSkillIDs[i];
+                SkillData skill = SkillDatabase.FindById(skillId);
+                if (skill != null)
+                    resolvedSkills.Add(skill);
+                else
+                    Debug.LogWarning($"[PlayerCharacter] Saved skill ID could not be resolved: {skillId}", this);
+            }
+
+            if (resolvedSkills.Count > 0)
+            {
+                Skills.Clear();
+                Skills.AddRange(resolvedSkills);
+            }
+        }
+
         Level       = saveData.Level;
         EXP         = saveData.EXP;
         
@@ -184,8 +204,23 @@ public class PlayerCharacter : CharacterBase
         _mySaveDataRef.CharacterID = DisplayName;
         _mySaveDataRef.HP    = CurrentHP;
         _mySaveDataRef.MP    = CurrentMP;
+        _mySaveDataRef.MaxHP = BaseMaxHP;
+        _mySaveDataRef.MaxMP = BaseMaxMP;
+        _mySaveDataRef.ATK   = BaseATK;
+        _mySaveDataRef.DEF   = BaseDEF;
+        _mySaveDataRef.SPD   = BaseSPD;
         _mySaveDataRef.Level = Level;
         _mySaveDataRef.EXP   = EXP;
+        if (_mySaveDataRef.EquippedSkillIDs == null)
+            _mySaveDataRef.EquippedSkillIDs = new List<string>();
+        else
+            _mySaveDataRef.EquippedSkillIDs.Clear();
+        for (int i = 0; i < Skills.Count; i++)
+        {
+            SkillData skill = Skills[i];
+            if (skill != null && !string.IsNullOrWhiteSpace(skill.SkillID))
+                _mySaveDataRef.EquippedSkillIDs.Add(skill.SkillID);
+        }
     }
 
     // ── 피격 & 연출 ──

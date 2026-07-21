@@ -114,18 +114,32 @@ MonoBehaviour:
       Entry: 8
       Data: 
   Portrait: {fileID: 1978778067983403588, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+  TurnOrderPortrait: {fileID: 0}
+  EnemyId: enemy_db_slime_0d809955
   EnemyName: Slime
   BattleBGM: {fileID: 0}
+  BattlePrefab: {fileID: 3461299171839533844, guid: 15fa88e0bc5908e448f5be65a1a40fa4, type: 3}
+  ReturnMoveTrigger: BattleMove
   MaxHP: 30
   ATK: 8
   DEF: 2
   SPD: 5
-  ActCommands: []
+  ThreatLevel: 1
+  AllowInstantKillAfterDefeat: 1
+  InstantKillLevelGap: 5
   SkillUseChance: 0
+  StrongSkillUseChance: 0.25
+  TelegraphStrongSkill: 1
+  TelegraphTurns: 1
   HasEnragedPattern: 0
   IsLargeEnemy: 0
   SkillList: []
-  QTEDifficultyMultiplier: 1
+  StrongSkillList: []
+  Drops:
+  - ItemId: consumable.small_potion
+    MinAmount: 1
+    MaxAmount: 1
+    DropChance: 0.5
   DropItemIDs: []
   EXPReward: 10
   GoldReward: 10

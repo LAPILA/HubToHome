@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 0}
   SkillName: "\uC5F0\uC1C4\uACF5\uACA9"
-  SkillID: skill_003
+  SkillID: player.multi_slash
   Description: "\uC804\uCCB4\uC801 \uC5F0\uC1C4\uACF5\uACA9"
   MPCost: 10
   TargetType: 1

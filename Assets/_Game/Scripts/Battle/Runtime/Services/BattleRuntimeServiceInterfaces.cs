@@ -160,6 +160,8 @@ public interface IBattleTurnQteHost
 
     bool CheckDefeat();
 
+    bool ConsumePlayerPreemptiveAttack();
+
     void BroadcastVisibleTurnQueue();
 
     void ResetAllPlayerBattlePoses();

@@ -23,8 +23,8 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
     private Transform _centerTarget;
 
     [Title("기본 설정")]
-    [SerializeField] private float _defaultLensSize = 5.5f;
-    [SerializeField] private float _battleZoomSize = 4.0f;
+    [SerializeField] private float _defaultLensSize = CameraLensDefaults.GameplayOrthographicSize;
+    [SerializeField] private float _battleZoomSize = CameraLensDefaults.BattleActionOrthographicSize;
 
     [Title("카메라 프리셋")]
     [SerializeField, AssetsOnly] private CameraShotProfile _staticProfile;
@@ -32,6 +32,10 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
     [SerializeField, AssetsOnly] private CameraShotProfile _gameplaySafeProfile;
 
     private CinemachinePositionComposer _positionComposer;
+    private CinemachineFollow _follow;
+    private CinemachineFixedDepthExtension _fixedDepthExtension;
+    private float _authoredCameraDepth;
+    private bool _hasAuthoredCameraDepth;
     private Transform _fallbackTarget;
     private Transform _startupTarget;
     private CameraShotSettings _startupSettings;
@@ -46,7 +50,9 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
     public CinemachineCamera VirtualCamera => _vCam;
     public Transform CenterTarget => _centerTarget;
     public Transform DefaultTarget => ResolveDefaultTarget();
-    public bool IsReady => _vCam != null && _positionComposer != null;
+    public bool IsReady => _vCam != null && HasPositionDriver;
+
+    private bool HasPositionDriver => _positionComposer != null || _follow != null;
 
     private void Awake()
     {
@@ -70,7 +76,7 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
     private void OnDisable()
     {
         KillCameraTweens();
-        if (_positionComposer != null)
+        if (HasPositionDriver)
         {
             ApplySettings(_startupSettings);
         }
@@ -105,6 +111,22 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
 
         _centerTarget = target;
         _useGameplaySafeReset = useGameplaySafeReset;
+    }
+
+    public CameraDefaultTargetSnapshot CaptureDefaultTarget()
+    {
+        return new CameraDefaultTargetSnapshot(ResolveDefaultTarget(), _useGameplaySafeReset);
+    }
+
+    public void RestoreDefaultTarget(CameraDefaultTargetSnapshot snapshot, float duration)
+    {
+        if (!snapshot.IsValid)
+        {
+            return;
+        }
+
+        SetDefaultTarget(snapshot.Target, snapshot.UseGameplaySafeReset);
+        ResetCamera(duration);
     }
 
     public bool TryAcquireTimelineControl(object owner, out CameraControlLease lease, out string error)
@@ -388,11 +410,22 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
             return;
         }
 
+        if (!_hasAuthoredCameraDepth)
+        {
+            float authoredDepth = _vCam.transform.position.z;
+            _authoredCameraDepth = Mathf.Approximately(authoredDepth, 0f) ? -1f : authoredDepth;
+            _hasAuthoredCameraDepth = true;
+        }
+
         _positionComposer = _vCam.GetComponent<CinemachinePositionComposer>();
-        if (_positionComposer == null)
+        _follow = _vCam.GetComponent<CinemachineFollow>();
+        if (_positionComposer == null && _follow == null)
         {
             _positionComposer = _vCam.gameObject.AddComponent<CinemachinePositionComposer>();
+            _positionComposer.CameraDistance = Mathf.Max(0.01f, Mathf.Abs(_authoredCameraDepth));
         }
+
+        EnsureFixedDepthConstraint();
 
         _startupTarget = _vCam.Follow;
         _startupDutch = _vCam.Lens.Dutch;
@@ -440,14 +473,14 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
 
     private bool EnsureReady(out string error)
     {
-        if (_vCam != null && _positionComposer != null)
+        if (_vCam != null && HasPositionDriver)
         {
             error = string.Empty;
             return true;
         }
 
         InitializeCinemachine();
-        if (_vCam != null && _positionComposer != null)
+        if (_vCam != null && HasPositionDriver)
         {
             error = string.Empty;
             return true;
@@ -525,16 +558,19 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
         CameraShotSettings settings = CameraShotSettings.CreateBuiltIn(
             CameraShotStyle.Static,
             _vCam != null ? _vCam.Lens.OrthographicSize : _defaultLensSize);
-        if (_positionComposer == null)
+        if (_positionComposer != null)
         {
-            return settings;
+            settings.Damping = _positionComposer.Damping;
+            settings.ScreenPosition = _positionComposer.Composition.ScreenPosition;
+            settings.EnableLookahead = _positionComposer.Lookahead.Enabled;
+            settings.LookaheadTime = _positionComposer.Lookahead.Time;
+            settings.LookaheadSmoothing = _positionComposer.Lookahead.Smoothing;
+        }
+        else if (_follow != null)
+        {
+            settings.Damping = _follow.TrackerSettings.PositionDamping;
         }
 
-        settings.Damping = _positionComposer.Damping;
-        settings.ScreenPosition = _positionComposer.Composition.ScreenPosition;
-        settings.EnableLookahead = _positionComposer.Lookahead.Enabled;
-        settings.LookaheadTime = _positionComposer.Lookahead.Time;
-        settings.LookaheadSmoothing = _positionComposer.Lookahead.Smoothing;
         return settings;
     }
 
@@ -548,21 +584,38 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
 
     private void ApplySettings(CameraShotSettings settings)
     {
-        if (_positionComposer == null)
+        if (_positionComposer != null)
         {
+            _positionComposer.Damping = settings.Damping;
+            var composition = _positionComposer.Composition;
+            composition.ScreenPosition = settings.ScreenPosition;
+            _positionComposer.Composition = composition;
+
+            var lookahead = _positionComposer.Lookahead;
+            lookahead.Enabled = settings.EnableLookahead;
+            lookahead.Time = settings.LookaheadTime;
+            lookahead.Smoothing = settings.LookaheadSmoothing;
+            _positionComposer.Lookahead = lookahead;
             return;
         }
 
-        _positionComposer.Damping = settings.Damping;
-        var composition = _positionComposer.Composition;
-        composition.ScreenPosition = settings.ScreenPosition;
-        _positionComposer.Composition = composition;
+        if (_follow != null)
+        {
+            var trackerSettings = _follow.TrackerSettings;
+            trackerSettings.PositionDamping = settings.Damping;
+            _follow.TrackerSettings = trackerSettings;
+        }
+    }
 
-        var lookahead = _positionComposer.Lookahead;
-        lookahead.Enabled = settings.EnableLookahead;
-        lookahead.Time = settings.LookaheadTime;
-        lookahead.Smoothing = settings.LookaheadSmoothing;
-        _positionComposer.Lookahead = lookahead;
+    private void EnsureFixedDepthConstraint()
+    {
+        if (_vCam == null || !_hasAuthoredCameraDepth) return;
+
+        _fixedDepthExtension = _vCam.GetComponent<CinemachineFixedDepthExtension>();
+        if (_fixedDepthExtension == null)
+            _fixedDepthExtension = _vCam.gameObject.AddComponent<CinemachineFixedDepthExtension>();
+
+        _fixedDepthExtension.SetWorldDepth(_authoredCameraDepth);
     }
 
     private void ApplyResetImmediate(CameraShotStyle style)

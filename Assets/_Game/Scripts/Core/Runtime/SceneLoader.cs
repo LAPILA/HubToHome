@@ -161,7 +161,10 @@ public class SceneLoader : MonoBehaviour
             if (_fadeImage != null)
                 _fadeImage.color = fadeColor;
 
-            yield return FadeCanvasTo(1f, duration);
+            if (duration <= 0f)
+                _fadeCanvas.alpha = 1f;
+            else
+                yield return FadeCanvasTo(1f, duration);
         }
 
         if (operation.IsCancellationRequested)
@@ -232,9 +235,13 @@ public class SceneLoader : MonoBehaviour
 
         _fadeCanvas.DOKill();
         Tween tween = _fadeCanvas.DOFade(targetAlpha, clampedDuration).SetUpdate(true);
-        if (tween != null)
+        if (tween != null && tween.active)
         {
-            yield return tween.WaitForCompletion();
+            while (tween.active && !tween.IsComplete())
+                yield return null;
+
+            if (_fadeCanvas != null && tween.active)
+                _fadeCanvas.alpha = targetAlpha;
             yield break;
         }
 

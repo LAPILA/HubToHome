@@ -237,7 +237,7 @@ public static class OverworldSubwayCinematicSampleBuilder
 
         gameplayCamera.Follow = focusObject.transform;
         gameplayCamera.Lens.ModeOverride = LensSettings.OverrideModes.Orthographic;
-        gameplayCamera.Lens.OrthographicSize = 6f;
+        gameplayCamera.Lens.OrthographicSize = CameraLensDefaults.GameplayOrthographicSize;
 
         SpriteRenderer zevRenderer = zev.GetComponent<SpriteRenderer>();
         if (zevRenderer == null)

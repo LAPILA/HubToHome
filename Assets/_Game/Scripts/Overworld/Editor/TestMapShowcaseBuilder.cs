@@ -13,9 +13,9 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public static class TestMapShowcaseBuilder
 {
-    private const string ScenePath = "Assets/_Game/Content/Maps/TestMap/TestMap.unity";
+    private const string ScenePath = "Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity";
     private const string GeneratedRootName = "__TEST_MAP_QA__";
-    private const string TestMapRoot = "Assets/_Game/Content/Maps/TestMap";
+    private const string TestMapRoot = "Assets/_Game/Content/Maps/Development/TestMap";
     private const string MarkerPrefabRoot = TestMapRoot + "/Prefabs/Markers";
     private const string NpcPrefabRoot = TestMapRoot + "/Prefabs/NPC";
     private const string LabPrefabRoot = TestMapRoot + "/Prefabs/Labs";
@@ -24,7 +24,7 @@ public static class TestMapShowcaseBuilder
     private const string ZevPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/ZEV_Prefab.prefab";
     private const string ZevEnemyDataPath = "Assets/_Game/Content/Characters/EnemyDB/ZEV/Enemy_ZEV.asset";
     private const string TestNpcSpritePath = "Assets/_Game/Content/Art/Samples/TestNPC.png";
-    private const string WhiteSpritePath = "Assets/_Game/Content/Maps/_Generated/RoomMap_WhiteSquare.png";
+    private const string WhiteSpritePath = "Assets/_Game/Content/Maps/Shared/Generated/RoomMap_WhiteSquare.png";
     private const string LabelFontPath = "Assets/_Game/Presentation/UI/Fonts/Silver SDF.asset";
     private const string AreaId = "testmap.qa";
 
@@ -277,7 +277,7 @@ public static class TestMapShowcaseBuilder
         if (player != null)
             vcam.Follow = player.transform;
 
-        vcam.Lens.OrthographicSize = 8f;
+        vcam.Lens.OrthographicSize = CameraLensDefaults.GameplayOrthographicSize;
     }
 
     private static PlayerController EnsurePlayer(Scene scene)

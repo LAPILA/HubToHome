@@ -47,6 +47,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
     [SerializeField] private float _postEscapeAlpha = 0.5f;
     [SerializeField] private float _postBattleGraceDuration = 1f;
     [SerializeField] private float _postBattleNudgeDistance = 0.35f;
+    [SerializeField] private bool _canInstantKillLater = true;
 
     [Header("Persistence")]
     [SerializeField] private string _enemyId;
@@ -265,8 +266,80 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
             return false;
         }
 
-        StartCoroutine(StartSceneBattleRoutine(player, true));
+        GlobalDataManager global = GlobalDataManager.Instance;
+        bool previouslyDefeated = global != null
+            && global.TryGetEncounterMemory(_enemyId, out EncounterMemorySaveData memory)
+            && memory.Defeated;
+        FieldEncounterResolution resolution = FieldEncounterPolicy.Evaluate(
+            global != null ? global.GetHighestPartyLevel() : 1,
+            resolvedEnemies,
+            previouslyDefeated,
+            _canInstantKillLater);
+
+        if (resolution == FieldEncounterResolution.InstantVictory)
+            StartCoroutine(ResolveInstantVictoryRoutine(player, resolvedEnemies));
+        else
+            StartCoroutine(StartSceneBattleRoutine(player, true));
         return true;
+    }
+
+
+    private IEnumerator ResolveInstantVictoryRoutine(PlayerController player, List<EnemyData> resolvedEnemies)
+    {
+        _triggered = true;
+        _encounterInProgress = true;
+        s_globalEncounterLockUntil = Time.unscaledTime + 1f;
+        if (_rb != null) _rb.linearVelocity = Vector2.zero;
+        UpdateMoveAnimation(Vector2.zero);
+        AudioManager.Instance?.PlaySFX(_encounterSFX);
+
+        GlobalDataManager global = GlobalDataManager.Instance;
+        BattleEncounterMemoryRecorder.RecordBattleStarted(_battleScenarioData, global, _enemyId);
+
+        if (_spriteRenderer != null)
+        {
+            Color original = _spriteRenderer.color;
+            for (int i = 0; i < 3; i++)
+            {
+                _spriteRenderer.color = Color.white;
+                yield return new WaitForSecondsRealtime(0.06f);
+                _spriteRenderer.color = new Color(1f, 0.35f, 0.35f, original.a);
+                yield return new WaitForSecondsRealtime(0.06f);
+            }
+            _spriteRenderer.color = original;
+        }
+
+        BattleRewardResult rewards = BattleRewardService.Grant(resolvedEnemies, global);
+        BattleEncounterMemoryRecorder.RecordBattleResult(
+            _battleScenarioData,
+            null,
+            global,
+            _enemyId,
+            true);
+
+        if (global != null && DefeatsOnVictory)
+            global.MarkOverworldEnemyDefeated(_enemyId, _sceneName);
+
+        BattleResultUI resultUi = BattleResultUI.EnsureGlobal();
+        if (resultUi != null)
+            yield return resultUi.Show(rewards, true);
+
+        _encounterInProgress = false;
+        player?.CompletePreemptiveAttackWithoutBattle();
+
+        EncounterCollisionGuard.BlockAll(_postBattleGraceDuration);
+        _localEncounterBlockedUntil = Time.unscaledTime + Mathf.Max(0f, _postBattleGraceDuration);
+        EncounterCollisionGuard.NudgePlayerOutOf(_collider, player, _postBattleNudgeDistance);
+
+        if (DefeatsOnVictory)
+        {
+            DisablePermanently();
+            yield break;
+        }
+
+        float cooldown = Mathf.Max(_postBattleGraceDuration, 0.75f);
+        global?.MarkOverworldEnemyEscaped(_enemyId, _sceneName, cooldown, _postEscapeAlpha);
+        StartCooldown(cooldown, _postEscapeAlpha);
     }
 
     private IEnumerator StartSceneBattleRoutine(PlayerController player)

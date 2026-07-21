@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 0}
   SkillName: "\uACE0\uC18D\uCC38"
-  SkillID: skill_003
+  SkillID: zev.blink_slash
   Description: "\uC21C\uAC04\uC774\uB3D9\uCC98\uB7FC \uD30C\uACE0\uB4DC\uB294 \uACE0\uC18D
     \uCC38\uACA9"
   UsageProfile: 2

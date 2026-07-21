@@ -115,6 +115,7 @@ MonoBehaviour:
       Data: 
   Portrait: {fileID: -3831865716268829567, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
   TurnOrderPortrait: {fileID: -3831865716268829567, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
+  EnemyId: enemy_enemy_zev_2ecad76f
   EnemyName: ZEV
   BattleBGM: {fileID: 0}
   BattlePrefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
@@ -123,6 +124,9 @@ MonoBehaviour:
   ATK: 20
   DEF: 25
   SPD: 8
+  ThreatLevel: 1
+  AllowInstantKillAfterDefeat: 0
+  InstantKillLevelGap: 5
   SkillUseChance: 0.8
   StrongSkillUseChance: 0.1
   TelegraphStrongSkill: 1
@@ -133,10 +137,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 57277bc7847637343b5b2fb2c1d54910, type: 2}
   - {fileID: 11400000, guid: d91f2fcf42c2672489df5cbefd7c1f51, type: 2}
   - {fileID: 11400000, guid: a4d8f5d1c8b34f2aa19c44d8a0a3b771, type: 2}
-  - {fileID: 11400000, guid: b7e1a2c94d6f4e18a3c95b21d7f0c442, type: 2}
   - {fileID: 11400000, guid: c2f49c6e1b8d45f4a2a9a671ec8db913, type: 2}
   StrongSkillList:
   - {fileID: 11400000, guid: f11cc42b1b06a2f4da055533977747a4, type: 2}
+  Drops: []
   DropItemIDs: []
   EXPReward: 300
   GoldReward: 6868

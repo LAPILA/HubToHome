@@ -2,6 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
 
+[System.Serializable]
+public sealed class EnemyDropEntry
+{
+    public string ItemId = "";
+    [MinValue(1)] public int MinAmount = 1;
+    [MinValue(1)] public int MaxAmount = 1;
+    [Range(0f, 1f)] public float DropChance = 1f;
+}
+
 [CreateAssetMenu(fileName = "NewEnemyData", menuName = "HubToHome/EnemyData")]
 public class EnemyData : SerializedScriptableObject 
 {
@@ -34,6 +43,13 @@ public class EnemyData : SerializedScriptableObject
     [BoxGroup("Base Stats")] 
     [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int DEF = 3;
     [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int SPD = 8;
+
+    [BoxGroup("Overworld Encounter"), MinValue(1)]
+    public int ThreatLevel = 1;
+    [BoxGroup("Overworld Encounter")]
+    public bool AllowInstantKillAfterDefeat = false;
+    [BoxGroup("Overworld Encounter"), MinValue(0)]
+    public int InstantKillLevelGap = 5;
 
     [BoxGroup("AI & Pattern")]
     [Range(0f, 1f)] public float SkillUseChance = 0.3f;
@@ -72,7 +88,12 @@ public class EnemyData : SerializedScriptableObject
     };
 
     [BoxGroup("Rewards")]
-    [ListDrawerSettings(ShowIndexLabels = true)] 
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    public List<EnemyDropEntry> Drops = new List<EnemyDropEntry>();
+
+    [BoxGroup("Rewards")]
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    [Tooltip("Legacy guaranteed drops. Used only when Drops is empty.")]
     public List<string> DropItemIDs = new List<string>();
 
     [BoxGroup("Rewards")]

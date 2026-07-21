@@ -231,13 +231,22 @@ public class BattleMenuUI : UIPanel
     private void OpenItemSubMenu()
     {
         var entries = new List<IMenuEntry>();
-        // 추후 GlobalDataManager.Instance.GetInventory() 연동
-        foreach (var i in _exampleItems) if (i != null) entries.Add(new ItemMenuEntry(i, 1));
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global != null)
+        {
+            foreach (KeyValuePair<string, int> pair in global.GetInventory())
+            {
+                if (pair.Value <= 0) continue;
+                ItemData item = ItemDatabase.FindById(pair.Key);
+                if (item == null || item.Type != ItemType.Consumable || !item.UsableInBattle) continue;
+                entries.Add(new ItemMenuEntry(item, pair.Value));
+            }
+        }
 
         if (entries.Count == 0)
             entries.Add(new EmptyMenuEntry("NO ITEM", "사용 가능한 아이템이 없습니다."));
 
-        _inputEnabled = false; 
+        _inputEnabled = false;
         SlideMenuUp();
         _subMenu?.Open("ITEM", entries, OnItemSelected, OnSubMenuCancelled);
     }

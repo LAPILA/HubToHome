@@ -38,10 +38,15 @@ public sealed class SequenceMakerWindowJourneyTests
         _created.Clear();
         for (int i = 0; i < _createdFiles.Count; i++)
         {
-            if (File.Exists(_createdFiles[i]))
-            {
-                File.Delete(_createdFiles[i]);
-            }
+            string relativePath = _createdFiles[i].Replace('\\', '/');
+            if (relativePath.StartsWith("Assets/", StringComparison.Ordinal))
+                UnityEditor.AssetDatabase.DeleteAsset(relativePath);
+
+            string fullPath = Path.GetFullPath(relativePath);
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+            if (File.Exists(fullPath + ".meta"))
+                File.Delete(fullPath + ".meta");
         }
         _createdFiles.Clear();
         for (int i = 0; i < _createdDirectories.Count; i++)
@@ -572,14 +577,15 @@ public sealed class SequenceMakerWindowJourneyTests
     private string CreateTemporarySourcePath()
     {
         string path = Path.Combine(
-            "Library",
-            "HubToHome",
-            "SequenceMakerQA",
-            Guid.NewGuid().ToString("N") + ".sequence.yaml");
-        _createdFiles.Add(Path.GetFullPath(path));
-        return path.Replace('\\', '/');
+            "Assets",
+            "_Game",
+            "Content",
+            "Scenarios",
+            "__SequenceMakerQA_" + Guid.NewGuid().ToString("N") + ".sequence.yaml")
+            .Replace('\\', '/');
+        _createdFiles.Add(path);
+        return path;
     }
-
     private string CreateTemporaryDirectory()
     {
         string path = Path.GetFullPath(Path.Combine(

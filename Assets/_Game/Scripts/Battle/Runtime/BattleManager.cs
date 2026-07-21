@@ -24,7 +24,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public event Action<EnemyCharacter, EnemyAttackType> OnEnemyActionStarted;
     public event Action<CharacterBase, int, bool>   OnDamageDealt;        
     public event Action<PlayerCharacter, int>       OnMPChanged;          
-    public event Action<bool>                       OnBattleEnded;        
+    public event Action<bool>                       OnBattleEnded;
+    public event Action<BattleRewardResult>         OnBattleRewardsGranted;
     public event Action<PlayerMenuAction>           OnTargetSelectionStarted;
     public event Action<BattleNarrationMessage>     OnBattleNarrationRequested;
     public event Action<List<BattleScenarioTrigger>> OnBattleScenarioTriggersReady;
@@ -101,6 +102,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public ItemData  CurrentPendingItem  { get; private set; }
 
     private readonly List<CharacterBase> _turnQueue = new List<CharacterBase>();
+    private readonly List<PlayerCharacter> _seamlessSpawnedPlayers = new List<PlayerCharacter>();
     private int _currentActorIndex = 0;
 
     // 캐싱된 대기 시간 (가비지 최적화)
@@ -114,6 +116,11 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private readonly Dictionary<EnemyCharacter, BattleQueuedEnemyAction> _reservedEnemyActionByActor = new Dictionary<EnemyCharacter, BattleQueuedEnemyAction>();
     private bool _isRunInProgress;
     private bool _isBattleEnding;
+    private bool _isBattleActive;
+    private bool _rewardCommitted;
+    private bool _playerPreemptiveAttackAvailable;
+    private BattleRewardResult _lastRewardResult;
+    private CameraDefaultTargetSnapshot _seamlessCameraDefaultTarget;
     private IEncounterSource _activeEncounterSource;
     private PlayerController _activeEncounterPlayer;
     private bool _isReadyToReveal = true;
@@ -862,17 +869,105 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     /// </summary>
     public void StartSeamlessBattle(List<EnemyData> encounterEnemies, PlayerController playerCtrl, IEncounterSource encounterSource = null)
     {
-        _activeEncounterSource = encounterSource;
-        _activeEncounterPlayer = playerCtrl;
-        StartCoroutine(StartSeamlessBattleRoutine(encounterEnemies, playerCtrl));
+        if (!TryStartSeamlessBattle(encounterEnemies, playerCtrl, encounterSource, out string error))
+            Debug.LogWarning($"[BattleManager] 심리스 전투 시작 실패: {error}", this);
     }
 
+    public bool CanStartSeamlessBattle(List<EnemyData> encounterEnemies, PlayerController playerCtrl, out string error)
+    {
+        if (_isDedicatedBattleScene)
+        {
+            error = "전용 BattleScene용 BattleManager는 심리스 전투를 시작할 수 없습니다.";
+            return false;
+        }
+
+        if (_isBattleActive || _isBattleEnding)
+        {
+            error = "이미 전투를 시작했거나 종료 처리 중입니다.";
+            return false;
+        }
+
+        if (!isActiveAndEnabled)
+        {
+            error = "BattleManager가 활성화되어 있지 않습니다.";
+            return false;
+        }
+
+        if (playerCtrl == null)
+        {
+            error = "PlayerController가 없습니다.";
+            return false;
+        }
+
+        if (encounterEnemies == null || encounterEnemies.Count == 0)
+        {
+            error = "EncounterEnemies가 비어 있습니다.";
+            return false;
+        }
+
+        for (int i = 0; i < encounterEnemies.Count; i++)
+        {
+            EnemyData enemy = encounterEnemies[i];
+            if (enemy == null)
+            {
+                error = $"EncounterEnemies[{i}]가 비어 있습니다.";
+                return false;
+            }
+
+            GameObject prefab = ResolveEnemyBattlePrefab(enemy);
+            if (prefab == null || prefab.GetComponent<EnemyCharacter>() == null)
+            {
+                error = $"'{enemy.EnemyName}'의 전투 프리팹에 EnemyCharacter가 없습니다.";
+                return false;
+            }
+        }
+
+        if (PositionManager.Instance == null)
+        {
+            error = "PositionManager가 없습니다.";
+            return false;
+        }
+
+        if (!PositionManager.Instance.IsConfigured(out error))
+            return false;
+
+        if (_battleUICanvas == null)
+        {
+            error = "Battle UI Canvas가 연결되지 않았습니다.";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    public bool TryStartSeamlessBattle(
+        List<EnemyData> encounterEnemies,
+        PlayerController playerCtrl,
+        IEncounterSource encounterSource,
+        out string error)
+    {
+        if (!CanStartSeamlessBattle(encounterEnemies, playerCtrl, out error))
+            return false;
+
+        CameraController cameraController = CameraController.Instance;
+        _seamlessCameraDefaultTarget = cameraController != null
+            ? cameraController.CaptureDefaultTarget()
+            : default;
+        _isBattleActive = true;
+        _activeEncounterSource = encounterSource;
+        _activeEncounterPlayer = playerCtrl;
+        StartCoroutine(StartSeamlessBattleRoutine(new List<EnemyData>(encounterEnemies), playerCtrl));
+        return true;
+    }
     private IEnumerator StartSeamlessBattleRoutine(List<EnemyData> encounterEnemies, PlayerController playerCtrl)
     {
         Debug.Log("<color=cyan>[BattleManager] 심리스 전투 연출 시작!</color>");
 
         if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.PendingBattleBGM != null)
             AudioManager.Instance?.CrossFadeBGM(GlobalDataManager.Instance.PendingBattleBGM, 0.8f);
+        if (GlobalDataManager.Instance != null)
+            GlobalDataManager.Instance.PendingBattleBGM = null;
 
         yield return StartCoroutine(WarmupBattlePresentation());
 
@@ -898,7 +993,33 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         // 2. 적군 셋업
         _enemies.Clear();
+        _seamlessSpawnedPlayers.Clear();
         var pm = PositionManager.Instance;
+
+        GlobalDataManager globalData = GlobalDataManager.Instance;
+        if (globalData != null)
+        {
+            for (int i = 1; i < globalData.Party.Count; i++)
+            {
+                CharacterSaveData saveData = globalData.Party[i];
+                GameObject playerPrefab = ResolvePlayerBattlePrefab(saveData);
+                if (playerPrefab == null) continue;
+
+                GameObject playerObject = Instantiate(playerPrefab, pm.GetPlayerDefaultPos(i), Quaternion.identity);
+                if (!playerObject.TryGetComponent(out PlayerCharacter additionalPlayer))
+                {
+                    Destroy(playerObject);
+                    continue;
+                }
+
+                additionalPlayer.LoadDataFromGlobal(saveData);
+                PlayerController controller = additionalPlayer.GetComponent<PlayerController>();
+                if (controller != null)
+                    controller.SetBattleMode(true);
+                _playerParty.Add(additionalPlayer);
+                _seamlessSpawnedPlayers.Add(additionalPlayer);
+            }
+        }
         
         for (int i = 0; i < encounterEnemies.Count; i++)
         {
@@ -930,6 +1051,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             }
         }
 
+        globalData?.PendingEnemies.Clear();
         StartCoroutine(SeamlessIntroRoutine(playerCtrl));
     }
 
@@ -962,6 +1084,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
         _isBattleEnding = false;
+        _rewardCommitted = false;
+        _lastRewardResult = null;
+        _playerPreemptiveAttackAvailable = GlobalDataManager.Instance != null
+            && GlobalDataManager.Instance.CurrentEncounterPlayerPreemptiveAttack;
         yield return StartCoroutine(PlayBattleStartedScenarioSequence());
         if (!HasImmediateBattleStartScenario())
         {
@@ -1031,6 +1157,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         if (global != null && global.PendingBattleBGM != null)
             AudioManager.Instance?.CrossFadeBGM(global.PendingBattleBGM, 0.8f);
+        if (global != null)
+            global.PendingBattleBGM = null;
 
         var existingPlayers = FindObjectsByType<PlayerCharacter>(FindObjectsSortMode.None);
         foreach (var p in existingPlayers)
@@ -1045,23 +1173,32 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         }
 
         _playerParty.Clear();
-        if (_playerBasePrefab != null)
+        int partyCount = global != null && global.Party.Count > 0 ? global.Party.Count : 1;
+        for (int i = 0; i < partyCount; i++)
         {
-            int partyCount = (global != null && global.Party.Count > 0) ? global.Party.Count : 1;
-            for (int i = 0; i < partyCount; i++)
+            CharacterSaveData saveData = global != null && global.Party.Count > i ? global.Party[i] : null;
+            GameObject playerPrefab = ResolvePlayerBattlePrefab(saveData);
+            if (playerPrefab == null)
             {
-                GameObject pObj = Instantiate(_playerBasePrefab, Vector3.zero, Quaternion.identity);
-                if (pObj.TryGetComponent(out PlayerCharacter pChar))
-                {
-                    _playerParty.Add(pChar);
-                    
-                    if (global != null && global.Party.Count > i)
-                        pChar.LoadDataFromGlobal(global.Party[i]);
-
-                    var ctrl = pChar.GetComponent<PlayerController>();
-                    if (ctrl != null) ctrl.SetBattleMode(true); 
-                }
+                Debug.LogError($"[BattleManager] Battle prefab is missing for party index {i}.");
+                continue;
             }
+
+            GameObject playerObject = Instantiate(playerPrefab, Vector3.zero, Quaternion.identity);
+            if (!playerObject.TryGetComponent(out PlayerCharacter playerCharacter))
+            {
+                Debug.LogError($"[BattleManager] Player prefab '{playerPrefab.name}' has no PlayerCharacter.", playerObject);
+                Destroy(playerObject);
+                continue;
+            }
+
+            _playerParty.Add(playerCharacter);
+            if (saveData != null)
+                playerCharacter.LoadDataFromGlobal(saveData);
+
+            PlayerController controller = playerCharacter.GetComponent<PlayerController>();
+            if (controller != null)
+                controller.SetBattleMode(true);
         }
 
         yield return null; 
@@ -1137,6 +1274,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
         _isBattleEnding = false;
+        _rewardCommitted = false;
+        _lastRewardResult = null;
+        _playerPreemptiveAttackAvailable = global != null && global.CurrentEncounterPlayerPreemptiveAttack;
         yield return StartCoroutine(WaitForNarrationToFinish());
         yield return StartCoroutine(PlayBattleStartedScenarioSequence());
         if (!HasImmediateBattleStartScenario())
@@ -1146,6 +1286,16 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             yield return StartCoroutine(WaitForNarrationToFinish());
         }
         yield return StartCoroutine(StartOpeningBattleGameModule());
+    }
+
+    private GameObject ResolvePlayerBattlePrefab(CharacterSaveData saveData)
+    {
+        CharacterData characterData = saveData != null
+            ? CharacterDatabase.FindById(saveData.CharacterDataID)
+            : null;
+        return characterData != null && characterData.BattlePrefab != null
+            ? characterData.BattlePrefab
+            : _playerBasePrefab;
     }
 
     private GameObject ResolveEnemyBattlePrefab(EnemyData enemyData)
@@ -1413,6 +1563,12 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     void IBattleTurnQteHost.ChangeBattleState(BattleState state) => ChangeState(state);
     bool IBattleTurnQteHost.CheckVictory() => CheckVictory();
     bool IBattleTurnQteHost.CheckDefeat() => CheckDefeat();
+    bool IBattleTurnQteHost.ConsumePlayerPreemptiveAttack()
+    {
+        bool available = _playerPreemptiveAttackAvailable;
+        _playerPreemptiveAttackAvailable = false;
+        return available;
+    }
     void IBattleTurnQteHost.BroadcastVisibleTurnQueue() => BroadcastVisibleTurnQueue();
     void IBattleTurnQteHost.ResetAllPlayerBattlePoses() => ResetAllPlayerBattlePoses();
     IEnumerator IBattleTurnQteHost.WaitForNarrationToFinish() => WaitForNarrationToFinish();
@@ -1620,6 +1776,37 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
     }
 
+    private BattleRewardResult CommitVictoryRewards()
+    {
+        if (_rewardCommitted)
+            return _lastRewardResult;
+
+        _rewardCommitted = true;
+        var defeatedEnemies = new List<EnemyData>();
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            EnemyCharacter enemy = _enemies[i];
+            if (enemy != null && enemy.Data != null)
+                defeatedEnemies.Add(enemy.Data);
+        }
+
+        GlobalDataManager global = GlobalDataManager.Instance;
+        _lastRewardResult = BattleRewardService.Grant(defeatedEnemies, global);
+
+        if (global != null)
+        {
+            int count = Mathf.Min(_playerParty.Count, global.Party.Count);
+            for (int i = 0; i < count; i++)
+            {
+                if (_playerParty[i] != null)
+                    _playerParty[i].LoadDataFromGlobal(global.Party[i]);
+            }
+        }
+
+        OnBattleRewardsGranted?.Invoke(_lastRewardResult);
+        return _lastRewardResult;
+    }
+
     private IEnumerator BattleOutroRoutine(bool isVictory)
     {
         Time.timeScale = 1.0f; // 슬로우 모션 방지
@@ -1632,6 +1819,16 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         foreach (var player in _playerParty)
         {
             if (player != null && player.IsAlive) player.SaveDataToGlobal();
+        }
+
+        if (isVictory)
+        {
+            BattleRewardResult rewards = CommitVictoryRewards();
+            BattleResultUI resultUi = _battleUICanvas != null
+                ? BattleResultUI.Ensure(_battleUICanvas.transform)
+                : null;
+            if (resultUi != null)
+                yield return StartCoroutine(resultUi.Show(rewards));
         }
 
         if (_isDedicatedBattleScene)
@@ -1652,6 +1849,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 destination = SceneName.Overworld;
             }
 
+            GameStateManager.Instance?.ChangeState(GameState.Exploration);
             if (SceneLoader.Instance != null)
                 SceneLoader.Instance.LoadScene(destination);
             else
@@ -1660,7 +1858,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         else
         {
             // 오버월드 심리스 복귀 로직
-            if (_battleUICanvas != null) _battleUICanvas.SetActive(false);
+            RestoreSeamlessBattlePresentation();
 
             PlayerController encounterPlayer = _activeEncounterPlayer;
             if (encounterPlayer == null && _playerParty.Count > 0 && _playerParty[0] != null)
@@ -1691,57 +1889,56 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 if (enemy != null) Destroy(enemy.gameObject);
             }
             _enemies.Clear();
+
+            for (int i = 0; i < _seamlessSpawnedPlayers.Count; i++)
+            {
+                if (_seamlessSpawnedPlayers[i] != null)
+                    Destroy(_seamlessSpawnedPlayers[i].gameObject);
+            }
+            _seamlessSpawnedPlayers.Clear();
             
-            CameraController.Instance?.ResetCamera();
             GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
+            GameStateManager.Instance?.ChangeState(GameState.Exploration);
+            _isBattleActive = false;
+            _isBattleEnding = false;
             Debug.Log("[BattleManager] 심리스 전투 종료! 오버월드 Idle 복귀 완료.");
         }
+    }
+
+    private void RestoreSeamlessBattlePresentation()
+    {
+        if (_battleUICanvas != null)
+            _battleUICanvas.SetActive(false);
+
+        CameraController cameraController = CameraController.Instance;
+        if (cameraController != null && _seamlessCameraDefaultTarget.IsValid)
+            cameraController.RestoreDefaultTarget(_seamlessCameraDefaultTarget, 0.4f);
+
+        _seamlessCameraDefaultTarget = default;
     }
     #endregion
 
     #region [ Static Utilities & Event Bridges ]
     public static void ExecuteItemEffect(CharacterBase target, ItemData item)
     {
-        if (item == null || target == null) return;
+        if (target == null || item == null) return;
 
-        if (item.ActionType == EffectActionType.Heal)
+        int previousHp = target.CurrentHP;
+        int previousMp = target.CurrentMP;
+        if (!ItemEffectService.TryApply(item, target, true, out string error))
         {
-            int maxStat = (item.TargetStat == TargetStatType.HP) ? target.MaxHP : target.MaxMP;
-            int amount = item.CalcType switch {
-                ValueCalcType.Flat => item.EffectValue,
-                ValueCalcType.Percentage => Mathf.RoundToInt(maxStat * (item.EffectValue * 0.01f)),
-                ValueCalcType.Full => maxStat,
-                _ => 0
-            };
-                
-            if (item.TargetStat == TargetStatType.HP) 
-            { 
-                target.HealHP(amount); 
-                Instance.OnDamageDealt?.Invoke(target, -amount, false); 
-            }
-            else if (item.TargetStat == TargetStatType.MP && target is PlayerCharacter pc) 
-            { 
-                pc.HealMP(amount); 
-                Instance.OnMPChanged?.Invoke(pc, pc.CurrentMP); 
-            }
+            Debug.LogWarning($"[BattleManager] Item effect failed: {error}");
+            return;
         }
-        else if (item.ActionType == EffectActionType.Damage) 
-        {
-            int damage = item.CalcType == ValueCalcType.Flat ? item.EffectValue : 50;
-            target.TakeDamage(damage);
-        }
-        else if (item.ActionType == EffectActionType.ApplyStatus)
-        {
-            if (StatusEffectFactory.TryCreate(item.StatusEffectID, item.StatusDurationTurns, out StatusEffect effect))
-            {
-                target.AddEffect(effect);
-            }
-            else
-            {
-                Debug.LogWarning($"[BattleManager] 등록되지 않은 상태이상 ID입니다: {item.StatusEffectID}");
-            }
-        }
+
+        if (Instance == null) return;
+        int hpDelta = previousHp - target.CurrentHP;
+        if (hpDelta != 0)
+            Instance.InvokeDamageEvent(target, hpDelta, false, previousHp);
+        if (target is PlayerCharacter player && player.CurrentMP != previousMp)
+            Instance.InvokeMPChangedEvent(player, player.CurrentMP);
     }
+
 
     public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect)
     {

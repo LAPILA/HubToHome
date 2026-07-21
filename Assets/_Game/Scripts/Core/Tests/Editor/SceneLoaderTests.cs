@@ -23,6 +23,8 @@ public class SceneLoaderTests
         _fadeCanvas = _loaderObject.AddComponent<CanvasGroup>();
         _loader = _loaderObject.AddComponent<SceneLoaderTestDouble>();
         SetPrivateField(_loader, "_fadeCanvas", _fadeCanvas);
+        _fadeCanvas.alpha = 0f;
+        _fadeCanvas.blocksRaycasts = false;
     }
 
     [TearDown]

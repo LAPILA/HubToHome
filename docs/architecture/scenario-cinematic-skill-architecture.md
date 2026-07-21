@@ -73,9 +73,9 @@
 #### 맵 / 지역 / 전투 진입
 
 - 사용자가 지정한 `Assets/_Game/Features/Area/` 폴더는 현재 존재하지 않는다.
-- 실제 맵 이벤트/지역 제작 표면은 다음 두 축에 분산되어 있다.
-  - 오버월드 런타임: `Assets/_Game/Features/Overworld/`
-  - Area Marker authoring: `Assets/_Game/Scenes/AreaSystem/`
+- 실제 맵 이벤트/지역 제작 표면은 런타임 코드와 제작 콘텐츠로 분리되어 있다.
+  - 오버월드 런타임: `Assets/_Game/Scripts/Overworld/`
+  - Area Marker Prefab: `Assets/_Game/Content/Maps/Shared/Markers/`
 - 전투 진입 공통 경로는 `BattleEncounterService.StartEncounter(...)`다.
   - 파일: `Assets/_Game/Features/Battle/Scripts/BattleEncounterService.cs`
 - 이 공통 진입점을 호출하는 주요 맵/대화 엔트리는 다음과 같다.
@@ -85,7 +85,7 @@
   - `AreaTrigger`
   - `DialogueManager`의 대화 선택 전투
 - 현재 `PlotPointMarker`는 시나리오 시퀀스를 직접 실행하지 않고, `DialogueData` 또는 fallback 텍스트를 띄우는 수준이다.
-  - 파일: `Assets/_Game/Scenes/AreaSystem/Scripts/PlotPointMarker.cs`
+  - 파일: `Assets/_Game/Scripts/Overworld/AreaMarkers/Runtime/PlotPointMarker.cs`
 - 즉 현재 맵 이벤트는 **Area Marker / Dialogue / BattleEncounterService 중심의 개별 처리**이고, **오버월드용 범용 Scenario Sequence 런타임으로 아직 통합되어 있지 않다.**
 
 ### 2. BattleManager가 과하게 들고 있는 책임 목록

@@ -60,11 +60,18 @@ public class GlobalDataManager : MonoBehaviour
         InitializeDefaults();
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
     private void InitializeDefaults()
     {
         _eventFlags.Clear();
         _inventoryDict.Clear();
         _encounterMemory.Clear();
+        _overworldEnemyStates.Clear();
         Party.Clear(); // 기존 더미 데이터 추가 로직 삭제
     }
 
@@ -113,33 +120,58 @@ public class GlobalDataManager : MonoBehaviour
     #region [ Inventory API ]
     public void AddItem(string itemID, int amount = 1)
     {
-        if (_inventoryDict.ContainsKey(itemID)) _inventoryDict[itemID] += amount;
-        else _inventoryDict[itemID] = amount;
+        AddItemAndGetAddedAmount(itemID, amount);
     }
 
+    public int AddItemAndGetAddedAmount(string itemID, int amount = 1)
+    {
+        if (string.IsNullOrWhiteSpace(itemID) || amount <= 0) return 0;
+
+        string normalizedId = itemID.Trim();
+        int current = _inventoryDict.TryGetValue(normalizedId, out int existing)
+            ? Mathf.Max(0, existing)
+            : 0;
+        ItemData item = ItemDatabase.FindById(normalizedId);
+        int maxStack = item == null
+            ? int.MaxValue
+            : item.IsStackable ? Mathf.Max(1, item.MaxStackSize) : 1;
+        int next = (int)System.Math.Min((long)current + amount, maxStack);
+        if (next <= current) return 0;
+
+        _inventoryDict[normalizedId] = next;
+        return next - current;
+    }
     public bool RemoveItem(string itemID, int amount = 1)
     {
-        if (!_inventoryDict.ContainsKey(itemID) || _inventoryDict[itemID] < amount) return false;
+        if (string.IsNullOrWhiteSpace(itemID) || amount <= 0) return false;
 
-        _inventoryDict[itemID] -= amount;
-        if (_inventoryDict[itemID] <= 0) _inventoryDict.Remove(itemID); 
+        string normalizedId = itemID.Trim();
+        if (!_inventoryDict.TryGetValue(normalizedId, out int current) || current < amount)
+            return false;
 
+        int remaining = current - amount;
+        if (remaining > 0) _inventoryDict[normalizedId] = remaining;
+        else _inventoryDict.Remove(normalizedId);
         return true;
     }
 
-    public int GetItemCount(string itemID) => _inventoryDict.TryGetValue(itemID, out int count) ? count : 0;
+    public int GetItemCount(string itemID)
+    {
+        if (string.IsNullOrWhiteSpace(itemID)) return 0;
+        return _inventoryDict.TryGetValue(itemID.Trim(), out int count) ? Mathf.Max(0, count) : 0;
+    }
+
     public IReadOnlyDictionary<string, int> GetInventory() => _inventoryDict;
 
     public void AddMoney(int amount)
     {
-        Money = Mathf.Max(0, Money + amount);
+        if (amount <= 0) return;
+        Money = (int)System.Math.Min((long)Money + amount, int.MaxValue);
     }
 
     public bool SpendMoney(int amount)
     {
-        amount = Mathf.Max(0, amount);
-        if (Money < amount) return false;
-
+        if (amount < 0 || Money < amount) return false;
         Money -= amount;
         return true;
     }
@@ -243,44 +275,51 @@ public class GlobalDataManager : MonoBehaviour
     #region [ Overworld Enemy Runtime State ]
     public void BeginOverworldEnemyEncounter(string enemyId, string sceneName, bool defeatsOnVictory, bool playerPreemptiveAttack = false)
     {
-        if (string.IsNullOrWhiteSpace(enemyId)) return;
-
-        CurrentEncounterEnemyId = enemyId;
+        CurrentEncounterEnemyId = string.IsNullOrWhiteSpace(enemyId) ? string.Empty : enemyId.Trim();
         CurrentEncounterDefeatsOnVictory = defeatsOnVictory;
         CurrentEncounterPlayerPreemptiveAttack = playerPreemptiveAttack;
 
-        var state = GetOrCreateOverworldEnemyState(enemyId, sceneName);
+        if (string.IsNullOrEmpty(CurrentEncounterEnemyId)) return;
+
+        var state = GetOrCreateOverworldEnemyState(CurrentEncounterEnemyId, sceneName);
         state.SceneName = sceneName;
     }
-
     public void EndOverworldEnemyEncounterContext()
     {
         CurrentEncounterEnemyId = null;
         CurrentEncounterDefeatsOnVictory = false;
         CurrentEncounterPlayerPreemptiveAttack = false;
     }
+    public void CancelPendingBattleEncounter()
+    {
+        PendingEnemies?.Clear();
+        PendingBattleBGM = null;
+        PendingBattleScenario = null;
+        EndOverworldEnemyEncounterContext();
+    }
 
     public OverworldEnemyRuntimeState GetOrCreateOverworldEnemyState(string enemyId, string sceneName = null)
     {
         if (string.IsNullOrWhiteSpace(enemyId)) return null;
 
-        if (!_overworldEnemyStates.TryGetValue(enemyId, out var state) || state == null)
+        string normalizedId = enemyId.Trim();
+        if (!_overworldEnemyStates.TryGetValue(normalizedId, out OverworldEnemyRuntimeState state) || state == null)
         {
             state = new OverworldEnemyRuntimeState
             {
-                EnemyId = enemyId,
+                EnemyId = normalizedId,
                 SceneName = sceneName ?? string.Empty,
                 CooldownAlpha = 0.5f
             };
-            _overworldEnemyStates[enemyId] = state;
+            _overworldEnemyStates[normalizedId] = state;
         }
 
+        state.EnemyId = normalizedId;
         if (!string.IsNullOrWhiteSpace(sceneName))
             state.SceneName = sceneName;
 
         return state;
     }
-
     public bool TryGetOverworldEnemyState(string enemyId, out OverworldEnemyRuntimeState state)
     {
         if (string.IsNullOrWhiteSpace(enemyId))
@@ -289,7 +328,7 @@ public class GlobalDataManager : MonoBehaviour
             return false;
         }
 
-        return _overworldEnemyStates.TryGetValue(enemyId, out state) && state != null;
+        return _overworldEnemyStates.TryGetValue(enemyId.Trim(), out state) && state != null;
     }
 
     public void MarkOverworldEnemyEscaped(string enemyId, string sceneName, float cooldownDuration, float cooldownAlpha)
@@ -324,6 +363,19 @@ public class GlobalDataManager : MonoBehaviour
         if (!TryGetOverworldEnemyState(enemyId, out var state)) return 0f;
         return Mathf.Max(0f, state.CooldownUntilUnscaledTime - Time.unscaledTime);
     }
+
+    public int GetHighestPartyLevel()
+    {
+        int highest = 1;
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member != null)
+                highest = Mathf.Max(highest, member.Level);
+        }
+
+        return highest;
+    }
     #endregion
 
     #region [ Save & Load ]
@@ -343,7 +395,8 @@ public class GlobalDataManager : MonoBehaviour
             InventoryDict = new Dictionary<string, int>(_inventoryDict),
             eventFlags    = new Dictionary<string, int>(_eventFlags),
             EncounterMemory = CloneEncounterMemoryDictionary(_encounterMemory),
-            PartyData     = new List<CharacterSaveData>(Party),
+            OverworldEnemies = CloneOverworldEnemyStates(_overworldEnemyStates),
+            PartyData     = CloneParty(Party),
             Money         = Money
         };
         return data;
@@ -369,9 +422,7 @@ public class GlobalDataManager : MonoBehaviour
         if (data.InventoryDict != null)
         {
             foreach (KeyValuePair<string, int> entry in data.InventoryDict)
-            {
-                _inventoryDict[entry.Key] = entry.Value;
-            }
+                AddItem(entry.Key, entry.Value);
         }
 
         _eventFlags.Clear();
@@ -398,10 +449,80 @@ public class GlobalDataManager : MonoBehaviour
             }
         }
 
-        Party = data.PartyData != null
-            ? new List<CharacterSaveData>(data.PartyData)
-            : new List<CharacterSaveData>();
+        _overworldEnemyStates.Clear();
+        if (data.OverworldEnemies != null)
+        {
+            foreach (KeyValuePair<string, OverworldEnemySaveData> entry in data.OverworldEnemies)
+            {
+                OverworldEnemySaveData savedState = entry.Value;
+                string enemyId = (string.IsNullOrWhiteSpace(savedState?.EnemyId) ? entry.Key : savedState.EnemyId)?.Trim();
+                if (string.IsNullOrWhiteSpace(enemyId)) continue;
+
+                _overworldEnemyStates[enemyId] = new OverworldEnemyRuntimeState
+                {
+                    EnemyId = enemyId,
+                    SceneName = savedState?.SceneName ?? string.Empty,
+                    IsDefeated = savedState != null && savedState.IsDefeated,
+                    CooldownUntilUnscaledTime = 0f,
+                    CooldownAlpha = 0.5f
+                };
+            }
+        }
+
+        Party = CloneParty(data.PartyData);
         Money = Mathf.Max(0, data.Money);
+    }
+
+    private static List<CharacterSaveData> CloneParty(IReadOnlyList<CharacterSaveData> source)
+    {
+        var clone = new List<CharacterSaveData>();
+        if (source == null) return clone;
+
+        for (int i = 0; i < source.Count; i++)
+        {
+            CharacterSaveData member = source[i];
+            if (member == null) continue;
+            clone.Add(new CharacterSaveData
+            {
+                CharacterDataID = member.CharacterDataID ?? string.Empty,
+                CharacterID = member.CharacterID ?? string.Empty,
+                Level = Mathf.Max(1, member.Level),
+                EXP = Mathf.Max(0, member.EXP),
+                HP = member.HP,
+                MaxHP = member.MaxHP,
+                MP = member.MP,
+                MaxMP = member.MaxMP,
+                ATK = member.ATK,
+                DEF = member.DEF,
+                SPD = member.SPD,
+                EquippedSkillIDs = member.EquippedSkillIDs != null
+                    ? new List<string>(member.EquippedSkillIDs)
+                    : new List<string>()
+            });
+        }
+
+        return clone;
+    }
+    private static Dictionary<string, OverworldEnemySaveData> CloneOverworldEnemyStates(
+        Dictionary<string, OverworldEnemyRuntimeState> source)
+    {
+        var clone = new Dictionary<string, OverworldEnemySaveData>();
+        if (source == null) return clone;
+
+        foreach (KeyValuePair<string, OverworldEnemyRuntimeState> entry in source)
+        {
+            OverworldEnemyRuntimeState state = entry.Value;
+            string enemyId = entry.Key?.Trim();
+            if (state == null || string.IsNullOrEmpty(enemyId)) continue;
+            clone[enemyId] = new OverworldEnemySaveData
+            {
+                EnemyId = enemyId,
+                SceneName = state.SceneName ?? string.Empty,
+                IsDefeated = state.IsDefeated
+            };
+        }
+
+        return clone;
     }
 
     private static Dictionary<string, EncounterMemorySaveData> CloneEncounterMemoryDictionary(

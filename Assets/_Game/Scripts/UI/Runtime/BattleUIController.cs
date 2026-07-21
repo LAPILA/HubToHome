@@ -27,7 +27,9 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     [BoxGroup("Labels"), LabelWidth(120)] [SerializeField] private TMPro.TextMeshProUGUI _turnLabel;
     
     [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private RectTransform _targetCursor; 
-    [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private Camera _worldCamera;
+    [BoxGroup("Enemy Cursor"), LabelWidth(120)]
+    [Tooltip("전용 전투 씬에서는 직접 연결합니다. 심리스 전투에서는 현재 맵의 MainCamera를 자동 연결합니다.")]
+    [SerializeField] private Camera _worldCamera;
     
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleMenuUI  _battleMenuUI;
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private DefenseQTEUI  _defenseQTEUI;
@@ -54,6 +56,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     // 🚨 체력창의 기본 Y좌표를 기억해둘 변수
     private float _defaultPartyPanelY;
     private Image _scenarioFlashOverlay;
+    private bool _hasWarnedMissingWorldCamera;
 
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
@@ -67,6 +70,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        TryResolveWorldCamera();
         NormalizeForCurrentResolution();
 
         if (_narrationUI == null)
@@ -200,9 +204,67 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         } while (loopCount < maxTargets);
     }
 
+    public void BindWorldCamera(Camera worldCamera)
+    {
+        if (worldCamera == null) return;
+
+        _worldCamera = worldCamera;
+        _hasWarnedMissingWorldCamera = false;
+        BindCameraToCanvases(worldCamera);
+    }
+
+    public bool TryResolveWorldCamera()
+    {
+        if (_worldCamera != null) return true;
+
+        Camera resolvedCamera = Camera.main;
+        if (resolvedCamera == null)
+        {
+            Camera[] activeCameras = Camera.allCameras;
+            for (int i = 0; i < activeCameras.Length; i++)
+            {
+                Camera candidate = activeCameras[i];
+                if (candidate != null && candidate.isActiveAndEnabled)
+                {
+                    resolvedCamera = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (resolvedCamera == null) return false;
+
+        BindWorldCamera(resolvedCamera);
+        return true;
+    }
+
+    private void BindCameraToCanvases(Camera worldCamera)
+    {
+        Canvas[] canvases = GetComponentsInChildren<Canvas>(true);
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                canvas.worldCamera = worldCamera;
+        }
+    }
+
     private void UpdateCursorPosition()
     {
         if (_targetCursor == null || !_targetCursor.gameObject.activeSelf) return;
+
+        if (!TryResolveWorldCamera())
+        {
+            if (!_hasWarnedMissingWorldCamera)
+            {
+                Debug.LogWarning(
+                    "[BattleUIController] 전투 커서에 사용할 World Camera를 찾지 못했습니다. MainCamera 태그와 활성 Camera를 확인하세요.",
+                    this);
+                _hasWarnedMissingWorldCamera = true;
+            }
+
+            return;
+        }
 
         Transform targetTf = null;
         CharacterBase targetChar = _isAllyTargeting 
@@ -219,7 +281,16 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
             Vector3 targetWorldPos = targetTf.position + _cursorOffset;
             Vector2 screenPoint = _worldCamera.WorldToScreenPoint(targetWorldPos);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)_targetCursor.parent, screenPoint, _worldCamera, out Vector2 localPoint);
+            Canvas parentCanvas = _targetCursor.GetComponentInParent<Canvas>();
+            Camera uiCamera = null;
+            if (parentCanvas != null && parentCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                uiCamera = parentCanvas.worldCamera != null ? parentCanvas.worldCamera : _worldCamera;
+
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                (RectTransform)_targetCursor.parent,
+                screenPoint,
+                uiCamera,
+                out Vector2 localPoint);
             
             float bobbingY = Mathf.Sin(Time.time * _cursorBobSpeed * _cursorBobFrequency) * _cursorBobHeight;
             _targetCursor.localPosition = new Vector2(Mathf.Round(localPoint.x), Mathf.Round(localPoint.y + bobbingY));

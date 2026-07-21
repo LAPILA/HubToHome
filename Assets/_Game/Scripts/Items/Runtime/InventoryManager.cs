@@ -21,97 +21,60 @@ public class InventoryManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         // 빠른 검색을 위해 Dictionary로 캐싱
-        foreach (var item in _itemDatabase)
+        if (_itemDatabase != null)
         {
-            if (item != null && !_itemDict.ContainsKey(item.ItemID))
-                _itemDict.Add(item.ItemID, item);
+            foreach (var item in _itemDatabase)
+            {
+                if (item == null || string.IsNullOrWhiteSpace(item.ItemID)) continue;
+                string itemId = item.ItemID.Trim();
+                if (!_itemDict.ContainsKey(itemId))
+                    _itemDict.Add(itemId, item);
+            }
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     /// <summary>ID로 아이템 원본 데이터를 가져옵니다.</summary>
     public ItemData GetItemData(string itemID)
     {
-        return _itemDict.TryGetValue(itemID, out var data) ? data : null;
+        if (string.IsNullOrWhiteSpace(itemID)) return null;
+        string normalizedId = itemID.Trim();
+        if (_itemDict.TryGetValue(normalizedId, out ItemData localData))
+            return localData;
+        return ItemDatabase.FindById(normalizedId);
     }
 
-    // ── 🚨 아이템 사용 (소비) 로직 ──
     public bool UseItem(string itemID, CharacterBase target)
     {
-        var itemData = GetItemData(itemID);
-        if (itemData == null || itemData.Type != ItemType.Consumable) 
+        ItemData itemData = GetItemData(itemID);
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (itemData == null || global == null)
+            return false;
+
+        if (global.GetItemCount(itemData.ItemID) <= 0)
         {
-            Debug.LogWarning($"[Inventory] 사용할 수 없는 아이템입니다: {itemID}");
+            Debug.LogWarning($"[Inventory] Item is not owned: {itemData.ItemID}");
             return false;
         }
 
-        // 인벤토리에 아이템이 있는지 확인
-        if (GlobalDataManager.Instance.GetItemCount(itemID) <= 0) 
+        if (!ItemEffectService.TryApply(itemData, target, false, out string error))
         {
-            Debug.LogWarning($"[Inventory] 소지하지 않은 아이템입니다: {itemID}");
+            Debug.LogWarning($"[Inventory] Item use failed: {error}");
             return false;
         }
 
-        // 효과 적용 (Heal, Damage 등)
-        ApplyItemEffect(itemData, target);
+        if (!global.RemoveItem(itemData.ItemID, 1))
+        {
+            Debug.LogError($"[Inventory] Failed to consume item after applying it: {itemData.ItemID}");
+            return false;
+        }
 
-        // 사용 완료 후 소비
-        GlobalDataManager.Instance.RemoveItem(itemID, 1);
-        Debug.Log($"<color=green>[Inventory]</color> {itemData.ItemName}을(를) 사용했습니다.");
         return true;
-    }
-
-    private void ApplyItemEffect(ItemData item, CharacterBase target)
-    {
-        if (target == null || !target.IsAlive) return;
-
-        // 1. 회복 및 데미지 로직
-        if (item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage)
-        {
-            int calculatedValue = CalculateValue(item, target);
-
-            if (item.ActionType == EffectActionType.Heal)
-            {
-                if (item.TargetStat == TargetStatType.HP) target.HealHP(calculatedValue);
-                if (item.TargetStat == TargetStatType.MP) target.HealMP(calculatedValue);
-            }
-            else if (item.ActionType == EffectActionType.Damage)
-            {
-                // 아이템 데미지는 방어력을 무시하는 고정 데미지로 처리
-                target.TakePureDamage(calculatedValue); 
-            }
-        }
-
-        // 2. 상태이상 로직 (ApplyStatus)
-        if (item.ActionType == EffectActionType.ApplyStatus && !string.IsNullOrEmpty(item.StatusEffectID))
-        {
-            if (!StatusEffectFactory.TryCreate(item.StatusEffectID, item.StatusDurationTurns, out StatusEffect effect))
-            {
-                Debug.LogWarning($"[Inventory] 등록되지 않은 상태이상 ID입니다: {item.StatusEffectID}");
-                return;
-            }
-
-            target.AddEffect(effect);
-        }
-    }
-
-    private int CalculateValue(ItemData item, CharacterBase target)
-    {
-        int maxValue = (item.TargetStat == TargetStatType.HP) ? target.MaxHP : target.MaxMP;
-
-        switch (item.CalcType)
-        {
-            case ValueCalcType.Flat:
-                return item.EffectValue;
-
-            case ValueCalcType.Percentage:
-                return Mathf.RoundToInt(maxValue * (item.EffectValue / 100f));
-
-            case ValueCalcType.Full:
-                return maxValue;
-
-            default:
-                return 0;
-        }
     }
 
     // ── 오버월드 NPC 대상 아이템 사용 (키 아이템 건네주기 등) ──

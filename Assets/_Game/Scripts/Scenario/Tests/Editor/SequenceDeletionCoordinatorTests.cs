@@ -416,9 +416,10 @@ public sealed class SequenceDeletionCoordinatorTests
 
     private string CreateAssetFolder()
     {
+        const string parent = "Assets/_Game/Content/Scenarios";
         string name = "__SequenceDeletionTests_" + Guid.NewGuid().ToString("N");
-        AssetDatabase.CreateFolder("Assets", name);
-        string path = "Assets/" + name;
+        AssetDatabase.CreateFolder(parent, name);
+        string path = parent + "/" + name;
         _assetFolders.Add(path);
         return path;
     }

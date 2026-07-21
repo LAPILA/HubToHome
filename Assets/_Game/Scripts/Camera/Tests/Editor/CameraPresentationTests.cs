@@ -16,13 +16,26 @@ public sealed class CameraPresentationTests
     {
         _cameraObject = new GameObject("CameraTest");
         _virtualCamera = _cameraObject.AddComponent<CinemachineCamera>();
-        _cameraObject.AddComponent<CinemachinePositionComposer>();
+        CinemachineFollow follow = _cameraObject.AddComponent<CinemachineFollow>();
+        follow.FollowOffset = new Vector3(0f, 0f, -1f);
         _cameraObject.AddComponent<CinemachineImpulseSource>();
         _controller = _cameraObject.AddComponent<CameraController>();
 
         _centerObject = new GameObject("Center");
         _subjectObject = new GameObject("Subject");
         _subjectObject.transform.position = new Vector3(8f, 3f, 0f);
+    }
+
+    [Test]
+    public void FollowRigTracksSpritePlaneWithoutAddingSecondBodyDriverOrChangingDepth()
+    {
+        _controller.SetTarget(_subjectObject.transform);
+
+        _virtualCamera.UpdateCameraState(Vector3.up, -1f);
+
+        Assert.That(_cameraObject.GetComponent<CinemachinePositionComposer>(), Is.Null);
+        Assert.That(_cameraObject.GetComponent<CinemachineFixedDepthExtension>(), Is.Not.Null);
+        Assert.That(_virtualCamera.State.GetFinalPosition().z, Is.EqualTo(-1f).Within(0.001f));
     }
 
     [TearDown]
@@ -74,6 +87,36 @@ public sealed class CameraPresentationTests
             out string resetError), Is.True, resetError);
 
         Assert.That(_virtualCamera.Follow, Is.EqualTo(_centerObject.transform));
+    }
+
+    [Test]
+    public void ResetWithoutProfileUsesFourAsGameplayDefaultLens()
+    {
+        _controller.SetDefaultTarget(_centerObject.transform, true);
+
+        Assert.That(_controller.TryReset(
+            0f,
+            CameraShotStyle.GameplaySafe,
+            CameraControlLease.None,
+            out _,
+            out string error), Is.True, error);
+
+        Assert.That(_virtualCamera.Lens.OrthographicSize, Is.EqualTo(4f).Within(0.001f));
+    }
+
+    [Test]
+    public void RestoringDefaultTargetSnapshotReturnsFromBattleCenterToOverworldTarget()
+    {
+        _controller.SetDefaultTarget(_subjectObject.transform);
+        CameraDefaultTargetSnapshot overworldState = _controller.CaptureDefaultTarget();
+
+        _controller.SetDefaultTarget(_centerObject.transform, true);
+        _controller.ResetCamera(0f);
+        Assert.That(_virtualCamera.Follow, Is.EqualTo(_centerObject.transform));
+
+        _controller.RestoreDefaultTarget(overworldState, 0f);
+
+        Assert.That(_virtualCamera.Follow, Is.EqualTo(_subjectObject.transform));
     }
 
     [Test]

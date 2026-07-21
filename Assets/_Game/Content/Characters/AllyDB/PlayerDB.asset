@@ -23,6 +23,7 @@ MonoBehaviour:
     SerializationNodes: []
   Portrait: {fileID: 21300000, guid: a6834fe30490d174eb09efe7e0b53002, type: 3}
   TurnOrderPortrait: {fileID: 21300000, guid: a6834fe30490d174eb09efe7e0b53002, type: 3}
+  BattlePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
   CharacterID: player_001
   DisplayName: Player
   DisplayNameMode: 1
@@ -31,6 +32,14 @@ MonoBehaviour:
   BaseATK: 10
   BaseDEF: 5
   BaseSPD: 10
+  MaxLevel: 99
+  BaseExperienceToLevel: 100
+  ExperienceGrowth: 1.18
+  MaxHpPerLevel: 5
+  MaxMpPerLevel: 2
+  AttackPerLevel: 1
+  DefensePerLevel: 1
+  SpeedPerLevel: 0
   DefaultSkills:
   - {fileID: 11400000, guid: a6266718f8bf9094698650cb43978de1, type: 2}
   - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}

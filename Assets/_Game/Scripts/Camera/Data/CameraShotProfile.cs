@@ -2,6 +2,12 @@ using System;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
+public static class CameraLensDefaults
+{
+    public const float GameplayOrthographicSize = 4f;
+    public const float BattleActionOrthographicSize = 3.5f;
+}
+
 public enum CameraShotStyle
 {
     Static,
@@ -72,7 +78,7 @@ public sealed class CameraShotProfile : ScriptableObject
     public CameraShotStyle Style = CameraShotStyle.Static;
 
     [LabelText("기본 줌"), MinValue(0.5f)]
-    public float OrthographicSize = 10f;
+    public float OrthographicSize = CameraLensDefaults.GameplayOrthographicSize;
 
     [LabelText("위치 감쇠")]
     public Vector3 Damping = Vector3.zero;

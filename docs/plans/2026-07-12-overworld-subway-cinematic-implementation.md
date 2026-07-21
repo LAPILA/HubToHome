@@ -206,7 +206,7 @@ git commit -m "feat: support standalone sequences in maker"
 - Create: `Assets/_Game/Content/Scenarios/Catalogs/OverworldCinematicActionCatalog.asset`
 - Create: `Assets/_Game/Content/Cinematics/Overworld/SubwayArrivalShot.asset`
 - Create: `Assets/_Game/Prefabs/Cinematics/OverworldCinematicStage.prefab`
-- Modify with explicit approval: `Assets/_Game/Scenes/Overworld/OverworldScene.unity`
+- Modify with explicit approval: `Assets/_Game/Content/Maps/Regions/PrologueSubway/Scenes/OverworldScene.unity`
 - Create: `Assets/_Game/Scripts/Overworld/Editor/OverworldSubwayCinematicSampleBuilder.cs`
 - Test: `Assets/_Game/Scripts/Overworld/Tests/Editor/OverworldSubwayCinematicContentTests.cs`
 
@@ -249,7 +249,7 @@ Open `HubToHome/시나리오/시퀀스 메이커`, select the standalone sequenc
 **Step 5: Commit content slice.**
 
 ```powershell
-git add Assets/_Game/Content/Scenarios/Source/Overworld Assets/_Game/Content/Scenarios/Generated/Overworld Assets/_Game/Content/Scenarios/Catalogs Assets/_Game/Content/Cinematics/Overworld Assets/_Game/Prefabs/Cinematics Assets/_Game/Scripts/Overworld/Editor/OverworldSubwayCinematicSampleBuilder.cs Assets/_Game/Scripts/Overworld/Tests/Editor/OverworldSubwayCinematicContentTests.cs Assets/_Game/Scenes/Overworld/OverworldScene.unity
+git add Assets/_Game/Content/Scenarios/Source/Overworld Assets/_Game/Content/Scenarios/Generated/Overworld Assets/_Game/Content/Scenarios/Catalogs Assets/_Game/Content/Cinematics/Overworld Assets/_Game/Prefabs/Cinematics Assets/_Game/Scripts/Overworld/Editor/OverworldSubwayCinematicSampleBuilder.cs Assets/_Game/Scripts/Overworld/Tests/Editor/OverworldSubwayCinematicContentTests.cs Assets/_Game/Content/Maps/Regions/PrologueSubway/Scenes/OverworldScene.unity
 git commit -m "feat: add overworld subway arrival cinematic"
 ```
 

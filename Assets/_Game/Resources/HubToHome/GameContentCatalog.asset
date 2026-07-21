@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34b9db39370e83c41a5f78e5d2f5666a, type: 3}
+  m_Name: GameContentCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::GameContentCatalog
+  Characters:
+  - {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
+  Enemies:
+  - {fileID: 11400000, guid: 0d809955dfe6144459f4205e92356daa, type: 2}
+  - {fileID: 11400000, guid: 2ecad76fe6f59d642b2989116b593269, type: 2}
+  Skills:
+  - {fileID: 11400000, guid: f11cc42b1b06a2f4da055533977747a4, type: 2}
+  - {fileID: 11400000, guid: a4d8f5d1c8b34f2aa19c44d8a0a3b771, type: 2}
+  - {fileID: 11400000, guid: 57277bc7847637343b5b2fb2c1d54910, type: 2}
+  - {fileID: 11400000, guid: d91f2fcf42c2672489df5cbefd7c1f51, type: 2}
+  - {fileID: 11400000, guid: c2f49c6e1b8d45f4a2a9a671ec8db913, type: 2}
+  - {fileID: 11400000, guid: a6266718f8bf9094698650cb43978de1, type: 2}
+  - {fileID: 11400000, guid: b3261d09b33d084429857ad2e5dfc63b, type: 2}
+  - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
+  Items:
+  - {fileID: 11400000, guid: a073f5e7de19d044dba149b5f2c35c7a, type: 2}
+  DefaultUiFont: {fileID: 11400000, guid: 4da9911c543a2a048a95035371d0d669, type: 2}

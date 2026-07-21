@@ -59,11 +59,12 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
+        aliveChars.Sort((a, b) => b.SPD.CompareTo(a.SPD));
         for (int i = 0; i < _host.MaxTurnQueueSize; i++)
-        {
-            aliveChars.Sort((a, b) => b.SPD.CompareTo(a.SPD));
             _host.TurnQueue.Add(aliveChars[i % aliveChars.Count]);
-        }
+
+        if (_host.ConsumePlayerPreemptiveAttack())
+            BattleTurnQueuePolicy.PromoteFirstPlayer(_host.TurnQueue);
 
         _host.CurrentActorIndex = 0;
         _host.BroadcastVisibleTurnQueue();
@@ -680,6 +681,30 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global == null || global.GetItemCount(item.ItemID) <= 0)
+        {
+            Debug.LogWarning($"[BattleItem] Item is not owned: {item.ItemID}");
+            CompleteAction();
+            yield break;
+        }
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            if (!ItemEffectService.CanApply(item, targets[i], true, out string validationError))
+            {
+                Debug.LogWarning($"[BattleItem] Item cannot be applied: {validationError}");
+                CompleteAction();
+                yield break;
+            }
+        }
+
+        if (!global.RemoveItem(item.ItemID, 1))
+        {
+            CompleteAction();
+            yield break;
+        }
+
         PlayerController actorCtrl = actor.GetComponent<PlayerController>();
         PositionManager pm = PositionManager.Instance;
 
@@ -691,9 +716,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         yield return new WaitForSeconds(0.3f);
 
         foreach (CharacterBase target in targets)
-        {
             BattleManager.ExecuteItemEffect(target, item);
-        }
 
         yield return new WaitForSeconds(0.5f);
 

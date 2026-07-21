@@ -165,7 +165,7 @@ Assets/_Game/Features/Overworld/Maps/
    └─ DungeonTemplate/
 ```
 
-`Assets/_Game/Scenes`는 실제 게임의 핵심 씬용으로 두고, 맵 제작 샘플/템플릿 씬은 `Overworld/Maps` 아래에서 관리합니다.
+모든 게임 씬과 맵 제작 샘플은 `Assets/_Game/Content/Maps`에서 관리합니다. 타이틀·인트로는 `Frontend`, 전투는 `Battle`, 실제 지역은 `Regions`, QA 맵은 `Development`에서 찾습니다.
 
 샘플을 다시 생성할 때는 기존 생성 폴더를 삭제하거나, 같은 메뉴를 다시 실행해 덮어쓰기 기준으로 확인합니다.
 

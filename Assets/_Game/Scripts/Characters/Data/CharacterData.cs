@@ -17,6 +17,10 @@ public class CharacterData : SerializedScriptableObject
     [BoxGroup("Identity"), PreviewField(60, ObjectFieldAlignment.Left)]
     public Sprite TurnOrderPortrait;
 
+    [BoxGroup("Battle Presentation"), AssetsOnly]
+    [Tooltip("Character-specific prefab instantiated in battle. BattleManager fallback is used when empty.")]
+    public GameObject BattlePrefab;
+
     [BoxGroup("Identity")] public string CharacterID = "player_001";
     [BoxGroup("Identity")] public string DisplayName = "Player";
     [BoxGroup("Identity"), LabelText("이름 소스")]
@@ -31,6 +35,16 @@ public class CharacterData : SerializedScriptableObject
     [HorizontalGroup("Base Stats/R2", LabelWidth = 60)] public int BaseATK = 10;
     [HorizontalGroup("Base Stats/R2", LabelWidth = 60)] public int BaseDEF = 5;
     [HorizontalGroup("Base Stats/R2", LabelWidth = 60)] public int BaseSPD = 10;
+
+
+    [BoxGroup("Progression"), MinValue(1)] public int MaxLevel = 99;
+    [BoxGroup("Progression"), MinValue(1)] public int BaseExperienceToLevel = 100;
+    [BoxGroup("Progression"), MinValue(1f)] public float ExperienceGrowth = 1.18f;
+    [BoxGroup("Progression"), MinValue(0)] public int MaxHpPerLevel = 5;
+    [BoxGroup("Progression"), MinValue(0)] public int MaxMpPerLevel = 2;
+    [BoxGroup("Progression"), MinValue(0)] public int AttackPerLevel = 1;
+    [BoxGroup("Progression"), MinValue(0)] public int DefensePerLevel = 1;
+    [BoxGroup("Progression"), MinValue(0)] public int SpeedPerLevel = 0;
 
     [BoxGroup("Battle Loadout")]
     [ListDrawerSettings(ShowIndexLabels = true)]

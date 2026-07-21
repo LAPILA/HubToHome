@@ -14,7 +14,7 @@ Prove the official Sequence Maker is usable through real editor journeys, not on
 
 - Do not save or rewrite production scenes while diagnosing editor behavior.
 - Prefer in-memory `ScriptableObject` fixtures and files below `Library/HubToHome/SequenceMakerQA`.
-- If an AssetDatabase-backed fixture is unavoidable, use only `Assets/_Game/Scenes/Tests/SequenceMakerQA`, record its GUIDs before the run, and remove only those recorded fixtures afterward.
+- If an AssetDatabase-backed fixture is unavoidable, use only `Assets/_Game/Content/Maps/Development/SequenceMakerQA`, record its GUIDs before the run, and remove only those recorded fixtures afterward.
 - Existing ZEV and Overworld test scenes may be loaded and played but not saved.
 - Never stage or revert `Room_AreaMarker_AllGizmos.prefab`, `ProjectSettings/EditorBuildSettings.asset`, or `.codex/`.
 - Every intentional external-source mutation must preserve the original bytes and restore them in `finally` cleanup.

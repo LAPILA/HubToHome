@@ -10,7 +10,7 @@ using UnityEngine.SceneManagement;
 /// 원칙:
 /// - 런타임 코드는 Assets/_Game/Scripts/Overworld/Runtime/Map 아래에 둡니다.
 /// - 실제 월드/씬/룸 데이터/룸 프리팹은 Assets/_Game/Content/Maps 아래에 생성합니다.
-/// - 기획자는 Content/Maps/Worlds 안의 README와 RoomDefinition을 기준으로 룸 연결을 확인합니다.
+/// - 기획자는 Content/Maps/Regions 안의 README와 RoomDefinition을 기준으로 룸 연결을 확인합니다.
 /// 메뉴:
 /// - HubToHome > Overworld > Create Room Map Sample
 /// - HubToHome > Overworld > Create Map Field Starter Pack
@@ -23,27 +23,28 @@ public static class RoomMapSampleBuilder
     private const string BackgroundSortingLayerName = "Background";
 
     private const string SceneWorldRoot = "Assets/_Game/Content/Maps";
-    private const string MapRoot = SceneWorldRoot + "/Worlds";
-    private const string SharedGeneratedFolder = "Assets/_Game/Content/Maps/_Generated";
+    private const string RegionRoot = SceneWorldRoot + "/Regions";
+    private const string DevelopmentRoot = SceneWorldRoot + "/Development";
+    private const string SharedGeneratedFolder = SceneWorldRoot + "/Shared/Generated";
     private const string SharedSpritePath = SharedGeneratedFolder + "/RoomMap_WhiteSquare.png";
 
-    private const string BasicRoot = MapRoot + "/Samples/BasicRoomMap";
+    private const string BasicRoot = DevelopmentRoot + "/Samples/BasicRoomMap";
     private const string BasicScenePath = BasicRoot + "/Scenes/Sample_RoomMap.unity";
     private const string BasicPrefabFolder = BasicRoot + "/Prefabs/Rooms";
     private const string BasicDataFolder = BasicPrefabFolder;
 
-    private const string StarterPackRoot = MapRoot + "/MapFieldStarter";
+    private const string StarterPackRoot = RegionRoot + "/MapFieldStarter";
     private const string StarterPackScenePath = StarterPackRoot + "/Scenes/Region_MapFieldStarter.unity";
     private const string StarterPackPrefabFolder = StarterPackRoot + "/Prefabs/Rooms";
     private const string StarterPackDataFolder = StarterPackPrefabFolder;
 
-    private const string TemplateRoot = MapRoot + "/Templates";
+    private const string TemplateRoot = DevelopmentRoot + "/Templates";
 
-    private const string DesignerGuidePath = SceneWorldRoot + "/README_OverworldMapGuide.md";
+    private const string DesignerGuidePath = SceneWorldRoot + "/README_MapAuthoring.md";
     [MenuItem("HubToHome/오버월드/맵 생성/기본 Room 샘플 생성")]
     public static void CreateBasicSample()
     {
-        CreateDesignerGuide();
+        EnsureDesignerGuide();
         EnsureFolder(BasicRoot + "/Scenes");
         EnsureSharedSpriteAsset();
         EnsureFolder(BasicPrefabFolder);
@@ -83,7 +84,7 @@ public static class RoomMapSampleBuilder
     [MenuItem("HubToHome/오버월드/맵 생성/맵 필드 스타터팩 생성")]
     public static void CreateMapFieldStarterPack()
     {
-        CreateDesignerGuide();
+        EnsureDesignerGuide();
         DeleteAssetIfExists(StarterPackRoot);
         EnsureSharedSpriteAsset();
         EnsureFolder(StarterPackRoot);
@@ -235,7 +236,7 @@ public static class RoomMapSampleBuilder
     [MenuItem("HubToHome/오버월드/맵 생성/템플릿/전체 템플릿 생성")]
     public static void CreateAllTemplatePacks()
     {
-        CreateDesignerGuide();
+        EnsureDesignerGuide();
         CreateFieldTemplate();
         CreateTownTemplate();
         CreateInteriorTemplate();
@@ -247,7 +248,7 @@ public static class RoomMapSampleBuilder
 
     private static void CreateSingleRoomTemplatePack(string packName, string roomId, string roomPrefabName, string sceneName, Color floorColor, Color wallColor)
     {
-        CreateDesignerGuide();
+        EnsureDesignerGuide();
         EnsureSharedSpriteAsset();
 
         string root = $"{TemplateRoot}/{packName}";
@@ -926,16 +927,33 @@ public static class RoomMapSampleBuilder
     [MenuItem("HubToHome/오버월드/맵 문서/기획자용 맵 가이드 생성")]
     public static void CreateDesignerGuide()
     {
+        WriteDesignerGuide();
+    }
+
+    private static void EnsureDesignerGuide()
+    {
+        if (File.Exists(DesignerGuidePath))
+            return;
+
+        WriteDesignerGuide();
+    }
+
+    private static void WriteDesignerGuide()
+    {
         EnsureFolder(SceneWorldRoot);
-        EnsureFolder(MapRoot);
+        EnsureFolder(RegionRoot);
+        EnsureFolder(DevelopmentRoot);
 
         string content = "# Overworld Map Guide\n\n"
             + "오버월드 맵은 **큰 지역 Scene** 안에서 **작은 Room Prefab**을 갈아 끼우는 방식으로 관리합니다. 델타룬처럼 한 화면 단위의 방/통로/실내를 연결하는 구조를 목표로 합니다.\n\n"
             + "## 폴더 기준\n\n"
             + "- `Assets/_Game/Scripts/Overworld/Runtime/Map`: 개발자가 관리하는 맵 전환 런타임 코드\n"
             + "- `Assets/_Game/Scripts/Overworld/Editor`: 샘플/템플릿 생성기와 검사 도구\n"
-            + "- `Assets/_Game/Content/Maps/Worlds`: 실제 월드 Scene, RoomDefinition, Room Prefab 생성 위치\n"
-            + "- `Assets/_Game/Content/Maps/_Generated`: 생성기가 쓰는 공용 임시 스프라이트\n\n"
+            + "- `Assets/_Game/Content/Maps/Frontend`: 타이틀과 인트로 씬 위치\n"
+            + "- `Assets/_Game/Content/Maps/Battle`: 전투 전용 씬 위치\n"
+            + "- `Assets/_Game/Content/Maps/Regions`: 실제 지역 Scene, RoomDefinition, Room Prefab 생성 위치\n"
+            + "- `Assets/_Game/Content/Maps/Development`: QA와 기능 검증용 맵 위치\n"
+            + "- `Assets/_Game/Content/Maps/Shared`: 여러 맵이 함께 쓰는 마커, 타일, 생성 리소스\n\n"
             + "## 핵심 용어\n\n"
             + "- **Region Scene**: 하나의 큰 지역 씬입니다. 예: 마을 지역, 숲 지역, 던전 입구 지역.\n"
             + "- **RoomDefinition**: 룸 ID, 룸 프리팹, BGM 설정을 담는 데이터입니다. 기획자가 가장 먼저 확인할 데이터입니다.\n"
@@ -944,7 +962,7 @@ public static class RoomMapSampleBuilder
             + "- **SpawnPoint**: 이동 후 플레이어가 서는 위치와 바라볼 방향입니다.\n\n"
             + "## 제작 흐름\n\n"
             + "1. Unity 메뉴 `HubToHome > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`을 실행합니다.\n"
-            + "2. `Assets/_Game/Content/Maps/Worlds/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`를 엽니다.\n"
+            + "2. `Assets/_Game/Content/Maps/Regions/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`를 엽니다.\n"
             + "3. `Prefabs/Rooms`에서 Room Prefab 옆의 RoomDefinition으로 룸 목록과 BGM을 확인합니다.\n"
             + "4. `Prefabs/Rooms`의 Room Prefab을 열어 바닥/벽/문/NPC/이벤트를 배치합니다.\n"
             + "5. 문을 추가하면 `AreaConnectionMarker.MapTransition.TargetRoom`과 `TargetSpawnPointId`를 맞춥니다.\n"

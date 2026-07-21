@@ -113,35 +113,108 @@ public static class BattleEncounterService
             return false;
         }
 
-        var global = GlobalDataManager.Instance;
-        if (global != null)
+        for (int i = 0; i < encounterEnemies.Count; i++)
         {
-            global.LastOverworldScene = SceneManager.GetActiveScene().name;
-            global.PendingEnemies = new List<EnemyData>(encounterEnemies);
-            global.PendingBattleBGM = ResolveBattleBgm(encounterEnemies, overrideBattleBgm);
-            global.PendingBattleScenario = battleScenarioData;
-
-            if (!string.IsNullOrWhiteSpace(encounterId))
-                global.BeginOverworldEnemyEncounter(encounterId, global.LastOverworldScene, defeatsOnVictory, playerPreemptiveAttack);
+            if (encounterEnemies[i] != null) continue;
+            Debug.LogWarning($"[BattleEncounterService] EncounterEnemies[{i}]가 비어 있어 전투를 시작할 수 없습니다.");
+            return false;
         }
+
+        var global = GlobalDataManager.Instance;
+        if (global == null)
+        {
+            Debug.LogWarning("[BattleEncounterService] GlobalDataManager가 없어 전투를 시작할 수 없습니다.");
+            return false;
+        }
+
+        BattleManager seamlessManager = useDedicatedBattleScene ? null : BattleManager.Instance;
+        bool useSeamlessBattle = seamlessManager != null;
+
+        if (useSeamlessBattle && !seamlessManager.CanStartSeamlessBattle(encounterEnemies, player, out string seamlessError))
+        {
+            Debug.LogWarning($"[BattleEncounterService] 심리스 전투 구성이 올바르지 않습니다: {seamlessError}", seamlessManager);
+            return false;
+        }
+
+        if (!useSeamlessBattle && SceneLoader.Instance == null)
+        {
+            Debug.LogWarning("[BattleEncounterService] 심리스 BattleManager와 SceneLoader가 모두 없어 전투를 시작할 수 없습니다.");
+            return false;
+        }
+
+        PrepareEncounterContext(
+            global,
+            player,
+            encounterEnemies,
+            overrideBattleBgm,
+            encounterId,
+            defeatsOnVictory,
+            battleScenarioData,
+            playerPreemptiveAttack);
+
+        if (useSeamlessBattle)
+        {
+            seamlessManager.SetBattleScenarioData(battleScenarioData);
+            if (seamlessManager.TryStartSeamlessBattle(encounterEnemies, player, encounterSource, out string startError))
+                return true;
+            Debug.LogWarning($"[BattleEncounterService] 심리스 전투 시작에 실패했습니다: {startError}", seamlessManager);
+            RollbackEncounterContext(global, player);
+            return false;
+        }
+
+        string resolvedBattleScene = string.IsNullOrWhiteSpace(battleSceneName) ? SceneName.Battle : battleSceneName.Trim();
+        SceneLoadOperation operation = SceneLoader.Instance.LoadSceneWithResult(
+            resolvedBattleScene,
+            battleSceneFadeDuration,
+            result =>
+            {
+                if (result != SceneLoadResult.Succeeded)
+                    RollbackEncounterContext(global, player);
+            });
+
+        if (operation == null)
+        {
+            RollbackEncounterContext(global, player);
+            return false;
+        }
+
+        bool accepted = !operation.IsDone || operation.Result == SceneLoadResult.Succeeded;
+        if (!accepted)
+            RollbackEncounterContext(global, player);
+
+        return accepted;
+    }
+
+    private static void PrepareEncounterContext(
+        GlobalDataManager global,
+        PlayerController player,
+        List<EnemyData> encounterEnemies,
+        AudioClip overrideBattleBgm,
+        string encounterId,
+        bool defeatsOnVictory,
+        BattleScenarioData battleScenarioData,
+        bool playerPreemptiveAttack)
+    {
+        global.LastOverworldScene = SceneManager.GetActiveScene().name;
+        global.PendingEnemies = new List<EnemyData>(encounterEnemies);
+        global.PendingBattleBGM = ResolveBattleBgm(encounterEnemies, overrideBattleBgm);
+        global.PendingBattleScenario = battleScenarioData;
+        global.BeginOverworldEnemyEncounter(
+            encounterId,
+            global.LastOverworldScene,
+            defeatsOnVictory,
+            playerPreemptiveAttack);
 
         player.SetBattleMode(true);
         player.SavePositionToGlobal();
+        GameStateManager.Instance?.ChangeState(GameState.Battle);
+    }
 
-        if (useDedicatedBattleScene)
-        {
-            SceneLoader.Instance?.LoadScene(string.IsNullOrWhiteSpace(battleSceneName) ? SceneName.Battle : battleSceneName, battleSceneFadeDuration);
-            return true;
-        }
-
-        if (BattleManager.Instance != null)
-        {
-            BattleManager.Instance.SetBattleScenarioData(battleScenarioData);
-            BattleManager.Instance.StartSeamlessBattle(encounterEnemies, player, encounterSource);
-            return true;
-        }
-
-        SceneLoader.Instance?.LoadScene(string.IsNullOrWhiteSpace(battleSceneName) ? SceneName.Battle : battleSceneName, battleSceneFadeDuration);
-        return true;
+    private static void RollbackEncounterContext(GlobalDataManager global, PlayerController player)
+    {
+        global?.CancelPendingBattleEncounter();
+        if (player != null)
+            player.SetBattleMode(false);
+        GameStateManager.Instance?.ChangeState(GameState.Exploration);
     }
 }

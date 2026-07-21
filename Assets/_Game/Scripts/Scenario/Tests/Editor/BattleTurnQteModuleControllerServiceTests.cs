@@ -184,6 +184,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public void ChangeBattleState(BattleState state) => CurrentBattleState = state;
         public bool CheckVictory() => false;
         public bool CheckDefeat() => false;
+        public bool ConsumePlayerPreemptiveAttack() => false;
         public void BroadcastVisibleTurnQueue() { }
         public void ResetAllPlayerBattlePoses() { }
         public IEnumerator WaitForNarrationToFinish() { yield break; }

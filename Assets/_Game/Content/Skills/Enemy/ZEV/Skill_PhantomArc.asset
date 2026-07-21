@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 0}
   SkillName: "\uD658\uC601\uD638\uCC38"
-  SkillID: skill_005
+  SkillID: zev.phantom_arc
   Description: "\uC804\uBC29\uC73C\uB85C \uD30C\uACE0\uB4E4\uACE0 \uB2E4\uC2DC \uAC00\uB85C\uC9C8\uB7EC
     \uCC38\uACA9\uD55C\uB2E4"
   UsageProfile: 0

@@ -3,8 +3,8 @@ using UnityEngine;
 
 public static class AreaMarkerPrefabGenerator
 {
-    private const string PrefabFolder = "Assets/_Game/Content/Maps/MarkerPrefabs";
-    private const string SampleFolder = "Assets/_Game/Content/Maps/MarkerPrefabs/Samples";
+    private const string PrefabFolder = "Assets/_Game/Content/Maps/Shared/Markers";
+    private const string SampleFolder = "Assets/_Game/Content/Maps/Shared/Markers/Samples";
     private const string SampleRoomPath = SampleFolder + "/Room_AreaMarker_AllGizmos.prefab";
     private const string InteractableLayerName = "Interactable";
 

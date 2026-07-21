@@ -24,6 +24,14 @@ public class CharacterSaveData
 }
 
 [Serializable]
+public sealed class OverworldEnemySaveData
+{
+    public string EnemyId = "";
+    public string SceneName = "";
+    public bool IsDefeated;
+}
+
+[Serializable]
 public class SaveData
 {
     // ── 1. 위치 정보 ──
@@ -41,6 +49,7 @@ public class SaveData
     public Dictionary<string, int> InventoryDict = new Dictionary<string, int>();
     public Dictionary<string, int> eventFlags = new Dictionary<string, int>();
     public Dictionary<string, EncounterMemorySaveData> EncounterMemory = new Dictionary<string, EncounterMemorySaveData>();
+    public Dictionary<string, OverworldEnemySaveData> OverworldEnemies = new Dictionary<string, OverworldEnemySaveData>();
     public int Money = 0;
 
     // ── 4. 메타 데이터 ──
