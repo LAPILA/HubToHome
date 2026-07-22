@@ -197,3 +197,7 @@ _Avoid_: rewriting or renaming existing `SkillActionBlock` classes just to conne
 **Scenario Subject ID**:
 A stable authored ID used by Scenario Source and Battle Event Rules to refer to runtime subjects such as enemies, actors, modules, UI targets, and positions. Enemy rules should resolve against `EnemyData.EnemyId`, not display names.
 _Avoid_: using localized display names, Unity GUID/fileID values, or scene object names as the authored scenario identity.
+
+**Project Content Validation**:
+The editor-only, read-only scan that checks stable IDs, required references, Runtime Catalog membership, Battle Scenario links, battle prefabs, drops, skill blocks, and item rules through a structured `ContentValidationReport`. Optional portraits and icons are warnings; broken runtime contracts are errors. Repair commands remain explicit and separate from scanning.
+_Avoid_: silently mutating assets during validation, treating every optional visual as a build-blocking error, or duplicating scenario contract logic outside `ScenarioCatalogValidator`.

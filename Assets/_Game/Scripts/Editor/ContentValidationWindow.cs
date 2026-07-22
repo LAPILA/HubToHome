@@ -8,11 +8,14 @@ using UnityEngine;
 
 public sealed class ContentValidationWindow : EditorWindow
 {
-    private const string CatalogAssetPath = "Assets/_Game/Resources/HubToHome/GameContentCatalog.asset";
     private const string DefaultUiFontPath = "Assets/_Game/Presentation/UI/Fonts/Silver SDF.asset";
     private const string DefaultPotionPath = "Assets/_Game/Content/Items/Consumables/SmallPotion.asset";
-    private readonly List<string> _issues = new List<string>();
+
+    private ContentValidationReport _report = new ContentValidationReport();
     private Vector2 _scroll;
+    private string _search = string.Empty;
+    private bool _showErrors = true;
+    private bool _showWarnings = true;
 
     [MenuItem("Hub To Home/Content/Validation Window")]
     private static void Open()
@@ -43,40 +46,105 @@ public sealed class ContentValidationWindow : EditorWindow
         }
     }
 
-
     [MenuItem("Hub To Home/Content/Validate Project Content")]
     public static void ValidateProjectContent()
     {
-        ContentValidationWindow window = CreateInstance<ContentValidationWindow>();
-        try
+        ContentValidationReport report = ScanProject();
+        if (report.Issues.Count == 0)
         {
-            window.Scan();
-            if (window._issues.Count == 0)
-            {
-                Debug.Log("[ContentValidation] No issues found.");
-                return;
-            }
+            Debug.Log("[ContentValidation] No issues found.");
+            return;
+        }
 
-            for (int i = 0; i < window._issues.Count; i++)
-                Debug.LogError("[ContentValidation] " + window._issues[i]);
-            throw new InvalidOperationException($"Content validation failed with {window._issues.Count} issue(s).");
-        }
-        finally
+        for (int i = 0; i < report.Issues.Count; i++)
         {
-            DestroyImmediate(window);
+            ContentValidationIssue issue = report.Issues[i];
+            string location = string.IsNullOrWhiteSpace(issue.AssetPath)
+                ? "<no asset>"
+                : issue.AssetPath;
+            string message = "[ContentValidation][" + issue.Code + "] "
+                + location + ": " + issue.Message;
+            if (issue.Severity == ContentValidationSeverity.Error)
+                Debug.LogError(message, issue.Context);
+            else
+                Debug.LogWarning(message, issue.Context);
         }
+
+        Debug.Log(
+            "[ContentValidation] " + report.ErrorCount + " error(s), "
+            + report.WarningCount + " warning(s).");
+        EnsureNoErrors(report);
+    }
+
+    public static ContentValidationReport ScanProject()
+    {
+        return ProjectContentValidator.Validate(AssetDatabaseContentSource.Capture());
+    }
+
+    public static bool TrySelectIssue(ContentValidationIssue issue)
+    {
+        if (issue == null || !issue.CanSelect)
+            return false;
+
+        Selection.activeObject = issue.Context;
+        EditorGUIUtility.PingObject(issue.Context);
+        return true;
+    }
+
+    public static void EnsureNoErrors(ContentValidationReport report)
+    {
+        if (report == null)
+            throw new ArgumentNullException(nameof(report));
+        if (report.HasErrors)
+        {
+            throw new InvalidOperationException(
+                "Content validation failed with " + report.ErrorCount + " error(s).");
+        }
+    }
+
+    private void OnEnable()
+    {
+        Scan();
     }
 
     private void OnGUI()
     {
-        EditorGUILayout.LabelField("Game Content", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Project Content Validation", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
-            "Missing IDs can be generated safely. Duplicate IDs are reported and must be chosen manually.",
+            "Scan은 자산을 변경하지 않습니다. 수정 명령은 해당 버튼을 눌렀을 때만 실행됩니다.",
             MessageType.Info);
 
+        DrawCommandToolbar();
+        DrawFilterToolbar();
+
+        EditorGUILayout.Space(6f);
+        EditorGUILayout.LabelField(
+            "Errors " + _report.ErrorCount + "  |  Warnings " + _report.WarningCount,
+            EditorStyles.boldLabel);
+
+        _scroll = EditorGUILayout.BeginScrollView(_scroll);
+        int visibleCount = 0;
+        for (int i = 0; i < _report.Issues.Count; i++)
+        {
+            ContentValidationIssue issue = _report.Issues[i];
+            if (!IsVisible(issue))
+                continue;
+
+            DrawIssue(issue);
+            visibleCount++;
+        }
+
+        if (visibleCount == 0)
+            EditorGUILayout.HelpBox("현재 필터에 표시할 문제가 없습니다.", MessageType.Info);
+        EditorGUILayout.EndScrollView();
+    }
+
+    private void DrawCommandToolbar()
+    {
         using (new EditorGUILayout.HorizontalScope())
         {
-            if (GUILayout.Button("Scan", GUILayout.Height(28f))) Scan();
+            if (GUILayout.Button("Scan", GUILayout.Height(28f)))
+                Scan();
             if (GUILayout.Button("Generate Missing IDs", GUILayout.Height(28f)))
             {
                 GenerateMissingIds();
@@ -93,105 +161,105 @@ public sealed class ContentValidationWindow : EditorWindow
                 Scan();
             }
         }
-
-        EditorGUILayout.Space(8f);
-        EditorGUILayout.LabelField($"Issues: {_issues.Count}", EditorStyles.boldLabel);
-        _scroll = EditorGUILayout.BeginScrollView(_scroll);
-        if (_issues.Count == 0)
-            EditorGUILayout.HelpBox("No content issues found.", MessageType.Info);
-        for (int i = 0; i < _issues.Count; i++)
-            EditorGUILayout.HelpBox(_issues[i], MessageType.Warning);
-        EditorGUILayout.EndScrollView();
     }
 
-    private void OnEnable()
+    private void DrawFilterToolbar()
     {
-        Scan();
+        EditorGUILayout.Space(5f);
+        using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+        {
+            _search = GUILayout.TextField(_search, EditorStyles.toolbarSearchField);
+            _showErrors = GUILayout.Toggle(
+                _showErrors,
+                "Errors " + _report.ErrorCount,
+                EditorStyles.toolbarButton,
+                GUILayout.Width(80f));
+            _showWarnings = GUILayout.Toggle(
+                _showWarnings,
+                "Warnings " + _report.WarningCount,
+                EditorStyles.toolbarButton,
+                GUILayout.Width(95f));
+        }
+    }
+
+    private bool IsVisible(ContentValidationIssue issue)
+    {
+        if (issue.Severity == ContentValidationSeverity.Error && !_showErrors)
+            return false;
+        if (issue.Severity == ContentValidationSeverity.Warning && !_showWarnings)
+            return false;
+        if (string.IsNullOrWhiteSpace(_search))
+            return true;
+
+        return ContainsIgnoreCase(issue.Code, _search)
+            || ContainsIgnoreCase(issue.Message, _search)
+            || ContainsIgnoreCase(issue.AssetPath, _search);
+    }
+
+    private static bool ContainsIgnoreCase(string value, string search)
+    {
+        return !string.IsNullOrEmpty(value)
+            && value.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static void DrawIssue(ContentValidationIssue issue)
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUIContent icon = EditorGUIUtility.IconContent(
+                    issue.Severity == ContentValidationSeverity.Error
+                        ? "console.erroricon.sml"
+                        : "console.warnicon.sml");
+                GUILayout.Label(icon, GUILayout.Width(20f), GUILayout.Height(18f));
+                EditorGUILayout.LabelField(issue.Code, EditorStyles.boldLabel);
+                using (new EditorGUI.DisabledScope(!issue.CanSelect))
+                {
+                    if (GUILayout.Button("Select", GUILayout.Width(58f)))
+                        TrySelectIssue(issue);
+                }
+            }
+
+            EditorGUILayout.LabelField(issue.Message, EditorStyles.wordWrappedLabel);
+            if (!string.IsNullOrWhiteSpace(issue.AssetPath))
+                EditorGUILayout.SelectableLabel(issue.AssetPath, GUILayout.Height(17f));
+        }
     }
 
     private void Scan()
     {
-        _issues.Clear();
-        List<CharacterData> characters = LoadAll<CharacterData>();
-        List<EnemyData> enemies = LoadAll<EnemyData>();
-        List<SkillData> skills = LoadAll<SkillData>();
-        List<ItemData> items = LoadAll<ItemData>();
-        GameContentCatalog catalog = AssetDatabase.LoadAssetAtPath<GameContentCatalog>(CatalogAssetPath);
-        if (catalog == null)
-            _issues.Add($"{CatalogAssetPath}: Runtime catalog is missing.");
-        else if (catalog.DefaultUiFont == null)
-            AddIssue(catalog, "Default UI font is missing.");
-
-        ValidateIds(characters, item => item != null ? item.CharacterID : null, "Character");
-        ValidateIds(enemies, item => item != null ? item.EnemyId : null, "Enemy");
-        ValidateIds(skills, item => item != null ? item.SkillID : null, "Skill");
-        ValidateIds(items, item => item != null ? item.ItemID : null, "Item");
-
-        var itemIds = new HashSet<string>(StringComparer.Ordinal);
-        for (int i = 0; i < items.Count; i++)
-            if (items[i] != null && !string.IsNullOrWhiteSpace(items[i].ItemID)) itemIds.Add(items[i].ItemID.Trim());
-
-        for (int i = 0; i < characters.Count; i++)
-        {
-            CharacterData data = characters[i];
-            if (data == null) continue;
-            if (data.BattlePrefab == null)
-                AddIssue(data, "Character battle prefab is missing.");
-            else if (data.BattlePrefab.GetComponent<PlayerCharacter>() == null)
-                AddIssue(data, "Character battle prefab has no PlayerCharacter.");
-            ValidateReferences(data.DefaultSkills, data, "DefaultSkills");
-        }
-
-        for (int i = 0; i < enemies.Count; i++)
-        {
-            EnemyData data = enemies[i];
-            if (data == null) continue;
-            if (data.BattlePrefab == null)
-                AddIssue(data, "Enemy battle prefab is missing.");
-            else if (data.BattlePrefab.GetComponent<EnemyCharacter>() == null)
-                AddIssue(data, "Enemy battle prefab has no EnemyCharacter.");
-            ValidateReferences(data.SkillList, data, "SkillList");
-            ValidateReferences(data.StrongSkillList, data, "StrongSkillList");
-
-            if (data.Drops != null)
-            {
-                for (int dropIndex = 0; dropIndex < data.Drops.Count; dropIndex++)
-                {
-                    EnemyDropEntry drop = data.Drops[dropIndex];
-                    if (drop == null || string.IsNullOrWhiteSpace(drop.ItemId))
-                        AddIssue(data, $"Drops[{dropIndex}] item ID is missing.");
-                    else if (!itemIds.Contains(drop.ItemId.Trim()))
-                        AddIssue(data, $"Drops[{dropIndex}] references unknown item '{drop.ItemId}'.");
-                    if (drop != null && drop.MaxAmount < drop.MinAmount)
-                        AddIssue(data, $"Drops[{dropIndex}] MaxAmount is smaller than MinAmount.");
-                }
-            }
-        }
-
-        for (int i = 0; i < items.Count; i++)
-        {
-            ItemData item = items[i];
-            if (item == null || item.Type != ItemType.Consumable) continue;
-            if (item.ActionType == EffectActionType.None)
-                AddIssue(item, "Consumable item has no effect.");
-            if ((item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage)
-                && item.TargetStat != TargetStatType.HP
-                && item.TargetStat != TargetStatType.MP)
-                AddIssue(item, "Heal/Damage item must target HP or MP.");
-            if (item.ActionType == EffectActionType.ApplyStatus
-                && !StatusEffectFactory.IsKnown(item.StatusEffectID))
-                AddIssue(item, $"Unknown status effect '{item.StatusEffectID}'.");
-        }
-
+        _report = ScanProject();
         Repaint();
     }
 
     private void GenerateMissingIds()
     {
-        GenerateMissingIds(LoadAll<CharacterData>(), data => data.CharacterID, (data, id) => data.CharacterID = id, "character");
-        GenerateMissingIds(LoadAll<EnemyData>(), data => data.EnemyId, (data, id) => data.EnemyId = id, "enemy");
-        GenerateMissingIds(LoadAll<SkillData>(), data => data.SkillID, (data, id) => data.SkillID = id, "skill");
-        GenerateMissingIds(LoadAll<ItemData>(), data => data.ItemID, (data, id) => data.ItemID = id, "item");
+        GenerateMissingIds(
+            LoadAll<CharacterData>(),
+            data => data.CharacterID,
+            (data, id) => data.CharacterID = id,
+            "character");
+        GenerateMissingIds(
+            LoadAll<EnemyData>(),
+            data => data.EnemyId,
+            (data, id) => data.EnemyId = id,
+            "enemy");
+        GenerateMissingIds(
+            LoadAll<SkillData>(),
+            data => data.SkillID,
+            (data, id) => data.SkillID = id,
+            "skill");
+        GenerateMissingIds(
+            LoadAll<ItemData>(),
+            data => data.ItemID,
+            (data, id) => data.ItemID = id,
+            "item");
+        GenerateMissingIds(
+            LoadAll<BattleScenarioData>(),
+            data => data.ScenarioId,
+            (data, id) => data.ScenarioId = id,
+            "scenario");
         AssetDatabase.SaveAssets();
         RebuildCatalog(false);
     }
@@ -217,17 +285,22 @@ public sealed class ContentValidationWindow : EditorWindow
             potion.EffectValue = 30;
             potion.Price = 50;
             AssetDatabase.CreateAsset(potion, DefaultPotionPath);
+            Undo.RegisterCreatedObjectUndo(potion, "Create default potion");
         }
 
         List<EnemyData> enemies = LoadAll<EnemyData>();
         for (int i = 0; i < enemies.Count; i++)
         {
             EnemyData enemy = enemies[i];
-            if (enemy == null || enemy.Drops == null || enemy.Drops.Count > 0) continue;
+            if (enemy == null || enemy.Drops == null || enemy.Drops.Count > 0)
+                continue;
             if (enemy.name.IndexOf("slime", StringComparison.OrdinalIgnoreCase) < 0
                 && enemy.EnemyName.IndexOf("slime", StringComparison.OrdinalIgnoreCase) < 0)
+            {
                 continue;
+            }
 
+            Undo.RecordObject(enemy, "Add default enemy drop");
             enemy.Drops.Add(new EnemyDropEntry
             {
                 ItemId = potion.ItemID,
@@ -243,15 +316,19 @@ public sealed class ContentValidationWindow : EditorWindow
 
     private static void RepairPrefabLinks()
     {
-        List<GameObject> prefabs = LoadAll<GameObject>("t:Prefab", new[] { "Assets/_Game" });
-
+        List<GameObject> prefabs = LoadAll<GameObject>(
+            "t:Prefab",
+            new[] { AssetDatabaseContentSource.DefaultRootPath });
         for (int i = 0; i < prefabs.Count; i++)
         {
             GameObject prefab = prefabs[i];
-            if (prefab == null) continue;
+            if (prefab == null)
+                continue;
+
             PlayerCharacter player = prefab.GetComponent<PlayerCharacter>();
             if (player != null && player.CharacterData != null && player.CharacterData.BattlePrefab == null)
             {
+                Undo.RecordObject(player.CharacterData, "Repair character battle prefab");
                 player.CharacterData.BattlePrefab = prefab;
                 EditorUtility.SetDirty(player.CharacterData);
             }
@@ -259,6 +336,7 @@ public sealed class ContentValidationWindow : EditorWindow
             EnemyCharacter enemy = prefab.GetComponent<EnemyCharacter>();
             if (enemy != null && enemy.Data != null && enemy.Data.BattlePrefab == null)
             {
+                Undo.RecordObject(enemy.Data, "Repair enemy battle prefab");
                 enemy.Data.BattlePrefab = prefab;
                 EditorUtility.SetDirty(enemy.Data);
             }
@@ -270,14 +348,20 @@ public sealed class ContentValidationWindow : EditorWindow
 
     public static GameContentCatalog RebuildCatalog(bool logResult)
     {
-        string directory = Path.GetDirectoryName(CatalogAssetPath)?.Replace('\\', '/');
+        string catalogPath = AssetDatabaseContentSource.DefaultCatalogAssetPath;
+        string directory = Path.GetDirectoryName(catalogPath)?.Replace('\\', '/');
         EnsureAssetFolder(directory);
 
-        GameContentCatalog catalog = AssetDatabase.LoadAssetAtPath<GameContentCatalog>(CatalogAssetPath);
+        GameContentCatalog catalog = AssetDatabase.LoadAssetAtPath<GameContentCatalog>(catalogPath);
         if (catalog == null)
         {
             catalog = CreateInstance<GameContentCatalog>();
-            AssetDatabase.CreateAsset(catalog, CatalogAssetPath);
+            AssetDatabase.CreateAsset(catalog, catalogPath);
+            Undo.RegisterCreatedObjectUndo(catalog, "Create Runtime Catalog");
+        }
+        else
+        {
+            Undo.RecordObject(catalog, "Rebuild Runtime Catalog");
         }
 
         catalog.Characters = LoadAll<CharacterData>();
@@ -291,43 +375,15 @@ public sealed class ContentValidationWindow : EditorWindow
         GameContentCatalog.InvalidateRuntimeCache();
 
         if (logResult)
-            Debug.Log($"[GameContentCatalog] Rebuilt: {catalog.Characters.Count} characters, {catalog.Enemies.Count} enemies, {catalog.Skills.Count} skills, {catalog.Items.Count} items.", catalog);
-        return catalog;
-    }
-
-    private void AddIssue(UnityEngine.Object context, string message)
-    {
-        _issues.Add($"{AssetDatabase.GetAssetPath(context)}: {message}");
-    }
-
-    private void ValidateIds<T>(IReadOnlyList<T> assets, Func<T, string> getId, string kind) where T : UnityEngine.Object
-    {
-        var owners = new Dictionary<string, T>(StringComparer.Ordinal);
-        for (int i = 0; i < assets.Count; i++)
         {
-            T asset = assets[i];
-            if (asset == null) continue;
-            string id = getId(asset);
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                AddIssue(asset, $"{kind} ID is missing.");
-                continue;
-            }
-
-            id = id.Trim();
-            if (owners.TryGetValue(id, out T previous))
-                AddIssue(asset, $"Duplicate {kind} ID '{id}' (also {AssetDatabase.GetAssetPath(previous)}).");
-            else
-                owners.Add(id, asset);
+            Debug.Log(
+                "[GameContentCatalog] Rebuilt: " + catalog.Characters.Count + " characters, "
+                + catalog.Enemies.Count + " enemies, " + catalog.Skills.Count + " skills, "
+                + catalog.Items.Count + " items.",
+                catalog);
         }
-    }
 
-    private void ValidateReferences<T>(IReadOnlyList<T> references, UnityEngine.Object owner, string fieldName)
-        where T : UnityEngine.Object
-    {
-        if (references == null) return;
-        for (int i = 0; i < references.Count; i++)
-            if (references[i] == null) AddIssue(owner, $"{fieldName}[{i}] is missing.");
+        return catalog;
     }
 
     private static void GenerateMissingIds<T>(
@@ -336,49 +392,53 @@ public sealed class ContentValidationWindow : EditorWindow
         Action<T, string> setId,
         string prefix) where T : UnityEngine.Object
     {
-        for (int i = 0; i < assets.Count; i++)
-        {
-            T asset = assets[i];
-            if (asset == null || !string.IsNullOrWhiteSpace(getId(asset))) continue;
-            string path = AssetDatabase.GetAssetPath(asset);
-            string guid = AssetDatabase.AssetPathToGUID(path);
-            string suffix = guid.Length >= 8 ? guid.Substring(0, 8) : Math.Abs(path.GetHashCode()).ToString("x8");
-            setId(asset, $"{prefix}_{Slug(asset.name)}_{suffix}");
-            EditorUtility.SetDirty(asset);
-        }
-    }
-
-    private static string Slug(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return "content";
-        char[] buffer = value.Trim().ToLowerInvariant().ToCharArray();
-        for (int i = 0; i < buffer.Length; i++)
-            if (!char.IsLetterOrDigit(buffer[i])) buffer[i] = '_';
-        return new string(buffer).Trim('_');
+        ContentIdAssignment.AssignMissingIds(
+            assets,
+            getId,
+            setId,
+            prefix,
+            asset =>
+            {
+                string path = AssetDatabase.GetAssetPath(asset);
+                string guid = AssetDatabase.AssetPathToGUID(path);
+                return guid.Length >= 8 ? guid.Substring(0, 8) : "00000000";
+            },
+            asset => Undo.RecordObject(asset, "Generate content ID"),
+            EditorUtility.SetDirty);
     }
 
     private static List<T> LoadAll<T>() where T : UnityEngine.Object
     {
-        return LoadAll<T>($"t:{typeof(T).Name}", new[] { "Assets/_Game" });
+        return LoadAll<T>(
+            "t:" + typeof(T).Name,
+            new[] { AssetDatabaseContentSource.DefaultRootPath });
     }
 
-    private static List<T> LoadAll<T>(string filter, string[] folders) where T : UnityEngine.Object
+    private static List<T> LoadAll<T>(string filter, string[] folders)
+        where T : UnityEngine.Object
     {
         string[] guids = AssetDatabase.FindAssets(filter, folders);
-        var result = new List<T>(guids.Length);
+        var paths = new List<string>(guids.Length);
         for (int i = 0; i < guids.Length; i++)
+            paths.Add(AssetDatabase.GUIDToAssetPath(guids[i]));
+        paths.Sort(StringComparer.Ordinal);
+
+        var result = new List<T>(paths.Count);
+        for (int i = 0; i < paths.Count; i++)
         {
-            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-            T asset = AssetDatabase.LoadAssetAtPath<T>(path);
-            if (asset != null) result.Add(asset);
+            T asset = AssetDatabase.LoadAssetAtPath<T>(paths[i]);
+            if (asset != null)
+                result.Add(asset);
         }
-        result.Sort((a, b) => string.CompareOrdinal(AssetDatabase.GetAssetPath(a), AssetDatabase.GetAssetPath(b)));
+
         return result;
     }
 
     private static void EnsureAssetFolder(string folder)
     {
-        if (string.IsNullOrWhiteSpace(folder) || AssetDatabase.IsValidFolder(folder)) return;
+        if (string.IsNullOrWhiteSpace(folder) || AssetDatabase.IsValidFolder(folder))
+            return;
+
         string parent = Path.GetDirectoryName(folder)?.Replace('\\', '/');
         EnsureAssetFolder(parent);
         AssetDatabase.CreateFolder(parent, Path.GetFileName(folder));

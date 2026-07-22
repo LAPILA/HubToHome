@@ -57,3 +57,10 @@ Before code work, read:
 Every meaningful task must update `AIAssets/YYYY-MM-DD-update.md`.
 
 If the work is review, investigation, or architecture handoff, also create or update a readable document in `AIAssets/yjlim/feedback/`.
+
+## Content Validation Rule
+
+- 콘텐츠 자산을 추가하거나 ID·참조·Runtime Catalog 구조를 변경하면 `Hub To Home/Content/Validate Project Content`를 실행한다.
+- 검증 스캔은 읽기 전용이어야 한다. ID 생성, 카탈로그 재구축, 프리팹 연결 복구는 명시적 사용자 명령에서만 수행한다.
+- 새 규칙은 `ContentValidationIssue`의 안정적인 코드와 심각도를 사용하고, 선택 가능한 대상과 자산 경로를 제공한다.
+- Battle Scenario의 깊은 계약 검증은 기존 `ScenarioCatalogValidator`에 위임한다.
