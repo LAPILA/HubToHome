@@ -51,33 +51,62 @@ public class DefenseQTEUI : UIPanel
         if (_barFill != null)
         {
             _barFill.fillAmount = 1f;
-            _barFill.color      = Color.white;
-            
+            _barFill.color = Color.white;
+
             _barTween = _barFill.DOFillAmount(0f, attackDelay)
                 .SetEase(Ease.Linear)
-                .OnUpdate(() => {
-                    if (_barFill.fillAmount < 0.35f) _barFill.color = new Color(1f, 0.2f, 0.2f);
+                .SetUpdate(true)
+                .OnUpdate(() =>
+                {
+                    if (_barFill.fillAmount < 0.35f)
+                        _barFill.color = new Color(1f, 0.2f, 0.2f);
                 });
         }
     }
 
+    public void ShowResult(DefenseQteResult result)
+    {
+        string text = result.Outcome switch
+        {
+            DefenseOutcome.Invalid => "INVALID",
+            DefenseOutcome.Failure => "MISS",
+            _ => GetDefenseResultText(result.Grade, result.Input)
+        };
+        Color color = result.Outcome switch
+        {
+            DefenseOutcome.Invalid => _colorBad,
+            DefenseOutcome.Failure => _colorMiss,
+            _ => GetResultColor(result.Grade)
+        };
+        ShowDefenseResult(text, color);
+    }
+
     public void ShowResult(QTEManager.QTEGrade grade, DefenseInput input)
     {
+        ShowDefenseResult(GetDefenseResultText(grade, input), GetResultColor(grade));
+    }
+
+    private void ShowDefenseResult(string text, Color color)
+    {
         ResetState();
+        ShowImmediate();
         if (_resultLabel == null) { Hide(); return; }
 
-        _resultLabel.text  = GetDefenseResultText(grade, input);
-        _resultLabel.color = GetResultColor(grade);
+        _resultLabel.text = text;
+        _resultLabel.color = color;
         _resultLabel.alpha = 0f;
         _resultLabel.transform.localScale = Vector3.one * 0.5f;
 
         _resultSequence = DOTween.Sequence()
+            .SetUpdate(true)
             .Append(_resultLabel.DOFade(1f, 0.08f))
             .Join(_resultLabel.transform.DOScale(Vector3.one, 0.12f).SetEase(Ease.OutBack))
-            .AppendCallback(() => _resultLabel.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f))
+            .AppendCallback(() => _resultLabel.transform
+                .DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f)
+                .SetUpdate(true))
             .AppendInterval(0.75f)
             .Append(_resultLabel.DOFade(0f, 0.15f))
-            .OnComplete(Hide); 
+            .OnComplete(Hide);
     }
     #endregion
 
@@ -90,19 +119,19 @@ public class DefenseQTEUI : UIPanel
         if (isWarmUp)
         {
             if (!gameObject.activeSelf) gameObject.SetActive(true);
-            _canvasGroup.alpha = 0f; 
+            _canvasGroup.alpha = 0f;
             _canvasGroup.interactable = false;
             _canvasGroup.blocksRaycasts = false;
-            
+
             if (_qteRoot != null) _qteRoot.anchoredPosition = new Vector2(-9999, -9999);
         }
         else
         {
-            ShowImmediate(); 
+            ShowImmediate();
             _canvasGroup.alpha = 1f;
             _canvasGroup.interactable = true;
             _canvasGroup.blocksRaycasts = true;
-            
+
             if (_qteRoot != null && _parentCanvas != null)
             {
                 RectTransform canvasRect = _parentCanvas.GetComponent<RectTransform>();
@@ -114,34 +143,42 @@ public class DefenseQTEUI : UIPanel
 
         if (_qteRoot != null) _qteRoot.localScale = Vector3.one;
 
-        if (!isWarmUp && _targetKeyLabel != null) 
+        if (!isWarmUp && _targetKeyLabel != null)
             _targetKeyLabel.text = targetKey;
 
         if (!isWarmUp && _barFill != null)
         {
             _barFill.fillAmount = 1f;
-            _barFill.color = new Color(0.2f, 0.8f, 1f); 
-            if (duration > 0f) 
-                _barTween = _barFill.DOFillAmount(0f, duration).SetEase(Ease.Linear);
+            _barFill.color = new Color(0.2f, 0.8f, 1f);
+            if (duration > 0f)
+            {
+                _barTween = _barFill.DOFillAmount(0f, duration)
+                    .SetEase(Ease.Linear)
+                    .SetUpdate(true);
+            }
         }
     }
 
     public void ShowSkillResult(bool isHit)
     {
         ResetState();
+        ShowImmediate();
         if (_resultLabel == null) { Hide(); return; }
 
-        _resultLabel.text  = isHit ? "HIT!" : "MISS";
+        _resultLabel.text = isHit ? "HIT!" : "MISS";
         _resultLabel.color = isHit ? new Color(0.2f, 1f, 0.4f) : new Color(1f, 0.3f, 0.3f);
         _resultLabel.alpha = 0f;
         _resultLabel.transform.localScale = Vector3.one * 0.5f;
 
         _resultSequence = DOTween.Sequence()
+            .SetUpdate(true)
             .Append(_resultLabel.DOFade(1f, 0.08f))
             .Join(_resultLabel.transform.DOScale(Vector3.one, 0.12f).SetEase(Ease.OutBack))
-            .AppendCallback(() => _resultLabel.transform.DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f))
-            .AppendInterval(0.35f) 
-            .Append(_resultLabel.DOFade(0f, 0.12f)); 
+            .AppendCallback(() => _resultLabel.transform
+                .DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f)
+                .SetUpdate(true))
+            .AppendInterval(0.35f)
+            .Append(_resultLabel.DOFade(0f, 0.12f));
     }
     #endregion
 
@@ -149,10 +186,10 @@ public class DefenseQTEUI : UIPanel
     protected override void OnHideComplete()
     {
         ResetState();
-        if (_barFill != null) 
-        { 
-            _barFill.fillAmount = 1f; 
-            _barFill.color = Color.white; 
+        if (_barFill != null)
+        {
+            _barFill.fillAmount = 1f;
+            _barFill.color = Color.white;
         }
     }
 
@@ -160,30 +197,41 @@ public class DefenseQTEUI : UIPanel
     {
         _barTween?.Kill();
         _resultSequence?.Kill();
-        if (_resultLabel != null) 
-        { 
-            _resultLabel.text = ""; 
-            _resultLabel.alpha = 0f; 
+        if (_resultLabel != null)
+        {
+            _resultLabel.DOKill();
+            _resultLabel.transform.DOKill();
+            _resultLabel.text = "";
+            _resultLabel.alpha = 0f;
         }
     }
 
     private string GetDefenseResultText(QTEManager.QTEGrade grade, DefenseInput input)
     {
-        string inputName = input switch { DefenseInput.Parry => "패링", DefenseInput.Dodge => "회피", DefenseInput.Jump => "점프", _ => "" };
+        string inputName = input switch
+        {
+            DefenseInput.Parry => "패링",
+            DefenseInput.Dodge => "회피",
+            DefenseInput.Jump => "점프",
+            _ => ""
+        };
         return grade switch
         {
             QTEManager.QTEGrade.Perfect => $"PERFECT!\n<size=70%>{inputName}</size>",
-            QTEManager.QTEGrade.Great   => $"GREAT!\n<size=70%>{inputName}</size>",
-            QTEManager.QTEGrade.Good    => $"GOOD\n<size=70%>{inputName}</size>",
-            QTEManager.QTEGrade.Bad     => $"BAD\n<size=70%>{inputName}</size>",
-            _                           => "MISS",
+            QTEManager.QTEGrade.Great => $"GREAT!\n<size=70%>{inputName}</size>",
+            QTEManager.QTEGrade.Good => $"GOOD\n<size=70%>{inputName}</size>",
+            QTEManager.QTEGrade.Bad => $"BAD\n<size=70%>{inputName}</size>",
+            _ => "MISS",
         };
     }
 
     private Color GetResultColor(QTEManager.QTEGrade grade) => grade switch
     {
-        QTEManager.QTEGrade.Perfect => _colorPerfect, QTEManager.QTEGrade.Great => _colorGreat,
-        QTEManager.QTEGrade.Good => _colorGood, QTEManager.QTEGrade.Bad => _colorBad, _ => _colorMiss,
+        QTEManager.QTEGrade.Perfect => _colorPerfect,
+        QTEManager.QTEGrade.Great => _colorGreat,
+        QTEManager.QTEGrade.Good => _colorGood,
+        QTEManager.QTEGrade.Bad => _colorBad,
+        _ => _colorMiss,
     };
     #endregion
 }

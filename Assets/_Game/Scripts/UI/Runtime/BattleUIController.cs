@@ -718,6 +718,9 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             .SetTarget(tweenTarget ?? shakeTarget);
     }
 
+    public void ShowDefenseQTE(DefenseQteRequest request) => _defenseQTEUI?.ShowQTE(request.Duration);
+    public void ShowDefenseQTEResult(DefenseQteResult result) => _defenseQTEUI?.ShowResult(result);
+    public void HideDefenseQTE() => _defenseQTEUI?.Hide();
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();

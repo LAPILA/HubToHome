@@ -4,7 +4,21 @@ using UnityEngine;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 
-public enum DefenseRequirement { ParryOrDodge, JumpOnly }
+public enum DefenseRequirement
+{
+    [InspectorName("패링 또는 회피")]
+    ParryOrDodge = 0,
+    [InspectorName("점프만")]
+    JumpOnly = 1,
+    [InspectorName("패링 / 회피 / 점프")]
+    Any = 2,
+    [InspectorName("패링만")]
+    ParryOnly = 3,
+    [InspectorName("회피만")]
+    DodgeOnly = 4,
+    [InspectorName("회피 또는 점프")]
+    DodgeOrJump = 5
+}
 public enum TelegraphVisualMode { Sprite, AnimatorTrigger, PrefabVFX }
 public enum EnemyDefensePatternMode { ImmediateReaction, TelegraphThenWindow, TelegraphThenNextTurnWindow }
 
@@ -391,6 +405,13 @@ public class Action_DefenseWindow : SkillActionBlock
     [LabelText("전조 후 준비 시간")]
     [MinValue(0f)] public float DefenseOpenDelay = 0f;
     [LabelText("판정 시간")] public float TimeWindow = 0.8f;
+    [LabelText("BAD 판정도 피해 방지")]
+    public bool AllowNearSuccess = true;
+    [LabelText("개별 판정 구간 사용")]
+    public bool OverrideTimingProfile;
+    [ShowIf(nameof(OverrideTimingProfile))]
+    [LabelText("Perfect / Great / Good (초)")]
+    public DefenseTimingProfile TimingProfile = new DefenseTimingProfile(0.12f, 0.22f, 0.40f);
     [LabelText("실패 데미지 배율")] public float FailDamageMultiplier = 1f;
     [LabelText("실패 시 카메라 흔들기")] public bool ShakeOnFail = true;
     [LabelText("성공 후 딜레이")] public float DelayAfter = 0.1f;
@@ -476,20 +497,33 @@ public class Action_DefenseWindow : SkillActionBlock
             telegraph = SpawnTelegraph(context.Actor);
             CharacterBase target = context.Targets[0];
             targetController = GetPlayerController(target);
-            DefenseInput finalInput = DefenseInput.None;
-            QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
+            DefenseQteResult finalResult = default;
+            bool resultReceived = false;
 
             targetController?.PrepareDefenseWindow();
-            if (QTEManager.Instance == null)
+            QTEManager qteManager = QTEManager.Instance;
+            if (qteManager == null)
                 yield break;
 
-            execution = QTEManager.Instance.StartDefenseQTEWithResult(
-                TimeWindow,
-                1.0f,
-                (input, grade) =>
+            DefenseQteRequest request = OverrideTimingProfile
+                ? new DefenseQteRequest(
+                    TimeWindow,
+                    1f,
+                    Requirement,
+                    TimingProfile,
+                    AllowNearSuccess)
+                : qteManager.CreateDefenseRequest(
+                    TimeWindow,
+                    1f,
+                    Requirement,
+                    AllowNearSuccess);
+            execution = qteManager.StartDefenseQTEWithResult(
+                request,
+                targetController,
+                result =>
                 {
-                    finalInput = input;
-                    finalGrade = grade;
+                    finalResult = result;
+                    resultReceived = true;
                 });
 
             if (!string.IsNullOrWhiteSpace(AttackAnimTriggerName))
@@ -505,21 +539,21 @@ public class Action_DefenseWindow : SkillActionBlock
                 yield break;
             }
 
-            bool success = finalGrade != QTEManager.QTEGrade.Miss && IsMatch(finalInput);
+            bool success = resultReceived && finalResult.PreventsDamage;
             if (success)
             {
-                targetController?.ConfirmDefenseSuccess(finalInput);
+                targetController?.ConfirmDefenseSuccess(finalResult.Input);
                 context.CurrentDamageMultiplier = 0f;
 
-                if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
+                if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
                 {
                     yield return targetController != null
                         ? targetController.WaitForDefenseVisualComplete(0.5f)
                         : null;
                 }
 
-                if (finalInput == DefenseInput.Parry
-                    && finalGrade == QTEManager.QTEGrade.Perfect
+                if (finalResult.Input == DefenseInput.Parry
+                    && finalResult.Grade == QTEManager.QTEGrade.Perfect
                     && target is PlayerCharacter playerTarget
                     && BattleManager.Instance != null)
                 {
@@ -545,16 +579,6 @@ public class Action_DefenseWindow : SkillActionBlock
             DespawnTelegraph(telegraph);
             targetController?.ResetDefenseReactionLock();
         }
-    }
-
-    private bool IsMatch(DefenseInput input)
-    {
-        return Requirement switch
-        {
-            DefenseRequirement.ParryOrDodge => input == DefenseInput.Parry || input == DefenseInput.Dodge,
-            DefenseRequirement.JumpOnly => input == DefenseInput.Jump,
-            _ => false
-        };
     }
 
 }

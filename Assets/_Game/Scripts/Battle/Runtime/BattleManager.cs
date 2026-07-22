@@ -1353,9 +1353,12 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         {
             return defenseWindow.Requirement switch
             {
-                DefenseRequirement.ParryOrDodge => EnemyAttackType.MeleeClose, 
-                
+                DefenseRequirement.ParryOnly => EnemyAttackType.ParryOnly,
+                DefenseRequirement.DodgeOnly => EnemyAttackType.DodgeOnly,
                 DefenseRequirement.JumpOnly => EnemyAttackType.JumpOnly,
+                DefenseRequirement.DodgeOrJump => EnemyAttackType.DodgeOrJump,
+                DefenseRequirement.ParryOrDodge => EnemyAttackType.MeleeClose,
+                DefenseRequirement.Any => EnemyAttackType.MeleeClose,
                 _ => EnemyAttackType.MeleeClose
             };
         }

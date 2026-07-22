@@ -250,20 +250,27 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 enemy.PlayBasicAttackEffect();
                 enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
 
-                DefenseInput finalInput = DefenseInput.None;
-                QTEManager.QTEGrade finalGrade = QTEManager.QTEGrade.Miss;
+                DefenseQteResult finalResult = default;
+                bool resultReceived = false;
 
                 targetCtrl?.PrepareDefenseWindow();
-                QteExecution qteExecution = QTEManager.Instance != null
-                    ? QTEManager.Instance.StartDefenseQTEWithResult(
+                QTEManager qteManager = QTEManager.Instance;
+                QteExecution qteExecution = null;
+                if (qteManager != null)
+                {
+                    DefenseQteRequest request = qteManager.CreateDefenseRequest(
                         _host.EnemyDefenseQteWindow,
-                        1.0f,
-                        (input, grade) =>
+                        1f,
+                        DefenseRequirement.Any);
+                    qteExecution = qteManager.StartDefenseQTEWithResult(
+                        request,
+                        targetCtrl,
+                        result =>
                         {
-                            finalInput = input;
-                            finalGrade = grade;
-                        })
-                    : null;
+                            finalResult = result;
+                            resultReceived = true;
+                        });
+                }
 
                 if (qteExecution == null)
                 {
@@ -285,7 +292,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                     yield break;
                 }
 
-                if (finalGrade == QTEManager.QTEGrade.Miss)
+                if (!resultReceived || !finalResult.PreventsDamage)
                 {
                     int dmg = target.TakePureDamage(enemy.ATK);
                     targetCtrl?.PlayHurtEffect();
@@ -294,14 +301,14 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 }
                 else
                 {
-                    targetCtrl?.ConfirmDefenseSuccess(finalInput);
-                    if (finalInput == DefenseInput.Parry && finalGrade == QTEManager.QTEGrade.Perfect)
+                    targetCtrl?.ConfirmDefenseSuccess(finalResult.Input);
+                    if (finalResult.Input == DefenseInput.Parry && finalResult.Grade == QTEManager.QTEGrade.Perfect)
                     {
                         target.HealMP(_host.MpOnParryPerfect);
                         _host.EmitMpChanged(target, target.CurrentMP);
                     }
 
-                    if (finalInput == DefenseInput.Dodge || finalInput == DefenseInput.Jump)
+                    if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
                     {
                         yield return targetCtrl != null ? _host.StartManagedCoroutine(targetCtrl.WaitForDefenseVisualComplete(0.5f)) : null;
                     }

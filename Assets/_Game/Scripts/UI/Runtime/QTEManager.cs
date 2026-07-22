@@ -46,6 +46,12 @@ public class QTEManager : MonoBehaviour
     [SerializeField, Range(0f, 0.6f)] private float _goodWindow = 0.40f;
 
     public bool IsActive { get; private set; }
+    public DefenseTimingProfile DefaultDefenseTimingProfile =>
+        new DefenseTimingProfile(_perfectWindow, _greatWindow, _goodWindow);
+
+    public event Action<DefenseQteRequest> DefenseWindowOpened;
+    public event Action<DefenseQteResult> DefenseResolved;
+    public event Action DefenseWindowClosed;
 
     private Coroutine _activeCoroutine;
     private QteExecution _activeExecution;
@@ -70,50 +76,102 @@ public class QTEManager : MonoBehaviour
         float difficultyMult,
         Action<DefenseInput, QTEGrade> onResult)
     {
+        DefenseQteRequest request = CreateDefenseRequest(
+            attackDelay,
+            difficultyMult,
+            DefenseRequirement.Any);
+        return StartDefenseQTEWithResult(
+            request,
+            result => onResult?.Invoke(result.Input, result.Grade));
+    }
+
+    public DefenseQteRequest CreateDefenseRequest(
+        float attackDelay,
+        float difficultyMult,
+        DefenseRequirement requirement,
+        bool allowNearSuccess = true)
+    {
+        return new DefenseQteRequest(
+            attackDelay,
+            difficultyMult,
+            requirement,
+            DefaultDefenseTimingProfile,
+            allowNearSuccess);
+    }
+
+    public QteExecution StartDefenseQTEWithResult(
+        DefenseQteRequest request,
+        Action<DefenseQteResult> onResult)
+    {
+        return StartDefenseQTEWithResult(request, null, onResult);
+    }
+
+    public QteExecution StartDefenseQTEWithResult(
+        DefenseQteRequest request,
+        IDefenseInputSource inputSource,
+        Action<DefenseQteResult> onResult)
+    {
         CancelActiveQTE();
 
         var execution = new QteExecution();
         _activeExecution = execution;
         _activeIsSequence = false;
-        _activeCoroutine = StartCoroutine(DefenseQTERoutine(
-            Mathf.Max(0.01f, attackDelay),
-            Mathf.Max(0.01f, difficultyMult),
-            onResult,
-            execution));
+
+        Coroutine coroutine = StartCoroutine(DefenseQTERoutine(request, inputSource, onResult, execution));
+        if (ReferenceEquals(execution, _activeExecution) && !execution.IsDone)
+            _activeCoroutine = coroutine;
+
         return execution;
     }
 
     private IEnumerator DefenseQTERoutine(
-        float attackDelay,
-        float difficultyMult,
-        Action<DefenseInput, QTEGrade> onResult,
+        DefenseQteRequest request,
+        IDefenseInputSource inputSource,
+        Action<DefenseQteResult> onResult,
         QteExecution execution)
     {
         IsActive = true;
-        float elapsed = 0f;
-        bool inputReceived = false;
+        float startedAt = Time.realtimeSinceStartup;
+        float impactAt = startedAt + request.Duration;
+        DefenseInputReadStatus inputStatus = DefenseInputReadStatus.None;
         DefenseInput input = DefenseInput.None;
+        float inputTime = impactAt;
 
-        while (elapsed < attackDelay && !inputReceived && !execution.IsDone)
+        InvokePresentation(
+            () => BattleUIController.Instance?.ShowDefenseQTE(request),
+            "show defense QTE");
+        InvokeSafely(DefenseWindowOpened, request, nameof(DefenseWindowOpened));
+
+        while (!execution.IsDone)
         {
-            elapsed += Time.deltaTime;
+            float now = Time.realtimeSinceStartup;
+            if (now >= impactAt)
+                break;
 
-            PlayerController controller = null;
-            if (BattleManager.Instance != null && BattleManager.Instance._playerParty.Count > 0)
+            IDefenseInputSource controller = IsInputSourceAvailable(inputSource)
+                ? inputSource : ResolveDefenseInputSource();
+            if (controller != null
+                && controller.TryConsumeBufferedDefenseInput(out input, out float bufferedInputTime))
             {
-                controller = BattleManager.Instance._playerParty[0]?.GetComponent<PlayerController>();
-                if (controller != null && controller.TryConsumeBufferedDefenseInput(out input))
-                {
-                    inputReceived = true;
-                    yield return null;
-                    continue;
-                }
+                inputStatus = DefenseInputReadStatus.Valid;
+                inputTime = bufferedInputTime;
+                break;
             }
 
-            if (GameInput.TryReadDefenseInputThisFrame(out input))
+            inputStatus = GameInput.ReadDefenseInputThisFrame(out input);
+            if (inputStatus != DefenseInputReadStatus.None)
             {
-                inputReceived = true;
-                controller?.PreviewDefenseInput(input);
+                inputTime = Time.realtimeSinceStartup;
+                if (inputTime >= impactAt)
+                {
+                    inputStatus = DefenseInputReadStatus.None;
+                    input = DefenseInput.None;
+                    break;
+                }
+
+                if (inputStatus == DefenseInputReadStatus.Valid)
+                    controller?.PreviewDefenseInput(input);
+                break;
             }
 
             yield return null;
@@ -122,24 +180,25 @@ public class QTEManager : MonoBehaviour
         if (execution.IsDone)
             yield break;
 
-        QTEGrade grade = QTEGrade.Miss;
-        QteTermination termination = QteTermination.TimedOut;
-        if (inputReceived)
-        {
-            float timeLeft = (attackDelay - elapsed) / attackDelay;
-            float perfect = _perfectWindow / difficultyMult;
-            float great = _greatWindow / difficultyMult;
-            float good = _goodWindow / difficultyMult;
-
-            if (timeLeft <= perfect) grade = QTEGrade.Perfect;
-            else if (timeLeft <= great) grade = QTEGrade.Great;
-            else if (timeLeft <= good) grade = QTEGrade.Good;
-            else grade = QTEGrade.Bad;
-            termination = QteTermination.Completed;
-        }
+        float secondsBeforeImpact = inputStatus == DefenseInputReadStatus.None
+            ? 0f
+            : Mathf.Clamp(impactAt - inputTime, 0f, request.Duration);
+        DefenseQteResult result = DefenseJudgementPolicy.Evaluate(
+            request,
+            inputStatus,
+            input,
+            secondsBeforeImpact);
+        QteTermination termination = inputStatus == DefenseInputReadStatus.None
+            ? QteTermination.TimedOut
+            : QteTermination.Completed;
 
         CompleteExecution(execution, termination);
-        onResult?.Invoke(input, grade);
+        InvokePresentation(
+            () => BattleUIController.Instance?.ShowDefenseQTEResult(result),
+            "show defense result");
+        InvokeSafely(DefenseResolved, result, nameof(DefenseResolved));
+        InvokeSafely(onResult, result, "defense result callback");
+        InvokeSafely(DefenseWindowClosed, nameof(DefenseWindowClosed));
     }
 
     public void StartSequenceQTE(
@@ -166,11 +225,14 @@ public class QTEManager : MonoBehaviour
 
         _activeExecution = execution;
         _activeIsSequence = true;
-        _activeCoroutine = StartCoroutine(SequenceQTERoutine(
+        Coroutine coroutine = StartCoroutine(SequenceQTERoutine(
             nodes,
             Mathf.Max(0.01f, timeLimit),
             onComplete,
             execution));
+        if (ReferenceEquals(execution, _activeExecution) && !execution.IsDone)
+            _activeCoroutine = coroutine;
+
         return execution;
     }
 
@@ -202,14 +264,14 @@ public class QTEManager : MonoBehaviour
 
             while (elapsed < timeLimit && !answered && !execution.IsDone)
             {
-                elapsed += Time.deltaTime;
-                if (GameInput.TryReadDefenseInputThisFrame(out DefenseInput input))
+                elapsed += Time.unscaledDeltaTime;
+                if (GameInput.TryReadDefenseInputThisFrame(out DefenseInput sequenceInput))
                 {
                     answered = true;
                     string key = (node.TargetKey ?? string.Empty).ToLowerInvariant();
-                    hit = (key == "z" && input == DefenseInput.Parry)
-                        || (key == "x" && input == DefenseInput.Dodge)
-                        || (key == "c" && input == DefenseInput.Jump);
+                    hit = (key == "z" && sequenceInput == DefenseInput.Parry)
+                        || (key == "x" && sequenceInput == DefenseInput.Dodge)
+                        || (key == "c" && sequenceInput == DefenseInput.Jump);
                     if (hit) successCount++;
                 }
 
@@ -220,7 +282,7 @@ public class QTEManager : MonoBehaviour
                 yield break;
 
             BattleUIController.Instance?.ShowSkillQTEResult(hit);
-            yield return new WaitForSeconds(0.35f);
+            yield return new WaitForSecondsRealtime(0.35f);
         }
 
         if (execution.IsDone)
@@ -251,14 +313,39 @@ public class QTEManager : MonoBehaviour
         if (execution == null || execution.IsDone)
             return;
 
+        bool wasSequence = _activeIsSequence;
         if (_activeCoroutine != null)
             StopCoroutine(_activeCoroutine);
 
-        if (_activeIsSequence)
-            BattleUIController.Instance?.HideSkillQTE();
-
         execution.Complete(QteTermination.Cancelled);
         ClearActive(execution);
+
+        if (wasSequence)
+        {
+            BattleUIController.Instance?.HideSkillQTE();
+        }
+        else
+        {
+            InvokePresentation(
+                () => BattleUIController.Instance?.HideDefenseQTE(),
+                "hide defense QTE");
+            InvokeSafely(DefenseWindowClosed, nameof(DefenseWindowClosed));
+        }
+    }
+
+    private static IDefenseInputSource ResolveDefenseInputSource()
+    {
+        BattleManager battleManager = BattleManager.Instance;
+        if (battleManager == null || battleManager._playerParty.Count == 0)
+            return null;
+
+        return battleManager._playerParty[0]?.GetComponent<PlayerController>();
+    }
+
+    private static bool IsInputSourceAvailable(IDefenseInputSource inputSource)
+    {
+        return inputSource != null
+            && (!(inputSource is UnityEngine.Object unityObject) || unityObject != null);
     }
 
     private void CompleteExecution(QteExecution execution, QteTermination termination)
@@ -276,6 +363,62 @@ public class QTEManager : MonoBehaviour
         _activeCoroutine = null;
         _activeIsSequence = false;
         IsActive = false;
+    }
+
+    private static void InvokePresentation(Action action, string operation)
+    {
+        try
+        {
+            action?.Invoke();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(new InvalidOperationException(
+                $"[{nameof(QTEManager)}] Failed to {operation}.",
+                exception));
+        }
+    }
+
+    private static void InvokeSafely<T>(Action<T> action, T value, string source)
+    {
+        if (action == null)
+            return;
+
+        Delegate[] subscribers = action.GetInvocationList();
+        for (int i = 0; i < subscribers.Length; i++)
+        {
+            try
+            {
+                ((Action<T>)subscribers[i]).Invoke(value);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(new InvalidOperationException(
+                    $"[{nameof(QTEManager)}] {source} failed.",
+                    exception));
+            }
+        }
+    }
+
+    private static void InvokeSafely(Action action, string source)
+    {
+        if (action == null)
+            return;
+
+        Delegate[] subscribers = action.GetInvocationList();
+        for (int i = 0; i < subscribers.Length; i++)
+        {
+            try
+            {
+                ((Action)subscribers[i]).Invoke();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(new InvalidOperationException(
+                    $"[{nameof(QTEManager)}] {source} failed.",
+                    exception));
+            }
+        }
     }
 
     private void OnDisable()

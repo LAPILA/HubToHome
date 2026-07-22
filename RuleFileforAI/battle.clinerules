@@ -58,6 +58,10 @@
 - Successful defense should avoid damage according to current balance rules.
 - Perfect parry may reward MP or extra feedback when configured.
 - Defense visual reactions are currently tied to `PlayerController`; use adapters before moving this responsibility.
+- `DefenseJudgementPolicy` owns input matching, timing grade, outcome, and `PreventsDamage`; do not duplicate those switches in consumers.
+- `QTEManager` owns one active QTE, realtime execution, cancellation, structured result events, and UI delivery.
+- Pass the intended actor through `IDefenseInputSource`; do not assume the first party member is always the defender.
+- Existing gameplay consumers should branch on `DefenseQteResult.PreventsDamage` and keep damage, MP, camera, and VFX effects in their current owners.
 
 ## Work Rules
 

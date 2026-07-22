@@ -11,7 +11,7 @@ using Sirenix.OdinInspector;
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Animator))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, IDefenseInputSource
 {
     // ── 플레이어 상태 ─────────────────────────────────────────
     public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
@@ -185,12 +185,13 @@ public class PlayerController : MonoBehaviour
 
     private void AttemptDefenseInput(DefenseInput input)
     {
-        if (Time.unscaledTime < _lastDefenseAttemptTime + _defenseAttemptCooldown)
+        float now = Time.realtimeSinceStartup;
+        if (now < _lastDefenseAttemptTime + _defenseAttemptCooldown)
             return;
 
-        _lastDefenseAttemptTime = Time.unscaledTime;
+        _lastDefenseAttemptTime = now;
         _bufferedDefenseInput = input;
-        _bufferedDefenseInputTime = Time.unscaledTime;
+        _bufferedDefenseInputTime = now;
 
         switch (input)
         {
@@ -208,19 +209,28 @@ public class PlayerController : MonoBehaviour
 
     public bool TryConsumeBufferedDefenseInput(out DefenseInput input)
     {
+        return TryConsumeBufferedDefenseInput(out input, out _);
+    }
+
+    public bool TryConsumeBufferedDefenseInput(out DefenseInput input, out float inputTime)
+    {
         input = DefenseInput.None;
+        inputTime = -999f;
 
         if (_bufferedDefenseInput == DefenseInput.None)
             return false;
 
-        if (Time.unscaledTime > _bufferedDefenseInputTime + DefenseInputBufferWindow)
+        if (Time.realtimeSinceStartup > _bufferedDefenseInputTime + DefenseInputBufferWindow)
         {
             _bufferedDefenseInput = DefenseInput.None;
+            _bufferedDefenseInputTime = -999f;
             return false;
         }
 
         input = _bufferedDefenseInput;
+        inputTime = _bufferedDefenseInputTime;
         _bufferedDefenseInput = DefenseInput.None;
+        _bufferedDefenseInputTime = -999f;
         return true;
     }
 
@@ -833,6 +843,7 @@ public class PlayerController : MonoBehaviour
     {
         _lastDefenseAttemptTime = -999f;
         _bufferedDefenseInput = DefenseInput.None;
+        _bufferedDefenseInputTime = -999f;
         _defenseInputWindowOpen = false;
         _defenseVisualTween?.Kill();
         _defenseVisualTween = null;
@@ -851,6 +862,7 @@ public class PlayerController : MonoBehaviour
     {
         _battleDefenseAnchorPosition = transform.position;
         _bufferedDefenseInput = DefenseInput.None;
+        _bufferedDefenseInputTime = -999f;
         _lastDefenseAttemptTime = -999f;
         _defenseInputWindowOpen = true;
     }

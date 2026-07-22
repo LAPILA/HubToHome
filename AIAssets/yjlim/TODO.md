@@ -16,7 +16,7 @@
 - [ ] 설정 패널 fallback 문자열을 `LocalizationTable.csv` 기준으로 정리
 - [ ] Voice 볼륨 옵션 필요 여부 결정 및 저장 키/UI 행/AudioManager 정책 확정
 - [ ] `BattleManager`에서 적 행동 실행, 방어 판정, 전투 종료 처리 분리 계획 수립 및 단계 적용
-- [ ] 기본공격 방어와 스킬 `Action_DefenseWindow` 피해/보상 정책을 공용 defense policy로 통합
+- [x] 기본공격 방어와 스킬 `Action_DefenseWindow` 피해/보상 정책을 공용 defense policy로 통합
 - [ ] 전투용 `CameraController`를 TMP 샘플 폴더에서 first-party 폴더로 옮기는 migration 계획 수립
 
 ## P2 - 시나리오 파이프라인 실사용 검증
