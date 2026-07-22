@@ -368,7 +368,10 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         s_globalEncounterLockUntil = Time.unscaledTime + Mathf.Max(0.75f, entryDelay + 0.5f);
         _rb.linearVelocity = Vector2.zero;
         UpdateMoveAnimation(Vector2.zero);
-        if (_useDedicatedBattleScene && _collider != null)
+        bool disabledColliderForTransition = _useDedicatedBattleScene
+            && _collider != null
+            && _collider.enabled;
+        if (disabledColliderForTransition)
             _collider.enabled = false;
         player.SetBattleMode(true);
 
@@ -394,10 +397,14 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         {
             _encounterInProgress = false;
             _triggered = false;
+            if (disabledColliderForTransition && _collider != null)
+                _collider.enabled = true;
             player.SetBattleMode(false);
+            yield break;
         }
 
-        if (_destroyAfterTouch && _useDedicatedBattleScene) Destroy(gameObject);
+        if (_destroyAfterTouch && _useDedicatedBattleScene)
+            Destroy(gameObject);
     }
 
     private void UpdateMoveAnimation(Vector2 velocity)

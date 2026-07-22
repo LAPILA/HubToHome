@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -72,6 +73,9 @@ public static class EncounterCollisionGuard
 /// </summary>
 public static class BattleEncounterService
 {
+    private static int s_activeRequestId;
+    private static int s_nextRequestId;
+
     public static AudioClip ResolveBattleBgm(List<EnemyData> enemies, AudioClip overrideBattleBgm = null)
     {
         if (overrideBattleBgm != null) return overrideBattleBgm;
@@ -120,7 +124,7 @@ public static class BattleEncounterService
             return false;
         }
 
-        var global = GlobalDataManager.Instance;
+        GlobalDataManager global = GlobalDataManager.Instance;
         if (global == null)
         {
             Debug.LogWarning("[BattleEncounterService] GlobalDataManager가 없어 전투를 시작할 수 없습니다.");
@@ -136,58 +140,130 @@ public static class BattleEncounterService
             return false;
         }
 
-        if (!useSeamlessBattle && SceneLoader.Instance == null)
+        SceneLoader sceneLoader = useSeamlessBattle ? null : SceneLoader.Instance;
+        if (!useSeamlessBattle && sceneLoader == null)
         {
             Debug.LogWarning("[BattleEncounterService] 심리스 BattleManager와 SceneLoader가 모두 없어 전투를 시작할 수 없습니다.");
             return false;
         }
 
-        PrepareEncounterContext(
+        if (!TryAcquireRequest(out int requestId))
+        {
+            Debug.LogWarning("[BattleEncounterService] 다른 전투 진입 요청을 처리 중입니다.");
+            return false;
+        }
+
+        GameStateManager gameStateManager = GameStateManager.Instance;
+        var transaction = new EncounterStartTransaction(
+            requestId,
             global,
             player,
-            encounterEnemies,
-            overrideBattleBgm,
-            encounterId,
-            defeatsOnVictory,
-            battleScenarioData,
-            playerPreemptiveAttack);
+            gameStateManager);
 
-        if (useSeamlessBattle)
+        try
         {
-            seamlessManager.SetBattleScenarioData(battleScenarioData);
-            if (seamlessManager.TryStartSeamlessBattle(encounterEnemies, player, encounterSource, out string startError))
-                return true;
-            Debug.LogWarning($"[BattleEncounterService] 심리스 전투 시작에 실패했습니다: {startError}", seamlessManager);
-            RollbackEncounterContext(global, player);
-            return false;
-        }
+            PrepareEncounterContext(
+                global,
+                player,
+                gameStateManager,
+                encounterEnemies,
+                overrideBattleBgm,
+                encounterId,
+                defeatsOnVictory,
+                battleScenarioData,
+                playerPreemptiveAttack);
 
-        string resolvedBattleScene = string.IsNullOrWhiteSpace(battleSceneName) ? SceneName.Battle : battleSceneName.Trim();
-        SceneLoadOperation operation = SceneLoader.Instance.LoadSceneWithResult(
-            resolvedBattleScene,
-            battleSceneFadeDuration,
-            result =>
+            if (useSeamlessBattle)
             {
-                if (result != SceneLoadResult.Succeeded)
-                    RollbackEncounterContext(global, player);
-            });
+                seamlessManager.SetBattleScenarioData(battleScenarioData);
+                if (seamlessManager.TryStartSeamlessBattle(encounterEnemies, player, encounterSource, out string startError))
+                {
+                    transaction.Commit();
+                    return true;
+                }
 
-        if (operation == null)
+                Debug.LogWarning($"[BattleEncounterService] 심리스 전투 시작에 실패했습니다: {startError}", seamlessManager);
+                transaction.Rollback();
+                return false;
+            }
+
+            string resolvedBattleScene = string.IsNullOrWhiteSpace(battleSceneName)
+                ? SceneName.Battle
+                : battleSceneName.Trim();
+            SceneLoadOperation operation = sceneLoader.LoadSceneWithResult(
+                resolvedBattleScene,
+                battleSceneFadeDuration,
+                result => CompleteDedicatedRequest(transaction, result));
+
+            if (operation == null)
+            {
+                Debug.LogWarning("[BattleEncounterService] SceneLoader가 전투 씬 로드 작업을 만들지 못했습니다.");
+                transaction.Rollback();
+                return false;
+            }
+
+            bool accepted = !operation.IsDone || operation.Result == SceneLoadResult.Succeeded;
+            if (!accepted)
+                transaction.Rollback();
+
+            return accepted;
+        }
+        catch (Exception exception)
         {
-            RollbackEncounterContext(global, player);
+            Debug.LogWarning("[BattleEncounterService] 전투 진입 중 예외가 발생해 이전 상태로 복구합니다.");
+            Debug.LogException(exception);
+            transaction.Rollback();
+            return false;
+        }
+    }
+
+    private static void CompleteDedicatedRequest(
+        EncounterStartTransaction transaction,
+        SceneLoadResult result)
+    {
+        if (result == SceneLoadResult.Succeeded)
+        {
+            transaction.Commit();
+            return;
+        }
+
+        Debug.LogWarning($"[BattleEncounterService] 전투 씬 진입에 실패했습니다. Result={result}");
+        transaction.Rollback();
+    }
+
+    private static bool TryAcquireRequest(out int requestId)
+    {
+        if (s_activeRequestId != 0)
+        {
+            requestId = 0;
             return false;
         }
 
-        bool accepted = !operation.IsDone || operation.Result == SceneLoadResult.Succeeded;
-        if (!accepted)
-            RollbackEncounterContext(global, player);
+        if (s_nextRequestId == int.MaxValue)
+            s_nextRequestId = 0;
 
-        return accepted;
+        requestId = ++s_nextRequestId;
+        s_activeRequestId = requestId;
+        return true;
+    }
+
+    private static void ReleaseRequest(int requestId)
+    {
+        if (s_activeRequestId == requestId)
+            s_activeRequestId = 0;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetRequestGate()
+    {
+        s_activeRequestId = 0;
+        s_nextRequestId = 0;
     }
 
     private static void PrepareEncounterContext(
         GlobalDataManager global,
         PlayerController player,
+        GameStateManager gameStateManager,
         List<EnemyData> encounterEnemies,
         AudioClip overrideBattleBgm,
         string encounterId,
@@ -207,14 +283,139 @@ public static class BattleEncounterService
 
         player.SetBattleMode(true);
         player.SavePositionToGlobal();
-        GameStateManager.Instance?.ChangeState(GameState.Battle);
+        gameStateManager?.ChangeState(GameState.Battle);
     }
 
-    private static void RollbackEncounterContext(GlobalDataManager global, PlayerController player)
+    private sealed class EncounterStartTransaction
     {
-        global?.CancelPendingBattleEncounter();
-        if (player != null)
-            player.SetBattleMode(false);
-        GameStateManager.Instance?.ChangeState(GameState.Exploration);
+        private readonly int _requestId;
+        private readonly GlobalDataManager _global;
+        private readonly PlayerController _player;
+        private readonly GameStateManager _gameStateManager;
+        private readonly List<EnemyData> _pendingEnemies;
+        private readonly AudioClip _pendingBattleBgm;
+        private readonly BattleScenarioData _pendingBattleScenario;
+        private readonly string _lastOverworldScene;
+        private readonly float _spawnX;
+        private readonly float _spawnY;
+        private readonly int _lookingDirection;
+        private readonly string _encounterId;
+        private readonly bool _defeatsOnVictory;
+        private readonly bool _playerPreemptiveAttack;
+        private readonly bool _playerWasInBattle;
+        private readonly GameState _gameState;
+        private readonly float _timeScale;
+        private bool _isCompleted;
+
+        public EncounterStartTransaction(
+            int requestId,
+            GlobalDataManager global,
+            PlayerController player,
+            GameStateManager gameStateManager)
+        {
+            _requestId = requestId;
+            _global = global;
+            _player = player;
+            _gameStateManager = gameStateManager;
+
+            _pendingEnemies = global.PendingEnemies == null
+                ? null
+                : new List<EnemyData>(global.PendingEnemies);
+            _pendingBattleBgm = global.PendingBattleBGM;
+            _pendingBattleScenario = global.PendingBattleScenario;
+            _lastOverworldScene = global.LastOverworldScene;
+            _spawnX = global.SpawnX;
+            _spawnY = global.SpawnY;
+            _lookingDirection = global.LookingDir;
+            _encounterId = global.CurrentEncounterEnemyId;
+            _defeatsOnVictory = global.CurrentEncounterDefeatsOnVictory;
+            _playerPreemptiveAttack = global.CurrentEncounterPlayerPreemptiveAttack;
+            _playerWasInBattle = player.State == PlayerController.PlayerState.InBattle;
+            _gameState = gameStateManager != null
+                ? gameStateManager.CurrentState
+                : GameState.Exploration;
+            _timeScale = Time.timeScale;
+        }
+
+        public void Commit()
+        {
+            if (_isCompleted)
+                return;
+
+            _isCompleted = true;
+            ReleaseRequest(_requestId);
+        }
+
+        public void Rollback()
+        {
+            if (_isCompleted)
+                return;
+
+            _isCompleted = true;
+            try
+            {
+                RunRollbackStep(RestoreGlobalContext, "global encounter context");
+                RunRollbackStep(RestorePlayerMode, "player battle mode");
+                RunRollbackStep(() => Time.timeScale = _timeScale, "time scale");
+                RunRollbackStep(RestoreGameState, "game state");
+            }
+            finally
+            {
+                ReleaseRequest(_requestId);
+            }
+        }
+
+        private void RestoreGlobalContext()
+        {
+            if (_global == null)
+                return;
+
+            _global.PendingEnemies = _pendingEnemies == null
+                ? null
+                : new List<EnemyData>(_pendingEnemies);
+            _global.PendingBattleBGM = _pendingBattleBgm;
+            _global.PendingBattleScenario = _pendingBattleScenario;
+            _global.LastOverworldScene = _lastOverworldScene;
+            _global.SpawnX = _spawnX;
+            _global.SpawnY = _spawnY;
+            _global.LookingDir = _lookingDirection;
+
+            if (string.IsNullOrEmpty(_encounterId))
+            {
+                _global.EndOverworldEnemyEncounterContext();
+                return;
+            }
+
+            _global.BeginOverworldEnemyEncounter(
+                _encounterId,
+                _lastOverworldScene,
+                _defeatsOnVictory,
+                _playerPreemptiveAttack);
+        }
+
+        private void RestorePlayerMode()
+        {
+            if (_player != null)
+                _player.SetBattleMode(_playerWasInBattle);
+        }
+
+        private void RestoreGameState()
+        {
+            if (_gameStateManager != null)
+                _gameStateManager.ChangeState(_gameState);
+        }
+
+        private static void RunRollbackStep(Action action, string stepName)
+        {
+            try
+            {
+                action?.Invoke();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"[BattleEncounterService] Failed to restore {stepName}: {exception.Message}");
+                Debug.LogException(exception);
+            }
+        }
     }
 }
