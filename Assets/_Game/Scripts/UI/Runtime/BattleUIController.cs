@@ -117,6 +117,9 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void OnDestroy()
     {
+        if (Instance == this)
+            Instance = null;
+
         var bm = BattleManager.Instance;
         if (bm == null) return;
 
@@ -215,9 +218,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     public bool TryResolveWorldCamera()
     {
-        if (_worldCamera != null) return true;
+        Camera resolvedCamera = _worldCamera;
+        if (resolvedCamera == null)
+            resolvedCamera = Camera.main;
 
-        Camera resolvedCamera = Camera.main;
         if (resolvedCamera == null)
         {
             Camera[] activeCameras = Camera.allCameras;
@@ -244,7 +248,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         for (int i = 0; i < canvases.Length; i++)
         {
             Canvas canvas = canvases[i];
-            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            if (canvas != null)
                 canvas.worldCamera = worldCamera;
         }
     }
@@ -253,7 +257,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         if (_targetCursor == null || !_targetCursor.gameObject.activeSelf) return;
 
-        if (!TryResolveWorldCamera())
+        if (_worldCamera == null && !TryResolveWorldCamera())
         {
             if (!_hasWarnedMissingWorldCamera)
             {

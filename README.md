@@ -19,11 +19,11 @@ AI나 자동화 도구가 이 저장소에서 작업할 때는 먼저 아래 문
 
 ```text
 Assets/_Game/
-├─ Core          # 전역 상태, 저장, 씬 전환, 입력, 오디오, UI 매니저
-├─ Features      # Battle, Characters, Dialogue, Items, Overworld
-├─ Presentation  # UI, VFX, 표시 계층
-├─ Scenes        # Title, Intro, Overworld, Battle scene
-└─ Shared        # 공용 유틸리티와 테스트
+├─ Content       # Art, Audio, Maps, 캐릭터·전투·시나리오 콘텐츠
+├─ Core          # 전역 런타임 Prefab
+├─ Presentation  # UI, VFX, 후처리 자산
+├─ Resources     # 런타임 ID 조회용 콘텐츠 카탈로그
+└─ Scripts       # 도메인별 Runtime, Editor, Tests C# 코드
 
 AIAssets/        # AI/사람 공용 작업 기록, 분석, 업데이트 노트
 .agents/         # 공유 AI 스킬과 작업 절차
