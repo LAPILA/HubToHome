@@ -14,6 +14,7 @@
 ## P1 - 이미 붙은 시스템 마감
 
 - [x] 콘텐츠 ID·필수 참조·Runtime Catalog·시나리오 직접 참조 검증기를 구조화 보고서로 통합
+- [x] Room Prefab 심리스 전투 Host의 승리·도주·중단·중복 정리와 TestMap 회귀 검증
 - [ ] 설정 패널 fallback 문자열을 `LocalizationTable.csv` 기준으로 정리
 - [ ] Voice 볼륨 옵션 필요 여부 결정 및 저장 키/UI 행/AudioManager 정책 확정
 - [ ] `BattleManager`에서 적 행동 실행, 방어 판정, 전투 종료 처리 분리 계획 수립 및 단계 적용

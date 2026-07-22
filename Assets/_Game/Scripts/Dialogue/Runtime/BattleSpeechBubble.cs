@@ -165,10 +165,12 @@ public class BattleSpeechBubble : MonoBehaviour
         _hideRoutine = null;
         _isShowing = false;
         _confirmWasDown = false;
+        KillPresentationTweens();
     }
 
     private void OnDestroy()
     {
+        KillPresentationTweens();
         DestroyRuntimeMaterial(_bodyStencilMaterial);
         DestroyRuntimeMaterial(_tailStencilWriteMaterial);
         DestroyRuntimeMaterial(_tailStencilClearMaterial);
@@ -226,22 +228,25 @@ public class BattleSpeechBubble : MonoBehaviour
 
     public void HideImmediate()
     {
+        KillPresentationTweens();
         if (_canvasGroup != null)
-        {
-            _canvasGroup.DOKill();
             _canvasGroup.alpha = 0f;
-        }
 
         if (_bubbleRoot != null)
-        {
-            _bubbleRoot.DOKill();
             _bubbleRoot.localScale = _baseScale;
-        }
 
         if (_speechText != null) _speechText.text = string.Empty;
         _isShowing = false;
         _confirmWasDown = false;
         gameObject.SetActive(false);
+    }
+
+    private void KillPresentationTweens()
+    {
+        if (_canvasGroup != null)
+            _canvasGroup.DOKill(false);
+        if (_bubbleRoot != null)
+            _bubbleRoot.DOKill(false);
     }
 
     public IEnumerator WaitUntilHidden()

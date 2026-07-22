@@ -22,6 +22,10 @@ Designer: "Then the player chooses ITEM, EQUIP, POWER, or CONFIG from the shell.
 
 Developer: "Choosing a category opens its Category Window; CONFIG may show settings later, but the shell and the Config Panel are still separate concepts."
 
+**Seamless Battle Host**:
+The scene-local composition root that lets a Room start Battle without loading a dedicated BattleScene. It owns one BattleManager, PositionManager, battle UI root, duplicate-root prevention, and emergency abort delegation; BattleManager still owns combat rules and the shared seamless cleanup boundary.
+_Avoid_: putting encounter result policy in the Host, leaving multiple Host roots active, or destroying individual child singletons as duplicate cleanup
+
 **Primary Mode**:
 The top-level playable space. Current planning treats only `Overworld` and `Battle` as Primary Modes.
 _Avoid_: treating QTE, shooter, boxing, dialogue, cinematic, menu, or minigame variants as Primary Modes.

@@ -73,6 +73,7 @@ public class SceneLoader : MonoBehaviour
 
     private bool _isLoading;
     private SceneLoadOperation _activeOperation;
+    private Tween _fadeTween;
 
     protected virtual void Awake()
     {
@@ -233,8 +234,9 @@ public class SceneLoader : MonoBehaviour
             yield break;
         }
 
-        _fadeCanvas.DOKill();
-        Tween tween = _fadeCanvas.DOFade(targetAlpha, clampedDuration).SetUpdate(true);
+        _fadeTween?.Kill(false);
+        _fadeCanvas.DOKill(false);
+        Tween tween = _fadeTween = _fadeCanvas.DOFade(targetAlpha, clampedDuration).SetUpdate(true);
         if (tween != null && tween.active)
         {
             while (tween.active && !tween.IsComplete())
@@ -242,6 +244,9 @@ public class SceneLoader : MonoBehaviour
 
             if (_fadeCanvas != null && tween.active)
                 _fadeCanvas.alpha = targetAlpha;
+            if (ReferenceEquals(_fadeTween, tween))
+                _fadeTween = null;
+
             yield break;
         }
 
@@ -276,7 +281,9 @@ public class SceneLoader : MonoBehaviour
         if (_fadeCanvas == null)
             return;
 
-        _fadeCanvas.DOKill();
+        _fadeTween?.Kill(false);
+        _fadeTween = null;
+        _fadeCanvas.DOKill(false);
         _fadeCanvas.alpha = Mathf.Clamp01(alpha);
         _fadeCanvas.blocksRaycasts = blocksRaycasts;
         if (_fadeImage != null)
@@ -351,13 +358,16 @@ public class SceneLoader : MonoBehaviour
         return true;
     }
 
-    private void OnDestroy()
+    protected virtual void OnDestroy()
     {
+        _fadeTween?.Kill(false);
+        _fadeTween = null;
+
         if (Instance == this)
             Instance = null;
 
         if (_fadeCanvas != null)
-            _fadeCanvas.DOKill();
+            _fadeCanvas.DOKill(false);
 
         if (_activeOperation != null && !_activeOperation.IsDone)
             Finish(_activeOperation, SceneLoadResult.LoadFailed);

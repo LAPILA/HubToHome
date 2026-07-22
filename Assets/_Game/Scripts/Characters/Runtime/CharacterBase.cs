@@ -77,6 +77,12 @@ public abstract class CharacterBase : MonoBehaviour
             yield return bubble.WaitUntilHidden();
     }
 
+    public void HideBattleSpeechImmediate()
+    {
+        BattleSpeechBubble bubble = GetBattleSpeechBubble();
+        bubble?.HideImmediate();
+    }
+
     private BattleSpeechBubble GetBattleSpeechBubble()
     {
         return GetComponentInChildren<BattleSpeechBubble>(true);

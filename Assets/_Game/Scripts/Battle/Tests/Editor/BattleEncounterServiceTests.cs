@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using DG.Tweening;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -16,6 +17,7 @@ public class BattleEncounterServiceTests
     private GlobalDataManager _globalData;
     private GameStateManager _gameState;
     private BattleEncounterSceneLoaderTestDouble _sceneLoader;
+    private CanvasGroup _fadeCanvas;
     private PlayerController _player;
 
     [SetUp]
@@ -43,6 +45,9 @@ public class BattleEncounterServiceTests
     [TearDown]
     public void TearDown()
     {
+        _fadeCanvas?.DOKill(false);
+        _fadeCanvas = null;
+
         for (int i = _createdObjects.Count - 1; i >= 0; i--)
         {
             if (_createdObjects[i] != null)
@@ -236,9 +241,9 @@ public class BattleEncounterServiceTests
     {
         var sceneLoaderObject = new GameObject("BattleEncounterServiceTests.SceneLoader");
         _createdObjects.Add(sceneLoaderObject);
-        CanvasGroup fadeCanvas = sceneLoaderObject.AddComponent<CanvasGroup>();
+        _fadeCanvas = sceneLoaderObject.AddComponent<CanvasGroup>();
         var loader = sceneLoaderObject.AddComponent<BattleEncounterSceneLoaderTestDouble>();
-        SetPrivateField(loader, "_fadeCanvas", fadeCanvas);
+        SetPrivateField(loader, "_fadeCanvas", _fadeCanvas);
         return loader;
     }
 

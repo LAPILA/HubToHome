@@ -4,6 +4,7 @@
 
 - `BattleEncounterService`: common battle entry from overworld, dialogue, and triggers.
 - `BattleManager`: current battle flow host. It handles setup, broad state changes, battle end, and return. The migrated `turn_qte` Game Module controller now owns QTE turn/input/action flow while still living inside this file for serialized-field safety.
+- `SeamlessBattleHost`: Room-local composition root for one BattleManager, PositionManager, and battle UI. It validates ownership, removes duplicate roots, and delegates emergency abort; it does not decide combat outcomes.
 - `BattleUIController`: event-driven battle UI and targeting bridge.
 - `QTEManager`: defense QTE and skill sequence QTE execution.
 - `SkillData`: ScriptableObject skill data.
@@ -14,6 +15,8 @@
 
 - Do not expand `BattleManager` further when a narrower module or adapter can own the behavior.
 - Keep `BattleEncounterService` as the common battle entry seam.
+- Seamless victory, run, and Host abort must use BattleManager's shared cleanup boundary so player position/input, encounter context, temporary actors, UI, camera, and battle session state are restored together.
+- DOTween Sequences that can be canceled before their first update must use an owner ID and ID-based cleanup; killing only a nested child target does not own the parent Sequence.
 - Treat `SkillActionBlock` as a legacy battle-skill timeline, not as the root of the future global Action Sequence system.
 - Future flexible combat should run through Primary Mode / Game Module / Action Sequence concepts from `CONTEXT.md`.
 - New battle modules should preserve `BattleSessionState`-like data such as HP, MP, status, enemies, party, and battle flags across module switches.

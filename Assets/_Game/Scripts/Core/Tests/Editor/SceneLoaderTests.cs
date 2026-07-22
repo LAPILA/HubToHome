@@ -94,6 +94,25 @@ public class SceneLoaderTests
         Assert.That(next.Result, Is.EqualTo(SceneLoadResult.InvalidScene));
     }
 
+    [Test]
+    public void DestroyLifecycle_CancelsOwnedFadeTween()
+    {
+        _loader.CanLoadScene = true;
+        _loader.LoadSceneWithResult("ValidScene", 10f);
+        Assert.That(
+            DOTween.TweensByTarget(_fadeCanvas, true),
+            Is.Not.Null.And.Not.Empty,
+            "The regression setup requires an active fade tween.");
+
+        CanvasGroup fadeTarget = _fadeCanvas;
+        _loader.InvokeDestroyLifecycleForTest();
+
+        Assert.That(
+            DOTween.TweensByTarget(fadeTarget, true),
+            Is.Null.Or.Empty,
+            "SceneLoader left its fade tween alive after destruction.");
+    }
+
     private static IEnumerator WaitForCompletion(SceneLoadOperation operation)
     {
         const int maxFrames = 20;
@@ -132,5 +151,10 @@ public sealed class SceneLoaderTestDouble : SceneLoader
     protected override AsyncOperation BeginLoadSceneAsync(string sceneName)
     {
         return ReturnNullLoadOperation ? null : base.BeginLoadSceneAsync(sceneName);
+    }
+
+    public void InvokeDestroyLifecycleForTest()
+    {
+        base.OnDestroy();
     }
 }

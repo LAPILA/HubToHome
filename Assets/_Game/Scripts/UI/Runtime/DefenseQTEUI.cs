@@ -55,6 +55,7 @@ public class DefenseQTEUI : UIPanel
 
             _barTween = _barFill.DOFillAmount(0f, attackDelay)
                 .SetEase(Ease.Linear)
+                .SetId(this)
                 .SetUpdate(true)
                 .OnUpdate(() =>
                 {
@@ -98,11 +99,13 @@ public class DefenseQTEUI : UIPanel
         _resultLabel.transform.localScale = Vector3.one * 0.5f;
 
         _resultSequence = DOTween.Sequence()
+            .SetId(this)
             .SetUpdate(true)
             .Append(_resultLabel.DOFade(1f, 0.08f))
             .Join(_resultLabel.transform.DOScale(Vector3.one, 0.12f).SetEase(Ease.OutBack))
             .AppendCallback(() => _resultLabel.transform
                 .DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f)
+                .SetId(this)
                 .SetUpdate(true))
             .AppendInterval(0.75f)
             .Append(_resultLabel.DOFade(0f, 0.15f))
@@ -154,6 +157,7 @@ public class DefenseQTEUI : UIPanel
             {
                 _barTween = _barFill.DOFillAmount(0f, duration)
                     .SetEase(Ease.Linear)
+                    .SetId(this)
                     .SetUpdate(true);
             }
         }
@@ -171,11 +175,13 @@ public class DefenseQTEUI : UIPanel
         _resultLabel.transform.localScale = Vector3.one * 0.5f;
 
         _resultSequence = DOTween.Sequence()
+            .SetId(this)
             .SetUpdate(true)
             .Append(_resultLabel.DOFade(1f, 0.08f))
             .Join(_resultLabel.transform.DOScale(Vector3.one, 0.12f).SetEase(Ease.OutBack))
             .AppendCallback(() => _resultLabel.transform
                 .DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f)
+                .SetId(this)
                 .SetUpdate(true))
             .AppendInterval(0.35f)
             .Append(_resultLabel.DOFade(0f, 0.12f));
@@ -193,14 +199,26 @@ public class DefenseQTEUI : UIPanel
         }
     }
 
+    protected virtual void OnDisable()
+    {
+        ResetState();
+    }
+
+    protected virtual void OnDestroy()
+    {
+        ResetState();
+    }
+
     private void ResetState()
     {
-        _barTween?.Kill();
-        _resultSequence?.Kill();
+        DOTween.Kill(this, false);
+        _barTween = null;
+        _resultSequence = null;
+
         if (_resultLabel != null)
         {
-            _resultLabel.DOKill();
-            _resultLabel.transform.DOKill();
+            _resultLabel.DOKill(false);
+            _resultLabel.transform.DOKill(false);
             _resultLabel.text = "";
             _resultLabel.alpha = 0f;
         }

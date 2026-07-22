@@ -139,6 +139,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
 
+    public bool IsSeamlessBattleActive => !_isDedicatedBattleScene && (_isBattleActive || _isBattleEnding);
+
     public IBattleAimShooterModuleController AimShooterModuleController => _aimShooterModuleController;
 
     public int LiveContextPriority => 100;
@@ -896,6 +898,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         if (playerCtrl == null)
         {
             error = "PlayerController가 없습니다.";
+            return false;
+        }
+
+        if (!playerCtrl.TryGetComponent(out PlayerCharacter _))
+        {
+            error = "PlayerController에 PlayerCharacter가 없습니다.";
             return false;
         }
 
@@ -1860,52 +1868,149 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
         else
         {
-            // 오버월드 심리스 복귀 로직
-            RestoreSeamlessBattlePresentation();
-
-            PlayerController encounterPlayer = _activeEncounterPlayer;
-            if (encounterPlayer == null && _playerParty.Count > 0 && _playerParty[0] != null)
-                encounterPlayer = _playerParty[0].GetComponent<PlayerController>();
-
-            _activeEncounterSource?.OnEncounterResolved(isVictory, encounterPlayer);
-            _activeEncounterSource = null;
-            _activeEncounterPlayer = null;
-
-            foreach (var player in _playerParty)
-            {
-                var ctrl = player.GetComponent<PlayerController>();
-                if (ctrl != null) 
-                {
-                    ctrl.SetBattleMode(false); 
-                    var anim = player.GetComponent<Animator>();
-                    if (anim != null)
-                    {
-                        anim.Rebind();      // 모든 상태 강제 초기화
-                        anim.Update(0f);    // 즉시 반영
-                    }
-
-                }
-            }
-
-            foreach (var enemy in _enemies)
-            {
-                if (enemy != null) Destroy(enemy.gameObject);
-            }
-            _enemies.Clear();
-
-            for (int i = 0; i < _seamlessSpawnedPlayers.Count; i++)
-            {
-                if (_seamlessSpawnedPlayers[i] != null)
-                    Destroy(_seamlessSpawnedPlayers[i].gameObject);
-            }
-            _seamlessSpawnedPlayers.Clear();
-            
-            GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
-            GameStateManager.Instance?.ChangeState(GameState.Exploration);
-            _isBattleActive = false;
-            _isBattleEnding = false;
-            Debug.Log("[BattleManager] 심리스 전투 종료! 오버월드 Idle 복귀 완료.");
+            CompleteSeamlessBattleCleanup(isVictory, true);
         }
+    }
+
+    public bool AbortSeamlessBattle()
+    {
+        if (_isDedicatedBattleScene || (!_isBattleActive && !_isBattleEnding))
+            return false;
+
+        StopAllCoroutines();
+        CompleteSeamlessBattleCleanup(false, false);
+        return true;
+    }
+
+    private void CompleteSeamlessBattleCleanup(bool isVictory, bool notifyEncounterSource)
+    {
+        if (_isDedicatedBattleScene)
+            return;
+
+        ClearTurnQtePendingActionState();
+        PlayerController encounterPlayer = ResolveActiveEncounterPlayer();
+        RestoreSeamlessPlayers(encounterPlayer);
+        NotifyEncounterResolved(notifyEncounterSource, isVictory, encounterPlayer);
+        DestroySeamlessBattleActors();
+        RestoreSeamlessBattlePresentation();
+        ResetSeamlessBattleState();
+
+        GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
+        GameStateManager.Instance?.ChangeState(GameState.Exploration);
+        Debug.Log("[BattleManager] 심리스 전투 종료. 오버월드 상태를 복구했습니다.");
+    }
+
+    private PlayerController ResolveActiveEncounterPlayer()
+    {
+        if (_activeEncounterPlayer != null)
+            return _activeEncounterPlayer;
+        if (_playerParty.Count > 0 && _playerParty[0] != null)
+            return _playerParty[0].GetComponent<PlayerController>();
+        return null;
+    }
+
+    private void RestoreSeamlessPlayers(PlayerController encounterPlayer)
+    {
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player == null)
+                continue;
+
+            player.HideBattleSpeechImmediate();
+            player.transform.DOKill(false);
+            PlayerController controller = player.GetComponent<PlayerController>();
+            controller?.SetBattleMode(false);
+            Animator animator = player.GetComponent<Animator>();
+            if (animator != null)
+            {
+                animator.Rebind();
+                animator.Update(0f);
+            }
+        }
+
+        if (encounterPlayer != null)
+        {
+            encounterPlayer.transform.DOKill(false);
+            encounterPlayer.SetBattleMode(false);
+            encounterPlayer.LoadPositionFromGlobal();
+        }
+
+        Physics2D.SyncTransforms();
+    }
+
+    private void NotifyEncounterResolved(
+        bool shouldNotify,
+        bool isVictory,
+        PlayerController encounterPlayer)
+    {
+        IEncounterSource source = _activeEncounterSource;
+        _activeEncounterSource = null;
+        _activeEncounterPlayer = null;
+        if (!shouldNotify || source == null)
+            return;
+
+        try
+        {
+            source.OnEncounterResolved(isVictory, encounterPlayer);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"[BattleManager] 조우 종료 콜백에 실패했습니다: {exception.Message}", this);
+            Debug.LogException(exception, this);
+        }
+    }
+
+    private void DestroySeamlessBattleActors()
+    {
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            EnemyCharacter enemy = _enemies[i];
+            if (enemy == null)
+                continue;
+            enemy.HideBattleSpeechImmediate();
+            enemy.transform.DOKill(false);
+            Destroy(enemy.gameObject);
+        }
+        _enemies.Clear();
+
+        for (int i = 0; i < _seamlessSpawnedPlayers.Count; i++)
+        {
+            PlayerCharacter player = _seamlessSpawnedPlayers[i];
+            if (player == null)
+                continue;
+            player.transform.DOKill(false);
+            Destroy(player.gameObject);
+        }
+        _seamlessSpawnedPlayers.Clear();
+        _playerParty.Clear();
+    }
+
+    private void ResetSeamlessBattleState()
+    {
+        BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
+        _battleParticipantIdRegistry = null;
+        _battleScenarioRuntime = null;
+        _battleScenarioExecutionGate = null;
+        _battleGameModuleActionRunner = null;
+        _battleParticipantCommandRunner = null;
+        _battleCinematicRunner = null;
+        _battleTweenCinematicService = null;
+        _turnQteModuleController = null;
+        _aimShooterModuleController = null;
+        _scenarioDefeatPublished.Clear();
+        _turnQueue.Clear();
+        _reservedEnemyActionByActor.Clear();
+        _pendingBattleScenarioData = null;
+        _currentActorIndex = 0;
+        _battleTurnCounter = 0;
+        _isRunInProgress = false;
+        _isBattleActive = false;
+        _isBattleEnding = false;
+        _rewardCommitted = false;
+        _playerPreemptiveAttackAvailable = false;
+        _lastRewardResult = null;
+        CurrentState = BattleState.Init;
     }
 
     private void RestoreSeamlessBattlePresentation()
