@@ -25,11 +25,12 @@ public class PlayerController : MonoBehaviour
     [Header("Action Settings")]
     [SerializeField] private float _actionCooldown = 0.4f;
     [SerializeField] private float _attackRange = 1.5f;
+    [SerializeField, Min(0f)] private float _attackWidth = 1f;
     [SerializeField] private float _attackDelay = 0.25f;
     [SerializeField] private float _attackRecoverDelay = 0.35f;
     [SerializeField] private LayerMask _enemyLayerMask = ~0;
     [SerializeField] private string _attackTriggerName = "Attack";
-    private float _lastActionTime;
+    private float _lastActionTime = -999f;
 
     // ── VFX / DOTween 연출 설정 ───────────────────────────────
     [Header("VFX Settings")]
@@ -62,6 +63,8 @@ public class PlayerController : MonoBehaviour
     private const float DefenseInputBufferWindow = 1.25f;
     private bool _defenseInputWindowOpen;
     private bool _preemptiveAttackInProgress;
+    private bool _preemptiveAttackHitResolved;
+    private bool _preemptiveAttackStartedEncounter;
     private readonly Collider2D[] _preemptiveAttackHits = new Collider2D[12];
     private ContactFilter2D _preemptiveAttackContactFilter;
 
@@ -329,6 +332,19 @@ public class PlayerController : MonoBehaviour
         return GetFacingVector();
     }
 
+#if UNITY_EDITOR
+    private void OnDrawGizmosSelected()
+    {
+        PreemptiveAttackArea area = PreemptiveAttackGeometry.Create(
+            transform.position,
+            GetFacingVector2(),
+            _attackRange,
+            _attackWidth);
+        Gizmos.color = new Color(1f, 0.45f, 0.1f, 0.9f);
+        Gizmos.DrawWireCube(area.Center, area.Size);
+    }
+#endif
+
     public void NudgeFromEncounter(Vector2 direction, float distance)
     {
         if (direction.sqrMagnitude < 0.0001f || distance <= 0f) return;
@@ -378,19 +394,21 @@ public class PlayerController : MonoBehaviour
 
     public bool TryStartPreemptiveAttack()
     {
+        if (!isActiveAndEnabled) return false;
         if (_preemptiveAttackInProgress) return false;
-        if (!CanExecuteAction()) return false;
         if (State == PlayerState.InBattle) return false;
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) return false;
+        if (!CanExecuteAction()) return false;
 
-        IPreemptiveAttackTarget target = FindPreemptiveAttackTarget();
-        StartCoroutine(CoPreemptiveAttack(target));
+        StartCoroutine(CoPreemptiveAttack());
         return true;
     }
 
-    private IEnumerator CoPreemptiveAttack(IPreemptiveAttackTarget target)
+    private IEnumerator CoPreemptiveAttack()
     {
         _preemptiveAttackInProgress = true;
+        _preemptiveAttackHitResolved = false;
+        _preemptiveAttackStartedEncounter = false;
 
         GameState previousState = GameStateManager.Instance != null
             ? GameStateManager.Instance.CurrentState
@@ -398,28 +416,59 @@ public class PlayerController : MonoBehaviour
 
         GameStateManager.Instance?.ChangeState(GameState.Cutscene);
         StopOverworldMovement();
+        SyncOverworldAttackDirection();
         TryPlayAnimatorTrigger(_attackTriggerName);
 
-        if (_attackDelay > 0f)
-            yield return new WaitForSecondsRealtime(_attackDelay);
+        float fallbackDelay = Mathf.Max(0f, _attackDelay);
+        float fallbackAt = Time.unscaledTime + fallbackDelay;
+        while (!_preemptiveAttackHitResolved && Time.unscaledTime < fallbackAt)
+            yield return null;
 
-        bool started = IsPreemptiveAttackTargetAlive(target) && target.TryStartPreemptiveAttack(this);
+        ResolvePreemptiveAttackHit();
 
-        if (!started)
+        if (_preemptiveAttackStartedEncounter)
+            yield break;
+
+        if (_attackRecoverDelay > 0f)
+            yield return new WaitForSecondsRealtime(_attackRecoverDelay);
+
+        RestoreAfterFailedPreemptiveAttack(previousState);
+    }
+
+    public void ResolvePreemptiveAttackHit()
+    {
+        if (!_preemptiveAttackInProgress || _preemptiveAttackHitResolved) return;
+
+        _preemptiveAttackHitResolved = true;
+        IPreemptiveAttackTarget target = FindPreemptiveAttackTarget();
+        if (!IsPreemptiveAttackTargetAlive(target)) return;
+
+        try
         {
-            if (_attackRecoverDelay > 0f)
-                yield return new WaitForSecondsRealtime(_attackRecoverDelay);
-
-            GameStateManager.Instance?.ChangeState(previousState == GameState.Paused ? GameState.Exploration : previousState);
-            ResetOverworldAttackAnimation();
-            StopOverworldMovement();
-            _preemptiveAttackInProgress = false;
+            _preemptiveAttackStartedEncounter = target.TryStartPreemptiveAttack(this);
+        }
+        catch (System.Exception exception)
+        {
+            _preemptiveAttackStartedEncounter = false;
+            Debug.LogException(exception, this);
         }
     }
 
     private IPreemptiveAttackTarget FindPreemptiveAttackTarget()
     {
-        int hitCount = Physics2D.OverlapCircle(transform.position, Mathf.Max(0f, _attackRange), _preemptiveAttackContactFilter, _preemptiveAttackHits);
+        PreemptiveAttackArea area = PreemptiveAttackGeometry.Create(
+            transform.position,
+            GetFacingVector2(),
+            _attackRange,
+            _attackWidth);
+        if (area.Size.x <= 0f || area.Size.y <= 0f) return null;
+
+        int hitCount = Physics2D.OverlapBox(
+            area.Center,
+            area.Size,
+            0f,
+            _preemptiveAttackContactFilter,
+            _preemptiveAttackHits);
         IPreemptiveAttackTarget bestTarget = null;
         float bestDistanceSqr = float.MaxValue;
 
@@ -430,12 +479,16 @@ public class PlayerController : MonoBehaviour
             if (hit == null) continue;
 
             IPreemptiveAttackTarget candidate = ResolvePreemptiveAttackTarget(hit);
-            if (candidate == null || !candidate.CanStartPreemptiveAttack(this)) continue;
+            if (candidate == null) continue;
 
             Component component = candidate as Component;
             if (component == null) continue;
 
-            float distanceSqr = ((Vector2)component.transform.position - (Vector2)transform.position).sqrMagnitude;
+            Vector2 toTarget = (Vector2)component.transform.position - (Vector2)transform.position;
+            if (Vector2.Dot(toTarget, area.Facing) < 0f) continue;
+            if (!candidate.CanStartPreemptiveAttack(this)) continue;
+
+            float distanceSqr = toTarget.sqrMagnitude;
             if (distanceSqr >= bestDistanceSqr) continue;
 
             bestDistanceSqr = distanceSqr;
@@ -466,6 +519,29 @@ public class PlayerController : MonoBehaviour
         return true;
     }
 
+    private void SyncOverworldAttackDirection()
+    {
+        if (_anim == null) return;
+
+        Vector2 facing = GetFacingVector2();
+        _anim.SetFloat(HashMoveX, facing.x);
+        _anim.SetFloat(HashMoveY, facing.y);
+        _anim.SetBool(HashIsMoving, false);
+    }
+
+    private void RestoreAfterFailedPreemptiveAttack(GameState previousState)
+    {
+        GameState restoreState = previousState == GameState.Paused
+            ? GameState.Exploration
+            : previousState;
+        GameStateManager.Instance?.ChangeState(restoreState);
+        ResetOverworldAttackAnimation();
+        StopOverworldMovement();
+        _preemptiveAttackInProgress = false;
+        _preemptiveAttackHitResolved = false;
+        _preemptiveAttackStartedEncounter = false;
+    }
+
     private void ResetOverworldAttackAnimation()
     {
         if (_anim == null) return;
@@ -485,6 +561,8 @@ public class PlayerController : MonoBehaviour
         ResetOverworldAttackAnimation();
         StopOverworldMovement();
         _preemptiveAttackInProgress = false;
+        _preemptiveAttackHitResolved = false;
+        _preemptiveAttackStartedEncounter = false;
         if (State != PlayerState.InBattle)
             State = PlayerState.Idle;
         GameStateManager.Instance?.ChangeState(GameState.Exploration);
@@ -528,6 +606,8 @@ public class PlayerController : MonoBehaviour
         else
         {
             _preemptiveAttackInProgress = false;
+            _preemptiveAttackHitResolved = false;
+            _preemptiveAttackStartedEncounter = false;
             _lastDefenseAttemptTime = -999f;
             _moveInput = Vector2.zero;
             _prevLeft = _prevRight = _prevUp = _prevDown = false;
