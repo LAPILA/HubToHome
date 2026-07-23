@@ -64,6 +64,7 @@ Scene 안에 `RoomInstance`가 여러 개 있으면 각 Room을 별도 그룹으
 - `AreaMarkerBase.CollectValidationIssues` 결과를 구조화한다.
 - 로드된 Scene 범위에서는 `MapTransitionService`와 `RoomContainer` 존재를 검사하고, Room Prefab Stage에서는 이 Scene 구성 검사를 생략한다.
 - Room 안에서 `MarkerId.Trim()`과 `StringComparer.Ordinal` 기준으로 중복을 검사한다.
+- `SpawnPointId` 누락과 현재 편집 범위의 중복을 검사한다.
 - Marker가 가장 가까운 부모 `RoomInstance`의 Camera Bounds 밖에 있는지 검사한다.
 - `AreaConnectionMarker`와 `DoorTransition`의 `MapTransitionRequest`를 검사한다.
 - Room 전환은 대상 `RoomDefinition`과 대상 Room Prefab의 `SpawnPointId`를 확인한다.
@@ -99,6 +100,7 @@ Scanner는 Unity 검색과 순수 규칙 평가를 분리한다. 테스트는 �
 - 같은 Room 안의 Marker ID 중복
 - 필수 `Collider2D` 누락
 - 마커별 필수 데이터 누락
+- SpawnPoint ID 누락
 - 유효하지 않은 `MapTransitionRequest`
 - Room 전환 대상 `RoomDefinition` 또는 Room Prefab 누락
 - 대상 Room Prefab에 요청한 `SpawnPointId`가 없음
@@ -109,6 +111,8 @@ Scanner는 Unity 검색과 순수 규칙 평가를 분리한다. 테스트는 �
 - Room Camera Bounds가 없어서 이탈 검사를 수행할 수 없음
 - Marker 위치가 Room Camera Bounds 밖에 있음
 - 현재 열린 범위에서만 확인할 수 없는 Scene 전환 SpawnPoint
+- 현재 편집 범위의 SpawnPoint ID 중복
+- 현재 편집 범위에서 찾을 수 없는 이동 대상 SpawnPoint
 
 기존 `CollectValidationIssues`는 심각도 없는 필수 검증 계약이므로 결과를 Error로 유지한다. 새 Scanner가 추가하는 제작성 검사만 명시적으로 Warning을 사용한다.
 
