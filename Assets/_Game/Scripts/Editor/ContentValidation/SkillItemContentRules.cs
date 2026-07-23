@@ -16,36 +16,21 @@ internal static class SkillItemContentRules
         for (int skillIndex = 0; skillIndex < snapshot.Skills.Count; skillIndex++)
         {
             SkillData skill = snapshot.Skills[skillIndex];
-            if (skill == null || skill.ActionTimeline == null)
+            if (skill == null)
                 continue;
 
-            for (int blockIndex = 0; blockIndex < skill.ActionTimeline.Count; blockIndex++)
+            EnemyAttackAuthoringReport report = EnemyAttackAuthoringAnalyzer.Analyze(skill);
+            for (int issueIndex = 0; issueIndex < report.Issues.Count; issueIndex++)
             {
-                SkillActionBlock block = skill.ActionTimeline[blockIndex];
-                if (block == null)
-                {
-                    context.Add(
-                        skill,
-                        "skill.timeline.block.missing",
-                        "ActionTimeline[" + blockIndex + "] is missing.");
-                    continue;
-                }
-
-                if (block is Action_VFX vfx && vfx.VfxPrefab == null)
-                {
-                    context.Add(
-                        skill,
-                        "skill.timeline.vfx_prefab.missing",
-                        "ActionTimeline[" + blockIndex + "] VFX prefab is missing.");
-                }
-
-                if (block is Action_Projectile projectile && projectile.ProjectilePrefab == null)
-                {
-                    context.Add(
-                        skill,
-                        "skill.timeline.projectile_prefab.missing",
-                        "ActionTimeline[" + blockIndex + "] projectile prefab is missing.");
-                }
+                EnemyAttackAuthoringIssue issue = report.Issues[issueIndex];
+                string prefix = issue.BlockIndex >= 0
+                    ? "ActionTimeline[" + issue.BlockIndex + "] "
+                    : string.Empty;
+                ContentValidationSeverity severity =
+                    issue.Severity == EnemyAttackAuthoringSeverity.Error
+                        ? ContentValidationSeverity.Error
+                        : ContentValidationSeverity.Warning;
+                context.Add(skill, issue.Code, prefix + issue.Message, severity);
             }
         }
     }

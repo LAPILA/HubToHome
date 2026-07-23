@@ -198,6 +198,10 @@ _Avoid_: treating `aim_shooter` as a complete shooter implementation until its i
 A compatibility Action adapter that invokes an existing `SkillData.ActionTimeline` through a narrow runner seam. `BattleSkillTimelineRunner` is the current battle-side adapter: it resolves scenario `skill` / `actor` / `targets` IDs against the active `BattleManager`, builds a `SkillContext`, and executes existing `SkillActionBlock` entries. It allows current QTE/skill blocks to be called from an Action Sequence without making Skill Data the owner of whole-battle scenario flow.
 _Avoid_: rewriting or renaming existing `SkillActionBlock` classes just to connect them to Scenario Source.
 
+**Enemy Attack Authoring Report**:
+The editor-facing, read-only analysis of one `SkillData.ActionTimeline`, including cumulative block times, unsupported custom-block timing, missing references, defense-window ordering, and gameplay-camera safety. `EnemyAttackAuthoringAnalyzer` supplies the same report to the Odin Inspector and Project Content Validation.
+_Avoid_: creating a second enemy-attack executor, duplicating validation per editor surface, or storing absolute camera/world coordinates in the attack data.
+
 **Scenario Subject ID**:
 A stable authored ID used by Scenario Source and Battle Event Rules to refer to runtime subjects such as enemies, actors, modules, UI targets, and positions. Enemy rules should resolve against `EnemyData.EnemyId`, not display names.
 _Avoid_: using localized display names, Unity GUID/fileID values, or scene object names as the authored scenario identity.

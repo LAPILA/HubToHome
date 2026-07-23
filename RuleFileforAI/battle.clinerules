@@ -54,6 +54,10 @@
 - Concrete `IGameModuleRuntime` implementations receive `GameModuleRuntimeContext` in `Enter`, `Exit`, and `Start`. Use this context to read `BattleSession`, call `ParticipantCommands`, and write shared flags through `BattleFlags`; do not make each module manually reach into `BattleManager` for battle state, HP/MP mutation, or shared phase facts.
 - Concrete `IGameModuleRuntime` implementations should report module-local completion through `GameModuleRuntimeContext.ModuleEvents` / `IGameModuleEventSink.PublishGameModuleCompleted(...)`. Battle Scenario Data should own reactions to module completion and `OutcomeId` through `BattleEventType.GameModuleCompleted`; do not add shooter/boxing/QTE outcome branches directly to `BattleManager`.
 - Existing `SkillData.ActionTimeline` can be invoked from scenarios through `battle.skill.timeline`, `ISkillTimelineRunner`, and the concrete `BattleSkillTimelineRunner` injected by `BattleManager`. Treat this as a compatibility adapter; do not move whole-battle phase logic, post-skill cleanup, or module transition policy back into SkillData.
+- Enemy-only attack authoring stays on the existing `SkillData.ActionTimeline`. `EnemyAttackAuthoringAnalyzer` is the shared source for Odin timeline preview and Project Content Validation; do not duplicate timing validation in editor windows.
+- Custom `SkillActionBlock` types should override `GetAuthoringTiming()` so the authored timeline remains inspectable.
+- Use `Action_Move.AttackStaging` and `PositionManager` for attacker-to-target placement. Do not serialize battle-camera or world absolute coordinates into an attack block.
+- Defense-window camera feedback should default to `CameraShakeSafety.GameplaySafe`; actor-and-target auto framing belongs to `ICameraPresentationService`, not SkillData.
 
 ## Defense / QTE Intent
 
@@ -74,6 +78,8 @@
 - Do not match scenario rules directly against localized enemy display names inside `BattleManager`.
 - UI changes should go through `BattleUIController` or a future UI adapter rather than direct ad-hoc object search.
 - Movement should use `PositionManager` where battle positions are involved.
+- Before saving an enemy attack, resolve every Error in the SkillData Inspector; warnings document optional or readability-sensitive choices.
+- Preserve existing serialized enum numbers. Append new values unless an explicit asset migration is included.
 - Do not rename animation triggers without checking `PlayerCharacter`, `EnemyCharacter`, animators, and existing assets.
 - Document battle behavior changes in `AIAssets/YYYY-MM-DD-update.md`.
 

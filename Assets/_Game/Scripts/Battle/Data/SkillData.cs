@@ -19,9 +19,9 @@ public class SkillData : ScriptableObject
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(50)]
     public Sprite Icon;
-    
+
     [BoxGroup("Identity")] public string SkillName = "New Skill";
-    [BoxGroup("Identity")] public string SkillID   = "skill_000";
+    [BoxGroup("Identity")] public string SkillID = "skill_000";
     [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
 
     [BoxGroup("Identity"), LabelText("사용 범위")]
@@ -29,7 +29,7 @@ public class SkillData : ScriptableObject
 
     [BoxGroup("Player Runtime")]
     public int MPCost = 10;
-    
+
     [BoxGroup("Targeting")]
     public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
     [BoxGroup("Targeting")]
@@ -40,160 +40,85 @@ public class SkillData : ScriptableObject
     [LabelText("Combat Skill Blocks")]
     [SerializeReference, HideReferenceObjectPicker]
     [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, ShowIndexLabels = true, ListElementLabelName = "BlockHeader")]
+    [ValidateInput(nameof(HasValidActionTimeline), "적 공격 타임라인에 오류가 있습니다. 아래 검사 상태를 확인하세요.")]
     public List<SkillActionBlock> ActionTimeline = new List<SkillActionBlock>();
+
+    [BoxGroup("Enemy Attack Authoring")]
+    [ShowIf(nameof(IsEnemyAttackPattern))]
+    [ShowInInspector, ReadOnly, MultiLineProperty(12)]
+    [LabelText("실시간 시간축")]
+    [PropertyOrder(100)]
+    public string EnemyAttackTimelinePreview =>
+        EnemyAttackAuthoringAnalyzer.Analyze(this).BuildTimelinePreview();
+
+    [BoxGroup("Enemy Attack Authoring")]
+    [ShowIf(nameof(IsEnemyAttackPattern))]
+    [ShowInInspector, ReadOnly, MultiLineProperty(10)]
+    [LabelText("검사 상태")]
+    [PropertyOrder(101)]
+    public string EnemyAttackValidationPreview =>
+        EnemyAttackAuthoringAnalyzer.Analyze(this).BuildValidationSummary();
+
+    [BoxGroup("Enemy Attack Authoring")]
+    [ShowIf(nameof(CanApplyEnemyAttackTemplate))]
+    [Button("샘플 전조 공격 블록 구성", ButtonSizes.Medium)]
+    [PropertyOrder(102)]
+    public void ApplyEnemyAttackTemplate()
+    {
+        if (!CanApplyEnemyAttackTemplate())
+            return;
+
+#if UNITY_EDITOR
+        UnityEditor.Undo.RecordObject(this, "Apply Enemy Attack Template");
+#endif
+        ActionTimeline = EnemyAttackTemplateFactory.CreateTelegraphedStrike();
+        MPCost = 0;
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+#endif
+    }
 
     [Button("SkillData Validate")]
     public void ValidateSkillData()
     {
-        List<string> errors = new List<string>();
-        List<string> warnings = new List<string>();
+        EnemyAttackAuthoringReport report = EnemyAttackAuthoringAnalyzer.Analyze(this);
+        bool missingId = string.IsNullOrWhiteSpace(SkillID);
+        bool ambiguousTarget = TargetType == TargetAreaType.Both;
 
-        if (string.IsNullOrWhiteSpace(SkillID))
-        {
-            errors.Add("SkillID가 비어 있습니다.");
-        }
-
-        if (TargetType == TargetAreaType.Both)
-        {
-            warnings.Add("TargetType.Both는 현재 전투 스킬 타임라인에서 모호할 수 있습니다. AllyOnly / EnemyOnly / AoEAll 사용을 권장합니다.");
-        }
-
-        if (ActionTimeline == null || ActionTimeline.Count == 0)
-        {
-            warnings.Add("전투 스킬 블록이 비어 있습니다.");
-        }
-        else
-        {
-            for (int i = 0; i < ActionTimeline.Count; i++)
-            {
-                ValidateBlock(ActionTimeline[i], i, errors, warnings);
-            }
-        }
-
-        if (errors.Count == 0 && warnings.Count == 0)
+        if (!missingId && !ambiguousTarget && report.Issues.Count == 0)
         {
             Debug.Log("[SkillData] Validation passed: " + SafeId(SkillID), this);
             return;
         }
 
         string message = "[SkillData] Validation result for '" + SafeId(SkillID) + "'";
-        if (errors.Count > 0)
-        {
-            message += "\n오류:\n- " + string.Join("\n- ", errors.ToArray());
-        }
+        if (missingId)
+            message += "\n[오류] SkillID가 비어 있습니다.";
+        if (ambiguousTarget)
+            message += "\n[경고] TargetType.Both는 모호합니다. AllyOnly / EnemyOnly / AoEAll을 권장합니다.";
+        if (report.Issues.Count > 0)
+            message += "\n" + report.BuildValidationSummary();
 
-        if (warnings.Count > 0)
-        {
-            message += "\n경고:\n- " + string.Join("\n- ", warnings.ToArray());
-        }
-
-        if (errors.Count > 0)
-        {
+        if (missingId || report.HasErrors)
             Debug.LogError(message, this);
-        }
         else
-        {
             Debug.LogWarning(message, this);
-        }
     }
 
-    private void ValidateBlock(SkillActionBlock block, int index, List<string> errors, List<string> warnings)
+    private bool IsEnemyAttackPattern()
     {
-        if (block == null)
-        {
-            warnings.Add("Block[" + index + "]가 비어 있습니다.");
-            return;
-        }
+        return UsageProfile == SkillUsageProfile.EnemyOnly;
+    }
 
-        string label = string.IsNullOrWhiteSpace(block.DesignerLabel) ? block.BlockName : block.DesignerLabel.Trim();
-        string prefix = "Block[" + index + "] " + label + ": ";
+    private bool CanApplyEnemyAttackTemplate()
+    {
+        return IsEnemyAttackPattern()
+            && (ActionTimeline == null || ActionTimeline.Count == 0);
+    }
 
-        Action_PlayAnim playAnim = block as Action_PlayAnim;
-        if (playAnim != null && string.IsNullOrWhiteSpace(playAnim.AnimTriggerName))
-        {
-            errors.Add(prefix + "Animation Trigger가 비어 있습니다.");
-        }
-
-        Action_VFX vfx = block as Action_VFX;
-        if (vfx != null && vfx.VfxPrefab == null)
-        {
-            errors.Add(prefix + "VFX Prefab이 비어 있습니다.");
-        }
-
-        Action_QTE qte = block as Action_QTE;
-        if (qte != null)
-        {
-            if (qte.Nodes == null || qte.Nodes.Count == 0)
-            {
-                warnings.Add(prefix + "QTE 노드가 비어 있습니다.");
-            }
-
-            if (qte.TimeLimit <= 0f)
-            {
-                warnings.Add(prefix + "QTE 제한 시간이 0 이하입니다.");
-            }
-        }
-
-        Action_DefenseWindow defense = block as Action_DefenseWindow;
-        if (defense != null)
-        {
-            if (defense.TimeWindow <= 0f)
-            {
-                warnings.Add(prefix + "방어 판정 시간이 0 이하입니다.");
-            }
-
-            if (defense.UseTelegraph)
-            {
-                if (defense.TelegraphVisualMode == TelegraphVisualMode.PrefabVFX && defense.WarningVfxPrefab == null)
-                {
-                    warnings.Add(prefix + "전조 VFX 프리팹이 비어 있습니다.");
-                }
-
-                if (defense.TelegraphVisualMode == TelegraphVisualMode.Sprite && defense.WarningSprite == null)
-                {
-                    warnings.Add(prefix + "전조 Sprite가 비어 있습니다.");
-                }
-
-                if (defense.TelegraphVisualMode == TelegraphVisualMode.AnimatorTrigger
-                    && string.IsNullOrWhiteSpace(defense.TelegraphAnimatorTriggerName))
-                {
-                    warnings.Add(prefix + "전조 Animator Trigger가 비어 있습니다.");
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(defense.AttackAnimTriggerName))
-            {
-                warnings.Add(prefix + "패링/방어 블록의 공격 애니메이션 트리거가 비어 있습니다.");
-            }
-        }
-
-        Action_Projectile projectile = block as Action_Projectile;
-        if (projectile != null)
-        {
-            if (projectile.ProjectilePrefab == null)
-            {
-                errors.Add(prefix + "Projectile Prefab이 비어 있습니다.");
-            }
-
-            if (projectile.ImpactVFXPrefab == null)
-            {
-                warnings.Add(prefix + "Impact VFX Prefab이 비어 있습니다.");
-            }
-        }
-
-        Action_SequentialMelee sequentialMelee = block as Action_SequentialMelee;
-        if (sequentialMelee != null)
-        {
-            if (string.IsNullOrWhiteSpace(sequentialMelee.AttackAnimTrigger))
-            {
-                errors.Add(prefix + "연쇄 근접 공격의 Animation Trigger가 비어 있습니다.");
-            }
-
-            if (sequentialMelee.HitVfxPrefab == null)
-            {
-                warnings.Add(prefix + "연쇄 근접 공격의 Hit VFX Prefab이 비어 있습니다.");
-            }
-        }
+    private bool HasValidActionTimeline(List<SkillActionBlock> _)
+    {
+        return !EnemyAttackAuthoringAnalyzer.Analyze(this).HasErrors;
     }
 
     private static string SafeId(string value)

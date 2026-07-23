@@ -19,8 +19,25 @@ public enum DefenseRequirement
     [InspectorName("회피 또는 점프")]
     DodgeOrJump = 5
 }
-public enum TelegraphVisualMode { Sprite, AnimatorTrigger, PrefabVFX }
-public enum EnemyDefensePatternMode { ImmediateReaction, TelegraphThenWindow, TelegraphThenNextTurnWindow }
+public enum TelegraphVisualMode
+{
+    [InspectorName("Sprite")]
+    Sprite,
+    [InspectorName("Animator Trigger")]
+    AnimatorTrigger,
+    [InspectorName("Prefab VFX")]
+    PrefabVFX
+}
+
+public enum EnemyDefensePatternMode
+{
+    [InspectorName("즉시 판정 (기존 호환)")]
+    ImmediateReaction = 0,
+    [InspectorName("전조 후 판정")]
+    TelegraphThenWindow = 1,
+    [InspectorName("이번 턴 전조만")]
+    TelegraphThenNextTurnWindow = 2
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ── 1. 공통 컨텍스트 및 베이스 클래스 ──
@@ -78,6 +95,11 @@ public abstract class SkillActionBlock
     }
 
     public abstract IEnumerator Execute(SkillContext context);
+
+    public virtual SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Unsupported(GetBlockCategoryKo());
+    }
 
     private string GetReadableBlockName()
     {
@@ -156,6 +178,11 @@ public class Action_Wait : SkillActionBlock
 {
     [LabelText("대기 시간 (초)")] public float WaitTime = 0.5f;
 
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("흐름", WaitTime);
+    }
+
     public override IEnumerator Execute(SkillContext context)
     {
         yield return new WaitForSeconds(WaitTime);
@@ -166,11 +193,25 @@ public class Action_Wait : SkillActionBlock
 [TypeInfoBox("캐릭터를 특정 위치로 부드럽게 이동시킵니다.")]
 public class Action_Move : SkillActionBlock
 {
-    public enum MoveDest { TargetFront, TargetBack, TargetTop, Center, OriginalPos }
+    public enum MoveDest
+    {
+        TargetFront = 0,
+        TargetBack = 1,
+        TargetTop = 2,
+        Center = 3,
+        OriginalPos = 4,
+        [InspectorName("타겟 앞 자동 공격 위치")]
+        AttackStaging = 5
+    }
     
     [LabelText("목적지")] public MoveDest Destination;
     [LabelText("이동 시간")] public float Duration = 0.2f;
     [LabelText("이동 방식")] public Ease MoveEase = Ease.OutQuad;
+
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("이동", Duration);
+    }
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -178,7 +219,13 @@ public class Action_Move : SkillActionBlock
         Vector3 targetPos = context.Actor.transform.position; 
         var mainTarget = context.MainTarget;
 
-        if (mainTarget != null && (Destination == MoveDest.TargetFront || Destination == MoveDest.TargetBack || Destination == MoveDest.TargetTop))
+        if (mainTarget != null && Destination == MoveDest.AttackStaging)
+        {
+            targetPos = pm != null
+                ? pm.GetAttackStagingPos(context.Actor, mainTarget)
+                : mainTarget.GetPivot(CharacterPivotId.Front).position;
+        }
+        else if (mainTarget != null && (Destination == MoveDest.TargetFront || Destination == MoveDest.TargetBack || Destination == MoveDest.TargetTop))
         {
             switch (Destination)
             {
@@ -212,6 +259,11 @@ public class Action_PlayAnim : SkillActionBlock
     [InfoBox("애니메이션과 VFX를 같은 박자에 맞추고 싶으면 0으로 두고, 필요한 경우에만 Wait 블록 또는 DelayAfter를 사용하세요.")]
     public float DelayAfter = 0f;
 
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("애니메이션", DelayAfter);
+    }
+
     public override IEnumerator Execute(SkillContext context)
     {
         int hash = Animator.StringToHash(AnimTriggerName);
@@ -226,6 +278,11 @@ public class Action_Damage : SkillActionBlock
 {
     [LabelText("기본 스킬 배율")] public float SkillMultiplier = 1.0f;
     [LabelText("카메라 흔들림")] public bool ShakeCamera = true;
+
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("피해", 0f);
+    }
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -266,6 +323,11 @@ public class Action_ApplyStatus : SkillActionBlock
     [LabelText("부여할 상태이상 ID")] public string StatusID = "Sleep";
     [LabelText("지속 턴 수")] public int DurationTurns = 2;
 
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("상태이상", 0f);
+    }
+
     public override IEnumerator Execute(SkillContext context)
     {
         foreach (var target in context.Targets)
@@ -299,6 +361,11 @@ public class Action_QTE : SkillActionBlock
     [ListDrawerSettings(ShowIndexLabels = true)]
     [LabelText("QTE 노드")]
     public List<SkillQTENode> Nodes = new List<SkillQTENode>();
+
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("QTE", Mathf.Max(0f, TimeLimit) + 0.2f);
+    }
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -344,6 +411,11 @@ public class Action_VFX : SkillActionBlock
     [AssetsOnly, Required, LabelText("VFX 프리팹")] public GameObject VfxPrefab;
     [LabelText("소환 위치")] public VfxPivot Pivot;
     [LabelText("Actor 회전 사용")] public bool UseActorRotation = false;
+
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("VFX", 0f);
+    }
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -392,33 +464,119 @@ public class Action_DefenseWindow : SkillActionBlock
     [ShowIf(nameof(UseTelegraph))]
     public TelegraphVisualMode TelegraphVisualMode = TelegraphVisualMode.PrefabVFX;
     [AssetsOnly]
-    [ShowIf("UseTelegraph")]
+    [ShowIf(nameof(UseTelegraph))]
+    [ValidateInput(nameof(HasRequiredWarningVfx), "Prefab VFX 전조에는 VFX Prefab이 필요합니다.")]
     public GameObject WarningVfxPrefab;
-    [ShowIf("UseTelegraph")]
+    [ShowIf(nameof(UseTelegraph))]
+    [ValidateInput(nameof(HasRequiredWarningSprite), "Sprite 전조에는 Sprite가 필요합니다.")]
     public Sprite WarningSprite;
-    [ShowIf("UseTelegraph")]
+    [ShowIf(nameof(UseTelegraph))]
+    [ValidateInput(nameof(HasRequiredTelegraphTrigger), "Animator Trigger 전조에는 Trigger 이름이 필요합니다.")]
     public string TelegraphAnimatorTriggerName = "";
-    [ShowIf("UseTelegraph")]
+    [ShowIf(nameof(UseTelegraph))]
     public string TelegraphAttachPivotName = CharacterPivotId.Back;
     [LabelText("전조 지속 시간")]
-    [MinValue(0.05f)] public float TelegraphDuration = 0.8f;
+    [MinValue(0f)]
+    [ValidateInput(nameof(HasValidTelegraphDuration), "전조 후 판정 모드는 0보다 긴 전조 시간이 필요합니다.")]
+    public float TelegraphDuration = 0.8f;
     [LabelText("전조 후 준비 시간")]
     [MinValue(0f)] public float DefenseOpenDelay = 0f;
-    [LabelText("판정 시간")] public float TimeWindow = 0.8f;
+    [LabelText("판정 시간")]
+    [ValidateInput(nameof(HasValidTimeWindow), "방어 판정 시간은 0보다 커야 합니다.")]
+    public float TimeWindow = 0.8f;
     [LabelText("BAD 판정도 피해 방지")]
     public bool AllowNearSuccess = true;
     [LabelText("개별 판정 구간 사용")]
     public bool OverrideTimingProfile;
     [ShowIf(nameof(OverrideTimingProfile))]
     [LabelText("Perfect / Great / Good (초)")]
+    [ValidateInput(nameof(HasValidTimingProfile), "판정 구간은 0 이상, Perfect ≤ Great ≤ Good ≤ 판정 시간 순서여야 합니다.")]
     public DefenseTimingProfile TimingProfile = new DefenseTimingProfile(0.12f, 0.22f, 0.40f);
     [LabelText("실패 데미지 배율")] public float FailDamageMultiplier = 1f;
     [LabelText("실패 시 카메라 흔들기")] public bool ShakeOnFail = true;
-    [LabelText("성공 후 딜레이")] public float DelayAfter = 0.1f;
+    [ShowIf(nameof(ShakeOnFail)), LabelText("실패 흔들림 강도"), MinValue(0f)]
+    [ValidateInput(nameof(HasValidFailShakeIntensity), "실패 흔들림 강도는 0보다 커야 합니다.")]
+    public float FailShakeIntensity = 0.35f;
+    [ShowIf(nameof(ShakeOnFail)), LabelText("실패 흔들림 시간"), MinValue(0f)]
+    [ValidateInput(nameof(HasValidFailShakeDuration), "실패 흔들림 시간은 0보다 커야 합니다.")]
+    public float FailShakeDuration = 0.2f;
+    [ShowIf(nameof(ShakeOnFail)), LabelText("카메라 안전 등급")]
+    public CameraShakeSafety FailShakeSafety = CameraShakeSafety.GameplaySafe;
+    [LabelText("판정 후 딜레이")] public float DelayAfter = 0.1f;
     [LabelText("전조 후 공격 애니메이션 트리거")]
     public string AttackAnimTriggerName = "";
     [LabelText("공격 애니메이션 후 대기")]
     [MinValue(0f)] public float AttackAnimDelay = 0f;
+
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        float afterDelay = Mathf.Max(0f, DelayAfter);
+        if (PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow)
+        {
+            float telegraphOnly = UseTelegraph ? Mathf.Max(0f, TelegraphDuration) : 0f;
+            return SkillActionAuthoringTiming.Fixed("전조", telegraphOnly + afterDelay);
+        }
+
+        float telegraphLead = PatternMode == EnemyDefensePatternMode.TelegraphThenWindow && UseTelegraph
+            ? Mathf.Max(0f, TelegraphDuration)
+            : 0f;
+        float activeWindow = Mathf.Max(Mathf.Max(0f, TimeWindow), Mathf.Max(0f, AttackAnimDelay));
+        float duration = telegraphLead + Mathf.Max(0f, DefenseOpenDelay) + activeWindow + afterDelay;
+        return SkillActionAuthoringTiming.Variable("방어", duration);
+    }
+
+    private bool HasRequiredWarningVfx(GameObject value)
+    {
+        return !UseTelegraph
+            || TelegraphVisualMode != TelegraphVisualMode.PrefabVFX
+            || value != null;
+    }
+
+    private bool HasRequiredWarningSprite(Sprite value)
+    {
+        return !UseTelegraph
+            || TelegraphVisualMode != TelegraphVisualMode.Sprite
+            || value != null;
+    }
+
+    private bool HasRequiredTelegraphTrigger(string value)
+    {
+        return !UseTelegraph
+            || TelegraphVisualMode != TelegraphVisualMode.AnimatorTrigger
+            || !string.IsNullOrWhiteSpace(value);
+    }
+
+    private bool HasValidTelegraphDuration(float value)
+    {
+        return !UseTelegraph
+            || PatternMode == EnemyDefensePatternMode.ImmediateReaction
+            || value > 0f;
+    }
+
+    private bool HasValidTimeWindow(float value)
+    {
+        return PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow || value > 0f;
+    }
+
+    private bool HasValidTimingProfile(DefenseTimingProfile value)
+    {
+        return !OverrideTimingProfile
+            || PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow
+            || (value.PerfectWindow >= 0f
+                && value.PerfectWindow <= value.GreatWindow
+                && value.GreatWindow <= value.GoodWindow
+                && value.GoodWindow <= TimeWindow);
+    }
+
+    private bool HasValidFailShakeIntensity(float value)
+    {
+        return !ShakeOnFail || value > 0f;
+    }
+
+    private bool HasValidFailShakeDuration(float value)
+    {
+        return !ShakeOnFail || value > 0f;
+    }
 
     private GameObject SpawnTelegraph(CharacterBase actor)
     {
@@ -484,17 +642,27 @@ public class Action_DefenseWindow : SkillActionBlock
             if (PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow)
             {
                 telegraph = SpawnTelegraph(context.Actor);
-                if (TelegraphDuration > 0f)
+                if (UseTelegraph && TelegraphDuration > 0f)
                     yield return new WaitForSeconds(TelegraphDuration);
                 if (DelayAfter > 0f)
                     yield return new WaitForSeconds(DelayAfter);
                 yield break;
             }
 
-            if (DefenseOpenDelay > 0f)
-                yield return new WaitForSeconds(DefenseOpenDelay);
-
-            telegraph = SpawnTelegraph(context.Actor);
+            if (PatternMode == EnemyDefensePatternMode.TelegraphThenWindow)
+            {
+                telegraph = SpawnTelegraph(context.Actor);
+                if (UseTelegraph && TelegraphDuration > 0f)
+                    yield return new WaitForSeconds(TelegraphDuration);
+                if (DefenseOpenDelay > 0f)
+                    yield return new WaitForSeconds(DefenseOpenDelay);
+            }
+            else
+            {
+                if (DefenseOpenDelay > 0f)
+                    yield return new WaitForSeconds(DefenseOpenDelay);
+                telegraph = SpawnTelegraph(context.Actor);
+            }
             CharacterBase target = context.Targets[0];
             targetController = GetPlayerController(target);
             DefenseQteResult finalResult = default;
@@ -565,7 +733,7 @@ public class Action_DefenseWindow : SkillActionBlock
             {
                 context.CurrentDamageMultiplier *= FailDamageMultiplier;
                 if (ShakeOnFail)
-                    CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.35f, true);
+                    PlayFailCameraFeedback();
             }
 
             if (DelayAfter > 0f)
@@ -578,6 +746,23 @@ public class Action_DefenseWindow : SkillActionBlock
 
             DespawnTelegraph(telegraph);
             targetController?.ResetDefenseReactionLock();
+        }
+    }
+
+    private void PlayFailCameraFeedback()
+    {
+        CameraController cameraController = CameraController.Instance;
+        if (cameraController == null)
+            return;
+
+        if (!cameraController.TryImpulse(
+                Vector3.right,
+                Mathf.Max(0.001f, FailShakeIntensity),
+                Mathf.Max(0.01f, FailShakeDuration),
+                FailShakeSafety,
+                out string error))
+        {
+            Debug.LogWarning("[Action_DefenseWindow] Camera feedback skipped: " + error);
         }
     }
 
@@ -594,6 +779,11 @@ public class Action_Projectile : SkillActionBlock
     [AssetsOnly, LabelText("충돌 VFX 프리팹")] public GameObject ImpactVFXPrefab;
     [LabelText("비행 시간")] public float FlightDuration = 0.3f;
     [LabelText("데미지 배율")] public float DamageMultiplier = 1.0f;
+
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Fixed("투사체", FlightDuration);
+    }
 
     public override IEnumerator Execute(SkillContext context)
     {
@@ -645,6 +835,11 @@ public class Action_SequentialMelee : SkillActionBlock
     [LabelText("데미지 배율")] public float DamageMultiplier = 0.8f;
     [LabelText("대시 속도")] public float DashSpeed = 0.15f;
     [AssetsOnly, LabelText("히트 VFX 프리팹")] public GameObject HitVfxPrefab;
+
+    public override SkillActionAuthoringTiming GetAuthoringTiming()
+    {
+        return SkillActionAuthoringTiming.Variable("연쇄 피해", Mathf.Max(0f, DashSpeed) + 0.3f);
+    }
 
     public override IEnumerator Execute(SkillContext context)
     {
