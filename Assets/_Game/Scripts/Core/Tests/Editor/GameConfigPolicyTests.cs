@@ -58,4 +58,36 @@ public sealed class GameConfigPolicyTests
     {
         Assert.That(GameConfigPolicy.NormalizeTargetFps(input), Is.EqualTo(expected));
     }
+
+    [TestCase(0f, 0f)]
+    [TestCase(0.5f, 0.5f)]
+    [TestCase(1f, 1f)]
+    public void ScaleFlashColorBlendsFromSafeColorToAuthoredColor(float scale, float expected)
+    {
+        Color actual = VisualAccessibilityPolicy.ScaleFlashColor(
+            Color.black,
+            Color.white,
+            scale);
+
+        Assert.That(actual.r, Is.EqualTo(expected).Within(0.001f));
+        Assert.That(actual.g, Is.EqualTo(expected).Within(0.001f));
+        Assert.That(actual.b, Is.EqualTo(expected).Within(0.001f));
+        Assert.That(actual.a, Is.EqualTo(1f).Within(0.001f));
+    }
+
+    [Test]
+    public void ScaleFlashColorUsesFullAuthoredColorForInvalidScale()
+    {
+        Color authored = new Color(1f, 0.2f, 0.1f, 1f);
+
+        Color actual = VisualAccessibilityPolicy.ScaleFlashColor(
+            Color.white,
+            authored,
+            float.NaN);
+
+        Assert.That(actual.r, Is.EqualTo(authored.r).Within(0.001f));
+        Assert.That(actual.g, Is.EqualTo(authored.g).Within(0.001f));
+        Assert.That(actual.b, Is.EqualTo(authored.b).Within(0.001f));
+        Assert.That(actual.a, Is.EqualTo(authored.a).Within(0.001f));
+    }
 }

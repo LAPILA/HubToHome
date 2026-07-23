@@ -21,6 +21,10 @@ public class EnemyCharacter : CharacterBase
     private SpriteRenderer _spriteRenderer;
     private CharacterVFX _vfx; 
     private Tween _returnToIdleTween;
+    private IScreenFlashScaleProvider _screenFlashScaleProvider =
+        new GameConfigScreenFlashScaleProvider();
+    private IScreenShakeScaleProvider _screenShakeScaleProvider =
+        new GameConfigScreenShakeScaleProvider();
 
     public Sprite BattlePortrait => Data != null && Data.Portrait != null
         ? Data.Portrait
@@ -57,6 +61,34 @@ public class EnemyCharacter : CharacterBase
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _vfx = GetComponent<CharacterVFX>(); 
         if (_isBattleMode) PlayBattleAnim(HashBattleIdle);
+    }
+
+    public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
+    {
+        _screenFlashScaleProvider = provider ?? new GameConfigScreenFlashScaleProvider();
+    }
+
+    public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
+    {
+        _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
+    }
+
+    private Color ResolveFlashColor(Color authoredColor)
+    {
+        float scale = VisualAccessibilityPolicy.NormalizeScale(
+            _screenFlashScaleProvider?.Scale
+            ?? GameConfigManager.DefaultFlashIntensity);
+        return VisualAccessibilityPolicy.ScaleFlashColor(
+            Color.white,
+            authoredColor,
+            scale);
+    }
+
+    private float ResolveShakeScale()
+    {
+        return VisualAccessibilityPolicy.NormalizeScale(
+            _screenShakeScaleProvider?.Scale
+            ?? GameConfigManager.DefaultScreenShake);
     }
 
     public void SetBattleMode(bool active)
@@ -201,9 +233,14 @@ public class EnemyCharacter : CharacterBase
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
-            _spriteRenderer.DOColor(_hurtFlashColor, _flashDuration)
+            _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), _flashDuration)
                 .SetLoops(2, LoopType.Yoyo)
                 .OnComplete(() =>
+                {
+                    if (_spriteRenderer != null)
+                        _spriteRenderer.color = Color.white;
+                })
+                .OnKill(() =>
                 {
                     if (_spriteRenderer != null)
                         _spriteRenderer.color = Color.white;
@@ -211,7 +248,7 @@ public class EnemyCharacter : CharacterBase
         }
 
         transform.DOKill(false); 
-        transform.DOShakePosition(0.2f, _shakeStrength, 30, 90f);
+        transform.DOShakePosition(0.2f, _shakeStrength * ResolveShakeScale(), 30, 90f);
 
         _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 

@@ -74,6 +74,8 @@ public class SceneLoader : MonoBehaviour
     private bool _isLoading;
     private SceneLoadOperation _activeOperation;
     private Tween _fadeTween;
+    private IScreenFlashScaleProvider _screenFlashScaleProvider =
+        new GameConfigScreenFlashScaleProvider();
 
     protected virtual void Awake()
     {
@@ -93,9 +95,27 @@ public class SceneLoader : MonoBehaviour
         LoadSceneWithResult(sceneName, fadeDuration);
     }
 
+    public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
+    {
+        _screenFlashScaleProvider = provider ?? new GameConfigScreenFlashScaleProvider();
+    }
+
     public void LoadBattleScene(string sceneName)
     {
-        StartLoad(sceneName, 0.1f, Color.white, true, null);
+        StartLoad(sceneName, 0.1f, ResolveBattleTransitionColor(), true, null);
+    }
+
+    protected virtual Color ResolveBattleTransitionColor()
+    {
+        float scale = VisualAccessibilityPolicy.NormalizeScale(
+            _screenFlashScaleProvider?.Scale
+            ?? GameConfigManager.DefaultFlashIntensity);
+        Color color = VisualAccessibilityPolicy.ScaleFlashColor(
+            Color.black,
+            Color.white,
+            scale);
+        color.a = 1f;
+        return color;
     }
 
     public SceneLoadOperation LoadSceneWithResult(

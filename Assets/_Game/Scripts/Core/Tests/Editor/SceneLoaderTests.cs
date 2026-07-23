@@ -113,6 +113,25 @@ public class SceneLoaderTests
             "SceneLoader left its fade tween alive after destruction.");
     }
 
+    [Test]
+    public void BattleTransitionColorUsesFlashAccessibilityScaleAndRemainsOpaque()
+    {
+        _loader.SetScreenFlashScaleProvider(new FixedFlashScaleProvider(0f));
+
+        Color color = _loader.GetBattleTransitionColorForTest();
+
+        Assert.That(color.r, Is.Zero.Within(0.001f));
+        Assert.That(color.g, Is.Zero.Within(0.001f));
+        Assert.That(color.b, Is.Zero.Within(0.001f));
+        Assert.That(color.a, Is.EqualTo(1f).Within(0.001f));
+    }
+
+    private sealed class FixedFlashScaleProvider : IScreenFlashScaleProvider
+    {
+        public FixedFlashScaleProvider(float scale) { Scale = scale; }
+        public float Scale { get; }
+    }
+
     private static IEnumerator WaitForCompletion(SceneLoadOperation operation)
     {
         const int maxFrames = 20;
@@ -156,5 +175,10 @@ public sealed class SceneLoaderTestDouble : SceneLoader
     public void InvokeDestroyLifecycleForTest()
     {
         base.OnDestroy();
+    }
+
+    public Color GetBattleTransitionColorForTest()
+    {
+        return ResolveBattleTransitionColor();
     }
 }

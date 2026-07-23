@@ -67,6 +67,10 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
     private bool _preemptiveAttackStartedEncounter;
     private readonly Collider2D[] _preemptiveAttackHits = new Collider2D[12];
     private ContactFilter2D _preemptiveAttackContactFilter;
+    private IScreenFlashScaleProvider _screenFlashScaleProvider =
+        new GameConfigScreenFlashScaleProvider();
+    private IScreenShakeScaleProvider _screenShakeScaleProvider =
+        new GameConfigScreenShakeScaleProvider();
 
     private Animator Animator
     {
@@ -901,6 +905,35 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
         if (_spriteRenderer != null && State == PlayerState.InBattle)
             _spriteRenderer.sortingOrder = _baseSortingOrder + boost;
     }
+
+    public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
+    {
+        _screenFlashScaleProvider = provider ?? new GameConfigScreenFlashScaleProvider();
+    }
+
+    public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
+    {
+        _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
+    }
+
+    private Color ResolveFlashColor(Color authoredColor)
+    {
+        float scale = VisualAccessibilityPolicy.NormalizeScale(
+            _screenFlashScaleProvider?.Scale
+            ?? GameConfigManager.DefaultFlashIntensity);
+        return VisualAccessibilityPolicy.ScaleFlashColor(
+            Color.white,
+            authoredColor,
+            scale);
+    }
+
+    private float ResolveShakeScale()
+    {
+        return VisualAccessibilityPolicy.NormalizeScale(
+            _screenShakeScaleProvider?.Scale
+            ?? GameConfigManager.DefaultScreenShake);
+    }
+
     // ── DOTween 이펙트 ────────────────────────────────────────
     public void PlayParryEffect()
     {
@@ -911,7 +944,7 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
 
         _vfx?.Play(CharacterVFX.VFXAction.Parry_Success);
 
-        _spriteRenderer.DOColor(_parryFlashColor, _parryFlashDuration)
+        _spriteRenderer.DOColor(ResolveFlashColor(_parryFlashColor), _parryFlashDuration)
             .SetLoops(2, LoopType.Yoyo)
             .OnComplete(() => _spriteRenderer.color = Color.white)
             .OnKill(()    => _spriteRenderer.color = Color.white);
@@ -933,8 +966,15 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
         _spriteRenderer.DOKill();
         DOTween.Kill(transform);
 
-        _spriteRenderer.DOColor(_hurtFlashColor, _hurtFlashDuration).SetLoops(4, LoopType.Yoyo);
-        transform.DOShakePosition(_hurtShakeDuration, _hurtShakeStrength, 30, 90f);
+        _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), _hurtFlashDuration)
+            .SetLoops(4, LoopType.Yoyo)
+            .OnComplete(() => _spriteRenderer.color = Color.white)
+            .OnKill(() => _spriteRenderer.color = Color.white);
+        transform.DOShakePosition(
+            _hurtShakeDuration,
+            _hurtShakeStrength * ResolveShakeScale(),
+            30,
+            90f);
     }
 
     public void PlayDieEffect()
@@ -945,7 +985,9 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
         DOTween.Kill(transform);
 
         Sequence seq = DOTween.Sequence();
-        seq.Append(_spriteRenderer.DOColor(_dieFlashColor, _dieFlashDuration).SetLoops(6, LoopType.Yoyo));
+        seq.Append(
+            _spriteRenderer.DOColor(ResolveFlashColor(_dieFlashColor), _dieFlashDuration)
+                .SetLoops(6, LoopType.Yoyo));
         seq.Append(transform.DOMoveY(transform.position.y - 0.3f, 0.6f).SetEase(Ease.InQuad));
         seq.Join(_spriteRenderer.DOFade(0f, 0.6f).SetEase(Ease.InQuad));
     }
