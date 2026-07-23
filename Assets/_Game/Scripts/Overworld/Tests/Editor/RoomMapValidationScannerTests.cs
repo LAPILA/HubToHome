@@ -193,6 +193,24 @@ public sealed class RoomMapValidationScannerTests
             Is.False);
     }
 
+    [Test]
+    public void CaptureRoots_CollectsOnlyComponentsBelowProvidedRoots()
+    {
+        RoomInstance room = CreateRoom("room.capture");
+        SignMarker included = CreateMarker<SignMarker>(room.transform, "included");
+        SignMarker excluded = CreateMarker<SignMarker>(null, "excluded");
+
+        RoomMapValidationInput input = RoomMapValidationScopeCapture.CaptureRoots(
+            new[] { room.gameObject },
+            "Test Roots",
+            false);
+
+        Assert.That(input.Rooms, Does.Contain(room));
+        Assert.That(input.Markers, Does.Contain(included));
+        Assert.That(input.Markers.Contains(excluded), Is.False);
+        Assert.That(input.RequiresSceneInfrastructure, Is.False);
+    }
+
     private RoomInstance CreateRoom(string roomId)
     {
         GameObject root = CreateGameObject("Room_" + roomId);
