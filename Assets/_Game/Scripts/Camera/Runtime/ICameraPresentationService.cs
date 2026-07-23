@@ -48,7 +48,7 @@ public sealed class GameConfigScreenShakeScaleProvider : IScreenShakeScaleProvid
         get
         {
             float value = GameConfigManager.Instance != null ? GameConfigManager.Instance.ScreenShake : 1f;
-            return float.IsNaN(value) || float.IsInfinity(value) ? 1f : Mathf.Clamp01(value);
+            return GameConfigPolicy.NormalizeUnit(value, GameConfigManager.DefaultScreenShake);
         }
     }
 }

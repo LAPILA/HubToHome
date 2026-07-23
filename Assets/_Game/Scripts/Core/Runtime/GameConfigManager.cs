@@ -27,7 +27,9 @@ public class GameConfigManager : MonoBehaviour
     public const float BgmOutputCompensation = 0.2f;
     public const float DefaultTextSpeed = 1f;
     public const float DefaultScreenShake = 1f;
+    public const float DefaultFlashIntensity = 1f;
     public const int DefaultTargetFps = 60;
+    public const int DefaultWindowScale = GameConfigPolicy.MinWindowScale;
     public const LanguageType DefaultLanguage = LanguageType.KR;
 
     private const string MasterVolumeKey = "Config.MasterVolume";
@@ -39,10 +41,10 @@ public class GameConfigManager : MonoBehaviour
     private const string TextSpeedKey = "Config.TextSpeed";
     private const string AutoAdvanceKey = "Config.AutoAdvance";
     private const string ScreenShakeKey = "Config.ScreenShake";
+    private const string FlashIntensityKey = "Config.FlashIntensity";
     private const string VSyncKey = "Config.VSync";
     private const string TargetFpsKey = "Config.TargetFps";
-    private const int DefaultWindowWidth = 640;
-    private const int DefaultWindowHeight = 480;
+    private const string WindowScaleKey = "Config.WindowScale";
 
     public float MasterVolume { get; private set; } = DefaultVolume;
     public float BgmVolume { get; private set; } = DefaultVolume;
@@ -52,8 +54,11 @@ public class GameConfigManager : MonoBehaviour
     public float TextSpeed { get; private set; } = DefaultTextSpeed;
     public bool AutoAdvance { get; private set; } = false;
     public float ScreenShake { get; private set; } = DefaultScreenShake;
+    public float FlashIntensity { get; private set; } = DefaultFlashIntensity;
     public bool UseVSync { get; private set; } = false;
     public int TargetFps { get; private set; } = DefaultTargetFps;
+    public int WindowScale { get; private set; } = DefaultWindowScale;
+    public Vector2Int WindowSize => GameConfigPolicy.ResolveWindowSize(WindowScale);
 
     private void Awake()
     {
@@ -63,6 +68,12 @@ public class GameConfigManager : MonoBehaviour
 
         Load();
         ApplyAll();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     public static GameConfigManager EnsureInstance()
@@ -75,16 +86,27 @@ public class GameConfigManager : MonoBehaviour
 
     public void Load()
     {
-        MasterVolume = PlayerPrefs.GetFloat(MasterVolumeKey, DefaultVolume);
-        BgmVolume = PlayerPrefs.GetFloat(BgmVolumeKey, DefaultVolume);
-        SfxVolume = PlayerPrefs.GetFloat(SfxVolumeKey, DefaultVolume);
+        MasterVolume = GameConfigPolicy.NormalizeUnit(
+            PlayerPrefs.GetFloat(MasterVolumeKey, DefaultVolume), DefaultVolume);
+        BgmVolume = GameConfigPolicy.NormalizeUnit(
+            PlayerPrefs.GetFloat(BgmVolumeKey, DefaultVolume), DefaultVolume);
+        SfxVolume = GameConfigPolicy.NormalizeUnit(
+            PlayerPrefs.GetFloat(SfxVolumeKey, DefaultVolume), DefaultVolume);
         IsFullscreen = PlayerPrefs.GetInt(FullscreenKey, 0) == 1;
-        Language = (LanguageType)PlayerPrefs.GetInt(LanguageKey, (int)DefaultLanguage);
-        TextSpeed = PlayerPrefs.GetFloat(TextSpeedKey, DefaultTextSpeed);
+        Language = GameConfigPolicy.NormalizeLanguage(
+            PlayerPrefs.GetInt(LanguageKey, (int)DefaultLanguage), DefaultLanguage);
+        TextSpeed = GameConfigPolicy.NormalizeFinite(
+            PlayerPrefs.GetFloat(TextSpeedKey, DefaultTextSpeed), 0.5f, 2f, DefaultTextSpeed);
         AutoAdvance = PlayerPrefs.GetInt(AutoAdvanceKey, 0) == 1;
-        ScreenShake = PlayerPrefs.GetFloat(ScreenShakeKey, DefaultScreenShake);
+        ScreenShake = GameConfigPolicy.NormalizeUnit(
+            PlayerPrefs.GetFloat(ScreenShakeKey, DefaultScreenShake), DefaultScreenShake);
+        FlashIntensity = GameConfigPolicy.NormalizeUnit(
+            PlayerPrefs.GetFloat(FlashIntensityKey, DefaultFlashIntensity), DefaultFlashIntensity);
         UseVSync = PlayerPrefs.GetInt(VSyncKey, 0) == 1;
-        TargetFps = PlayerPrefs.GetInt(TargetFpsKey, DefaultTargetFps);
+        TargetFps = GameConfigPolicy.NormalizeTargetFps(
+            PlayerPrefs.GetInt(TargetFpsKey, DefaultTargetFps));
+        WindowScale = GameConfigPolicy.NormalizeWindowScale(
+            PlayerPrefs.GetInt(WindowScaleKey, DefaultWindowScale));
     }
 
     public void Save()
@@ -97,8 +119,10 @@ public class GameConfigManager : MonoBehaviour
         PlayerPrefs.SetFloat(TextSpeedKey, TextSpeed);
         PlayerPrefs.SetInt(AutoAdvanceKey, AutoAdvance ? 1 : 0);
         PlayerPrefs.SetFloat(ScreenShakeKey, ScreenShake);
+        PlayerPrefs.SetFloat(FlashIntensityKey, FlashIntensity);
         PlayerPrefs.SetInt(VSyncKey, UseVSync ? 1 : 0);
         PlayerPrefs.SetInt(TargetFpsKey, TargetFps);
+        PlayerPrefs.SetInt(WindowScaleKey, WindowScale);
         PlayerPrefs.Save();
     }
 
@@ -106,8 +130,7 @@ public class GameConfigManager : MonoBehaviour
     {
         ApplyAudio();
         ApplyDisplayMode();
-        QualitySettings.vSyncCount = UseVSync ? 1 : 0;
-        Application.targetFrameRate = UseVSync ? -1 : TargetFps;
+        ApplyFrameTiming();
         LocalizationManager.Instance?.ChangeLanguage(Language);
     }
 
@@ -116,16 +139,23 @@ public class GameConfigManager : MonoBehaviour
         if (IsFullscreen)
         {
             Resolution resolution = Screen.currentResolution;
-            int width = Mathf.Max(DefaultWindowWidth, resolution.width);
-            int height = Mathf.Max(DefaultWindowHeight, resolution.height);
+            int width = Mathf.Max(GameConfigPolicy.ReferenceWidth, resolution.width);
+            int height = Mathf.Max(GameConfigPolicy.ReferenceHeight, resolution.height);
             Screen.SetResolution(width, height, FullScreenMode.FullScreenWindow);
         }
         else
         {
-            Screen.SetResolution(DefaultWindowWidth, DefaultWindowHeight, FullScreenMode.Windowed);
+            Vector2Int size = WindowSize;
+            Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
         }
 
         DisplaySettingsChanged?.Invoke();
+    }
+
+    private void ApplyFrameTiming()
+    {
+        QualitySettings.vSyncCount = UseVSync ? 1 : 0;
+        Application.targetFrameRate = UseVSync ? -1 : TargetFps;
     }
 
     public void ApplyAudio()
@@ -135,44 +165,119 @@ public class GameConfigManager : MonoBehaviour
 
     public void SetMasterVolume(float value)
     {
-        MasterVolume = Mathf.Clamp01(value);
+        float normalized = GameConfigPolicy.NormalizeUnit(value, DefaultVolume);
+        if (Mathf.Approximately(MasterVolume, normalized)) return;
+
+        MasterVolume = normalized;
         AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
         Save();
     }
 
     public void SetBgmVolume(float value)
     {
-        BgmVolume = Mathf.Clamp01(value);
+        float normalized = GameConfigPolicy.NormalizeUnit(value, DefaultVolume);
+        if (Mathf.Approximately(BgmVolume, normalized)) return;
+
+        BgmVolume = normalized;
         AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
         Save();
     }
 
     public void SetSfxVolume(float value)
     {
-        SfxVolume = Mathf.Clamp01(value);
+        float normalized = GameConfigPolicy.NormalizeUnit(value, DefaultVolume);
+        if (Mathf.Approximately(SfxVolume, normalized)) return;
+
+        SfxVolume = normalized;
         AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
         Save();
     }
 
     public void SetFullscreen(bool value)
     {
+        if (IsFullscreen == value) return;
+
         IsFullscreen = value;
         ApplyDisplayMode();
         Save();
     }
 
-    public void SetLanguage(LanguageType language)
+    public void SetWindowScale(int value)
     {
-        Language = language;
-        LocalizationManager.Instance?.ChangeLanguage(language);
+        int normalized = GameConfigPolicy.NormalizeWindowScale(value);
+        if (WindowScale == normalized) return;
+
+        WindowScale = normalized;
+        if (!IsFullscreen)
+            ApplyDisplayMode();
         Save();
     }
 
-    public void SetTextSpeed(float value) { TextSpeed = Mathf.Clamp(value, 0.5f, 2f); Save(); }
-    public void SetAutoAdvance(bool value) { AutoAdvance = value; Save(); }
-    public void SetScreenShake(float value) { ScreenShake = Mathf.Clamp01(value); Save(); }
-    public void SetVSync(bool value) { UseVSync = value; ApplyAll(); Save(); }
-    public void SetTargetFps(int value) { TargetFps = Mathf.Clamp(value, 30, 240); ApplyAll(); Save(); }
+    public void SetLanguage(LanguageType language)
+    {
+        LanguageType normalized = GameConfigPolicy.NormalizeLanguage(
+            (int)language, DefaultLanguage);
+        if (Language == normalized) return;
+
+        Language = normalized;
+        LocalizationManager.Instance?.ChangeLanguage(normalized);
+        Save();
+    }
+
+    public void SetTextSpeed(float value)
+    {
+        float normalized = GameConfigPolicy.NormalizeFinite(
+            value, 0.5f, 2f, DefaultTextSpeed);
+        if (Mathf.Approximately(TextSpeed, normalized)) return;
+
+        TextSpeed = normalized;
+        Save();
+    }
+
+    public void SetAutoAdvance(bool value)
+    {
+        if (AutoAdvance == value) return;
+
+        AutoAdvance = value;
+        Save();
+    }
+
+    public void SetScreenShake(float value)
+    {
+        float normalized = GameConfigPolicy.NormalizeUnit(value, DefaultScreenShake);
+        if (Mathf.Approximately(ScreenShake, normalized)) return;
+
+        ScreenShake = normalized;
+        Save();
+    }
+
+    public void SetFlashIntensity(float value)
+    {
+        float normalized = GameConfigPolicy.NormalizeUnit(value, DefaultFlashIntensity);
+        if (Mathf.Approximately(FlashIntensity, normalized)) return;
+
+        FlashIntensity = normalized;
+        Save();
+    }
+
+    public void SetVSync(bool value)
+    {
+        if (UseVSync == value) return;
+
+        UseVSync = value;
+        ApplyFrameTiming();
+        Save();
+    }
+
+    public void SetTargetFps(int value)
+    {
+        int normalized = GameConfigPolicy.NormalizeTargetFps(value);
+        if (TargetFps == normalized) return;
+
+        TargetFps = normalized;
+        ApplyFrameTiming();
+        Save();
+    }
 
     public Key GetKey(ConfigurableAction action)
     {
@@ -208,8 +313,10 @@ public class GameConfigManager : MonoBehaviour
         TextSpeed = DefaultTextSpeed;
         AutoAdvance = false;
         ScreenShake = DefaultScreenShake;
+        FlashIntensity = DefaultFlashIntensity;
         UseVSync = false;
         TargetFps = DefaultTargetFps;
+        WindowScale = DefaultWindowScale;
 
         foreach (ConfigurableAction action in Enum.GetValues(typeof(ConfigurableAction)))
         {

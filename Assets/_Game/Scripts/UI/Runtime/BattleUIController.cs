@@ -57,6 +57,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private float _defaultPartyPanelY;
     private Image _scenarioFlashOverlay;
     private bool _hasWarnedMissingWorldCamera;
+    private IScreenShakeScaleProvider _screenShakeScaleProvider =
+        new GameConfigScreenShakeScaleProvider();
+    private IScreenFlashScaleProvider _screenFlashScaleProvider =
+        new GameConfigScreenFlashScaleProvider();
 
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
@@ -88,6 +92,16 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             foreach (var slot in _partySlots)
                 slot.Hide();
         }
+    }
+
+    public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
+    {
+        _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
+    }
+
+    public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
+    {
+        _screenFlashScaleProvider = provider ?? new GameConfigScreenFlashScaleProvider();
     }
 
     private void Start()
@@ -671,11 +685,14 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         startColor.a = 0f;
         overlay.color = startColor;
 
+        float flashScale = GameConfigPolicy.NormalizeUnit(
+            _screenFlashScaleProvider?.Scale ?? GameConfigManager.DefaultFlashIntensity,
+            GameConfigManager.DefaultFlashIntensity);
         float clampedDuration = Mathf.Max(0.01f, duration);
         Sequence sequence = DOTween.Sequence()
             .SetUpdate(true)
             .SetTarget(tweenTarget ?? overlay)
-            .Append(overlay.DOFade(Mathf.Clamp01(alpha), clampedDuration * 0.5f))
+            .Append(overlay.DOFade(Mathf.Clamp01(alpha) * flashScale, clampedDuration * 0.5f))
             .Append(overlay.DOFade(0f, clampedDuration * 0.5f))
             .OnKill(() =>
             {
@@ -706,10 +723,13 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             return null;
         }
 
+        float shakeScale = GameConfigPolicy.NormalizeUnit(
+            _screenShakeScaleProvider?.Scale ?? GameConfigManager.DefaultScreenShake,
+            GameConfigManager.DefaultScreenShake);
         shakeTarget.DOKill(false);
         return shakeTarget.DOShakeAnchorPos(
                 Mathf.Max(0.01f, duration),
-                strength,
+                strength * shakeScale,
                 Mathf.Max(1, vibrato),
                 Mathf.Clamp(randomness, 0f, 180f),
                 false,
