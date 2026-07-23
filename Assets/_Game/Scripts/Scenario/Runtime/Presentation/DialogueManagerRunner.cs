@@ -49,25 +49,15 @@ public sealed class DialogueManagerRunner : IDialogueRunner
             throw new InvalidOperationException("Dialogue runner is already busy.");
         }
 
-        DialogueData dialogue;
-        if (!_dialogues.TryGetValue(dialogueId, out dialogue) || dialogue == null)
+        string normalizedDialogueId = dialogueId?.Trim() ?? string.Empty;
+        if (!_dialogues.TryGetValue(normalizedDialogueId, out DialogueData dialogue)
+            || dialogue == null)
         {
             throw new InvalidOperationException("Dialogue id is not registered: " + dialogueId);
         }
 
-        if (dialogue.Nodes == null || dialogue.Nodes.Count == 0)
-        {
-            throw new InvalidOperationException("Dialogue has no nodes: " + dialogueId);
-        }
-
-        for (int i = 0; i < dialogue.Nodes.Count; i++)
-        {
-            if (dialogue.Nodes[i] == null)
-            {
-                throw new InvalidOperationException(
-                    "Dialogue contains null node at index " + i + ": " + dialogueId);
-            }
-        }
+        if (!DialoguePlaybackPolicy.TryValidate(dialogue, out string validationError))
+            throw new InvalidOperationException(validationError + " DialogueId=" + normalizedDialogueId);
 
         DialogueManager manager = ResolveManager();
         if (manager == null)
@@ -76,17 +66,22 @@ public sealed class DialogueManagerRunner : IDialogueRunner
         }
 
         _isBusy = true;
+        bool startAccepted = false;
         manager.StartDialogue(dialogue, () =>
         {
             _isBusy = false;
-            onComplete?.Invoke();
+            if (startAccepted)
+                onComplete?.Invoke();
         });
 
         if (!manager.IsPlaying)
         {
             _isBusy = false;
-            throw new InvalidOperationException("DialogueManager did not start dialogue: " + dialogueId);
+            throw new InvalidOperationException(
+                "DialogueManager did not start dialogue: " + normalizedDialogueId);
         }
+
+        startAccepted = true;
     }
 
     private DialogueManager ResolveManager()

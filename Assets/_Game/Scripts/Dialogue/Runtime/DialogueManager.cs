@@ -43,26 +43,20 @@ public class DialogueManager : MonoBehaviour
             return;
         }
 
-        if (data == null)
+        if (!DialoguePlaybackPolicy.TryValidate(data, out string validationError))
         {
-            LogDialogueConsole("StartDialogue rejected: data is null");
+            LogDialogueConsole(
+                $"StartDialogue rejected: {validationError} data={GetDialogueName(data)}");
             onComplete?.Invoke();
             return;
         }
 
-        if (data.Nodes == null || data.Nodes.Count == 0)
+        DialogueUI activeUI = data.Style == DialogueStyle.Cinematic
+            ? _cinematicPanel
+            : _overworldPanel;
+        if (activeUI == null)
         {
-            LogDialogueConsole($"StartDialogue rejected: no nodes data={GetDialogueName(data)}");
-            onComplete?.Invoke();
-            return;
-        }
-
-        for (int i = 0; i < data.Nodes.Count; i++)
-        {
-            if (data.Nodes[i] != null)
-                continue;
-
-            LogDialogueConsole($"StartDialogue rejected: null node data={GetDialogueName(data)} index={i}");
+            LogDialogueConsole($"StartDialogue failed: active UI missing data={GetDialogueName(data)} style={data.Style}");
             onComplete?.Invoke();
             return;
         }
@@ -73,14 +67,7 @@ public class DialogueManager : MonoBehaviour
         _onCompleteCallback = onComplete;
         _encounterContext = encounterContext;
 
-        _activeUI = (data.Style == DialogueStyle.Cinematic) ? _cinematicPanel : _overworldPanel;
-
-        if (_activeUI == null)
-        {
-            LogDialogueConsole($"StartDialogue failed: active UI missing data={GetDialogueName(data)} style={data.Style}");
-            _isPlaying = false;
-            return;
-        }
+        _activeUI = activeUI;
 
         LogDialogueConsole($"StartDialogue started data={GetDialogueName(data)} style={data.Style} nodes={data.Nodes.Count}");
 
@@ -162,6 +149,14 @@ public class DialogueManager : MonoBehaviour
 
         if (choice.NextDialogue != null)
         {
+            if (!DialoguePlaybackPolicy.TryValidate(choice.NextDialogue, out string validationError))
+            {
+                LogDialogueConsole(
+                    $"Choice next dialogue rejected: {validationError} data={GetDialogueName(choice.NextDialogue)}");
+                EndDialogue();
+                return;
+            }
+
             LogDialogueConsole($"Choice selected: next dialogue={GetDialogueName(choice.NextDialogue)} flag={choice.SetFlagOnSelect}");
             _currentDialogue = choice.NextDialogue;
             _currentNodeIndex = 0;
