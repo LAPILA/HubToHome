@@ -61,6 +61,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [SerializeField] private string _fallbackSceneName = "LobbyScene";
     [SerializeField] private float _postRunEnemyDisableDuration = 3f;
     [SerializeField] private float _postRunEnemyAlpha = 0.5f;
+    [Tooltip("심리스 전투 종료 후 이전 맵 BGM으로 돌아가는 페이드 시간")]
+    [SerializeField, Min(0f)] private float _seamlessBgmRestoreFadeDuration = 0.6f;
     
     [SerializeField] private GameObject _battleUICanvas;
     [SerializeField] private GameObject _enemyBasePrefab;
@@ -120,6 +122,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private bool _playerPreemptiveAttackAvailable;
     private BattleRewardResult _lastRewardResult;
     private CameraDefaultTargetSnapshot _seamlessCameraDefaultTarget;
+    private BgmPlaybackSnapshot _seamlessBgmSnapshot;
+    private bool _hasSeamlessBgmSnapshot;
     private IEncounterSource _activeEncounterSource;
     private PlayerController _activeEncounterPlayer;
     private bool _isReadyToReveal = true;
@@ -934,6 +938,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         if (!CanStartSeamlessBattle(encounterEnemies, playerCtrl, out error))
             return false;
 
+        CaptureSeamlessBgm();
         CameraController cameraController = CameraController.Instance;
         _seamlessCameraDefaultTarget = cameraController != null
             ? cameraController.CaptureDefaultTarget()
@@ -1872,11 +1877,43 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         NotifyEncounterResolved(notifyEncounterSource, isVictory, encounterPlayer);
         DestroySeamlessBattleActors();
         RestoreSeamlessBattlePresentation();
+        RestoreSeamlessBgm();
         ResetSeamlessBattleState();
 
         GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
         GameStateManager.Instance?.ChangeState(GameState.Exploration);
         Debug.Log("[BattleManager] 심리스 전투 종료. 오버월드 상태를 복구했습니다.");
+    }
+
+    private void CaptureSeamlessBgm()
+    {
+        AudioManager audioManager = AudioManager.Instance;
+        _hasSeamlessBgmSnapshot = audioManager != null;
+        _seamlessBgmSnapshot = _hasSeamlessBgmSnapshot
+            ? audioManager.CaptureBgmPlayback()
+            : BgmPlaybackSnapshot.Stopped;
+    }
+
+    private void RestoreSeamlessBgm()
+    {
+        if (!_hasSeamlessBgmSnapshot)
+            return;
+
+        BgmPlaybackSnapshot snapshot = _seamlessBgmSnapshot;
+        _hasSeamlessBgmSnapshot = false;
+        _seamlessBgmSnapshot = BgmPlaybackSnapshot.Stopped;
+        AudioManager audioManager = AudioManager.Instance;
+        if (audioManager == null)
+        {
+            Debug.LogWarning(
+                "[BattleManager] 심리스 전투 BGM을 복원할 AudioManager가 없습니다.",
+                this);
+            return;
+        }
+
+        audioManager.RestoreBgmPlayback(
+            snapshot,
+            _seamlessBgmRestoreFadeDuration);
     }
 
     private PlayerController ResolveActiveEncounterPlayer()
@@ -1989,6 +2026,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _rewardCommitted = false;
         _playerPreemptiveAttackAvailable = false;
         _lastRewardResult = null;
+        _hasSeamlessBgmSnapshot = false;
+        _seamlessBgmSnapshot = BgmPlaybackSnapshot.Stopped;
         CurrentState = BattleState.Init;
     }
 

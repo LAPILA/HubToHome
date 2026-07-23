@@ -225,15 +225,21 @@ public class TestMapEncounterPlayModeTests
         EnemyData enemy = AssetDatabase.LoadAssetAtPath<EnemyData>(SlimeDataPath);
         var sourceObject = new GameObject("Abort Encounter Source");
         TestMapEncounterSourceProbe source = sourceObject.AddComponent<TestMapEncounterSourceProbe>();
+        AudioManager audioManager = AudioManager.Instance;
+        AudioClip mapClip = AudioClip.Create("Test_Map_BGM", 44100, 1, 44100, false);
+        AudioClip battleClip = AudioClip.Create("Test_Battle_BGM", 44100, 1, 44100, false);
 
         Assert.That(host, Is.Not.Null);
         Assert.That(player, Is.Not.Null);
         Assert.That(enemy, Is.Not.Null);
+        Assert.That(audioManager, Is.Not.Null);
+        audioManager.PlayBGM(mapClip);
 
         Vector3 originalPosition = player.transform.position;
         bool started = BattleEncounterService.StartEncounter(
             player,
             new System.Collections.Generic.List<EnemyData> { enemy },
+            overrideBattleBgm: battleClip,
             useDedicatedBattleScene: false,
             encounterId: "test.seamless.abort",
             encounterSource: source);
@@ -243,6 +249,7 @@ public class TestMapEncounterPlayModeTests
             () => host.BattleUiRoot.activeSelf && host.BattleManager._enemies.Count > 0,
             12f,
             "Seamless battle did not create its runtime actors.");
+        Assert.That(audioManager.RequestedBgmClip, Is.SameAs(battleClip));
 
         BattleSpeechBubble speechBubble = player.GetComponentInChildren<BattleSpeechBubble>(true);
         Assert.That(speechBubble, Is.Not.Null);
@@ -268,6 +275,7 @@ public class TestMapEncounterPlayModeTests
             DG.Tweening.DOTween.TweensByTarget(speechCanvas, true),
             Is.Null.Or.Empty,
             "Speech bubble retained an active fade after abort.");
+        Assert.That(audioManager.RequestedBgmClip, Is.SameAs(mapClip));
         CanvasGroup[] canvasGroups = host.BattleUiRoot.GetComponentsInChildren<CanvasGroup>(true);
         for (int i = 0; i < canvasGroups.Length; i++)
         {
@@ -277,6 +285,10 @@ public class TestMapEncounterPlayModeTests
         }
         Assert.That(GlobalDataManager.Instance.CurrentEncounterEnemyId, Is.Null.Or.Empty);
 
+        Object.Destroy(mapClip);
+        Object.Destroy(battleClip);
+        Object.Destroy(sourceObject);
+        yield return null;
         yield return new ExitPlayMode();
     }
 
