@@ -42,10 +42,43 @@ public abstract class CharacterBase : MonoBehaviour
     private readonly Dictionary<string, Transform> _pivotCache =
         new Dictionary<string, Transform>(StringComparer.Ordinal);
 
+    private IScreenFlashScaleProvider _screenFlashScaleProvider =
+        new GameConfigScreenFlashScaleProvider();
+    private IScreenShakeScaleProvider _screenShakeScaleProvider =
+        new GameConfigScreenShakeScaleProvider();
+
     protected virtual void Awake()
     {
         CurrentHP = BaseMaxHP;
         CurrentMP = BaseMaxMP;
+    }
+
+    public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
+    {
+        _screenFlashScaleProvider = provider ?? new GameConfigScreenFlashScaleProvider();
+    }
+
+    public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
+    {
+        _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
+    }
+
+    protected Color ResolveFlashColor(Color authoredColor)
+    {
+        float scale = VisualAccessibilityPolicy.NormalizeScale(
+            _screenFlashScaleProvider?.Scale
+            ?? GameConfigManager.DefaultFlashIntensity);
+        return VisualAccessibilityPolicy.ScaleFlashColor(
+            Color.white,
+            authoredColor,
+            scale);
+    }
+
+    protected float ResolveShakeScale()
+    {
+        return VisualAccessibilityPolicy.NormalizeScale(
+            _screenShakeScaleProvider?.Scale
+            ?? GameConfigManager.DefaultScreenShake);
     }
 
     public void NotifyActionExecuted() => OnActionExecuted?.Invoke();

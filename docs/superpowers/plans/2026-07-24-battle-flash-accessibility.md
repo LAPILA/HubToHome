@@ -31,16 +31,22 @@
 - [x] `LoadBattleScene`이 접근성 처리된 불투명 색을 사용하도록 구현한다.
 - [x] SceneLoader 집중 테스트를 통과시킨다.
 
-### Task 3: 캐릭터 피격 연출
+### Task 3: 캐릭터 및 즉시 처치 연출
 
 **Files:**
+- Modify: `Assets/_Game/Scripts/Characters/Runtime/CharacterBase.cs`
+- Modify: `Assets/_Game/Scripts/Characters/Runtime/PlayerCharacter.cs`
 - Modify: `Assets/_Game/Scripts/Overworld/Runtime/PlayerController.cs`
 - Modify: `Assets/_Game/Scripts/Characters/Runtime/EnemyCharacter.cs`
+- Modify: `Assets/_Game/Scripts/Overworld/Runtime/OverworldEnemy.cs`
 - Create: `Assets/_Game/Scripts/Characters/Tests/Editor/CharacterVisualAccessibilityTests.cs`
+- Create: `Assets/_Game/Scripts/Overworld/Tests/Editor/OverworldEnemyVisualAccessibilityTests.cs`
 
 - [x] 플레이어·적이 주입된 점멸 배율을 사용하는 실패 테스트를 작성한다.
 - [x] 플레이어 패링·피격·사망색과 피격 흔들림에 배율을 적용한다.
+- [x] 실제 전투 아군과 적의 피격 연출 공급자를 `CharacterBase`에서 공통화한다.
 - [x] 적 피격색과 피격 흔들림에 배율을 적용한다.
+- [x] 즉시 처치 점멸이 원래 색을 안전색으로 사용하게 한다.
 - [x] Tween 종료·중단 시 SpriteRenderer 색을 정상화한다.
 - [x] 캐릭터 연출 집중 테스트를 통과시킨다.
 

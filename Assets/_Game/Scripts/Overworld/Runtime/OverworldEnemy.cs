@@ -93,6 +93,8 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
     private bool _waitForPlayerExitBeforeRearm;
     private PlayerController _pendingRearmPlayer;
     private bool _encounterInProgress;
+    private IScreenFlashScaleProvider _screenFlashScaleProvider =
+        new GameConfigScreenFlashScaleProvider();
 
     public string EnemyId => _enemyId;
     public bool DefeatsOnVictory => _victoryHandling == PersistentEnemyStateHandling.DefeatOnVictory;
@@ -106,6 +108,22 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         && Time.unscaledTime >= _localEncounterBlockedUntil
         && Time.unscaledTime >= s_globalEncounterLockUntil
         && !EncounterCollisionGuard.IsGloballyBlocked;
+
+    public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
+    {
+        _screenFlashScaleProvider = provider ?? new GameConfigScreenFlashScaleProvider();
+    }
+
+    private Color ResolveFlashColor(Color safeColor, Color authoredColor)
+    {
+        float scale = VisualAccessibilityPolicy.NormalizeScale(
+            _screenFlashScaleProvider?.Scale
+            ?? GameConfigManager.DefaultFlashIntensity);
+        return VisualAccessibilityPolicy.ScaleFlashColor(
+            safeColor,
+            authoredColor,
+            scale);
+    }
 
     private void Awake()
     {
@@ -299,11 +317,15 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         if (_spriteRenderer != null)
         {
             Color original = _spriteRenderer.color;
+            Color brightFlash = ResolveFlashColor(original, Color.white);
+            Color hitFlash = ResolveFlashColor(
+                original,
+                new Color(1f, 0.35f, 0.35f, original.a));
             for (int i = 0; i < 3; i++)
             {
-                _spriteRenderer.color = Color.white;
+                _spriteRenderer.color = brightFlash;
                 yield return new WaitForSecondsRealtime(0.06f);
-                _spriteRenderer.color = new Color(1f, 0.35f, 0.35f, original.a);
+                _spriteRenderer.color = hitFlash;
                 yield return new WaitForSecondsRealtime(0.06f);
             }
             _spriteRenderer.color = original;

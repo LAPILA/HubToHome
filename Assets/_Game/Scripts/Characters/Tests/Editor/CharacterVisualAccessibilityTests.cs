@@ -51,6 +51,29 @@ public sealed class CharacterVisualAccessibilityTests
     }
 
     [Test]
+    public void BattlePlayerHurtEffectHasNoFlashOrShakeWhenAccessibilityScalesAreZero()
+    {
+        GameObject playerObject = CreateObject(
+            "Accessible Battle Player",
+            typeof(SpriteRenderer),
+            typeof(PlayerCharacter));
+        PlayerCharacter player = playerObject.GetComponent<PlayerCharacter>();
+        SpriteRenderer renderer = playerObject.GetComponent<SpriteRenderer>();
+        InvokeAwake(player);
+        player.SetScreenFlashScaleProvider(new FixedFlashScaleProvider(0f));
+        player.SetScreenShakeScaleProvider(new FixedShakeScaleProvider(0f));
+        Vector3 origin = playerObject.transform.position;
+
+        int damage = player.TakePureDamage(1);
+        AdvanceTweens(renderer, 0.06f);
+        AdvanceTweens(playerObject.transform, 0.1f);
+
+        Assert.That(damage, Is.EqualTo(1));
+        AssertColor(renderer.color, Color.white);
+        Assert.That(playerObject.transform.position, Is.EqualTo(origin));
+    }
+
+    [Test]
     public void EnemyHurtEffectHasNoFlashOrShakeWhenAccessibilityScalesAreZero()
     {
         GameObject enemyObject = CreateObject(

@@ -21,10 +21,6 @@ public class EnemyCharacter : CharacterBase
     private SpriteRenderer _spriteRenderer;
     private CharacterVFX _vfx; 
     private Tween _returnToIdleTween;
-    private IScreenFlashScaleProvider _screenFlashScaleProvider =
-        new GameConfigScreenFlashScaleProvider();
-    private IScreenShakeScaleProvider _screenShakeScaleProvider =
-        new GameConfigScreenShakeScaleProvider();
 
     public Sprite BattlePortrait => Data != null && Data.Portrait != null
         ? Data.Portrait
@@ -61,34 +57,6 @@ public class EnemyCharacter : CharacterBase
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _vfx = GetComponent<CharacterVFX>(); 
         if (_isBattleMode) PlayBattleAnim(HashBattleIdle);
-    }
-
-    public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
-    {
-        _screenFlashScaleProvider = provider ?? new GameConfigScreenFlashScaleProvider();
-    }
-
-    public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
-    {
-        _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
-    }
-
-    private Color ResolveFlashColor(Color authoredColor)
-    {
-        float scale = VisualAccessibilityPolicy.NormalizeScale(
-            _screenFlashScaleProvider?.Scale
-            ?? GameConfigManager.DefaultFlashIntensity);
-        return VisualAccessibilityPolicy.ScaleFlashColor(
-            Color.white,
-            authoredColor,
-            scale);
-    }
-
-    private float ResolveShakeScale()
-    {
-        return VisualAccessibilityPolicy.NormalizeScale(
-            _screenShakeScaleProvider?.Scale
-            ?? GameConfigManager.DefaultScreenShake);
     }
 
     public void SetBattleMode(bool active)

@@ -232,9 +232,18 @@ public class PlayerCharacter : CharacterBase
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
-            _spriteRenderer.DOColor(Color.red, 0.1f)
+            _spriteRenderer.DOColor(ResolveFlashColor(Color.red), 0.1f)
                 .SetLoops(2, LoopType.Yoyo)
-                .OnComplete(() => _spriteRenderer.color = Color.white);
+                .OnComplete(() =>
+                {
+                    if (_spriteRenderer != null)
+                        _spriteRenderer.color = Color.white;
+                })
+                .OnKill(() =>
+                {
+                    if (_spriteRenderer != null)
+                        _spriteRenderer.color = Color.white;
+                });
         }
 
         _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
@@ -243,7 +252,7 @@ public class PlayerCharacter : CharacterBase
         {
             PlayBattleAnim(HashHurt);
             transform.DOKill(false);
-            transform.DOShakePosition(0.2f, 0.15f, 30, 90f); 
+            transform.DOShakePosition(0.2f, 0.15f * ResolveShakeScale(), 30, 90f);
         }
     }
 
