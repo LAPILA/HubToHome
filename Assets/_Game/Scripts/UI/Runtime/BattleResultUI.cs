@@ -16,6 +16,7 @@ public sealed class BattleResultUI : MonoBehaviour
     [SerializeField] private TMP_Text _levelText;
     [SerializeField] private float _fadeDuration = 0.18f;
     [SerializeField] private float _holdDuration = 1.25f;
+    private Tween _fadeTween;
 
     public static BattleResultUI Ensure(Transform parent)
     {
@@ -87,22 +88,69 @@ public sealed class BattleResultUI : MonoBehaviour
     public IEnumerator Show(BattleRewardResult result, bool instantVictory = false)
     {
         if (result == null) yield break;
+
         gameObject.SetActive(true);
-        transform.SetAsLastSibling();
+        try
+        {
+            transform.SetAsLastSibling();
 
-        _title.text = instantVictory ? "INSTANT VICTORY" : "VICTORY";
-        _rewardText.text = BuildRewardText(result);
-        _levelText.text = BuildLevelText(result);
+            _title.text = instantVictory ? "INSTANT VICTORY" : "VICTORY";
+            _rewardText.text = BuildRewardText(result);
+            _levelText.text = BuildLevelText(result);
 
-        _canvasGroup.DOKill();
-        _canvasGroup.alpha = 0f;
-        _canvasGroup.interactable = false;
-        _canvasGroup.blocksRaycasts = true;
-        yield return _canvasGroup.DOFade(1f, _fadeDuration).SetUpdate(true).WaitForCompletion();
-        yield return new WaitForSecondsRealtime(_holdDuration);
-        yield return _canvasGroup.DOFade(0f, _fadeDuration).SetUpdate(true).WaitForCompletion();
-        _canvasGroup.blocksRaycasts = false;
-        gameObject.SetActive(false);
+            ResetPresentation(false);
+            _canvasGroup.blocksRaycasts = true;
+
+            _fadeTween = _canvasGroup
+                .DOFade(1f, _fadeDuration)
+                .SetUpdate(true);
+            yield return _fadeTween.WaitForCompletion();
+            _fadeTween = null;
+
+            yield return new WaitForSecondsRealtime(_holdDuration);
+
+            _fadeTween = _canvasGroup
+                .DOFade(0f, _fadeDuration)
+                .SetUpdate(true);
+            yield return _fadeTween.WaitForCompletion();
+            _fadeTween = null;
+        }
+        finally
+        {
+            ResetPresentation(true);
+        }
+    }
+
+    private void OnDisable()
+    {
+        ResetPresentation(false);
+    }
+
+    private void OnDestroy()
+    {
+        ResetPresentation(false);
+        if (_globalInstance == this)
+            _globalInstance = null;
+    }
+
+    private void ResetPresentation(bool deactivate)
+    {
+        if (_fadeTween != null)
+        {
+            _fadeTween.Kill(false);
+            _fadeTween = null;
+        }
+
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.DOKill(false);
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.interactable = false;
+            _canvasGroup.blocksRaycasts = false;
+        }
+
+        if (deactivate && gameObject.activeSelf)
+            gameObject.SetActive(false);
     }
 
     private static TMP_Text CreateText(
