@@ -45,6 +45,9 @@ public class ConfigPanelUI : UIPanel
     private readonly Dictionary<TextMeshProUGUI, float> _baseFontSize = new Dictionary<TextMeshProUGUI, float>();
     private RectTransform _runtimeAutoContent;
     private Coroutine _textPreviewRoutine;
+    private bool _ownsModalState;
+    private float _timeScaleBeforeOpen = 1f;
+    private GameState _stateBeforeOpen = GameState.Exploration;
 
     private GameConfigManager Config { get { return GameConfigManager.EnsureInstance(); } }
 
@@ -56,11 +59,8 @@ public class ConfigPanelUI : UIPanel
 
     public override void Show()
     {
+        AcquireModalState();
         base.Show();
-        GameInput.SetConfigModalActive(true);
-        Time.timeScale = 0f;
-        GameStateManager.Instance?.ChangeState(GameState.Paused);
-
         _focus = Focus.Category;
         _selectedCategory = Category.Audio;
         _rowIndex = 0;
@@ -76,24 +76,62 @@ public class ConfigPanelUI : UIPanel
         KillAllTweens();
         ClearRows();
         base.Hide();
-        GameInput.SetConfigModalActive(false);
-        Time.timeScale = 1f;
-        if (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused)
-            GameStateManager.Instance.ChangeState(GameState.Exploration);
+        ReleaseModalState();
     }
 
-    private void OnDisable()
-    {
-        KillAllTweens();
-        OnDisableLanguageHook();
-        GameInput.SetConfigModalActive(false);
-    }
-
-    private void OnDestroy()
+    public override void HideImmediate()
     {
         KillAllTweens();
         ClearRows();
+        ReleaseModalState();
+        base.HideImmediate();
+    }
+
+    protected override void OnDisable()
+    {
+        KillAllTweens();
+        OnDisableLanguageHook();
+        ReleaseModalState();
+        base.OnDisable();
+    }
+
+    protected override void OnDestroy()
+    {
+        KillAllTweens();
+        ClearRows();
+        ReleaseModalState();
+        base.OnDestroy();
+    }
+
+    private void AcquireModalState()
+    {
+        if (!_ownsModalState)
+        {
+            _timeScaleBeforeOpen = Time.timeScale;
+            GameStateManager stateManager = GameStateManager.Instance;
+            if (stateManager != null)
+                _stateBeforeOpen = stateManager.CurrentState;
+            _ownsModalState = true;
+        }
+
+        GameInput.SetConfigModalActive(true);
+        Time.timeScale = 0f;
+        GameStateManager.Instance?.ChangeState(GameState.Paused);
+    }
+
+    private void ReleaseModalState()
+    {
         GameInput.SetConfigModalActive(false);
+
+        if (!_ownsModalState)
+            return;
+
+        _ownsModalState = false;
+        Time.timeScale = _timeScaleBeforeOpen;
+
+        GameStateManager stateManager = GameStateManager.Instance;
+        if (stateManager != null && stateManager.CurrentState == GameState.Paused)
+            stateManager.ChangeState(_stateBeforeOpen);
     }
 
     private void OnEnable()

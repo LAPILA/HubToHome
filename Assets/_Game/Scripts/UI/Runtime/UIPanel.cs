@@ -1,5 +1,6 @@
 using UnityEngine;
 using DG.Tweening;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// 모든 UI 패널의 베이스 클래스.
@@ -13,6 +14,7 @@ public class UIPanel : MonoBehaviour
     [SerializeField] protected float _hideDuration = 0.15f;
     [SerializeField] protected Ease  _showEase     = Ease.OutQuad;
     [SerializeField] protected Ease  _hideEase     = Ease.InQuad;
+    [SerializeField] private GameObject _defaultSelection;
 
     protected CanvasGroup _canvasGroup;
     private Tweener _currentTween;
@@ -26,12 +28,22 @@ public class UIPanel : MonoBehaviour
         gameObject.SetActive(false);
     }
 
+    protected virtual void OnDisable()
+    {
+        KillCurrentTween();
+    }
+
+    protected virtual void OnDestroy()
+    {
+        KillCurrentTween();
+    }
+
     // ── 표시 ──────────────────────────────────────────────────
     public virtual void Show()
     {
         if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
         
-        _currentTween?.Kill(); // 🚨 핵심: 기존에 진행 중이던 트윈을 죽여서 꼬임 방지
+        KillCurrentTween();
         
         gameObject.SetActive(true);
         _canvasGroup.interactable = true;
@@ -40,13 +52,17 @@ public class UIPanel : MonoBehaviour
         _currentTween = _canvasGroup.DOFade(1f, _showDuration)
             .SetEase(_showEase)
             .SetUpdate(true) // 타임스케일이 0일 때도 UI 애니메이션은 작동하도록 보장
-            .OnComplete(OnShowComplete);
+            .OnComplete(() =>
+            {
+                _currentTween = null;
+                OnShowComplete();
+            });
     }
 
     // ── 숨김 ──────────────────────────────────────────────────
     public virtual void Hide()
     {
-        _currentTween?.Kill();
+        KillCurrentTween();
         _canvasGroup.interactable   = false;
         _canvasGroup.blocksRaycasts = false;
         
@@ -55,6 +71,7 @@ public class UIPanel : MonoBehaviour
             .SetUpdate(true)
             .OnComplete(() =>
             {
+                _currentTween = null;
                 gameObject.SetActive(false);
                 OnHideComplete();
             });
@@ -66,9 +83,9 @@ public class UIPanel : MonoBehaviour
     }
 
     // ── 즉시 표시/숨김 ────────────────────────────────────────
-    public void HideImmediate()
+    public virtual void HideImmediate()
     {
-        _currentTween?.Kill();
+        KillCurrentTween();
         if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
 
         _canvasGroup.alpha = 0f;
@@ -77,9 +94,9 @@ public class UIPanel : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    public void ShowImmediate()
+    public virtual void ShowImmediate()
     {
-        _currentTween?.Kill();
+        KillCurrentTween();
         if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
 
         gameObject.SetActive(true);
@@ -88,8 +105,29 @@ public class UIPanel : MonoBehaviour
         _canvasGroup.blocksRaycasts = true;
     }
 
+    public virtual void FocusDefaultSelection()
+    {
+        if (_defaultSelection == null
+            || !_defaultSelection.activeInHierarchy
+            || EventSystem.current == null)
+            return;
+
+        EventSystem.current.SetSelectedGameObject(_defaultSelection);
+    }
+
     protected virtual void OnShowComplete() { }
     protected virtual void OnHideComplete() { }
 
     public bool IsVisible => gameObject.activeSelf && _canvasGroup.alpha > 0f;
+
+    private void KillCurrentTween()
+    {
+        if (_currentTween == null)
+            return;
+
+        _currentTween.Kill(false);
+        if (_canvasGroup != null)
+            _canvasGroup.DOKill(false);
+        _currentTween = null;
+    }
 }

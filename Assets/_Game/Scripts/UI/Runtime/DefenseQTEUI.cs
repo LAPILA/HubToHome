@@ -199,13 +199,15 @@ public class DefenseQTEUI : UIPanel
         }
     }
 
-    protected virtual void OnDisable()
+    protected override void OnDisable()
     {
+        base.OnDisable();
         ResetState();
     }
 
-    protected virtual void OnDestroy()
+    protected override void OnDestroy()
     {
+        base.OnDestroy();
         ResetState();
     }
 

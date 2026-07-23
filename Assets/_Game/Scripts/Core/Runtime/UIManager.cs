@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
@@ -11,12 +12,27 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    // ── 패널 스택 및 저장소 ──────────────────────────────────
-    private readonly Stack<UIPanel> _panelStack = new Stack<UIPanel>();
-    
-    // 식별자(String)로 패널을 관리하여 씬이 바뀌어도 유연하게 대응
-    private readonly Dictionary<string, UIPanel> _registeredPanels = new Dictionary<string, UIPanel>();
+    private readonly Stack<PanelStackEntry> _panelStack =
+        new Stack<PanelStackEntry>();
+    private readonly Dictionary<string, UIPanel> _registeredPanels =
+        new Dictionary<string, UIPanel>(System.StringComparer.Ordinal);
     private readonly HashSet<UIPanel> _pixelPerfectSafeAreaPanels = new HashSet<UIPanel>();
+    private readonly List<PanelStackEntry> _stackBuffer =
+        new List<PanelStackEntry>();
+    private readonly List<string> _stalePanelIds = new List<string>();
+    private readonly List<UIPanel> _staleSafeAreaPanels = new List<UIPanel>();
+
+    private struct PanelStackEntry
+    {
+        public UIPanel Panel;
+        public GameObject PreviousSelection;
+
+        public PanelStackEntry(UIPanel panel, GameObject previousSelection)
+        {
+            Panel = panel;
+            PreviousSelection = previousSelection;
+        }
+    }
 
     [Header("Global Panels (씬 무관하게 항상 존재하는 UI)")]
     [SerializeField] private UIPanel _pausePanel;
@@ -32,6 +48,7 @@ public class UIManager : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        SceneManager.sceneUnloaded += HandleSceneUnloaded;
 
         // 글로벌 패널 기본 등록
         if (_pausePanel != null) RegisterPanel(UIPanelId.Pause, _pausePanel);
@@ -40,21 +57,22 @@ public class UIManager : MonoBehaviour
             RegisterPanel(UIPanelId.Overworld, _overworldPanel, _fitOverworldPanelToPixelPerfectSafeArea);
     }
 
-    private void Update()
+    private void OnDestroy()
     {
-        // 최상단 패널 자동 닫기 (ESC 또는 X키)
-        if (IsAnyPanelOpen)
-        {
-            if (GameInput.UICancelPressed)
-            {
-                UIPanel topPanel = _panelStack.Peek();
-                if (topPanel == null || !topPanel.TryHandleCancelInput())
-                    CloseTopPanel();
-            }
-        }
+        SceneManager.sceneUnloaded -= HandleSceneUnloaded;
+        if (Instance == this)
+            Instance = null;
     }
 
-    // ── 패널 등록 (씬 전용 UI들이 Start에서 호출) ──────────────
+    private void Update()
+    {
+        UIPanel topPanel = TopPanel;
+        if (topPanel != null
+            && GameInput.UICancelPressed
+            && !topPanel.TryHandleCancelInput())
+            CloseTopPanel();
+    }
+
     public void RegisterPanel(string panelID, UIPanel panel)
     {
         RegisterPanel(panelID, panel, false);
@@ -62,10 +80,23 @@ public class UIManager : MonoBehaviour
 
     public void RegisterPanel(string panelID, UIPanel panel, bool fitToPixelPerfectSafeArea)
     {
-        if (!_registeredPanels.ContainsKey(panelID))
-            _registeredPanels.Add(panelID, panel);
-        else
-            _registeredPanels[panelID] = panel;
+        if (string.IsNullOrWhiteSpace(panelID) || panel == null)
+        {
+            Debug.LogWarning("[UIManager] 패널 ID와 패널 참조가 모두 필요합니다.", this);
+            return;
+        }
+
+        PruneInvalidState();
+        if (_registeredPanels.TryGetValue(panelID, out UIPanel previous)
+            && previous != null
+            && previous != panel)
+        {
+            RemovePanelFromStack(previous, true, true);
+            if (!IsPanelRegistered(previous, panelID))
+                _pixelPerfectSafeAreaPanels.Remove(previous);
+        }
+
+        _registeredPanels[panelID] = panel;
 
         if (fitToPixelPerfectSafeArea)
             RegisterPixelPerfectSafeAreaPanel(panel);
@@ -73,15 +104,28 @@ public class UIManager : MonoBehaviour
 
     public void UnregisterPanel(string panelID)
     {
-        if (_registeredPanels.ContainsKey(panelID))
-            _registeredPanels.Remove(panelID);
+        if (string.IsNullOrWhiteSpace(panelID)
+            || !_registeredPanels.TryGetValue(panelID, out UIPanel panel))
+            return;
+
+        _registeredPanels.Remove(panelID);
+        if (panel != null)
+        {
+            RemovePanelFromStack(panel, true, true);
+            if (!IsPanelRegistered(panel, null))
+                _pixelPerfectSafeAreaPanels.Remove(panel);
+        }
     }
 
-    // ── 패널 열기 / 닫기 ────────────────────────────────────
     public void OpenPanel(string panelID)
     {
-        if (_registeredPanels.TryGetValue(panelID, out var panel))
+        PruneInvalidState();
+        if (!string.IsNullOrWhiteSpace(panelID)
+            && _registeredPanels.TryGetValue(panelID, out UIPanel panel)
+            && panel != null)
+        {
             OpenPanel(panel);
+        }
         else
             Debug.LogWarning($"[UIManager] '{panelID}' 패널을 찾을 수 없습니다! RegisterPanel이 호출되었는지 확인하세요.");
     }
@@ -89,36 +133,247 @@ public class UIManager : MonoBehaviour
     public void OpenPanel(UIPanel panel)
     {
         if (panel == null) return;
-        if (_panelStack.Count > 0 && _panelStack.Peek() == panel) return; // 이미 최상단이면 무시
+        PruneInvalidState();
+        if (_panelStack.Count > 0 && _panelStack.Peek().Panel == panel)
+            return;
 
         EnsurePixelPerfectSafeAreaIfNeeded(panel);
-        _panelStack.Push(panel);
+        RemovePanelFromStack(panel, false, false);
+        EventSystem eventSystem = ResolveEventSystem();
+        GameObject previousSelection = eventSystem != null
+            ? eventSystem.currentSelectedGameObject
+            : null;
+        _panelStack.Push(new PanelStackEntry(panel, previousSelection));
         panel.Show();
-        
-        // UI가 열리면 게임 일시정지 (선택 사항)
-        // Time.timeScale = 0f; 
+        panel.FocusDefaultSelection();
     }
 
     public void CloseTopPanel()
     {
         if (_panelStack.Count == 0) return;
-        var panel = _panelStack.Pop();
-        panel.Hide();
 
-        // 스택이 비면 일시정지 해제
-        // if (_panelStack.Count == 0) Time.timeScale = 1f;
+        PanelStackEntry entry = _panelStack.Pop();
+        if (entry.Panel == null)
+        {
+            RestoreSelection(entry.PreviousSelection, null, false);
+            PruneInvalidState();
+            return;
+        }
+
+        UIPanel panel = entry.Panel;
+        panel.Hide();
+        RestoreSelection(entry.PreviousSelection, panel, false);
     }
 
     public void CloseAllPanels()
     {
-        while (_panelStack.Count > 0)
+        CloseAllPanels(false);
+    }
+
+    public void CloseAllPanelsImmediate()
+    {
+        CloseAllPanels(true);
+    }
+
+    public bool IsAnyPanelOpen
+    {
+        get
         {
-            var panel = _panelStack.Pop();
-            panel.Hide();
+            PruneInvalidState();
+            return _panelStack.Count > 0;
         }
     }
 
-    public bool IsAnyPanelOpen => _panelStack.Count > 0;
+    public int OpenPanelCount
+    {
+        get
+        {
+            PruneInvalidState();
+            return _panelStack.Count;
+        }
+    }
+
+    public UIPanel TopPanel
+    {
+        get
+        {
+            PruneInvalidState();
+            return _panelStack.Count > 0 ? _panelStack.Peek().Panel : null;
+        }
+    }
+
+    private void CloseAllPanels(bool immediate)
+    {
+        GameObject selectionToRestore = null;
+        bool removedAny = false;
+        while (_panelStack.Count > 0)
+        {
+            PanelStackEntry entry = _panelStack.Pop();
+            selectionToRestore = entry.PreviousSelection;
+            removedAny = true;
+            if (entry.Panel == null)
+                continue;
+
+            if (immediate)
+                entry.Panel.HideImmediate();
+            else
+                entry.Panel.Hide();
+        }
+
+        if (removedAny)
+            RestoreSelection(selectionToRestore, null, true);
+    }
+
+    private bool RemovePanelFromStack(
+        UIPanel panel,
+        bool hidePanel,
+        bool restoreTopSelection)
+    {
+        if (panel == null || _panelStack.Count == 0)
+            return false;
+
+        _stackBuffer.Clear();
+        bool removed = false;
+        bool removedTop = false;
+        GameObject selectionToRestore = null;
+        bool isTop = true;
+
+        while (_panelStack.Count > 0)
+        {
+            PanelStackEntry entry = _panelStack.Pop();
+            if (entry.Panel == panel)
+            {
+                removed = true;
+                if (isTop)
+                {
+                    removedTop = true;
+                    selectionToRestore = entry.PreviousSelection;
+                }
+            }
+            else if (entry.Panel != null)
+            {
+                _stackBuffer.Add(entry);
+            }
+            isTop = false;
+        }
+
+        RebuildStackFromBuffer();
+        if (removed && hidePanel && panel != null)
+            panel.HideImmediate();
+        if (removedTop && restoreTopSelection)
+            RestoreSelection(selectionToRestore, panel, false);
+        return removed;
+    }
+
+    private void PruneInvalidState()
+    {
+        PruneInvalidStackEntries();
+        PruneInvalidRegistrations();
+    }
+
+    private void PruneInvalidStackEntries()
+    {
+        if (_panelStack.Count == 0)
+            return;
+
+        _stackBuffer.Clear();
+        bool scanningTop = true;
+        bool removedTop = false;
+        GameObject selectionToRestore = null;
+
+        while (_panelStack.Count > 0)
+        {
+            PanelStackEntry entry = _panelStack.Pop();
+            if (entry.Panel == null)
+            {
+                if (scanningTop)
+                {
+                    removedTop = true;
+                    selectionToRestore = entry.PreviousSelection;
+                }
+                continue;
+            }
+
+            scanningTop = false;
+            _stackBuffer.Add(entry);
+        }
+
+        RebuildStackFromBuffer();
+        if (removedTop)
+            RestoreSelection(selectionToRestore, null, false);
+    }
+
+    private void RebuildStackFromBuffer()
+    {
+        for (int i = _stackBuffer.Count - 1; i >= 0; i--)
+            _panelStack.Push(_stackBuffer[i]);
+        _stackBuffer.Clear();
+    }
+
+    private void PruneInvalidRegistrations()
+    {
+        _stalePanelIds.Clear();
+        foreach (KeyValuePair<string, UIPanel> pair in _registeredPanels)
+        {
+            if (pair.Value == null)
+                _stalePanelIds.Add(pair.Key);
+        }
+        for (int i = 0; i < _stalePanelIds.Count; i++)
+            _registeredPanels.Remove(_stalePanelIds[i]);
+
+        _staleSafeAreaPanels.Clear();
+        foreach (UIPanel panel in _pixelPerfectSafeAreaPanels)
+        {
+            if (panel == null)
+                _staleSafeAreaPanels.Add(panel);
+        }
+        for (int i = 0; i < _staleSafeAreaPanels.Count; i++)
+            _pixelPerfectSafeAreaPanels.Remove(_staleSafeAreaPanels[i]);
+    }
+
+    private bool IsPanelRegistered(UIPanel panel, string ignoredPanelId)
+    {
+        foreach (KeyValuePair<string, UIPanel> pair in _registeredPanels)
+        {
+            if (pair.Key != ignoredPanelId && pair.Value == panel)
+                return true;
+        }
+        return false;
+    }
+
+    private void HandleSceneUnloaded(Scene scene)
+    {
+        CloseAllPanelsImmediate();
+        PruneInvalidState();
+    }
+
+    private void RestoreSelection(
+        GameObject previousSelection,
+        UIPanel closingPanel,
+        bool clearWhenUnavailable)
+    {
+        EventSystem eventSystem = ResolveEventSystem();
+        if (eventSystem == null)
+            return;
+
+        if (previousSelection != null && previousSelection.activeInHierarchy)
+        {
+            eventSystem.SetSelectedGameObject(previousSelection);
+            return;
+        }
+
+        GameObject currentSelection = eventSystem.currentSelectedGameObject;
+        bool selectionBelongsToClosingPanel = currentSelection != null
+            && closingPanel != null
+            && currentSelection.transform.IsChildOf(closingPanel.transform);
+        if (clearWhenUnavailable || selectionBelongsToClosingPanel)
+            eventSystem.SetSelectedGameObject(null);
+    }
+
+    protected virtual EventSystem ResolveEventSystem()
+    {
+        return EventSystem.current;
+    }
 
     private void RegisterPixelPerfectSafeAreaPanel(UIPanel panel)
     {

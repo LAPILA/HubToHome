@@ -58,6 +58,8 @@ public sealed class OverworldMenuUI : UIPanel
     private int _ignoreInputUntilFrame;
     private int _displayedMoney = int.MinValue;
     private GameState _stateBeforeOpen = GameState.Exploration;
+    private bool _ownsPauseState;
+    private Sequence _panelSequence;
 
     [Serializable]
     private sealed class MenuSlotView
@@ -115,6 +117,27 @@ public sealed class OverworldMenuUI : UIPanel
         CloseInternal();
     }
 
+    public override void HideImmediate()
+    {
+        KillMenuTweens();
+        RestorePreviousGameState();
+        HideOverworldImmediate();
+    }
+
+    protected override void OnDisable()
+    {
+        KillMenuTweens();
+        RestorePreviousGameState();
+        base.OnDisable();
+    }
+
+    protected override void OnDestroy()
+    {
+        KillMenuTweens();
+        RestorePreviousGameState();
+        base.OnDestroy();
+    }
+
     public override bool TryHandleCancelInput()
     {
         if (!_isOpen || _isAnimating)
@@ -165,6 +188,7 @@ public sealed class OverworldMenuUI : UIPanel
         if (GameStateManager.Instance != null)
         {
             _stateBeforeOpen = GameStateManager.Instance.CurrentState;
+            _ownsPauseState = true;
             GameStateManager.Instance.ChangeState(GameState.Paused);
         }
 
@@ -176,10 +200,15 @@ public sealed class OverworldMenuUI : UIPanel
 
         SetPanelHiddenPositions();
 
-        Sequence sequence = DOTween.Sequence().SetUpdate(true);
-        sequence.Join(_topPanel.DOAnchorPosY(0f, SlideDuration).SetEase(Ease.OutCubic));
-        sequence.Join(_bottomPanel.DOAnchorPosY(0f, SlideDuration).SetEase(Ease.OutCubic));
-        sequence.OnComplete(() => _isAnimating = false);
+        KillPanelSequence();
+        _panelSequence = DOTween.Sequence().SetUpdate(true);
+        _panelSequence.Join(_topPanel.DOAnchorPosY(0f, SlideDuration).SetEase(Ease.OutCubic));
+        _panelSequence.Join(_bottomPanel.DOAnchorPosY(0f, SlideDuration).SetEase(Ease.OutCubic));
+        _panelSequence.OnComplete(() =>
+        {
+            _panelSequence = null;
+            _isAnimating = false;
+        });
     }
 
     private void CloseInternal()
@@ -193,18 +222,18 @@ public sealed class OverworldMenuUI : UIPanel
         if (_isCategoryWindowOpen)
             HideCategoryWindowImmediate();
 
-        Sequence sequence = DOTween.Sequence().SetUpdate(true);
-        sequence.Join(_topPanel.DOAnchorPosY(TopPanelHeight, SlideDuration).SetEase(Ease.InCubic));
-        sequence.Join(_bottomPanel.DOAnchorPosY(-BottomPanelHeight, SlideDuration).SetEase(Ease.InCubic));
-        sequence.OnComplete(() =>
+        KillPanelSequence();
+        _panelSequence = DOTween.Sequence().SetUpdate(true);
+        _panelSequence.Join(_topPanel.DOAnchorPosY(TopPanelHeight, SlideDuration).SetEase(Ease.InCubic));
+        _panelSequence.Join(_bottomPanel.DOAnchorPosY(-BottomPanelHeight, SlideDuration).SetEase(Ease.InCubic));
+        _panelSequence.OnComplete(() =>
         {
+            _panelSequence = null;
             _isOpen = false;
             _isAnimating = false;
+            RestorePreviousGameState();
             SetRootGroupVisible(false);
             gameObject.SetActive(false);
-
-            if (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused)
-                GameStateManager.Instance.ChangeState(_stateBeforeOpen == GameState.Paused ? GameState.Exploration : _stateBeforeOpen);
         });
     }
 
@@ -217,6 +246,36 @@ public sealed class OverworldMenuUI : UIPanel
         SetPanelHiddenPositions();
         HideCategoryWindowImmediate();
         gameObject.SetActive(false);
+    }
+
+    private void RestorePreviousGameState()
+    {
+        if (!_ownsPauseState)
+            return;
+
+        _ownsPauseState = false;
+        GameStateManager stateManager = GameStateManager.Instance;
+        if (stateManager != null && stateManager.CurrentState == GameState.Paused)
+            stateManager.ChangeState(_stateBeforeOpen);
+    }
+
+    private void KillMenuTweens()
+    {
+        KillPanelSequence();
+
+        if (_categoryWindowGroup != null)
+            _categoryWindowGroup.DOKill(false);
+        if (_categoryWindow != null)
+            _categoryWindow.DOKill(false);
+    }
+
+    private void KillPanelSequence()
+    {
+        if (_panelSequence == null)
+            return;
+
+        _panelSequence.Kill(false);
+        _panelSequence = null;
     }
 
     private void SetRootGroupVisible(bool visible)
