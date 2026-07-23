@@ -181,9 +181,15 @@ Assets/_Game/Features/Overworld/Maps/
 
 ## 맵 연결 검증
 
-현재 열려 있는 씬/룸의 연결 상태는 아래 메뉴로 검사합니다.
+현재 열려 있는 Scene/Room의 전체 검사 결과를 Console에 남기려면 아래 메뉴를 사용합니다.
 
 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`
+
+마커를 목록과 필터로 탐색하고 문제 위치로 이동하려면 아래 작업창을 사용합니다.
+
+`HubToHome > 오버월드 > Area 마커 > 마커 작업창`
+
+Prefab Mode에서는 현재 Room Prefab만 검사하고, 그 외에는 로드된 Scene 범위를 검사합니다. 작업창에서 대상을 선택한 뒤 기존 Odin Inspector에서 세부 값을 편집합니다.
 
 ## Pixel Grid 권장 방식
 
@@ -209,23 +215,27 @@ Assets/_Game/Features/Overworld/Maps/
 
 - 현재 씬에 `MapTransitionService`가 있는지
 - 현재 씬에 `RoomContainer`가 있는지
+- 같은 Room 안의 Marker ID 중복 여부
+- 마커별 필수 ID·참조·Collider 누락 여부
+- Marker가 `RoomInstance`에 속하는지와 Camera Bounds 안에 있는지
 - `SpawnPointId` 누락 여부
 - 현재 로드된 범위 안의 `SpawnPointId` 중복 여부
 - `DoorTransition`의 전환 요청 유효성
+- Room 전환 대상 `RoomDefinition`과 대상 Prefab의 `SpawnPointId` 유효성
 - 현재 로드된 범위 안에서 목적지 `SpawnPointId`를 찾을 수 있는지
 
 주의점:
 
-- 프리팹으로 아직 로드되지 않은 다른 룸의 SpawnPoint는 현재 씬 검사에서 경고로 나올 수 있습니다.
-- 이 경우 경고는 “현재 로드된 범위 기준”이며, 실제 대상 룸 프리팹 안에 SpawnPoint가 있으면 정상일 수 있습니다.
+- Room 전환은 연결된 `RoomDefinition.RoomPrefab` 내부 SpawnPoint까지 확인합니다.
+- 로드되지 않은 다른 Scene 내부의 SpawnPoint는 검사할 수 없으므로 현재 편집 범위에서 찾지 못하면 Warning으로 표시합니다.
+- Scan은 읽기 전용이며 Scene, Prefab, ScriptableObject를 자동 수정하지 않습니다.
 
 ## 다음 완성도 로드맵
 
-1. Room 연결 검증 강화: RoomDefinition 에셋을 따라가서 프리팹 내부 SpawnPoint까지 검사
-2. 제작 UI 강화: 전용 EditorWindow에서 RoomDefinition, Door, SpawnPoint를 한 화면에서 편집
-3. 샘플팩 확장: 필드-마을-상점-던전 입구-보스룸 템플릿 추가
-4. 전환 연출 강화: 페이드 UI, 문 사운드, 도착 시 한 걸음 전진 연출
-5. 저장/로드 강화: CurrentRoomId 기반으로 저장 파일에서 룸까지 복원
+1. RoomDefinition과 연결 Door를 한 화면에서 직접 수정하는 전용 편집 기능
+2. 샘플팩 확장: 필드-마을-상점-던전 입구-보스룸 템플릿 추가
+3. 전환 연출 강화: 페이드 UI, 문 사운드, 도착 시 한 걸음 전진 연출
+4. 저장/로드 강화: CurrentRoomId 기반으로 저장 파일에서 룸까지 복원
 
 ## 제작 원칙
 

@@ -46,6 +46,17 @@ Regions/지역이름/
 
 마커 아이콘과 설명은 Scene View에서만 보이며 게임 화면에는 표시되지 않습니다.
 
+### 마커 작업창
+
+`HubToHome > 오버월드 > Area 마커 > 마커 작업창`에서 현재 편집 중인 마커를 한꺼번에 확인합니다.
+
+1. Region Scene 또는 Room Prefab을 엽니다. Prefab Mode가 열려 있으면 해당 Prefab만 검사합니다.
+2. Room, 마커 타입, `문제 있음` 필터 또는 검색어로 대상을 좁힙니다.
+3. 오류·경고 행의 `이동`을 눌러 Hierarchy 선택과 Scene View 포커스를 맞춥니다.
+4. 선택된 마커의 Odin Inspector에서 값을 수정한 뒤 `Scan`으로 다시 확인합니다.
+
+작업창과 기존 `현재 열린 룸 맵 검사` 메뉴는 같은 읽기 전용 검사 규칙을 사용합니다. Scan은 Scene, Prefab, ScriptableObject를 자동 수정하지 않습니다.
+
 ## 델타룬식 방 구성 기준
 
 - 한 Room은 플레이어가 목적과 출구를 한눈에 파악할 수 있는 크기로 만듭니다.
