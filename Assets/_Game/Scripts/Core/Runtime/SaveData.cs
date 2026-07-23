@@ -34,6 +34,8 @@ public sealed class OverworldEnemySaveData
 [Serializable]
 public class SaveData
 {
+    public int schemaVersion = SaveSchema.CurrentVersion;
+
     // ── 1. 위치 정보 ──
     public string currentScene = SceneName.Overworld;
     public string currentRoomId = "";
