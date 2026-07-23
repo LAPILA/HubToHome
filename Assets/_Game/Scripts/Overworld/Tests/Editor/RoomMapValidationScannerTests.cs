@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 public sealed class RoomMapValidationScannerTests
 {
@@ -209,6 +210,33 @@ public sealed class RoomMapValidationScannerTests
         Assert.That(input.Markers, Does.Contain(included));
         Assert.That(input.Markers.Contains(excluded), Is.False);
         Assert.That(input.RequiresSceneInfrastructure, Is.False);
+    }
+
+    [Test]
+    public void LogReport_EmitsIssueSeverityAndSummary()
+    {
+        var report = new RoomMapValidationReport("Test Scope");
+        report.AddIssue(new RoomMapValidationIssue(
+            "TEST_ERROR",
+            RoomMapValidationSeverity.Error,
+            "error message"));
+        report.AddIssue(new RoomMapValidationIssue(
+            "TEST_WARNING",
+            RoomMapValidationSeverity.Warning,
+            "warning message"));
+
+        LogAssert.Expect(
+            LogType.Error,
+            "[RoomMapValidator][TEST_ERROR] error message");
+        LogAssert.Expect(
+            LogType.Warning,
+            "[RoomMapValidator][TEST_WARNING] warning message");
+        LogAssert.Expect(
+            LogType.Log,
+            "[RoomMapValidator] 검사 완료. Scope=Test Scope, Rooms=0, Markers=0, "
+            + "Doors=0, SpawnPoints=0, Errors=1, Warnings=1");
+
+        RoomMapValidator.LogReport(report);
     }
 
     private RoomInstance CreateRoom(string roomId)
