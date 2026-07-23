@@ -30,3 +30,8 @@
 - `GlobalDataManager.PendingBattleScenario` is runtime-only battle entry handoff state, not save-bound state. Encounter Memory or battle results must be added to `SaveData` separately when persistence is needed.
 - Encounter Memory is now stored through `SaveData.EncounterMemory` and `GlobalDataManager` encounter memory APIs. It is for out-of-battle remembered facts such as meet count, defeated state, and seen battle beat IDs; it is not a mid-battle save snapshot. Use explicit mutation APIs for writes because bulk `GetEncounterMemory()` returns a deep-copy snapshot.
 - Battle code records encounter memory through `BattleEncounterMemoryRecorder`, not direct save serialization. Keep save/load ownership in `GlobalDataManager`.
+- Do not write runtime save files with `File.WriteAllText` or deserialize them directly. Use `SaveManager`, `AtomicSaveStorage`, and `SaveDataCodec`.
+- A `SaveData` format change requires a `SaveSchema` version decision, an explicit migration path, and legacy/future-version tests.
+- Preserve the Primary → Backup → Temporary recovery order. A corrupt Primary must never overwrite a valid Backup.
+- Loading a recovery candidate must not trigger an automatic save. The next explicit save commits the new Primary.
+- Use `Hub To Home > Save > Diagnostics` for read-only slot inspection and explicit reset commands.
