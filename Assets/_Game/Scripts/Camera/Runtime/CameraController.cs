@@ -1,9 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Cinemachine;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 
-public class CameraController : MonoBehaviour, ICameraPresentationService
+public partial class CameraController : MonoBehaviour, ICameraPresentationService
 {
     public static CameraController Instance { get; private set; }
 
@@ -46,6 +47,8 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
     private bool _useGameplaySafeReset;
     private bool _warnedMissingCamera;
     private IScreenShakeScaleProvider _screenShakeScaleProvider;
+    private bool _ownsHitStop;
+    private float _hitStopRestoreTimeScale = 1f;
 
     public CinemachineCamera VirtualCamera => _vCam;
     public Transform CenterTarget => _centerTarget;
@@ -75,16 +78,25 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
 
     private void OnDisable()
     {
+        ReleaseOwnedHitStop();
+        ReleaseFramingStateOnDisable();
         KillCameraTweens();
         if (HasPositionDriver)
         {
             ApplySettings(_startupSettings);
+            if (_vCam != null)
+            {
+                _vCam.Lens.OrthographicSize = _startupSettings.OrthographicSize;
+                _vCam.Lens.Dutch = _startupDutch;
+            }
         }
     }
 
     private void OnDestroy()
     {
+        ReleaseOwnedHitStop();
         KillCameraTweens();
+        DisposeFramingRuntime();
         if (_fallbackTarget != null)
         {
             DestroySafe(_fallbackTarget.gameObject);
@@ -145,6 +157,7 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
             return false;
         }
 
+        PrepareForTimelineControl();
         _timelineLease = new CameraControlLease(++_leaseVersion);
         lease = _timelineLease;
         return true;
@@ -176,12 +189,23 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
         }
 
         CameraShotSettings settings = ResolveSettings(style, zoom);
+        StopTargetFraming();
         ApplyTrackingTarget(target);
         ApplySettings(settings);
         TweenLens(settings.OrthographicSize, duration);
 
         token = new CameraCommandToken(++_commandVersion);
         return true;
+    }
+
+    public bool TryFrameTargets(
+        IReadOnlyList<Transform> targets,
+        CameraFramingSettings settings,
+        CameraControlLease lease,
+        out CameraCommandToken token,
+        out string error)
+    {
+        return TryFrameTargetsCore(targets, settings, lease, out token, out error);
     }
 
     public bool TryReset(
@@ -214,6 +238,7 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
         }
 
         CameraShotSettings settings = ResolveSettings(style, _defaultLensSize, true);
+        StopTargetFraming();
         ApplyTrackingTarget(target);
         ApplySettings(settings);
         TweenLens(settings.OrthographicSize, duration);
@@ -290,6 +315,7 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
         }
 
         KillCameraTweens();
+        StopTargetFraming();
         if (restoreDefault)
         {
             ApplyResetImmediate(ResolveResetStyle());
@@ -309,6 +335,7 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
             return;
         }
 
+        StopTargetFraming();
         ApplyTrackingTarget(newTarget);
         _commandVersion++;
     }
@@ -375,18 +402,21 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
             return;
         }
 
-        float impactZoom = _defaultLensSize + 0.8f;
-        DOTween.Kill(CameraZoomTweenId);
-        DOTween.Kill(CameraImpactTweenId);
-        DOTween.To(
-                () => _vCam.Lens.OrthographicSize,
-                value => _vCam.Lens.OrthographicSize = value,
-                impactZoom,
-                0.1f)
-            .SetEase(Ease.OutQuad)
-            .SetUpdate(UpdateType.Late, true)
-            .SetId(CameraImpactTweenId)
-            .OnComplete(() => TweenLens(_defaultLensSize, 0.2f));
+        if (CanUseCamera(CameraControlLease.None, out _))
+        {
+            float impactZoom = _defaultLensSize + 0.8f;
+            DOTween.Kill(CameraZoomTweenId);
+            DOTween.Kill(CameraImpactTweenId);
+            DOTween.To(
+                    () => _vCam.Lens.OrthographicSize,
+                    value => _vCam.Lens.OrthographicSize = value,
+                    impactZoom,
+                    0.1f)
+                .SetEase(Ease.OutQuad)
+                .SetUpdate(UpdateType.Late, true)
+                .SetId(CameraImpactTweenId)
+                .OnComplete(() => TweenLens(_defaultLensSize, 0.2f));
+        }
 
         TryImpulse(Vector3.right, Mathf.Max(0.001f, intensity), 0.2f, CameraShakeSafety.Cinematic, out _);
         StopFrame(0.06f);
@@ -410,6 +440,7 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
             return;
         }
 
+        CaptureInitialCameraTarget();
         if (!_hasAuthoredCameraDepth)
         {
             float authoredDepth = _vCam.transform.position.z;
@@ -625,6 +656,7 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
             return;
         }
 
+        StopTargetFraming();
         ApplyTrackingTarget(ResolveDefaultTarget());
         CameraShotSettings settings = style == CameraShotStyle.Static && !_useGameplaySafeReset && _staticProfile == null
             ? _startupSettings
@@ -719,11 +751,42 @@ public class CameraController : MonoBehaviour, ICameraPresentationService
 
     private void StopFrame(float duration)
     {
-        DOTween.Kill(HitStopTweenId);
+        ReleaseOwnedHitStop();
+        _hitStopRestoreTimeScale = Time.timeScale;
+        _ownsHitStop = true;
         Time.timeScale = 0.01f;
-        DOVirtual.DelayedCall(duration, () => Time.timeScale = 1f)
+        DOVirtual.DelayedCall(duration, CompleteOwnedHitStop)
             .SetUpdate(true)
             .SetId(HitStopTweenId);
+    }
+
+    private void CompleteOwnedHitStop()
+    {
+        if (!_ownsHitStop)
+        {
+            return;
+        }
+
+        _ownsHitStop = false;
+        if (Mathf.Approximately(Time.timeScale, 0.01f))
+        {
+            Time.timeScale = _hitStopRestoreTimeScale;
+        }
+    }
+
+    private void ReleaseOwnedHitStop()
+    {
+        DOTween.Kill(HitStopTweenId, false);
+        if (!_ownsHitStop)
+        {
+            return;
+        }
+
+        _ownsHitStop = false;
+        if (Mathf.Approximately(Time.timeScale, 0.01f))
+        {
+            Time.timeScale = _hitStopRestoreTimeScale;
+        }
     }
 
     private void KillCameraTweens()

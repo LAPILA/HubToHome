@@ -15,6 +15,81 @@ public enum CameraShotStyle
     GameplaySafe
 }
 
+[Serializable]
+public struct CameraFramingSettings
+{
+    [LabelText("최소 직교 Lens"), MinValue(0.5f)]
+    public float MinOrthographicSize;
+
+    [LabelText("최대 직교 Lens"), MinValue(0.5f)]
+    public float MaxOrthographicSize;
+
+    [LabelText("화면 점유율"), Range(0.1f, 1f)]
+    public float FramingSize;
+
+    [LabelText("프레이밍 감쇠"), MinValue(0f)]
+    public float Damping;
+
+    [LabelText("대상 기본 반경"), MinValue(0f)]
+    public float TargetRadius;
+
+    [LabelText("중심 오프셋")]
+    public Vector2 CenterOffset;
+
+    [LabelText("추적 스타일")]
+    public CameraShotStyle Style;
+
+    public static CameraFramingSettings CreateBattleDefault()
+    {
+        return new CameraFramingSettings
+        {
+            MinOrthographicSize = CameraLensDefaults.BattleActionOrthographicSize,
+            MaxOrthographicSize = 9f,
+            FramingSize = 0.72f,
+            Damping = 0.22f,
+            TargetRadius = 0.65f,
+            CenterOffset = Vector2.zero,
+            Style = CameraShotStyle.GameplaySafe
+        };
+    }
+
+    public CameraFramingSettings Normalized()
+    {
+        CameraFramingSettings fallback = CreateBattleDefault();
+        CameraFramingSettings value = this;
+        value.MinOrthographicSize = IsFinite(value.MinOrthographicSize) && value.MinOrthographicSize >= 0.5f
+            ? value.MinOrthographicSize
+            : fallback.MinOrthographicSize;
+        value.MaxOrthographicSize = IsFinite(value.MaxOrthographicSize) && value.MaxOrthographicSize >= value.MinOrthographicSize
+            ? value.MaxOrthographicSize
+            : Mathf.Max(value.MinOrthographicSize, fallback.MaxOrthographicSize);
+        value.FramingSize = IsFinite(value.FramingSize) && value.FramingSize > 0f
+            ? Mathf.Clamp(value.FramingSize, 0.1f, 1f)
+            : fallback.FramingSize;
+        value.Damping = IsFinite(value.Damping) && value.Damping >= 0f
+            ? value.Damping
+            : fallback.Damping;
+        value.TargetRadius = IsFinite(value.TargetRadius) && value.TargetRadius > 0f
+            ? value.TargetRadius
+            : fallback.TargetRadius;
+        value.CenterOffset = new Vector2(
+            IsFinite(value.CenterOffset.x) ? Mathf.Clamp(value.CenterOffset.x, -1f, 1f) : 0f,
+            IsFinite(value.CenterOffset.y) ? Mathf.Clamp(value.CenterOffset.y, -1f, 1f) : 0f);
+        if (value.Style != CameraShotStyle.Static
+            && value.Style != CameraShotStyle.Dynamic
+            && value.Style != CameraShotStyle.GameplaySafe)
+        {
+            value.Style = fallback.Style;
+        }
+        return value;
+    }
+
+    private static bool IsFinite(float value)
+    {
+        return !float.IsNaN(value) && !float.IsInfinity(value);
+    }
+}
+
 public enum CameraShakeSafety
 {
     GameplaySafe = 0,

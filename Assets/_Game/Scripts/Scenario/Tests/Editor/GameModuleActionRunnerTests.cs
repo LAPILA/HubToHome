@@ -730,5 +730,10 @@ public class GameModuleActionRunnerTests
         {
             _log.Add("complete_action");
         }
+
+        public void CancelActiveCameraPresentation()
+        {
+            _log.Add("cancel_camera");
+        }
     }
 }

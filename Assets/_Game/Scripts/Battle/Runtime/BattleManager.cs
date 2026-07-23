@@ -112,7 +112,6 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private PlayerCharacter _pendingActor;
     private PlayerMenuAction _pendingAction;
     private int _battleTurnCounter = 0;
-    private Transform _battleCameraFocusPoint;
     private readonly Dictionary<EnemyCharacter, BattleQueuedEnemyAction> _reservedEnemyActionByActor = new Dictionary<EnemyCharacter, BattleQueuedEnemyAction>();
     private bool _isRunInProgress;
     private bool _isBattleEnding;
@@ -197,30 +196,6 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public void SetBattleScenarioData(BattleScenarioData scenarioData)
     {
         _pendingBattleScenarioData = scenarioData;
-    }
-
-    private Transform EnsureBattleCameraFocusPoint()
-    {
-        if (_battleCameraFocusPoint != null) return _battleCameraFocusPoint;
-        GameObject go = new GameObject("BattleCameraFocusPoint");
-        _battleCameraFocusPoint = go.transform;
-        return _battleCameraFocusPoint;
-    }
-
-    private Transform GetPrimaryAlivePlayerTransform()
-    {
-        int idx = _playerParty.FindIndex(p => p != null && p.IsAlive);
-        if (idx < 0) return null;
-        return _playerParty[idx].transform;
-    }
-
-    private void FocusCameraBetween(Transform a, Transform b)
-    {
-        if (a == null || b == null) return;
-
-        Transform focus = EnsureBattleCameraFocusPoint();
-        focus.position = (a.position + b.position) * 0.5f;
-        CameraController.Instance?.SetTarget(focus);
     }
 
     private void BroadcastVisibleTurnQueue()
@@ -750,6 +725,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void OnDestroy()
     {
+        _turnQteModuleController?.CancelActiveCameraPresentation();
         BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
         if (Instance == this)
             Instance = null;
@@ -1702,6 +1678,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         if (_isRunInProgress) yield break;
         _isRunInProgress = true;
+        _turnQteModuleController?.CancelActiveCameraPresentation();
 
         RequestNarration(new BattleNarrationMessage("도망을 시도했다...", BattleNarrationStyle.Normal, BattleNarrationPriority.High, 0.2f, true));
         yield return StartCoroutine(WaitForNarrationToFinish());
@@ -1727,6 +1704,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         bool victory = CheckVictory();
         _isBattleEnding = true;
+        _turnQteModuleController?.CancelActiveCameraPresentation();
         QTEManager.Instance?.ForceStop();
         CommitOverworldEncounterResult(victory);
         RequestNarration(victory
@@ -1887,6 +1865,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (_isDedicatedBattleScene)
             return;
 
+        _turnQteModuleController?.CancelActiveCameraPresentation();
         ClearTurnQtePendingActionState();
         PlayerController encounterPlayer = ResolveActiveEncounterPlayer();
         RestoreSeamlessPlayers(encounterPlayer);

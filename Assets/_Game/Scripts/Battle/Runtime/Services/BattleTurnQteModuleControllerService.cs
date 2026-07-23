@@ -6,6 +6,7 @@ using UnityEngine;
 public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleController
 {
     private readonly IBattleTurnQteHost _host;
+    private BattleCameraActionScope _activeCameraScope;
 
     public BattleTurnQteModuleControllerService(IBattleTurnQteHost host)
     {
@@ -20,6 +21,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     public IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context)
     {
+        CancelActiveCameraPresentation();
         QTEManager.Instance?.ForceStop();
         _host?.ClearTurnQtePendingActionState();
         BattleUIController.Instance?.SuspendBattleModuleInput();
@@ -241,118 +243,136 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             if (targetIdx >= 0)
             {
                 PlayerCharacter target = _host.PlayerParty[targetIdx];
-                PlayerController targetCtrl = target != null ? target.GetComponent<PlayerController>() : null;
-                bool movedToCenter = enemy.Data == null || !enemy.Data.IsLargeEnemy;
-
-                yield return _host.StartManagedCoroutine(_host.MoveEnemyToCenterIfNeeded(enemy));
-                _host.SetActorForeground(enemy, true);
-
-                enemy.PlayBasicAttackEffect();
-                enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
-
-                DefenseQteResult finalResult = default;
-                bool resultReceived = false;
-
-                targetCtrl?.PrepareDefenseWindow();
-                QTEManager qteManager = QTEManager.Instance;
-                QteExecution qteExecution = null;
-                if (qteManager != null)
+                BattleCameraActionScope cameraScope = BeginActiveCameraScope(enemy.transform, target.transform);
+                try
                 {
-                    DefenseQteRequest request = qteManager.CreateDefenseRequest(
-                        _host.EnemyDefenseQteWindow,
-                        1f,
-                        DefenseRequirement.Any);
-                    qteExecution = qteManager.StartDefenseQTEWithResult(
-                        request,
-                        targetCtrl,
-                        result =>
-                        {
-                            finalResult = result;
-                            resultReceived = true;
-                        });
-                }
+                    PlayerController targetCtrl = target != null ? target.GetComponent<PlayerController>() : null;
+                    bool movedToCenter = enemy.Data == null || !enemy.Data.IsLargeEnemy;
 
-                if (qteExecution == null)
-                {
-                    targetCtrl?.ResetDefenseReactionLock();
-                    _host.SetActorForeground(enemy, false);
-                    CompleteAction();
-                    yield break;
-                }
+                    yield return _host.StartManagedCoroutine(_host.MoveEnemyToCenterIfNeeded(enemy));
+                    _host.SetActorForeground(enemy, true);
 
-                yield return new WaitForSeconds(_host.EnemyAttackVisualDuration);
-                enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
-                yield return new WaitUntil(() => qteExecution.IsDone);
+                    enemy.PlayBasicAttackEffect();
+                    enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
 
-                if (qteExecution.Termination == QteTermination.Cancelled
-                    || qteExecution.Termination == QteTermination.Failed)
-                {
-                    targetCtrl?.ResetDefenseReactionLock();
-                    _host.SetActorForeground(enemy, false);
-                    yield break;
-                }
+                    DefenseQteResult finalResult = default;
+                    bool resultReceived = false;
 
-                if (!resultReceived || !finalResult.PreventsDamage)
-                {
-                    int dmg = target.TakePureDamage(enemy.ATK);
-                    targetCtrl?.PlayHurtEffect();
-                    CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
-                    _host.EmitDamage(target, dmg, false);
-                }
-                else
-                {
-                    targetCtrl?.ConfirmDefenseSuccess(finalResult.Input);
-                    if (finalResult.Input == DefenseInput.Parry && finalResult.Grade == QTEManager.QTEGrade.Perfect)
+                    targetCtrl?.PrepareDefenseWindow();
+                    QTEManager qteManager = QTEManager.Instance;
+                    QteExecution qteExecution = null;
+                    if (qteManager != null)
                     {
-                        target.HealMP(_host.MpOnParryPerfect);
-                        _host.EmitMpChanged(target, target.CurrentMP);
+                        DefenseQteRequest request = qteManager.CreateDefenseRequest(
+                            _host.EnemyDefenseQteWindow,
+                            1f,
+                            DefenseRequirement.Any);
+                        qteExecution = qteManager.StartDefenseQTEWithResult(
+                            request,
+                            targetCtrl,
+                            result =>
+                            {
+                                finalResult = result;
+                                resultReceived = true;
+                            });
                     }
 
-                    if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
+                    if (qteExecution == null)
                     {
-                        yield return targetCtrl != null ? _host.StartManagedCoroutine(targetCtrl.WaitForDefenseVisualComplete(0.5f)) : null;
+                        targetCtrl?.ResetDefenseReactionLock();
+                        _host.SetActorForeground(enemy, false);
+                        CompleteAction();
+                        yield break;
                     }
-                }
 
-                yield return new WaitForSeconds(_host.EnemyPostHitDelay);
-                targetCtrl?.ResetDefenseReactionLock();
-                if (target != null && target.IsAlive)
-                {
-                    targetCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-                }
-
-                if (movedToCenter)
-                {
-                    enemy.PlayBattleAnim(_host.ResolveEnemyReturnMoveHash(enemy));
-                    BattleManager.SetGhostTrail(enemy, true);
-                    yield return enemy.transform.DOMove(PositionManager.Instance.GetEnemyDefaultPos(FindEnemyIndex(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
-                    BattleManager.SetGhostTrail(enemy, false);
-                }
-
-                _host.SetActorForeground(enemy, false);
-                if (enemy.IsAlive)
-                {
+                    yield return new WaitForSeconds(_host.EnemyAttackVisualDuration);
                     enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+                    yield return new WaitUntil(() => qteExecution.IsDone);
+
+                    if (qteExecution.Termination == QteTermination.Cancelled
+                        || qteExecution.Termination == QteTermination.Failed)
+                    {
+                        targetCtrl?.ResetDefenseReactionLock();
+                        _host.SetActorForeground(enemy, false);
+                        yield break;
+                    }
+
+                    if (!resultReceived || !finalResult.PreventsDamage)
+                    {
+                        int dmg = target.TakePureDamage(enemy.ATK);
+                        targetCtrl?.PlayHurtEffect();
+                        CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
+                        _host.EmitDamage(target, dmg, false);
+                    }
+                    else
+                    {
+                        targetCtrl?.ConfirmDefenseSuccess(finalResult.Input);
+                        if (finalResult.Input == DefenseInput.Parry && finalResult.Grade == QTEManager.QTEGrade.Perfect)
+                        {
+                            target.HealMP(_host.MpOnParryPerfect);
+                            _host.EmitMpChanged(target, target.CurrentMP);
+                        }
+
+                        if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
+                        {
+                            yield return targetCtrl != null ? _host.StartManagedCoroutine(targetCtrl.WaitForDefenseVisualComplete(0.5f)) : null;
+                        }
+                    }
+
+                    yield return new WaitForSeconds(_host.EnemyPostHitDelay);
+                    targetCtrl?.ResetDefenseReactionLock();
+                    if (target != null && target.IsAlive)
+                    {
+                        targetCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+                    }
+
+                    if (movedToCenter)
+                    {
+                        enemy.PlayBattleAnim(_host.ResolveEnemyReturnMoveHash(enemy));
+                        BattleManager.SetGhostTrail(enemy, true);
+                        yield return enemy.transform.DOMove(PositionManager.Instance.GetEnemyDefaultPos(FindEnemyIndex(enemy)), 0.3f).SetEase(Ease.InQuad).WaitForCompletion();
+                        BattleManager.SetGhostTrail(enemy, false);
+                    }
+
+                    _host.SetActorForeground(enemy, false);
+                    if (enemy.IsAlive)
+                    {
+                        enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+                    }
+                }
+                finally
+                {
+                    EndActiveCameraScope(cameraScope);
                 }
             }
         }
         else
         {
-            yield return new WaitForSeconds(_host.EnemyAoeWindup);
-            for (int i = 0; i < _host.PlayerParty.Count; i++)
+            var cameraTargets = new List<CharacterBase>();
+            AddAlivePlayers(cameraTargets);
+            BattleCameraActionScope cameraScope = BeginActiveCameraScope(enemy.transform, cameraTargets);
+            try
             {
-                PlayerCharacter player = _host.PlayerParty[i];
-                if (player == null || !player.IsAlive)
+                yield return new WaitForSeconds(_host.EnemyAoeWindup);
+                for (int i = 0; i < _host.PlayerParty.Count; i++)
                 {
-                    continue;
+                    PlayerCharacter player = _host.PlayerParty[i];
+                    if (player == null || !player.IsAlive)
+                    {
+                        continue;
+                    }
+
+                    int dmg = player.TakePureDamage(enemy.ATK);
+                    player.GetComponent<PlayerController>()?.PlayHurtEffect();
+                    _host.EmitDamage(player, dmg, false);
                 }
 
-                int dmg = player.TakePureDamage(enemy.ATK);
-                player.GetComponent<PlayerController>()?.PlayHurtEffect();
-                _host.EmitDamage(player, dmg, false);
+                yield return new WaitForSeconds(_host.EnemyPostHitDelay);
             }
-
-            yield return new WaitForSeconds(_host.EnemyPostHitDelay);
+            finally
+            {
+                EndActiveCameraScope(cameraScope);
+            }
         }
 
         yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
@@ -484,6 +504,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         _host.ClearTurnQtePendingActionState();
         _host.ResetAllPlayerBattlePoses();
         CameraController.Instance?.ResetCamera(0.4f);
+        CancelActiveCameraPresentation();
         _host.BroadcastVisibleTurnQueue();
 
         if (!_host.IsTurnQteCombatInputActive())
@@ -510,48 +531,56 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
-        PositionManager pm = PositionManager.Instance;
-        Vector3 frontPos = target.transform.position + _host.MeleeAttackOffset;
+        BattleCameraActionScope cameraScope = BeginActiveCameraScope(actor.transform, target.transform);
+        try
+        {
+            PositionManager pm = PositionManager.Instance;
+            Vector3 frontPos = target.transform.position + _host.MeleeAttackOffset;
 
-        actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
-        _host.SetActorForeground(actor, true);
-        BattleManager.SetGhostTrail(actor, true);
-        yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
+            actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+            _host.SetActorForeground(actor, true);
+            BattleManager.SetGhostTrail(actor, true);
+            yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
 
-        Vector3 pullBackPos = frontPos + _host.MeleePullbackOffset;
-        yield return actor.transform.DOMove(pullBackPos, 0.15f).SetEase(Ease.OutBack).WaitForCompletion();
+            Vector3 pullBackPos = frontPos + _host.MeleePullbackOffset;
+            yield return actor.transform.DOMove(pullBackPos, 0.15f).SetEase(Ease.OutBack).WaitForCompletion();
 
-        Vector3 behindPos = target.transform.position + new Vector3(-_host.MeleeAttackOffset.x, 0, 0);
+            Vector3 behindPos = target.transform.position + new Vector3(-_host.MeleeAttackOffset.x, 0, 0);
 
-        actor.PlayBasicAttackEffect();
-        actor.PlayBattleAnim(PlayerCharacter.HashAttack);
-        actor.transform.DOMove(behindPos, 0.15f).SetEase(Ease.InExpo);
+            actor.PlayBasicAttackEffect();
+            actor.PlayBattleAnim(PlayerCharacter.HashAttack);
+            actor.transform.DOMove(behindPos, 0.15f).SetEase(Ease.InExpo);
 
-        yield return new WaitForSeconds(_host.PlayerAttackHitDelay);
+            yield return new WaitForSeconds(_host.PlayerAttackHitDelay);
 
-        int previousHp = target.CurrentHP;
-        int dmg = target.TakeDamage(actor.ATK);
-        CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
-        _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
-        _host.EmitDamageNotificationOnly(target, dmg, false);
-        _host.PublishEnemyDefeatedScenarioEvent(target, actor);
+            int previousHp = target.CurrentHP;
+            int dmg = target.TakeDamage(actor.ATK);
+            CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
+            _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
+            _host.EmitDamageNotificationOnly(target, dmg, false);
+            _host.PublishEnemyDefeatedScenarioEvent(target, actor);
 
-        yield return new WaitForSeconds(_host.PlayerAttackRecoverDelay);
-        BattleManager.SetGhostTrail(actor, false);
-        _host.SetActorForeground(actor, false);
+            yield return new WaitForSeconds(_host.PlayerAttackRecoverDelay);
+            BattleManager.SetGhostTrail(actor, false);
+            _host.SetActorForeground(actor, false);
 
-        int idx = FindPlayerIndex(actor);
-        actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
-        BattleManager.SetGhostTrail(actor, true);
-        yield return actor.transform.DOJump(pm.GetPlayerDefaultPos(idx), 0.5f, 1, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
-        BattleManager.SetGhostTrail(actor, false);
+            int idx = FindPlayerIndex(actor);
+            actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+            BattleManager.SetGhostTrail(actor, true);
+            yield return actor.transform.DOJump(pm.GetPlayerDefaultPos(idx), 0.5f, 1, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
+            BattleManager.SetGhostTrail(actor, false);
 
-        actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-        CameraController.Instance?.ResetCamera(0.4f);
+            actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+            CameraController.Instance?.ResetCamera(0.4f);
 
-        yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
-        yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentAction));
-        CompleteAction();
+            yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
+            yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentAction));
+            CompleteAction();
+        }
+        finally
+        {
+            EndActiveCameraScope(cameraScope);
+        }
     }
 
     private IEnumerator ExecuteSkill(PlayerCharacter actor, int targetIndex, SkillData skill)
@@ -611,44 +640,52 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             IsPerfectQTE = false
         };
 
-        if (skill.ActionTimeline != null)
+        BattleCameraActionScope cameraScope = BeginActiveCameraScope(actor.transform, targets);
+        try
         {
-            foreach (SkillActionBlock block in skill.ActionTimeline)
+            if (skill.ActionTimeline != null)
             {
-                if (block == null || block.Disabled)
+                foreach (SkillActionBlock block in skill.ActionTimeline)
                 {
-                    continue;
-                }
+                    if (block == null || block.Disabled)
+                    {
+                        continue;
+                    }
 
-                context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-                if (context.Targets.Count == 0)
-                {
-                    break;
-                }
+                    context.Targets.RemoveAll(t => t == null || !t.IsAlive);
+                    if (context.Targets.Count == 0)
+                    {
+                        break;
+                    }
 
-                yield return _host.StartManagedCoroutine(block.Execute(context));
+                    yield return _host.StartManagedCoroutine(block.Execute(context));
+                }
             }
-        }
 
-        if (Vector3.Distance(actor.transform.position, originalPos) > 0.1f)
+            if (Vector3.Distance(actor.transform.position, originalPos) > 0.1f)
+            {
+                actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+                _host.SetActorForeground(actor, true);
+                BattleManager.SetGhostTrail(actor, true);
+                yield return actor.transform.DOMove(originalPos, 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
+                BattleManager.SetGhostTrail(actor, false);
+                _host.SetActorForeground(actor, false);
+            }
+
+            for (int i = 0; i < scenarioTargets.Count; i++)
+                _host.PublishEnemyDefeatedScenarioEvent(scenarioTargets[i], actor);
+
+            _host.PublishSkillCompletedScenarioEvent(skill, actor);
+            actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+            CameraController.Instance?.ResetCamera(0.4f);
+            yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
+            yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentSkill));
+            CompleteAction();
+        }
+        finally
         {
-            actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
-            _host.SetActorForeground(actor, true);
-            BattleManager.SetGhostTrail(actor, true);
-            yield return actor.transform.DOMove(originalPos, 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
-            BattleManager.SetGhostTrail(actor, false);
-            _host.SetActorForeground(actor, false);
+            EndActiveCameraScope(cameraScope);
         }
-
-        for (int i = 0; i < scenarioTargets.Count; i++)
-            _host.PublishEnemyDefeatedScenarioEvent(scenarioTargets[i], actor);
-
-        _host.PublishSkillCompletedScenarioEvent(skill, actor);
-        actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-        CameraController.Instance?.ResetCamera(0.4f);
-        yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
-        yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentSkill));
-        CompleteAction();
     }
 
     private IEnumerator ExecuteItem(PlayerCharacter actor, int targetIndex, ItemData item)
@@ -776,35 +813,43 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             IsPerfectQTE = false
         };
 
-        foreach (SkillActionBlock block in skill.ActionTimeline)
+        BattleCameraActionScope cameraScope = BeginActiveCameraScope(enemy.transform, targets);
+        try
         {
-            if (block == null || block.Disabled)
+            foreach (SkillActionBlock block in skill.ActionTimeline)
             {
-                continue;
+                if (block == null || block.Disabled)
+                {
+                    continue;
+                }
+
+                context.Targets.RemoveAll(t => t == null || !t.IsAlive);
+                if (context.Targets.Count == 0 || context.StopTimelineExecution)
+                {
+                    break;
+                }
+
+                yield return _host.StartManagedCoroutine(block.Execute(context));
+                if (context.StopTimelineExecution)
+                {
+                    break;
+                }
             }
 
-            context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-            if (context.Targets.Count == 0 || context.StopTimelineExecution)
+            if (Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
             {
-                break;
+                enemy.PlayBattleAnim(_host.ResolveEnemyReturnMoveHash(enemy));
+                BattleManager.SetGhostTrail(enemy, true);
+                yield return enemy.transform.DOMove(defaultPos, 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+                BattleManager.SetGhostTrail(enemy, false);
             }
 
-            yield return _host.StartManagedCoroutine(block.Execute(context));
-            if (context.StopTimelineExecution)
-            {
-                break;
-            }
+            enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
         }
-
-        if (Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
+        finally
         {
-            enemy.PlayBattleAnim(_host.ResolveEnemyReturnMoveHash(enemy));
-            BattleManager.SetGhostTrail(enemy, true);
-            yield return enemy.transform.DOMove(defaultPos, 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
-            BattleManager.SetGhostTrail(enemy, false);
+            EndActiveCameraScope(cameraScope);
         }
-
-        enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
     }
 
     private void AddAlivePlayers(List<CharacterBase> targets)
@@ -829,6 +874,61 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 targets.Add(enemy);
             }
         }
+    }
+
+    public void CancelActiveCameraPresentation()
+    {
+        BattleCameraActionScope scope = _activeCameraScope;
+        _activeCameraScope = null;
+        scope?.Dispose();
+    }
+
+    private BattleCameraActionScope BeginActiveCameraScope(
+        Transform actor,
+        IReadOnlyList<CharacterBase> targets)
+    {
+        CancelActiveCameraPresentation();
+
+        int targetCount = targets != null ? targets.Count : 0;
+        var transforms = new List<Transform>(targetCount + 1);
+        if (actor != null)
+        {
+            transforms.Add(actor);
+        }
+
+        for (int i = 0; i < targetCount; i++)
+        {
+            CharacterBase target = targets[i];
+            if (target != null)
+            {
+                transforms.Add(target.transform);
+            }
+        }
+
+        _activeCameraScope = BattleCameraActionScope.Begin(transforms);
+        return _activeCameraScope;
+    }
+
+    private BattleCameraActionScope BeginActiveCameraScope(Transform first, Transform second)
+    {
+        CancelActiveCameraPresentation();
+        _activeCameraScope = BattleCameraActionScope.Begin(first, second);
+        return _activeCameraScope;
+    }
+
+    private void EndActiveCameraScope(BattleCameraActionScope scope)
+    {
+        if (scope == null)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(_activeCameraScope, scope))
+        {
+            _activeCameraScope = null;
+        }
+
+        scope.Dispose();
     }
 
     private int FindFirstAlivePlayerIndex()

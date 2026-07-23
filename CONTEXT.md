@@ -209,3 +209,19 @@ _Avoid_: using localized display names, Unity GUID/fileID values, or scene objec
 **Project Content Validation**:
 The editor-only, read-only scan that checks stable IDs, required references, Runtime Catalog membership, Battle Scenario links, battle prefabs, drops, skill blocks, and item rules through a structured `ContentValidationReport`. Optional portraits and icons are warnings; broken runtime contracts are errors. Repair commands remain explicit and separate from scanning.
 _Avoid_: silently mutating assets during validation, treating every optional visual as a build-blocking error, or duplicating scenario contract logic outside `ScenarioCatalogValidator`.
+
+**Camera Presentation Ownership**:
+The rule that `CameraController` is the sole gameplay owner of its Cinemachine Camera tracking target, orthographic Lens, runtime Target Group, Group Framing, and Timeline lease. Battle and Overworld callers provide semantic targets or bounds instead of searching for cameras or writing camera transforms.
+_Avoid_: calling `FindFirstObjectByType<CinemachineCamera>()` for gameplay ownership, storing world camera coordinates in authored actions, or resetting a newer Timeline/focus command from an older action.
+
+**Camera Framing Settings**:
+The Inspector-authored contract for multi-target framing: minimum and maximum orthographic Lens, framing size, damping, target radius, center offset, and shot style. Zero-initialized legacy serialization normalizes to battle-safe defaults.
+_Avoid_: calculating midpoint and zoom independently in each attack, QTE, or skill block.
+
+**Battle Camera Action Scope**:
+The disposable, token-owned lifetime for one battle action's actor-and-target framing. It restores the default camera only while its token remains the newest command, and is canceled on module exit, coroutine disposal, run, battle end, seamless cleanup, or BattleManager destruction.
+_Avoid_: unconditional global camera resets in action cleanup or allowing an old action to overwrite a newer Timeline/focus command.
+
+**Overworld Camera Binding**:
+The shared Room/Map binding that registers the Player as `CameraController`'s default target and configures the Confiner on that same Virtual Camera.
+_Avoid_: assigning Follow or Confiner to whichever Cinemachine Camera happens to be found first, because a Cinematic Stage camera may also be present.

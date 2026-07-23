@@ -738,4 +738,6 @@ public interface IBattleTurnQteModuleController
     void ConfirmTargetAndExecute(int targetIndex);
 
     void CompleteAction();
+
+    void CancelActiveCameraPresentation();
 }

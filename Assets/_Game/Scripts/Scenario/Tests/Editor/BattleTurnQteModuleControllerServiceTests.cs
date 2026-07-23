@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using DG.Tweening;
 using NUnit.Framework;
+using Unity.Cinemachine;
 using UnityEngine;
 
 public class BattleTurnQteModuleControllerServiceTests
@@ -35,6 +37,224 @@ public class BattleTurnQteModuleControllerServiceTests
         {
             fixture.Dispose();
         }
+    }
+
+    [Test]
+    public void ExecuteSkill_FramesActorAndTargetDuringTimelineAndRestoresAfter()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            RecordingSkillActionBlock.Reset();
+            SkillData skill = ScriptableObject.CreateInstance<SkillData>();
+            skill.SkillID = "camera_slash";
+            skill.MPCost = 0;
+            skill.TargetType = TargetAreaType.EnemyOnly;
+            skill.ActionTimeline.Add(new RecordingSkillActionBlock());
+
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            IEnumerator routine = InvokePrivateExecuteSkill(service, fixture.Player, 0, skill);
+            RunToCompletion(routine);
+
+            Assert.That(RecordingSkillActionBlock.SawActiveFraming, Is.True);
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+            Assert.That(
+                fixture.CameraController.VirtualCamera.Follow,
+                Is.EqualTo(fixture.PositionManager.transform));
+
+            UnityEngine.Object.DestroyImmediate(skill);
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void ExecuteSkill_DisposeMidActionRestoresCamera()
+    {
+        var fixture = new TurnQteFixture();
+        SkillData skill = null;
+        IEnumerator routine = null;
+        try
+        {
+            skill = ScriptableObject.CreateInstance<SkillData>();
+            skill.SkillID = "interrupt_camera_slash";
+            skill.MPCost = 0;
+            skill.TargetType = TargetAreaType.EnemyOnly;
+            skill.ActionTimeline.Add(new RecordingSkillActionBlock());
+
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            routine = InvokePrivateExecuteSkill(service, fixture.Player, 0, skill);
+
+            Assert.That(routine.MoveNext(), Is.True);
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.True);
+
+            (routine as IDisposable)?.Dispose();
+            routine = null;
+
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+            Assert.That(
+                fixture.CameraController.VirtualCamera.Follow,
+                Is.EqualTo(fixture.PositionManager.transform));
+        }
+        finally
+        {
+            (routine as IDisposable)?.Dispose();
+            if (skill != null) UnityEngine.Object.DestroyImmediate(skill);
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void ExecuteAttack_AnimationFailureStillRestoresCamera()
+    {
+        var fixture = new TurnQteFixture();
+        IEnumerator routine = null;
+        try
+        {
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            routine = InvokePrivateExecuteAttack(service, fixture.Player, 0);
+
+            Assert.Throws<NullReferenceException>(() => routine.MoveNext());
+
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+            Assert.That(
+                fixture.CameraController.VirtualCamera.Follow,
+                Is.EqualTo(fixture.PositionManager.transform));
+        }
+        finally
+        {
+            (routine as IDisposable)?.Dispose();
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void ExecuteEnemySequenceSkill_FramesEnemyAndTargetDuringTimeline()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            RecordingSkillActionBlock.Reset();
+            SkillData skill = ScriptableObject.CreateInstance<SkillData>();
+            skill.SkillID = "enemy_camera_slash";
+            skill.MPCost = 0;
+            skill.TargetType = TargetAreaType.EnemyOnly;
+            skill.ActionTimeline.Add(new RecordingSkillActionBlock());
+
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            IEnumerator routine = InvokePrivateExecuteEnemySequenceSkill(service, fixture.Enemy, skill);
+            RunToCompletion(routine);
+
+            Assert.That(RecordingSkillActionBlock.SawActiveFraming, Is.True);
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+
+            UnityEngine.Object.DestroyImmediate(skill);
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void RunEnemyAction_MeleeFramesEnemyAndDefenderBeforeQteSetup()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.QueueEnemyAction(EnemyAction.BasicAttack);
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            RunToCompletion(service.RunEnemyAction());
+
+            Assert.That(fixture.Host.SawActiveCameraDuringEnemyMove, Is.True);
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+            Assert.That(
+                fixture.CameraController.VirtualCamera.Follow,
+                Is.EqualTo(fixture.PositionManager.transform));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void RunEnemyAction_AoeFramesEnemyAndAliveTargetsDuringDamage()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.QueueEnemyAction(EnemyAction.EnragedAttack);
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            RunToCompletion(service.RunEnemyAction());
+
+            Assert.That(fixture.Host.SawActiveCameraDuringDamage, Is.True);
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+            Assert.That(
+                fixture.CameraController.VirtualCamera.Follow,
+                Is.EqualTo(fixture.PositionManager.transform));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void ExitTurnQteModuleCancelsActiveCameraScope()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            MethodInfo beginMethod = typeof(BattleTurnQteModuleControllerService).GetMethod(
+                "BeginActiveCameraScope",
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(Transform), typeof(Transform) },
+                null);
+            Assert.That(beginMethod, Is.Not.Null);
+            beginMethod.Invoke(
+                service,
+                new object[] { fixture.Player.transform, fixture.Enemy.transform });
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.True);
+
+            RunToCompletion(service.ExitTurnQteModule(null));
+
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    private static IEnumerator InvokePrivateExecuteAttack(
+        BattleTurnQteModuleControllerService service,
+        PlayerCharacter actor,
+        int targetIndex)
+    {
+        MethodInfo method = typeof(BattleTurnQteModuleControllerService).GetMethod(
+            "ExecuteAttack",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        return (IEnumerator)method.Invoke(service, new object[] { actor, targetIndex });
+    }
+
+    private static IEnumerator InvokePrivateExecuteEnemySequenceSkill(
+        BattleTurnQteModuleControllerService service,
+        EnemyCharacter actor,
+        SkillData skill)
+    {
+        MethodInfo method = typeof(BattleTurnQteModuleControllerService).GetMethod(
+            "ExecuteEnemySequenceSkill",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        return (IEnumerator)method.Invoke(service, new object[] { actor, skill });
     }
 
     private static IEnumerator InvokePrivateExecuteSkill(
@@ -74,6 +294,8 @@ public class BattleTurnQteModuleControllerServiceTests
         private readonly List<UnityEngine.Object> _assets = new List<UnityEngine.Object>();
         private readonly GameObject _positionManagerObject;
         private readonly PositionManager _positionManager;
+        private readonly GameObject _cameraObject;
+        private readonly CameraController _cameraController;
         private readonly GameObject _playerObject;
         private readonly GameObject _enemyObject;
 
@@ -86,6 +308,20 @@ public class BattleTurnQteModuleControllerServiceTests
                 _positionManager,
                 "_playerDefaultPos",
                 new List<Transform> { _positionManagerObject.transform });
+
+            SetStaticProperty(typeof(CameraController), "Instance", null);
+            _cameraObject = new GameObject("TurnQteCamera");
+            CinemachineCamera virtualCamera = _cameraObject.AddComponent<CinemachineCamera>();
+            virtualCamera.Lens.ModeOverride = LensSettings.OverrideModes.Orthographic;
+            virtualCamera.Lens.OrthographicSize = CameraLensDefaults.GameplayOrthographicSize;
+            _cameraObject.AddComponent<CinemachineFollow>();
+            _cameraObject.AddComponent<CinemachineImpulseSource>();
+            _cameraController = _cameraObject.AddComponent<CameraController>();
+            typeof(CameraController)
+                .GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.Invoke(_cameraController, null);
+            _cameraController.SetDefaultTarget(_positionManagerObject.transform, true);
+            _cameraController.ResetCamera(0f);
 
             _playerObject = new GameObject("Player");
             Player = _playerObject.AddComponent<PlayerCharacter>();
@@ -104,6 +340,15 @@ public class BattleTurnQteModuleControllerServiceTests
             enemyData.EnemyName = "ZEV";
             Enemy.Setup(enemyData);
             _assets.Add(enemyData);
+            SetPrivateField(
+                _positionManager,
+                "_enemyDefaultPos",
+                new List<Transform> { _enemyObject.transform });
+            SetPrivateField(_positionManager, "_centerPos", _positionManagerObject.transform);
+            DOTween.Init();
+            _positionManagerObject.transform.position = new Vector3(-8f, 0f, 0f);
+            _playerObject.transform.position = new Vector3(-8f, 0f, 0f);
+            _enemyObject.transform.position = new Vector3(8f, 0f, 0f);
 
             Host = new FakeTurnQteHost(Player, Enemy);
         }
@@ -111,6 +356,8 @@ public class BattleTurnQteModuleControllerServiceTests
         public PlayerCharacter Player { get; }
         public EnemyCharacter Enemy { get; }
         public FakeTurnQteHost Host { get; }
+        public CameraController CameraController => _cameraController;
+        public PositionManager PositionManager => _positionManager;
 
         public void Dispose()
         {
@@ -121,7 +368,9 @@ public class BattleTurnQteModuleControllerServiceTests
 
             UnityEngine.Object.DestroyImmediate(_enemyObject);
             UnityEngine.Object.DestroyImmediate(_playerObject);
+            UnityEngine.Object.DestroyImmediate(_cameraObject);
             UnityEngine.Object.DestroyImmediate(_positionManagerObject);
+            SetStaticProperty(typeof(CameraController), "Instance", null);
             SetStaticProperty(typeof(PositionManager), "Instance", null);
         }
 
@@ -179,6 +428,21 @@ public class BattleTurnQteModuleControllerServiceTests
         public ItemData PendingItem { get; set; }
         public BattleState CurrentBattleState { get; private set; } = BattleState.ActionExecute;
 
+        public bool SawActiveCameraDuringEnemyMove { get; private set; }
+        public bool SawActiveCameraDuringDamage { get; private set; }
+
+        public void QueueEnemyAction(EnemyAction action)
+        {
+            _turnQueue.Clear();
+            _turnQueue.Add(_enemies[0]);
+            CurrentActorIndex = 1;
+            _reserved[_enemies[0]] = new BattleQueuedEnemyAction
+            {
+                Action = action,
+                TurnsRemaining = 1
+            };
+        }
+
         public bool IsTurnQteCombatInputActive() => true;
         public void StartTurnQteCombatLoop() { }
         public void ChangeBattleState(BattleState state) => CurrentBattleState = state;
@@ -213,7 +477,10 @@ public class BattleTurnQteModuleControllerServiceTests
         }
 
         public void SetActorForeground(CharacterBase actor, bool active) { }
-        public void EmitDamage(CharacterBase target, int damage, bool isPerfect) { }
+        public void EmitDamage(CharacterBase target, int damage, bool isPerfect)
+        {
+            SawActiveCameraDuringDamage |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
+        }
         public void EmitDamage(CharacterBase target, int damage, bool isPerfect, int previousHp) { }
         public void EmitMpChanged(PlayerCharacter player, int newMp) { }
         public void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) { }
@@ -223,22 +490,29 @@ public class BattleTurnQteModuleControllerServiceTests
         public IEnumerator FlushBattleScenarioEvents(BattleRuleTiming timing) { FlushCalls++; yield break; }
         public SkillData ResolveEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action) => null;
         public EnemyAttackType ResolveEnemySkillAttackType(SkillData skill) => EnemyAttackType.MeleeClose;
-        public IEnumerator MoveEnemyToCenterIfNeeded(EnemyCharacter enemy) { yield break; }
+        public IEnumerator MoveEnemyToCenterIfNeeded(EnemyCharacter enemy)
+        {
+            SawActiveCameraDuringEnemyMove |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
+            yield break;
+        }
         public int ResolveEnemyReturnMoveHash(EnemyCharacter enemy) => EnemyCharacter.HashBattleMove;
     }
 
     private sealed class RecordingSkillActionBlock : SkillActionBlock
     {
         public static int Calls { get; private set; }
+        public static bool SawActiveFraming { get; private set; }
 
         public static void Reset()
         {
             Calls = 0;
+            SawActiveFraming = false;
         }
 
         public override IEnumerator Execute(SkillContext context)
         {
             Calls++;
+            SawActiveFraming |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
             yield break;
         }
     }

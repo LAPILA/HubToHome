@@ -1,5 +1,4 @@
 using UnityEngine;
-using Unity.Cinemachine;
 
 /// <summary>
 /// 룸 프리팹 루트에 붙는 런타임 설정 컴포넌트입니다.
@@ -24,23 +23,6 @@ public class RoomInstance : MonoBehaviour
 
     public void ConfigureCamera(PlayerController player)
     {
-        CinemachineCamera vCam = FindFirstObjectByType<CinemachineCamera>();
-        if (vCam == null) return;
-
-        if (player != null)
-            vCam.Follow = player.transform;
-
-        CinemachineConfiner2D confiner = vCam.GetComponent<CinemachineConfiner2D>();
-        if (_cameraBounds != null)
-        {
-            if (confiner == null) confiner = vCam.gameObject.AddComponent<CinemachineConfiner2D>();
-            confiner.enabled = true;
-            confiner.BoundingShape2D = _cameraBounds;
-            confiner.InvalidateBoundingShapeCache();
-        }
-        else if (confiner != null)
-        {
-            confiner.enabled = false;
-        }
+        OverworldCameraBinding.TryApply(player, _cameraBounds, this);
     }
 }

@@ -58,6 +58,10 @@
 - Custom `SkillActionBlock` types should override `GetAuthoringTiming()` so the authored timeline remains inspectable.
 - Use `Action_Move.AttackStaging` and `PositionManager` for attacker-to-target placement. Do not serialize battle-camera or world absolute coordinates into an attack block.
 - Defense-window camera feedback should default to `CameraShakeSafety.GameplaySafe`; actor-and-target auto framing belongs to `ICameraPresentationService`, not SkillData.
+- Battle actor-and-target framing must use `BattleCameraActionScope` or `CameraController.TryFrameBattleTargets`. The action passes targets only; `CameraController` owns Target Group, Group Framing, Lens, Follow, and LookAt.
+- Every coroutine that starts battle framing must release its own scope in `finally`. Module exit, run, battle end, seamless cleanup, and BattleManager destruction must also cancel the active Turn QTE camera presentation.
+- Scope cleanup may reset only when its `CameraCommandToken` is still current. Never let an older action overwrite a newer Timeline, focus, or framing command.
+- Timeline camera ownership remains exclusive through `CameraControlLease`. Additive impulse may continue during Timeline control, but ordinary tracking, reset, and Lens tween commands must not bypass the lease.
 
 ## Defense / QTE Intent
 

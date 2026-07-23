@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public readonly struct CameraCommandToken : IEquatable<CameraCommandToken>
@@ -62,6 +63,8 @@ public interface ICameraPresentationService
     bool TryAcquireTimelineControl(object owner, out CameraControlLease lease, out string error);
     void ReleaseTimelineControl(CameraControlLease lease);
     bool TryFocus(Transform target, float zoom, CameraShotStyle style, float duration,
+        CameraControlLease lease, out CameraCommandToken token, out string error);
+    bool TryFrameTargets(IReadOnlyList<Transform> targets, CameraFramingSettings settings,
         CameraControlLease lease, out CameraCommandToken token, out string error);
     bool TryReset(float duration, CameraShotStyle style, CameraControlLease lease,
         out CameraCommandToken token, out string error);
