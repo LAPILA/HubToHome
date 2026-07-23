@@ -92,7 +92,7 @@ public class TitleMenuManager : MonoBehaviour
         {
             if (_lastSelected != EventSystem.current.currentSelectedGameObject)
             {
-                AudioManager.Instance?.PlaySFX(_moveSFX);
+                AudioManager.Instance?.PlayUISFX(_moveSFX);
                 _lastSelected = EventSystem.current.currentSelectedGameObject;
             }
         }
@@ -158,7 +158,7 @@ public class TitleMenuManager : MonoBehaviour
     {
         if (_isLocked) return;
         LockTitleInput();
-        AudioManager.Instance?.PlaySFX(_confirmSFX);
+        AudioManager.Instance?.PlayUISFX(_confirmSFX);
 
         System.Action complete = () =>
         {

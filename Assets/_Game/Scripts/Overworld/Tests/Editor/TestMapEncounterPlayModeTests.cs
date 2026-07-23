@@ -17,6 +17,7 @@ public class TestMapEncounterPlayModeTests
     [SetUp]
     public void SetUp()
     {
+        DG.Tweening.DOTween.KillAll(false);
         _previousSceneSetup = EditorSceneManager.GetSceneManagerSetup();
         _hadBackupScenes = Directory.Exists("Temp/__Backupscenes");
     }

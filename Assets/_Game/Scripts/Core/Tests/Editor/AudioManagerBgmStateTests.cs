@@ -10,6 +10,8 @@ public sealed class AudioManagerBgmStateTests
     private GameObject _audioRoot;
     private GameObject _configRoot;
     private AudioManager _audioManager;
+    private AudioSource _sfxSource;
+    private AudioSource _voiceSource;
     private readonly List<AudioClip> _clips = new List<AudioClip>();
 
     [SetUp]
@@ -29,13 +31,17 @@ public sealed class AudioManagerBgmStateTests
         _audioRoot.SetActive(false);
         AudioSource bgmA = CreateSource("BGM_A");
         AudioSource bgmB = CreateSource("BGM_B");
-        AudioSource sfx = CreateSource("SFX");
-        AudioSource voice = CreateSource("Voice");
+        _sfxSource = CreateSource("SFX");
+        AudioSource ui = CreateSource("UI");
+        _voiceSource = CreateSource("Voice");
+        AudioSource ambience = CreateSource("Ambience");
         _audioManager = _audioRoot.AddComponent<AudioManager>();
         SetField(_audioManager, "_bgmSourceA", bgmA);
         SetField(_audioManager, "_bgmSourceB", bgmB);
-        SetField(_audioManager, "_sfxSource", sfx);
-        SetField(_audioManager, "_voiceSource", voice);
+        SetField(_audioManager, "_sfxSource", _sfxSource);
+        SetField(_audioManager, "_uiSource", ui);
+        SetField(_audioManager, "_voiceSource", _voiceSource);
+        SetField(_audioManager, "_ambienceSource", ambience);
         _audioRoot.SetActive(true);
         InvokeMethod(_audioManager, "InitializeRuntimeState");
         SetSingleton(typeof(AudioManager), _audioManager);
@@ -117,6 +123,18 @@ public sealed class AudioManagerBgmStateTests
         Assert.That(_audioManager.SecondaryBgmSource.clip, Is.SameAs(latestBattleClip));
         Assert.That(_audioManager.PrimaryBgmSource.clip, Is.Not.SameAs(firstBattleClip));
         Assert.That(_audioManager.SecondaryBgmSource.clip, Is.Not.SameAs(firstBattleClip));
+    }
+
+    [Test]
+    public void VoiceFallbackPreservesSharedSfxPitch()
+    {
+        AudioClip voiceClip = CreateClip("Voice");
+        _sfxSource.pitch = 0.75f;
+        SetField(_audioManager, "_voiceSource", null);
+
+        _audioManager.PlayVoice(voiceClip);
+
+        Assert.That(_sfxSource.pitch, Is.EqualTo(0.75f));
     }
 
     private AudioSource CreateSource(string objectName)

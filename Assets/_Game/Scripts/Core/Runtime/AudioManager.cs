@@ -34,7 +34,9 @@ public class AudioManager : MonoBehaviour
     public AudioSource PrimaryBgmSource => _activeBGM;
     public AudioSource SecondaryBgmSource => _inactiveBGM;
     public AudioSource SfxSource => _sfxSource;
+    public AudioSource UiSource => _uiSource;
     public AudioSource VoiceSource => _voiceSource;
+    public AudioSource AmbienceSource => _ambienceSource;
     public AudioClip RequestedBgmClip => _requestedBgmClip;
     public bool HasRequestedBgm => _requestedBgmShouldPlay && _requestedBgmClip != null;
 
@@ -45,7 +47,9 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioSource _bgmSourceA;
     [SerializeField] private AudioSource _bgmSourceB;
     [SerializeField] private AudioSource _sfxSource;
+    [SerializeField] private AudioSource _uiSource;
     [SerializeField] private AudioSource _voiceSource;
+    [SerializeField] private AudioSource _ambienceSource;
 
     private AudioSource _activeBGM;
     private AudioSource _inactiveBGM;
@@ -66,7 +70,6 @@ public class AudioManager : MonoBehaviour
 
     private const string MixerBGM   = "BGMVolume";
     private const string MixerSFX   = "SFXVolume";
-    private const string MixerVoice = "VoiceVolume";
     private const string MixerMaster = "MasterVolume";
 
     private void Awake()
@@ -110,7 +113,9 @@ public class AudioManager : MonoBehaviour
         _activeBGM?.DOKill();
         _inactiveBGM?.DOKill();
         _sfxSource?.DOKill();
+        _uiSource?.DOKill();
         _voiceSource?.DOKill();
+        _ambienceSource?.DOKill();
 
         if (Instance == this)
             Instance = null;
@@ -530,19 +535,80 @@ public class AudioManager : MonoBehaviour
             _sfxSource.PlayOneShot(clip, Mathf.Max(0f, volume));
     }
 
+    public void PlayUISFX(AudioClip clip, float volume = 1f)
+    {
+        AudioSource source = _uiSource != null ? _uiSource : _sfxSource;
+        if (clip != null && source != null)
+            source.PlayOneShot(clip, Mathf.Max(0f, volume));
+    }
+
     public void PlayVoice(AudioClip clip, float volume = 1f)
     {
-        if (clip == null || _voiceSource == null)
+        if (clip == null)
             return;
 
-        _voiceSource.pitch = Random.Range(0.95f, 1.05f);
-        _voiceSource.PlayOneShot(clip, Mathf.Max(0f, volume));
+        float safeVolume = Mathf.Max(0f, volume);
+        if (_voiceSource != null)
+        {
+            _voiceSource.pitch = Random.Range(0.95f, 1.05f);
+            _voiceSource.PlayOneShot(clip, safeVolume);
+            return;
+        }
+
+        _sfxSource?.PlayOneShot(clip, safeVolume);
+    }
+
+    public void PlayAmbience(
+        AudioClip clip,
+        float volume = 1f,
+        float fadeDuration = 0.5f)
+    {
+        if (clip == null || _ambienceSource == null)
+            return;
+
+        float targetVolume = Mathf.Clamp01(volume);
+        _ambienceSource.DOKill();
+        if (_ambienceSource.clip != clip || !_ambienceSource.isPlaying)
+        {
+            _ambienceSource.Stop();
+            _ambienceSource.clip = clip;
+            _ambienceSource.loop = true;
+            _ambienceSource.volume = fadeDuration > 0f ? 0f : targetVolume;
+            _ambienceSource.Play();
+        }
+
+        if (fadeDuration <= 0f)
+        {
+            _ambienceSource.volume = targetVolume;
+            return;
+        }
+
+        _ambienceSource
+            .DOFade(targetVolume, fadeDuration)
+            .SetUpdate(true);
+    }
+
+    public void StopAmbience(float fadeDuration = 0.5f)
+    {
+        if (_ambienceSource == null)
+            return;
+
+        _ambienceSource.DOKill();
+        if (fadeDuration <= 0f || !_ambienceSource.isPlaying)
+        {
+            StopSourceImmediate(_ambienceSource);
+            return;
+        }
+
+        _ambienceSource
+            .DOFade(0f, fadeDuration)
+            .SetUpdate(true)
+            .OnComplete(() => StopSourceImmediate(_ambienceSource));
     }
 
     public void SetMasterVolume(float normalized) => SetMixerVolume(MixerMaster, normalized);
     public void SetBGMVolume(float normalized) => SetMixerVolume(MixerBGM, normalized);
     public void SetSFXVolume(float normalized) => SetMixerVolume(MixerSFX, normalized);
-    public void SetVoiceVolume(float normalized) => SetMixerVolume(MixerVoice, normalized);
 
     private void TweenBgmDuckMultiplier(float targetVolume, float duration)
     {

@@ -141,7 +141,7 @@ public class ConfigPanelUI : UIPanel
             if (_rows.Count == 0) return;
             _rowIndex = (_rowIndex + dir + _rows.Count) % _rows.Count;
         }
-        AudioManager.Instance?.PlaySFX(_moveSfx);
+        AudioManager.Instance?.PlayUISFX(_moveSfx);
         Refresh();
         if (_selectedCategory == Category.Gameplay && _focus == Focus.RowList && _rows.Count > 0)
             TriggerGameplayRowPreview(_rows[_rowIndex].type);
@@ -153,7 +153,7 @@ public class ConfigPanelUI : UIPanel
         {
             _focus = Focus.RowList;
             if (_selectedCategory == Category.Controls) _rowIndex = 0;
-            AudioManager.Instance?.PlaySFX(_selectSfx);
+            AudioManager.Instance?.PlayUISFX(_selectSfx);
             Refresh();
             if (_selectedCategory == Category.Gameplay && _rows.Count > 0)
                 TriggerGameplayRowPreview(_rows[_rowIndex].type);
@@ -167,7 +167,7 @@ public class ConfigPanelUI : UIPanel
         {
             _focus = Focus.KeyCapture;
             _skipOneFrame = true;
-            AudioManager.Instance?.PlaySFX(_selectSfx);
+            AudioManager.Instance?.PlayUISFX(_selectSfx);
             Refresh();
             return;
         }
@@ -179,7 +179,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.ResetDefault: Config.ResetDefaults(); break;
             case RowType.ControlsResetDefault: Config.ResetControlsDefaults(); break;
         }
-        AudioManager.Instance?.PlaySFX(_selectSfx);
+        AudioManager.Instance?.PlayUISFX(_selectSfx);
         Refresh();
     }
 
@@ -201,7 +201,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.VSync: Config.SetVSync(!Config.UseVSync); break;
             case RowType.TargetFps: Config.SetTargetFps(Config.TargetFps + dir * 30); break;
         }
-        AudioManager.Instance?.PlaySFX(_moveSfx);
+        AudioManager.Instance?.PlayUISFX(_moveSfx);
         Refresh();
         TriggerGameplayRowPreview(t);
     }

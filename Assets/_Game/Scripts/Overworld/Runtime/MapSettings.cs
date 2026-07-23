@@ -11,6 +11,10 @@ public class MapSettings : MonoBehaviour
     [Tooltip("이 맵에서 일반 적과 전투할 때 사용할 기본 전투 BGM입니다. 적 데이터 BattleBGM이 있으면 그쪽이 우선됩니다.")]
     [SerializeField] private AudioClip _defaultBattleBGM;
     [SerializeField] private float _bgmFadeDuration = 1.5f;
+    [Tooltip("맵에서 반복 재생할 환경음입니다. 비워두면 이전 환경음을 정리합니다.")]
+    [SerializeField] private AudioClip _ambienceLoop;
+    [SerializeField, Range(0f, 1f)] private float _ambienceVolume = 1f;
+    [SerializeField, Min(0f)] private float _ambienceFadeDuration = 0.75f;
 
     public static AudioClip CurrentDefaultBattleBGM { get; private set; }
 
@@ -21,17 +25,23 @@ public class MapSettings : MonoBehaviour
     private void Start()
     {
         CurrentDefaultBattleBGM = _defaultBattleBGM;
+        AudioManager audioManager = AudioManager.Instance;
 
         if (_mapBGM != null)
         {
-            AudioManager.Instance?.CrossFadeBGM(_mapBGM, _bgmFadeDuration);
+            audioManager?.CrossFadeBGM(_mapBGM, _bgmFadeDuration);
             Debug.Log($"<color=cyan>[MapSettings]</color> 맵 BGM 세팅: {_mapBGM.name}");
         }
         else
         {
-            AudioManager.Instance?.FadeOutBGM(_bgmFadeDuration);
+            audioManager?.FadeOutBGM(_bgmFadeDuration);
             Debug.Log("<color=cyan>[MapSettings]</color> 맵 BGM 없음: 기존 BGM 페이드아웃");
         }
+
+        if (_ambienceLoop != null)
+            audioManager?.PlayAmbience(_ambienceLoop, _ambienceVolume, _ambienceFadeDuration);
+        else
+            audioManager?.StopAmbience(_ambienceFadeDuration);
 
         Invoke(nameof(SetupCamera), 0.1f);
     }
