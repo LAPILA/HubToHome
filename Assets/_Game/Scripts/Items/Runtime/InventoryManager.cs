@@ -56,25 +56,37 @@ public class InventoryManager : MonoBehaviour
         if (itemData == null || global == null)
             return false;
 
-        if (global.GetItemCount(itemData.ItemID) <= 0)
+        if (!ItemEffectService.CanApply(itemData, target, false, out string validationError))
         {
-            Debug.LogWarning($"[Inventory] Item is not owned: {itemData.ItemID}");
-            return false;
-        }
-
-        if (!ItemEffectService.TryApply(itemData, target, false, out string error))
-        {
-            Debug.LogWarning($"[Inventory] Item use failed: {error}");
+            Debug.LogWarning($"[Inventory] Item use failed: {validationError}");
             return false;
         }
 
         if (!global.RemoveItem(itemData.ItemID, 1))
         {
-            Debug.LogError($"[Inventory] Failed to consume item after applying it: {itemData.ItemID}");
+            Debug.LogWarning($"[Inventory] Item is not owned: {itemData.ItemID}");
             return false;
         }
 
-        return true;
+        bool applied = false;
+        string applyError = string.Empty;
+        try
+        {
+            applied = ItemEffectService.TryApply(itemData, target, false, out applyError);
+        }
+        catch (System.Exception exception)
+        {
+            applyError = exception.ToString();
+        }
+
+        if (applied)
+            return true;
+
+        int restored = global.AddItemAndGetAddedAmount(itemData.ItemID, 1);
+        if (restored != 1)
+            Debug.LogError($"[Inventory] Failed to restore reserved item: {itemData.ItemID}");
+        Debug.LogWarning($"[Inventory] Item use failed after reservation: {applyError}");
+        return false;
     }
 
     // ── 오버월드 NPC 대상 아이템 사용 (키 아이템 건네주기 등) ──

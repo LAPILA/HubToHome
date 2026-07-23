@@ -85,4 +85,43 @@ public class OverworldEnemySaveTests
         Assert.That(_global.TryGetOverworldEnemyState("map.enemy.json", out OverworldEnemyRuntimeState state), Is.True);
         Assert.That(state.IsDefeated, Is.True);
     }
+
+    [Test]
+    public void GrantedBattleRewardsSurviveJsonSaveRoundTrip()
+    {
+        EnemyData enemy = ScriptableObject.CreateInstance<EnemyData>();
+        try
+        {
+            enemy.EXPReward = 40;
+            enemy.GoldReward = 15;
+            _global.Party.Add(new CharacterSaveData
+            {
+                CharacterDataID = string.Empty,
+                CharacterID = "TestPlayer",
+                Level = 1,
+                EXP = 0,
+                HP = 100,
+                MaxHP = 100,
+                MP = 20,
+                MaxMP = 20,
+                ATK = 10,
+                DEF = 5,
+                SPD = 10
+            });
+
+            BattleRewardResult result = BattleRewardService.Grant(new[] { enemy }, _global);
+            string json = JsonConvert.SerializeObject(_global.ToSaveData());
+            _global.FromSaveData(JsonConvert.DeserializeObject<SaveData>(json));
+
+            Assert.That(result.Experience, Is.EqualTo(40));
+            Assert.That(result.Gold, Is.EqualTo(15));
+            Assert.That(_global.Money, Is.EqualTo(15));
+            Assert.That(_global.Party, Has.Count.EqualTo(1));
+            Assert.That(_global.Party[0].EXP, Is.EqualTo(40));
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemy);
+        }
+    }
 }

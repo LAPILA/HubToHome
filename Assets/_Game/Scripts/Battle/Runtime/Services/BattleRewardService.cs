@@ -40,8 +40,8 @@ public static class BattleRewardService
             EnemyData enemy = enemies[i];
             if (enemy == null) continue;
 
-            result.Experience += Mathf.Max(0, enemy.EXPReward);
-            result.Gold += Mathf.Max(0, enemy.GoldReward);
+            result.Experience = SaturatingAdd(result.Experience, Mathf.Max(0, enemy.EXPReward));
+            result.Gold = SaturatingAdd(result.Gold, Mathf.Max(0, enemy.GoldReward));
 
             if (enemy.Drops != null && enemy.Drops.Count > 0)
             {
@@ -50,10 +50,11 @@ public static class BattleRewardService
                     EnemyDropEntry drop = enemy.Drops[dropIndex];
                     if (drop == null || string.IsNullOrWhiteSpace(drop.ItemId)) continue;
                     float chance = Mathf.Clamp01(drop.DropChance);
-                    if (chance <= 0f || (chance < 1f && roll() >= chance)) continue;
-                    AddItem(itemCounts, drop.ItemId, UnityEngine.Random.Range(
-                        Mathf.Max(1, drop.MinAmount),
-                        Mathf.Max(Mathf.Max(1, drop.MinAmount), drop.MaxAmount) + 1));
+                    if (chance <= 0f || (chance < 1f && NormalizeRoll(roll()) >= chance)) continue;
+                    AddItem(
+                        itemCounts,
+                        drop.ItemId,
+                        RollInclusiveAmount(drop.MinAmount, drop.MaxAmount, roll));
                 }
             }
             else if (enemy.DropItemIDs != null)
@@ -113,6 +114,35 @@ public static class BattleRewardService
     {
         string normalizedId = string.IsNullOrWhiteSpace(itemId) ? string.Empty : itemId.Trim();
         if (string.IsNullOrEmpty(normalizedId) || amount <= 0) return;
-        counts[normalizedId] = counts.TryGetValue(normalizedId, out int current) ? current + amount : amount;
+        int current = counts.TryGetValue(normalizedId, out int existing) ? existing : 0;
+        counts[normalizedId] = SaturatingAdd(current, amount);
+    }
+
+    private static int RollInclusiveAmount(int configuredMin, int configuredMax, Func<float> roll)
+    {
+        int minimum = Mathf.Max(1, configuredMin);
+        int maximum = Mathf.Max(minimum, configuredMax);
+        if (minimum == maximum)
+            return minimum;
+
+        double normalized = NormalizeRoll(roll());
+        long range = (long)maximum - minimum + 1L;
+        long offset = Math.Min(range - 1L, (long)(normalized * range));
+        return (int)Math.Min(int.MaxValue, (long)minimum + offset);
+    }
+
+    private static double NormalizeRoll(float value)
+    {
+        if (float.IsNaN(value) || value <= 0f)
+            return 0d;
+        if (value >= 1f)
+            return 1d;
+        return value;
+    }
+
+    private static int SaturatingAdd(int left, int right)
+    {
+        long sum = (long)Mathf.Max(0, left) + Mathf.Max(0, right);
+        return (int)Math.Min(sum, int.MaxValue);
     }
 }

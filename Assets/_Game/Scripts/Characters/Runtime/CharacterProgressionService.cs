@@ -28,7 +28,10 @@ public static class CharacterProgressionService
         int level = Mathf.Max(1, currentLevel);
         int baseExperience = data != null ? Mathf.Max(1, data.BaseExperienceToLevel) : 100;
         float growth = data != null ? Mathf.Max(1f, data.ExperienceGrowth) : 1.18f;
-        return Mathf.Max(1, Mathf.RoundToInt(baseExperience * Mathf.Pow(growth, level - 1)));
+        double required = baseExperience * Math.Pow(growth, level - 1);
+        if (double.IsNaN(required) || required <= 1d) return 1;
+        if (double.IsInfinity(required) || required >= int.MaxValue) return int.MaxValue;
+        return Math.Max(1, (int)Math.Round(required, MidpointRounding.ToEven));
     }
 
     public static CharacterLevelUpResult GrantExperience(CharacterSaveData saveData, CharacterData data, int amount)
@@ -40,7 +43,7 @@ public static class CharacterProgressionService
         int maxLevel = data != null ? Mathf.Clamp(data.MaxLevel, 1, DefaultMaxLevel) : DefaultMaxLevel;
 
         saveData.Level = previousLevel;
-        saveData.EXP = Mathf.Max(0, saveData.EXP) + gained;
+        saveData.EXP = SaturatingAdd(saveData.EXP, gained);
 
         int hpGain = 0;
         int mpGain = 0;
@@ -56,23 +59,23 @@ public static class CharacterProgressionService
             saveData.EXP -= required;
             saveData.Level++;
 
-            hpGain += data != null ? Mathf.Max(0, data.MaxHpPerLevel) : 5;
-            mpGain += data != null ? Mathf.Max(0, data.MaxMpPerLevel) : 2;
-            attackGain += data != null ? Mathf.Max(0, data.AttackPerLevel) : 1;
-            defenseGain += data != null ? Mathf.Max(0, data.DefensePerLevel) : 1;
-            speedGain += data != null ? Mathf.Max(0, data.SpeedPerLevel) : 0;
+            hpGain = SaturatingAdd(hpGain, data != null ? data.MaxHpPerLevel : 5);
+            mpGain = SaturatingAdd(mpGain, data != null ? data.MaxMpPerLevel : 2);
+            attackGain = SaturatingAdd(attackGain, data != null ? data.AttackPerLevel : 1);
+            defenseGain = SaturatingAdd(defenseGain, data != null ? data.DefensePerLevel : 1);
+            speedGain = SaturatingAdd(speedGain, data != null ? data.SpeedPerLevel : 0);
         }
 
         if (saveData.Level >= maxLevel)
             saveData.EXP = 0;
 
-        saveData.MaxHP = Mathf.Max(1, saveData.MaxHP + hpGain);
-        saveData.MaxMP = Mathf.Max(0, saveData.MaxMP + mpGain);
-        saveData.ATK = Mathf.Max(1, saveData.ATK + attackGain);
-        saveData.DEF = Mathf.Max(0, saveData.DEF + defenseGain);
-        saveData.SPD = Mathf.Max(1, saveData.SPD + speedGain);
-        saveData.HP = Mathf.Clamp(saveData.HP + hpGain, 0, saveData.MaxHP);
-        saveData.MP = Mathf.Clamp(saveData.MP + mpGain, 0, saveData.MaxMP);
+        saveData.MaxHP = Mathf.Max(1, SaturatingAdd(saveData.MaxHP, hpGain));
+        saveData.MaxMP = SaturatingAdd(saveData.MaxMP, mpGain);
+        saveData.ATK = Mathf.Max(1, SaturatingAdd(saveData.ATK, attackGain));
+        saveData.DEF = SaturatingAdd(saveData.DEF, defenseGain);
+        saveData.SPD = Mathf.Max(1, SaturatingAdd(saveData.SPD, speedGain));
+        saveData.HP = Math.Min(SaturatingAdd(saveData.HP, hpGain), saveData.MaxHP);
+        saveData.MP = Math.Min(SaturatingAdd(saveData.MP, mpGain), saveData.MaxMP);
 
         return new CharacterLevelUpResult
         {
@@ -87,5 +90,11 @@ public static class CharacterProgressionService
             DefenseGained = defenseGain,
             SpeedGained = speedGain
         };
+    }
+
+    private static int SaturatingAdd(int left, int right)
+    {
+        long sum = (long)Mathf.Max(0, left) + Mathf.Max(0, right);
+        return (int)Math.Min(sum, int.MaxValue);
     }
 }

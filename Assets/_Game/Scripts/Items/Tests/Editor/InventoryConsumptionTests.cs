@@ -91,6 +91,41 @@ public class InventoryConsumptionTests
     }
 
     [Test]
+    public void ItemUseReservesOwnedItemBeforeEffectCallbacks()
+    {
+        const string itemId = "consumable.small_potion";
+        PlayerCharacter target = _targetObject.GetComponent<PlayerCharacter>();
+        target.HealHP(target.MaxHP);
+        target.TakePureDamage(50);
+        GlobalDataManager.Instance.AddItem(itemId, 1);
+        target.OnHPChanged += (_, _, _) => GlobalDataManager.Instance.RemoveItem(itemId, 1);
+
+        bool used = InventoryManager.Instance.UseItem(itemId, target);
+
+        Assert.That(used, Is.True);
+        Assert.That(GlobalDataManager.Instance.GetItemCount(itemId), Is.Zero);
+        Assert.That(target.CurrentHP, Is.EqualTo(80));
+    }
+
+    [Test]
+    public void EffectExceptionRestoresReservedItem()
+    {
+        const string itemId = "consumable.small_potion";
+        PlayerCharacter target = _targetObject.GetComponent<PlayerCharacter>();
+        target.HealHP(target.MaxHP);
+        target.TakePureDamage(50);
+        GlobalDataManager.Instance.AddItem(itemId, 1);
+        target.OnHPChanged += (_, _, _) =>
+            throw new System.InvalidOperationException("test effect callback failure");
+
+        bool used = false;
+        Assert.DoesNotThrow(() => used = InventoryManager.Instance.UseItem(itemId, target));
+
+        Assert.That(used, Is.False);
+        Assert.That(GlobalDataManager.Instance.GetItemCount(itemId), Is.EqualTo(1));
+    }
+
+    [Test]
     public void InventoryRejectsInvalidAmountsAndClampsKnownStackSize()
     {
         const string itemId = "consumable.small_potion";
