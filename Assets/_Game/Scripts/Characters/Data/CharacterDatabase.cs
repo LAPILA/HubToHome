@@ -10,7 +10,7 @@ public static class CharacterDatabase
     {
         if (string.IsNullOrWhiteSpace(characterDataId)) return null;
         EnsureCache();
-        _cache.TryGetValue(characterDataId, out var data);
+        _cache.TryGetValue(characterDataId.Trim(), out var data);
         return data;
     }
 
