@@ -66,6 +66,11 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
     public bool IsCompleted => _completed;
     public string ShortTypeLabel => AreaMarkerDefaults.GetShortLabel(markerType);
 
+    protected virtual void Start()
+    {
+        RestoreCompletionState();
+    }
+
     protected virtual void Reset()
     {
         EnsureDefaults();
@@ -94,16 +99,22 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
 
     public virtual bool CanInteract(PlayerController player)
     {
-        if (!isActiveAndEnabled) return false;
-        if (isOneShot && _completed) return false;
-        if (isOneShot && !string.IsNullOrWhiteSpace(setFlagOnComplete) && GlobalDataManager.Instance != null)
+        if (!isActiveAndEnabled)
+            return false;
+
+        if (isOneShot)
         {
-            if (GlobalDataManager.Instance.GetFlag(setFlagOnComplete, 0) != 0)
+            RestoreCompletionState();
+            if (_completed)
                 return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(requiredFlag) && GlobalDataManager.Instance != null)
-            return GlobalDataManager.Instance.GetFlag(requiredFlag, 0) != 0;
+        if (!string.IsNullOrWhiteSpace(requiredFlag))
+        {
+            GlobalDataManager global = ResolveGlobalData();
+            return global != null && global.GetFlag(requiredFlag, 0) != 0;
+        }
+
         return true;
     }
 
@@ -119,9 +130,71 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
 
     public virtual void CompleteMarker()
     {
+        if (_completed)
+            return;
+
         _completed = true;
+        GlobalDataManager global = ResolveGlobalData();
+        if (isOneShot)
+        {
+            AreaMarkerStateService.MarkCompleted(
+                global,
+                gameObject.scene.name,
+                areaId,
+                markerId);
+        }
+
         if (!string.IsNullOrWhiteSpace(setFlagOnComplete))
-            GlobalDataManager.Instance?.SetFlag(setFlagOnComplete, 1);
+            global?.SetFlag(setFlagOnComplete.Trim(), 1);
+
+        if (isOneShot)
+            ApplyCompletedState();
+    }
+
+    public void RestoreCompletionState()
+    {
+        if (!isOneShot || _completed)
+            return;
+
+        GlobalDataManager global = ResolveGlobalData();
+        if (global == null)
+            return;
+
+        bool automaticState = AreaMarkerStateService.IsCompleted(
+            global,
+            gameObject.scene.name,
+            areaId,
+            markerId);
+        bool explicitState = !string.IsNullOrWhiteSpace(setFlagOnComplete)
+            && global.GetFlag(setFlagOnComplete.Trim(), 0) != 0;
+        if (!automaticState && !explicitState)
+            return;
+
+        _completed = true;
+        if (!automaticState)
+        {
+            AreaMarkerStateService.MarkCompleted(
+                global,
+                gameObject.scene.name,
+                areaId,
+                markerId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(setFlagOnComplete) && !explicitState)
+            global.SetFlag(setFlagOnComplete.Trim(), 1);
+
+        ApplyCompletedState();
+    }
+
+    protected virtual GlobalDataManager ResolveGlobalData()
+    {
+        return GlobalDataManager.Instance;
+    }
+
+    private void ApplyCompletedState()
+    {
+        if (gameObject.activeSelf)
+            gameObject.SetActive(false);
     }
 
     public virtual void ShowHighlight(bool show) => _highlighted = show;
