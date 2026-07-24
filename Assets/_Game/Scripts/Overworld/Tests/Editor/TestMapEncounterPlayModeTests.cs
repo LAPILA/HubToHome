@@ -131,7 +131,26 @@ public class TestMapEncounterPlayModeTests
             12f,
             "Seamless battle did not reach player input.");
 
+        var managerObject = new SerializedObject(host.BattleManager);
+        GameObject battleUiCanvas = managerObject.FindProperty("_battleUICanvas").objectReferenceValue as GameObject;
+        Assert.That(battleUiCanvas, Is.Not.Null);
+        BattleResultUI resultUi = BattleResultUI.Ensure(battleUiCanvas.transform);
+        var resultInput = new ToggleResultAdvanceInputSource();
+        resultUi.SetAdvanceInputSource(resultInput);
+
         host.BattleManager.EditorCheatWinBattle();
+        TMPro.TMP_Text resultTitle = resultUi.transform.Find("Title").GetComponent<TMPro.TMP_Text>();
+        yield return WaitUntilOrFail(
+            () => resultUi.gameObject.activeInHierarchy && resultTitle.text == "VICTORY",
+            5f,
+            "Victory did not display the battle result page.");
+        yield return new WaitForSecondsRealtime(0.3f);
+        Assert.That(
+            resultUi.gameObject.activeInHierarchy,
+            Is.True,
+            "Battle result advanced without confirmation.");
+
+        resultInput.AllowAdvance = true;
         yield return WaitUntilOrFail(
             () => !host.BattleUiRoot.activeSelf,
             15f,
@@ -327,6 +346,12 @@ public class TestMapEncounterPlayModeTests
         Assert.That(predicate(), Is.True, message);
     }
 
+    private sealed class ToggleResultAdvanceInputSource : IBattleResultAdvanceInputSource
+    {
+        public bool AllowAdvance { get; set; }
+
+        public bool AdvancePressedThisFrame => AllowAdvance;
+    }
 }
 
 public sealed class TestMapEncounterSourceProbe : MonoBehaviour, IEncounterSource

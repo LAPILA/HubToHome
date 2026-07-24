@@ -1,9 +1,29 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
+
+public interface IBattleResultAdvanceInputSource
+{
+    bool AdvancePressedThisFrame { get; }
+}
+
+internal sealed class GameInputBattleResultAdvanceInputSource : IBattleResultAdvanceInputSource
+{
+    public static readonly GameInputBattleResultAdvanceInputSource Instance =
+        new GameInputBattleResultAdvanceInputSource();
+
+    private GameInputBattleResultAdvanceInputSource()
+    {
+    }
+
+    public bool AdvancePressedThisFrame =>
+        GameInput.ConfirmPressed || GameInput.BattleConfirmPressed || GameInput.DialogueAdvancePressed;
+}
 
 [DisallowMultipleComponent]
 public sealed class BattleResultUI : MonoBehaviour
@@ -15,8 +35,12 @@ public sealed class BattleResultUI : MonoBehaviour
     [SerializeField] private TMP_Text _rewardText;
     [SerializeField] private TMP_Text _levelText;
     [SerializeField] private float _fadeDuration = 0.18f;
-    [SerializeField] private float _holdDuration = 1.25f;
+    [FormerlySerializedAs("_holdDuration")]
+    [SerializeField, Min(0f)] private float _minimumInputDelay = 0.2f;
     private Tween _fadeTween;
+    private IBattleResultAdvanceInputSource _advanceInputSource =
+        GameInputBattleResultAdvanceInputSource.Instance;
+    private int _presentationVersion;
 
     public static BattleResultUI Ensure(Transform parent)
     {
@@ -85,52 +109,115 @@ public sealed class BattleResultUI : MonoBehaviour
         return _globalInstance;
     }
 
+    public void SetAdvanceInputSource(IBattleResultAdvanceInputSource inputSource)
+    {
+        _advanceInputSource = inputSource ?? GameInputBattleResultAdvanceInputSource.Instance;
+    }
+
     public IEnumerator Show(BattleRewardResult result, bool instantVictory = false)
     {
         if (result == null) yield break;
 
         gameObject.SetActive(true);
+        int presentationVersion = ++_presentationVersion;
         try
         {
             transform.SetAsLastSibling();
-
-            _title.text = instantVictory ? "INSTANT VICTORY" : "VICTORY";
-            _rewardText.text = BuildRewardText(result);
-            _levelText.text = BuildLevelText(result);
-
             ResetPresentation(false);
             _canvasGroup.blocksRaycasts = true;
 
-            _fadeTween = _canvasGroup
-                .DOFade(1f, _fadeDuration)
-                .SetUpdate(true);
-            yield return _fadeTween.WaitForCompletion();
-            _fadeTween = null;
+            List<BattleResultPage> pages = BuildPages(result, instantVictory);
+            ApplyPage(pages[0]);
+            yield return FadeTo(1f);
+            if (!IsPresentationCurrent(presentationVersion))
+                yield break;
 
-            yield return new WaitForSecondsRealtime(_holdDuration);
+            for (int i = 0; i < pages.Count; i++)
+            {
+                if (i > 0)
+                    ApplyPage(pages[i]);
 
-            _fadeTween = _canvasGroup
-                .DOFade(0f, _fadeDuration)
-                .SetUpdate(true);
-            yield return _fadeTween.WaitForCompletion();
-            _fadeTween = null;
+                yield return WaitForAdvanceInput(presentationVersion);
+                if (!IsPresentationCurrent(presentationVersion))
+                    yield break;
+            }
+
+            yield return FadeTo(0f);
         }
         finally
         {
-            ResetPresentation(true);
+            if (_presentationVersion == presentationVersion)
+                ResetPresentation(true);
         }
+    }
+
+    private void ApplyPage(BattleResultPage page)
+    {
+        _title.text = page.Title;
+        _rewardText.text = page.RewardText;
+        _levelText.text = page.DetailText;
     }
 
     private void OnDisable()
     {
+        _presentationVersion++;
         ResetPresentation(false);
     }
 
     private void OnDestroy()
     {
+        _presentationVersion++;
         ResetPresentation(false);
         if (_globalInstance == this)
             _globalInstance = null;
+    }
+
+    private IEnumerator FadeTo(float alpha)
+    {
+        float duration = Mathf.Max(0f, _fadeDuration);
+        if (duration <= 0f)
+        {
+            _canvasGroup.alpha = alpha;
+            yield break;
+        }
+
+        Tween fadeTween = _canvasGroup
+            .DOFade(alpha, duration)
+            .SetUpdate(true);
+        _fadeTween = fadeTween;
+        yield return fadeTween.WaitForCompletion();
+        if (ReferenceEquals(_fadeTween, fadeTween))
+            _fadeTween = null;
+    }
+
+    private IEnumerator WaitForAdvanceInput(int presentationVersion)
+    {
+        // Even a zero delay must cross a frame boundary so one press cannot consume two pages.
+        yield return null;
+        if (!IsPresentationCurrent(presentationVersion))
+            yield break;
+
+        float delay = Mathf.Max(0f, _minimumInputDelay);
+        float delayEndsAt = Time.realtimeSinceStartup + delay;
+        while (IsPresentationCurrent(presentationVersion)
+            && Time.realtimeSinceStartup < delayEndsAt)
+        {
+            yield return null;
+        }
+
+        while (IsPresentationCurrent(presentationVersion))
+        {
+            IBattleResultAdvanceInputSource inputSource =
+                _advanceInputSource ?? GameInputBattleResultAdvanceInputSource.Instance;
+            if (inputSource.AdvancePressedThisFrame)
+                yield break;
+            yield return null;
+        }
+    }
+
+    private bool IsPresentationCurrent(int presentationVersion)
+    {
+        return _presentationVersion == presentationVersion && isActiveAndEnabled;
     }
 
     private void ResetPresentation(bool deactivate)
@@ -194,18 +281,65 @@ public sealed class BattleResultUI : MonoBehaviour
         return builder.ToString();
     }
 
-    private static string BuildLevelText(BattleRewardResult result)
+    private static List<BattleResultPage> BuildPages(BattleRewardResult result, bool instantVictory)
     {
-        var builder = new StringBuilder();
+        var pages = new List<BattleResultPage>(1 + result.LevelUps.Count)
+        {
+            new BattleResultPage(
+                instantVictory ? "INSTANT VICTORY" : "VICTORY",
+                BuildRewardText(result),
+                " ")
+        };
+
         for (int i = 0; i < result.LevelUps.Count; i++)
         {
             CharacterLevelUpResult level = result.LevelUps[i];
-            if (level == null || !level.DidLevelUp) continue;
-            if (builder.Length > 0) builder.Append("    ");
+            if (level == null || !level.DidLevelUp)
+                continue;
+
             CharacterData data = CharacterDatabase.FindById(level.CharacterDataId);
-            builder.Append(data != null ? data.DisplayName : level.CharacterDataId)
-                .Append("  LV ").Append(level.PreviousLevel).Append(" > ").Append(level.NewLevel);
+            string characterName = data != null ? data.DisplayName : level.CharacterDataId;
+            pages.Add(new BattleResultPage(
+                "LEVEL UP",
+                $"{characterName}  LV {level.PreviousLevel} > {level.NewLevel}",
+                BuildStatGainText(level)));
         }
+
+        return pages;
+    }
+
+    private static string BuildStatGainText(CharacterLevelUpResult level)
+    {
+        var builder = new StringBuilder();
+        AppendStatGain(builder, "HP", level.MaxHpGained);
+        AppendStatGain(builder, "MP", level.MaxMpGained);
+        AppendStatGain(builder, "ATK", level.AttackGained);
+        AppendStatGain(builder, "DEF", level.DefenseGained);
+        AppendStatGain(builder, "SPD", level.SpeedGained);
         return builder.Length > 0 ? builder.ToString() : " ";
+    }
+
+    private static void AppendStatGain(StringBuilder builder, string label, int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        if (builder.Length > 0)
+            builder.Append("    ");
+        builder.Append(label).Append(" +").Append(amount);
+    }
+
+    private readonly struct BattleResultPage
+    {
+        public BattleResultPage(string title, string rewardText, string detailText)
+        {
+            Title = title;
+            RewardText = rewardText;
+            DetailText = detailText;
+        }
+
+        public string Title { get; }
+        public string RewardText { get; }
+        public string DetailText { get; }
     }
 }
