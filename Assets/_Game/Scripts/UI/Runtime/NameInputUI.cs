@@ -22,6 +22,9 @@ public class NameInputUI : MonoBehaviour
     private int _currentLangIndex = 0;
     private Action<string> _onNamingComplete;
     private bool _isOpen = false;
+    private int _sessionVersion;
+
+    public bool IsOpen => _isOpen;
 
     private void Awake()
     {
@@ -31,6 +34,10 @@ public class NameInputUI : MonoBehaviour
 
     public void Open(Action<string> onComplete)
     {
+        if (_isOpen)
+            CancelInternal(deactivate: false);
+
+        _sessionVersion++;
         _onNamingComplete = onComplete;
         _isOpen = true;
         gameObject.SetActive(true);
@@ -38,13 +45,17 @@ public class NameInputUI : MonoBehaviour
         if (_inputField != null)
         {
             _inputField.characterLimit = MaxNameLength;
-            _inputField.text = ""; // 이전 입력 초기화
+            _inputField.text = string.Empty;
         }
-        if (_canvasGroup != null) _canvasGroup.DOFade(1f, 0.5f);
+
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.DOKill(false);
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.DOFade(1f, 0.5f).SetUpdate(true);
+        }
         
         UpdateLanguage(0);
-
-        // 🚨 코루틴으로 한 프레임 쉬고 포커스를 강제로 잡습니다. (활성화 타이밍 꼬임 방지)
         StartCoroutine(ForceFocusRoutine());
     }
 
@@ -76,7 +87,9 @@ public class NameInputUI : MonoBehaviour
         if (!_isOpen) return;
 
         // 🚨 지속적인 포커스 유지: 만약 포커스가 날아가면 강제로 다시 잡음
-        if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != _inputField.gameObject)
+        if (_inputField != null
+            && EventSystem.current != null
+            && EventSystem.current.currentSelectedGameObject != _inputField.gameObject)
         {
             EventSystem.current.SetSelectedGameObject(_inputField.gameObject);
         }
@@ -130,16 +143,78 @@ public class NameInputUI : MonoBehaviour
         if (!IsValidNameLength()) return;
 
         _isOpen = false;
+        int sessionVersion = _sessionVersion;
         string confirmedName = _inputField.text.Trim();
-        
-        if (_inputField != null) _inputField.DeactivateInputField();
-        
+        Action<string> callback = _onNamingComplete;
+        _onNamingComplete = null;
+        _inputField.DeactivateInputField();
+
+        void Complete()
+        {
+            if (sessionVersion != _sessionVersion)
+                return;
+
+            callback?.Invoke(confirmedName);
+            gameObject.SetActive(false);
+        }
+
         if (_canvasGroup != null)
         {
-            _canvasGroup.DOFade(0f, 1f).OnComplete(() => {
-                _onNamingComplete?.Invoke(confirmedName);
-                gameObject.SetActive(false);
-            });
+            _canvasGroup.DOKill(false);
+            _canvasGroup.DOFade(0f, 1f)
+                .SetUpdate(true)
+                .OnComplete(Complete);
         }
+        else
+        {
+            Complete();
+        }
+    }
+
+    public void CancelImmediate()
+    {
+        CancelInternal(deactivate: true);
+    }
+
+    private void CancelInternal(bool deactivate)
+    {
+        _sessionVersion++;
+        _isOpen = false;
+        _onNamingComplete = null;
+        StopAllCoroutines();
+
+        if (_inputField != null)
+        {
+            _inputField.DeactivateInputField();
+            if (EventSystem.current != null
+                && EventSystem.current.currentSelectedGameObject == _inputField.gameObject)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
+        }
+
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.DOKill(false);
+            _canvasGroup.alpha = 0f;
+        }
+
+        if (_guideText != null)
+            _guideText.transform.DOKill(false);
+
+        if (deactivate && gameObject.activeSelf)
+            gameObject.SetActive(false);
+    }
+
+    private void OnDisable()
+    {
+        if (_isOpen)
+            CancelInternal(deactivate: false);
+    }
+
+    private void OnDestroy()
+    {
+        if (_isOpen)
+            CancelInternal(deactivate: false);
     }
 }

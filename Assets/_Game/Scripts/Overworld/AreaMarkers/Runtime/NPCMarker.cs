@@ -15,6 +15,9 @@ public class NPCMarker : AreaMarkerBase
     [SerializeField, Tooltip("실제 실행할 DialogueData입니다. 비어 있으면 fallbackDialogueText를 1노드 대사로 표시합니다."), LabelText("DialogueData")]
     private DialogueData dialogueData;
     [TitleGroup("NPC 설정/대화")]
+    [SerializeField, Tooltip("진행 Flag에 따라 대화를 선택합니다. 일치 항목이 없으면 아래 DialogueData를 사용합니다."), LabelText("Flag Dialogue Selector")]
+    private FlagDialogueSelector dialogueSelector;
+    [TitleGroup("NPC 설정/대화")]
     [SerializeField, ShowIf(nameof(UseFallbackDialogue)), LabelText("Fallback Speaker")]
     private SpeakerData fallbackSpeaker;
     [TitleGroup("NPC 설정/대화")]
@@ -38,8 +41,11 @@ public class NPCMarker : AreaMarkerBase
     {
         if (!CanInteract(player) || !IsPlayerInRange(player)) return;
 
+        DialogueData resolvedDialogue = dialogueSelector != null
+            ? dialogueSelector.Resolve(GlobalDataManager.Instance, dialogueData)
+            : dialogueData;
         bool started = TryStartDialogue(
-            dialogueData,
+            resolvedDialogue,
             fallbackDialogueText,
             fallbackSpeaker,
             fallbackEmotion,
@@ -54,7 +60,10 @@ public class NPCMarker : AreaMarkerBase
         base.CollectValidationIssues(issues);
         if (string.IsNullOrWhiteSpace(npcId))
             issues.Add("npcId가 비어 있습니다.");
-        if (dialogueData == null && string.IsNullOrWhiteSpace(fallbackDialogueText))
-            issues.Add("DialogueData 또는 fallbackDialogueText 중 하나는 필요합니다.");
+        if (dialogueSelector != null && !dialogueSelector.TryValidate(out string selectorError))
+            issues.Add("Flag Dialogue Selector 오류: " + selectorError);
+        bool hasDialogue = dialogueData != null || (dialogueSelector != null && dialogueSelector.HasAnyDialogue);
+        if (!hasDialogue && string.IsNullOrWhiteSpace(fallbackDialogueText))
+            issues.Add("DialogueData, Flag Dialogue Selector, fallbackDialogueText 중 하나는 필요합니다.");
     }
 }

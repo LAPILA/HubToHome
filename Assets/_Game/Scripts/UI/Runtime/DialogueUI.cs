@@ -99,6 +99,23 @@ public class DialogueUI : MonoBehaviour
         else gameObject.SetActive(false);
     }
 
+    public void HideImmediate()
+    {
+        HideChoices();
+        IsTyping = false;
+        StopAllCoroutines();
+        _applySpeedRoutine = null;
+        _cameraRebindRoutine = null;
+
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.DOKill(false);
+            _canvasGroup.alpha = 0f;
+        }
+
+        gameObject.SetActive(false);
+    }
+
     public void DisplayNode(SpeakerData speaker, EmotionType emotion, string text)
     {
         IsTyping = true;

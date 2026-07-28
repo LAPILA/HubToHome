@@ -40,6 +40,7 @@ public class SaveData
     public string currentScene = SceneName.Overworld;
     public string currentRoomId = "";
     public string spawnPointId = "";
+    public string currentTrainStopId = "";
     public float  playerX = 0f;
     public float  playerY = 0f;
     public int    lookingDirection = 0; 

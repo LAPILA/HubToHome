@@ -1,10 +1,9 @@
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// 씬 전환 페이드 아래에서 Cinematic Stage를 준비하고, 화면 공개 직후 독립 Action Sequence를 재생합니다.
-/// 완료 여부는 GlobalDataManager의 event flag에만 기록하므로 전투 런타임 상태와 섞이지 않습니다.
+/// Prepares a scene sequence below the reveal fade and starts it after reveal.
 /// </summary>
 public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate, IActionSequenceLiveContextSource
 {
@@ -12,26 +11,21 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
     [SerializeField] private ActionSequenceAsset _sequence;
     [SerializeField] private OverworldCinematicStage _cinematicStage;
     [SerializeField] private string _initialShotId = string.Empty;
+    [SerializeField] private List<ScenarioDialogueReferenceData> _dialogues = new List<ScenarioDialogueReferenceData>();
 
     [Header("저장 / 상태")]
     [SerializeField] private bool _runOncePerSave = true;
     [SerializeField] private string _completionFlagId = "overworld.intro.subway.completed";
     [SerializeField] private bool _setExplorationWhenFinished = true;
 
+    private SceneActionSequencePlayer _player;
     private bool _isReadyToReveal = true;
     private bool _shouldPlayAfterReveal;
     private bool _hasStarted;
-    private ActionExecutionContext _executionContext;
 
-    public bool IsReadyToReveal
-    {
-        get { return _isReadyToReveal; }
-    }
-
+    public bool IsReadyToReveal => _isReadyToReveal;
     public ActionSequenceAsset Sequence => _sequence;
-
     public int LiveContextPriority => 50;
-
     public string LiveContextLabel => "Scene Action Sequence Trigger: " + name;
 
     public bool TryCreateLiveContext(
@@ -48,28 +42,20 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
             error = string.Empty;
             return false;
         }
+
         if (!Application.isPlaying)
         {
             error = "Play Mode에서만 씬 시퀀스를 실동작 테스트할 수 있습니다.";
             return false;
         }
-        if (_cinematicStage == null)
-        {
-            error = "실동작 테스트에 필요한 Cinematic Stage가 없습니다.";
-            return false;
-        }
 
-        director = SceneActionSequenceContextFactory.CreateDirector();
-        context = SceneActionSequenceContextFactory.Create(
-            _sequence,
-            _cinematicStage,
-            new ScreenTransitionRunner());
-        error = string.Empty;
-        return true;
+        EnsurePlayer();
+        return _player.TryCreateLiveContext(requestedSequence, out director, out context, out error);
     }
 
     private void Awake()
     {
+        EnsurePlayer();
         PrepareForReveal();
     }
 
@@ -86,20 +72,26 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
     private void OnDisable()
     {
         if (SceneLoader.Instance != null)
-        {
             SceneLoader.Instance.SceneRevealCompleted -= HandleSceneRevealCompleted;
-        }
 
-        _executionContext?.Handle.Cancel("Scene action sequence trigger was disabled.");
-        _cinematicStage?.Release();
+        _player?.Stop("Scene action sequence trigger was disabled.");
+    }
+
+    private void EnsurePlayer()
+    {
+        if (_player == null)
+            _player = GetComponent<SceneActionSequencePlayer>();
+        if (_player == null)
+            _player = gameObject.AddComponent<SceneActionSequencePlayer>();
+
+        if (!_player.IsPlaying)
+            _player.Configure(_sequence, _cinematicStage, _initialShotId, _dialogues);
     }
 
     private void SubscribeSceneLoader()
     {
         if (SceneLoader.Instance == null)
-        {
             return;
-        }
 
         SceneLoader.Instance.SceneRevealCompleted -= HandleSceneRevealCompleted;
         SceneLoader.Instance.SceneRevealCompleted += HandleSceneRevealCompleted;
@@ -110,30 +102,17 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
         _isReadyToReveal = false;
         _shouldPlayAfterReveal = false;
 
-        if (!Application.isPlaying || _sequence == null)
+        if (!Application.isPlaying || _sequence == null || HasCompletedForCurrentSave())
         {
             _isReadyToReveal = true;
             return;
         }
 
-        if (HasCompletedForCurrentSave())
-        {
-            _isReadyToReveal = true;
-            return;
-        }
-
-        if (_cinematicStage == null)
-        {
-            Debug.LogWarning("[SceneActionSequenceTrigger] Cinematic Stage reference is missing. Scene will reveal normally.", this);
-            _isReadyToReveal = true;
-            return;
-        }
-
-        string error;
-        if (!_cinematicStage.PrepareForSceneReveal(_initialShotId, out error))
+        EnsurePlayer();
+        if (!_player.PrepareForSceneReveal(out string error))
         {
             Debug.LogWarning("[SceneActionSequenceTrigger] Failed to prepare cinematic stage: " + error, this);
-            _cinematicStage.Release();
+            _cinematicStage?.Release();
             _isReadyToReveal = true;
             return;
         }
@@ -145,71 +124,57 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
     private void HandleSceneRevealCompleted(string sceneName)
     {
         if (_hasStarted || !_shouldPlayAfterReveal || !IsOwnScene(sceneName))
-        {
             return;
-        }
 
-        StartCoroutine(PlaySequence());
-    }
-
-    private IEnumerator PlaySequence()
-    {
         _hasStarted = true;
         _shouldPlayAfterReveal = false;
+        EnsurePlayer();
+        if (!_player.TryPlay(HandlePlaybackFinished))
+        {
+            _hasStarted = false;
+            _cinematicStage?.Release();
+        }
+    }
 
-        GameStateManager stateManager = GameStateManager.Instance;
-        stateManager?.ChangeState(GameState.Cutscene);
-
-        ActionDirector director = SceneActionSequenceContextFactory.CreateDirector();
-        _executionContext = SceneActionSequenceContextFactory.Create(
-            _sequence,
-            _cinematicStage,
-            new ScreenTransitionRunner());
-
-        yield return director.Play(_sequence, _executionContext);
-
-        bool succeeded = _executionContext.Handle.Status == ActionExecutionStatus.Succeeded;
-        if (succeeded)
+    private void HandlePlaybackFinished(ActionExecutionResult result)
+    {
+        if (result != null && result.Status == ActionExecutionStatus.Succeeded)
         {
             MarkCompletedForCurrentSave();
         }
         else
         {
-            Debug.LogWarning("[SceneActionSequenceTrigger] Scene sequence ended without success: " + _executionContext.Handle.Result.Message, this);
+            string message = result != null ? result.Message : "No result was returned.";
+            Debug.LogWarning("[SceneActionSequenceTrigger] Scene sequence ended without success: " + message, this);
         }
 
-        _cinematicStage?.Release();
-        if (_setExplorationWhenFinished && stateManager != null)
+        if (_setExplorationWhenFinished
+            && GameStateManager.Instance != null
+            && GameStateManager.Instance.CurrentState == GameState.Cutscene)
         {
-            stateManager.ChangeState(GameState.Exploration);
+            GameStateManager.Instance.ChangeState(GameState.Exploration);
         }
-
-        _executionContext = null;
     }
 
     private bool HasCompletedForCurrentSave()
     {
         if (!_runOncePerSave || string.IsNullOrWhiteSpace(_completionFlagId))
-        {
             return false;
-        }
 
-        return GlobalDataManager.Instance != null && GlobalDataManager.Instance.GetFlag(_completionFlagId.Trim()) != 0;
+        return GlobalDataManager.Instance != null
+            && GlobalDataManager.Instance.GetFlag(_completionFlagId.Trim()) != 0;
     }
 
     private void MarkCompletedForCurrentSave()
     {
-        if (!_runOncePerSave || string.IsNullOrWhiteSpace(_completionFlagId))
-        {
-            return;
-        }
-
-        GlobalDataManager.Instance?.SetFlag(_completionFlagId.Trim(), 1);
+        if (_runOncePerSave && !string.IsNullOrWhiteSpace(_completionFlagId))
+            GlobalDataManager.Instance?.SetFlag(_completionFlagId.Trim(), 1);
     }
 
     private bool IsOwnScene(string sceneName)
     {
         Scene ownScene = gameObject.scene;
-        return ownScene.IsValid() && string.Equals(ownScene.name, sceneName, System.StringComparison.Ordinal);
+        return ownScene.IsValid()
+            && string.Equals(ownScene.name, sceneName, System.StringComparison.Ordinal);
     }
 }

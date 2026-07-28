@@ -1,0 +1,32 @@
+id: travel_train.departure
+title: "공용 열차 - 출발"
+primaryMode: overworld
+openingModule: ""
+memoryKey: ""
+
+participants:
+  party: []
+  enemies: []
+
+sequences:
+  travel_train.departure:
+    title: "공용 열차 - 출발"
+    description: "창밖의 흐름과 카메라 이동으로 정류소 사이 출발을 표현한다."
+    usage: "열차 내부 목적지 장치를 선택한 뒤 재생한다."
+    status: ready
+    tags: [overworld, cinematic, travel, train]
+    allowedPrimaryModes: [overworld]
+    - cinematic.stage.prepare:
+      blockId: 8c2e7f9d04b14be6a6e385c6afce0a11
+      designerLabel: "열차 출발 Stage 준비"
+      stage: travel_train.departure
+      shot: travel_train.departure.run
+    - cinematic.shot.play:
+      blockId: 92c47ed4c1df4e4a88c30ce167ab1c22
+      designerLabel: "창밖 이동 샷"
+      stage: travel_train.departure
+      shot: travel_train.departure.run
+    - cinematic.stage.release:
+      blockId: d41a9c6f30c6463ba8517f718c5ab933
+      designerLabel: "열차 출발 Stage 해제"
+      stage: travel_train.departure

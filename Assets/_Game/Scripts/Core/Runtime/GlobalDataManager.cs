@@ -27,7 +27,10 @@ public class GlobalDataManager : MonoBehaviour
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
     private readonly Dictionary<string, OverworldEnemyRuntimeState> _overworldEnemyStates = new Dictionary<string, OverworldEnemyRuntimeState>();
     private readonly Dictionary<string, EncounterMemorySaveData> _encounterMemory = new Dictionary<string, EncounterMemorySaveData>();
+    private readonly MapReturnBookmarkStack _mapReturnBookmarks = new MapReturnBookmarkStack();
     public int Money { get; private set; } = 0;
+
+    public event System.Action<string, int, int> FlagChanged;
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
     public AudioClip PendingBattleBGM { get; set; }
@@ -45,6 +48,8 @@ public class GlobalDataManager : MonoBehaviour
     public string SpawnScene { get; set; } = SceneName.Overworld;
     public string CurrentRoomId { get; set; } = string.Empty;
     public string SpawnPointId { get; set; } = string.Empty;
+    public string CurrentTrainStopId { get; set; } = string.Empty;
+    public bool SpawnFallbackAllowed { get; set; }
     public float  SpawnX     { get; set; } = 0f;
     public float  SpawnY     { get; set; } = 0f;
     public int    LookingDir { get; set; } = 0; 
@@ -72,17 +77,38 @@ public class GlobalDataManager : MonoBehaviour
         _inventoryDict.Clear();
         _encounterMemory.Clear();
         _overworldEnemyStates.Clear();
+        _mapReturnBookmarks.Clear();
+        CurrentTrainStopId = string.Empty;
         Party.Clear(); // 기존 더미 데이터 추가 로직 삭제
     }
 
     /// <summary>
-    /// 게임 시작 시 글로벌 데이터가 비어있다면, 씬에 배치된 플레이어의 인스펙터 값을 기준으로 파티를 셋업합니다.
+    /// 씬 캐릭터와 대응하는 파티 저장 객체를 찾거나, 파티가 비어 있을 때 새로 만듭니다.
     /// </summary>
-    public void InitializePartyFromScene(PlayerCharacter scenePlayer)
+    public CharacterSaveData InitializePartyFromScene(PlayerCharacter scenePlayer)
     {
-        if (scenePlayer == null) return;
+        if (scenePlayer == null) return null;
 
         CharacterData characterData = scenePlayer.CharacterData;
+        string stableId = NormalizeCharacterId(characterData != null ? characterData.CharacterID : null);
+        CharacterSaveData existing = FindPartyMember(stableId);
+        if (existing != null)
+            return existing;
+
+        if (Party.Count > 0)
+        {
+            CharacterSaveData legacyLeader = Party[0];
+            if (legacyLeader != null && string.IsNullOrWhiteSpace(legacyLeader.CharacterDataID))
+            {
+                legacyLeader.CharacterDataID = stableId;
+                return legacyLeader;
+            }
+
+            Debug.LogWarning(
+                $"[GlobalDataManager] Scene character has no matching party save. CharacterDataID={stableId}",
+                scenePlayer);
+            return null;
+        }
 
         int startMaxHP = characterData != null ? characterData.BaseMaxHP : (scenePlayer.BaseMaxHP > 0 ? scenePlayer.BaseMaxHP : 100);
         int startMaxMP = characterData != null ? characterData.BaseMaxMP : (scenePlayer.BaseMaxMP > 0 ? scenePlayer.BaseMaxMP : 50);
@@ -92,10 +118,8 @@ public class GlobalDataManager : MonoBehaviour
 
         var newData = new CharacterSaveData()
         {
-            CharacterDataID = characterData != null ? characterData.CharacterID : string.Empty,
-            CharacterID = scenePlayer.CharacterID,
-            // 🚨 캐릭터 이름(ID)을 입력받은 플레이어 이름으로 덮어쓸 수도 있습니다!
-            // CharacterID = string.IsNullOrEmpty(PlayerName) ? scenePlayer.CharacterID : PlayerName,
+            CharacterDataID = stableId,
+            CharacterID = scenePlayer.DisplayName,
             Level       = scenePlayer.Level,
             EXP         = scenePlayer.EXP,
             MaxHP       = startMaxHP,
@@ -109,12 +133,142 @@ public class GlobalDataManager : MonoBehaviour
 
         Party.Add(newData);
         Debug.Log($"<color=yellow>[GlobalData] 파티원 초기화 완료: {newData.CharacterID} (이름: {PlayerName})</color>");
+        return newData;
     }
+
+    private CharacterSaveData FindPartyMember(string stableId)
+    {
+        if (string.IsNullOrEmpty(stableId))
+            return null;
+
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member != null
+                && string.Equals(
+                    NormalizeCharacterId(member.CharacterDataID),
+                    stableId,
+                    System.StringComparison.Ordinal))
+            {
+                return member;
+            }
+        }
+
+        return null;
+    }
+    public bool TryApplyOverworldPartyDamage(
+        int requestedDamage,
+        out CharacterSaveData leader,
+        out int previousHP,
+        out int currentHP)
+    {
+        leader = Party.Count > 0 ? Party[0] : null;
+        previousHP = leader != null ? Mathf.Max(1, leader.HP) : 0;
+        currentHP = previousHP;
+        if (leader == null || requestedDamage <= 0)
+            return false;
+
+        int maxHP = Mathf.Max(1, leader.MaxHP);
+        previousHP = Mathf.Clamp(previousHP, 1, maxHP);
+        currentHP = Mathf.Max(1, previousHP - requestedDamage);
+        leader.HP = currentHP;
+        return true;
+    }
+
     #endregion
 
     #region [ Event Flags API ]
-    public void SetFlag(string key, int value) => _eventFlags[key] = value;
-    public int GetFlag(string key, int defaultValue = 0) => _eventFlags.TryGetValue(key, out int val) ? val : defaultValue;
+    public void SetFlag(string key, int value)
+    {
+        string normalizedKey = NormalizeFlagKey(key);
+        if (string.IsNullOrEmpty(normalizedKey))
+            return;
+
+        int oldValue = GetFlag(normalizedKey);
+        if (oldValue == value)
+            return;
+
+        _eventFlags[normalizedKey] = value;
+        NotifyFlagChangedSafely(normalizedKey, oldValue, value);
+    }
+
+    public int GetFlag(string key, int defaultValue = 0)
+    {
+        string normalizedKey = NormalizeFlagKey(key);
+        return !string.IsNullOrEmpty(normalizedKey)
+            && _eventFlags.TryGetValue(normalizedKey, out int value)
+                ? value
+                : defaultValue;
+    }
+
+    public bool TryGetFlag(string key, out int value)
+    {
+        string normalizedKey = NormalizeFlagKey(key);
+        if (string.IsNullOrEmpty(normalizedKey))
+        {
+            value = 0;
+            return false;
+        }
+
+        return _eventFlags.TryGetValue(normalizedKey, out value);
+    }
+    private void NotifyFlagChangedSafely(string key, int oldValue, int newValue)
+    {
+        System.Action<string, int, int> handlers = FlagChanged;
+        if (handlers == null)
+            return;
+
+        System.Delegate[] subscribers = handlers.GetInvocationList();
+        for (int i = 0; i < subscribers.Length; i++)
+        {
+            try
+            {
+                ((System.Action<string, int, int>)subscribers[i]).Invoke(key, oldValue, newValue);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogException(exception, this);
+            }
+        }
+    }
+    #endregion
+
+    #region [ Map Return Bookmark API ]
+    public int MapReturnBookmarkCount => _mapReturnBookmarks.Count;
+
+    public MapReturnBookmarkToken PushPendingMapReturnBookmark(MapReturnBookmark bookmark)
+    {
+        return _mapReturnBookmarks.PushPending(bookmark);
+    }
+
+    public bool CommitMapReturnBookmark(MapReturnBookmarkToken token)
+    {
+        return _mapReturnBookmarks.Commit(token);
+    }
+
+    public bool RollbackMapReturnBookmark(MapReturnBookmarkToken token)
+    {
+        return _mapReturnBookmarks.Rollback(token);
+    }
+
+    public bool TryPeekMapReturnBookmark(
+        out MapReturnBookmark bookmark,
+        out MapReturnBookmarkToken token)
+    {
+        return _mapReturnBookmarks.TryPeek(out bookmark, out token);
+    }
+
+    public bool TryPopMapReturnBookmark(
+        MapReturnBookmarkToken expectedToken,
+        out MapReturnBookmark bookmark)
+    {
+        return _mapReturnBookmarks.TryPop(expectedToken, out bookmark);
+    }
+
+    public void ClearMapReturnBookmarks()
+    {
+        _mapReturnBookmarks.Clear();
+    }
     #endregion
 
     #region [ Inventory API ]
@@ -387,6 +541,7 @@ public class GlobalDataManager : MonoBehaviour
             currentScene     = NormalizeSceneName(SpawnScene),
             currentRoomId    = CurrentRoomId,
             spawnPointId     = SpawnPointId,
+            currentTrainStopId = CurrentTrainStopId,
             playerX          = SpawnX,
             playerY          = SpawnY,
             lookingDirection = LookingDir,
@@ -414,9 +569,14 @@ public class GlobalDataManager : MonoBehaviour
         SpawnScene = NormalizeSceneName(data.currentScene);
         CurrentRoomId = data.currentRoomId ?? string.Empty;
         SpawnPointId = data.spawnPointId ?? string.Empty;
+        CurrentTrainStopId = string.IsNullOrWhiteSpace(data.currentTrainStopId)
+            ? string.Empty
+            : data.currentTrainStopId.Trim();
+        SpawnFallbackAllowed = false;
         SpawnX = data.playerX;
         SpawnY = data.playerY;
         LookingDir = data.lookingDirection;
+        _mapReturnBookmarks.Clear();
 
         _inventoryDict.Clear();
         if (data.InventoryDict != null)
@@ -430,7 +590,9 @@ public class GlobalDataManager : MonoBehaviour
         {
             foreach (KeyValuePair<string, int> entry in data.eventFlags)
             {
-                _eventFlags[entry.Key] = entry.Value;
+                string normalizedKey = NormalizeFlagKey(entry.Key);
+                if (!string.IsNullOrEmpty(normalizedKey))
+                    _eventFlags[normalizedKey] = entry.Value;
             }
         }
 
@@ -593,6 +755,16 @@ public class GlobalDataManager : MonoBehaviour
     private static string NormalizeEncounterId(string encounterId)
     {
         return string.IsNullOrWhiteSpace(encounterId) ? string.Empty : encounterId.Trim();
+    }
+
+    private static string NormalizeCharacterId(string characterId)
+    {
+        return string.IsNullOrWhiteSpace(characterId) ? string.Empty : characterId.Trim();
+    }
+
+    private static string NormalizeFlagKey(string key)
+    {
+        return string.IsNullOrWhiteSpace(key) ? string.Empty : key.Trim();
     }
 
     private static string NormalizeSceneName(string sceneName)

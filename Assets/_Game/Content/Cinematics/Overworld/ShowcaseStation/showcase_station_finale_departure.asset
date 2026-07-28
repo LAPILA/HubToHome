@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acb57da03c4f8564e8d8b7266098b6af, type: 3}
+  m_Name: showcase_station_finale_departure
+  m_EditorClassIdentifier: Assembly-CSharp::CinematicShotAsset
+  StageId: showcase.station.finale
+  ShotId: showcase.station.finale.departure
+  DisplayNameKo: "\uD3D0\uC5F4\uCC28 \uAE30\uB3D9"
+  CameraRailSubjectId: camera_rail
+  StartOrthographicSize: 3.15
+  EndOrthographicSize: 4.35
+  CameraDelay: 0
+  CameraDuration: 1.35
+  CameraEase: 4
+  CameraPositionDamping: {x: 0.18, y: 0.12, z: 0}
+  Motions:
+  - SubjectId: camera_rail
+    StartLocalPosition: {x: 0.2, y: 0.55, z: 0}
+    EndLocalPosition: {x: 2.65, y: 0.25, z: 0}
+    Delay: 0
+    Duration: 1.35
+    Ease: 4
+  - SubjectId: power_pulse
+    StartLocalPosition: {x: 0, y: 1.45, z: 0}
+    EndLocalPosition: {x: 0, y: 5.5, z: 0}
+    Delay: 0.15
+    Duration: 0.7
+    Ease: 8
+  - SubjectId: steam_left
+    StartLocalPosition: {x: 1.05, y: 0.45, z: 0}
+    EndLocalPosition: {x: -4.8, y: 1.3, z: 0}
+    Delay: 0.12
+    Duration: 1.05
+    Ease: 6
+  - SubjectId: steam_right
+    StartLocalPosition: {x: 1.35, y: 0.45, z: 0}
+    EndLocalPosition: {x: 5.4, y: 1.25, z: 0}
+    Delay: 0.12
+    Duration: 1.05
+    Ease: 6

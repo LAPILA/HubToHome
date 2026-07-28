@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cac2780b6c858d449dd2fdd30a4a57a, type: 3}
+  m_Name: WindowDialogueSelector
+  m_EditorClassIdentifier: Assembly-CSharp::FlagDialogueSelector
+  _rules:
+  - _flagKey: train.current.showcase_station
+    _comparison: 0
+    _expectedValue: 1
+    _priority: 20
+    _dialogue: {fileID: 11400000, guid: 39d1839f2d559c04a9cf8754d5e32878, type: 2}
+  - _flagKey: train.current.wide_field
+    _comparison: 0
+    _expectedValue: 1
+    _priority: 10
+    _dialogue: {fileID: 11400000, guid: c6791644248bcae47a0ecea020f850a2, type: 2}
+  _fallbackDialogue: {fileID: 11400000, guid: 735efd1e86a3c6b4397d93d21131e36a, type: 2}

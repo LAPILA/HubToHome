@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: showcase_station_finale
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: showcase.station.finale
+  DisplayNameKo: "\uC1FC\uCF00\uC774\uC2A4 \uC5ED - \uC804\uC6D0 \uBCF5\uAD6C"
+  Contract:
+    DescriptionKo: "\uC804\uC6D0\uC774 \uB3CC\uC544\uC628 \uC5F4\uCC28\uB97C \uBCF4\uC5EC\uC8FC\uACE0
+      \uCD9C\uBC1C \uC5F0\uCD9C \uB4A4 \uD50C\uB808\uC774 \uD654\uBA74\uC73C\uB85C
+      \uBCF5\uADC0\uD55C\uB2E4."
+    UsageKo: "\uD3D0\uC5F4\uCC28\uC758 \uC804\uC6D0 \uCF58\uC194\uC744 \uBCF5\uAD6C\uD55C
+      \uB4A4 \uD55C \uBC88 \uC2E4\uD589\uD55C\uB2E4."
+    Lifecycle: 1
+    Tags:
+    - overworld
+    - cinematic
+    - showcase
+    - finale
+    AllowedPrimaryModes:
+    - overworld
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/ShowcaseStation/showcase_station_finale.sequence.yaml
+    SourceHash: cc7f995242b5676e219f282bcfbfcb2fa89fbc49c17d8ae56d50be81dd84fad1
+    ImportedAtIso8601: 2026-07-27T01:25:24.1629718Z
+  Actions:
+  - BlockId: e7ff095dc62f4847ba30b142e099ea9c
+    DesignerLabel: "\uC804\uC6D0 \uBCF5\uAD6C Stage \uC900\uBE44"
+    ActionId: cinematic.stage.prepare
+    ParametersJson: '{"stage":"showcase.station.finale","shot":"showcase.station.finale.power"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 849e270af235474f86713375f1cf71d9
+    DesignerLabel: "\uC870\uBA85 \uBCF5\uAD6C \uC0F7"
+    ActionId: cinematic.shot.play
+    ParametersJson: '{"stage":"showcase.station.finale","shot":"showcase.station.finale.power"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 17f3747729da4ac9a1d934004aaecba8
+    DesignerLabel: "\uC804\uC6D0 \uBCF5\uAD6C \uB300\uD654"
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"showcase.station.finale.power_restored"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 72950b2ddb9e458f864374a77a88ac0e
+    DesignerLabel: "\uC5F4\uCC28 \uCD9C\uBC1C \uC0F7"
+    ActionId: cinematic.shot.play
+    ParametersJson: '{"stage":"showcase.station.finale","shot":"showcase.station.finale.departure"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: ee04ba2a229243fd83b4c5f3fa566767
+    DesignerLabel: "Stage \uD574\uC81C \uAC00\uB9AC\uAE30"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"black","duration":0.35}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 4a20d0fc85c44f9e974e5600157337c2
+    DesignerLabel: "\uD53C\uB0A0\uB808 Stage \uD574\uC81C"
+    ActionId: cinematic.stage.release
+    ParametersJson: '{"stage":"showcase.station.finale"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 904ce7c09638469eab05a955736db556
+    DesignerLabel: "\uBCF5\uAD6C\uB41C \uC5ED \uACF5\uAC1C"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"black","duration":0.45}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

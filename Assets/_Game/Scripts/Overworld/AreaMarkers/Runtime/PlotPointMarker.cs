@@ -14,6 +14,9 @@ public class PlotPointMarker : AreaMarkerBase
     [SerializeField, Tooltip("플롯 이벤트와 함께 보여줄 DialogueData입니다. 비어 있으면 fallbackDialogueText를 사용합니다."), LabelText("DialogueData")]
     private DialogueData dialogueData;
     [TitleGroup("Plot Point 설정/표시")]
+    [SerializeField, Tooltip("진행 Flag에 따라 대화를 선택합니다. 일치 항목이 없으면 위 DialogueData를 사용합니다."), LabelText("Flag Dialogue Selector")]
+    private FlagDialogueSelector dialogueSelector;
+    [TitleGroup("Plot Point 설정/표시")]
     [TextArea(2, 6)] [SerializeField, ShowIf(nameof(UseFallbackDialogue)), LabelText("Fallback 대사")]
     private string fallbackDialogueText;
     [TitleGroup("Plot Point 설정/표시")]
@@ -50,8 +53,11 @@ public class PlotPointMarker : AreaMarkerBase
         if (!CanInteract(player) || !IsPlayerInRange(player)) return;
         Debug.Log($"[PlotPointMarker] 플롯 이벤트 요청: plotId={plotId}, triggerMode={triggerMode}", this);
 
+        DialogueData resolvedDialogue = dialogueSelector != null
+            ? dialogueSelector.Resolve(GlobalDataManager.Instance, dialogueData)
+            : dialogueData;
         bool started = TryStartDialogue(
-            dialogueData,
+            resolvedDialogue,
             fallbackDialogueText,
             fallbackSpeaker,
             fallbackEmotion,
@@ -66,7 +72,10 @@ public class PlotPointMarker : AreaMarkerBase
         base.CollectValidationIssues(issues);
         if (string.IsNullOrWhiteSpace(plotId))
             issues.Add("plotId가 비어 있습니다.");
-        if (dialogueData == null && string.IsNullOrWhiteSpace(fallbackDialogueText))
-            issues.Add("DialogueData 또는 fallbackDialogueText 중 하나는 필요합니다.");
+        if (dialogueSelector != null && !dialogueSelector.TryValidate(out string selectorError))
+            issues.Add("Flag Dialogue Selector 오류: " + selectorError);
+        bool hasDialogue = dialogueData != null || (dialogueSelector != null && dialogueSelector.HasAnyDialogue);
+        if (!hasDialogue && string.IsNullOrWhiteSpace(fallbackDialogueText))
+            issues.Add("DialogueData, Flag Dialogue Selector, fallbackDialogueText 중 하나는 필요합니다.");
     }
 }

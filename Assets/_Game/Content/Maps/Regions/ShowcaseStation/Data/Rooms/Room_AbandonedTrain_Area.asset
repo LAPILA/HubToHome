@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aca8f2575afc9243be1cd531a8c1373, type: 3}
+  m_Name: Room_AbandonedTrain_Area
+  m_EditorClassIdentifier: Assembly-CSharp::AreaDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _markerSummaries
+      Entry: 7
+      Data: 0|System.Collections.Generic.List`1[[AreaMarkerSummaryEntry, Assembly-CSharp]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 3
+    - Name: 
+      Entry: 7
+      Data: 1|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: showcase.abandoned_train.engine_goal
+    - Name: MarkerType
+      Entry: 3
+      Data: 10
+    - Name: DisplayName
+      Entry: 1
+      Data: Plot engine_goal
+    - Name: AreaId
+      Entry: 1
+      Data: showcase.abandoned_train
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_AbandonedTrain/Gameplay/Markers/Marker engine_goal
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 2|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: showcase.abandoned_train.train_boarding
+    - Name: MarkerType
+      Entry: 3
+      Data: 11
+    - Name: DisplayName
+      Entry: 1
+      Data: "\uACF5\uC6A9 \uC5F4\uCC28 \uD0C0\uAE30"
+    - Name: AreaId
+      Entry: 1
+      Data: showcase.abandoned_train
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_AbandonedTrain/Gameplay/Markers/Marker train_boarding
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 3|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: showcase.abandoned_train.to_passage
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Connection to_passage
+    - Name: AreaId
+      Entry: 1
+      Data: showcase.abandoned_train
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_AbandonedTrain/Gameplay/Markers/Marker to_passage
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+  _areaId: showcase.abandoned_train
+  _roomDefinition: {fileID: 11400000, guid: 134635c37ce78b840b070cad174e8be2, type: 2}
+  _description: "Showcase Station \uAE30\uB2A5 \uC2DC\uC5F0\uC6A9 Room\uC785\uB2C8\uB2E4."

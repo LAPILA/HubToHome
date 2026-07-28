@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 public static class SaveSchema
 {
     public const int LegacyVersion = 0;
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 }
 
 public enum SaveDecodeFailure
@@ -186,6 +186,10 @@ public sealed class SaveDataCodec
                     MigrateLegacyToVersionOne(data);
                     workingVersion = 1;
                     break;
+                case 1:
+                    MigrateVersionOneToVersionTwo(data);
+                    workingVersion = 2;
+                    break;
                 default:
                     return SaveDecodeResult.Failed(
                         SaveDecodeFailure.UnsupportedVersion,
@@ -248,6 +252,12 @@ public sealed class SaveDataCodec
         data.schemaVersion = 1;
     }
 
+    private static void MigrateVersionOneToVersionTwo(SaveData data)
+    {
+        data.currentTrainStopId = NormalizeText(data.currentTrainStopId);
+        data.schemaVersion = 2;
+    }
+
     private static void Normalize(SaveData data)
     {
         data.currentScene = string.IsNullOrWhiteSpace(data.currentScene)
@@ -255,6 +265,7 @@ public sealed class SaveDataCodec
             : data.currentScene.Trim();
         data.currentRoomId = NormalizeText(data.currentRoomId);
         data.spawnPointId = NormalizeText(data.spawnPointId);
+        data.currentTrainStopId = NormalizeText(data.currentTrainStopId);
         data.playerName = NormalizeText(data.playerName);
         data.saveTime = NormalizeText(data.saveTime);
 

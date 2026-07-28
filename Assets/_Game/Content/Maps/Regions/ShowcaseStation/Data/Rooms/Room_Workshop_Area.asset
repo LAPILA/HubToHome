@@ -1,0 +1,135 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aca8f2575afc9243be1cd531a8c1373, type: 3}
+  m_Name: Room_Workshop_Area
+  m_EditorClassIdentifier: Assembly-CSharp::AreaDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _markerSummaries
+      Entry: 7
+      Data: 0|System.Collections.Generic.List`1[[AreaMarkerSummaryEntry, Assembly-CSharp]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: 1|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: showcase.workshop.workshop_vendor
+    - Name: MarkerType
+      Entry: 3
+      Data: 4
+    - Name: DisplayName
+      Entry: 1
+      Data: Workshop Vendor
+    - Name: AreaId
+      Entry: 1
+      Data: showcase.workshop
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_Workshop/Gameplay/Markers/Marker workshop_vendor
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 2|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: showcase.workshop.power_sequence
+    - Name: MarkerType
+      Entry: 3
+      Data: 3
+    - Name: DisplayName
+      Entry: 1
+      Data: Power Sequence
+    - Name: AreaId
+      Entry: 1
+      Data: showcase.workshop
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_Workshop/Gameplay/Markers/Marker power_sequence
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 3|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: showcase.workshop.terminal_order
+    - Name: MarkerType
+      Entry: 3
+      Data: 8
+    - Name: DisplayName
+      Entry: 1
+      Data: Sign terminal_order
+    - Name: AreaId
+      Entry: 1
+      Data: showcase.workshop
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_Workshop/Gameplay/Markers/Marker terminal_order
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 4|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: showcase.workshop.to_square
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Connection to_square
+    - Name: AreaId
+      Entry: 1
+      Data: showcase.workshop
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_Workshop/Gameplay/Markers/Marker to_square
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+  _areaId: showcase.workshop
+  _roomDefinition: {fileID: 11400000, guid: 830ec0a71193fcd41a618b66aa39f420, type: 2}
+  _description: "Showcase Station \uAE30\uB2A5 \uC2DC\uC5F0\uC6A9 Room\uC785\uB2C8\uB2E4."

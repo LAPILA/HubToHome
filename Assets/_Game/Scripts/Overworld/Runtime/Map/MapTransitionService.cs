@@ -5,7 +5,7 @@ using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Room/Scene 맵 전환의 수명주기와 도착 상태를 통합 관리합니다.
+/// Owns Room/Scene transition locking, destination state, and failure recovery.
 /// </summary>
 public class MapTransitionService : MonoBehaviour
 {
@@ -21,17 +21,36 @@ public class MapTransitionService : MonoBehaviour
 
     protected virtual void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            bool sameScene = Instance.gameObject.scene == gameObject.scene;
+            if (sameScene || Instance._dontDestroyOnLoad)
+            {
+                Destroy(gameObject);
+                return;
+            }
+        }
+
         Instance = this;
-        if (_dontDestroyOnLoad) DontDestroyOnLoad(gameObject);
+        if (_dontDestroyOnLoad)
+            DontDestroyOnLoad(gameObject);
     }
+
 
     public void RequestTransition(MapTransitionRequest request, PlayerController player = null)
     {
-        TryRequestTransition(request, player);
+        TryRequestTransition(request, player, null);
     }
 
     public bool TryRequestTransition(MapTransitionRequest request, PlayerController player = null)
+    {
+        return TryRequestTransition(request, player, null);
+    }
+
+    public bool TryRequestTransition(
+        MapTransitionRequest request,
+        PlayerController player,
+        Action<SceneLoadResult> onCompleted)
     {
         if (_isTransitioning)
             return false;
@@ -44,7 +63,7 @@ public class MapTransitionService : MonoBehaviour
 
         if (!request.IsValid(out string error))
         {
-            Debug.LogError($"[MapTransitionService] 잘못된 맵 전환 요청입니다. Error={error}", this);
+            Debug.LogError("[MapTransitionService] 잘못된 맵 전환 요청입니다. Error=" + error, this);
             return false;
         }
 
@@ -55,9 +74,9 @@ public class MapTransitionService : MonoBehaviour
         GameStateManager.Instance?.ChangeState(GameState.Cutscene);
 
         if (request.TransitionType == MapTransitionType.Scene)
-            BeginSceneTransition(request, player, previousState);
+            BeginSceneTransition(request, player, previousState, onCompleted);
         else
-            StartCoroutine(CoRoomTransition(request, player, previousState));
+            StartCoroutine(CoRoomTransition(request, player, previousState, onCompleted));
 
         return true;
     }
@@ -65,7 +84,8 @@ public class MapTransitionService : MonoBehaviour
     private void BeginSceneTransition(
         MapTransitionRequest request,
         PlayerController player,
-        GameState previousState)
+        GameState previousState,
+        Action<SceneLoadResult> onCompleted)
     {
         player ??= FindFirstObjectByType<PlayerController>();
 
@@ -73,28 +93,39 @@ public class MapTransitionService : MonoBehaviour
         SaveDepartureState(player, request);
         BeginSceneLoad(
             request,
-            result => CompleteSceneTransition(this, result, departureState, previousState));
+            result => CompleteSceneTransition(
+                this,
+                result,
+                departureState,
+                previousState,
+                onCompleted));
     }
 
     private IEnumerator CoRoomTransition(
         MapTransitionRequest request,
         PlayerController player,
-        GameState previousState)
+        GameState previousState,
+        Action<SceneLoadResult> onCompleted)
     {
         player ??= FindFirstObjectByType<PlayerController>();
-
         DepartureState departureState = DepartureState.Capture(GlobalDataManager.Instance);
         SaveDepartureState(player, request);
 
+        var fadeRunner = new ScreenTransitionRunner();
+        var fadeHandle = new ActionExecutionHandle("room_transition");
         if (request.FadeDuration > 0f)
-            yield return new WaitForSecondsRealtime(request.FadeDuration);
+            yield return fadeRunner.Fade("out", "black", request.FadeDuration, fadeHandle);
 
-        SceneLoadResult result = CoLoadRoom(request, player);
+        SceneLoadResult result = LoadRoomSafely(request, player);
         if (result != SceneLoadResult.Succeeded)
             departureState.Restore(GlobalDataManager.Instance);
 
-        RestoreGameState(previousState);
+        if (request.FadeDuration > 0f)
+            yield return fadeRunner.Fade("in", "black", request.FadeDuration, fadeHandle);
+
+        RestoreGameStateIfTransitionOwned(previousState);
         _isTransitioning = false;
+        InvokeCompletionSafely(onCompleted, result, this);
     }
 
     protected virtual void BeginSceneLoad(
@@ -118,7 +149,10 @@ public class MapTransitionService : MonoBehaviour
 
         if (!Application.CanStreamedLevelBeLoaded(request.TargetSceneName))
         {
-            Debug.LogError($"[MapTransitionService] Build Settings에서 씬을 찾을 수 없습니다. Scene={request.TargetSceneName}", this);
+            Debug.LogError(
+                "[MapTransitionService] Build Settings에서 씬을 찾을 수 없습니다. Scene="
+                + request.TargetSceneName,
+                this);
             onCompleted?.Invoke(SceneLoadResult.InvalidScene);
             return;
         }
@@ -155,47 +189,102 @@ public class MapTransitionService : MonoBehaviour
         MapTransitionService owner,
         SceneLoadResult result,
         DepartureState departureState,
-        GameState previousState)
+        GameState previousState,
+        Action<SceneLoadResult> onCompleted)
     {
-        if (result != SceneLoadResult.Succeeded)
-            departureState.Restore(GlobalDataManager.Instance);
+        try
+        {
+            if (!SceneLoadResultUtility.WasDestinationActivated(result))
+                departureState.Restore(GlobalDataManager.Instance);
 
-        RestoreGameState(previousState);
-        if (owner != null)
-            owner._isTransitioning = false;
+            RestoreGameStateIfTransitionOwned(previousState);
+        }
+        finally
+        {
+            if (owner != null)
+                owner._isTransitioning = false;
+            InvokeCompletionSafely(onCompleted, result, owner);
+        }
     }
 
-    private static void RestoreGameState(GameState previousState)
+    private static void RestoreGameStateIfTransitionOwned(GameState previousState)
     {
+        GameStateManager stateManager = GameStateManager.Instance;
+        if (stateManager == null || stateManager.CurrentState != GameState.Cutscene)
+            return;
+
         GameState restoreState = previousState == GameState.Paused
             ? GameState.Exploration
             : previousState;
-        GameStateManager.Instance?.ChangeState(restoreState);
+        stateManager.ChangeState(restoreState);
     }
 
-    private SceneLoadResult CoLoadRoom(MapTransitionRequest request, PlayerController player)
+    private SceneLoadResult LoadRoomSafely(MapTransitionRequest request, PlayerController player)
     {
+        try
+        {
+            return LoadRoom(request, player);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, this);
+            return SceneLoadResult.LoadFailed;
+        }
+    }
+
+    private SceneLoadResult LoadRoom(MapTransitionRequest request, PlayerController player)
+    {
+        if (player == null)
+        {
+            Debug.LogError("[MapTransitionService] 도착 위치를 적용할 Player가 없습니다.", this);
+            return SceneLoadResult.LoadFailed;
+        }
+
         if (_roomContainer == null)
             _roomContainer = FindFirstObjectByType<RoomContainer>();
 
         if (_roomContainer == null)
         {
-            Debug.LogError("[MapTransitionService] RoomContainer가 씬에 없습니다.");
+            Debug.LogError("[MapTransitionService] RoomContainer가 씬에 없습니다.", this);
             return SceneLoadResult.LoadFailed;
         }
 
-        RoomInstance room = _roomContainer.LoadRoom(request.TargetRoom, player);
-        ApplyArrival(player, request);
-        room?.ConfigureCamera(player != null ? player : FindFirstObjectByType<PlayerController>());
+        string arrivalValidationError = string.Empty;
+        bool loaded = _roomContainer.TryLoadRoom(
+            request.TargetRoom,
+            candidate => TryResolveArrival(
+                request,
+                candidate != null ? candidate.transform : null,
+                out _,
+                out arrivalValidationError),
+            out RoomInstance room,
+            out string roomError);
+        if (!loaded || room == null)
+        {
+            string error = string.IsNullOrEmpty(arrivalValidationError)
+                ? roomError
+                : arrivalValidationError;
+            Debug.LogError("[MapTransitionService] Room 전환 준비에 실패했습니다. " + error, this);
+            return SceneLoadResult.LoadFailed;
+        }
+
+        if (!TryApplyArrival(player, request, room.transform, out string arrivalError))
+        {
+            Debug.LogError("[MapTransitionService] Room 도착 적용에 실패했습니다. " + arrivalError, this);
+            return SceneLoadResult.LoadFailed;
+        }
+
+        room.OnRoomEntered(player);
         SuppressArrivalDoor(request.TargetSpawnPointId);
-        ApplyRoomPresentation(request.TargetRoom, room);
+        ApplyRoomPresentation(request.TargetRoom);
         return SceneLoadResult.Succeeded;
     }
 
     private static void SaveDepartureState(PlayerController player, MapTransitionRequest request)
     {
         GlobalDataManager global = GlobalDataManager.Instance;
-        if (global == null) return;
+        if (global == null)
+            return;
 
         if (player != null)
             player.SavePositionToGlobal();
@@ -204,35 +293,45 @@ public class MapTransitionService : MonoBehaviour
             ? request.TargetSceneName
             : SceneManager.GetActiveScene().name;
         global.CurrentRoomId = request.TransitionType == MapTransitionType.Scene
-            ? request.TargetAreaId ?? string.Empty
+            ? request.ResolvedTargetRoomId
             : request.TargetRoom != null ? request.TargetRoom.RoomId : string.Empty;
-        global.SpawnPointId = request.TargetSpawnPointId;
+        global.SpawnPointId = request.TargetSpawnPointId ?? string.Empty;
+        global.SpawnFallbackAllowed = request.UseFallbackPosition;
+        if (request.UseFallbackPosition)
+        {
+            global.SpawnX = request.FallbackPosition.x;
+            global.SpawnY = request.FallbackPosition.y;
+        }
 
         if (request.FacingAfterEnter != FacingDirection.Keep)
             global.LookingDir = (int)request.FacingAfterEnter;
     }
 
-    private static void ApplyArrival(PlayerController player, MapTransitionRequest request)
+    public static bool TryValidateArrival(
+        MapTransitionRequest request,
+        Transform searchRoot,
+        out string error)
     {
-        if (player == null) return;
+        return TryResolveArrival(request, searchRoot, out _, out error);
+    }
 
-        if (SpawnPoint.TryFind(request.TargetSpawnPointId, out SpawnPoint spawnPoint))
+    public static bool TryApplyArrival(
+        PlayerController player,
+        MapTransitionRequest request,
+        Transform searchRoot,
+        out string error)
+    {
+        if (player == null)
         {
-            player.transform.position = spawnPoint.transform.position;
-            FacingDirection facing = request.FacingAfterEnter != FacingDirection.Keep
-                ? request.FacingAfterEnter
-                : spawnPoint.DefaultFacing;
-            ApplyFacing(player, facing);
+            error = "Player가 없습니다.";
+            return false;
         }
-        else if (request.UseFallbackPosition)
-        {
-            player.transform.position = request.FallbackPosition;
-            ApplyFacing(player, request.FacingAfterEnter);
-        }
-        else
-        {
-            Debug.LogWarning($"[MapTransitionService] SpawnPoint를 찾지 못했습니다. Id={request.TargetSpawnPointId}");
-        }
+
+        if (!TryResolveArrival(request, searchRoot, out ResolvedArrival arrival, out error))
+            return false;
+
+        player.transform.position = arrival.Position;
+        ApplyFacing(player, arrival.Facing);
 
         GlobalDataManager global = GlobalDataManager.Instance;
         if (global != null)
@@ -241,46 +340,154 @@ public class MapTransitionService : MonoBehaviour
             global.SpawnY = player.transform.position.y;
             global.LookingDir = player.FacingDirection;
             global.SpawnPointId = string.Empty;
+            global.SpawnFallbackAllowed = false;
         }
+
+        return true;
+    }
+
+    private static bool TryResolveArrival(
+        MapTransitionRequest request,
+        Transform searchRoot,
+        out ResolvedArrival arrival,
+        out string error)
+    {
+        arrival = default;
+        error = string.Empty;
+        if (request == null)
+        {
+            error = "TransitionRequest가 null입니다.";
+            return false;
+        }
+
+        string spawnPointId = string.IsNullOrWhiteSpace(request.TargetSpawnPointId)
+            ? string.Empty
+            : request.TargetSpawnPointId.Trim();
+        if (!string.IsNullOrEmpty(spawnPointId)
+            && TryFindSpawnPoint(spawnPointId, searchRoot, out SpawnPoint spawnPoint, out error))
+        {
+            FacingDirection facing = request.FacingAfterEnter != FacingDirection.Keep
+                ? request.FacingAfterEnter
+                : spawnPoint.DefaultFacing;
+            arrival = new ResolvedArrival(spawnPoint.transform.position, facing);
+            error = string.Empty;
+            return true;
+        }
+
+        if (request.UseFallbackPosition)
+        {
+            arrival = new ResolvedArrival(request.FallbackPosition, request.FacingAfterEnter);
+            error = string.Empty;
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(error))
+            error = "SpawnPoint를 찾지 못했습니다. Id=" + spawnPointId;
+        return false;
+    }
+
+    private static bool TryFindSpawnPoint(
+        string spawnPointId,
+        Transform searchRoot,
+        out SpawnPoint spawnPoint,
+        out string error)
+    {
+        spawnPoint = null;
+        error = string.Empty;
+        SpawnPoint[] points = searchRoot != null
+            ? searchRoot.GetComponentsInChildren<SpawnPoint>(true)
+            : FindObjectsByType<SpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            SpawnPoint candidate = points[i];
+            if (candidate == null
+                || !string.Equals(candidate.SpawnPointId, spawnPointId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (spawnPoint != null)
+            {
+                error = "중복 SpawnPoint ID가 있습니다. Id=" + spawnPointId;
+                spawnPoint = null;
+                return false;
+            }
+
+            spawnPoint = candidate;
+        }
+
+        if (spawnPoint != null)
+            return true;
+
+        error = "SpawnPoint를 찾지 못했습니다. Id=" + spawnPointId;
+        return false;
     }
 
     private static void ApplyFacing(PlayerController player, FacingDirection facing)
     {
-        if (player == null || facing == FacingDirection.Keep) return;
+        if (player == null || facing == FacingDirection.Keep)
+            return;
         player.SetFacingDirection((int)facing);
     }
 
-    private static void ApplyRoomPresentation(RoomDefinition definition, RoomInstance room)
+    private static void ApplyRoomPresentation(RoomDefinition definition)
     {
-        if (definition == null) return;
+        if (definition == null)
+            return;
 
         if (definition.BgmOverride != null)
             AudioManager.Instance?.CrossFadeBGM(definition.BgmOverride, definition.BgmFadeDuration);
         else if (!definition.KeepCurrentBgm)
             AudioManager.Instance?.FadeOutBGM(definition.BgmFadeDuration);
-
-        room?.ConfigureCamera(FindFirstObjectByType<PlayerController>());
     }
 
     private void SuppressArrivalDoor(string spawnPointId)
     {
-        if (string.IsNullOrWhiteSpace(spawnPointId)) return;
-        if (!SpawnPoint.TryFind(spawnPointId, out SpawnPoint spawnPoint) || spawnPoint == null) return;
+        if (string.IsNullOrWhiteSpace(spawnPointId))
+            return;
+        if (!SpawnPoint.TryFind(spawnPointId, out SpawnPoint spawnPoint) || spawnPoint == null)
+            return;
 
         DoorTransition[] doors = FindObjectsByType<DoorTransition>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         for (int i = 0; i < doors.Length; i++)
         {
-            if (doors[i] == null) continue;
-            if (Vector2.Distance(doors[i].transform.position, spawnPoint.transform.position) <= 1.5f)
+            if (doors[i] != null
+                && Vector2.Distance(doors[i].transform.position, spawnPoint.transform.position) <= 1.5f)
+            {
                 doors[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
+            }
         }
 
         AreaConnectionMarker[] markers = FindObjectsByType<AreaConnectionMarker>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         for (int i = 0; i < markers.Length; i++)
         {
-            if (markers[i] == null) continue;
-            if (Vector2.Distance(markers[i].transform.position, spawnPoint.transform.position) <= 1.5f)
+            if (markers[i] != null
+                && Vector2.Distance(markers[i].transform.position, spawnPoint.transform.position) <= 1.5f)
+            {
                 markers[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
+            }
+        }
+    }
+
+    private static void InvokeCompletionSafely(
+        Action<SceneLoadResult> callback,
+        SceneLoadResult result,
+        UnityEngine.Object context)
+    {
+        if (callback == null)
+            return;
+
+        try
+        {
+            callback(result);
+        }
+        catch (Exception exception)
+        {
+            if (context != null)
+                Debug.LogException(exception, context);
+            else
+                Debug.LogException(exception);
         }
     }
 
@@ -290,11 +497,24 @@ public class MapTransitionService : MonoBehaviour
             Instance = null;
     }
 
+    private readonly struct ResolvedArrival
+    {
+        public ResolvedArrival(Vector3 position, FacingDirection facing)
+        {
+            Position = position;
+            Facing = facing;
+        }
+
+        public Vector3 Position { get; }
+        public FacingDirection Facing { get; }
+    }
+
     private readonly struct DepartureState
     {
         private readonly string _spawnScene;
         private readonly string _roomId;
         private readonly string _spawnPointId;
+        private readonly bool _spawnFallbackAllowed;
         private readonly float _spawnX;
         private readonly float _spawnY;
         private readonly int _lookingDir;
@@ -304,19 +524,26 @@ public class MapTransitionService : MonoBehaviour
             _spawnScene = global != null ? global.SpawnScene : string.Empty;
             _roomId = global != null ? global.CurrentRoomId : string.Empty;
             _spawnPointId = global != null ? global.SpawnPointId : string.Empty;
+            _spawnFallbackAllowed = global != null && global.SpawnFallbackAllowed;
             _spawnX = global != null ? global.SpawnX : 0f;
             _spawnY = global != null ? global.SpawnY : 0f;
             _lookingDir = global != null ? global.LookingDir : 0;
         }
 
-        public static DepartureState Capture(GlobalDataManager global) => new DepartureState(global);
+        public static DepartureState Capture(GlobalDataManager global)
+        {
+            return new DepartureState(global);
+        }
 
         public void Restore(GlobalDataManager global)
         {
-            if (global == null) return;
+            if (global == null)
+                return;
+
             global.SpawnScene = _spawnScene;
             global.CurrentRoomId = _roomId;
             global.SpawnPointId = _spawnPointId;
+            global.SpawnFallbackAllowed = _spawnFallbackAllowed;
             global.SpawnX = _spawnX;
             global.SpawnY = _spawnY;
             global.LookingDir = _lookingDir;

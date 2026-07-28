@@ -965,17 +965,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         
         if (playerChar != null)
         {
-            var global = GlobalDataManager.Instance;
-            
-            if (global != null && global.Party.Count == 0)
-            {
-                global.InitializePartyFromScene(playerChar);
-            }
-
-            if (global != null && global.Party.Count > 0)
-            {
-                playerChar.LoadDataFromGlobal(global.Party[0]); 
-            }
+            GlobalDataManager global = GlobalDataManager.Instance;
+            CharacterSaveData saveData = global != null
+                ? global.InitializePartyFromScene(playerChar)
+                : null;
+            if (saveData != null)
+                playerChar.LoadDataFromGlobal(saveData);
             
             _playerParty.Add(playerChar);
         }

@@ -59,10 +59,12 @@ public class PlayerCharacter : CharacterBase
 
     private void Start()
     {
-        if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.Party.Count == 0)
-        {
-            GlobalDataManager.Instance.InitializePartyFromScene(this);
-        }
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global == null) return;
+
+        CharacterSaveData saveData = global.InitializePartyFromScene(this);
+        if (saveData != null)
+            LoadDataFromGlobal(saveData);
     }
 
     public void PlayBattleAnim(int triggerHash)
@@ -191,13 +193,41 @@ public class PlayerCharacter : CharacterBase
         BaseSPD     = saveData.SPD;
     }
 
+    public bool SynchronizePersistentVitals(CharacterSaveData saveData)
+    {
+        if (saveData == null)
+            return false;
+
+        string sceneCharacterId = _characterData != null && !string.IsNullOrWhiteSpace(_characterData.CharacterID)
+            ? _characterData.CharacterID.Trim()
+            : string.Empty;
+        string savedCharacterId = string.IsNullOrWhiteSpace(saveData.CharacterDataID)
+            ? string.Empty
+            : saveData.CharacterDataID.Trim();
+        if (_mySaveDataRef != saveData
+            && !string.IsNullOrEmpty(sceneCharacterId)
+            && !string.IsNullOrEmpty(savedCharacterId)
+            && !string.Equals(sceneCharacterId, savedCharacterId, System.StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        _mySaveDataRef = saveData;
+        BaseMaxHP = Mathf.Max(1, saveData.MaxHP);
+        BaseMaxMP = Mathf.Max(0, saveData.MaxMP);
+        SetCurrentHPValue(Mathf.Clamp(saveData.HP, 1, MaxHP));
+        SetCurrentMPValue(Mathf.Clamp(saveData.MP, 0, MaxMP));
+        return true;
+    }
+
     public void SaveDataToGlobal()
     {
-        if (_mySaveDataRef == null) 
+        if (_mySaveDataRef == null)
         {
             if (GlobalDataManager.Instance != null)
-                GlobalDataManager.Instance.InitializePartyFromScene(this);
-            return;
+                _mySaveDataRef = GlobalDataManager.Instance.InitializePartyFromScene(this);
+            if (_mySaveDataRef == null)
+                return;
         }
         
         _mySaveDataRef.CharacterDataID = _characterData != null ? _characterData.CharacterID : string.Empty;

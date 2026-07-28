@@ -1,0 +1,53 @@
+id: showcase.station.finale
+title: "쇼케이스 역 - 전원 복구"
+primaryMode: overworld
+openingModule: ""
+memoryKey: ""
+
+participants:
+  party: []
+  enemies: []
+
+sequences:
+  showcase.station.finale:
+    title: "쇼케이스 역 - 전원 복구"
+    description: "전원이 돌아온 열차를 보여주고 출발 연출 뒤 플레이 화면으로 복귀한다."
+    usage: "폐열차의 전원 콘솔을 복구한 뒤 한 번 실행한다."
+    status: ready
+    tags: [overworld, cinematic, showcase, finale]
+    allowedPrimaryModes: [overworld]
+    - cinematic.stage.prepare:
+      blockId: e7ff095dc62f4847ba30b142e099ea9c
+      designerLabel: "전원 복구 Stage 준비"
+      stage: showcase.station.finale
+      shot: showcase.station.finale.power
+    - cinematic.shot.play:
+      blockId: 849e270af235474f86713375f1cf71d9
+      designerLabel: "조명 복구 샷"
+      stage: showcase.station.finale
+      shot: showcase.station.finale.power
+    - dialogue.wait:
+      blockId: 17f3747729da4ac9a1d934004aaecba8
+      designerLabel: "전원 복구 대화"
+      id: showcase.station.finale.power_restored
+    - cinematic.shot.play:
+      blockId: 72950b2ddb9e458f864374a77a88ac0e
+      designerLabel: "열차 출발 샷"
+      stage: showcase.station.finale
+      shot: showcase.station.finale.departure
+    - screen.fade:
+      blockId: ee04ba2a229243fd83b4c5f3fa566767
+      designerLabel: "Stage 해제 가리기"
+      mode: out
+      color: black
+      duration: 0.35
+    - cinematic.stage.release:
+      blockId: 4a20d0fc85c44f9e974e5600157337c2
+      designerLabel: "피날레 Stage 해제"
+      stage: showcase.station.finale
+    - screen.fade:
+      blockId: 904ce7c09638469eab05a955736db556
+      designerLabel: "복구된 역 공개"
+      mode: in
+      color: black
+      duration: 0.45

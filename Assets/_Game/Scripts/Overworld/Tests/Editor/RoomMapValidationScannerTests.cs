@@ -213,6 +213,67 @@ public sealed class RoomMapValidationScannerTests
     }
 
     [Test]
+    public void Scan_OverworldEnemyIsCollectedAsEnemyFeatureExactlyOnce()
+    {
+        RoomInstance room = CreateRoom("room.enemy");
+        OverworldEnemy enemy = CreateOverworldEnemy(room.transform, "enemy.instance");
+        RoomMapValidationInput input = CreateInput(
+            rooms: new[] { room },
+            overworldEnemies: new[] { enemy, enemy });
+
+        RoomMapValidationReport report = RoomMapValidationScanner.Scan(input);
+
+        RoomMapFeatureEntry feature = report.Features.Single(entry => entry.Context == enemy);
+        Assert.That(feature.FeatureType, Is.EqualTo(AreaMarkerType.Enemy));
+        Assert.That(feature.StableId, Is.EqualTo("enemy.instance"));
+        Assert.That(feature.Room, Is.SameAs(room));
+    }
+
+    [Test]
+    public void CaptureRoots_CollectsFunctionalOverworldEnemyWithoutMarker()
+    {
+        RoomInstance room = CreateRoom("room.enemy.capture");
+        OverworldEnemy enemy = CreateOverworldEnemy(room.transform, "enemy.capture");
+
+        RoomMapValidationInput input = RoomMapValidationScopeCapture.CaptureRoots(
+            new[] { room.gameObject },
+            "Enemy Root",
+            false);
+
+        Assert.That(input.OverworldEnemies, Does.Contain(enemy));
+        Assert.That(input.Markers, Is.Empty);
+    }
+
+    [Test]
+    public void WorkbenchFeatureFilter_FindsOverworldEnemyByTypeAndId()
+    {
+        RoomInstance room = CreateRoom("room.enemy.filter");
+        OverworldEnemy enemy = CreateOverworldEnemy(room.transform, "steam.enemy.01");
+        RoomMapValidationReport report = RoomMapValidationScanner.Scan(
+            CreateInput(new[] { room }, overworldEnemies: new[] { enemy }));
+        RoomMapFeatureEntry feature = report.Features.Single();
+
+        Assert.That(
+            AreaMarkerWorkbenchWindow.MatchesFeature(
+                feature,
+                report,
+                "steam.enemy",
+                AreaMarkerWorkbenchWindow.AllRoomsKey,
+                (int)AreaMarkerType.Enemy,
+                AreaMarkerIssueFilter.All),
+            Is.True);
+        Assert.That(
+            AreaMarkerWorkbenchWindow.MatchesFeature(
+                feature,
+                report,
+                string.Empty,
+                AreaMarkerWorkbenchWindow.AllRoomsKey,
+                (int)AreaMarkerType.NPC,
+                AreaMarkerIssueFilter.All),
+            Is.False);
+    }
+
+    [Test]
     public void LogReport_EmitsIssueSeverityAndSummary()
     {
         var report = new RoomMapValidationReport("Test Scope");
@@ -281,6 +342,22 @@ public sealed class RoomMapValidationScannerTests
         return marker;
     }
 
+    private OverworldEnemy CreateOverworldEnemy(Transform parent, string enemyId)
+    {
+        GameObject enemyObject = new GameObject(
+            "OverworldEnemy_" + enemyId,
+            typeof(BoxCollider2D),
+            typeof(Rigidbody2D),
+            typeof(EnemyCharacter),
+            typeof(OverworldEnemy));
+        enemyObject.transform.SetParent(parent, false);
+        OverworldEnemy enemy = enemyObject.AddComponent<OverworldEnemy>();
+        SerializedObject serialized = new SerializedObject(enemy);
+        serialized.FindProperty("_enemyId").stringValue = enemyId;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        return enemy;
+    }
+
     private SpawnPoint CreateSpawnPoint(string spawnPointId)
     {
         GameObject spawnObject = CreateGameObject("Spawn_" + spawnPointId);
@@ -345,13 +422,15 @@ public sealed class RoomMapValidationScannerTests
         RoomInstance[] rooms = null,
         AreaMarkerBase[] markers = null,
         SpawnPoint[] spawnPoints = null,
-        DoorTransition[] doors = null)
+        DoorTransition[] doors = null,
+        OverworldEnemy[] overworldEnemies = null)
     {
         return new RoomMapValidationInput
         {
             ScopeName = "Tests",
             Rooms = rooms ?? new RoomInstance[0],
             Markers = markers ?? new AreaMarkerBase[0],
+            OverworldEnemies = overworldEnemies ?? new OverworldEnemy[0],
             SpawnPoints = spawnPoints ?? new SpawnPoint[0],
             Doors = doors ?? new DoorTransition[0],
             MapTransitionServices = new MapTransitionService[0],

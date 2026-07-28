@@ -20,6 +20,22 @@ public class SaveDataCodecTests
     }
 
     [Test]
+    public void Decode_VersionOneSave_MigratesTrainStopStateToEmptyDefault()
+    {
+        const string json =
+            "{\"schemaVersion\":1,\"currentScene\":\"Region_ShowcaseStation\","
+            + "\"currentRoomId\":\"showcase.abandoned_train\"}";
+
+        SaveDecodeResult result = new SaveDataCodec().Decode(json);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.SourceVersion, Is.EqualTo(1));
+        Assert.That(result.WasMigrated, Is.True);
+        Assert.That(result.Data.schemaVersion, Is.EqualTo(SaveSchema.CurrentVersion));
+        Assert.That(result.Data.currentTrainStopId, Is.Empty);
+    }
+
+    [Test]
     public void Decode_MissingCollections_NormalizesDefaults()
     {
         const string json =
@@ -69,6 +85,7 @@ public class SaveDataCodecTests
             currentScene = "MapField",
             currentRoomId = "village.square",
             spawnPointId = "west_gate",
+            currentTrainStopId = "train.stop.wide_field",
             playerX = 12.5f,
             playerY = -4.25f,
             lookingDirection = 2,
@@ -113,6 +130,9 @@ public class SaveDataCodecTests
         Assert.That(result.WasMigrated, Is.False);
         Assert.That(result.Data.currentRoomId, Is.EqualTo("village.square"));
         Assert.That(result.Data.spawnPointId, Is.EqualTo("west_gate"));
+        Assert.That(
+            result.Data.currentTrainStopId,
+            Is.EqualTo("train.stop.wide_field"));
         Assert.That(result.Data.Money, Is.EqualTo(340));
         Assert.That(result.Data.InventoryDict["small_potion"], Is.EqualTo(3));
         Assert.That(result.Data.PartyData[0].Level, Is.EqualTo(4));

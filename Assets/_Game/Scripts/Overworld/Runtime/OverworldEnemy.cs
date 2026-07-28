@@ -23,6 +23,14 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         DefeatOnVictory
     }
 
+    [System.Serializable]
+    private enum InstantVictoryStateHandling
+    {
+        FollowVictoryHandling,
+        KeepAlive,
+        DefeatPermanently
+    }
+
     public enum EncounterMode
     {
         PatrolContactBattle,
@@ -52,6 +60,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
     [Header("Persistence")]
     [SerializeField] private string _enemyId;
     [SerializeField] private PersistentEnemyStateHandling _victoryHandling = PersistentEnemyStateHandling.DefeatOnVictory;
+    [SerializeField] private InstantVictoryStateHandling _instantVictoryHandling = InstantVictoryStateHandling.FollowVictoryHandling;
 
     [Header("Patrol")]
     [SerializeField] private Transform[] _waypoints;
@@ -97,7 +106,12 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         new GameConfigScreenFlashScaleProvider();
 
     public string EnemyId => _enemyId;
+    public string EncounterMemoryKey => BattleEncounterMemoryRecorder.ResolveMemoryKey(
+        _battleScenarioData,
+        _enemyId);
     public bool DefeatsOnVictory => _victoryHandling == PersistentEnemyStateHandling.DefeatOnVictory;
+    public bool InstantVictoryDefeatsPermanently => _instantVictoryHandling == InstantVictoryStateHandling.DefeatPermanently
+        || (_instantVictoryHandling == InstantVictoryStateHandling.FollowVictoryHandling && DefeatsOnVictory);
     public bool CanStartPreemptiveAttack(PlayerController player) => isActiveAndEnabled
         && player != null
         && !_runtimeDisabledForBattle
@@ -285,9 +299,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         }
 
         GlobalDataManager global = GlobalDataManager.Instance;
-        bool previouslyDefeated = global != null
-            && global.TryGetEncounterMemory(_enemyId, out EncounterMemorySaveData memory)
-            && memory.Defeated;
+        bool previouslyDefeated = HasRecordedEncounterVictory(global);
         FieldEncounterResolution resolution = FieldEncounterPolicy.Evaluate(
             global != null ? global.GetHighestPartyLevel() : 1,
             resolvedEnemies,
@@ -339,7 +351,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
             _enemyId,
             true);
 
-        if (global != null && DefeatsOnVictory)
+        if (global != null && InstantVictoryDefeatsPermanently)
             global.MarkOverworldEnemyDefeated(_enemyId, _sceneName);
 
         BattleResultUI resultUi = BattleResultUI.EnsureGlobal();
@@ -353,7 +365,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         _localEncounterBlockedUntil = Time.unscaledTime + Mathf.Max(0f, _postBattleGraceDuration);
         EncounterCollisionGuard.NudgePlayerOutOf(_collider, player, _postBattleNudgeDistance);
 
-        if (DefeatsOnVictory)
+        if (InstantVictoryDefeatsPermanently)
         {
             DisablePermanently();
             yield break;
@@ -460,6 +472,14 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         foreach (var p in _animator.parameters)
             if (p.nameHash == hash && p.type == type) return true;
         return false;
+    }
+
+    private bool HasRecordedEncounterVictory(GlobalDataManager global)
+    {
+        string memoryKey = EncounterMemoryKey;
+        return global != null
+            && global.TryGetEncounterMemory(memoryKey, out EncounterMemorySaveData memory)
+            && memory.Defeated;
     }
 
     private List<EnemyData> ResolveEncounterEnemies()

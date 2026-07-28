@@ -239,6 +239,18 @@ public abstract class CharacterBase : MonoBehaviour
         return damage;
     }
 
+    protected void SetCurrentHPValue(int value)
+    {
+        CurrentHP = Mathf.Clamp(value, 0, MaxHP);
+        OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
+    }
+
+    protected void SetCurrentMPValue(int value)
+    {
+        CurrentMP = Mathf.Clamp(value, 0, MaxMP);
+        OnMPChanged?.Invoke(this, CurrentMP, MaxMP);
+    }
+
     // ── 회복, 상태이상 관리 ──
     public virtual void HealHP(int amount) { CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount); OnHPChanged?.Invoke(this, CurrentHP, MaxHP); }
     public virtual void HealMP(int amount) { CurrentMP = Mathf.Min(MaxMP, CurrentMP + amount); OnMPChanged?.Invoke(this, CurrentMP, MaxMP); }
