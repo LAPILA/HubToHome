@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18de9e20d427627418d7201e43ca5d52, type: 3}
+  m_Name: QA_Item_DebugTonic
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  Icon: {fileID: 0}
+  ItemID: qa_debug_tonic
+  ItemName: QA Debug Tonic
+  Description: "TestMap \uAD6C\uB9E4\xB7\uD310\uB9E4\xB7\uC800\uC7A5 \uAC80\uC99D\uC6A9
+    \uC544\uC774\uD15C"
+  Type: 0
+  TargetType: 0
+  IsAoE: 0
+  UsableInOverworld: 1
+  UsableInBattle: 1
+  IsSellable: 1
+  Price: 20
+  ActionType: 1
+  TargetStat: 1
+  CalcType: 0
+  EffectValue: 10
+  StatusEffectID: 
+  StatusDurationTurns: 0
+  IsStackable: 1
+  MaxStackSize: 99

@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 public static class OverworldSubwayCinematicSampleBuilder
 {
     private const string SequenceAssetPath = "Assets/_Game/Content/Scenarios/Runtime/Overworld/overworld_intro_subway.asset";
-    private const string ShotAssetPath = "Assets/_Game/Content/Cinematics/Overworld/overworld_intro_subway_arrival.asset";
+    private const string ShotAssetPath = DevelopmentContentPaths.PrologueSubwayCinematicRoot + "/overworld_intro_subway_arrival.asset";
     private const string CatalogAssetPath = "Assets/_Game/Content/Scenarios/ActionCatalogs/OverworldCinematicActionCatalog.asset";
     private const string SourcePath = "Assets/_Game/Content/Scenarios/Source/Overworld/overworld_intro_subway.sequence.yaml";
     private const string StageName = "OverworldCinematicStage_Subway";

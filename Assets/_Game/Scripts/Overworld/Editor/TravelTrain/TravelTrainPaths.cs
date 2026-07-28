@@ -15,7 +15,7 @@ public static class TravelTrainIds
 
 public static class TravelTrainPaths
 {
-    public const string Root = "Assets/_Game/Content/Maps/Regions-TEST/TravelTrain";
+    public const string Root = DevelopmentContentPaths.TravelTrainRoot;
     public const string SceneRoot = Root + "/Scenes";
     public const string PrefabRoot = Root + "/Prefabs/Rooms";
     public const string DataRoot = Root + "/Data";
@@ -23,7 +23,7 @@ public static class TravelTrainPaths
     public const string StopDataRoot = DataRoot + "/Stops";
     public const string DialogueRoot = DataRoot + "/Dialogue";
 
-    public const string Scene = SceneRoot + "/Region_TravelTrain.unity";
+    public const string Scene = DevelopmentContentPaths.TravelTrainScene;
     public const string Prefab = PrefabRoot + "/Room_TravelTrainInterior.prefab";
     public const string RoomDefinition = RoomDataRoot + "/Room_TravelTrainInterior_Definition.asset";
     public const string AreaDefinition = RoomDataRoot + "/Room_TravelTrainInterior_Area.asset";
@@ -33,7 +33,7 @@ public static class TravelTrainPaths
 
     public const string SourceRoot = "Assets/_Game/Content/Scenarios/Source/Overworld/TravelTrain";
     public const string RuntimeRoot = "Assets/_Game/Content/Scenarios/Runtime/Overworld/TravelTrain";
-    public const string CinematicRoot = "Assets/_Game/Content/Cinematics/Overworld/TravelTrain";
+    public const string CinematicRoot = Root + "/Cinematics";
     public const string DepartureSource = SourceRoot + "/travel_train_departure.sequence.yaml";
     public const string DepartureRuntime = RuntimeRoot + "/travel_train_departure.asset";
     public const string DepartureShot = CinematicRoot + "/travel_train_departure.asset";

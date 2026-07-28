@@ -7,8 +7,8 @@ using UnityEngine;
 
 public static class PlayFromTitleSceneShortcut
 {
-    private const string TitleScenePath = "Assets/_Game/Content/Maps/Regions-TEST/Title/00_TitleScene.unity";
-    private const string OverworldScenePath = "Assets/_Game/Content/Maps/Regions-TEST/PrologueSubway/Scenes/OverworldScene.unity";
+    private const string TitleScenePath = DevelopmentContentPaths.TitleScene;
+    private const string OverworldScenePath = DevelopmentContentPaths.PrologueSubwayScene;
 
     [Shortcut("HubToHome/Play From Title Scene", KeyCode.Alpha1, ShortcutModifiers.Alt | ShortcutModifiers.Shift)]
     private static void PlayFromTitleScene()

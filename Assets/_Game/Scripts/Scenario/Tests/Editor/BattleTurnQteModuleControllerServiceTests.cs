@@ -205,6 +205,29 @@ public class BattleTurnQteModuleControllerServiceTests
     }
 
     [Test]
+    public void RunEnemyAction_WaitOnlyShowsNarrationAndCompletesTurn()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.QueueEnemyAction(EnemyAction.Wait);
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            RunToCompletion(service.RunEnemyAction());
+
+            Assert.That(fixture.Host.NarrationRequests, Is.EqualTo(1));
+            Assert.That(fixture.Host.LastNarration.Text, Is.EqualTo("ZEV은 가만히 있다..."));
+            Assert.That(fixture.Host.EnemyActionNotifications, Is.Zero);
+            Assert.That(fixture.Host.SawActiveCameraDuringEnemyMove, Is.False);
+            Assert.That(fixture.Host.SawActiveCameraDuringDamage, Is.False);
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
     public void ExitTurnQteModuleCancelsActiveCameraScope()
     {
         var fixture = new TurnQteFixture();
@@ -430,6 +453,9 @@ public class BattleTurnQteModuleControllerServiceTests
 
         public bool SawActiveCameraDuringEnemyMove { get; private set; }
         public bool SawActiveCameraDuringDamage { get; private set; }
+        public int NarrationRequests { get; private set; }
+        public int EnemyActionNotifications { get; private set; }
+        public BattleNarrationMessage LastNarration { get; private set; }
 
         public void QueueEnemyAction(EnemyAction action)
         {
@@ -454,9 +480,16 @@ public class BattleTurnQteModuleControllerServiceTests
         public IEnumerator WaitForNarrationToFinish() { yield break; }
         public void TryRequestFlavorNarration() { }
         public void NotifyPlayerTurnStarted(PlayerCharacter player) { }
-        public void NotifyEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType) { }
+        public void NotifyEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType)
+        {
+            EnemyActionNotifications++;
+        }
         public void NotifyTargetSelectionStarted(PlayerMenuAction action) { }
-        public void RequestNarration(BattleNarrationMessage message) { }
+        public void RequestNarration(BattleNarrationMessage message)
+        {
+            NarrationRequests++;
+            LastNarration = message;
+        }
         public IEnumerator RunAwayRoutine() { yield break; }
         public void ClearTurnQtePendingActionState() { PendingSkill = null; PendingItem = null; PendingAction = default; }
         public Coroutine StartManagedCoroutine(IEnumerator routine)

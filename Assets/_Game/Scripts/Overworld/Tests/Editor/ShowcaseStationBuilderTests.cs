@@ -173,9 +173,9 @@ public sealed class ShowcaseStationBuilderTests
     public void TrainFinaleHasValidStageShotsAndDirectReference()
     {
         const string powerPath =
-            "Assets/_Game/Content/Cinematics/Overworld/ShowcaseStation/showcase_station_finale_power.asset";
+            DevelopmentContentPaths.ShowcaseStationRoot + "/Cinematics/showcase_station_finale_power.asset";
         const string departurePath =
-            "Assets/_Game/Content/Cinematics/Overworld/ShowcaseStation/showcase_station_finale_departure.asset";
+            DevelopmentContentPaths.ShowcaseStationRoot + "/Cinematics/showcase_station_finale_departure.asset";
 
         CinematicShotAsset power =
             AssetDatabase.LoadAssetAtPath<CinematicShotAsset>(powerPath);

@@ -22,10 +22,25 @@ public sealed class SceneContractTests
         Assert.That(exists, Is.True, sceneName + " must match an enabled Build Settings scene file.");
     }
 
-    [Test]
-    public void TitleShortcutScenePathExists()
+    [TestCase(DevelopmentContentPaths.TestMapScene)]
+    [TestCase(DevelopmentContentPaths.MapFieldStarterScene)]
+    [TestCase(DevelopmentContentPaths.TitleScene)]
+    [TestCase(DevelopmentContentPaths.IntroScene)]
+    [TestCase(DevelopmentContentPaths.PrologueSubwayScene)]
+    [TestCase(DevelopmentContentPaths.ShowcaseStationScene)]
+    [TestCase(DevelopmentContentPaths.TravelTrainScene)]
+    [TestCase(DevelopmentContentPaths.WideFieldScene)]
+    public void DevelopmentScenePathExists(string scenePath)
     {
-        const string titlePath = "Assets/_Game/Content/Maps/Regions-TEST/Title/00_TitleScene.unity";
-        Assert.That(AssetDatabase.LoadAssetAtPath<SceneAsset>(titlePath), Is.Not.Null);
+        Assert.That(AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath), Is.Not.Null, scenePath);
+    }
+
+    [Test]
+    public void BuildSettingsDoesNotContainDeprecatedRegionsTestPath()
+    {
+        bool containsDeprecatedPath = EditorBuildSettings.scenes.Any(scene =>
+            scene.path.Contains("/Regions-TEST/", StringComparison.Ordinal));
+
+        Assert.That(containsDeprecatedPath, Is.False);
     }
 }

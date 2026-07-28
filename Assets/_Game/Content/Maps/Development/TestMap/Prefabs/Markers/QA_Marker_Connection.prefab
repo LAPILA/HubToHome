@@ -1112,6 +1112,7 @@ MonoBehaviour:
     TargetSceneName: TestMap
     TargetRoom: {fileID: 0}
     TargetSpawnPointId: qa.testmap.spawn.connection
+    TargetRoomId: 
     TargetAreaId: testmap.qa
     FacingAfterEnter: 0
     FallbackPosition: {x: 0, y: 0}

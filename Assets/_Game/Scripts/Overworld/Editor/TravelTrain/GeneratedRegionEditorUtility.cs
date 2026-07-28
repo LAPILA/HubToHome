@@ -222,8 +222,7 @@ internal static class GeneratedRoomEditorUtility
 
 internal static class GeneratedRegionSceneBuilder
 {
-    public const string TemplateScene =
-        "Assets/_Game/Content/Maps/Regions/MapFieldStarter/Scenes/Region_MapFieldStarter.unity";
+    public const string TemplateScene = DevelopmentContentPaths.MapFieldStarterScene;
 
     public static void Build(
         string scenePath,

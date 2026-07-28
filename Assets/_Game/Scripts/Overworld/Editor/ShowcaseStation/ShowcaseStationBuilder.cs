@@ -1,6 +1,6 @@
 public static class ShowcaseStationPaths
 {
-    public const string Root = "Assets/_Game/Content/Maps/Regions-TEST/ShowcaseStation";
+    public const string Root = DevelopmentContentPaths.ShowcaseStationRoot;
     public const string PrefabRoot = Root + "/Prefabs/Rooms";
     public const string DataRoot = Root + "/Data";
     public const string RoomDataRoot = DataRoot + "/Rooms";
@@ -10,10 +10,10 @@ public static class ShowcaseStationPaths
     public const string EncounterRoot = DataRoot + "/Encounters";
     public const string RuntimeSequenceRoot = "Assets/_Game/Content/Scenarios/Runtime/Overworld/ShowcaseStation";
     public const string SourceSequenceRoot = "Assets/_Game/Content/Scenarios/Source/Overworld/ShowcaseStation";
-    public const string CinematicRoot = "Assets/_Game/Content/Cinematics/Overworld/ShowcaseStation";
+    public const string CinematicRoot = Root + "/Cinematics";
 
     public const string SharedWhiteSprite = "Assets/_Game/Content/Maps/Shared/Generated/RoomMap_WhiteSquare.png";
-    public const string TestNpcSprite = "Assets/_Game/Content/Art/Samples/TestNPC.png";
+    public const string TestNpcSprite = DevelopmentContentPaths.TestNpcSprite;
     public const string SmallPotion = "Assets/_Game/Content/Items/Consumables/SmallPotion.asset";
     public const string SlimeEnemy = "Assets/_Game/Content/Characters/EnemyDB/DB_Slime.asset";
     public const string EnemyBasePrefab = "Assets/_Game/Content/Characters/Prefabs/Enemy/Enemy_Base.prefab";

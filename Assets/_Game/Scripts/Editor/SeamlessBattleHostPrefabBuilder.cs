@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 public static class SeamlessBattleHostPrefabBuilder
 {
     public const string BattleScenePath = "Assets/_Game/Content/Maps/Battle/BattleScene.unity";
-    public const string TestMapScenePath = "Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity";
+    public const string TestMapScenePath = DevelopmentContentPaths.TestMapScene;
     public const string PrefabPath = "Assets/_Game/Content/Battle/Prefabs/System/SeamlessBattleHost.prefab";
 
     [MenuItem("Hub To Home/Battle/Rebuild Seamless Battle Host")]

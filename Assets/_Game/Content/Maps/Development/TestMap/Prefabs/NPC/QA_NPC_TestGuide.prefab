@@ -274,7 +274,7 @@ MonoBehaviour:
   markerType: 6
   displayName: QA Guide
   description: "\uBC18\uBCF5 \uB300\uD654, \uC785\uB825 \uC7A0\uAE08 \uD574\uC81C,
-    TestNPC 32px/30 PPU \uD45C\uC2DC\uB97C \uAC80\uC99D\uD569\uB2C8\uB2E4."
+    TestNPC 32px/32 PPU \uD45C\uC2DC\uB97C \uAC80\uC99D\uD569\uB2C8\uB2E4."
   isOneShot: 0
   requiredFlag: 
   setFlagOnComplete: 
@@ -284,6 +284,7 @@ MonoBehaviour:
   npcId: qa_npc_test_guide
   dialogueId: qa_dialogue_test_guide
   dialogueData: {fileID: 0}
+  dialogueSelector: {fileID: 0}
   fallbackSpeaker: {fileID: 0}
   fallbackEmotion: 1
   fallbackDialogueText: "* QA \uD14C\uC2A4\uD2B8 \uB9F5\uC5D0 \uC628 \uAC78 \uD658\uC601\uD574.\n*
@@ -829,7 +830,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1.0666667, y: 1.0666667}
+  m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1

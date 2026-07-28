@@ -13,9 +13,9 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public static class TestMapShowcaseBuilder
 {
-    private const string ScenePath = "Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity";
+    private const string ScenePath = DevelopmentContentPaths.TestMapScene;
     private const string GeneratedRootName = "__TEST_MAP_QA__";
-    private const string TestMapRoot = "Assets/_Game/Content/Maps/Development/TestMap";
+    private const string TestMapRoot = DevelopmentContentPaths.TestMapRoot;
     private const string MarkerPrefabRoot = TestMapRoot + "/Prefabs/Markers";
     private const string NpcPrefabRoot = TestMapRoot + "/Prefabs/NPC";
     private const string LabPrefabRoot = TestMapRoot + "/Prefabs/Labs";
@@ -26,9 +26,9 @@ public static class TestMapShowcaseBuilder
     private const string ContentCatalogPath = "Assets/_Game/Resources/HubToHome/GameContentCatalog.asset";
     private const string PlayerPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Player/Player_Base.prefab";
     private const string BootstrapPrefabPath = "Assets/_Game/Core/Prefabs/[GameBootstrap].prefab";
-    private const string ZevPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/ZEV_Prefab.prefab";
-    private const string ZevEnemyDataPath = "Assets/_Game/Content/Characters/EnemyDB/ZEV/Enemy_ZEV.asset";
-    private const string TestNpcSpritePath = "Assets/_Game/Content/Art/Samples/TestNPC.png";
+    private const string MarkerEnemyDataPath = "Assets/_Game/Content/Characters/EnemyDB/DB_Slime.asset";
+    private const string BunnySlimeOverworldPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/BunnySlime_Overworld.prefab";
+    private const string TestNpcSpritePath = DevelopmentContentPaths.TestNpcSprite;
     private const string WhiteSpritePath = "Assets/_Game/Content/Maps/Shared/Generated/RoomMap_WhiteSquare.png";
     private const string LabelFontPath = "Assets/_Game/Presentation/UI/Fonts/Silver SDF.asset";
     private const string AreaId = "testmap.qa";
@@ -52,7 +52,6 @@ public static class TestMapShowcaseBuilder
     private static Sprite _whiteSprite;
     private static Sprite _testNpcSprite;
     private static Sprite _playerSprite;
-    private static Sprite _zevSprite;
     private static TMP_FontAsset _labelFont;
 
     private enum StationVisual
@@ -139,9 +138,6 @@ public static class TestMapShowcaseBuilder
         SpriteRenderer playerRenderer = playerPrefab != null ? playerPrefab.GetComponent<SpriteRenderer>() : null;
         _playerSprite = playerRenderer != null ? playerRenderer.sprite : null;
 
-        GameObject zevPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ZevPrefabPath);
-        SpriteRenderer zevRenderer = zevPrefab != null ? zevPrefab.GetComponent<SpriteRenderer>() : null;
-        _zevSprite = zevRenderer != null ? zevRenderer.sprite : null;
 
         if (_whiteSprite == null)
             throw new InvalidOperationException("TestMap 블록용 공용 스프라이트를 찾지 못했습니다: " + WhiteSpritePath);
@@ -320,7 +316,9 @@ public static class TestMapShowcaseBuilder
     private static Dictionary<string, GameObject> BuildStationPrefabs()
     {
         Dictionary<string, GameObject> result = new Dictionary<string, GameObject>();
-        EnemyData zevData = AssetDatabase.LoadAssetAtPath<EnemyData>(ZevEnemyDataPath);
+        EnemyData markerEnemyData = AssetDatabase.LoadAssetAtPath<EnemyData>(MarkerEnemyDataPath);
+        if (markerEnemyData == null)
+            throw new InvalidOperationException("전투 마커용 Slime 데이터를 찾지 못했습니다: " + MarkerEnemyDataPath);
         SequencePuzzleDefinition qaPuzzle = CreateOrUpdatePuzzleDefinition();
         ShopDefinition qaShop = CreateOrUpdateDebugShop();
 
@@ -331,7 +329,7 @@ public static class TestMapShowcaseBuilder
             "NPC / REPEAT",
             "qa.npc.guide",
             "QA Guide",
-            "반복 대화, 입력 잠금 해제, TestNPC 32px/30 PPU 표시를 검증합니다.",
+            "반복 대화, 입력 잠금 해제, TestNPC 32px/32 PPU 표시를 검증합니다.",
             new Color(0.35f, 0.95f, 0.62f),
             so =>
             {
@@ -497,6 +495,7 @@ public static class TestMapShowcaseBuilder
                 SetString(so, "targetSceneName", "TestMap");
                 SetString(so, "targetAreaId", AreaId);
                 SetString(so, "targetSpawnId", "qa.testmap.spawn.sublocation");
+                SetString(so, "returnSpawnPointId", "qa.testmap.spawn.sublocation");
                 SetFloat(so, "fadeDuration", 0.2f);
             });
 
@@ -521,23 +520,23 @@ public static class TestMapShowcaseBuilder
             AreaMarkerType.Enemy,
             StationVisual.Enemy,
             "ENEMY / Z BATTLE",
-            "qa.enemy.zev.marker",
-            "ZEV Marker Encounter",
+            "qa.enemy.slime.marker",
+            "Slime Marker Encounter",
             "Area Enemy Marker의 Z 상호작용과 전용 BattleScene 왕복을 검증합니다.",
             new Color(1f, 0.25f, 0.28f),
             so =>
             {
-                SetString(so, "enemyId", "qa_enemy_zev_marker");
+                SetString(so, "enemyId", "qa_enemy_slime_marker");
                 SetInt(so, "enemyLevel", 1);
-                SetString(so, "battleEncounterId", "qa.testmap.encounter.zev_marker");
-                SetObject(so, "enemyData", zevData);
+                SetString(so, "battleEncounterId", "qa.testmap.encounter.slime_marker");
+                SetObject(so, "enemyData", markerEnemyData);
                 SetBool(so, "useDedicatedBattleScene", true);
                 SetString(so, "battleSceneName", "BattleScene");
                 SetFloat(so, "battleFadeDuration", 0.08f);
             },
             false,
             string.Empty,
-            _zevSprite != null ? _zevSprite : _testNpcSprite);
+            _testNpcSprite);
 
         return result;
     }
@@ -883,35 +882,23 @@ public static class TestMapShowcaseBuilder
     private static void BuildCombatZone(Transform parent, Transform environment, Dictionary<string, GameObject> prefabs)
     {
         GameObject zone = CreateGroup("D_COMBAT_AND_COLLISION", parent);
-        PlacePrefab(prefabs["enemy"], zone.transform, new Vector3(8f, -8.4f));
-        PlacePrefab(prefabs["hazard"], zone.transform, new Vector3(27f, -8.4f));
-        CreateMarkerNote(zone.transform, "Note_EnemyMarker", new Vector3(8f, -5.85f), "Enemy Marker", "Z: battle marker\ndata-driven test", new Color(1f, 0.45f, 0.45f));
-        CreateMarkerNote(zone.transform, "Note_ZevPrefab", new Vector3(17f, -5.85f), "ZEV Prefab", "touch: normal\nF: preemptive", new Color(1f, 0.62f, 0.62f));
-        CreateMarkerNote(zone.transform, "Note_Hazard", new Vector3(27f, -5.85f), "Hazard", "touch: HP damage\n0 HP: GameOver", new Color(1f, 0.42f, 0.18f));
+        PlacePrefab(prefabs["enemy"], zone.transform, new Vector3(6f, -8.4f));
+        PlacePrefab(prefabs["hazard"], zone.transform, new Vector3(21f, -8.4f));
+        CreateMarkerNote(zone.transform, "Note_EnemyMarker", new Vector3(6f, -5.85f), "Enemy Marker", "Z: battle marker\ndata-driven test", new Color(1f, 0.45f, 0.45f), 4.8f);
+        CreateMarkerNote(zone.transform, "Note_BunnySlime", new Vector3(13.5f, -5.85f), "Bunny Slime", "touch / F: seamless\nnever attacks", new Color(0.95f, 0.78f, 0.88f), 5.2f);
+        CreateMarkerNote(zone.transform, "Note_Hazard", new Vector3(21f, -5.85f), "Hazard", "touch: HP damage\n0 HP: GameOver", new Color(1f, 0.42f, 0.18f), 4.8f);
 
-        GameObject zevPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ZevPrefabPath);
-        if (zevPrefab != null)
+        GameObject bunnyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BunnySlimeOverworldPrefabPath);
+        if (bunnyPrefab != null)
         {
-            GameObject zev = (GameObject)PrefabUtility.InstantiatePrefab(zevPrefab);
-            zev.name = "QA_ZEV_CONTACT_OR_F_ATTACK";
-            zev.transform.SetParent(zone.transform, false);
-            zev.transform.position = new Vector3(17f, -8.4f);
-
-            OverworldEnemy enemy = zev.GetComponent<OverworldEnemy>();
-            if (enemy != null)
-            {
-                SerializedObject enemySo = new SerializedObject(enemy);
-                SetString(enemySo, "_enemyId", "qa.testmap.zev.field_attack");
-                SetBool(enemySo, "_useDedicatedBattleScene", true);
-                SetString(enemySo, "_battleSceneName", "BattleScene");
-                SetEnum(enemySo, "_victoryHandling", 0);
-                enemySo.ApplyModifiedPropertiesWithoutUndo();
-            }
-
-            ApplyStaticYSort(zev);
+            GameObject bunny = (GameObject)PrefabUtility.InstantiatePrefab(bunnyPrefab);
+            bunny.name = "QA_BUNNY_SLIME_PASSIVE_ENCOUNTER";
+            bunny.transform.SetParent(zone.transform, false);
+            bunny.transform.position = new Vector3(13.5f, -8.4f);
+            ApplyStaticYSort(bunny);
         }
 
-        CreateText("Combat_Hint", zone.transform, new Vector3(17f, -4.55f), "READ EACH PLATE: MARKER BATTLE / ZEV TOUCH / F PREEMPTIVE / HAZARD", 0.04f, new Color(1f, 0.72f, 0.67f), 5200);
+        CreateText("Combat_Hint", zone.transform, new Vector3(17f, -4.55f), "MARKER / PASSIVE BUNNY / PREEMPTIVE / HAZARD", 0.04f, new Color(1f, 0.72f, 0.67f), 5200);
 
         GameObject collision = CreateGroup("Collision_And_YSort_Course", environment);
         CreateBlock("CollisionWall_Left", collision.transform, new Vector3(7.5f, -14.8f), new Vector2(0.7f, 5.4f), new Color(0.54f, 0.57f, 0.62f), "Characters", 0, true);
@@ -948,15 +935,14 @@ public static class TestMapShowcaseBuilder
         }
 
         CreateText("Scale_Title", root.transform, new Vector3(0f, 4.8f), "1 GRID CELL = 1 WORLD UNIT", 0.052f, new Color(0.95f, 0.83f, 1f), 5400);
-        CreateSpriteSample(root.transform, "Player_Current", _playerSprite, new Vector3(-8f, 2.1f), 1f, Color.white, "PLAYER CURRENT");
-        CreateSpriteSample(root.transform, "TestNPC_Native", _testNpcSprite, new Vector3(0f, 2.1f), 1f, Color.white, "TESTNPC 32px / 30PPU / 1.07u");
-        CreateSpriteSample(root.transform, "ZEV_Current", _zevSprite, new Vector3(8f, 2.1f), 1f, Color.white, "ZEV CURRENT");
+        CreateSpriteSample(root.transform, "Player_Current", _playerSprite, new Vector3(-5f, 2.1f), 1f, Color.white, "PLAYER CURRENT");
+        CreateSpriteSample(root.transform, "TestNPC_Native", _testNpcSprite, new Vector3(5f, 2.1f), 1f, Color.white, "TESTNPC 32px / 32PPU / 1.00u");
 
-        CreateSpriteSample(root.transform, "TestNPC_050", _testNpcSprite, new Vector3(-9f, -2.4f), 0.5f, Color.white, "0.50x / 0.53u");
-        CreateSpriteSample(root.transform, "TestNPC_075", _testNpcSprite, new Vector3(-4.5f, -2.4f), 0.75f, Color.white, "0.75x / 0.80u");
-        CreateSpriteSample(root.transform, "TestNPC_100", _testNpcSprite, new Vector3(0f, -2.4f), 1f, Color.white, "1.00x / 1.07u");
-        CreateSpriteSample(root.transform, "TestNPC_150", _testNpcSprite, new Vector3(4.5f, -2.4f), 1.5f, Color.white, "1.50x / 1.60u");
-        CreateSpriteSample(root.transform, "TestNPC_200", _testNpcSprite, new Vector3(9f, -2.4f), 2f, Color.white, "2.00x / 2.13u");
+        CreateSpriteSample(root.transform, "TestNPC_050", _testNpcSprite, new Vector3(-9f, -2.4f), 0.5f, Color.white, "0.50x / 0.50u");
+        CreateSpriteSample(root.transform, "TestNPC_075", _testNpcSprite, new Vector3(-4.5f, -2.4f), 0.75f, Color.white, "0.75x / 0.75u");
+        CreateSpriteSample(root.transform, "TestNPC_100", _testNpcSprite, new Vector3(0f, -2.4f), 1f, Color.white, "1.00x / 1.00u");
+        CreateSpriteSample(root.transform, "TestNPC_150", _testNpcSprite, new Vector3(4.5f, -2.4f), 1.5f, Color.white, "1.50x / 1.50u");
+        CreateSpriteSample(root.transform, "TestNPC_200", _testNpcSprite, new Vector3(9f, -2.4f), 2f, Color.white, "2.00x / 2.00u");
 
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, LabPrefabRoot + "/QA_SpriteScaleLab.prefab");
         UnityEngine.Object.DestroyImmediate(root);

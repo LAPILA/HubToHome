@@ -10,12 +10,12 @@ using UnityEngine.SceneManagement;
 /// 원칙:
 /// - 런타임 코드는 Assets/_Game/Scripts/Overworld/Runtime/Map 아래에 둡니다.
 /// - 실제 월드/씬/룸 데이터/룸 프리팹은 Assets/_Game/Content/Maps 아래에 생성합니다.
-/// - 기획자는 Content/Maps/Regions 안의 README와 RoomDefinition을 기준으로 룸 연결을 확인합니다.
+/// - 개발 중인 월드/템플릿은 Content/Maps/Development 안에서 확인합니다.
 /// 메뉴:
-/// - HubToHome > Overworld > Create Room Map Sample
-/// - HubToHome > Overworld > Create Map Field Starter Pack
-/// - HubToHome > Overworld > Create Template Packs
-/// - HubToHome > Overworld > Apply Sorting Rules
+/// - HubToHome > 오버월드 > 맵 생성 > 기본 Room 샘플 생성
+/// - HubToHome > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성
+/// - HubToHome > 오버월드 > 맵 생성 > 템플릿 팩 생성
+/// - HubToHome > 오버월드 > 맵 정렬 규칙 적용
 /// </summary>
 public static class RoomMapSampleBuilder
 {
@@ -23,7 +23,7 @@ public static class RoomMapSampleBuilder
     private const string BackgroundSortingLayerName = "Background";
 
     private const string SceneWorldRoot = "Assets/_Game/Content/Maps";
-    private const string RegionRoot = SceneWorldRoot + "/Regions";
+
     private const string DevelopmentRoot = SceneWorldRoot + "/Development";
     private const string SharedGeneratedFolder = SceneWorldRoot + "/Shared/Generated";
     private const string SharedSpritePath = SharedGeneratedFolder + "/RoomMap_WhiteSquare.png";
@@ -33,12 +33,12 @@ public static class RoomMapSampleBuilder
     private const string BasicPrefabFolder = BasicRoot + "/Prefabs/Rooms";
     private const string BasicDataFolder = BasicPrefabFolder;
 
-    private const string StarterPackRoot = RegionRoot + "/MapFieldStarter";
-    private const string StarterPackScenePath = StarterPackRoot + "/Scenes/Region_MapFieldStarter.unity";
+    private const string StarterPackRoot = DevelopmentContentPaths.MapFieldStarterRoot;
+    private const string StarterPackScenePath = DevelopmentContentPaths.MapFieldStarterScene;
     private const string StarterPackPrefabFolder = StarterPackRoot + "/Prefabs/Rooms";
     private const string StarterPackDataFolder = StarterPackPrefabFolder;
 
-    private const string TemplateRoot = DevelopmentRoot + "/Templates";
+    private const string TemplateRoot = DevelopmentContentPaths.TemplatesRoot;
 
     private const string DesignerGuidePath = SceneWorldRoot + "/README_MapAuthoring.md";
     [MenuItem("HubToHome/오버월드/맵 생성/기본 Room 샘플 생성")]
@@ -91,7 +91,6 @@ public static class RoomMapSampleBuilder
         EnsureFolder(StarterPackRoot + "/Scenes");
         EnsureFolder(StarterPackPrefabFolder);
         EnsureFolder(StarterPackDataFolder);
-        EnsureFolder(StarterPackRoot + "/Materials");
         EnsureFolder(StarterPackRoot + "/Notes");
 
         RoomDefinition gate = CreateRoomDefinition(
@@ -183,6 +182,8 @@ public static class RoomMapSampleBuilder
         WireRoomDoor(forestPath, village, "Door_To_Village", "to_forest", FacingDirection.Left);
         WireRoomDoor(forestPath, dungeonEntrance, "Door_To_DungeonEntrance", "from_forest", FacingDirection.Right);
         WireRoomDoor(dungeonEntrance, forestPath, "Door_To_ForestPath", "to_dungeon", FacingDirection.Left);
+        WireShortcutDoor(house, forestPath, "Marker_house.shortcut_locked", "from_house_shortcut", FacingDirection.Right);
+        WireShortcutDoor(forestPath, house, "Marker_forest.shortcut_locked", "from_forest_shortcut", FacingDirection.Left);
 
         CreateScene(StarterPackScenePath, gate, "Region_MapFieldStarter", new Color(0.11f, 0.15f, 0.20f));
         CreateStarterPackReadme();
@@ -295,8 +296,13 @@ public static class RoomMapSampleBuilder
 
         GameObject roomRoot = layoutFactory(roomId, floorColor, wallColor, doorSpawnId, returnSpawnId);
         ConfigureSequencePuzzles(roomRoot, dataFolder, prefabName);
-        GameObject prefab = PrefabUtility.SaveAsPrefabAsset(roomRoot, prefabPath);
+        PrefabUtility.SaveAsPrefabAsset(roomRoot, prefabPath);
         Object.DestroyImmediate(roomRoot);
+
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        RoomInstance roomPrefab = prefab != null ? prefab.GetComponent<RoomInstance>() : null;
+        if (roomPrefab == null)
+            throw new System.InvalidOperationException($"Room Prefab 저장에 실패했습니다: {prefabPath}");
 
         RoomDefinition definition = AssetDatabase.LoadAssetAtPath<RoomDefinition>(definitionPath);
         if (definition == null)
@@ -305,11 +311,6 @@ public static class RoomMapSampleBuilder
             AssetDatabase.CreateAsset(definition, definitionPath);
         }
 
-        RoomInstance roomPrefab = prefab.GetComponent<RoomInstance>();
-        SetPrivateString(definition, "_roomId", roomId);
-        SetPrivateObject(definition, "_roomPrefab", roomPrefab);
-        SetPrivateBool(definition, "_keepCurrentBgm", true);
-
         AreaDefinition areaDefinition = AssetDatabase.LoadAssetAtPath<AreaDefinition>(areaDefinitionPath);
         if (areaDefinition == null)
         {
@@ -317,17 +318,31 @@ public static class RoomMapSampleBuilder
             AssetDatabase.CreateAsset(areaDefinition, areaDefinitionPath);
         }
 
-        SetPrivateString(areaDefinition, "_areaId", roomId);
-        SetPrivateObject(areaDefinition, "_roomDefinition", definition);
-        SetPrivateObject(definition, "_areaDefinition", areaDefinition);
+        SerializedObject definitionSerialized = new SerializedObject(definition);
+        definitionSerialized.Update();
+        definitionSerialized.FindProperty("_roomId").stringValue = roomId;
+        definitionSerialized.FindProperty("_roomPrefab").objectReferenceValue = roomPrefab;
+        definitionSerialized.FindProperty("_areaDefinition").objectReferenceValue = areaDefinition;
+        definitionSerialized.FindProperty("_keepCurrentBgm").boolValue = true;
+        definitionSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+        SerializedObject areaSerialized = new SerializedObject(areaDefinition);
+        areaSerialized.Update();
+        areaSerialized.FindProperty("_areaId").stringValue = roomId;
+        areaSerialized.FindProperty("_roomDefinition").objectReferenceValue = definition;
+        areaSerialized.ApplyModifiedPropertiesWithoutUndo();
+
         EditorUtility.SetDirty(definition);
         EditorUtility.SetDirty(areaDefinition);
+        AssetDatabase.SaveAssetIfDirty(definition);
+        AssetDatabase.SaveAssetIfDirty(areaDefinition);
 
         areaDefinition.RefreshMarkerSummary();
+        EditorUtility.SetDirty(areaDefinition);
+        AssetDatabase.SaveAssetIfDirty(areaDefinition);
 
         return definition;
     }
-
     private static void ApplySortingRulesToPrefabsInFolder(string prefabFolder)
     {
         string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { prefabFolder });
@@ -406,11 +421,10 @@ public static class RoomMapSampleBuilder
         CreateBlock("Warm Window", root.transform, new Vector3(1.35f, 1.25f, -0.2f), new Vector3(0.35f, 0.35f, 0.1f), new Color(1f, 0.76f, 0.28f));
         CreateBlock("Lantern", root.transform, new Vector3(-1.2f, 0.65f, -0.2f), new Vector3(0.25f, 0.7f, 0.1f), new Color(1f, 0.70f, 0.22f));
         CreateBlock("Frozen Pond", root.transform, new Vector3(-2.35f, -1.1f, -0.1f), new Vector3(1.9f, 0.8f, 0.1f), new Color(0.50f, 0.80f, 0.95f));
-        CreateNPCMarker(root.transform, roomId, "village.guide", new Vector3(-1.2f, 0.1f, 0f), "* 숲 쪽은 아직 테스트 중이야.\n* 표지판, 아이템, 상점, 퍼즐, 전투 마커를 전부 만져 보고 이상한 입력 락을 찾아줘.", false, string.Empty);
+        CreateNPCMarker(root.transform, roomId, "village.guide", new Vector3(-1.2f, 0.1f, 0f), "* 숲 쪽은 아직 테스트 중이야.\n* 표지판, 아이템, 상점, 퍼즐, 지름길을 전부 만져 보고 이상한 입력 락을 찾아줘.", false, string.Empty);
         CreateItemMarker(root.transform, roomId, "village.test_item", new Vector3(-2.35f, -1.75f, 0f), "debug_healing_leaf", 2, "* 차가운 연못가에서 debug_healing_leaf 2개를 주웠다.\n* 아이템 획득 대화/원샷/저장 플래그 테스트.", "mapfield.village.item.pond_leaf");
         CreatePuzzleMarker(root.transform, roomId, "village.lantern_puzzle", new Vector3(-1.2f, 1.15f, 0f), "mapfield.village.lantern_puzzle.solved");
         CreateVendorMarker(root.transform, roomId, "village.street_vendor", new Vector3(3.7f, -0.55f, 0f), "vendor.mapfield.street", "shop.debug.village");
-        CreateSublocationMarker(root.transform, roomId, "village.notice_board", new Vector3(-4.0f, 1.8f, 0f), "Region_MapFieldStarter", "mapfield.village", "from_gate");
         CreateSpawnPoint("Spawn_From_Gate", root.transform, returnSpawnId, new Vector3(-4.7f, 0f, 0f), FacingDirection.Right);
         CreateSpawnPoint("Spawn_From_Inn", root.transform, doorSpawnId, new Vector3(1.9f, 0.05f, 0f), FacingDirection.Down);
         CreateSpawnPoint("Spawn_From_Shop", root.transform, "to_shop", new Vector3(3.7f, 0.25f, 0f), FacingDirection.Down);
@@ -471,6 +485,7 @@ public static class RoomMapSampleBuilder
         CreateSignMarker(root.transform, roomId, "house.bookshelf_note", new Vector3(2.0f, 0.35f, 0f), "* 책장 뒤에 지름길 문 도면이 끼어 있다.\n* 잠긴 ShortcutDoor와 플래그 조건 테스트용 문서다.", false, string.Empty);
         CreateItemMarker(root.transform, roomId, "house.bed_item", new Vector3(-1.9f, 0.2f, 0f), "debug_sleep_token", 1, "* debug_sleep_token을 얻었다.\n* 집 안 아이템 원샷 테스트.", "mapfield.house.item.sleep_token");
         CreateShortcutDoorMarker(root.transform, roomId, "house.shortcut_locked", new Vector3(2.75f, -0.9f, 0f), "shortcut.house.forest", "shortcut.forest.house", "mapfield.village.lantern_puzzle.solved");
+        CreateSpawnPoint("Spawn_From_ForestShortcut", root.transform, "from_forest_shortcut", new Vector3(2.2f, -0.9f, 0f), FacingDirection.Left);
         CreateSpawnPoint("Spawn_From_Village", root.transform, returnSpawnId, new Vector3(0f, -1.35f, 0f), FacingDirection.Up);
         CreateSpawnPoint("Spawn_To_Village", root.transform, doorSpawnId, new Vector3(0f, -1.85f, 0f), FacingDirection.Down);
         CreateDoorPlaceholder("Door", root.transform, new Vector3(0f, -1.95f, 0f), new Vector3(0.9f, 0.35f, 0.1f), new Color(0.08f, 0.04f, 0.02f));
@@ -488,7 +503,8 @@ public static class RoomMapSampleBuilder
         CreateHazardMarker(root.transform, roomId, "forest.thorn_patch", new Vector3(-2.0f, -0.9f, 0f), 7, 0.8f, true);
         CreatePuzzleMarker(root.transform, roomId, "forest.rock_switch", new Vector3(-0.8f, -0.25f, 0f), "mapfield.forest.rock_switch.solved");
         CreateShortcutDoorMarker(root.transform, roomId, "forest.shortcut_locked", new Vector3(-3.1f, 1.0f, 0f), "shortcut.forest.house", "shortcut.house.forest", "mapfield.village.lantern_puzzle.solved");
-        CreatePlotPointMarker(root.transform, roomId, "forest.ambush_warning", new Vector3(2.2f, 0.95f, 0f), AreaPlotTriggerMode.OnInteract, "* 숲 안쪽에서 낯선 구조체 소리가 들린다.\n* 다음 방에서 ZEV Architecture Clone 전투/시나리오를 확인한다.", false, string.Empty);
+        CreateSpawnPoint("Spawn_From_HouseShortcut", root.transform, "from_house_shortcut", new Vector3(-2.5f, 1.0f, 0f), FacingDirection.Right);
+        CreatePlotPointMarker(root.transform, roomId, "forest.ambush_warning", new Vector3(2.2f, 0.95f, 0f), AreaPlotTriggerMode.OnInteract, "* 숲 안쪽에서 낯선 구조체 소리가 들린다.\n* 앞쪽의 위험 구역을 확인하자.", false, string.Empty);
         CreateSpawnPoint("Spawn_From_Village", root.transform, returnSpawnId, new Vector3(-4.2f, 0f, 0f), FacingDirection.Right);
         CreateSpawnPoint("Spawn_From_Dungeon", root.transform, doorSpawnId, new Vector3(4.0f, 0f, 0f), FacingDirection.Left);
         CreateDoorPlaceholder("Door_To_Village", root.transform, new Vector3(-5.15f, 0f, 0f), new Vector3(0.45f, 1.55f, 0.1f), new Color(0.18f, 0.38f, 0.20f));
@@ -555,6 +571,7 @@ public static class RoomMapSampleBuilder
         if (transition == null) transition = door.gameObject.AddComponent<AreaConnectionMarker>();
 
         SerializedObject serialized = new SerializedObject(transition);
+        serialized.Update();
         serialized.FindProperty("markerId").stringValue = $"{sourceRoom.RoomId}.{doorName}";
         serialized.FindProperty("areaId").stringValue = sourceRoom.RoomId;
         serialized.FindProperty("markerType").enumValueIndex = (int)AreaMarkerType.Connection;
@@ -565,17 +582,51 @@ public static class RoomMapSampleBuilder
         serialized.FindProperty("activationMode").enumValueIndex = (int)DoorActivationMode.OnTriggerEnter;
         serialized.FindProperty("interactToUse").boolValue = false;
         serialized.FindProperty("oneShotUntilExit").boolValue = true;
-        serialized.FindProperty("mapTransition.TransitionType").enumValueIndex = (int)MapTransitionType.Room;
-        serialized.FindProperty("mapTransition.TargetRoom").objectReferenceValue = targetRoom;
-        serialized.FindProperty("mapTransition.TargetSpawnPointId").stringValue = targetSpawnId;
-        serialized.FindProperty("mapTransition.FacingAfterEnter").enumValueIndex = (int)facing;
-        serialized.FindProperty("mapTransition.FadeDuration").floatValue = 0.15f;
+        ConfigureRoomTransition(serialized, targetRoom, targetSpawnId, facing);
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
         PrefabUtility.UnloadPrefabContents(prefabRoot);
     }
 
+    private static void WireShortcutDoor(RoomDefinition sourceRoom, RoomDefinition targetRoom, string markerName, string targetSpawnId, FacingDirection facing)
+    {
+        string prefabPath = AssetDatabase.GetAssetPath(sourceRoom.RoomPrefab);
+        if (string.IsNullOrEmpty(prefabPath))
+        {
+            Debug.LogError($"[RoomMapSampleBuilder] Shortcut Room Prefab 경로를 찾지 못했습니다: {sourceRoom.RoomId}");
+            return;
+        }
+
+        GameObject prefabRoot = PrefabUtility.LoadPrefabContents(prefabPath);
+        Transform markerTransform = prefabRoot.transform.Find(markerName);
+        ShortcutDoorMarker shortcut = markerTransform != null
+            ? markerTransform.GetComponent<ShortcutDoorMarker>()
+            : null;
+        if (shortcut == null)
+        {
+            PrefabUtility.UnloadPrefabContents(prefabRoot);
+            Debug.LogError($"[RoomMapSampleBuilder] ShortcutDoorMarker를 찾지 못했습니다: {prefabPath}/{markerName}");
+            return;
+        }
+
+        SerializedObject serialized = new SerializedObject(shortcut);
+        serialized.Update();
+        ConfigureRoomTransition(serialized, targetRoom, targetSpawnId, facing);
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
+        PrefabUtility.UnloadPrefabContents(prefabRoot);
+    }
+
+    private static void ConfigureRoomTransition(SerializedObject serialized, RoomDefinition targetRoom, string targetSpawnId, FacingDirection facing)
+    {
+        serialized.FindProperty("mapTransition.TransitionType").enumValueIndex = (int)MapTransitionType.Room;
+        serialized.FindProperty("mapTransition.TargetRoom").objectReferenceValue = targetRoom;
+        serialized.FindProperty("mapTransition.TargetSpawnPointId").stringValue = targetSpawnId;
+        serialized.FindProperty("mapTransition.FacingAfterEnter").enumValueIndex = (int)facing;
+        serialized.FindProperty("mapTransition.FadeDuration").floatValue = 0.15f;
+    }
     private static void CreateScene(string scenePath, RoomDefinition initialRoom, string sceneName, Color background)
     {
         EnsureFolder(Path.GetDirectoryName(scenePath)?.Replace('\\', '/'));
@@ -734,6 +785,7 @@ public static class RoomMapSampleBuilder
                 completionFlag,
                 0.6f);
             EditorUtility.SetDirty(definition);
+            AssetDatabase.SaveAssetIfDirty(definition);
 
             GameObject controllerObject = new GameObject("Sequence Controller");
             controllerObject.transform.SetParent(marker.transform.parent, false);
@@ -806,18 +858,6 @@ public static class RoomMapSampleBuilder
         serialized.FindProperty("plotId").stringValue = localId;
         serialized.FindProperty("triggerMode").enumValueIndex = (int)triggerMode;
         serialized.FindProperty("fallbackDialogueText").stringValue = fallbackText;
-        serialized.ApplyModifiedPropertiesWithoutUndo();
-    }
-
-    private static void CreateSublocationMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string targetSceneName, string targetAreaId, string targetSpawnId)
-    {
-        SublocationMarker marker = CreateAreaMarker<SublocationMarker>(parent, roomId, localId, localPosition, localId, "Sublocation scene/area state test marker", false, string.Empty);
-        SerializedObject serialized = new SerializedObject(marker);
-        serialized.FindProperty("sublocationId").stringValue = localId;
-        serialized.FindProperty("targetSceneName").stringValue = targetSceneName;
-        serialized.FindProperty("targetAreaId").stringValue = targetAreaId;
-        serialized.FindProperty("targetSpawnId").stringValue = targetSpawnId;
-        serialized.FindProperty("fadeDuration").floatValue = 0.2f;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
@@ -972,7 +1012,7 @@ public static class RoomMapSampleBuilder
             + "- RoomDefinition: `Prefabs/Rooms` (각 Room Prefab 옆 `_Definition.asset`)\n"
             + "- Room Prefab: `Prefabs/Rooms`\n"
             + "- AreaConnectionMarker: Gate <-> Village <-> Inn / Shop / House / ForestPath <-> DungeonEntrance\n"
-            + "- 테스트용 Area Marker: NPC, Sign, Item, SavePoint, Vendor, Puzzle, Hazard, ShortcutDoor, Sublocation, PlotPoint, Enemy\n"
+            + "- 테스트용 Area Marker: NPC, Sign, Item, SavePoint, Vendor, Puzzle, Hazard, ShortcutDoor, PlotPoint\n"
             + "## 기본 생성 룸 7개\n\n"
             + "1. `Room_MapField_Gate`\n"
             + "2. `Room_MapField_Village`\n"
@@ -983,10 +1023,10 @@ public static class RoomMapSampleBuilder
             + "7. `Room_MapField_DungeonEntrance`\n\n"
             + "## 버그 탐색 루트\n\n"
             + "1. Gate: 입장 PlotPoint 자동 발동과 welcome Sign one-shot을 확인합니다.\n"
-            + "2. Village: 반복 NPC, 아이템 one-shot, 퍼즐 플래그, 상점 fallback, Sublocation 저장/복귀값을 확인합니다.\n"
+            + "2. Village: 반복 NPC, 아이템 one-shot, 퍼즐 플래그, 상점 fallback을 확인합니다.\n"
             + "3. Inn/Shop/House: 실내 이동 후 대화 종료 입력 재소비, SavePoint fallback, ShortcutDoor 잠금 조건을 확인합니다.\n"
             + "4. ForestPath: 접촉 Hazard와 Z 상호작용 PlotPoint/ShortcutDoor를 확인합니다.\n"
-            + "5. DungeonEntrance: 컷신용 PlotPoint 자동 발동 후 ZEV Architecture Clone 전투 진입과 BattleScenarioData 전달을 확인합니다.\n\n"
+            + "5. DungeonEntrance: 출입 연결, 충돌 영역, 비반복 Hazard 동작을 확인합니다.\n\n"
             + "## 기획자 체크 방법\n\n"
             + "1. `Region_MapFieldStarter.unity`를 엽니다.\n"
             + "2. Hierarchy의 `Map Systems`에서 초기 RoomDefinition을 확인합니다.\n"
@@ -1016,7 +1056,7 @@ public static class RoomMapSampleBuilder
     private static void WriteDesignerGuide()
     {
         EnsureFolder(SceneWorldRoot);
-        EnsureFolder(RegionRoot);
+
         EnsureFolder(DevelopmentRoot);
 
         string content = "# Overworld Map Guide\n\n"
@@ -1024,7 +1064,7 @@ public static class RoomMapSampleBuilder
             + "## 폴더 기준\n\n"
             + "- `Assets/_Game/Scripts/Overworld/Runtime/Map`: 개발자가 관리하는 맵 전환 런타임 코드\n"
             + "- `Assets/_Game/Scripts/Overworld/Editor`: 샘플/템플릿 생성기와 검사 도구\n"
-            + "- `Assets/_Game/Content/Maps/Frontend`: 타이틀과 인트로 씬 위치\n"
+            + "- `Assets/_Game/Content/Maps/Development/Regions/Title`: 현재 개발용 타이틀과 인트로 씬 위치\n"
             + "- `Assets/_Game/Content/Maps/Battle`: 전투 전용 씬 위치\n"
             + "- `Assets/_Game/Content/Maps/Regions`: 실제 지역 Scene, RoomDefinition, Room Prefab 생성 위치\n"
             + "- `Assets/_Game/Content/Maps/Development`: QA와 기능 검증용 맵 위치\n"
@@ -1037,7 +1077,7 @@ public static class RoomMapSampleBuilder
             + "- **SpawnPoint**: 이동 후 플레이어가 서는 위치와 바라볼 방향입니다.\n\n"
             + "## 제작 흐름\n\n"
             + "1. Unity 메뉴 `HubToHome > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`을 실행합니다.\n"
-            + "2. `Assets/_Game/Content/Maps/Regions/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`를 엽니다.\n"
+            + "2. `Assets/_Game/Content/Maps/Development/Templates/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`를 엽니다.\n"
             + "3. `Prefabs/Rooms`에서 Room Prefab 옆의 RoomDefinition으로 룸 목록과 BGM을 확인합니다.\n"
             + "4. `Prefabs/Rooms`의 Room Prefab을 열어 바닥/벽/문/NPC/이벤트를 배치합니다.\n"
             + "5. 문을 추가하면 `AreaConnectionMarker.MapTransition.TargetRoom`과 `TargetSpawnPointId`를 맞춥니다.\n"

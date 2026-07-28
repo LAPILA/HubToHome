@@ -5,12 +5,12 @@ using UnityEngine;
 
 public static class WideFieldPaths
 {
-    public const string Root = "Assets/_Game/Content/Maps/Regions-TEST/WideField";
+    public const string Root = DevelopmentContentPaths.WideFieldRoot;
     public const string SceneRoot = Root + "/Scenes";
     public const string PrefabRoot = Root + "/Prefabs/Rooms";
     public const string RoomDataRoot = Root + "/Data/Rooms";
     public const string DialogueRoot = Root + "/Data/Dialogue";
-    public const string Scene = SceneRoot + "/Region_WideField.unity";
+    public const string Scene = DevelopmentContentPaths.WideFieldScene;
     public const string StationPrefab = PrefabRoot + "/Room_WideFieldStation.prefab";
     public const string ExpansePrefab = PrefabRoot + "/Room_WideFieldExpanse.prefab";
     public const string StationDefinition = RoomDataRoot + "/Room_WideFieldStation_Definition.asset";

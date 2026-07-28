@@ -637,8 +637,8 @@ MonoBehaviour:
   areaId: testmap.qa
   markerType: 4
   displayName: QA Vendor
-  description: "vendorId/shopId \uC804\uB2EC\uACFC \uD604\uC7AC Debug.Log \uC5F0\uACB0
-    \uC9C0\uC810\uC744 \uAC80\uC99D\uD569\uB2C8\uB2E4."
+  description: "Vendor \uC9C4\uC785, \uAD6C\uB9E4\xB7\uD310\uB9E4\xB7\uCDE8\uC18C\xB7\uC7AC\uC9C4\uC785\uACFC
+    \uC800\uC7A5 \uC5F0\uB3D9\uC744 \uAC80\uC99D\uD569\uB2C8\uB2E4."
   isOneShot: 0
   requiredFlag: 
   setFlagOnComplete: 
@@ -647,6 +647,7 @@ MonoBehaviour:
   gizmoColor: {r: 1, g: 0.84, b: 0.25, a: 1}
   vendorId: qa_vendor_test_counter
   shopId: qa_shop_debug_inventory
+  shopDefinition: {fileID: 11400000, guid: 8d5f35c591e84b64aa8ef42b1e1185eb, type: 2}
 --- !u!1 &3272407792079250925
 GameObject:
   m_ObjectHideFlags: 0
@@ -1026,7 +1027,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: VENDOR / SEAM
+  m_text: VENDOR / BUY-SELL
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4da9911c543a2a048a95035371d0d669, type: 2}
   m_sharedMaterial: {fileID: -7707835574508330307, guid: 4da9911c543a2a048a95035371d0d669, type: 2}

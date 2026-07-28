@@ -190,6 +190,23 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             enemySkill = _host.ResolveEnemySequenceSkill(enemy, action);
         }
 
+        if (action == EnemyAction.Wait)
+        {
+            BattleNarrationMessage narration = enemy is BunnySlimeCharacter bunnySlime
+                ? bunnySlime.GetNextWaitNarration()
+                : new BattleNarrationMessage(
+                    $"{BattleNarrationFormatter.ActorName(enemy)}은 가만히 있다...",
+                    BattleNarrationStyle.Normal,
+                    BattleNarrationPriority.Normal,
+                    0.55f,
+                    requiresConfirm: false);
+
+            _host.RequestNarration(narration);
+            yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
+            CompleteAction();
+            yield break;
+        }
+
         EnemyAttackType attackType = action switch
         {
             EnemyAction.UseSkill when enemySkill != null => _host.ResolveEnemySkillAttackType(enemySkill),

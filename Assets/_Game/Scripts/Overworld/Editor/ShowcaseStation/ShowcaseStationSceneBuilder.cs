@@ -9,10 +9,10 @@ using UnityEngine.SceneManagement;
 
 public static class ShowcaseStationScenePaths
 {
-    public const string TemplateScene =
-        "Assets/_Game/Content/Maps/Regions/MapFieldStarter/Scenes/Region_MapFieldStarter.unity";
+    public const string TemplateScene = DevelopmentContentPaths.MapFieldStarterScene;
+
     public const string SceneRoot = ShowcaseStationPaths.Root + "/Scenes";
-    public const string MainScene = SceneRoot + "/Region_ShowcaseStation.unity";
+    public const string MainScene = DevelopmentContentPaths.ShowcaseStationScene;
 }
 
 /// <summary>
