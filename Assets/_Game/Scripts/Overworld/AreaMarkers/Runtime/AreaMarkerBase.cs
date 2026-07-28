@@ -99,6 +99,9 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
 
     public virtual bool CanInteract(PlayerController player)
     {
+        if (!OverworldActionGate.AllowsWorldActions)
+            return false;
+
         if (!isActiveAndEnabled)
             return false;
 

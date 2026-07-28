@@ -195,8 +195,8 @@ public sealed class ShowcaseStationSceneBuilderTests
             TrainExitMarker[] exits = train.GetComponentsInChildren<TrainExitMarker>(true);
             TrainTravelController controller =
                 train.GetComponentInChildren<TrainTravelController>(true);
-            TrainDestinationInteractable[] destinations =
-                train.GetComponentsInChildren<TrainDestinationInteractable>(true);
+            TrainDestinationSelectorInteractable selector =
+                train.GetComponentInChildren<TrainDestinationSelectorInteractable>(true);
             Assert.That(exits, Has.Length.EqualTo(1));
             Assert.That(exits[0].Network, Is.Not.Null);
             Assert.That(controller, Is.Not.Null);
@@ -204,9 +204,9 @@ public sealed class ShowcaseStationSceneBuilderTests
                 controller.TryValidateConfiguration(out string controllerError),
                 Is.True,
                 controllerError);
-            Assert.That(destinations, Has.Length.EqualTo(2));
+            Assert.That(selector, Is.Not.Null);
             Assert.That(
-                destinations.Select(destination => destination.Destination.StopId),
+                selector.Destinations.Select(destination => destination.StopId),
                 Is.EquivalentTo(new[]
                 {
                     TravelTrainIds.ShowcaseStop,

@@ -24,6 +24,10 @@ public sealed class GameContentCatalog : ScriptableObject
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<ItemData> Items = new List<ItemData>();
 
+    [Title("Equipment")]
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    public List<EquipmentData> Equipment = new List<EquipmentData>();
+
     [Title("Presentation")]
     public TMP_FontAsset DefaultUiFont;
 
@@ -46,5 +50,6 @@ public sealed class GameContentCatalog : ScriptableObject
         EnemyDatabase.InvalidateCache();
         SkillDatabase.InvalidateCache();
         ItemDatabase.InvalidateCache();
+        EquipmentDatabase.InvalidateCache();
     }
 }

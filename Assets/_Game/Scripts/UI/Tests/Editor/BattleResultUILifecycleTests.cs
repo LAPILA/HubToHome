@@ -7,6 +7,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 public sealed class BattleResultUILifecycleTests
 {
@@ -164,6 +165,9 @@ public sealed class BattleResultUILifecycleTests
 
         BattleResultUI view = BattleResultUI.EnsureGlobal();
         _root = view.transform.root.gameObject;
+        CanvasScaler scaler = _root.GetComponent<CanvasScaler>();
+        Assert.That(scaler.referenceResolution, Is.EqualTo(GameConfigPolicy.ReferenceResolution));
+        Assert.That(((RectTransform)view.transform).sizeDelta.x, Is.LessThanOrEqualTo(GameConfigPolicy.ReferenceWidth));
         ConfigureTimings(view, 0.01f, 0.01f);
         var input = new ManualAdvanceInputSource();
         view.SetAdvanceInputSource(input);

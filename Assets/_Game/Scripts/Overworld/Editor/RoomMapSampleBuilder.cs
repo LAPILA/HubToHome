@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -294,6 +294,7 @@ public static class RoomMapSampleBuilder
         string areaDefinitionPath = $"{dataFolder}/{prefabName}_Area.asset";
 
         GameObject roomRoot = layoutFactory(roomId, floorColor, wallColor, doorSpawnId, returnSpawnId);
+        ConfigureSequencePuzzles(roomRoot, dataFolder, prefabName);
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(roomRoot, prefabPath);
         Object.DestroyImmediate(roomRoot);
 
@@ -697,6 +698,80 @@ public static class RoomMapSampleBuilder
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
+    private static void ConfigureSequencePuzzles(
+        GameObject roomRoot,
+        string dataFolder,
+        string prefabName)
+    {
+        PuzzleMarker[] markers = roomRoot.GetComponentsInChildren<PuzzleMarker>(true);
+        for (int i = 0; i < markers.Length; i++)
+        {
+            PuzzleMarker marker = markers[i];
+            SerializedObject markerObject = new SerializedObject(marker);
+            string puzzleId = markerObject.FindProperty("puzzleId").stringValue;
+            string completionFlag = markerObject.FindProperty("solvedFlag").stringValue;
+            if (string.IsNullOrWhiteSpace(puzzleId))
+                puzzleId = prefabName + ".puzzle." + (i + 1);
+            if (string.IsNullOrWhiteSpace(completionFlag))
+                completionFlag = puzzleId + ".solved";
+
+            string definitionPath =
+                $"{dataFolder}/{prefabName}_Puzzle_{i + 1}.asset";
+            SequencePuzzleDefinition definition =
+                AssetDatabase.LoadAssetAtPath<SequencePuzzleDefinition>(definitionPath);
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<SequencePuzzleDefinition>();
+                AssetDatabase.CreateAsset(definition, definitionPath);
+            }
+
+            string nodeA = puzzleId + ".a";
+            string nodeB = puzzleId + ".b";
+            string nodeC = puzzleId + ".c";
+            definition.Configure(
+                puzzleId,
+                new[] { nodeA, nodeB, nodeC },
+                completionFlag,
+                0.6f);
+            EditorUtility.SetDirty(definition);
+
+            GameObject controllerObject = new GameObject("Sequence Controller");
+            controllerObject.transform.SetParent(marker.transform.parent, false);
+            SequencePuzzleController controller =
+                controllerObject.AddComponent<SequencePuzzleController>();
+            controller.Configure(definition);
+
+            markerObject.FindProperty("puzzleRuntimeSource").objectReferenceValue = controller;
+            markerObject.FindProperty("solvedFlag").stringValue = string.Empty;
+            markerObject.FindProperty("fallbackInstructionText").stringValue =
+                "* 아래 스위치를 A, B, C 순서로 작동시킨다.\n* 틀리면 잠시 뒤 처음부터 다시 시작한다.";
+            markerObject.ApplyModifiedPropertiesWithoutUndo();
+
+            CreateSequenceSwitch(marker.transform, "A", nodeA, new Vector3(-0.8f, -0.9f, 0f), controller, new Color(0.82f, 0.28f, 0.24f));
+            CreateSequenceSwitch(marker.transform, "B", nodeB, new Vector3(0f, -0.9f, 0f), controller, new Color(0.34f, 0.74f, 0.40f));
+            CreateSequenceSwitch(marker.transform, "C", nodeC, new Vector3(0.8f, -0.9f, 0f), controller, new Color(0.30f, 0.52f, 0.82f));
+        }
+    }
+
+    private static void CreateSequenceSwitch(
+        Transform parent,
+        string label,
+        string nodeId,
+        Vector3 localPosition,
+        SequencePuzzleController controller,
+        Color color)
+    {
+        GameObject switchObject = new GameObject("PuzzleSwitch_" + label);
+        switchObject.layer = 6;
+        switchObject.transform.SetParent(parent, false);
+        switchObject.transform.localPosition = localPosition;
+        CircleCollider2D collider = switchObject.AddComponent<CircleCollider2D>();
+        collider.isTrigger = true;
+        collider.radius = 0.3f;
+        PuzzleSwitch puzzleSwitch = switchObject.AddComponent<PuzzleSwitch>();
+        puzzleSwitch.Configure(nodeId, controller);
+        CreateBlock("SwitchVisual_" + label, switchObject.transform, Vector3.zero, new Vector3(0.45f, 0.45f, 1f), color);
+    }
     private static void CreateVendorMarker(Transform parent, string roomId, string localId, Vector3 localPosition, string vendorId, string shopId)
     {
         VendorMarker marker = CreateAreaMarker<VendorMarker>(parent, roomId, localId, localPosition, localId, "Vendor fallback test marker", false, string.Empty);

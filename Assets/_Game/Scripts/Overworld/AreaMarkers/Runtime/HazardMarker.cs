@@ -81,6 +81,8 @@ public class HazardMarker : AreaMarkerBase
 
         _lastPlayerInstanceId = playerId;
         _nextDamageTime = now + Mathf.Max(0f, rehitDelay);
+        if (result.CurrentHP <= 0)
+            GameOverUI.Request();
         if (isOneShot)
             CompleteMarker();
         return true;

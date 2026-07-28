@@ -292,12 +292,13 @@ public sealed class ShowcaseStationPlayModeTests
         Assert.That(global.GetFlag(TravelTrainIds.ShowcaseCurrentFlag), Is.EqualTo(1));
         Assert.That(global.GetFlag(TravelTrainIds.WideFieldCurrentFlag), Is.Zero);
 
-        TrainDestinationInteractable wideFieldDestination =
-            FindDestination(roomContainer.CurrentRoom, TravelTrainIds.WideFieldStop);
-        Assert.That(wideFieldDestination, Is.Not.Null);
-        player.transform.position = wideFieldDestination.transform.position;
+        TrainDestinationSelectorInteractable destinationSelector =
+            roomContainer.CurrentRoom.GetComponentInChildren<TrainDestinationSelectorInteractable>(true);
+        int destinationIndex = FindDestinationIndex(destinationSelector, TravelTrainIds.WideFieldStop);
+        Assert.That(destinationIndex, Is.GreaterThanOrEqualTo(0));
+        player.transform.position = destinationSelector.transform.position;
         Physics2D.SyncTransforms();
-        wideFieldDestination.Interact(player);
+        Assert.That(destinationSelector.TryTravelTo(destinationIndex, player), Is.True);
 
         yield return WaitUntilOrFail(
             () => IsRoomReady("Region_WideField", WideFieldIds.Station),
@@ -337,12 +338,13 @@ public sealed class ShowcaseStationPlayModeTests
             FindObjectsInactive.Include);
         roomContainer = Object.FindFirstObjectByType<RoomContainer>(
             FindObjectsInactive.Include);
-        TrainDestinationInteractable showcaseDestination =
-            FindDestination(roomContainer.CurrentRoom, TravelTrainIds.ShowcaseStop);
-        Assert.That(showcaseDestination, Is.Not.Null);
-        player.transform.position = showcaseDestination.transform.position;
+        destinationSelector =
+            roomContainer.CurrentRoom.GetComponentInChildren<TrainDestinationSelectorInteractable>(true);
+        destinationIndex = FindDestinationIndex(destinationSelector, TravelTrainIds.ShowcaseStop);
+        Assert.That(destinationIndex, Is.GreaterThanOrEqualTo(0));
+        player.transform.position = destinationSelector.transform.position;
         Physics2D.SyncTransforms();
-        showcaseDestination.Interact(player);
+        Assert.That(destinationSelector.TryTravelTo(destinationIndex, player), Is.True);
 
         yield return WaitUntilOrFail(
             () => IsRoomReady(
@@ -359,28 +361,25 @@ public sealed class ShowcaseStationPlayModeTests
         yield return new ExitPlayMode();
     }
 
-    private static TrainDestinationInteractable FindDestination(
-        RoomInstance room,
+    private static int FindDestinationIndex(
+        TrainDestinationSelectorInteractable selector,
         string stopId)
     {
-        if (room == null)
-            return null;
+        if (selector == null)
+            return -1;
 
-        TrainDestinationInteractable[] destinations =
-            room.GetComponentsInChildren<TrainDestinationInteractable>(true);
-        for (int i = 0; i < destinations.Length; i++)
+        for (int i = 0; i < selector.Destinations.Count; i++)
         {
-            TrainStopDefinition destination = destinations[i].Destination;
+            TrainStopDefinition destination = selector.Destinations[i];
             if (destination != null
                 && string.Equals(
                     destination.StopId,
                     stopId,
                     System.StringComparison.Ordinal))
-            {
-                return destinations[i];
-            }
+                return i;
         }
-        return null;
+
+        return -1;
     }
     private static bool IsRoomReady(string sceneName, string roomId)
     {

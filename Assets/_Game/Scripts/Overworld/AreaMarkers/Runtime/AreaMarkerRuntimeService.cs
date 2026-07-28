@@ -214,6 +214,9 @@ public static class AreaMarkerRuntimeService
         ShopDefinition shop,
         Action<ShopSessionResult> onClosed)
     {
+        if (shop != null && s_shopSessionLauncher == null && Application.isPlaying)
+            ShopUI.EnsureGlobal();
+
         if (shop == null || s_shopSessionLauncher == null)
         {
             Debug.Log(
@@ -300,12 +303,6 @@ public static class AreaMarkerRuntimeService
         return result;
     }
 
-    public static void CompletePuzzle(AreaMarkerBase owner, string puzzleId, string solvedFlag)
-    {
-        Debug.Log($"[AreaMarkerRuntimeService] 퍼즐 요청: puzzleId={puzzleId}, solvedFlag={solvedFlag}. 현재는 퍼즐 플레이 없이 solvedFlag를 즉시 설정합니다.", owner);
-        if (!string.IsNullOrWhiteSpace(solvedFlag))
-            GlobalDataManager.Instance?.SetFlag(solvedFlag, 1);
-    }
 
     public static bool RequestSublocation(
         AreaMarkerBase owner,

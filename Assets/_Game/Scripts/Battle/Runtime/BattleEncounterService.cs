@@ -8,6 +8,11 @@ public interface IEncounterSource
     void OnEncounterResolved(bool victory, PlayerController player);
 }
 
+public interface IEncounterOutcomeSource
+{
+    void OnEncounterResolved(BattleEncounterOutcome outcome, PlayerController player);
+}
+
 public static class EncounterCollisionGuard
 {
     private const float NudgePadding = 0.18f;

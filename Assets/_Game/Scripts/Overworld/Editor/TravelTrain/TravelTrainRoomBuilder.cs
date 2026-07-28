@@ -80,18 +80,8 @@ public static class TravelTrainRoomBuilder
                 GetOrAddSingle<TrainStopStateSynchronizer>(systems.gameObject);
             synchronizer.Configure(data.Network);
 
-            ConfigureDestination(
-                route,
-                "Destination_Showcase",
-                new Vector2(-0.65f, 0f),
-                controller,
-                data.ShowcaseStop);
-            ConfigureDestination(
-                route,
-                "Destination_WideField",
-                new Vector2(0.65f, 0f),
-                controller,
-                data.WideFieldStop);
+            ConfigureDestinationSelector(
+                route, controller, data.ShowcaseStop, data.WideFieldStop);
 
             TrainExitMarker exit = EnsureExitMarker(context);
             exit.Configure(data.Network, 0.25f);
@@ -161,24 +151,36 @@ public static class TravelTrainRoomBuilder
         return GeneratedRoomEditorUtility.CreateEmpty(id, parent, position);
     }
 
-    private static void ConfigureDestination(
+    private static void ConfigureDestinationSelector(
         Transform route,
-        string name,
-        Vector2 localPosition,
         TrainTravelController controller,
-        TrainStopDefinition stop)
+        TrainStopDefinition showcaseStop,
+        TrainStopDefinition wideFieldStop)
     {
-        Transform target = EnsureDirectChild(route, name);
-        target.localPosition = localPosition;
+        RemoveDirectChild(route, "Destination_Showcase");
+        RemoveDirectChild(route, "Destination_WideField");
+
         int interactableLayer = LayerMask.NameToLayer("Interactable");
         if (interactableLayer >= 0)
-            target.gameObject.layer = interactableLayer;
-        CircleCollider2D collider = GetOrAddSingle<CircleCollider2D>(target.gameObject);
+            route.gameObject.layer = interactableLayer;
+
+        CircleCollider2D collider = GetOrAddSingle<CircleCollider2D>(route.gameObject);
         collider.isTrigger = true;
-        collider.radius = 0.42f;
-        TrainDestinationInteractable destination =
-            GetOrAddSingle<TrainDestinationInteractable>(target.gameObject);
-        destination.Configure(controller, stop);
+        collider.radius = 0.6f;
+
+        TrainDestinationSelectorInteractable selector =
+            GetOrAddSingle<TrainDestinationSelectorInteractable>(route.gameObject);
+        selector.Configure(
+            controller,
+            new[] { showcaseStop, wideFieldStop },
+            "* \uC5B4\uB290 \uC815\uB958\uC18C\uB85C \uC774\uB3D9\uD560\uAE4C?");
+    }
+
+    private static void RemoveDirectChild(Transform parent, string name)
+    {
+        Transform child = parent.Find(name);
+        if (child != null && child.parent == parent)
+            UnityEngine.Object.DestroyImmediate(child.gameObject);
     }
 
     private static TrainExitMarker EnsureExitMarker(GeneratedRoomContext context)

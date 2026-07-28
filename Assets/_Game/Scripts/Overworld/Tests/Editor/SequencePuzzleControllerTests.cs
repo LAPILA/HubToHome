@@ -164,7 +164,7 @@ public sealed class SequencePuzzleControllerTests
         PuzzleMarkerProbe marker = markerObject.AddComponent<PuzzleMarkerProbe>();
         try
         {
-            SetField(marker, "sequenceController", controller);
+            SetField(marker, "puzzleRuntimeSource", controller);
             SetField(marker, "isOneShot", true);
 
             marker.Interact((PlayerController)null);
@@ -178,6 +178,30 @@ public sealed class SequencePuzzleControllerTests
         {
             Object.DestroyImmediate(markerObject);
             Object.DestroyImmediate(controllerObject);
+        }
+    }
+
+    [Test]
+    public void PuzzleMarkerDelegatesToAnyPuzzleRuntimeImplementation()
+    {
+        GameObject runtimeObject = new GameObject("SequencePuzzleTests_RuntimeProbe");
+        PuzzleRuntimeProbe runtime = runtimeObject.AddComponent<PuzzleRuntimeProbe>();
+        GameObject markerObject = new GameObject("SequencePuzzleTests_Marker");
+        markerObject.AddComponent<BoxCollider2D>();
+        PuzzleMarkerProbe marker = markerObject.AddComponent<PuzzleMarkerProbe>();
+        try
+        {
+            SetField(marker, "puzzleRuntimeSource", runtime);
+
+            marker.Interact((PlayerController)null);
+
+            Assert.That(runtime.InteractionCount, Is.EqualTo(1));
+            Assert.That(marker.GuideCount, Is.Zero);
+        }
+        finally
+        {
+            Object.DestroyImmediate(markerObject);
+            Object.DestroyImmediate(runtimeObject);
         }
     }
 
@@ -232,6 +256,30 @@ public sealed class PuzzleMarkerProbe : PuzzleMarker
     protected override bool ShowInstruction()
     {
         GuideCount++;
+        return true;
+    }
+}
+
+public sealed class PuzzleRuntimeProbe : MonoBehaviour, IPuzzleRuntime
+{
+    public string PuzzleId => "tests.runtime-probe";
+    public bool IsCompleted { get; private set; }
+    public int InteractionCount { get; private set; }
+
+    public bool CanInteract(PlayerController player)
+    {
+        return true;
+    }
+
+    public bool TryHandleMarkerInteraction(PlayerController player)
+    {
+        InteractionCount++;
+        return true;
+    }
+
+    public bool TryValidate(out string error)
+    {
+        error = string.Empty;
         return true;
     }
 }

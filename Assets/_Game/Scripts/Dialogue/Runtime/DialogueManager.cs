@@ -23,6 +23,8 @@ public class DialogueManager : MonoBehaviour
     private GameState _stateBeforeDialogue = GameState.Exploration;
     private bool _ownsDialogueState;
     private int _playbackGeneration;
+    private List<ChoiceData> _promptChoices;
+    private Action<int> _promptChoiceCallback;
 
     public bool IsPlaying
     {
@@ -49,6 +51,45 @@ public class DialogueManager : MonoBehaviour
 
         if (!TryStartDialogue(data, onComplete, null, encounterContext, out _))
             onComplete?.Invoke();
+    }
+
+    public bool TryStartChoicePrompt(
+        string prompt,
+        IReadOnlyList<string> choiceLabels,
+        Action<int> onSelected,
+        Action onCancelled = null)
+    {
+        if (_isPlaying || _overworldPanel == null || choiceLabels == null || choiceLabels.Count == 0)
+            return false;
+
+        _promptChoices = new List<ChoiceData>(choiceLabels.Count);
+        for (int i = 0; i < choiceLabels.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(choiceLabels[i]))
+            {
+                _promptChoices = null;
+                return false;
+            }
+
+            _promptChoices.Add(new ChoiceData { ChoiceText = choiceLabels[i].Trim() });
+        }
+
+        _isPlaying = true;
+        _currentDialogue = null;
+        _currentNodeIndex = 0;
+        _onCompleteCallback = null;
+        _onCancelledCallback = onCancelled;
+        _encounterContext = null;
+        _activeUI = _overworldPanel;
+        _promptChoiceCallback = onSelected;
+        _playbackGeneration++;
+
+        AcquireDialogueState();
+        _activeUI.RebindCanvasCameraImmediate();
+        _activeUI.OpenPanel();
+        _activeUI.DisplayPrompt(prompt);
+        _activeUI.ShowChoices(_promptChoices, OnPromptChoiceSelected);
+        return true;
     }
 
     public bool TryStartDialogue(
@@ -187,6 +228,25 @@ public class DialogueManager : MonoBehaviour
         EndDialogue();
     }
 
+    private void OnPromptChoiceSelected(ChoiceData choice)
+    {
+        int selectedIndex = _promptChoices != null
+            ? _promptChoices.IndexOf(choice)
+            : -1;
+        Action<int> callback = _promptChoiceCallback;
+
+        _promptChoiceCallback = null;
+        _promptChoices = null;
+        if (selectedIndex < 0)
+        {
+            FinishDialogue(completed: false);
+            return;
+        }
+
+        FinishDialogue(completed: true);
+        callback?.Invoke(selectedIndex);
+    }
+
     private IEnumerator CoStartBattleFromChoice(ChoiceData choice)
     {
         PlayerController player = FindFirstObjectByType<PlayerController>();
@@ -298,6 +358,8 @@ public class DialogueManager : MonoBehaviour
         _encounterContext = null;
         _currentDialogue = null;
         _currentNodeIndex = 0;
+        _promptChoices = null;
+        _promptChoiceCallback = null;
 
         _nameInputUI?.CancelImmediate();
         if (_activeUI != null)

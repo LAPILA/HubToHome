@@ -66,6 +66,8 @@ public class BattleEncounterMemoryRecorderTests
 
             Assert.That(fixture.Global.TryGetEncounterMemory("zev", out EncounterMemorySaveData memory), Is.True);
             Assert.That(memory.Defeated, Is.True);
+            Assert.That(memory.LastOutcome, Is.EqualTo(BattleEncounterOutcome.Victory));
+            Assert.That(memory.VictoryCount, Is.EqualTo(1));
             Assert.That(memory.SeenBeatIds, Is.EqualTo(new[] { "enter_phase2" }));
         }
         finally
@@ -104,6 +106,33 @@ public class BattleEncounterMemoryRecorderTests
         }
     }
 
+    [Test]
+    public void ExplicitOutcomesTrackVictoryEscapeAndPartyDefeatSeparately()
+    {
+        var fixture = new GlobalDataFixture();
+        BattleScenarioData scenario = MakeScenario("zev");
+        try
+        {
+            BattleEncounterMemoryRecorder.RecordBattleResult(
+                scenario, null, fixture.Global, null, BattleEncounterOutcome.Victory);
+            BattleEncounterMemoryRecorder.RecordBattleResult(
+                scenario, null, fixture.Global, null, BattleEncounterOutcome.Escaped);
+            BattleEncounterMemoryRecorder.RecordBattleResult(
+                scenario, null, fixture.Global, null, BattleEncounterOutcome.PartyDefeated);
+
+            Assert.That(fixture.Global.TryGetEncounterMemory("zev", out EncounterMemorySaveData memory), Is.True);
+            Assert.That(memory.Defeated, Is.True);
+            Assert.That(memory.LastOutcome, Is.EqualTo(BattleEncounterOutcome.PartyDefeated));
+            Assert.That(memory.VictoryCount, Is.EqualTo(1));
+            Assert.That(memory.EscapeCount, Is.EqualTo(1));
+            Assert.That(memory.PartyDefeatCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(scenario);
+            fixture.Dispose();
+        }
+    }
     private static void FirePhase2Rule(BattleScenarioRuntime runtime)
     {
         runtime.PublishEnemyHpCrossedBelow(

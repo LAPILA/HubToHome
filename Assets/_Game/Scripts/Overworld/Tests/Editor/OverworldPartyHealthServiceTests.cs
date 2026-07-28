@@ -21,7 +21,7 @@ public sealed class OverworldPartyHealthServiceTests
     }
 
     [Test]
-    public void ApplyDamage_ChangesPartyLeaderAndNeverDropsBelowOneHP()
+    public void ApplyDamage_ChangesPartyLeaderAndCanReachZeroHP()
     {
         CharacterSaveData leader = PartyMember("hero", hp: 8, maxHP: 20);
         _global.Party.Add(leader);
@@ -32,8 +32,8 @@ public sealed class OverworldPartyHealthServiceTests
 
         Assert.That(first.Status, Is.EqualTo(OverworldPartyDamageStatus.Applied));
         Assert.That(first.AppliedDamage, Is.EqualTo(3));
-        Assert.That(second.CurrentHP, Is.EqualTo(1));
-        Assert.That(leader.HP, Is.EqualTo(1));
+        Assert.That(second.CurrentHP, Is.Zero);
+        Assert.That(leader.HP, Is.Zero);
     }
 
     [Test]
@@ -186,8 +186,8 @@ public sealed class OverworldPartyHealthServiceTests
                 OverworldPartyDamageStatus.Applied,
                 damage,
                 damage,
-                10,
-                10 - damage);
+                100,
+                100 - damage);
         }
     }
 }

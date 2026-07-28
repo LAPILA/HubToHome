@@ -153,6 +153,8 @@ public class PlayerCharacter : CharacterBase
         }
 
         ApplyCharacterData();
+        PowerProgressionService.SynchronizeUnlockedSkills(saveData, _characterData);
+        ApplyEquipmentFromSave(saveData);
 
         if (saveData.EquippedSkillIDs != null && saveData.EquippedSkillIDs.Count > 0)
         {
@@ -177,10 +179,10 @@ public class PlayerCharacter : CharacterBase
         Level       = saveData.Level;
         EXP         = saveData.EXP;
         
-        BaseMaxHP   = saveData.MaxHP;
-        CurrentHP   = saveData.HP;
-        BaseMaxMP   = saveData.MaxMP;
-        CurrentMP   = saveData.MP;
+        BaseMaxHP   = Mathf.Max(1, saveData.MaxHP);
+        CurrentHP   = Mathf.Clamp(saveData.HP, 0, MaxHP);
+        BaseMaxMP   = Mathf.Max(0, saveData.MaxMP);
+        CurrentMP   = Mathf.Clamp(saveData.MP, 0, MaxMP);
 
         if (CurrentHP <= 0) 
         {
@@ -215,7 +217,7 @@ public class PlayerCharacter : CharacterBase
         _mySaveDataRef = saveData;
         BaseMaxHP = Mathf.Max(1, saveData.MaxHP);
         BaseMaxMP = Mathf.Max(0, saveData.MaxMP);
-        SetCurrentHPValue(Mathf.Clamp(saveData.HP, 1, MaxHP));
+        SetCurrentHPValue(Mathf.Clamp(saveData.HP, 0, MaxHP));
         SetCurrentMPValue(Mathf.Clamp(saveData.MP, 0, MaxMP));
         return true;
     }
@@ -241,6 +243,8 @@ public class PlayerCharacter : CharacterBase
         _mySaveDataRef.SPD   = BaseSPD;
         _mySaveDataRef.Level = Level;
         _mySaveDataRef.EXP   = EXP;
+        SaveEquipmentToGlobal(_mySaveDataRef);
+        PowerProgressionService.SynchronizeUnlockedSkills(_mySaveDataRef, _characterData);
         if (_mySaveDataRef.EquippedSkillIDs == null)
             _mySaveDataRef.EquippedSkillIDs = new List<string>();
         else
@@ -251,6 +255,73 @@ public class PlayerCharacter : CharacterBase
             if (skill != null && !string.IsNullOrWhiteSpace(skill.SkillID))
                 _mySaveDataRef.EquippedSkillIDs.Add(skill.SkillID);
         }
+    }
+
+    private void ApplyEquipmentFromSave(CharacterSaveData saveData)
+    {
+        if (!saveData.HasInitializedEquipment)
+        {
+            SaveEquipmentToGlobal(saveData);
+            GlobalDataManager global = GlobalDataManager.Instance;
+            if (global != null)
+            {
+                for (int i = 0; i < EquipmentLoadoutService.SlotCount; i++)
+                {
+                    string id = saveData.EquippedEquipmentIDs[i];
+                    if (!string.IsNullOrEmpty(id))
+                        global.AddEquipmentAndGetAddedAmount(id);
+                }
+            }
+            return;
+        }
+
+        EquipmentLoadoutService.NormalizeSlots(saveData);
+        WeaponSlot = ResolveEquipment(saveData, EquipmentSlot.Weapon);
+        Accessory1Slot = ResolveEquipment(saveData, EquipmentSlot.Accessory1);
+        Accessory2Slot = ResolveEquipment(saveData, EquipmentSlot.Accessory2);
+        HeadSlot = ResolveEquipment(saveData, EquipmentSlot.Head);
+        BodySlot = ResolveEquipment(saveData, EquipmentSlot.Body);
+        ShoesSlot = ResolveEquipment(saveData, EquipmentSlot.Shoes);
+    }
+
+    private void SaveEquipmentToGlobal(CharacterSaveData saveData)
+    {
+        if (saveData == null)
+            return;
+
+        EquipmentLoadoutService.NormalizeSlots(saveData);
+        saveData.EquippedEquipmentIDs[(int)EquipmentSlot.Weapon] = EquipmentId(WeaponSlot);
+        saveData.EquippedEquipmentIDs[(int)EquipmentSlot.Accessory1] = EquipmentId(Accessory1Slot);
+        saveData.EquippedEquipmentIDs[(int)EquipmentSlot.Accessory2] = EquipmentId(Accessory2Slot);
+        saveData.EquippedEquipmentIDs[(int)EquipmentSlot.Head] = EquipmentId(HeadSlot);
+        saveData.EquippedEquipmentIDs[(int)EquipmentSlot.Body] = EquipmentId(BodySlot);
+        saveData.EquippedEquipmentIDs[(int)EquipmentSlot.Shoes] = EquipmentId(ShoesSlot);
+        saveData.HasInitializedEquipment = true;
+    }
+
+    private EquipmentData ResolveEquipment(CharacterSaveData saveData, EquipmentSlot slot)
+    {
+        string id = EquipmentLoadoutService.GetEquippedId(saveData, slot);
+        if (string.IsNullOrEmpty(id))
+            return null;
+
+        EquipmentData equipment = EquipmentDatabase.FindById(id);
+        if (equipment == null)
+            Debug.LogWarning($"[PlayerCharacter] Saved equipment ID could not be resolved: {id}", this);
+        else if (equipment.Slot != slot)
+        {
+            Debug.LogWarning($"[PlayerCharacter] Saved equipment has the wrong slot: {id}", this);
+            return null;
+        }
+
+        return equipment;
+    }
+
+    private static string EquipmentId(EquipmentData equipment)
+    {
+        return equipment == null || string.IsNullOrWhiteSpace(equipment.ItemID)
+            ? string.Empty
+            : equipment.ItemID.Trim();
     }
 
     // ── 피격 & 연출 ──

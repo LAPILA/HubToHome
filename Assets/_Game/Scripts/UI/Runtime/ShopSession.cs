@@ -14,16 +14,31 @@ public readonly struct ShopSessionResult
         ShopSessionEndReason reason,
         int successfulPurchaseCount,
         ShopPurchaseResult? lastPurchase)
+        : this(reason, successfulPurchaseCount, lastPurchase, 0, null)
+    {
+    }
+
+    public ShopSessionResult(
+        ShopSessionEndReason reason,
+        int successfulPurchaseCount,
+        ShopPurchaseResult? lastPurchase,
+        int successfulSaleCount,
+        ShopSellResult? lastSale)
     {
         Reason = reason;
         SuccessfulPurchaseCount = Math.Max(0, successfulPurchaseCount);
         LastPurchase = lastPurchase;
+        SuccessfulSaleCount = Math.Max(0, successfulSaleCount);
+        LastSale = lastSale;
     }
 
     public ShopSessionEndReason Reason { get; }
     public int SuccessfulPurchaseCount { get; }
     public ShopPurchaseResult? LastPurchase { get; }
+    public int SuccessfulSaleCount { get; }
+    public ShopSellResult? LastSale { get; }
     public bool HasSuccessfulPurchase => SuccessfulPurchaseCount > 0;
+    public bool HasSuccessfulTransaction => HasSuccessfulPurchase || SuccessfulSaleCount > 0;
 }
 
 /// <summary>
@@ -36,6 +51,8 @@ public sealed class ShopSession
     private int _selectedIndex;
     private int _successfulPurchaseCount;
     private ShopPurchaseResult? _lastPurchase;
+    private int _successfulSaleCount;
+    private ShopSellResult? _lastSale;
     private bool _isClosed;
 
     public ShopSession(ShopDefinition shop, IShopTransactionStore store)
@@ -58,6 +75,8 @@ public sealed class ShopSession
             : null;
     public int SuccessfulPurchaseCount => _successfulPurchaseCount;
     public ShopPurchaseResult? LastPurchase => _lastPurchase;
+    public int SuccessfulSaleCount => _successfulSaleCount;
+    public ShopSellResult? LastSale => _lastSale;
     public bool IsClosed => _isClosed;
 
     public bool MoveSelection(int delta)
@@ -106,6 +125,32 @@ public sealed class ShopSession
         return result;
     }
 
+    public ShopSellResult Sell(ItemData item, int sellCount = 1)
+    {
+        if (_isClosed)
+        {
+            return new ShopSellResult(
+                ShopSellStatus.InvalidSellState,
+                ShopSellStatus.InvalidSellState,
+                item != null ? item.ItemID : string.Empty,
+                sellCount,
+                0,
+                0,
+                false,
+                true,
+                "종료된 Shop Session입니다.");
+        }
+
+        ShopSellResult result = ShopSellTransactionService.TrySell(
+            _store,
+            item,
+            sellCount);
+        _lastSale = result;
+        if (result.Succeeded)
+            _successfulSaleCount++;
+        Changed?.Invoke();
+        return result;
+    }
     public bool TryClose(ShopSessionEndReason reason, out ShopSessionResult result)
     {
         if (_isClosed)
@@ -118,7 +163,9 @@ public sealed class ShopSession
         result = new ShopSessionResult(
             reason,
             _successfulPurchaseCount,
-            _lastPurchase);
+            _lastPurchase,
+            _successfulSaleCount,
+            _lastSale);
         Closed?.Invoke(result);
         return true;
     }

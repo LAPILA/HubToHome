@@ -149,7 +149,7 @@ public sealed class SequencePuzzleProgressEvent : UnityEvent<int, int>
 }
 
 [DisallowMultipleComponent]
-public sealed class SequencePuzzleController : MonoBehaviour
+public sealed class SequencePuzzleController : MonoBehaviour, IPuzzleRuntime
 {
     [TitleGroup("퍼즐 데이터")]
     [SerializeField, Required, LabelText("Sequence Puzzle Definition")]
@@ -185,11 +185,22 @@ public sealed class SequencePuzzleController : MonoBehaviour
     private GlobalDataManager _globalDataSource;
 
     public SequencePuzzleDefinition Definition => _definition;
+    public string PuzzleId => _definition != null ? _definition.PuzzleId : string.Empty;
     public int CurrentStep => _progress?.CurrentStep ?? 0;
     public int TotalSteps => _progress?.TotalSteps ?? 0;
     public int ResetGeneration => _progress?.ResetGeneration ?? 0;
     public bool IsResetPending => _progress != null && _progress.IsResetPending;
     public bool IsCompleted => _progress != null && _progress.IsCompleted;
+
+    public bool CanInteract(PlayerController player)
+    {
+        return _definition != null;
+    }
+
+    public bool TryHandleMarkerInteraction(PlayerController player)
+    {
+        return false;
+    }
 
     public void Configure(SequencePuzzleDefinition definition)
     {

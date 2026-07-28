@@ -12,7 +12,7 @@ using Sirenix.OdinInspector;
 [RequireComponent(typeof(Collider2D))]
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(EnemyCharacter))]
-public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttackTarget
+public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcomeSource, IPreemptiveAttackTarget
 {
     private static float s_globalEncounterLockUntil;
 
@@ -171,6 +171,13 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
 
     private void FixedUpdate()
     {
+        if (!OverworldActionGate.AllowsWorldActions)
+        {
+            if (_rb != null) _rb.linearVelocity = Vector2.zero;
+            UpdateMoveAnimation(Vector2.zero);
+            return;
+        }
+
         RefreshEncounterExitWait();
         if (!_encounterInProgress
             && _triggered
@@ -601,6 +608,13 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
 
     public void OnEncounterResolved(bool victory, PlayerController player)
     {
+        OnEncounterResolved(
+            victory ? BattleEncounterOutcome.Victory : BattleEncounterOutcome.Escaped,
+            player);
+    }
+
+    public void OnEncounterResolved(BattleEncounterOutcome outcome, PlayerController player)
+    {
         _encounterInProgress = false;
         _pendingRearmPlayer = player;
         EncounterCollisionGuard.BlockAll(_postBattleGraceDuration);
@@ -610,16 +624,41 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         EncounterCollisionGuard.NudgePlayerOutOf(_collider, player, _postBattleNudgeDistance);
         _waitForPlayerExitBeforeRearm = EncounterCollisionGuard.IsPlayerOverlapping(_collider, player);
 
-        if (victory && DefeatsOnVictory)
+        if (outcome == BattleEncounterOutcome.Victory && DefeatsOnVictory)
         {
             DisablePermanently();
             return;
         }
 
-        if (victory)
-            RestoreActiveState();
-        else
-            StartCooldown(Mathf.Max(_postBattleGraceDuration, 0.75f), _postEscapeAlpha);
+        if (outcome == BattleEncounterOutcome.Escaped)
+        {
+            ResolveEscapeCooldown(out float duration, out float alpha);
+            StartCooldown(duration, alpha);
+            return;
+        }
+
+        RestoreActiveState();
+    }
+
+    private void ResolveEscapeCooldown(out float duration, out float alpha)
+    {
+        duration = Mathf.Max(_postBattleGraceDuration, 0.75f);
+        alpha = Mathf.Clamp01(_postEscapeAlpha);
+
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global == null)
+            return;
+
+        float remaining = global.GetOverworldEnemyCooldownRemaining(_enemyId);
+        if (remaining <= 0f)
+        {
+            global.MarkOverworldEnemyEscaped(_enemyId, _sceneName, duration, alpha);
+            return;
+        }
+
+        duration = remaining;
+        if (global.TryGetOverworldEnemyState(_enemyId, out OverworldEnemyRuntimeState state))
+            alpha = Mathf.Clamp01(state.CooldownAlpha);
     }
 
     private void RefreshEncounterExitWait()

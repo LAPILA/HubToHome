@@ -1,6 +1,6 @@
 public static class ShowcaseStationPaths
 {
-    public const string Root = "Assets/_Game/Content/Maps/Regions/ShowcaseStation";
+    public const string Root = "Assets/_Game/Content/Maps/Regions-TEST/ShowcaseStation";
     public const string PrefabRoot = Root + "/Prefabs/Rooms";
     public const string DataRoot = Root + "/Data";
     public const string RoomDataRoot = DataRoot + "/Rooms";

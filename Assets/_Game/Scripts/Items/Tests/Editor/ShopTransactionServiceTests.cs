@@ -194,6 +194,80 @@ public sealed class ShopTransactionServiceTests
         Assert.That(successfulObserverCalls, Is.EqualTo(1));
     }
 
+    [Test]
+    public void ValidSaleCommitsItemAndHalfPriceMoney()
+    {
+        ItemData item = Item("item.scrap");
+        item.Price = 9;
+        var store = new FakeShopTransactionStore(item, money: 2);
+        store.SeedItem(item.ItemID, 3);
+
+        ShopSellResult result = ShopSellTransactionService.TrySell(store, item, 2);
+
+        Assert.That(result.Status, Is.EqualTo(ShopSellStatus.Succeeded));
+        Assert.That(result.UnitPrice, Is.EqualTo(4));
+        Assert.That(result.TotalPrice, Is.EqualTo(8));
+        Assert.That(store.GetItemCount(item.ItemID), Is.EqualTo(1));
+        Assert.That(store.Money, Is.EqualTo(10));
+    }
+
+    [Test]
+    public void SaleRejectsProtectedOrUnavailableItemsWithoutMutation()
+    {
+        ItemData item = Item("item.protected");
+        var store = new FakeShopTransactionStore(item, money: 5);
+        store.SeedItem(item.ItemID, 1);
+
+        item.Type = ItemType.KeyItem;
+        Assert.That(
+            ShopSellTransactionService.TrySell(store, item).Status,
+            Is.EqualTo(ShopSellStatus.KeyItemProtected));
+
+        item.Type = ItemType.Consumable;
+        item.IsSellable = false;
+        Assert.That(
+            ShopSellTransactionService.TrySell(store, item).Status,
+            Is.EqualTo(ShopSellStatus.NotSellable));
+        Assert.That(store.GetItemCount(item.ItemID), Is.EqualTo(1));
+        Assert.That(store.Money, Is.EqualTo(5));
+    }
+
+    [Test]
+    public void SaleMoneyFailureRestoresRemovedItem()
+    {
+        ItemData item = Item("item.rollback");
+        var store = new FakeShopTransactionStore(item, money: 10)
+        {
+            FailMoneyRefund = true
+        };
+        store.SeedItem(item.ItemID, 2);
+
+        ShopSellResult result = ShopSellTransactionService.TrySell(store, item);
+
+        Assert.That(result.Status, Is.EqualTo(ShopSellStatus.MoneyCommitFailed));
+        Assert.That(result.RollbackAttempted, Is.True);
+        Assert.That(result.RollbackSucceeded, Is.True);
+        Assert.That(store.GetItemCount(item.ItemID), Is.EqualTo(2));
+        Assert.That(store.Money, Is.EqualTo(10));
+    }
+
+    [Test]
+    public void SaleRollbackFailureIsReportedExplicitly()
+    {
+        ItemData item = Item("item.rollback_failure");
+        var store = new FakeShopTransactionStore(item, money: 10)
+        {
+            FailMoneyRefund = true,
+            FailItemAdd = true
+        };
+        store.SeedItem(item.ItemID, 1);
+
+        ShopSellResult result = ShopSellTransactionService.TrySell(store, item);
+
+        Assert.That(result.Status, Is.EqualTo(ShopSellStatus.RollbackFailed));
+        Assert.That(result.FailureCause, Is.EqualTo(ShopSellStatus.MoneyCommitFailed));
+        Assert.That(result.RollbackSucceeded, Is.False);
+    }
     private ItemData Item(string id)
     {
         ItemData item = ScriptableObject.CreateInstance<ItemData>();
@@ -265,6 +339,7 @@ public sealed class ShopTransactionServiceTests
         public int MaxItemCount { get; set; } = 99;
         public bool FailItemAdd { get; set; }
         public bool FailItemRemove { get; set; }
+        public bool FailMoneyRefund { get; set; }
         public bool FailFlagSet { get; set; }
         public bool ThrowOnFlagSet { get; set; }
 
@@ -295,7 +370,7 @@ public sealed class ShopTransactionServiceTests
 
         public bool TryRefundMoneyExact(int amount)
         {
-            if (amount < 0 || (long)Money + amount > int.MaxValue)
+            if (FailMoneyRefund || amount < 0 || (long)Money + amount > int.MaxValue)
                 return false;
             Money += amount;
             return true;
@@ -336,6 +411,15 @@ public sealed class ShopTransactionServiceTests
             return true;
         }
 
+        public void SeedItem(string itemId, int amount)
+        {
+            if (string.IsNullOrWhiteSpace(itemId) || amount < 0)
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount == 0)
+                _items.Remove(itemId);
+            else
+                _items[itemId] = amount;
+        }
         public bool HasFlag(string key)
         {
             return _flags.ContainsKey(key);

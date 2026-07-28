@@ -1689,9 +1689,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         if (success)
         {
-            CommitOverworldEncounterResult(false);
+            CommitOverworldEncounterResult(BattleEncounterOutcome.Escaped);
             _isRunInProgress = false;
-            yield return StartCoroutine(BattleOutroRoutine(false));
+            yield return StartCoroutine(BattleOutroRoutine(BattleEncounterOutcome.Escaped));
         }
         else
         {
@@ -1703,16 +1703,19 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     private IEnumerator BattleEndRoutine()
     {
         bool victory = CheckVictory();
+        BattleEncounterOutcome outcome = victory
+            ? BattleEncounterOutcome.Victory
+            : BattleEncounterOutcome.PartyDefeated;
         _isBattleEnding = true;
         _turnQteModuleController?.CancelActiveCameraPresentation();
         QTEManager.Instance?.ForceStop();
-        CommitOverworldEncounterResult(victory);
+        CommitOverworldEncounterResult(outcome);
         RequestNarration(victory
             ? new BattleNarrationMessage("전투에서 승리했다!", BattleNarrationStyle.System, BattleNarrationPriority.Critical, 0.8f, true)
             : new BattleNarrationMessage("눈 앞이 캄캄해졌다...", BattleNarrationStyle.System, BattleNarrationPriority.Critical, 2.0f, true));
         yield return StartCoroutine(WaitForNarrationToFinish());
         if (!victory) yield return new WaitForSecondsRealtime(0.75f);
-        yield return StartCoroutine(BattleOutroRoutine(victory));
+        yield return StartCoroutine(BattleOutroRoutine(outcome));
     }
 
     #if UNITY_EDITOR
@@ -1734,7 +1737,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     }
     #endif
 
-    private void CommitOverworldEncounterResult(bool isVictory)
+    private void CommitOverworldEncounterResult(BattleEncounterOutcome outcome)
     {
         var global = GlobalDataManager.Instance;
         if (global == null) return;
@@ -1745,20 +1748,20 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             _battleScenarioRuntime,
             global,
             enemyId,
-            isVictory);
+            outcome);
 
         if (!string.IsNullOrWhiteSpace(enemyId))
         {
             string sceneName = global.LastOverworldScene;
 
-            if (isVictory)
+            if (outcome == BattleEncounterOutcome.Victory)
             {
                 if (global.CurrentEncounterDefeatsOnVictory)
                     global.MarkOverworldEnemyDefeated(enemyId, sceneName);
                 else
                     global.ClearOverworldEnemyCooldown(enemyId);
             }
-            else
+            else if (outcome == BattleEncounterOutcome.Escaped)
             {
                 global.MarkOverworldEnemyEscaped(enemyId, sceneName, _postRunEnemyDisableDuration, _postRunEnemyAlpha);
             }
@@ -1796,8 +1799,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         return _lastRewardResult;
     }
 
-    private IEnumerator BattleOutroRoutine(bool isVictory)
+    private IEnumerator BattleOutroRoutine(BattleEncounterOutcome outcome)
     {
+        bool isVictory = outcome == BattleEncounterOutcome.Victory;
         Time.timeScale = 1.0f; // 슬로우 모션 방지
         AudioManager.Instance?.StopBGM(isVictory ? 0.35f : 0.15f);
         OnBattleEnded?.Invoke(isVictory);
@@ -1810,6 +1814,25 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             if (player != null && player.IsAlive) player.SaveDataToGlobal();
         }
 
+        if (outcome == BattleEncounterOutcome.PartyDefeated)
+        {
+            if (_isDedicatedBattleScene)
+            {
+                GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
+                GameStateManager.Instance?.ChangeState(GameState.Cutscene);
+            }
+            else
+            {
+                CompleteSeamlessBattleCleanup(outcome, true);
+            }
+
+            GameOverUI gameOver = GameOverUI.EnsureGlobal();
+            if (gameOver != null)
+                yield return StartCoroutine(gameOver.Show());
+            else
+                SceneLoader.Instance?.LoadScene(SceneName.Title);
+            yield break;
+        }
         if (isVictory)
         {
             BattleRewardResult rewards = CommitVictoryRewards();
@@ -1846,7 +1869,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
         else
         {
-            CompleteSeamlessBattleCleanup(isVictory, true);
+            CompleteSeamlessBattleCleanup(outcome, true);
         }
     }
 
@@ -1856,20 +1879,21 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             return false;
 
         StopAllCoroutines();
-        CompleteSeamlessBattleCleanup(false, false);
+        CompleteSeamlessBattleCleanup(BattleEncounterOutcome.Unknown, false);
         return true;
     }
 
-    private void CompleteSeamlessBattleCleanup(bool isVictory, bool notifyEncounterSource)
+    private void CompleteSeamlessBattleCleanup(BattleEncounterOutcome outcome, bool notifyEncounterSource)
     {
         if (_isDedicatedBattleScene)
             return;
 
+        bool isVictory = outcome == BattleEncounterOutcome.Victory;
         _turnQteModuleController?.CancelActiveCameraPresentation();
         ClearTurnQtePendingActionState();
         PlayerController encounterPlayer = ResolveActiveEncounterPlayer();
         RestoreSeamlessPlayers(encounterPlayer);
-        NotifyEncounterResolved(notifyEncounterSource, isVictory, encounterPlayer);
+        NotifyEncounterResolved(notifyEncounterSource, outcome, encounterPlayer);
         DestroySeamlessBattleActors();
         RestoreSeamlessBattlePresentation();
         RestoreSeamlessBgm();
@@ -1952,7 +1976,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private void NotifyEncounterResolved(
         bool shouldNotify,
-        bool isVictory,
+        BattleEncounterOutcome outcome,
         PlayerController encounterPlayer)
     {
         IEncounterSource source = _activeEncounterSource;
@@ -1963,7 +1987,12 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         try
         {
-            source.OnEncounterResolved(isVictory, encounterPlayer);
+            if (source is IEncounterOutcomeSource outcomeSource)
+                outcomeSource.OnEncounterResolved(outcome, encounterPlayer);
+            else
+                source.OnEncounterResolved(
+                    outcome == BattleEncounterOutcome.Victory,
+                    encounterPlayer);
         }
         catch (Exception exception)
         {

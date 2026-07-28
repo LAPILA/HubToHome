@@ -148,6 +148,7 @@ public class BattleSpeechBubble : MonoBehaviour
         if (_tailRoot == null && _tailImage != null) _tailRoot = _tailImage.rectTransform;
         if (_speechText == null) _speechText = GetComponentInChildren<TextMeshProUGUI>(true);
         if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
+        DialogueTextAnimationPolicy.UsePlainTypewriter(_typewriter);
         if (_layoutElement == null && _boxRoot != null) _layoutElement = _boxRoot.GetComponent<LayoutElement>();
 
         EnsureTailStencilCutout();

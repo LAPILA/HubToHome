@@ -24,6 +24,9 @@ public abstract class InteractableBase : MonoBehaviour, IInteractable
 
     public virtual bool CanInteract(PlayerController player)
     {
+        if (!OverworldActionGate.AllowsWorldActions)
+            return false;
+
         if (!_useRequiredFlagCondition) return true;
         if (string.IsNullOrEmpty(_requiredFlagKey)) return true;
         return GlobalDataManager.Instance != null &&

@@ -46,6 +46,12 @@ public sealed class PeriodicHazardController : MonoBehaviour
 
     public void Tick()
     {
+        if (!OverworldActionGate.AllowsWorldActions)
+        {
+            ApplyState(false);
+            return;
+        }
+
         IOverworldTimeSource timeSource = ResolveTimeSource();
         bool shouldBeActive = EvaluateActive(timeSource.UnscaledTime - _enabledAt);
         ApplyState(shouldBeActive);

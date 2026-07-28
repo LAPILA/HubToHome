@@ -46,6 +46,23 @@ public static class BattleEncounterMemoryRecorder
         string fallbackEncounterId,
         bool isVictory)
     {
+        RecordBattleResult(
+            scenarioData,
+            runtime,
+            globalData,
+            fallbackEncounterId,
+            isVictory
+                ? BattleEncounterOutcome.Victory
+                : BattleEncounterOutcome.Unknown);
+    }
+
+    public static void RecordBattleResult(
+        BattleScenarioData scenarioData,
+        BattleScenarioRuntime runtime,
+        GlobalDataManager globalData,
+        string fallbackEncounterId,
+        BattleEncounterOutcome outcome)
+    {
         if (globalData == null)
         {
             return;
@@ -62,10 +79,7 @@ public static class BattleEncounterMemoryRecorder
             globalData.RememberEncounterBeatIds(memoryKey, runtime.ExportEncounterFiredRuleIds());
         }
 
-        if (isVictory)
-        {
-            globalData.MarkEncounterDefeated(memoryKey);
-        }
+        globalData.RecordEncounterOutcome(memoryKey, outcome);
     }
 
     public static string ResolveMemoryKey(BattleScenarioData scenarioData, string fallbackEncounterId)

@@ -1,41 +1,43 @@
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class PuzzleMarker : AreaMarkerBase
 {
-    [TitleGroup("Puzzle 설정/기본")]
-    [InfoBox("Controller가 있으면 안내만 담당합니다. 완료 판정과 Flag 저장은 Controller가 소유합니다. Controller가 없으면 기존 즉시 완료 동작을 유지합니다.")]
-    [SerializeField, LabelText("퍼즐 ID (연결용)")]
+    [SerializeField, HideInInspector]
     private string puzzleId;
 
     [TitleGroup("Puzzle 설정/기본")]
-    [SerializeField, LabelText("Sequence Controller")]
-    private SequencePuzzleController sequenceController;
+    [InfoBox("Puzzle Runtime은 IPuzzleRuntime을 구현한 MonoBehaviour여야 합니다. 규칙·진행·저장·완료 효과는 각 Runtime이 소유합니다.")]
+    [SerializeField, LabelText("Puzzle Runtime")]
+    [FormerlySerializedAs("sequenceController")]
+    private MonoBehaviour puzzleRuntimeSource;
 
-    [TitleGroup("Puzzle 설정/호환 모드")]
-    [SerializeField, HideIf(nameof(UsesSequenceController)), LabelText("즉시 완료 플래그")]
+    [SerializeField, HideInInspector]
     private string solvedFlag;
 
-    [TitleGroup("Puzzle 설정/Controller 안내")]
-    [SerializeField, ShowIf(nameof(UsesSequenceController)), LabelText("안내 DialogueData")]
+    [TitleGroup("Puzzle 설정/안내")]
+    [SerializeField, LabelText("안내 DialogueData")]
     private DialogueData instructionDialogue;
 
-    [TitleGroup("Puzzle 설정/Controller 안내")]
+    [TitleGroup("Puzzle 설정/안내")]
     [SerializeField, ShowIf(nameof(UsesFallbackInstruction)), LabelText("Fallback Speaker")]
     private SpeakerData fallbackSpeaker;
 
-    [TitleGroup("Puzzle 설정/Controller 안내")]
+    [TitleGroup("Puzzle 설정/안내")]
     [SerializeField, ShowIf(nameof(UsesFallbackInstruction)), LabelText("Fallback Emotion")]
     private EmotionType fallbackEmotion = EmotionType.Normal;
 
-    [TitleGroup("Puzzle 설정/Controller 안내")]
+    [TitleGroup("Puzzle 설정/안내")]
     [TextArea(2, 6)]
     [SerializeField, ShowIf(nameof(UsesFallbackInstruction)), LabelText("Fallback 안내")]
     private string fallbackInstructionText;
 
-    public bool UsesSequenceController => sequenceController != null;
-    private bool UsesFallbackInstruction => UsesSequenceController && instructionDialogue == null;
+    public IPuzzleRuntime PuzzleRuntime =>
+        puzzleRuntimeSource != null ? puzzleRuntimeSource as IPuzzleRuntime : null;
+    public bool HasPuzzleRuntime => PuzzleRuntime != null;
+    private bool UsesFallbackInstruction => HasPuzzleRuntime && instructionDialogue == null;
 
     protected override void Reset()
     {
@@ -47,7 +49,7 @@ public class PuzzleMarker : AreaMarkerBase
     protected override void EnsureDefaults()
     {
         base.EnsureDefaults();
-        if (sequenceController != null)
+        if (HasPuzzleRuntime)
             isOneShot = false;
     }
 
@@ -56,12 +58,10 @@ public class PuzzleMarker : AreaMarkerBase
         if (!base.CanInteract(player))
             return false;
 
-        if (sequenceController != null)
-            return !sequenceController.IsCompleted;
-
-        if (!string.IsNullOrWhiteSpace(solvedFlag) && GlobalDataManager.Instance != null)
-            return GlobalDataManager.Instance.GetFlag(solvedFlag, 0) == 0;
-        return true;
+        IPuzzleRuntime runtime = PuzzleRuntime;
+        return runtime != null
+            && !runtime.IsCompleted
+            && runtime.CanInteract(player);
     }
 
     public override void Interact(PlayerController player)
@@ -69,14 +69,9 @@ public class PuzzleMarker : AreaMarkerBase
         if (!CanInteract(player) || !IsPlayerInRange(player))
             return;
 
-        if (sequenceController != null)
-        {
+        IPuzzleRuntime runtime = PuzzleRuntime;
+        if (runtime == null || !runtime.TryHandleMarkerInteraction(player))
             ShowInstruction();
-            return;
-        }
-
-        AreaMarkerRuntimeService.CompletePuzzle(this, puzzleId, solvedFlag);
-        CompleteMarker();
     }
 
     protected virtual bool ShowInstruction()
@@ -89,30 +84,34 @@ public class PuzzleMarker : AreaMarkerBase
         if (!started)
         {
             Debug.LogWarning(
-                $"[PuzzleMarker] 퍼즐 안내를 시작하지 못했습니다: puzzleId={puzzleId}",
+                $"[PuzzleMarker] 퍼즐 안내를 시작하지 못했습니다: puzzleId={PuzzleRuntime?.PuzzleId}",
                 this);
         }
 
         return started;
     }
+
     public override void CollectValidationIssues(List<string> issues)
     {
         base.CollectValidationIssues(issues);
-        if (string.IsNullOrWhiteSpace(puzzleId))
-            issues.Add("puzzleId가 비어 있습니다.");
-
-        if (sequenceController == null)
+        if (puzzleRuntimeSource == null)
         {
-            if (string.IsNullOrWhiteSpace(solvedFlag))
-                issues.Add("호환 모드에서는 solvedFlag가 필요합니다.");
+            issues.Add("IPuzzleRuntime 구현 컴포넌트가 필요합니다.");
             return;
         }
 
-        if (sequenceController.gameObject == gameObject)
-            issues.Add("Sequence Controller는 PuzzleMarker와 별도 GameObject에 배치해야 합니다.");
+        IPuzzleRuntime runtime = PuzzleRuntime;
+        if (runtime == null)
+        {
+            issues.Add($"{puzzleRuntimeSource.GetType().Name}은 IPuzzleRuntime을 구현하지 않습니다.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(runtime.PuzzleId))
+            issues.Add("Puzzle Runtime의 PuzzleId가 비어 있습니다.");
         if (instructionDialogue == null && string.IsNullOrWhiteSpace(fallbackInstructionText))
-            issues.Add("Controller 모드에는 안내 DialogueData 또는 fallback 안내가 필요합니다.");
-        if (!sequenceController.TryValidate(out string error))
-            issues.Add("Sequence Controller 오류: " + error);
+            issues.Add("안내 DialogueData 또는 fallback 안내가 필요합니다.");
+        if (!runtime.TryValidate(out string error))
+            issues.Add("Puzzle Runtime 오류: " + error);
     }
 }

@@ -581,7 +581,7 @@ public static class ShowcaseStationRoomBuilder
             string.Empty);
         SerializedObject serialized = new SerializedObject(marker);
         Property(serialized, "puzzleId").stringValue = room.RoomId + "." + featureId;
-        Property(serialized, "sequenceController").objectReferenceValue = controller;
+        Property(serialized, "puzzleRuntimeSource").objectReferenceValue = controller;
         Property(serialized, "instructionDialogue").objectReferenceValue = instruction;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }

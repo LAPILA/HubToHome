@@ -18,6 +18,11 @@ public class EquipmentData : SerializedScriptableObject
     [BoxGroup("Identity")] public EquipmentSlot Slot;
     [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
 
+    [BoxGroup("Equip Rules")]
+    [Tooltip("비워 두면 모든 캐릭터가 장착할 수 있습니다. CharacterData.CharacterID를 사용합니다.")]
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    public List<string> AllowedCharacterIDs = new List<string>();
+
     [BoxGroup("Stat Bonuses")] 
     [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxHP = 0;
     [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxMP = 0;
@@ -41,4 +46,21 @@ public class EquipmentData : SerializedScriptableObject
     [BoxGroup("Special Effects")]
     [Tooltip("특정 캐릭터가 이 장비를 장착할 때 트리거할 대화 ID")]
     public string EquipReactionDialogueID = "";
+
+    public bool CanEquip(string characterDataId)
+    {
+        if (AllowedCharacterIDs == null || AllowedCharacterIDs.Count == 0)
+            return true;
+
+        string normalized = string.IsNullOrWhiteSpace(characterDataId)
+            ? string.Empty
+            : characterDataId.Trim();
+        for (int i = 0; i < AllowedCharacterIDs.Count; i++)
+        {
+            if (string.Equals(AllowedCharacterIDs[i]?.Trim(), normalized, System.StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
 }

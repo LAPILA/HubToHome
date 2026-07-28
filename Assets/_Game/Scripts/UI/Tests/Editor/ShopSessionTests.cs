@@ -88,6 +88,38 @@ public sealed class ShopSessionTests
     }
 
     [Test]
+    public void SuccessfulSaleIsPreservedInSessionResult()
+    {
+        ItemData item = Item("item.sell_session");
+        item.Price = 20;
+        ShopDefinition shop = Shop(Entry("patch", item, 10));
+        var store = new FakeStore(item, 5);
+        store.SeedItem(item.ItemID, 2);
+        var session = new ShopSession(shop, store);
+
+        ShopSellResult sale = session.Sell(item);
+
+        Assert.That(sale.Succeeded, Is.True);
+        Assert.That(store.Money, Is.EqualTo(15));
+        Assert.That(store.GetItemCount(item.ItemID), Is.EqualTo(1));
+        Assert.That(session.SuccessfulSaleCount, Is.EqualTo(1));
+        Assert.That(session.TryClose(ShopSessionEndReason.Canceled, out ShopSessionResult result), Is.True);
+        Assert.That(result.HasSuccessfulTransaction, Is.True);
+        Assert.That(result.LastSale.HasValue, Is.True);
+        Assert.That(result.LastSale.Value.Status, Is.EqualTo(ShopSellStatus.Succeeded));
+    }
+
+    [Test]
+    public void ClosedSessionRejectsFurtherSales()
+    {
+        ItemData item = Item("item.closed_sale");
+        ShopDefinition shop = Shop(Entry("patch", item, 10));
+        var session = new ShopSession(shop, new FakeStore(item, 0));
+        session.TryClose(ShopSessionEndReason.Canceled, out _);
+
+        Assert.That(session.Sell(item).Status, Is.EqualTo(ShopSellStatus.InvalidSellState));
+    }
+    [Test]
     public void VendorLauncherAcceptsOneOwnerAndConsumesCloseCallbackOnce()
     {
         ItemData item = Item("item.session");
@@ -239,6 +271,10 @@ public sealed class ShopSessionTests
 
         public int Money { get; private set; }
 
+        public void SeedItem(string itemId, int amount)
+        {
+            _items[itemId] = amount;
+        }
         public bool IsItemRegistered(ItemData item) => ReferenceEquals(item, _item);
         public int GetItemCount(string itemId) =>
             _items.TryGetValue(itemId, out int count) ? count : 0;

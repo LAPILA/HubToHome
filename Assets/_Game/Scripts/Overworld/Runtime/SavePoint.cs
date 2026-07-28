@@ -39,6 +39,8 @@ public class SavePoint : InteractableBase
     // ── 체크포인트 (스쳐 지나갈 때) ──
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        if (!OverworldActionGate.AllowsWorldActions) return;
+
         if (_autoSaveOnPass && !_hasAutoSavedThisVisit && collision.CompareTag("Player"))
         {
             var player = collision.GetComponent<PlayerController>();

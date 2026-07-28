@@ -15,7 +15,7 @@ public static class TravelTrainIds
 
 public static class TravelTrainPaths
 {
-    public const string Root = "Assets/_Game/Content/Maps/Regions/TravelTrain";
+    public const string Root = "Assets/_Game/Content/Maps/Regions-TEST/TravelTrain";
     public const string SceneRoot = Root + "/Scenes";
     public const string PrefabRoot = Root + "/Prefabs/Rooms";
     public const string DataRoot = Root + "/Data";

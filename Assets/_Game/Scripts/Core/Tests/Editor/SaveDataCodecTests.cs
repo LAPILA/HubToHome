@@ -40,13 +40,14 @@ public class SaveDataCodecTests
     {
         const string json =
             "{\"currentScene\":\"TestMap\",\"PartyData\":null,\"InventoryDict\":null,"
-            + "\"eventFlags\":null,\"EncounterMemory\":null,\"OverworldEnemies\":null}";
+            + "\"EquipmentInventoryDict\":null,\"eventFlags\":null,\"EncounterMemory\":null,\"OverworldEnemies\":null}";
 
         SaveDecodeResult result = new SaveDataCodec().Decode(json);
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.Data.PartyData, Is.Not.Null);
         Assert.That(result.Data.InventoryDict, Is.Not.Null);
+        Assert.That(result.Data.EquipmentInventoryDict, Is.Not.Null);
         Assert.That(result.Data.eventFlags, Is.Not.Null);
         Assert.That(result.Data.EncounterMemory, Is.Not.Null);
         Assert.That(result.Data.OverworldEnemies, Is.Not.Null);
@@ -104,15 +105,22 @@ public class SaveDataCodecTests
             MaxHP = 100,
             MP = 17,
             MaxMP = 30,
-            EquippedSkillIDs = new List<string> { "steam.slash" }
+            EquippedSkillIDs = new List<string> { "steam.slash" },
+            UnlockedSkillIDs = new List<string> { "steam.slash", "steam.guard" },
+            EquippedEquipmentIDs = new List<string> { "equip.steam_blade" },
+            HasInitializedEquipment = true
         });
         data.InventoryDict["small_potion"] = 3;
+        data.EquipmentInventoryDict["equip.steam_blade"] = 1;
         data.eventFlags["chapter.prologue.complete"] = 1;
         data.EncounterMemory["enemy.no.scenario"] = new EncounterMemorySaveData
         {
             EncounterId = "enemy.no.scenario",
             MeetCount = 2,
             Defeated = true,
+            LastOutcome = BattleEncounterOutcome.Victory,
+            VictoryCount = 1,
+            EscapeCount = 2,
             SeenBeatIds = new List<string> { "first_meet" }
         };
         data.OverworldEnemies["enemy.no.scenario"] = new OverworldEnemySaveData
@@ -135,18 +143,49 @@ public class SaveDataCodecTests
             Is.EqualTo("train.stop.wide_field"));
         Assert.That(result.Data.Money, Is.EqualTo(340));
         Assert.That(result.Data.InventoryDict["small_potion"], Is.EqualTo(3));
+        Assert.That(result.Data.EquipmentInventoryDict["equip.steam_blade"], Is.EqualTo(1));
         Assert.That(result.Data.PartyData[0].Level, Is.EqualTo(4));
         Assert.That(
             result.Data.PartyData[0].EquippedSkillIDs,
             Is.EqualTo(new[] { "steam.slash" }));
         Assert.That(
+            result.Data.PartyData[0].UnlockedSkillIDs,
+            Is.EqualTo(new[] { "steam.slash", "steam.guard" }));
+        Assert.That(result.Data.PartyData[0].EquippedEquipmentIDs, Has.Count.EqualTo(6));
+        Assert.That(result.Data.PartyData[0].EquippedEquipmentIDs[0], Is.EqualTo("equip.steam_blade"));
+        Assert.That(result.Data.PartyData[0].HasInitializedEquipment, Is.True);
+        Assert.That(
             result.Data.EncounterMemory["enemy.no.scenario"].SeenBeatIds,
             Is.EqualTo(new[] { "first_meet" }));
+        Assert.That(
+            result.Data.EncounterMemory["enemy.no.scenario"].LastOutcome,
+            Is.EqualTo(BattleEncounterOutcome.Victory));
+        Assert.That(result.Data.EncounterMemory["enemy.no.scenario"].EscapeCount, Is.EqualTo(2));
         Assert.That(
             result.Data.OverworldEnemies["enemy.no.scenario"].EnemyId,
             Is.EqualTo("enemy.no.scenario"));
         Assert.That(
             result.Data.OverworldEnemies["enemy.no.scenario"].IsDefeated,
             Is.True);
+    }
+    [Test]
+    public void Decode_VersionTwoSaveInitializesEquipmentAndPowerDomains()
+    {
+        const string json =
+            "{\"schemaVersion\":2,\"currentScene\":\"TestMap\"," +
+            "\"EquipmentInventoryDict\":null,\"PartyData\":[{" +
+            "\"CharacterDataID\":\" hero \",\"UnlockedSkillIDs\":[\" steam \",\"steam\",\"\"]," +
+            "\"EquippedEquipmentIDs\":[\" blade \"],\"HasInitializedEquipment\":false}]}";
+
+        SaveDecodeResult result = new SaveDataCodec().Decode(json);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.SourceVersion, Is.EqualTo(2));
+        Assert.That(result.WasMigrated, Is.True);
+        Assert.That(result.Data.EquipmentInventoryDict, Is.Empty);
+        Assert.That(result.Data.PartyData[0].CharacterDataID, Is.EqualTo("hero"));
+        Assert.That(result.Data.PartyData[0].UnlockedSkillIDs, Is.EqualTo(new[] { "steam" }));
+        Assert.That(result.Data.PartyData[0].EquippedEquipmentIDs, Has.Count.EqualTo(6));
+        Assert.That(result.Data.PartyData[0].EquippedEquipmentIDs[0], Is.EqualTo("blade"));
     }
 }

@@ -29,4 +29,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
   Items:
   - {fileID: 11400000, guid: a073f5e7de19d044dba149b5f2c35c7a, type: 2}
+  Equipment: []
   DefaultUiFont: {fileID: 11400000, guid: 4da9911c543a2a048a95035371d0d669, type: 2}

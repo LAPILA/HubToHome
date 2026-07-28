@@ -5,7 +5,7 @@ using UnityEngine;
 
 public static class WideFieldPaths
 {
-    public const string Root = "Assets/_Game/Content/Maps/Regions/WideField";
+    public const string Root = "Assets/_Game/Content/Maps/Regions-TEST/WideField";
     public const string SceneRoot = Root + "/Scenes";
     public const string PrefabRoot = Root + "/Prefabs/Rooms";
     public const string RoomDataRoot = Root + "/Data/Rooms";

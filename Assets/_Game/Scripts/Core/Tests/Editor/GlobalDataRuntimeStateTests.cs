@@ -68,6 +68,29 @@ public sealed class GlobalDataRuntimeStateTests
     }
 
     [Test]
+    public void FromSaveData_NotifiesOnlyChangedFlags()
+    {
+        _global.SetFlag("removed.flag", 1);
+        _global.SetFlag("unchanged.flag", 3);
+        var changes = new List<(string Key, int OldValue, int NewValue)>();
+        _global.FlagChanged += (key, oldValue, newValue) =>
+            changes.Add((key, oldValue, newValue));
+        var data = new SaveData
+        {
+            eventFlags = new Dictionary<string, int>
+            {
+                ["unchanged.flag"] = 3,
+                ["added.flag"] = 2
+            }
+        };
+
+        _global.FromSaveData(data);
+
+        Assert.That(changes, Has.Count.EqualTo(2));
+        Assert.That(changes, Does.Contain(("removed.flag", 1, 0)));
+        Assert.That(changes, Does.Contain(("added.flag", 0, 2)));
+    }
+    [Test]
     public void InitializePartyFromScene_NewParty_ReturnsBoundSaveObject()
     {
         PlayerCharacter player = CreatePlayer("player.hero");

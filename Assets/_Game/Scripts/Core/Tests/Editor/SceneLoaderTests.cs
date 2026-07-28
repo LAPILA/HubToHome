@@ -40,7 +40,7 @@ public class SceneLoaderTests
     [Test]
     public void LoadSceneWithResult_InvalidSceneIsRejectedBeforeFade()
     {
-        _loader.CanLoadScene = false;
+        _loader.SceneIsLoadable = false;
         _fadeCanvas.alpha = 0.35f;
         _fadeCanvas.blocksRaycasts = true;
         SceneLoadResult? callbackResult = null;
@@ -60,7 +60,7 @@ public class SceneLoaderTests
     [Test]
     public void LoadSceneWithResult_SecondRequestIsRejectedWhileBusy()
     {
-        _loader.CanLoadScene = true;
+        _loader.SceneIsLoadable = true;
 
         SceneLoadOperation first = _loader.LoadSceneWithResult("ValidScene", 10f);
         SceneLoadOperation second = _loader.LoadSceneWithResult("OtherScene", 0f);
@@ -73,7 +73,7 @@ public class SceneLoaderTests
     [UnityTest]
     public IEnumerator LoadSceneWithResult_LoadStartFailureRecoversFadeAndLock()
     {
-        _loader.CanLoadScene = true;
+        _loader.SceneIsLoadable = true;
         _loader.ReturnNullLoadOperation = true;
         SceneLoadResult? callbackResult = null;
 
@@ -89,7 +89,7 @@ public class SceneLoaderTests
         Assert.That(_fadeCanvas.alpha, Is.Zero.Within(0.001f));
         Assert.That(_fadeCanvas.blocksRaycasts, Is.False);
 
-        _loader.CanLoadScene = false;
+        _loader.SceneIsLoadable = false;
         SceneLoadOperation next = _loader.LoadSceneWithResult("MissingScene", 0f);
         Assert.That(next.Result, Is.EqualTo(SceneLoadResult.InvalidScene));
     }
@@ -97,7 +97,7 @@ public class SceneLoaderTests
     [Test]
     public void DestroyLifecycle_CancelsOwnedFadeTween()
     {
-        _loader.CanLoadScene = true;
+        _loader.SceneIsLoadable = true;
         _loader.LoadSceneWithResult("ValidScene", 10f);
         Assert.That(
             DOTween.TweensByTarget(_fadeCanvas, true),
@@ -159,12 +159,12 @@ public class SceneLoaderTests
 
 public sealed class SceneLoaderTestDouble : SceneLoader
 {
-    public bool CanLoadScene { get; set; }
+    public bool SceneIsLoadable { get; set; }
     public bool ReturnNullLoadOperation { get; set; }
 
     protected override bool IsSceneLoadable(string sceneName)
     {
-        return CanLoadScene;
+        return SceneIsLoadable;
     }
 
     protected override AsyncOperation BeginLoadSceneAsync(string sceneName)

@@ -48,7 +48,7 @@ public sealed class UnityOverworldTimeSource : IOverworldTimeSource
 }
 
 /// <summary>
-/// Applies non-lethal overworld damage to the save-bound party leader and mirrors scene vitals.
+/// Applies overworld damage to the save-bound party leader and mirrors scene vitals.
 /// </summary>
 public sealed class OverworldPartyHealthService : IOverworldPartyHealthService
 {

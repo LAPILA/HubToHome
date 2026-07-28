@@ -8,6 +8,13 @@ public enum CharacterDisplayNameMode
     GlobalPlayerName
 }
 
+[System.Serializable]
+public sealed class CharacterPowerUnlock
+{
+    [MinValue(1)] public int RequiredLevel = 1;
+    [Required] public SkillData Skill;
+}
+
 [CreateAssetMenu(fileName = "NewCharacterData", menuName = "HubToHome/CharacterData")]
 public class CharacterData : SerializedScriptableObject
 {
@@ -49,6 +56,10 @@ public class CharacterData : SerializedScriptableObject
     [BoxGroup("Battle Loadout")]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<SkillData> DefaultSkills = new List<SkillData>();
+
+    [BoxGroup("Battle Loadout")]
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    public List<CharacterPowerUnlock> PowerUnlocks = new List<CharacterPowerUnlock>();
 
     public string ResolveDisplayName(string runtimePlayerName = null)
     {

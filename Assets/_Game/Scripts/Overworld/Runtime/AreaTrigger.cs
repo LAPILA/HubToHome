@@ -73,6 +73,9 @@ public class AreaTrigger : MonoBehaviour, IEncounterSource
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (!OverworldActionGate.AllowsWorldActions)
+            return;
+
         RefreshEncounterExitWait();
         if (IsBattleTrigger())
         {

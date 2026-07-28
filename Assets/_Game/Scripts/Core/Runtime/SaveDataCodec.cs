@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 public static class SaveSchema
 {
     public const int LegacyVersion = 0;
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 }
 
 public enum SaveDecodeFailure
@@ -78,6 +78,7 @@ public sealed class SaveDataCodec
             "lookingDirection",
             "PartyData",
             "InventoryDict",
+            "EquipmentInventoryDict",
             "eventFlags",
             "EncounterMemory",
             "OverworldEnemies",
@@ -190,6 +191,10 @@ public sealed class SaveDataCodec
                     MigrateVersionOneToVersionTwo(data);
                     workingVersion = 2;
                     break;
+                case 2:
+                    MigrateVersionTwoToVersionThree(data);
+                    workingVersion = 3;
+                    break;
                 default:
                     return SaveDecodeResult.Failed(
                         SaveDecodeFailure.UnsupportedVersion,
@@ -258,6 +263,12 @@ public sealed class SaveDataCodec
         data.schemaVersion = 2;
     }
 
+    private static void MigrateVersionTwoToVersionThree(SaveData data)
+    {
+        data.EquipmentInventoryDict ??= new Dictionary<string, int>();
+        data.schemaVersion = 3;
+    }
+
     private static void Normalize(SaveData data)
     {
         data.currentScene = string.IsNullOrWhiteSpace(data.currentScene)
@@ -270,8 +281,8 @@ public sealed class SaveDataCodec
         data.saveTime = NormalizeText(data.saveTime);
 
         data.PartyData = NormalizeParty(data.PartyData);
-        data.InventoryDict = data.InventoryDict
-            ?? new Dictionary<string, int>();
+        data.InventoryDict = NormalizePositiveCounts(data.InventoryDict);
+        data.EquipmentInventoryDict = NormalizePositiveCounts(data.EquipmentInventoryDict);
         data.eventFlags = data.eventFlags
             ?? new Dictionary<string, int>();
         data.EncounterMemory = NormalizeEncounterMemory(data.EncounterMemory);
@@ -294,6 +305,8 @@ public sealed class SaveDataCodec
             member.CharacterDataID = NormalizeText(member.CharacterDataID);
             member.CharacterID = NormalizeText(member.CharacterID);
             member.EquippedSkillIDs = NormalizeUniqueIds(member.EquippedSkillIDs);
+            member.UnlockedSkillIDs = NormalizeUniqueIds(member.UnlockedSkillIDs);
+            member.EquippedEquipmentIDs = NormalizeEquipmentSlots(member.EquippedEquipmentIDs);
             result.Add(member);
         }
 
@@ -324,6 +337,14 @@ public sealed class SaveDataCodec
 
             memory.EncounterId = encounterId;
             memory.MeetCount = Math.Max(0, memory.MeetCount);
+            memory.LastOutcome = Enum.IsDefined(
+                typeof(BattleEncounterOutcome),
+                memory.LastOutcome)
+                ? memory.LastOutcome
+                : BattleEncounterOutcome.Unknown;
+            memory.VictoryCount = Math.Max(0, memory.VictoryCount);
+            memory.EscapeCount = Math.Max(0, memory.EscapeCount);
+            memory.PartyDefeatCount = Math.Max(0, memory.PartyDefeatCount);
             memory.SeenBeatIds = NormalizeUniqueIds(memory.SeenBeatIds);
             result[encounterId] = memory;
         }
@@ -357,6 +378,37 @@ public sealed class SaveDataCodec
                 : state.EnemyId.Trim();
             state.SceneName = NormalizeText(state.SceneName);
             result[enemyId] = state;
+        }
+
+        return result;
+    }
+
+    private static Dictionary<string, int> NormalizePositiveCounts(Dictionary<string, int> source)
+    {
+        var result = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (source == null)
+            return result;
+
+        foreach (KeyValuePair<string, int> entry in source)
+        {
+            string id = NormalizeText(entry.Key);
+            if (!string.IsNullOrEmpty(id) && entry.Value > 0)
+                result[id] = entry.Value;
+        }
+
+        return result;
+    }
+
+    private static List<string> NormalizeEquipmentSlots(List<string> source)
+    {
+        int slotCount = EquipmentLoadoutService.SlotCount;
+        var result = new List<string>(slotCount);
+        for (int i = 0; i < slotCount; i++)
+        {
+            string value = source != null && i < source.Count
+                ? NormalizeText(source[i])
+                : string.Empty;
+            result.Add(value);
         }
 
         return result;

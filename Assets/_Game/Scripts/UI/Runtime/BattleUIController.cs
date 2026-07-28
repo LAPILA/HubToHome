@@ -936,11 +936,9 @@ public class PartySlotUI
 
 public static class UIRuntimeGuard
 {
-    private static readonly Vector2 DefaultReferenceResolution = new Vector2(1920f, 1080f);
-
     public static void NormalizeCanvas(GameObject owner)
     {
-        NormalizeCanvas(owner, DefaultReferenceResolution);
+        NormalizeCanvas(owner, GameConfigPolicy.ReferenceResolution);
     }
 
     public static void NormalizeCanvas(GameObject owner, Vector2 referenceResolution)

@@ -26,6 +26,10 @@ public class DialogueUI : MonoBehaviour
     [SerializeField] private RectTransform _choiceRoot;
     [SerializeField] private TextMeshProUGUI _choiceTemplate;
 
+    [Header("선택지 배치 (640 x 480 기준)")]
+    [SerializeField] private Vector2 _choiceAnchoredPosition = new Vector2(0f, 120f);
+    [SerializeField] private Vector2 _choiceSize = new Vector2(520f, 132f);
+
     [Header("기본 오디오 설정")]
     [SerializeField] private AudioClip _defaultVoiceBlip;
     [SerializeField] private float _defaultPitch = 1f;
@@ -40,10 +44,12 @@ public class DialogueUI : MonoBehaviour
     private Coroutine _cameraRebindRoutine;
 
     private void Awake()
-    {   
+    {
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
         if (_rootCanvas == null) _rootCanvas = GetComponentInParent<Canvas>(true);
         if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
         if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
+        DialogueTextAnimationPolicy.UsePlainTypewriter(_typewriter);
         PrepareChoiceUI();
     }
 
@@ -55,6 +61,7 @@ public class DialogueUI : MonoBehaviour
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
+        StopTypingWork();
         if (_cameraRebindRoutine != null)
         {
             StopCoroutine(_cameraRebindRoutine);
@@ -92,6 +99,7 @@ public class DialogueUI : MonoBehaviour
     public void ClosePanel()
     {
         HideChoices();
+        StopTypingWork();
         if (_canvasGroup != null)
         {
             _canvasGroup.DOFade(0f, 0.2f).OnComplete(() => gameObject.SetActive(false));
@@ -102,7 +110,7 @@ public class DialogueUI : MonoBehaviour
     public void HideImmediate()
     {
         HideChoices();
-        IsTyping = false;
+        StopTypingWork();
         StopAllCoroutines();
         _applySpeedRoutine = null;
         _cameraRebindRoutine = null;
@@ -118,13 +126,30 @@ public class DialogueUI : MonoBehaviour
 
     public void DisplayNode(SpeakerData speaker, EmotionType emotion, string text)
     {
+        DisplayText(speaker, emotion, text, true);
+    }
+
+    public void DisplayPrompt(string text)
+    {
+        DisplayText(null, EmotionType.Normal, text, false);
+    }
+
+    private void DisplayText(
+        SpeakerData speaker,
+        EmotionType emotion,
+        string text,
+        bool showUnknownSpeaker)
+    {
         IsTyping = true;
         IsWaitingForChoice = false;
         ApplyConfiguredTextSpeed();
 
         // 1. 이름 및 초상화 세팅
-        if (_speakerNameText != null) 
-            _speakerNameText.text = (speaker != null) ? speaker.DisplayName : "???";
+        if (_speakerNameText != null)
+        {
+            _speakerNameText.gameObject.SetActive(speaker != null || showUnknownSpeaker);
+            _speakerNameText.text = speaker != null ? speaker.DisplayName : "???";
+        }
 
         if (_portraitImage != null)
         {
@@ -166,9 +191,22 @@ public class DialogueUI : MonoBehaviour
     {
         if (_typewriter == null) return;
 
-        float speed = GameConfigManager.EnsureInstance().TextSpeed;
+        GameConfigManager config = GameConfigManager.Instance;
+        float speed = config != null
+            ? config.TextSpeed
+            : GameConfigManager.DefaultTextSpeed;
         float boosted = Mathf.Clamp(speed * 2.5f, 1.2f, 8f);
         _typewriter.SetTypewriterSpeed(boosted);
+    }
+
+    private void StopTypingWork()
+    {
+        IsTyping = false;
+        if (_applySpeedRoutine == null)
+            return;
+
+        StopCoroutine(_applySpeedRoutine);
+        _applySpeedRoutine = null;
     }
 
     private void ResolveCanvasCamera()
@@ -275,8 +313,10 @@ public class DialogueUI : MonoBehaviour
         _choiceRoot.anchorMin = new Vector2(0.5f, 0f);
         _choiceRoot.anchorMax = new Vector2(0.5f, 0f);
         _choiceRoot.pivot = new Vector2(0.5f, 0f);
-        _choiceRoot.anchoredPosition = new Vector2(0f, 120f);
-        _choiceRoot.sizeDelta = new Vector2(900f, 220f);
+        _choiceRoot.anchoredPosition = _choiceAnchoredPosition;
+        _choiceRoot.sizeDelta = new Vector2(
+            Mathf.Clamp(_choiceSize.x, 160f, GameConfigPolicy.ReferenceWidth),
+            Mathf.Clamp(_choiceSize.y, 48f, GameConfigPolicy.ReferenceHeight));
 
         var rootImage = _choiceRoot.GetComponent<Image>();
         if (rootImage != null)

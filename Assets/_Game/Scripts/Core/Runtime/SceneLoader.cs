@@ -173,6 +173,11 @@ public class SceneLoader : MonoBehaviour
         return operation;
     }
 
+    public bool CanLoadScene(string sceneName)
+    {
+        return IsSceneLoadable(sceneName);
+    }
+
     protected virtual bool IsSceneLoadable(string sceneName)
     {
         return !string.IsNullOrWhiteSpace(sceneName)
