@@ -21,7 +21,7 @@ internal static class BattleContentRules
             if (data == null)
                 continue;
 
-            ValidateBattlePrefab<PlayerCharacter>(data, data.BattlePrefab, "character", "Character", context);
+            ValidatePrefab<PlayerCharacter>(data, data.BattlePrefab, "character", "Character battle prefab", context);
             ValidateSkillReferences(
                 data.DefaultSkills,
                 projectSkills,
@@ -55,7 +55,7 @@ internal static class BattleContentRules
             if (data == null)
                 continue;
 
-            ValidateBattlePrefab<EnemyCharacter>(data, data.BattlePrefab, "enemy", "Enemy", context);
+            ValidatePrefab<EnemyCharacter>(data, data.Prefab, "enemy", "Enemy prefab", context);
             ValidateSkillReferences(
                 data.SkillList,
                 projectSkills,
@@ -162,11 +162,11 @@ internal static class BattleContentRules
         }
     }
 
-    private static void ValidateBattlePrefab<TComponent>(
+    private static void ValidatePrefab<TComponent>(
         UnityEngine.Object owner,
         GameObject prefab,
         string codePrefix,
-        string displayName,
+        string prefabLabel,
         ContentValidationRuleContext context) where TComponent : Component
     {
         if (prefab == null)
@@ -174,7 +174,7 @@ internal static class BattleContentRules
             context.Add(
                 owner,
                 codePrefix + ".battle_prefab.missing",
-                displayName + " battle prefab is missing.");
+                prefabLabel + " is missing.");
             return;
         }
 
@@ -183,7 +183,7 @@ internal static class BattleContentRules
             context.Add(
                 owner,
                 codePrefix + ".battle_prefab.component_missing",
-                displayName + " battle prefab has no " + typeof(TComponent).Name + ".");
+                prefabLabel + " has no " + typeof(TComponent).Name + ".");
         }
     }
 

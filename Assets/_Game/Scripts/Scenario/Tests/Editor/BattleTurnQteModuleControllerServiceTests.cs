@@ -515,8 +515,14 @@ public class BattleTurnQteModuleControllerServiceTests
             SawActiveCameraDuringDamage |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
         }
         public void EmitDamage(CharacterBase target, int damage, bool isPerfect, int previousHp) { }
+        public void EmitDamage(CharacterBase source, CharacterBase target, int damage, bool isCritical)
+        {
+            SawActiveCameraDuringDamage |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
+        }
         public void EmitMpChanged(PlayerCharacter player, int newMp) { }
         public void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) { }
+        public void EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical) { }
+        public void EmitMiss(CharacterBase source, CharacterBase target) { }
         public void PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing) { }
         public void PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor) { }
         public void PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor) { }

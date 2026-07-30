@@ -51,6 +51,11 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioSource _voiceSource;
     [SerializeField] private AudioSource _ambienceSource;
 
+    [Header("Common SFX")]
+    [SerializeField] private AudioClip _combatHitSfx;
+    [SerializeField] private AudioClip _enemyEncounterSfx;
+    [SerializeField] private AudioClip _selectionSfx;
+
     private AudioSource _activeBGM;
     private AudioSource _inactiveBGM;
     private AudioListener _audioListener;
@@ -540,6 +545,21 @@ public class AudioManager : MonoBehaviour
         AudioSource source = _uiSource != null ? _uiSource : _sfxSource;
         if (clip != null && source != null)
             source.PlayOneShot(clip, Mathf.Max(0f, volume));
+    }
+
+    public void PlayCombatHitSfx(float volume = 1f)
+    {
+        PlaySFX(_combatHitSfx, volume);
+    }
+
+    public void PlayEnemyEncounterSfx(AudioClip overrideClip = null, float volume = 1f)
+    {
+        PlaySFX(overrideClip != null ? overrideClip : _enemyEncounterSfx, volume);
+    }
+
+    public void PlaySelectionSfx(float volume = 1f)
+    {
+        PlayUISFX(_selectionSfx, volume);
     }
 
     public void PlayVoice(AudioClip clip, float volume = 1f)

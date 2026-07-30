@@ -5,6 +5,7 @@
 public static class DevelopmentContentPaths
 {
     public const string Root = "Assets/_Game/Content/Maps/Development";
+    public const string GameplayCameraRigPrefab = "Assets/_Game/Core/Prefabs/Camera/GameplayCameraRig.prefab";
     public const string RegionsRoot = Root + "/Regions";
     public const string SharedRoot = Root + "/Shared";
     public const string SharedArtRoot = SharedRoot + "/Art";

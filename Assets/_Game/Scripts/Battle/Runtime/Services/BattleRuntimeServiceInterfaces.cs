@@ -190,9 +190,15 @@ public interface IBattleTurnQteHost
 
     void EmitDamage(CharacterBase target, int damage, bool isPerfect, int previousHp);
 
+    void EmitDamage(CharacterBase source, CharacterBase target, int damage, bool isCritical);
+
     void EmitMpChanged(PlayerCharacter player, int newMp);
 
     void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect);
+
+    void EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical);
+
+    void EmitMiss(CharacterBase source, CharacterBase target);
 
     void PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing);
 

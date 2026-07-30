@@ -131,7 +131,7 @@ public class AreaTrigger : MonoBehaviour, IEncounterSource
                 HandleBattle(player);
                 break;
             case TriggerType.SceneBattleEncounter:
-                AudioManager.Instance?.PlaySFX(EncounterSFX);
+                AudioManager.Instance?.PlayEnemyEncounterSfx(EncounterSFX);
                 StartCoroutine(LoadBattleSceneAfterDelay(player));
                 break;
         }
@@ -139,7 +139,7 @@ public class AreaTrigger : MonoBehaviour, IEncounterSource
 
     private void HandleBattle(PlayerController player)
     {
-        AudioManager.Instance?.PlaySFX(EncounterSFX);
+        AudioManager.Instance?.PlayEnemyEncounterSfx(EncounterSFX);
         bool started = BattleEncounterService.StartEncounter(
             player,
             EncounterEnemies,

@@ -118,7 +118,7 @@ MonoBehaviour:
   EnemyId: enemy_db_slime_0d809955
   EnemyName: Slime
   BattleBGM: {fileID: 0}
-  BattlePrefab: {fileID: 3461299171839533844, guid: 15fa88e0bc5908e448f5be65a1a40fa4, type: 3}
+  Prefab: {fileID: 3461299171839533844, guid: 15fa88e0bc5908e448f5be65a1a40fa4, type: 3}
   ReturnMoveTrigger: BattleMove
   MaxHP: 30
   ATK: 8

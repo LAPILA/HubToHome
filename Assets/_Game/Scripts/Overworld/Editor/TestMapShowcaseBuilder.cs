@@ -27,7 +27,7 @@ public static class TestMapShowcaseBuilder
     private const string PlayerPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Player/Player_Base.prefab";
     private const string BootstrapPrefabPath = "Assets/_Game/Core/Prefabs/[GameBootstrap].prefab";
     private const string MarkerEnemyDataPath = "Assets/_Game/Content/Characters/EnemyDB/DB_Slime.asset";
-    private const string BunnySlimeOverworldPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/BunnySlime_Overworld.prefab";
+    private const string BunnySlimePrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/BunnySlime.prefab";
     private const string TestNpcSpritePath = DevelopmentContentPaths.TestNpcSprite;
     private const string WhiteSpritePath = "Assets/_Game/Content/Maps/Shared/Generated/RoomMap_WhiteSquare.png";
     private const string LabelFontPath = "Assets/_Game/Presentation/UI/Fonts/Silver SDF.asset";
@@ -888,7 +888,7 @@ public static class TestMapShowcaseBuilder
         CreateMarkerNote(zone.transform, "Note_BunnySlime", new Vector3(13.5f, -5.85f), "Bunny Slime", "touch / F: seamless\nnever attacks", new Color(0.95f, 0.78f, 0.88f), 5.2f);
         CreateMarkerNote(zone.transform, "Note_Hazard", new Vector3(21f, -5.85f), "Hazard", "touch: HP damage\n0 HP: GameOver", new Color(1f, 0.42f, 0.18f), 4.8f);
 
-        GameObject bunnyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BunnySlimeOverworldPrefabPath);
+        GameObject bunnyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BunnySlimePrefabPath);
         if (bunnyPrefab != null)
         {
             GameObject bunny = (GameObject)PrefabUtility.InstantiatePrefab(bunnyPrefab);

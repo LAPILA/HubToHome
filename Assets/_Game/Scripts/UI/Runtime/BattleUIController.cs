@@ -34,6 +34,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleMenuUI  _battleMenuUI;
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private DefenseQTEUI  _defenseQTEUI;
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleNarrationUI _narrationUI;
+    [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleDamagePopupPresenter _damagePopupPresenter;
     #endregion
 
     #region [ UI Settings & Magic Numbers ]
@@ -44,6 +45,15 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     [SerializeField] private float _cursorBobFrequency = 10f;
 
     [FoldoutGroup("Tween Settings"), LabelWidth(140)] [SerializeField] private float _barTweenDuration = 0.4f;
+
+    [FoldoutGroup("Damage Popup"), AssetsOnly, LabelWidth(140), LabelText("데미지 폰트")]
+    [SerializeField] private TMP_FontAsset _damagePopupFont;
+
+    [FoldoutGroup("Damage Popup"), MinValue(1f), LabelWidth(140), LabelText("글자 크기")]
+    [SerializeField] private float _damagePopupFontSize = 60f;
+
+    [FoldoutGroup("Damage Popup"), LabelWidth(140), LabelText("기준 위치 보정")]
+    [SerializeField] private Vector2 _damagePopupOriginOffset = new Vector2(0f, 12f);
     #endregion
 
     #region [ Internal State ]
@@ -76,6 +86,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         Instance = this;
         TryResolveWorldCamera();
         NormalizeForCurrentResolution();
+        EnsureDamagePopupPresenter();
 
         if (_narrationUI == null)
             _narrationUI = BattleNarrationUI.FindInActiveScene();
@@ -94,6 +105,33 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
     }
 
+    private void EnsureDamagePopupPresenter()
+    {
+        if (_damagePopupPresenter == null)
+            _damagePopupPresenter = GetComponent<BattleDamagePopupPresenter>();
+        if (_damagePopupPresenter == null)
+            _damagePopupPresenter = gameObject.AddComponent<BattleDamagePopupPresenter>();
+
+        RectTransform host = transform as RectTransform;
+        if (host == null)
+        {
+            Canvas canvas = GetComponentInParent<Canvas>();
+            host = canvas != null ? canvas.transform as RectTransform : null;
+        }
+
+        if (host == null)
+        {
+            Debug.LogWarning("[BattleUIController] 피해 숫자를 배치할 RectTransform을 찾지 못했습니다.", this);
+            return;
+        }
+
+        TMP_FontAsset fallbackFont = _damagePopupFont != null
+            ? _damagePopupFont
+            : _turnLabel != null ? _turnLabel.font : null;
+        _damagePopupPresenter.SetFontSize(_damagePopupFontSize);
+        _damagePopupPresenter.SetOriginOffset(_damagePopupOriginOffset);
+        _damagePopupPresenter.Initialize(host, _worldCamera, fallbackFont);
+    }
     public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
     {
         _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
@@ -106,6 +144,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void Start()
     {
+        EnsureDamagePopupPresenter();
         if (_narrationUI == null)
             _narrationUI = BattleNarrationUI.FindInActiveScene();
 
@@ -123,6 +162,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         bm.OnPlayerTurnStarted      += HandlePlayerTurnStarted;
         bm.OnEnemyActionStarted     += HandleEnemyActionStarted;
         bm.OnDamageDealt            += HandleDamageDealt;
+        bm.OnDamageFeedbackRequested += HandleDamageFeedbackRequested;
         bm.OnMPChanged              += HandleMPChanged;
         bm.OnBattleEnded            += HandleBattleEnded;
         bm.OnTargetSelectionStarted += HandleTargetSelectionStarted;
@@ -134,6 +174,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (Instance == this)
             Instance = null;
 
+        _damagePopupPresenter?.ReleaseAll();
+
         var bm = BattleManager.Instance;
         if (bm == null) return;
 
@@ -144,6 +186,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         bm.OnPlayerTurnStarted      -= HandlePlayerTurnStarted;
         bm.OnEnemyActionStarted     -= HandleEnemyActionStarted;
         bm.OnDamageDealt            -= HandleDamageDealt;
+        bm.OnDamageFeedbackRequested -= HandleDamageFeedbackRequested;
         bm.OnMPChanged              -= HandleMPChanged;
         bm.OnBattleEnded            -= HandleBattleEnded;
         bm.OnTargetSelectionStarted -= HandleTargetSelectionStarted;
@@ -228,6 +271,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _worldCamera = worldCamera;
         _hasWarnedMissingWorldCamera = false;
         BindCameraToCanvases(worldCamera);
+        _damagePopupPresenter?.BindWorldCamera(worldCamera);
     }
 
     public bool TryResolveWorldCamera()
@@ -418,6 +462,15 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
     }
 
+    private void HandleDamageFeedbackRequested(BattleDamageFeedback feedback)
+    {
+        if (_isBattleEnding)
+            return;
+
+        EnsureDamagePopupPresenter();
+        _damagePopupPresenter?.TryShow(feedback, out _);
+    }
+
     private void HandleDamageDealt(CharacterBase target, int damage, bool isCrit)
     {
         if (_isBattleEnding) return;
@@ -529,6 +582,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void HandleBattleEnded(bool victory)
     {
         _isBattleEnding = true;
+        _damagePopupPresenter?.ReleaseAll();
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
         _battleMenuUI?.HideImmediate();

@@ -2050,11 +2050,15 @@ MonoBehaviour:
   _battleMenuUI: {fileID: 1086117883737939602}
   _defenseQTEUI: {fileID: 7249543494483391181}
   _narrationUI: {fileID: 0}
+  _damagePopupPresenter: {fileID: 0}
+  _damagePopupFont: {fileID: 11400000, guid: dd108a4fce9d41743a9526bcdb6f3504, type: 2}
   _cursorOffset: {x: 0, y: 0.6, z: 0}
   _cursorBobHeight: 8
   _cursorBobSpeed: 0.5
   _cursorBobFrequency: 10
   _barTweenDuration: 0.4
+  _damagePopupFontSize: 60
+  _damagePopupOriginOffset: {x: 10, y: 10}
 --- !u!223 &5445973571512333522
 Canvas:
   m_ObjectHideFlags: 0

@@ -334,10 +334,10 @@ public sealed class ContentValidationWindow : EditorWindow
             }
 
             EnemyCharacter enemy = prefab.GetComponent<EnemyCharacter>();
-            if (enemy != null && enemy.Data != null && enemy.Data.BattlePrefab == null)
+            if (enemy != null && enemy.Data != null && enemy.Data.Prefab == null)
             {
-                Undo.RecordObject(enemy.Data, "Repair enemy battle prefab");
-                enemy.Data.BattlePrefab = prefab;
+                Undo.RecordObject(enemy.Data, "Repair enemy prefab");
+                enemy.Data.Prefab = prefab;
                 EditorUtility.SetDirty(enemy.Data);
             }
         }

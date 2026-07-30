@@ -328,7 +328,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
         s_globalEncounterLockUntil = Time.unscaledTime + 1f;
         if (_rb != null) _rb.linearVelocity = Vector2.zero;
         UpdateMoveAnimation(Vector2.zero);
-        AudioManager.Instance?.PlaySFX(_encounterSFX);
+        AudioManager.Instance?.PlayEnemyEncounterSfx(_encounterSFX);
 
         GlobalDataManager global = GlobalDataManager.Instance;
         BattleEncounterMemoryRecorder.RecordBattleStarted(_battleScenarioData, global, _enemyId);
@@ -416,7 +416,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
             _collider.enabled = false;
         player.SetBattleMode(true);
 
-        AudioManager.Instance?.PlaySFX(_encounterSFX);
+        AudioManager.Instance?.PlayEnemyEncounterSfx(_encounterSFX);
 
         if (entryDelay > 0f)
             yield return new WaitForSecondsRealtime(entryDelay);

@@ -23,6 +23,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public event Action<PlayerCharacter>            OnPlayerTurnStarted;  
     public event Action<EnemyCharacter, EnemyAttackType> OnEnemyActionStarted;
     public event Action<CharacterBase, int, bool>   OnDamageDealt;        
+    public event Action<BattleDamageFeedback>      OnDamageFeedbackRequested;
     public event Action<PlayerCharacter, int>       OnMPChanged;          
     public event Action<bool>                       OnBattleEnded;
     public event Action<BattleRewardResult>         OnBattleRewardsGranted;
@@ -902,10 +903,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                 return false;
             }
 
-            GameObject prefab = ResolveEnemyBattlePrefab(enemy);
+            GameObject prefab = ResolveEnemyPrefab(enemy);
             if (prefab == null || prefab.GetComponent<EnemyCharacter>() == null)
             {
-                error = $"'{enemy.EnemyName}'의 전투 프리팹에 EnemyCharacter가 없습니다.";
+                error = $"'{enemy.EnemyName}'의 공용 적 프리팹에 EnemyCharacter가 없습니다.";
                 return false;
             }
         }
@@ -1007,7 +1008,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         
         for (int i = 0; i < encounterEnemies.Count; i++)
         {
-            GameObject enemyPrefab = ResolveEnemyBattlePrefab(encounterEnemies[i]);
+            GameObject enemyPrefab = ResolveEnemyPrefab(encounterEnemies[i]);
             if (pm != null && enemyPrefab != null)
             {
                 Vector3 spawnPos = pm.GetEnemyDefaultPos(i);
@@ -1026,12 +1027,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                 }
                 else
                 {
-                    Debug.LogError($"[BattleManager] 전투 프리팹 '{enemyPrefab.name}' 에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
+                    Debug.LogError($"[BattleManager] 공용 적 프리팹 '{enemyPrefab.name}'에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
                 }
             }
             else
             {
-                Debug.LogError($"[BattleManager] 전투 적 프리팹을 찾지 못했습니다. EnemyData={encounterEnemies[i]?.EnemyName}");
+                Debug.LogError($"[BattleManager] 공용 적 프리팹을 찾지 못했습니다. EnemyData={encounterEnemies[i]?.EnemyName}");
             }
         }
 
@@ -1209,7 +1210,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             for (int i = 0; i < global.PendingEnemies.Count; i++)
             {
                 Vector3 spawnPos = pm != null ? pm.GetEnemyDefaultPos(i) : new Vector3(6f, -1f, 0f);
-                GameObject enemyPrefab = ResolveEnemyBattlePrefab(global.PendingEnemies[i]);
+                GameObject enemyPrefab = ResolveEnemyPrefab(global.PendingEnemies[i]);
                 if (enemyPrefab != null)
                 {
                     GameObject enemyObj = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
@@ -1225,12 +1226,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                     }
                     else
                     {
-                        Debug.LogError($"[BattleManager] 전투 프리팹 '{enemyPrefab.name}' 에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
+                        Debug.LogError($"[BattleManager] 공용 적 프리팹 '{enemyPrefab.name}'에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
                     }
                 }
                 else
                 {
-                    Debug.LogError($"[BattleManager] 전투 적 프리팹을 찾지 못했습니다. EnemyData={global.PendingEnemies[i]?.EnemyName}");
+                    Debug.LogError($"[BattleManager] 공용 적 프리팹을 찾지 못했습니다. EnemyData={global.PendingEnemies[i]?.EnemyName}");
                 }
             }
             global.PendingEnemies.Clear();
@@ -1282,10 +1283,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             : _playerBasePrefab;
     }
 
-    private GameObject ResolveEnemyBattlePrefab(EnemyData enemyData)
+    private GameObject ResolveEnemyPrefab(EnemyData enemyData)
     {
-        if (enemyData != null && enemyData.BattlePrefab != null)
-            return enemyData.BattlePrefab;
+        if (enemyData != null && enemyData.Prefab != null)
+            return enemyData.Prefab;
 
         return _enemyBasePrefab;
     }
@@ -1570,8 +1571,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     void IBattleTurnQteHost.SetActorForeground(CharacterBase actor, bool active) => SetActorForeground(actor, active);
     void IBattleTurnQteHost.EmitDamage(CharacterBase target, int damage, bool isPerfect) => InvokeDamageEvent(target, damage, isPerfect);
     void IBattleTurnQteHost.EmitDamage(CharacterBase target, int damage, bool isPerfect, int previousHp) => InvokeDamageEvent(target, damage, isPerfect, previousHp);
+    void IBattleTurnQteHost.EmitDamage(CharacterBase source, CharacterBase target, int damage, bool isCritical) => InvokeDamageEvent(source, target, damage, isCritical, target != null ? Mathf.Clamp(target.CurrentHP + Mathf.Max(0, damage), 0, target.MaxHP) : 0);
     void IBattleTurnQteHost.EmitMpChanged(PlayerCharacter player, int newMp) => InvokeMPChangedEvent(player, newMp);
     void IBattleTurnQteHost.EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) => NotifyDamageDealt(target, damage, isPerfect);
+    void IBattleTurnQteHost.EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical) => NotifyDamageDealt(source, target, damage, isCritical);
+    void IBattleTurnQteHost.EmitMiss(CharacterBase source, CharacterBase target) => InvokeMissFeedback(source, target);
     void IBattleTurnQteHost.PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing) => PublishEnemyHpScenarioEvent(target, previousHp, currentHp, maxHp, timing);
     void IBattleTurnQteHost.PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor) => PublishEnemyDefeatedScenarioEvent(target, sourceActor);
     void IBattleTurnQteHost.PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor) => PublishSkillCompletedScenarioEvent(skill, sourceActor);
@@ -2093,10 +2097,20 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect)
     {
         int previousHp = target != null ? Mathf.Clamp(target.CurrentHP + Mathf.Max(0, damage), 0, target.MaxHP) : 0;
-        InvokeDamageEvent(target, damage, isPerfect, previousHp);
+        InvokeDamageEvent(null, target, damage, isPerfect, previousHp);
     }
 
     public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect, int previousHp)
+    {
+        InvokeDamageEvent(null, target, damage, isPerfect, previousHp);
+    }
+
+    public void InvokeDamageEvent(
+        CharacterBase source,
+        CharacterBase target,
+        int damage,
+        bool isCritical,
+        int previousHp)
     {
         if (target != null)
         {
@@ -2109,7 +2123,21 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
 
         RefreshBattleSessionParticipants();
-        OnDamageDealt?.Invoke(target, damage, isPerfect);
+        OnDamageDealt?.Invoke(target, damage, isCritical);
+        PublishDamageFeedback(source, target, damage, isCritical);
+    }
+
+    public void InvokeMissFeedback(CharacterBase source, CharacterBase target)
+    {
+        if (target == null)
+            return;
+
+        OnDamageFeedbackRequested?.Invoke(new BattleDamageFeedback(
+            source,
+            target,
+            0,
+            false,
+            BattleDamageFeedbackKind.Miss));
     }
 
     public void InvokeMPChangedEvent(PlayerCharacter player, int newMP)
@@ -2120,10 +2148,37 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private void NotifyDamageDealt(CharacterBase target, int damage, bool isPerfect)
     {
-        RefreshBattleSessionParticipants();
-        OnDamageDealt?.Invoke(target, damage, isPerfect);
+        NotifyDamageDealt(null, target, damage, isPerfect);
     }
 
+    private void NotifyDamageDealt(
+        CharacterBase source,
+        CharacterBase target,
+        int damage,
+        bool isCritical)
+    {
+        RefreshBattleSessionParticipants();
+        OnDamageDealt?.Invoke(target, damage, isCritical);
+        PublishDamageFeedback(source, target, damage, isCritical);
+    }
+
+    private void PublishDamageFeedback(
+        CharacterBase source,
+        CharacterBase target,
+        int damage,
+        bool isCritical)
+    {
+        if (target == null || damage <= 0)
+            return;
+
+        AudioManager.Instance?.PlayCombatHitSfx();
+        OnDamageFeedbackRequested?.Invoke(new BattleDamageFeedback(
+            source,
+            target,
+            damage,
+            isCritical,
+            BattleDamageFeedbackKind.Damage));
+    }
     private void NotifyPlayerTurnStarted(PlayerCharacter player)
     {
         OnPlayerTurnStarted?.Invoke(player);

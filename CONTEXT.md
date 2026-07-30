@@ -14,6 +14,14 @@ _Avoid_: Main menu, dialogue box
 The existing options surface for changing game settings. It is distinct from the Overworld Menu Shell even when settings are reached from an overworld menu category.
 _Avoid_: Overworld menu
 
+**Enemy Runtime Prefab**:
+The single enemy prefab referenced by `EnemyData.Prefab` and reused for both Overworld placement and Battle spawning. Battle setup disables the cloned prefab's Overworld encounter behaviour instead of swapping to a second visual prefab.
+_Avoid_: `_Overworld` / `_Battle` prefab pairs, mode-specific sprite scale forks, or separate animator controllers when one enemy identity is intended.
+
+**Gameplay Camera Rig**:
+The shared prefab that owns the one real Main Camera, Cinemachine Brain, 32 PPU / 640x480 Pixel Perfect Camera, gameplay Cinemachine Camera, Follow driver, Impulse components, and `CameraController`. Scenes override only scene-owned targets or bounds.
+_Avoid_: scene-local copies of the gameplay camera hierarchy, a second real Camera for cutscenes, or code-driven camera transforms when Cinemachine Lens, Follow, Group Framing, Impulse, Priority, and Brain Blend already provide the behaviour.
+
 ## Example Dialogue
 
 Developer: "Pressing C should open the Overworld Menu Shell, not the Config Panel."
@@ -23,8 +31,8 @@ Designer: "Then the player chooses ITEM, EQUIP, POWER, or CONFIG from the shell.
 Developer: "Choosing a category opens its Category Window; CONFIG may show settings later, but the shell and the Config Panel are still separate concepts."
 
 **Seamless Battle Host**:
-The scene-local composition root that lets a Room start Battle without loading a dedicated BattleScene. It owns one BattleManager, PositionManager, battle UI root, duplicate-root prevention, and emergency abort delegation; BattleManager still owns combat rules and the shared seamless cleanup boundary.
-_Avoid_: putting encounter result policy in the Host, leaving multiple Host roots active, or destroying individual child singletons as duplicate cleanup
+The shared scene-local composition root used by both Room-based seamless Battle and the dedicated BattleScene. Its prefab is the single source for one BattleManager, PositionManager, battle UI root, duplicate-root prevention, and emergency abort delegation; the dedicated scene keeps only scene presentation objects and explicit dedicated-mode overrides. BattleManager still owns combat rules and the shared seamless cleanup boundary.
+_Avoid_: copying BattleManager, PositionManager, or battle UI into the dedicated scene, putting encounter result policy in the Host, leaving multiple Host roots active, or destroying individual child singletons as duplicate cleanup
 
 **Primary Mode**:
 The top-level playable space. Current planning treats only `Overworld` and `Battle` as Primary Modes.

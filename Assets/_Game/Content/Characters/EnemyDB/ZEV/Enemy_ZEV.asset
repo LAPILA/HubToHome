@@ -117,8 +117,8 @@ MonoBehaviour:
   TurnOrderPortrait: {fileID: -3831865716268829567, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
   EnemyId: enemy_enemy_zev_2ecad76f
   EnemyName: ZEV
-  BattleBGM: {fileID: 0}
-  BattlePrefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
+  BattleBGM: {fileID: 8300000, guid: 715eb49a792787c48b2dcaf68b3512c0, type: 3}
+  Prefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
   ReturnMoveTrigger: BattleMove
   MaxHP: 500
   ATK: 20

@@ -634,7 +634,7 @@ public static class RoomMapSampleBuilder
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         scene.name = sceneName;
 
-        CreateMainCamera(background);
+        CameraController cameraController = CreateGameplayCameraRig(scene, background);
 
         GameObject systems = new GameObject("Map Systems");
         RoomContainer roomContainer = systems.AddComponent<RoomContainer>();
@@ -646,22 +646,47 @@ public static class RoomMapSampleBuilder
         GameObject player = CreateSamplePlayer();
         player.transform.position = new Vector3(-2.5f, 0f, 0f);
 
+        BindGameplayCamera(cameraController, player.transform);
         EditorSceneManager.SaveScene(scene, scenePath);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
     }
 
-    private static Camera CreateMainCamera(Color background)
+    private static CameraController CreateGameplayCameraRig(Scene scene, Color background)
     {
-        GameObject cameraObject = new GameObject("Main Camera");
-        cameraObject.tag = "MainCamera";
-        cameraObject.transform.position = new Vector3(0f, 0f, -10f);
-        Camera camera = cameraObject.AddComponent<Camera>();
-        camera.orthographic = true;
-        camera.orthographicSize = 3f;
-        camera.clearFlags = CameraClearFlags.SolidColor;
-        camera.backgroundColor = background;
-        return camera;
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            DevelopmentContentPaths.GameplayCameraRigPrefab);
+        if (prefab == null)
+            throw new InvalidDataException("GameplayCameraRig 프리팹을 찾지 못했습니다.");
+
+        GameObject instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
+        if (instance == null)
+            throw new InvalidDataException("GameplayCameraRig 프리팹 생성에 실패했습니다.");
+
+        instance.name = "[Camera]";
+        Camera worldCamera = instance.GetComponentInChildren<Camera>(true);
+        CameraController controller = instance.GetComponentInChildren<CameraController>(true);
+        if (worldCamera == null || controller == null || controller.VirtualCamera == null)
+            throw new InvalidDataException("GameplayCameraRig 구성 요소가 누락되었습니다.");
+
+        worldCamera.clearFlags = CameraClearFlags.SolidColor;
+        worldCamera.backgroundColor = background;
+        worldCamera.orthographic = true;
+        worldCamera.transform.position = new Vector3(0f, 0f, -1f);
+        return controller;
+    }
+
+    private static void BindGameplayCamera(CameraController controller, Transform target)
+    {
+        if (controller == null || controller.VirtualCamera == null || target == null)
+            return;
+
+        controller.VirtualCamera.Follow = target;
+        SerializedObject serialized = new SerializedObject(controller);
+        serialized.FindProperty("_centerTarget").objectReferenceValue = target;
+        serialized.FindProperty("_defaultLensSize").floatValue =
+            CameraLensDefaults.GameplayOrthographicSize;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private static GameObject CreateSamplePlayer()

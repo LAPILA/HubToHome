@@ -114,9 +114,10 @@ GameObject:
   - component: {fileID: 4223549662492093496}
   - component: {fileID: 202491752110947330}
   - component: {fileID: 8184649953409777146}
-  - component: {fileID: 8500648416854041037}
+  - component: {fileID: 4617245638870020852}
+  - component: {fileID: 855793865685336371}
   m_Layer: 6
-  m_Name: BunnySlime_Battle
+  m_Name: BunnySlime
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -188,7 +189,7 @@ SpriteRenderer:
   m_SortingLayer: -1
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -6824762552784436292, guid: 7832616a81da7ba4cb3cb9576410818c, type: 3}
+  m_Sprite: {fileID: -6179266205769056856, guid: 7832616a81da7ba4cb3cb9576410818c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -235,7 +236,7 @@ Animator:
   m_GameObject: {fileID: 3461299171839533844}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 6bf61dba74750ef4fa46e885babf392c, type: 2}
+  m_Controller: {fileID: 9100000, guid: c8162fc0f8e40ba41aa037b36ef3dcf6, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -281,17 +282,17 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -0.015625, y: 0.96875}
+  m_Offset: {x: -0.375, y: 0.5}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5084746, y: 0}
-    oldSize: {x: 1.84375, y: 1.9375}
+    pivot: {x: 1.0454546, y: 0}
+    oldSize: {x: 0.6875, y: 1}
     newSize: {x: 2, y: 1.5625}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1.4381249, y: 1.5112499}
+  m_Size: {x: 0.495, y: 0.72}
   m_EdgeRadius: 0
 --- !u!114 &202491752110947330
 MonoBehaviour:
@@ -408,7 +409,7 @@ MonoBehaviour:
   _spawnInterval: 0.05
   _ghostLifetime: 0.4
   _ghostStartColor: {r: 1, g: 0, b: 0.32299662, a: 0.6}
---- !u!114 &8500648416854041037
+--- !u!114 &4617245638870020852
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -426,7 +427,7 @@ MonoBehaviour:
   BaseDEF: 5
   BaseSPD: 10
   Data: {fileID: 11400000, guid: da4ccaf31b3fd9646898d6da8eda6136, type: 2}
-  _isBattleMode: 1
+  _isBattleMode: 0
   _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   _flashDuration: 0.08
   _shakeStrength: 0.15
@@ -435,6 +436,46 @@ MonoBehaviour:
     \uAE30\uB2E4\uB9AC\uACE0 \uC788\uB2E4..."
   - "\"\uB124 \uACF5\uACA9, \uBCC4\uB85C \uC548 \uC544\uD504\uB124...\""
   - "\"\uB098 \uAECD\uC9C8 \uBE68\uB9AC \uBD80\uC234 \uC918...\""
+--- !u!114 &855793865685336371
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3461299171839533844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93264bd648e0a204481c1723d89047ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OverworldEnemy
+  _mode: 0
+  _additionalEncounterEnemies: []
+  _overrideBattleBGM: {fileID: 0}
+  _encounterSFX: {fileID: 8300000, guid: 6ad1ec81ab1a6774989652d8b79cdbc2, type: 3}
+  _battleScenarioData: {fileID: 0}
+  _encounterDelay: 0.08
+  _battleFadeDuration: 0.08
+  _battleSceneName: BattleScene
+  _useDedicatedBattleScene: 0
+  _destroyAfterTouch: 0
+  _postEscapeAlpha: 0.5
+  _postBattleGraceDuration: 1
+  _postBattleNudgeDistance: 0.35
+  _canInstantKillLater: 0
+  _enemyId: testmap.bunny_slime
+  _victoryHandling: 0
+  _instantVictoryHandling: 1
+  _waypoints: []
+  _moveSpeed: 2
+  _arriveDistance: 0.05
+  _waitAtPoint: 0.15
+  _loop: 1
+  _animator: {fileID: 8643868022141659312}
+  _usePlayerLikeMoveParams: 0
+  _moveXParam: Horizontal
+  _moveYParam: Vertical
+  _isMovingParam: IsMoving
+  _battleIdleParam: BattleIdle
 --- !u!1 &5941587637502663154
 GameObject:
   m_ObjectHideFlags: 0

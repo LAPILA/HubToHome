@@ -38,6 +38,14 @@ public class PlayerCharacter : CharacterBase
     private SpriteRenderer _spriteRenderer;
 
     public CharacterData CharacterData => _characterData;
+    public Color BattleSymbolColor
+    {
+        get
+        {
+            Color color = _characterData != null ? _characterData.BattleSymbolColor : Color.white;
+            return color.a > 0f ? color : Color.white;
+        }
+    }
     public string DisplayName => _characterData != null
         ? _characterData.ResolveDisplayName(GlobalDataManager.Instance != null ? GlobalDataManager.Instance.PlayerName : null)
         : CharacterID;

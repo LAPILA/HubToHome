@@ -196,10 +196,14 @@ public static class AreaMarkerRuntimeService
 
     public static void GrantItem(AreaMarkerBase owner, string itemId, int amount)
     {
+        int grantedAmount = 0;
         if (!string.IsNullOrWhiteSpace(itemId) && GlobalDataManager.Instance != null)
-            GlobalDataManager.Instance.AddItem(itemId, amount);
+            grantedAmount = GlobalDataManager.Instance.AddItemAndGetAddedAmount(itemId, amount);
 
-        Debug.Log($"[AreaMarkerRuntimeService] 아이템 획득: itemId={itemId}, amount={amount}", owner);
+        if (grantedAmount > 0)
+            AudioManager.Instance?.PlaySelectionSfx();
+
+        Debug.Log($"[AreaMarkerRuntimeService] 아이템 획득: itemId={itemId}, amount={grantedAmount}", owner);
     }
 
     public static void RequestVendor(AreaMarkerBase owner, string vendorId, string shopId)

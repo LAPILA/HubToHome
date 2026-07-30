@@ -47,7 +47,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         if (_host.Enemies == null || _host.Enemies.Count == 0)
         {
-            Debug.LogError("[BattleTurnQteModuleControllerService] 전투 시작 시 적 리스트가 비어 있습니다. BattlePrefab 또는 EnemyCharacter 설정을 확인해주세요.");
+            Debug.LogError("[BattleTurnQteModuleControllerService] 전투 시작 시 적 리스트가 비어 있습니다. EnemyData.Prefab 또는 EnemyCharacter 설정을 확인해주세요.");
             yield break;
         }
 
@@ -319,7 +319,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                         int dmg = target.TakePureDamage(enemy.ATK);
                         targetCtrl?.PlayHurtEffect();
                         CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
-                        _host.EmitDamage(target, dmg, false);
+                        _host.EmitDamage(enemy, target, dmg, false);
                     }
                     else
                     {
@@ -332,6 +332,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
                         if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
                         {
+                            _host.EmitMiss(enemy, target);
                             yield return targetCtrl != null ? _host.StartManagedCoroutine(targetCtrl.WaitForDefenseVisualComplete(0.5f)) : null;
                         }
                     }
@@ -381,7 +382,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
                     int dmg = player.TakePureDamage(enemy.ATK);
                     player.GetComponent<PlayerController>()?.PlayHurtEffect();
-                    _host.EmitDamage(player, dmg, false);
+                    _host.EmitDamage(enemy, player, dmg, false);
                 }
 
                 yield return new WaitForSeconds(_host.EnemyPostHitDelay);
@@ -574,7 +575,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             int dmg = target.TakeDamage(actor.ATK);
             CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
             _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
-            _host.EmitDamageNotificationOnly(target, dmg, false);
+            _host.EmitDamageNotificationOnly(actor, target, dmg, false);
             _host.PublishEnemyDefeatedScenarioEvent(target, actor);
 
             yield return new WaitForSeconds(_host.PlayerAttackRecoverDelay);

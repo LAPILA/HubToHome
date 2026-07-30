@@ -390,6 +390,7 @@ public class DialogueUI : MonoBehaviour
 
         ChoiceData selected = _activeChoices[index];
         System.Action<ChoiceData> callback = _onChoiceSelected;
+        AudioManager.Instance?.PlaySelectionSfx();
         HideChoices();
         callback?.Invoke(selected);
     }

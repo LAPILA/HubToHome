@@ -28,6 +28,9 @@ public class CharacterData : SerializedScriptableObject
     [Tooltip("Character-specific prefab instantiated in battle. BattleManager fallback is used when empty.")]
     public GameObject BattlePrefab;
 
+    [BoxGroup("Battle Presentation")]
+    public Color BattleSymbolColor = Color.white;
+
     [BoxGroup("Identity")] public string CharacterID = "player_001";
     [BoxGroup("Identity")] public string DisplayName = "Player";
     [BoxGroup("Identity"), LabelText("이름 소스")]
