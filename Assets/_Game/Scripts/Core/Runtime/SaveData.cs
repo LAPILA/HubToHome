@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 [Serializable]
 public class CharacterSaveData
@@ -13,16 +14,34 @@ public class CharacterSaveData
     [UnityEngine.Header("Stats")]
     public int HP = 100;
     public int MaxHP = 100;
-    public int MP = 100;
-    public int MaxMP = 100;
+    public int AP = 100;
+    public int MaxAP = 100;
 
     public int ATK = 10;
     public int DEF = 5;
     public int SPD = 10;
 
+    public CharacterGrowthSaveData Growth = new CharacterGrowthSaveData();
+
     public List<string> EquippedSkillIDs = new List<string>();
     public List<string> UnlockedSkillIDs = new List<string>();
     public List<string> EquippedEquipmentIDs = new List<string>();
+
+    [JsonIgnore]
+    [Obsolete("Use AP. This property only preserves source compatibility.")]
+    public int MP
+    {
+        get => AP;
+        set => AP = value;
+    }
+
+    [JsonIgnore]
+    [Obsolete("Use MaxAP. This property only preserves source compatibility.")]
+    public int MaxMP
+    {
+        get => MaxAP;
+        set => MaxAP = value;
+    }
     public bool HasInitializedEquipment;
 }
 

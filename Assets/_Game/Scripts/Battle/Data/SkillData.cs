@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
 public enum QTEType { None, Timing, Sequence }
@@ -28,8 +29,15 @@ public class SkillData : ScriptableObject
     public SkillUsageProfile UsageProfile = SkillUsageProfile.Shared;
 
     [BoxGroup("Player Runtime")]
-    public int MPCost = 10;
+    [FormerlySerializedAs("MPCost")]
+    public int APCost = 10;
 
+    [System.Obsolete("Use APCost.")]
+    public int MPCost
+    {
+        get => APCost;
+        set => APCost = value;
+    }
     [BoxGroup("Targeting")]
     public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
     [BoxGroup("Targeting")]
@@ -72,7 +80,7 @@ public class SkillData : ScriptableObject
         UnityEditor.Undo.RecordObject(this, "Apply Enemy Attack Template");
 #endif
         ActionTimeline = EnemyAttackTemplateFactory.CreateTelegraphedStrike();
-        MPCost = 0;
+        APCost = 0;
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.SetDirty(this);
 #endif

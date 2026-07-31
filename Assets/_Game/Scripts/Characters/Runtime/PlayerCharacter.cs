@@ -104,7 +104,7 @@ public class PlayerCharacter : CharacterBase
             StatType.DEF   => GetEquipSum(e => e?.BonusDEF ?? 0),
             StatType.SPD   => GetEquipSum(e => e?.BonusSPD ?? 0),
             StatType.MaxHP => GetEquipSum(e => e?.BonusMaxHP ?? 0),
-            StatType.MaxMP => GetEquipSum(e => e?.BonusMaxMP ?? 0),
+            StatType.MaxAP => GetEquipSum(e => e?.BonusMaxAP ?? 0),
             _ => 0
         };
     }
@@ -138,7 +138,7 @@ public class PlayerCharacter : CharacterBase
         if (_characterData == null) return;
 
         BaseMaxHP = _characterData.BaseMaxHP;
-        BaseMaxMP = _characterData.BaseMaxMP;
+        BaseMaxAP = _characterData.BaseMaxAP;
         BaseATK = _characterData.BaseATK;
         BaseDEF = _characterData.BaseDEF;
         BaseSPD = _characterData.BaseSPD;
@@ -163,8 +163,12 @@ public class PlayerCharacter : CharacterBase
         ApplyCharacterData();
         PowerProgressionService.SynchronizeUnlockedSkills(saveData, _characterData);
         ApplyEquipmentFromSave(saveData);
+        CharacterGrowthService.EnsureInitialized(saveData, _characterData);
+        SkillTreeProgressionService.Synchronize(saveData, _characterData);
 
-        if (saveData.EquippedSkillIDs != null && saveData.EquippedSkillIDs.Count > 0)
+        bool hasExplicitSkillLoadout = saveData.EquippedSkillIDs != null
+            && (_characterData?.SkillTree != null || saveData.EquippedSkillIDs.Count > 0);
+        if (hasExplicitSkillLoadout)
         {
             var resolvedSkills = new List<SkillData>();
             for (int i = 0; i < saveData.EquippedSkillIDs.Count; i++)
@@ -177,20 +181,20 @@ public class PlayerCharacter : CharacterBase
                     Debug.LogWarning($"[PlayerCharacter] Saved skill ID could not be resolved: {skillId}", this);
             }
 
-            if (resolvedSkills.Count > 0)
-            {
-                Skills.Clear();
-                Skills.AddRange(resolvedSkills);
-            }
+            Skills.Clear();
+            Skills.AddRange(resolvedSkills);
         }
 
-        Level       = saveData.Level;
-        EXP         = saveData.EXP;
-        
-        BaseMaxHP   = Mathf.Max(1, saveData.MaxHP);
-        CurrentHP   = Mathf.Clamp(saveData.HP, 0, MaxHP);
-        BaseMaxMP   = Mathf.Max(0, saveData.MaxMP);
-        CurrentMP   = Mathf.Clamp(saveData.MP, 0, MaxMP);
+        Level = Mathf.Max(1, saveData.Level);
+        EXP = Mathf.Max(0, saveData.EXP);
+        EXPToNextLevel = CharacterProgressionService.ExperienceRequiredForNextLevel(
+            _characterData,
+            Level);
+
+        BaseMaxHP = Mathf.Max(1, saveData.MaxHP);
+        CurrentHP = Mathf.Clamp(saveData.HP, 0, MaxHP);
+        BaseMaxAP = Mathf.Max(0, saveData.MaxAP);
+        CurrentAP = Mathf.Clamp(saveData.AP, 0, MaxAP);
 
         if (CurrentHP <= 0) 
         {
@@ -223,10 +227,11 @@ public class PlayerCharacter : CharacterBase
         }
 
         _mySaveDataRef = saveData;
+        CharacterGrowthService.EnsureInitialized(saveData, _characterData);
         BaseMaxHP = Mathf.Max(1, saveData.MaxHP);
-        BaseMaxMP = Mathf.Max(0, saveData.MaxMP);
+        BaseMaxAP = Mathf.Max(0, saveData.MaxAP);
         SetCurrentHPValue(Mathf.Clamp(saveData.HP, 0, MaxHP));
-        SetCurrentMPValue(Mathf.Clamp(saveData.MP, 0, MaxMP));
+        SetCurrentAPValue(Mathf.Clamp(saveData.AP, 0, MaxAP));
         return true;
     }
 
@@ -239,24 +244,36 @@ public class PlayerCharacter : CharacterBase
             if (_mySaveDataRef == null)
                 return;
         }
-        
-        _mySaveDataRef.CharacterDataID = _characterData != null ? _characterData.CharacterID : string.Empty;
+
+        _mySaveDataRef.CharacterDataID = _characterData != null
+            ? _characterData.CharacterID
+            : string.Empty;
         _mySaveDataRef.CharacterID = DisplayName;
-        _mySaveDataRef.HP    = CurrentHP;
-        _mySaveDataRef.MP    = CurrentMP;
-        _mySaveDataRef.MaxHP = BaseMaxHP;
-        _mySaveDataRef.MaxMP = BaseMaxMP;
-        _mySaveDataRef.ATK   = BaseATK;
-        _mySaveDataRef.DEF   = BaseDEF;
-        _mySaveDataRef.SPD   = BaseSPD;
-        _mySaveDataRef.Level = Level;
-        _mySaveDataRef.EXP   = EXP;
+        _mySaveDataRef.Level = Mathf.Max(1, Level);
+        _mySaveDataRef.EXP = Mathf.Max(0, EXP);
+        _mySaveDataRef.HP = CurrentHP;
+        _mySaveDataRef.AP = CurrentAP;
         SaveEquipmentToGlobal(_mySaveDataRef);
-        PowerProgressionService.SynchronizeUnlockedSkills(_mySaveDataRef, _characterData);
-        if (_mySaveDataRef.EquippedSkillIDs == null)
-            _mySaveDataRef.EquippedSkillIDs = new List<string>();
-        else
-            _mySaveDataRef.EquippedSkillIDs.Clear();
+
+        CharacterGrowthService.EnsureInitialized(_mySaveDataRef, _characterData);
+        BaseMaxHP = _mySaveDataRef.MaxHP;
+        BaseMaxAP = _mySaveDataRef.MaxAP;
+        BaseATK = _mySaveDataRef.ATK;
+        BaseDEF = _mySaveDataRef.DEF;
+        BaseSPD = _mySaveDataRef.SPD;
+        CurrentHP = Mathf.Clamp(_mySaveDataRef.HP, 0, MaxHP);
+        CurrentAP = Mathf.Clamp(_mySaveDataRef.AP, 0, MaxAP);
+        _mySaveDataRef.HP = CurrentHP;
+        _mySaveDataRef.AP = CurrentAP;
+
+        PowerProgressionService.SynchronizeUnlockedSkills(
+            _mySaveDataRef,
+            _characterData);
+        SkillTreeProgressionService.Synchronize(
+            _mySaveDataRef,
+            _characterData);
+        _mySaveDataRef.EquippedSkillIDs ??= new List<string>();
+        _mySaveDataRef.EquippedSkillIDs.Clear();
         for (int i = 0; i < Skills.Count; i++)
         {
             SkillData skill = Skills[i];

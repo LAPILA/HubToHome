@@ -726,8 +726,8 @@ public class Action_DefenseWindow : SkillActionBlock
                     && target is PlayerCharacter playerTarget
                     && BattleManager.Instance != null)
                 {
-                    playerTarget.HealMP(BattleManager.Instance._mpOnParryPerfect);
-                    BattleManager.Instance.InvokeMPChangedEvent(playerTarget, playerTarget.CurrentMP);
+                    playerTarget.RestoreAP(BattleManager.Instance._apOnParryPerfect);
+                    BattleManager.Instance.InvokeAPChangedEvent(playerTarget, playerTarget.CurrentAP);
                 }
             }
             else

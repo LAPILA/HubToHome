@@ -32,6 +32,7 @@ public class GlobalDataManager : MonoBehaviour
     public int Money { get; private set; } = 0;
 
     public event System.Action<string, int, int> FlagChanged;
+    public event System.Action<CharacterSaveData> CharacterGrowthChanged;
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
     public AudioClip PendingBattleBGM { get; set; }
@@ -133,7 +134,7 @@ public class GlobalDataManager : MonoBehaviour
         }
 
         int startMaxHP = characterData != null ? characterData.BaseMaxHP : (scenePlayer.BaseMaxHP > 0 ? scenePlayer.BaseMaxHP : 100);
-        int startMaxMP = characterData != null ? characterData.BaseMaxMP : (scenePlayer.BaseMaxMP > 0 ? scenePlayer.BaseMaxMP : 50);
+        int startMaxAP = characterData != null ? characterData.BaseMaxAP : (scenePlayer.BaseMaxAP > 0 ? scenePlayer.BaseMaxAP : 50);
         int startATK   = characterData != null ? characterData.BaseATK : (scenePlayer.BaseATK > 0 ? scenePlayer.BaseATK : 10);
         int startDEF   = characterData != null ? characterData.BaseDEF : scenePlayer.BaseDEF;
         int startSPD   = characterData != null ? characterData.BaseSPD : (scenePlayer.BaseSPD > 0 ? scenePlayer.BaseSPD : 10);
@@ -146,18 +147,270 @@ public class GlobalDataManager : MonoBehaviour
             EXP         = scenePlayer.EXP,
             MaxHP       = startMaxHP,
             HP          = startMaxHP,
-            MaxMP       = startMaxMP,
-            MP          = startMaxMP,
+            MaxAP       = startMaxAP,
+            AP          = startMaxAP,
             ATK         = startATK,
             DEF         = startDEF,
             SPD         = startSPD
         };
 
-        PowerProgressionService.SynchronizeUnlockedSkills(newData, characterData);
         EquipmentLoadoutService.NormalizeSlots(newData);
+        CharacterGrowthService.EnsureInitialized(newData, characterData);
+        newData.HP = newData.MaxHP;
+        newData.AP = newData.MaxAP;
+        PowerProgressionService.SynchronizeUnlockedSkills(newData, characterData);
+        SkillTreeProgressionService.Synchronize(newData, characterData);
         Party.Add(newData);
         Debug.Log($"<color=yellow>[GlobalData] 파티원 초기화 완료: {newData.CharacterID} (이름: {PlayerName})</color>");
         return newData;
+    }
+
+    public CharacterLevelUpResult GrantCharacterExperience(
+        CharacterSaveData character,
+        int amount)
+    {
+        if (character == null || !Party.Contains(character) || amount <= 0)
+            return null;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        CharacterLevelUpResult result = CharacterProgressionService.GrantExperience(
+            character,
+            data,
+            amount);
+        PowerProgressionService.SynchronizeUnlockedSkills(character, data);
+        SkillTreeProgressionService.Synchronize(character, data);
+        CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public GrowthInvestmentResult TryInvestGrowthStat(
+        CharacterSaveData character,
+        GrowthStat stat,
+        int amount = 1)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new GrowthInvestmentResult(
+                GrowthInvestmentStatus.InvalidCharacter,
+                stat,
+                0,
+                0,
+                0);
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        CharacterGrowthService.EnsureInitialized(character, data);
+        if (!CanMutateGrowth())
+        {
+            return new GrowthInvestmentResult(
+                GrowthInvestmentStatus.MutationLocked,
+                stat,
+                character.Growth.Investments.Get(stat),
+                character.Growth.Investments.Get(stat),
+                character.Growth.AvailableAttributePoints);
+        }
+
+        GrowthInvestmentResult result = CharacterGrowthService.TryInvest(
+            character,
+            data,
+            stat,
+            amount);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public bool TryRefundGrowthStat(
+        CharacterSaveData character,
+        GrowthStat stat,
+        int amount = 1)
+    {
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        bool changed = CharacterGrowthService.TryRefund(
+            character,
+            data,
+            stat,
+            amount);
+        if (changed)
+            CharacterGrowthChanged?.Invoke(character);
+        return changed;
+    }
+
+    public bool TryResetGrowthStats(
+        CharacterSaveData character,
+        out int refundedPoints)
+    {
+        refundedPoints = 0;
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        CharacterGrowthService.EnsureInitialized(character, data);
+        refundedPoints = CharacterGrowthService.ResetInvestments(character, data);
+        if (refundedPoints > 0)
+            CharacterGrowthChanged?.Invoke(character);
+        return true;
+    }
+
+    public bool TrySpendSkillPoints(CharacterSaveData character, int amount)
+    {
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        bool changed = CharacterGrowthService.TrySpendSkillPoints(
+            character,
+            data,
+            amount);
+        if (changed)
+            CharacterGrowthChanged?.Invoke(character);
+        return changed;
+    }
+
+    public bool TryRefundSkillPoints(CharacterSaveData character, int amount)
+    {
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        bool changed = CharacterGrowthService.TryRefundSkillPoints(
+            character,
+            data,
+            amount);
+        if (changed)
+            CharacterGrowthChanged?.Invoke(character);
+        return changed;
+    }
+
+    public bool TryResetSkillPoints(
+        CharacterSaveData character,
+        out int refundedPoints)
+    {
+        refundedPoints = 0;
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        if (data?.SkillTree != null)
+        {
+            SkillTreeActionResult treeResult =
+                SkillTreeProgressionService.Reset(character, data);
+            refundedPoints = Mathf.Max(0, treeResult.PointsChanged);
+            if (treeResult.Succeeded)
+                CharacterGrowthChanged?.Invoke(character);
+            return treeResult.Succeeded
+                || treeResult.Status == SkillTreeActionStatus.NoChanges;
+        }
+
+        refundedPoints = CharacterGrowthService.ResetSkillPointSpending(
+            character,
+            data);
+        if (refundedPoints > 0)
+            CharacterGrowthChanged?.Invoke(character);
+        return true;
+    }
+
+    public SkillTreeActionResult TryUnlockSkillTreeNode(
+        CharacterSaveData character,
+        string nodeId)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.InvalidCharacter,
+                nodeId,
+                0,
+                "캐릭터가 없습니다.");
+        }
+        if (!CanMutateGrowth())
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.MutationLocked,
+                nodeId,
+                0,
+                "전투 중에는 성장 설정을 변경할 수 없습니다.");
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        SkillTreeActionResult result =
+            SkillTreeProgressionService.TryUnlock(character, data, nodeId);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public SkillTreeActionResult TryToggleSkillEquipped(
+        CharacterSaveData character,
+        string nodeId)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.InvalidCharacter,
+                nodeId,
+                0,
+                "캐릭터가 없습니다.");
+        }
+        if (!CanMutateGrowth())
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.MutationLocked,
+                nodeId,
+                0,
+                "전투 중에는 스킬 장착을 변경할 수 없습니다.");
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        SkillTreeActionResult result =
+            SkillTreeProgressionService.TryToggleEquipped(
+                character,
+                data,
+                nodeId);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public SkillTreeActionResult TryResetSkillTree(
+        CharacterSaveData character)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.InvalidCharacter,
+                string.Empty,
+                0,
+                "캐릭터가 없습니다.");
+        }
+        if (!CanMutateGrowth())
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.MutationLocked,
+                string.Empty,
+                0,
+                "전투 중에는 스킬 투자를 초기화할 수 없습니다.");
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        SkillTreeActionResult result =
+            SkillTreeProgressionService.Reset(character, data);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    private bool CanMutateOwnedGrowth(CharacterSaveData character)
+    {
+        return character != null && Party.Contains(character) && CanMutateGrowth();
+    }
+
+    private static bool CanMutateGrowth()
+    {
+        return GameStateManager.Instance == null
+            || GameStateManager.Instance.CurrentState != GameState.Battle;
     }
 
     private CharacterSaveData FindPartyMember(string stableId)
@@ -663,6 +916,8 @@ public class GlobalDataManager : MonoBehaviour
     #region [ Save & Load ]
     public SaveData ToSaveData()
     {
+        SynchronizePartyGrowth();
+
         var data = new SaveData
         {
             playerName       = PlayerName, // 🚨 세이브 데이터에 이름 추가!
@@ -784,9 +1039,13 @@ public class GlobalDataManager : MonoBehaviour
                 continue;
 
             EquipmentLoadoutService.NormalizeSlots(member);
+            CharacterData characterData = CharacterDatabase.FindById(
+                member.CharacterDataID);
+            CharacterGrowthService.EnsureInitialized(member, characterData);
             PowerProgressionService.SynchronizeUnlockedSkills(
                 member,
-                CharacterDatabase.FindById(member.CharacterDataID));
+                characterData);
+            SkillTreeProgressionService.Synchronize(member, characterData);
         }
         Money = Mathf.Max(0, data.Money);
     }
@@ -819,6 +1078,21 @@ public class GlobalDataManager : MonoBehaviour
         }
     }
 
+    private void SynchronizePartyGrowth()
+    {
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member == null)
+                continue;
+
+            EquipmentLoadoutService.NormalizeSlots(member);
+            CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
+            CharacterGrowthService.EnsureInitialized(member, data);
+            SkillTreeProgressionService.Synchronize(member, data);
+        }
+    }
+
     private static List<CharacterSaveData> CloneParty(IReadOnlyList<CharacterSaveData> source)
     {
         var clone = new List<CharacterSaveData>();
@@ -836,11 +1110,12 @@ public class GlobalDataManager : MonoBehaviour
                 EXP = Mathf.Max(0, member.EXP),
                 HP = member.HP,
                 MaxHP = member.MaxHP,
-                MP = member.MP,
-                MaxMP = member.MaxMP,
+                AP = member.AP,
+                MaxAP = member.MaxAP,
                 ATK = member.ATK,
                 DEF = member.DEF,
                 SPD = member.SPD,
+                Growth = member.Growth?.Clone() ?? new CharacterGrowthSaveData(),
                 EquippedSkillIDs = member.EquippedSkillIDs != null
                     ? new List<string>(member.EquippedSkillIDs)
                     : new List<string>(),

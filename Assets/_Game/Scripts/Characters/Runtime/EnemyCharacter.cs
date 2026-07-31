@@ -116,7 +116,7 @@ public class EnemyCharacter : CharacterBase
             BaseSPD   = Data.SPD;
             
             CurrentHP = MaxHP; 
-            CurrentMP = MaxMP;
+            CurrentAP = MaxAP;
         }
     }
 

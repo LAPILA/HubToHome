@@ -104,7 +104,7 @@ public class BattleRewardAndProgressionTests
     }
 
     [Test]
-    public void ExperienceCanLevelMultipleTimesAndUpdatesPersistentStats()
+    public void ExperienceCanLevelMultipleTimesAndGrantsGrowthPoints()
     {
         CharacterData data = ScriptableObject.CreateInstance<CharacterData>();
         try
@@ -112,8 +112,11 @@ public class BattleRewardAndProgressionTests
             data.BaseExperienceToLevel = 10;
             data.ExperienceGrowth = 1f;
             data.MaxLevel = 10;
-            data.MaxHpPerLevel = 5;
-            data.AttackPerLevel = 2;
+            data.BaseMaxHP = 50;
+            data.BaseMaxAP = 10;
+            data.BaseATK = 4;
+            data.BaseDEF = 1;
+            data.BaseSPD = 2;
 
             var save = new CharacterSaveData
             {
@@ -121,8 +124,8 @@ public class BattleRewardAndProgressionTests
                 EXP = 0,
                 HP = 50,
                 MaxHP = 50,
-                MP = 10,
-                MaxMP = 10,
+                AP = 10,
+                MaxAP = 10,
                 ATK = 4,
                 DEF = 1,
                 SPD = 2
@@ -132,9 +135,15 @@ public class BattleRewardAndProgressionTests
 
             Assert.That(save.Level, Is.EqualTo(3));
             Assert.That(save.EXP, Is.EqualTo(5));
-            Assert.That(save.MaxHP, Is.EqualTo(60));
-            Assert.That(save.HP, Is.EqualTo(60));
-            Assert.That(save.ATK, Is.EqualTo(8));
+            Assert.That(save.MaxHP, Is.EqualTo(50));
+            Assert.That(save.HP, Is.EqualTo(50));
+            Assert.That(save.ATK, Is.EqualTo(4));
+            Assert.That(save.Growth.AttributePointsEarned, Is.EqualTo(6));
+            Assert.That(save.Growth.SkillPointsEarned, Is.EqualTo(2));
+            Assert.That(save.Growth.AvailableAttributePoints, Is.EqualTo(6));
+            Assert.That(save.Growth.AvailableSkillPoints, Is.EqualTo(2));
+            Assert.That(result.AttributePointsGained, Is.EqualTo(6));
+            Assert.That(result.SkillPointsGained, Is.EqualTo(2));
             Assert.That(result.DidLevelUp, Is.True);
         }
         finally
@@ -152,8 +161,8 @@ public class BattleRewardAndProgressionTests
             EXP = int.MaxValue - 10,
             HP = 50,
             MaxHP = 50,
-            MP = 10,
-            MaxMP = 10,
+            AP = 10,
+            MaxAP = 10,
             ATK = 4,
             DEF = 1,
             SPD = 2

@@ -28,10 +28,12 @@ MonoBehaviour:
   DisplayName: Player
   DisplayNameMode: 1
   BaseMaxHP: 300
-  BaseMaxMP: 50
+  BaseMaxAP: 50
   BaseATK: 10
   BaseDEF: 5
   BaseSPD: 10
+  GrowthProfile: {fileID: 11400000, guid: a81c41c95f2847a1aebc9ef15c0b0d7b, type: 2}
+  SkillTree: {fileID: 11400000, guid: df2b9c79cf134c849180c6f871650165, type: 2}
   MaxLevel: 99
   BaseExperienceToLevel: 100
   ExperienceGrowth: 1.18
@@ -41,6 +43,4 @@ MonoBehaviour:
   DefensePerLevel: 1
   SpeedPerLevel: 0
   DefaultSkills:
-  - {fileID: 11400000, guid: a6266718f8bf9094698650cb43978de1, type: 2}
   - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
-  - {fileID: 11400000, guid: b3261d09b33d084429857ad2e5dfc63b, type: 2}

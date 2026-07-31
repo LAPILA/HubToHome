@@ -311,11 +311,14 @@ public sealed class BattleResultUI : MonoBehaviour
     private static string BuildStatGainText(CharacterLevelUpResult level)
     {
         var builder = new StringBuilder();
-        AppendStatGain(builder, "HP", level.MaxHpGained);
-        AppendStatGain(builder, "MP", level.MaxMpGained);
-        AppendStatGain(builder, "ATK", level.AttackGained);
-        AppendStatGain(builder, "DEF", level.DefenseGained);
-        AppendStatGain(builder, "SPD", level.SpeedGained);
+        AppendStatGain(
+            builder,
+            "ATTRIBUTE POINT",
+            level.AttributePointsGained);
+        AppendStatGain(
+            builder,
+            "SKILL POINT",
+            level.SkillPointsGained);
         return builder.Length > 0 ? builder.ToString() : " ";
     }
 

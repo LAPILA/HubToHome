@@ -159,7 +159,7 @@ public sealed class GlobalDataRuntimeStateTests
         data.CharacterID = characterDataId;
         data.DisplayName = "Hero";
         data.BaseMaxHP = 80;
-        data.BaseMaxMP = 25;
+        data.BaseMaxAP = 25;
         data.BaseATK = 9;
         data.BaseDEF = 4;
         data.BaseSPD = 7;

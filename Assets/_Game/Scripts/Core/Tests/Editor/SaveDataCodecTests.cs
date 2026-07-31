@@ -103,8 +103,8 @@ public class SaveDataCodecTests
             EXP = 55,
             HP = 81,
             MaxHP = 100,
-            MP = 17,
-            MaxMP = 30,
+            AP = 17,
+            MaxAP = 30,
             EquippedSkillIDs = new List<string> { "steam.slash" },
             UnlockedSkillIDs = new List<string> { "steam.slash", "steam.guard" },
             EquippedEquipmentIDs = new List<string> { "equip.steam_blade" },
@@ -187,5 +187,21 @@ public class SaveDataCodecTests
         Assert.That(result.Data.PartyData[0].UnlockedSkillIDs, Is.EqualTo(new[] { "steam" }));
         Assert.That(result.Data.PartyData[0].EquippedEquipmentIDs, Has.Count.EqualTo(6));
         Assert.That(result.Data.PartyData[0].EquippedEquipmentIDs[0], Is.EqualTo("blade"));
+    }
+
+    [Test]
+    public void Decode_VersionThreeSaveMigratesMpFieldsToActionPoints()
+    {
+        const string json =
+            "{\"schemaVersion\":3,\"currentScene\":\"TestMap\",\"PartyData\":[{" +
+            "\"CharacterDataID\":\"hero\",\"MP\":17,\"MaxMP\":42}]}";
+
+        SaveDecodeResult result = new SaveDataCodec().Decode(json);
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.SourceVersion, Is.EqualTo(3));
+        Assert.That(result.WasMigrated, Is.True);
+        Assert.That(result.Data.PartyData[0].AP, Is.EqualTo(17));
+        Assert.That(result.Data.PartyData[0].MaxAP, Is.EqualTo(42));
     }
 }

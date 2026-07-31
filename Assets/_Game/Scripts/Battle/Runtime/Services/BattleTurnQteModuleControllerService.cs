@@ -124,8 +124,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         _host.ResetAllPlayerBattlePoses();
         player.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-        player.HealMP(_host.MpPerTurn);
-        _host.EmitMpChanged(player, player.CurrentMP);
+        player.RestoreAP(_host.ApPerTurn);
+        _host.EmitApChanged(player, player.CurrentAP);
         if (player.TryShowBattleSpeech(BattleSpeechTrigger.TurnStart, null, null, _host.BattleTurnCounter))
         {
             yield return _host.StartManagedCoroutine(player.WaitForBattleSpeech());
@@ -326,8 +326,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                         targetCtrl?.ConfirmDefenseSuccess(finalResult.Input);
                         if (finalResult.Input == DefenseInput.Parry && finalResult.Grade == QTEManager.QTEGrade.Perfect)
                         {
-                            target.HealMP(_host.MpOnParryPerfect);
-                            _host.EmitMpChanged(target, target.CurrentMP);
+                            target.RestoreAP(_host.ApOnParryPerfect);
+                            _host.EmitApChanged(target, target.CurrentAP);
                         }
 
                         if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
@@ -488,9 +488,9 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         }
         else if (_host.PendingAction == PlayerMenuAction.Skill && _host.PendingSkill != null)
         {
-            if (_host.PendingActor.CurrentMP < _host.PendingSkill.MPCost)
+            if (_host.PendingActor.CurrentAP < _host.PendingSkill.APCost)
             {
-                _host.RequestNarration(new BattleNarrationMessage("MP가 부족하다.", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
+                _host.RequestNarration(new BattleNarrationMessage("AP가 부족하다.", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
                 _host.PendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
                 _host.PendingSkill = null;
                 _host.PendingItem = null;
@@ -609,8 +609,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
-        actor.ConsumeMP(skill.MPCost);
-        _host.EmitMpChanged(actor, actor.CurrentMP);
+        actor.ConsumeAP(skill.APCost);
+        _host.EmitApChanged(actor, actor.CurrentAP);
         if (actor.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, skill, null, _host.BattleTurnCounter))
         {
             yield return _host.StartManagedCoroutine(actor.WaitForBattleSpeech());

@@ -155,8 +155,8 @@ public sealed class OverworldPartyHealthServiceTests
             CharacterID = "Different Display Name",
             HP = hp,
             MaxHP = maxHP,
-            MP = 5,
-            MaxMP = 10
+            AP = 5,
+            MaxAP = 10
         };
     }
 

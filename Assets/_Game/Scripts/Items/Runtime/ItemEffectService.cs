@@ -39,9 +39,9 @@ public static class ItemEffectService
 
         if (item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage)
         {
-            if (item.TargetStat != TargetStatType.HP && item.TargetStat != TargetStatType.MP)
+            if (item.TargetStat != TargetStatType.HP && item.TargetStat != TargetStatType.AP)
             {
-                error = "A heal or damage item must target HP or MP.";
+                error = "A heal or damage item must target HP or AP.";
                 return false;
             }
 
@@ -73,17 +73,17 @@ public static class ItemEffectService
         {
             case EffectActionType.Heal:
                 if (item.TargetStat == TargetStatType.HP) target.HealHP(value);
-                else if (item.TargetStat == TargetStatType.MP) target.HealMP(value);
+                else if (item.TargetStat == TargetStatType.AP) target.RestoreAP(value);
                 else
                 {
-                    error = "A heal item must target HP or MP.";
+                    error = "A heal item must target HP or AP.";
                     return false;
                 }
                 break;
 
             case EffectActionType.Damage:
                 if (item.TargetStat == TargetStatType.HP) target.TakePureDamage(value);
-                else target.ConsumeMP(value);
+                else target.ConsumeAP(value);
                 break;
 
             case EffectActionType.ApplyStatus:
@@ -102,7 +102,7 @@ public static class ItemEffectService
 
     private static int CalculateValue(ItemData item, CharacterBase target)
     {
-        int maxValue = item.TargetStat == TargetStatType.MP ? target.MaxMP : target.MaxHP;
+        int maxValue = item.TargetStat == TargetStatType.AP ? target.MaxAP : target.MaxHP;
         return item.CalcType switch
         {
             ValueCalcType.Flat => Mathf.Max(0, item.EffectValue),

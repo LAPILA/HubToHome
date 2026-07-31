@@ -210,8 +210,8 @@ public sealed class GameRecoveryFlowTests
                     Level = 3,
                     HP = 18,
                     MaxHP = 20,
-                    MP = 7,
-                    MaxMP = 10
+                    AP = 7,
+                    MaxAP = 10
                 }
             }
         };

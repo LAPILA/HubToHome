@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3eba3bde5818ed94ba397256558aaa34, type: 3}
-  m_Name: Enemy_BunnySlime
+  m_Name: tests_Enemy_BunnySlime
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   serializationData:
     SerializedFormat: 2
@@ -115,12 +115,12 @@ MonoBehaviour:
       Data: 
   Portrait: {fileID: -6824762552784436292, guid: 7832616a81da7ba4cb3cb9576410818c, type: 3}
   TurnOrderPortrait: {fileID: -6824762552784436292, guid: 7832616a81da7ba4cb3cb9576410818c, type: 3}
-  EnemyId: test.bunny_slime
+  EnemyId: tests_bunny_slime
   EnemyName: "\uAECD\uC9C8 \uD1A0\uB07C \uC2AC\uB77C\uC784"
   BattleBGM: {fileID: 0}
   Prefab: {fileID: 3461299171839533844, guid: 5e97753096e9bae4abf8ca66733ad357, type: 3}
   ReturnMoveTrigger: BattleMove
-  MaxHP: 35
+  MaxHP: 5000
   ATK: 0
   DEF: 150
   SPD: 4

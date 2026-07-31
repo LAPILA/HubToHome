@@ -129,10 +129,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OverworldPartySlotView
   _nameText: {fileID: 8992399046023873883}
   _hpText: {fileID: 2304326817709460375}
-  _mpText: {fileID: 2022053678436057534}
+  _apText: {fileID: 2022053678436057534}
   _portrait: {fileID: 5470749038995121060}
   _hpBar: {fileID: 3220942695705551520}
-  _mpBar: {fileID: 8623418483006019590}
+  _apBar: {fileID: 8623418483006019590}
 --- !u!1 &225492913409049099
 GameObject:
   m_ObjectHideFlags: 0
@@ -198,7 +198,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'MP
+  m_text: 'AP
 
 '
   m_isRightToLeft: 0
@@ -579,7 +579,7 @@ GameObject:
   - component: {fileID: 4276403637923596077}
   - component: {fileID: 3542123506107055105}
   m_Layer: 5
-  m_Name: MPBackground
+  m_Name: APBackground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -964,7 +964,7 @@ GameObject:
   - component: {fileID: 7310197939196844525}
   - component: {fileID: 8730231471069724511}
   m_Layer: 5
-  m_Name: MPText
+  m_Name: APText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2027,22 +2027,22 @@ MonoBehaviour:
     NameText: {fileID: 148331318119704195}
     HPFill: {fileID: 531785443430725870}
     HPText: {fileID: 822206805555302123}
-    MPFill: {fileID: 7409779781938122696}
-    MPText: {fileID: 1393118653213335075}
+    APFill: {fileID: 7409779781938122696}
+    APText: {fileID: 1393118653213335075}
     Root: {fileID: 6587569922123740389}
   - Portrait: {fileID: 8781226052325897793}
     NameText: {fileID: 7830776057987933357}
     HPFill: {fileID: 7405246619169092064}
     HPText: {fileID: 2789807208184344381}
-    MPFill: {fileID: 2893887063938234039}
-    MPText: {fileID: 8730231471069724511}
+    APFill: {fileID: 2893887063938234039}
+    APText: {fileID: 8730231471069724511}
     Root: {fileID: 9042889265406867410}
   - Portrait: {fileID: 5470749038995121060}
     NameText: {fileID: 8992399046023873883}
     HPFill: {fileID: 3220942695705551520}
     HPText: {fileID: 2304326817709460375}
-    MPFill: {fileID: 8623418483006019590}
-    MPText: {fileID: 2022053678436057534}
+    APFill: {fileID: 8623418483006019590}
+    APText: {fileID: 2022053678436057534}
     Root: {fileID: 111315605758395827}
   _turnLabel: {fileID: 7030113331361991798}
   _targetCursor: {fileID: 4640033430333961172}
@@ -2714,7 +2714,7 @@ GameObject:
   - component: {fileID: 7320920572603187193}
   - component: {fileID: 8623418483006019590}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2880,7 +2880,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'MP
+  m_text: 'AP
 
 '
   m_isRightToLeft: 0
@@ -3278,7 +3278,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6419741428746262132}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3407,7 +3407,7 @@ GameObject:
   m_Component:
   - component: {fileID: 720199745231143569}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3799,7 +3799,7 @@ GameObject:
   - component: {fileID: 109449523639266953}
   - component: {fileID: 2015091738215236963}
   m_Layer: 5
-  m_Name: MPBackground
+  m_Name: APBackground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4306,7 +4306,7 @@ GameObject:
   - component: {fileID: 9103659941149865270}
   - component: {fileID: 2893887063938234039}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4381,7 +4381,7 @@ GameObject:
   - component: {fileID: 3377172558814628361}
   - component: {fileID: 2022053678436057534}
   m_Layer: 5
-  m_Name: MPText
+  m_Name: APText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5059,7 +5059,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5549611839105661562}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5331,7 +5331,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'MP
+  m_text: 'AP
 
 '
   m_isRightToLeft: 0
@@ -5746,10 +5746,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OverworldPartySlotView
   _nameText: {fileID: 148331318119704195}
   _hpText: {fileID: 822206805555302123}
-  _mpText: {fileID: 1393118653213335075}
+  _apText: {fileID: 1393118653213335075}
   _portrait: {fileID: 1019402336138794206}
   _hpBar: {fileID: 531785443430725870}
-  _mpBar: {fileID: 7409779781938122696}
+  _apBar: {fileID: 7409779781938122696}
 --- !u!1 &6821280259346499709
 GameObject:
   m_ObjectHideFlags: 0
@@ -5939,8 +5939,8 @@ MonoBehaviour:
   _enemies: []
   _impulseSource: {fileID: 2548836064680235689}
   _hitImpulse: 0.15
-  _mpPerTurn: 5
-  _mpOnParryPerfect: 20
+  _apPerTurn: 5
+  _apOnParryPerfect: 20
   _maxTurnQueueSize: 8
   _visibleTurnQueueSize: 4
   _runSuccessChance: 0.6
@@ -6481,7 +6481,7 @@ GameObject:
   - component: {fileID: 779098611307872953}
   - component: {fileID: 7409779781938122696}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6556,7 +6556,7 @@ GameObject:
   - component: {fileID: 8405679978998818992}
   - component: {fileID: 4754996562520484047}
   m_Layer: 5
-  m_Name: MPBackground
+  m_Name: APBackground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7427,7 +7427,7 @@ GameObject:
   - component: {fileID: 7131835138013361621}
   - component: {fileID: 1393118653213335075}
   m_Layer: 5
-  m_Name: MPText
+  m_Name: APText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7606,7 +7606,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OverworldPartySlotView
   _nameText: {fileID: 7830776057987933357}
   _hpText: {fileID: 2789807208184344381}
-  _mpText: {fileID: 8730231471069724511}
+  _apText: {fileID: 8730231471069724511}
   _portrait: {fileID: 8781226052325897793}
   _hpBar: {fileID: 7405246619169092064}
-  _mpBar: {fileID: 2893887063938234039}
+  _apBar: {fileID: 2893887063938234039}

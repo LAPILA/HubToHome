@@ -15,7 +15,7 @@ public class SkillMenuEntry : IMenuEntry
     public SkillData Data { get; }
     public bool IsAoE { get; }
     public string DisplayName => Data?.SkillName ?? "???";
-    public string Description => Data != null ? $"MP {Data.MPCost}  {Data.Description}" : "";
+    public string Description => Data != null ? $"AP {Data.APCost}  {Data.Description}" : "";
     public Sprite Icon => Data?.Icon;
 
     public SkillMenuEntry(SkillData data, bool isAoE = false)

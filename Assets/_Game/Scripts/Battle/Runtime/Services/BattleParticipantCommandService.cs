@@ -78,7 +78,7 @@ public sealed class BattleParticipantCommandService : IBattleParticipantCommandR
 
         if (amount <= 0)
         {
-            return BattleParticipantCommandResult.Failed(subjectId, "MP heal amount must be greater than zero.");
+            return BattleParticipantCommandResult.Failed(subjectId, "AP restore amount must be greater than zero.");
         }
 
         CharacterBase target = _host.FindBattleParticipantBySubjectId(subjectId);
@@ -87,21 +87,21 @@ public sealed class BattleParticipantCommandService : IBattleParticipantCommandR
             return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
         }
 
-        int previousMp = target.CurrentMP;
-        target.HealMP(amount);
-        int healedAmount = Mathf.Max(0, target.CurrentMP - previousMp);
+        int previousAp = target.CurrentAP;
+        target.RestoreAP(amount);
+        int healedAmount = Mathf.Max(0, target.CurrentAP - previousAp);
         _host.RefreshBattleSessionParticipants();
         if (target is PlayerCharacter player)
         {
-            _host.EmitParticipantMpChanged(player, player.CurrentMP);
+            _host.EmitParticipantApChanged(player, player.CurrentAP);
         }
 
         return BattleParticipantCommandResult.Succeeded(
             _host.ResolveBattleParticipantSubjectId(target, subjectId),
             amount,
             healedAmount,
-            previousMp,
-            target.CurrentMP);
+            previousAp,
+            target.CurrentAP);
     }
 
     public BattleParticipantCommandResult ConsumeMp(string subjectId, int amount, ActionExecutionContext context)
@@ -113,7 +113,7 @@ public sealed class BattleParticipantCommandService : IBattleParticipantCommandR
 
         if (amount <= 0)
         {
-            return BattleParticipantCommandResult.Failed(subjectId, "MP consume amount must be greater than zero.");
+            return BattleParticipantCommandResult.Failed(subjectId, "AP consume amount must be greater than zero.");
         }
 
         CharacterBase target = _host.FindBattleParticipantBySubjectId(subjectId);
@@ -122,20 +122,20 @@ public sealed class BattleParticipantCommandService : IBattleParticipantCommandR
             return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
         }
 
-        int previousMp = target.CurrentMP;
-        target.ConsumeMP(amount);
-        int consumedAmount = Mathf.Max(0, previousMp - target.CurrentMP);
+        int previousAp = target.CurrentAP;
+        target.ConsumeAP(amount);
+        int consumedAmount = Mathf.Max(0, previousAp - target.CurrentAP);
         _host.RefreshBattleSessionParticipants();
         if (target is PlayerCharacter player)
         {
-            _host.EmitParticipantMpChanged(player, player.CurrentMP);
+            _host.EmitParticipantApChanged(player, player.CurrentAP);
         }
 
         return BattleParticipantCommandResult.Succeeded(
             _host.ResolveBattleParticipantSubjectId(target, subjectId),
             amount,
             consumedAmount,
-            previousMp,
-            target.CurrentMP);
+            previousAp,
+            target.CurrentAP);
     }
 }

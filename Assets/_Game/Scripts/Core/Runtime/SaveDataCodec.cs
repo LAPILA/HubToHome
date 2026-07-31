@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 public static class SaveSchema
 {
     public const int LegacyVersion = 0;
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
 }
 
 public enum SaveDecodeFailure
@@ -157,6 +157,8 @@ public sealed class SaveDataCodec
                 sourceVersion);
         }
 
+        PrepareLegacyActionPointFields(root, sourceVersion);
+
         SaveData data;
         try
         {
@@ -194,6 +196,10 @@ public sealed class SaveDataCodec
                 case 2:
                     MigrateVersionTwoToVersionThree(data);
                     workingVersion = 3;
+                    break;
+                case 3:
+                    MigrateVersionThreeToVersionFour(data);
+                    workingVersion = 4;
                     break;
                 default:
                     return SaveDecodeResult.Failed(
@@ -269,6 +275,12 @@ public sealed class SaveDataCodec
         data.schemaVersion = 3;
     }
 
+    private static void MigrateVersionThreeToVersionFour(SaveData data)
+    {
+        data.PartyData ??= new List<CharacterSaveData>();
+        data.schemaVersion = 4;
+    }
+
     private static void Normalize(SaveData data)
     {
         data.currentScene = string.IsNullOrWhiteSpace(data.currentScene)
@@ -305,6 +317,28 @@ public sealed class SaveDataCodec
             member.CharacterDataID = NormalizeText(member.CharacterDataID);
             member.CharacterID = NormalizeText(member.CharacterID);
             member.EquippedSkillIDs = NormalizeUniqueIds(member.EquippedSkillIDs);
+            member.Level = Math.Max(1, member.Level);
+            member.EXP = Math.Max(0, member.EXP);
+            member.MaxHP = Math.Max(1, member.MaxHP);
+            member.HP = Math.Max(0, member.HP);
+            member.MaxAP = Math.Max(0, member.MaxAP);
+            member.AP = Math.Max(0, member.AP);
+            member.ATK = Math.Max(1, member.ATK);
+            member.DEF = Math.Max(0, member.DEF);
+            member.SPD = Math.Max(1, member.SPD);
+            member.Growth ??= new CharacterGrowthSaveData();
+            member.Growth.Investments ??= new CharacterStatInvestments();
+            member.Growth.SkillTreeUnlocks ??=
+                new List<SkillTreeUnlockSaveData>();
+            SkillTreeProgressionService.NormalizeUnlockRecords(
+                member.Growth.SkillTreeUnlocks,
+                null);
+            member.Growth.Investments.Clamp(GrowthBalanceProfile.DefaultMaxInvestmentRank);
+            member.Growth.AttributePointsEarned = Math.Max(
+                member.Growth.Investments.Total,
+                member.Growth.AttributePointsEarned);
+            member.Growth.SkillPointsEarned = Math.Max(0, member.Growth.SkillPointsEarned);
+            member.Growth.SkillPointsSpent = Math.Clamp(member.Growth.SkillPointsSpent, 0, member.Growth.SkillPointsEarned);
             member.UnlockedSkillIDs = NormalizeUniqueIds(member.UnlockedSkillIDs);
             member.EquippedEquipmentIDs = NormalizeEquipmentSlots(member.EquippedEquipmentIDs);
             result.Add(member);
@@ -397,6 +431,36 @@ public sealed class SaveDataCodec
         }
 
         return result;
+    }
+
+    private static void PrepareLegacyActionPointFields(
+        JObject root,
+        int sourceVersion)
+    {
+        if (root == null || sourceVersion >= 4 || root["PartyData"] is not JArray party)
+            return;
+
+        for (int i = 0; i < party.Count; i++)
+        {
+            if (party[i] is not JObject member)
+                continue;
+
+            CopyIntegerIfMissing(member, "AP", "MP");
+            CopyIntegerIfMissing(member, "MaxAP", "MaxMP");
+        }
+    }
+
+    private static void CopyIntegerIfMissing(
+        JObject source,
+        string destinationName,
+        string legacyName)
+    {
+        if (source[destinationName] != null)
+            return;
+
+        JToken legacy = source[legacyName];
+        if (legacy != null && legacy.Type == JTokenType.Integer)
+            source[destinationName] = legacy.DeepClone();
     }
 
     private static List<string> NormalizeEquipmentSlots(List<string> source)

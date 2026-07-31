@@ -65,12 +65,12 @@ internal static class SkillItemContentRules
 
             if ((item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage)
                 && item.TargetStat != TargetStatType.HP
-                && item.TargetStat != TargetStatType.MP)
+                && item.TargetStat != TargetStatType.AP)
             {
                 context.Add(
                     item,
                     "item.consumable.target_stat.invalid",
-                    "Heal or damage item must target HP or MP.");
+                    "Heal or damage item must target HP or AP.");
             }
 
             if (item.ActionType != EffectActionType.ApplyStatus)

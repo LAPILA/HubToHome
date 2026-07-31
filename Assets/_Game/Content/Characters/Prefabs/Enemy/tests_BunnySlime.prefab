@@ -117,7 +117,7 @@ GameObject:
   - component: {fileID: 4617245638870020852}
   - component: {fileID: 855793865685336371}
   m_Layer: 6
-  m_Name: BunnySlime
+  m_Name: tests_BunnySlime
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -422,7 +422,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BunnySlimeCharacter
   BaseMaxHP: 100
-  BaseMaxMP: 100
+  BaseMaxAP: 100
   BaseATK: 10
   BaseDEF: 5
   BaseSPD: 10

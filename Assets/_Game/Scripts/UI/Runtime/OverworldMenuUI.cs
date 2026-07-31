@@ -24,6 +24,7 @@ public sealed class OverworldMenuUI : UIPanel
     private const float BottomPanelHeight = 78f;
     private const float SlideDuration = 0.22f;
     private const float WindowDuration = 0.12f;
+    private const int GrowthStatCount = 5;
 
     private static readonly Color Black = new Color(0f, 0f, 0f, 0.96f);
     private static readonly Color Yellow = new Color(1f, 0.82f, 0.02f, 1f);
@@ -63,10 +64,12 @@ public sealed class OverworldMenuUI : UIPanel
     private Sequence _panelSequence;
     private bool _openOptionsAfterClose;
     private TextMeshProUGUI _equipContentLabel;
-    private TextMeshProUGUI _powerContentLabel;
+    private PowerGrowthPanelView _powerGrowthView;
     private int _categoryCharacterIndex;
     private int _equipSlotIndex;
-    private int _powerEntryIndex;
+    private int _growthStatIndex;
+    private int _skillNodeIndex;
+    private PowerGrowthTab _powerTab;
     private string _categoryStatus = string.Empty;
 
     [Serializable]
@@ -172,7 +175,11 @@ public sealed class OverworldMenuUI : UIPanel
 
         if (_isCategoryWindowOpen)
         {
-            if (GameInput.CancelPressed || GameInput.MenuPressed)
+            bool powerTabRequested = _categories[_selectedIndex] == OverworldMenuCategory.Power
+                && GameInput.PowerTabPressed;
+            if (powerTabRequested)
+                HandleCategoryWindowInput();
+            else if (GameInput.CancelPressed || GameInput.MenuPressed)
                 HideCategoryWindow();
             else
                 HandleCategoryWindowInput();
@@ -549,9 +556,16 @@ public sealed class OverworldMenuUI : UIPanel
                 continue;
 
             if (panel.Category == OverworldMenuCategory.Equip)
+            {
                 _equipContentLabel = EnsureContentLabel(panel.Panel, "EquipContent");
+            }
             else if (panel.Category == OverworldMenuCategory.Power)
-                _powerContentLabel = EnsureContentLabel(panel.Panel, "PowerContent");
+            {
+                TMP_FontAsset font = GameContentCatalog.Instance != null
+                    ? GameContentCatalog.Instance.DefaultUiFont
+                    : _categoryLabel != null ? _categoryLabel.font : null;
+                _powerGrowthView = PowerGrowthPanelView.Ensure(panel.Panel, font);
+            }
         }
     }
 
@@ -617,20 +631,98 @@ public sealed class OverworldMenuUI : UIPanel
 
     private void HandlePowerInput()
     {
-        if (GameInput.UILeftPressed || GameInput.BattleLeftPressed)
-            MoveCategoryCharacter(-1, RefreshPowerCategoryPanel);
-        else if (GameInput.UIRightPressed || GameInput.BattleRightPressed)
-            MoveCategoryCharacter(1, RefreshPowerCategoryPanel);
-        else if (GameInput.UIUpPressed || GameInput.BattleUpPressed)
+        if (GameInput.PowerPreviousCharacterPressed)
         {
-            _powerEntryIndex--;
+            MoveCategoryCharacter(-1, RefreshPowerCategoryPanel);
+            return;
+        }
+        if (GameInput.PowerNextCharacterPressed)
+        {
+            MoveCategoryCharacter(1, RefreshPowerCategoryPanel);
+            return;
+        }
+        if (GameInput.PowerTabPressed)
+        {
+            _powerTab = _powerTab == PowerGrowthTab.Stats
+                ? PowerGrowthTab.Skills
+                : PowerGrowthTab.Stats;
+            _categoryStatus = string.Empty;
+            RefreshPowerCategoryPanel();
+            return;
+        }
+        if (GameInput.PowerResetPressed)
+        {
+            ResetCurrentPowerTab();
+            return;
+        }
+
+        if (_powerTab == PowerGrowthTab.Stats)
+            HandleGrowthStatsInput();
+        else
+            HandleSkillTreeInput();
+    }
+
+    private void HandleGrowthStatsInput()
+    {
+        if (GameInput.UIUpPressed || GameInput.BattleUpPressed)
+        {
+            _growthStatIndex = (_growthStatIndex - 1 + GrowthStatCount) % GrowthStatCount;
+            _categoryStatus = string.Empty;
             RefreshPowerCategoryPanel();
         }
         else if (GameInput.UIDownPressed || GameInput.BattleDownPressed)
         {
-            _powerEntryIndex++;
+            _growthStatIndex = (_growthStatIndex + 1) % GrowthStatCount;
+            _categoryStatus = string.Empty;
             RefreshPowerCategoryPanel();
         }
+        else if (GameInput.UILeftPressed || GameInput.BattleLeftPressed)
+        {
+            RefundSelectedGrowthStat();
+        }
+        else if (GameInput.UIRightPressed
+            || GameInput.BattleRightPressed
+            || GameInput.ConfirmPressed
+            || GameInput.UISubmitPressed)
+        {
+            InvestSelectedGrowthStat();
+        }
+    }
+
+    private void HandleSkillTreeInput()
+    {
+        GlobalDataManager global = ResolveGlobalData();
+        CharacterSaveData member = GetSelectedPartyMember(global);
+        CharacterData data = member != null
+            ? CharacterDatabase.FindById(member.CharacterDataID)
+            : null;
+        List<SkillTreeNodeView> nodes = SkillTreeProgressionService.BuildViews(member, data);
+        if (nodes.Count == 0)
+            return;
+
+        Vector2 direction = Vector2.zero;
+        if (GameInput.UIUpPressed || GameInput.BattleUpPressed)
+            direction = Vector2.up;
+        else if (GameInput.UIDownPressed || GameInput.BattleDownPressed)
+            direction = Vector2.down;
+        else if (GameInput.UILeftPressed || GameInput.BattleLeftPressed)
+            direction = Vector2.left;
+        else if (GameInput.UIRightPressed || GameInput.BattleRightPressed)
+            direction = Vector2.right;
+
+        if (direction.sqrMagnitude > 0f)
+        {
+            _skillNodeIndex = SkillTreeProgressionService.FindDirectionalNodeIndex(
+                nodes,
+                _skillNodeIndex,
+                direction);
+            _categoryStatus = string.Empty;
+            RefreshPowerCategoryPanel();
+            return;
+        }
+
+        if (GameInput.ConfirmPressed || GameInput.UISubmitPressed)
+            ActivateSelectedSkillNode(global, member, nodes);
     }
 
     private void MoveCategoryCharacter(int delta, Action refresh)
@@ -641,7 +733,8 @@ public sealed class OverworldMenuUI : UIPanel
             return;
 
         _categoryCharacterIndex = (_categoryCharacterIndex + delta + count) % count;
-        _powerEntryIndex = 0;
+        _growthStatIndex = 0;
+        _skillNodeIndex = 0;
         _categoryStatus = string.Empty;
         refresh?.Invoke();
     }
@@ -681,7 +774,7 @@ public sealed class OverworldMenuUI : UIPanel
         }
 
         text.Append("\nHP ").Append(member.MaxHP + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusMaxHP));
-        text.Append("  MP ").Append(member.MaxMP + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusMaxMP));
+        text.Append("  AP ").Append(member.MaxAP + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusMaxAP));
         text.Append("  ATK ").Append(member.ATK + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusATK));
         text.Append("  DEF ").Append(member.DEF + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusDEF));
         text.Append("  SPD ").Append(member.SPD + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusSPD));
@@ -735,61 +828,146 @@ public sealed class OverworldMenuUI : UIPanel
 
     private void RefreshPowerCategoryPanel()
     {
-        if (_powerContentLabel == null)
+        if (_powerGrowthView == null)
             return;
 
         GlobalDataManager global = ResolveGlobalData();
         CharacterSaveData member = GetSelectedPartyMember(global);
         if (member == null)
         {
-            _powerContentLabel.text = "능력을 확인할 파티원이 없습니다.";
+            _powerGrowthView.RenderEmpty("능력을 확인할 파티원이 없습니다.");
             return;
         }
 
         CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
-        List<CharacterPowerView> powers = PowerProgressionService.BuildViews(member, data);
-        _powerEntryIndex = powers.Count > 0
-            ? (_powerEntryIndex % powers.Count + powers.Count) % powers.Count
+        CharacterGrowthService.EnsureInitialized(member, data);
+        SkillTreeProgressionService.Synchronize(member, data);
+        List<SkillTreeNodeView> nodes = SkillTreeProgressionService.BuildViews(member, data);
+        _growthStatIndex = Mathf.Clamp(_growthStatIndex, 0, GrowthStatCount - 1);
+        _skillNodeIndex = nodes.Count > 0
+            ? Mathf.Clamp(_skillNodeIndex, 0, nodes.Count - 1)
             : 0;
-        int required = CharacterProgressionService.ExperienceRequiredForNextLevel(data, member.Level);
 
-        var text = new StringBuilder(512);
-        text.Append("<color=#FFD105>").Append(GetPartyDisplayName(member)).Append("</color>");
-        text.Append("   ◀ 파티원 ▶\n");
-        text.Append("LV ").Append(Mathf.Max(1, member.Level));
-        text.Append("   EXP ").Append(Mathf.Max(0, member.EXP)).Append(" / ").Append(required).Append("\n\n");
+        _powerGrowthView.Render(
+            GetPartyDisplayName(member),
+            member,
+            data,
+            _powerTab,
+            _growthStatIndex,
+            nodes,
+            _skillNodeIndex,
+            _categoryStatus);
+    }
 
-        if (powers.Count == 0)
+    private void InvestSelectedGrowthStat()
+    {
+        GlobalDataManager global = ResolveGlobalData();
+        CharacterSaveData member = GetSelectedPartyMember(global);
+        if (global == null || member == null)
+            return;
+
+        GrowthStat stat = (GrowthStat)Mathf.Clamp(_growthStatIndex, 0, GrowthStatCount - 1);
+        GrowthInvestmentResult result = global.TryInvestGrowthStat(member, stat);
+        _categoryStatus = GrowthStatusMessage(result.Status, stat, true);
+        CompletePowerMutation(member, result.Succeeded);
+    }
+
+    private void RefundSelectedGrowthStat()
+    {
+        GlobalDataManager global = ResolveGlobalData();
+        CharacterSaveData member = GetSelectedPartyMember(global);
+        if (global == null || member == null)
+            return;
+
+        GrowthStat stat = (GrowthStat)Mathf.Clamp(_growthStatIndex, 0, GrowthStatCount - 1);
+        bool changed = global.TryRefundGrowthStat(member, stat);
+        _categoryStatus = changed
+            ? GrowthStatName(stat) + " 1단계 반환"
+            : "반환할 투자 포인트가 없습니다.";
+        CompletePowerMutation(member, changed);
+    }
+
+    private void ResetCurrentPowerTab()
+    {
+        GlobalDataManager global = ResolveGlobalData();
+        CharacterSaveData member = GetSelectedPartyMember(global);
+        if (global == null || member == null)
+            return;
+
+        if (_powerTab == PowerGrowthTab.Stats)
         {
-            text.Append("등록된 POWER가 없습니다.");
+            bool accepted = global.TryResetGrowthStats(member, out int refunded);
+            bool changed = accepted && refunded > 0;
+            _categoryStatus = changed
+                ? "능력치 포인트 " + refunded + " 반환"
+                : "초기화할 능력치 투자가 없습니다.";
+            CompletePowerMutation(member, changed);
+            return;
         }
-        else
+
+        SkillTreeActionResult result = global.TryResetSkillTree(member);
+        _categoryStatus = result.Message;
+        CompletePowerMutation(member, result.Succeeded);
+    }
+
+    private void ActivateSelectedSkillNode(
+        GlobalDataManager global,
+        CharacterSaveData member,
+        IReadOnlyList<SkillTreeNodeView> nodes)
+    {
+        if (global == null || member == null || nodes == null || nodes.Count == 0)
+            return;
+
+        SkillTreeNodeView selected = nodes[Mathf.Clamp(_skillNodeIndex, 0, nodes.Count - 1)];
+        string nodeId = selected.Definition.ResolveId();
+        SkillTreeActionResult result = selected.IsUnlocked
+            ? global.TryToggleSkillEquipped(member, nodeId)
+            : global.TryUnlockSkillTreeNode(member, nodeId);
+        _categoryStatus = result.Message;
+        CompletePowerMutation(member, result.Succeeded);
+    }
+
+    private void CompletePowerMutation(CharacterSaveData member, bool succeeded)
+    {
+        if (succeeded)
         {
-            for (int i = 0; i < powers.Count; i++)
-            {
-                CharacterPowerView power = powers[i];
-                bool selected = i == _powerEntryIndex;
-                if (selected)
-                    text.Append("<color=#FFD105>▶ ");
-                else
-                    text.Append("  ");
-
-                text.Append(power.Unlocked ? "[OPEN] " : $"[LV {power.RequiredLevel}] ");
-                text.Append(power.Name);
-                if (power.Equipped)
-                    text.Append("  E");
-                if (selected)
-                    text.Append("</color>");
-                text.Append('\n');
-            }
-
-            CharacterPowerView selectedPower = powers[_powerEntryIndex];
-            if (!string.IsNullOrWhiteSpace(selectedPower.Description))
-                text.Append("\n").Append(selectedPower.Description);
+            RefreshRuntimePartyMember(member);
+            RebuildPartyPanel();
         }
 
-        text.Append("\n<color=#8F779B>↑↓ 능력  X 뒤로</color>");
-        _powerContentLabel.text = text.ToString();
+        RefreshPowerCategoryPanel();
+        _powerGrowthView?.PlayActionPulse(succeeded);
+    }
+
+    private static string GrowthStatusMessage(
+        GrowthInvestmentStatus status,
+        GrowthStat stat,
+        bool investing)
+    {
+        if (status == GrowthInvestmentStatus.Success)
+            return GrowthStatName(stat) + (investing ? " 1단계 투자" : " 1단계 반환");
+
+        return status switch
+        {
+            GrowthInvestmentStatus.InsufficientPoints => "사용 가능한 능력치 포인트가 없습니다.",
+            GrowthInvestmentStatus.RankCapReached => "해당 능력치가 최대 단계입니다.",
+            GrowthInvestmentStatus.MutationLocked => "전투 중에는 성장 설정을 변경할 수 없습니다.",
+            GrowthInvestmentStatus.InvalidCharacter => "캐릭터 정보를 찾을 수 없습니다.",
+            _ => "능력치를 변경하지 못했습니다."
+        };
+    }
+
+    private static string GrowthStatName(GrowthStat stat)
+    {
+        return stat switch
+        {
+            GrowthStat.Vitality => "생명력",
+            GrowthStat.Attack => "공격력",
+            GrowthStat.Defense => "방어력",
+            GrowthStat.Speed => "속도",
+            GrowthStat.ActionPoints => "행동력",
+            _ => "능력치"
+        };
     }
 
     private CharacterSaveData GetSelectedPartyMember(GlobalDataManager global)

@@ -1,0 +1,116 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: tests_Skill_PressureRelease
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  SkillName: "압력 해방"
+  SkillID: tests_player.pressure_release
+  Description: "축적한 모든 증기압을 한 점에 집중해 거대한 충격으로 방출하는 시험용 필살기."
+  UsageProfile: 1
+  APCost: 40
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 910000000039363601
+  - rid: 910000000039363602
+  - rid: 910000000039363603
+  - rid: 910000000039363604
+  - rid: 910000000039363605
+  - rid: 910000000039363606
+  - rid: 910000000039363607
+  - rid: 910000000039363608
+  - rid: 910000000039363609
+  - rid: 910000000039363610
+  - rid: 910000000039363611
+  - rid: 910000000039363612
+  references:
+    version: 2
+    RefIds:
+    - rid: 910000000039363601
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 3
+        Duration: 0.18
+        MoveEase: 6
+    - rid: 910000000039363602
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
+        Pivot: 0
+        UseActorRotation: 0
+    - rid: 910000000039363603
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        TimeLimit: 1.35
+        SuccessMultiplier: 1.65
+        FailMultiplier: 0.5
+        Nodes:
+          - PosX: 0.34
+            PosY: 0.66
+            TargetKey: z
+          - PosX: 0.52
+            PosY: 0.58
+            TargetKey: x
+          - PosX: 0.69
+            PosY: 0.68
+            TargetKey: c
+    - rid: 910000000039363604
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 2
+        Duration: 0.22
+        MoveEase: 6
+    - rid: 910000000039363605
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        WaitTime: 0.12
+    - rid: 910000000039363606
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 5
+        Duration: 0.08
+        MoveEase: 17
+    - rid: 910000000039363607
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        AnimTriggerName: Attack
+        DelayAfter: 0
+    - rid: 910000000039363608
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: 3ff9ac3abf5e96848b6b1d3f52f12a13, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 910000000039363609
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: c6d8472fd2a44b24c90abc54bb1ee63f, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 910000000039363610
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: a92d3e7dae3e14040994a16acae887e0, type: 3}
+        Pivot: 3
+        UseActorRotation: 0
+    - rid: 910000000039363611
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 3.8
+        ShakeCamera: 1
+    - rid: 910000000039363612
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 4
+        Duration: 0.28
+        MoveEase: 6

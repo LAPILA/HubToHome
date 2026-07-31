@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
 public enum EquipmentSlot
@@ -25,13 +26,20 @@ public class EquipmentData : SerializedScriptableObject
 
     [BoxGroup("Stat Bonuses")] 
     [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxHP = 0;
-    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxMP = 0;
+    [FormerlySerializedAs("BonusMaxMP")]
+    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxAP = 0;
     
     [BoxGroup("Stat Bonuses")] 
     [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusATK   = 0;
     [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusDEF   = 0;
     [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusSPD   = 0;
 
+    [System.Obsolete("Use BonusMaxAP.")]
+    public int BonusMaxMP
+    {
+        get => BonusMaxAP;
+        set => BonusMaxAP = value;
+    }
     // ── 🚨 추가됨: 상태이상 방어(내성) 보너스 ──
     [BoxGroup("Resistances (상태이상 방어력)")]
     [InfoBox("음수(-)를 넣으면 해당 상태이상에 걸릴 확률이나 데미지가 감소합니다. (예: Burn -50 = 화상 확률 50% 감소)")]

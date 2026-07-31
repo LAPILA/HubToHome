@@ -18,7 +18,7 @@ public class BattleTurnQteModuleControllerServiceTests
             RecordingSkillActionBlock.Reset();
             SkillData skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "player_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock { Disabled = true });
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
@@ -48,7 +48,7 @@ public class BattleTurnQteModuleControllerServiceTests
             RecordingSkillActionBlock.Reset();
             SkillData skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "camera_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
 
@@ -80,7 +80,7 @@ public class BattleTurnQteModuleControllerServiceTests
         {
             skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "interrupt_camera_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
 
@@ -139,7 +139,7 @@ public class BattleTurnQteModuleControllerServiceTests
             RecordingSkillActionBlock.Reset();
             SkillData skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "enemy_camera_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
 
@@ -353,7 +353,7 @@ public class BattleTurnQteModuleControllerServiceTests
             playerData.DisplayName = "Player";
             Player.SetCharacterData(playerData);
             Player.HealHP(Player.MaxHP);
-            Player.HealMP(Player.MaxMP);
+            Player.RestoreAP(Player.MaxAP);
             _assets.Add(playerData);
 
             _enemyObject = new GameObject("Enemy");
@@ -433,8 +433,8 @@ public class BattleTurnQteModuleControllerServiceTests
         public IDictionary<EnemyCharacter, BattleQueuedEnemyAction> ReservedEnemyActions => _reserved;
         public WaitForSeconds WaitShort => _waitShort;
         public int MaxTurnQueueSize => 8;
-        public int MpPerTurn => 5;
-        public int MpOnParryPerfect => 20;
+        public int ApPerTurn => 5;
+        public int ApOnParryPerfect => 20;
         public float EnemyDefenseQteWindow => 0.8f;
         public float EnemyAttackVisualDuration => 0f;
         public float EnemyPostHitDelay => 0f;
@@ -519,7 +519,7 @@ public class BattleTurnQteModuleControllerServiceTests
         {
             SawActiveCameraDuringDamage |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
         }
-        public void EmitMpChanged(PlayerCharacter player, int newMp) { }
+        public void EmitApChanged(PlayerCharacter player, int newMp) { }
         public void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) { }
         public void EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical) { }
         public void EmitMiss(CharacterBase source, CharacterBase target) { }

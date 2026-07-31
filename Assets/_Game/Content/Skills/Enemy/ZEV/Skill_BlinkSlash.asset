@@ -18,7 +18,7 @@ MonoBehaviour:
   Description: "\uC21C\uAC04\uC774\uB3D9\uCC98\uB7FC \uD30C\uACE0\uB4DC\uB294 \uACE0\uC18D
     \uCC38\uACA9"
   UsageProfile: 2
-  MPCost: 0
+  APCost: 0
   TargetType: 1
   IsAoE: 0
   ActionTimeline:

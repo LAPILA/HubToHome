@@ -134,8 +134,8 @@ public sealed class BattleResultUILifecycleTests
             () => title.text == "LEVEL UP" && rewards.text.Contains("hero-a"),
             "첫 번째 레벨업 페이지로 진행되지 않았습니다.");
         Assert.That(view.gameObject.activeSelf, Is.True);
-        Assert.That(details.text, Does.Contain("HP +5"));
-        Assert.That(details.text, Does.Contain("ATK +2"));
+        Assert.That(details.text, Does.Contain("ATTRIBUTE POINT +5"));
+        Assert.That(details.text, Does.Contain("SKILL POINT +2"));
 
         pollCount = input.PollCount;
         yield return WaitUntilOrFail(
@@ -275,16 +275,16 @@ public sealed class BattleResultUILifecycleTests
         string characterId,
         int previousLevel,
         int newLevel,
-        int hpGain,
-        int attackGain)
+        int attributePointGain,
+        int skillPointGain)
     {
         return new CharacterLevelUpResult
         {
             CharacterDataId = characterId,
             PreviousLevel = previousLevel,
             NewLevel = newLevel,
-            MaxHpGained = hpGain,
-            AttackGained = attackGain
+            AttributePointsGained = attributePointGain,
+            SkillPointsGained = skillPointGain
         };
     }
 

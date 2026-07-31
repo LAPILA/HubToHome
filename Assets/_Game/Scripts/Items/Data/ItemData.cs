@@ -3,7 +3,7 @@ using Sirenix.OdinInspector;
 
 // ── [모든 데이터가 공유하는 공용 Enum] ──
 public enum EffectActionType { None, Heal, Damage, ApplyStatus }
-public enum TargetStatType   { None, HP, MP }
+public enum TargetStatType   { None = 0, HP = 1, AP = 2 }
 public enum ValueCalcType    { Flat, Percentage, Full } 
 public enum ItemType         { Consumable, KeyItem, Equipment }
 public enum TargetAreaType   { AllyOnly, EnemyOnly, Both, AoEAll }

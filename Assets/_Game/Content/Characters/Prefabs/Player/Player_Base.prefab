@@ -330,7 +330,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacter
   BaseMaxHP: 100
-  BaseMaxMP: 100
+  BaseMaxAP: 100
   BaseATK: 10
   BaseDEF: 5
   BaseSPD: 10
