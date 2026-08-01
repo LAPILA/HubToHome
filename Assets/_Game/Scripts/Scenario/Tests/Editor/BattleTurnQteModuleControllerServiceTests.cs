@@ -18,7 +18,7 @@ public class BattleTurnQteModuleControllerServiceTests
             RecordingSkillActionBlock.Reset();
             SkillData skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "player_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock { Disabled = true });
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
@@ -48,7 +48,7 @@ public class BattleTurnQteModuleControllerServiceTests
             RecordingSkillActionBlock.Reset();
             SkillData skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "camera_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
 
@@ -80,7 +80,7 @@ public class BattleTurnQteModuleControllerServiceTests
         {
             skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "interrupt_camera_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
 
@@ -139,7 +139,7 @@ public class BattleTurnQteModuleControllerServiceTests
             RecordingSkillActionBlock.Reset();
             SkillData skill = ScriptableObject.CreateInstance<SkillData>();
             skill.SkillID = "enemy_camera_slash";
-            skill.MPCost = 0;
+            skill.APCost = 0;
             skill.TargetType = TargetAreaType.EnemyOnly;
             skill.ActionTimeline.Add(new RecordingSkillActionBlock());
 
@@ -197,6 +197,29 @@ public class BattleTurnQteModuleControllerServiceTests
             Assert.That(
                 fixture.CameraController.VirtualCamera.Follow,
                 Is.EqualTo(fixture.PositionManager.transform));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void RunEnemyAction_WaitOnlyShowsNarrationAndCompletesTurn()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.QueueEnemyAction(EnemyAction.Wait);
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            RunToCompletion(service.RunEnemyAction());
+
+            Assert.That(fixture.Host.NarrationRequests, Is.EqualTo(1));
+            Assert.That(fixture.Host.LastNarration.Text, Is.EqualTo("ZEV은 가만히 있다..."));
+            Assert.That(fixture.Host.EnemyActionNotifications, Is.Zero);
+            Assert.That(fixture.Host.SawActiveCameraDuringEnemyMove, Is.False);
+            Assert.That(fixture.Host.SawActiveCameraDuringDamage, Is.False);
         }
         finally
         {
@@ -330,7 +353,7 @@ public class BattleTurnQteModuleControllerServiceTests
             playerData.DisplayName = "Player";
             Player.SetCharacterData(playerData);
             Player.HealHP(Player.MaxHP);
-            Player.HealMP(Player.MaxMP);
+            Player.RestoreAP(Player.MaxAP);
             _assets.Add(playerData);
 
             _enemyObject = new GameObject("Enemy");
@@ -410,8 +433,8 @@ public class BattleTurnQteModuleControllerServiceTests
         public IDictionary<EnemyCharacter, BattleQueuedEnemyAction> ReservedEnemyActions => _reserved;
         public WaitForSeconds WaitShort => _waitShort;
         public int MaxTurnQueueSize => 8;
-        public int MpPerTurn => 5;
-        public int MpOnParryPerfect => 20;
+        public int ApPerTurn => 5;
+        public int ApOnParryPerfect => 20;
         public float EnemyDefenseQteWindow => 0.8f;
         public float EnemyAttackVisualDuration => 0f;
         public float EnemyPostHitDelay => 0f;
@@ -430,6 +453,9 @@ public class BattleTurnQteModuleControllerServiceTests
 
         public bool SawActiveCameraDuringEnemyMove { get; private set; }
         public bool SawActiveCameraDuringDamage { get; private set; }
+        public int NarrationRequests { get; private set; }
+        public int EnemyActionNotifications { get; private set; }
+        public BattleNarrationMessage LastNarration { get; private set; }
 
         public void QueueEnemyAction(EnemyAction action)
         {
@@ -454,9 +480,16 @@ public class BattleTurnQteModuleControllerServiceTests
         public IEnumerator WaitForNarrationToFinish() { yield break; }
         public void TryRequestFlavorNarration() { }
         public void NotifyPlayerTurnStarted(PlayerCharacter player) { }
-        public void NotifyEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType) { }
+        public void NotifyEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType)
+        {
+            EnemyActionNotifications++;
+        }
         public void NotifyTargetSelectionStarted(PlayerMenuAction action) { }
-        public void RequestNarration(BattleNarrationMessage message) { }
+        public void RequestNarration(BattleNarrationMessage message)
+        {
+            NarrationRequests++;
+            LastNarration = message;
+        }
         public IEnumerator RunAwayRoutine() { yield break; }
         public void ClearTurnQtePendingActionState() { PendingSkill = null; PendingItem = null; PendingAction = default; }
         public Coroutine StartManagedCoroutine(IEnumerator routine)
@@ -482,8 +515,14 @@ public class BattleTurnQteModuleControllerServiceTests
             SawActiveCameraDuringDamage |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
         }
         public void EmitDamage(CharacterBase target, int damage, bool isPerfect, int previousHp) { }
-        public void EmitMpChanged(PlayerCharacter player, int newMp) { }
+        public void EmitDamage(CharacterBase source, CharacterBase target, int damage, bool isCritical)
+        {
+            SawActiveCameraDuringDamage |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
+        }
+        public void EmitApChanged(PlayerCharacter player, int newMp) { }
         public void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) { }
+        public void EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical) { }
+        public void EmitMiss(CharacterBase source, CharacterBase target) { }
         public void PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing) { }
         public void PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor) { }
         public void PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor) { }

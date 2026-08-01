@@ -12,6 +12,8 @@
 ## 조작
 - 이동: 방향키/WASD.
 - 확인/상호작용: Z.
+- 공용 게임플레이 카메라 리그는 `Assets/_Game/Core/Prefabs/Camera/GameplayCameraRig.prefab`을 사용한다.
+- 리그는 실제 Camera, Cinemachine Brain, Pixel Perfect 32 PPU/640x480, 기본 Cinemachine Camera, Follow, Impulse, `CameraController`를 소유한다.
 - 취소: X.
 - 메뉴: C.
 - 방향값: 0 Down, 1 Up, 2 Left, 3 Right.
@@ -36,6 +38,9 @@
 - Room과 Map의 플레이어 Follow·Confiner 설정은 `OverworldCameraBinding`을 사용한다. 이 바인더는 `CameraController.VirtualCamera`만 변경한다.
 - 게임플레이 카메라를 `FindFirstObjectByType<CinemachineCamera>()`로 찾거나 Follow를 직접 쓰지 않는다. 같은 Scene에 시네마틱용 카메라가 있을 수 있다.
 
+- 게임플레이 맵과 전투 씬에 실제 Camera 또는 `CameraController` 계층을 복제하지 말고 공용 리그 프리팹 인스턴스를 둔다.
+- 씬은 Player Follow, Confiner Bounds, 배경색처럼 씬에 속한 참조와 표현만 Prefab Override로 소유한다.
+- 컷신은 공용 리그에 실제 Camera를 추가하지 않고 우선순위가 높은 별도 Cinemachine Camera를 사용한다.
 ## 주의점
 - `InteractionSystem`은 현재 `FindFirstObjectByType<PlayerController>()`를 매 프레임 호출하므로, 나중에 캐싱 개선 여지가 있다.
 - `AreaTrigger`의 `DestroyOnVictory`는 현재 전투 시작 직후 Destroy되는 구조라 이름과 실제 동작 차이가 있다.

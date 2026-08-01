@@ -43,6 +43,8 @@ public class DoorTransition : InteractableBase
 
     public override bool CanInteract(PlayerController player)
     {
+        if (!base.CanInteract(player)) return false;
+
         if (_activationMode == DoorActivationMode.OnTriggerEnter) return false;
         return player != null && (_isPlayerInside || _activationMode == DoorActivationMode.OnInteract);
     }
@@ -55,6 +57,8 @@ public class DoorTransition : InteractableBase
 
     private void TryRequestTransition(PlayerController player)
     {
+        if (!OverworldActionGate.AllowsWorldActions) return;
+
         if (Time.unscaledTime < _nextAllowedTransitionTime) return;
         if (_oneShotUntilExit && _usedWhileInside) return;
         if (_request == null)

@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: travel_train_departure
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: travel_train.departure
+  DisplayNameKo: "\uACF5\uC6A9 \uC5F4\uCC28 - \uCD9C\uBC1C"
+  Contract:
+    DescriptionKo: "\uCC3D\uBC16\uC758 \uD750\uB984\uACFC \uCE74\uBA54\uB77C \uC774\uB3D9\uC73C\uB85C
+      \uC815\uB958\uC18C \uC0AC\uC774 \uCD9C\uBC1C\uC744 \uD45C\uD604\uD55C\uB2E4."
+    UsageKo: "\uC5F4\uCC28 \uB0B4\uBD80 \uBAA9\uC801\uC9C0 \uC7A5\uCE58\uB97C \uC120\uD0DD\uD55C
+      \uB4A4 \uC7AC\uC0DD\uD55C\uB2E4."
+    Lifecycle: 1
+    Tags:
+    - overworld
+    - cinematic
+    - travel
+    - train
+    AllowedPrimaryModes:
+    - overworld
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/TravelTrain/travel_train_departure.sequence.yaml
+    SourceHash: 611f8cc35c3e3c8566ca802165ab15956590ee03bb28643a1ca3decf60db263a
+    ImportedAtIso8601: 2026-07-27T05:42:24.6579000Z
+  Actions:
+  - BlockId: 8c2e7f9d04b14be6a6e385c6afce0a11
+    DesignerLabel: "\uC5F4\uCC28 \uCD9C\uBC1C Stage \uC900\uBE44"
+    ActionId: cinematic.stage.prepare
+    ParametersJson: '{"stage":"travel_train.departure","shot":"travel_train.departure.run"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 92c47ed4c1df4e4a88c30ce167ab1c22
+    DesignerLabel: "\uCC3D\uBC16 \uC774\uB3D9 \uC0F7"
+    ActionId: cinematic.shot.play
+    ParametersJson: '{"stage":"travel_train.departure","shot":"travel_train.departure.run"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: d41a9c6f30c6463ba8517f718c5ab933
+    DesignerLabel: "\uC5F4\uCC28 \uCD9C\uBC1C Stage \uD574\uC81C"
+    ActionId: cinematic.stage.release
+    ParametersJson: '{"stage":"travel_train.departure"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

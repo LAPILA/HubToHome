@@ -21,7 +21,7 @@ public interface IBattleParticipantCommandHost
 
     void EmitParticipantHealed(CharacterBase target, int healedAmount);
 
-    void EmitParticipantMpChanged(PlayerCharacter player, int newMp);
+    void EmitParticipantApChanged(PlayerCharacter player, int newAp);
 }
 
 public interface IBattleCinematicHost
@@ -116,9 +116,9 @@ public interface IBattleTurnQteHost
 
     int MaxTurnQueueSize { get; }
 
-    int MpPerTurn { get; }
+    int ApPerTurn { get; }
 
-    int MpOnParryPerfect { get; }
+    int ApOnParryPerfect { get; }
 
     float EnemyDefenseQteWindow { get; }
 
@@ -190,9 +190,15 @@ public interface IBattleTurnQteHost
 
     void EmitDamage(CharacterBase target, int damage, bool isPerfect, int previousHp);
 
-    void EmitMpChanged(PlayerCharacter player, int newMp);
+    void EmitDamage(CharacterBase source, CharacterBase target, int damage, bool isCritical);
+
+    void EmitApChanged(PlayerCharacter player, int newAp);
 
     void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect);
+
+    void EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical);
+
+    void EmitMiss(CharacterBase source, CharacterBase target);
 
     void PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing);
 

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d55bc05f911349819ca577a6a4a16336, type: 3}
+  m_Name: QA_Shop_DebugInventory
+  m_EditorClassIdentifier: Assembly-CSharp::ShopDefinition
+  _shopId: qa_shop_debug_inventory
+  _displayName: QA Buy / Sell Counter
+  _entries:
+  - _entryId: debug_tonic
+    _item: {fileID: 11400000, guid: ef7525fcdb1df8741a6823ab8041d953, type: 2}
+    _price: 10
+    _quantity: 1
+    _purchaseLimit: 0
+    _purchaseCounterFlag: qa.testmap.shop.debug_tonic.purchases

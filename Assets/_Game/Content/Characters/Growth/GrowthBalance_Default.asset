@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b74d25eeead41ea928ab624412a1315, type: 3}
+  m_Name: GrowthBalance_Default
+  m_EditorClassIdentifier: Assembly-CSharp::GrowthBalanceProfile
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  MaxLevel: 99
+  MaxInvestmentRank: 99
+  AttributePointsPerLevel: 3
+  SkillPointsPerLevel: 1
+  BaseExperienceToLevel: 100
+  ExperienceGrowth: 1.18
+  HealthPerVitalityRank: 10
+  AttackPerRank: 1
+  DefensePerRank: 1
+  SpeedPerRank: 1
+  ActionPointsPerRank: 1

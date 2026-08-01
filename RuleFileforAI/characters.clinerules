@@ -5,6 +5,8 @@
 - `CharacterBase`: common stats, HP/MP, damage, healing, status effects, loop VFX.
 - `PlayerCharacter`: level, EXP, equipment, skills, global party save bridge.
 - `EnemyCharacter`: `EnemyData` setup, AI action selection, hit/death presentation.
+- `EnemyData.Prefab`: 오버월드 배치와 전투 생성에서 함께 사용하는 공용 적 프리팹.
+- 전투 복제본은 `BattleManager`가 `OverworldEnemy.DisableForBattleInstance()`로 오버월드 동작만 비활성화한다.
 - `StatusEffect`: burn, poison, freeze, bind, stun, berserk, stat modifier, and related effects.
 - `EnemyData.EnemyId`: stable scenario/battle-rule ID for enemies. Display name is not the scenario identity.
 
@@ -21,6 +23,10 @@
 - Preserve existing animator trigger names unless a deliberate migration is documented.
 - New enemies should use `EnemyData` plus `EnemyCharacter.Setup()`.
 - New enemies that can appear in Scenario Source or Battle Event Rules must set `EnemyData.EnemyId`.
+- 적 프리팹은 기본적으로 하나만 만들고 `_Overworld`, `_Battle` 변형으로 분리하지 않는다.
+- 오버월드와 전투에서 같은 SpriteRenderer, Animator, Collider, Pivot 계층을 사용한다.
+- 모드별 표현 차이가 필요하면 별도 프리팹 대신 데이터, Animator 상태 또는 Presentation 컴포넌트로 명시적으로 설계한다.
+- `EnemyData.Prefab`에는 `EnemyCharacter`가 반드시 있어야 하며, 오버월드 조우가 필요하면 같은 루트에 `OverworldEnemy`를 둔다.
 - New player/ally data should preserve save compatibility.
 - Item and status-effect changes must stay aligned with `ItemData`, `InventoryManager`, `BattleManager.ExecuteItemEffect()`, and any future status factory.
 - If adding a new status effect, document creation path and application path.

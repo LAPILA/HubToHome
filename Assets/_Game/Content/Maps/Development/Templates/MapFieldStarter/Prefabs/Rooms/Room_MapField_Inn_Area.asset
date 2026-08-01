@@ -1,0 +1,138 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aca8f2575afc9243be1cd531a8c1373, type: 3}
+  m_Name: Room_MapField_Inn_Area
+  m_EditorClassIdentifier: Assembly-CSharp::AreaDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _markerSummaries
+      Entry: 7
+      Data: 0|System.Collections.Generic.List`1[[AreaMarkerSummaryEntry, Assembly-CSharp]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: 1|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.inn.inn.keeper
+    - Name: MarkerType
+      Entry: 3
+      Data: 6
+    - Name: DisplayName
+      Entry: 1
+      Data: inn.keeper
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.inn
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Inn/Marker_inn.keeper
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 2|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.inn.inn.save_crystal
+    - Name: MarkerType
+      Entry: 3
+      Data: 9
+    - Name: DisplayName
+      Entry: 1
+      Data: inn.save_crystal
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.inn
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Inn/Marker_inn.save_crystal
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 3|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.inn.inn.table_item
+    - Name: MarkerType
+      Entry: 3
+      Data: 7
+    - Name: DisplayName
+      Entry: 1
+      Data: inn.table_item
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.inn
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Inn/Marker_inn.table_item
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 4|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_0_-2.2
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Inn/Door
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+  _areaId: mapfield.inn
+  _roomDefinition: {fileID: 11400000, guid: c95e511b0ab2fad46bb4ee5b0aac86d3, type: 2}
+  _description: 

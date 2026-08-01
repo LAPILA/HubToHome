@@ -1,0 +1,54 @@
+id: showcase.station.intro
+title: "쇼케이스 역 - 도착"
+primaryMode: overworld
+openingModule: ""
+memoryKey: ""
+
+participants:
+  party: []
+  enemies: []
+
+sequences:
+  showcase.station.intro:
+    title: "쇼케이스 역 - 도착"
+    description: "멈춘 열차와 승강장을 공개하고 첫 안내 대화를 재생한다."
+    usage: "Showcase Station 첫 진입에서 한 번 실행한다."
+    status: ready
+    tags: [overworld, cinematic, showcase]
+    allowedPrimaryModes: [overworld]
+    - cinematic.stage.prepare:
+      blockId: 6e2fa7c4c72f4f02974fde6958804801
+      designerLabel: "도착 Stage 준비"
+      stage: showcase.station.intro
+      shot: showcase.station.intro.train
+    - screen.fade:
+      blockId: 0b80eb81f5c34cbf9845d203b7d6221a
+      designerLabel: "승강장 공개"
+      mode: in
+      color: black
+      duration: 0.7
+    - cinematic.shot.play:
+      blockId: d52ece5cc8f74e7b8f32bd73e9370b2a
+      designerLabel: "멈춘 열차 도착 샷"
+      stage: showcase.station.intro
+      shot: showcase.station.intro.train
+    - dialogue.wait:
+      blockId: bd6488415f614245b90dbd74bc65bd99
+      designerLabel: "도착 안내 대화"
+      id: showcase.station.intro.arrival
+    - screen.fade:
+      blockId: f82e4db9ad41411a8662429f4f133b0e
+      designerLabel: "게임 카메라 전환 가리기"
+      mode: out
+      color: black
+      duration: 0.25
+    - cinematic.stage.release:
+      blockId: d15d5e9d1b61494397bcbaf1102c5dd3
+      designerLabel: "도착 Stage 해제"
+      stage: showcase.station.intro
+    - screen.fade:
+      blockId: 45d0d348eb2a44738765075dbddae461
+      designerLabel: "플레이 화면 복귀"
+      mode: in
+      color: black
+      duration: 0.35

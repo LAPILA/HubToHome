@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: tests_Skill_SteamThrust
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  SkillName: "증기 찌르기"
+  SkillID: tests_player.steam_thrust
+  Description: "상대 뒤로 압력을 흘린 뒤 정면으로 되받아치는 고속 찌르기."
+  UsageProfile: 1
+  APCost: 14
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 910000000012078201
+  - rid: 910000000012078202
+  - rid: 910000000012078203
+  - rid: 910000000012078204
+  - rid: 910000000012078205
+  - rid: 910000000012078206
+  - rid: 910000000012078207
+  references:
+    version: 2
+    RefIds:
+    - rid: 910000000012078201
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 1
+        Duration: 0.18
+        MoveEase: 17
+    - rid: 910000000012078202
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        TimeLimit: 1
+        SuccessMultiplier: 1.5
+        FailMultiplier: 0.7
+        Nodes:
+          - PosX: 0.34
+            PosY: 0.66
+            TargetKey: x
+    - rid: 910000000012078203
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 5
+        Duration: 0.1
+        MoveEase: 17
+    - rid: 910000000012078204
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        AnimTriggerName: Attack
+        DelayAfter: 0
+    - rid: 910000000012078205
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 910000000012078206
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 1.85
+        ShakeCamera: 1
+    - rid: 910000000012078207
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 4
+        Duration: 0.2
+        MoveEase: 6

@@ -10,6 +10,12 @@ public interface ISceneRevealGate
     bool IsReadyToReveal { get; }
 }
 
+public interface ISceneRevealGateFailureSource : ISceneRevealGate
+{
+    bool HasFailed { get; }
+    string FailureReason { get; }
+}
+
 public enum SceneLoadResult
 {
     None,
@@ -17,7 +23,19 @@ public enum SceneLoadResult
     InvalidScene,
     LoadFailed,
     CancelledBeforeActivation,
+    DestinationPreparationFailed,
+    DestinationPreparationTimedOut,
     Succeeded
+}
+
+public static class SceneLoadResultUtility
+{
+    public static bool WasDestinationActivated(SceneLoadResult result)
+    {
+        return result == SceneLoadResult.Succeeded
+            || result == SceneLoadResult.DestinationPreparationFailed
+            || result == SceneLoadResult.DestinationPreparationTimedOut;
+    }
 }
 
 public sealed class SceneLoadOperation
@@ -76,6 +94,8 @@ public class SceneLoader : MonoBehaviour
     private Tween _fadeTween;
     private IScreenFlashScaleProvider _screenFlashScaleProvider =
         new GameConfigScreenFlashScaleProvider();
+
+    public bool IsLoading => _isLoading;
 
     protected virtual void Awake()
     {
@@ -153,6 +173,11 @@ public class SceneLoader : MonoBehaviour
         return operation;
     }
 
+    public bool CanLoadScene(string sceneName)
+    {
+        return IsSceneLoadable(sceneName);
+    }
+
     protected virtual bool IsSceneLoadable(string sceneName)
     {
         return !string.IsNullOrWhiteSpace(sceneName)
@@ -221,7 +246,9 @@ public class SceneLoader : MonoBehaviour
         loadOperation.allowSceneActivation = true;
         sceneActivated = true;
         yield return null;
-        yield return StartCoroutine(WaitForSceneRevealGate(sceneName));
+
+        var gateWait = new SceneRevealGateWait();
+        yield return StartCoroutine(WaitForSceneRevealGate(sceneName, gateWait));
 
         float revealDuration = isFlash ? 0.3f : duration;
         if (_fadeCanvas != null)
@@ -230,16 +257,21 @@ public class SceneLoader : MonoBehaviour
             _fadeCanvas.blocksRaycasts = false;
         }
 
-        try
-        {
-            SceneRevealCompleted?.Invoke(sceneName);
-        }
-        catch (Exception exception)
-        {
-            Debug.LogException(exception, this);
-        }
+        SceneLoadResult result = ResolveSceneLoadResult(sceneActivated, gateWait.State);
+        // Release the transition before destination reveal handlers acquire their own state.
+        Finish(operation, result);
 
-        Finish(operation, sceneActivated ? SceneLoadResult.Succeeded : SceneLoadResult.LoadFailed);
+        if (result == SceneLoadResult.Succeeded)
+        {
+            try
+            {
+                SceneRevealCompleted?.Invoke(sceneName);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception, this);
+            }
+        }
     }
 
     private IEnumerator FadeCanvasTo(float targetAlpha, float duration)
@@ -310,27 +342,52 @@ public class SceneLoader : MonoBehaviour
             _fadeImage.color = color;
     }
 
-    private IEnumerator WaitForSceneRevealGate(string sceneName)
+    private IEnumerator WaitForSceneRevealGate(
+        string sceneName,
+        SceneRevealGateWait wait)
     {
         float startedAt = Time.unscaledTime;
         Scene loadedScene = SceneManager.GetSceneByName(sceneName);
 
-        while ((!loadedScene.IsValid() || !loadedScene.isLoaded || SceneManager.GetActiveScene().handle != loadedScene.handle)
-            && !IsRevealGateTimedOut(startedAt))
+        while (!IsSceneActiveAndLoaded(loadedScene))
         {
+            if (IsRevealGateTimedOut(startedAt))
+            {
+                wait.Set(SceneRevealGateState.TimedOut, "목적 Scene 활성화를 기다리는 중 시간이 초과됐습니다.");
+                Debug.LogWarning(
+                    $"[SceneLoader] Scene activation timed out. Scene={sceneName}",
+                    this);
+                yield break;
+            }
+
             loadedScene = SceneManager.GetSceneByName(sceneName);
             yield return null;
         }
 
-        if (!loadedScene.IsValid() || !loadedScene.isLoaded)
-            yield break;
-
         List<ISceneRevealGate> gates = FindRevealGates(loadedScene);
-        while (!AreAllRevealGatesReady(gates))
+        while (true)
         {
+            if (TryGetRevealGateFailure(gates, out string failureReason))
+            {
+                wait.Set(SceneRevealGateState.Failed, failureReason);
+                Debug.LogError(
+                    $"[SceneLoader] Scene reveal gate failed. Scene={sceneName}, Error={failureReason}",
+                    this);
+                yield break;
+            }
+
+            if (AreAllRevealGatesReady(gates))
+            {
+                wait.Set(SceneRevealGateState.Ready, string.Empty);
+                yield break;
+            }
+
             if (IsRevealGateTimedOut(startedAt))
             {
-                Debug.LogWarning($"[SceneLoader] Scene reveal gate timed out. Scene={sceneName}");
+                wait.Set(SceneRevealGateState.TimedOut, "Scene reveal gate 대기 시간이 초과됐습니다.");
+                Debug.LogWarning(
+                    $"[SceneLoader] Scene reveal gate timed out. Scene={sceneName}",
+                    this);
                 yield break;
             }
 
@@ -338,6 +395,53 @@ public class SceneLoader : MonoBehaviour
         }
     }
 
+    private static bool IsSceneActiveAndLoaded(Scene scene)
+    {
+        return scene.IsValid()
+            && scene.isLoaded
+            && SceneManager.GetActiveScene().handle == scene.handle;
+    }
+
+    private static bool TryGetRevealGateFailure(
+        List<ISceneRevealGate> gates,
+        out string failureReason)
+    {
+        for (int i = 0; i < gates.Count; i++)
+        {
+            ISceneRevealGate gate = gates[i];
+            if (gate is UnityEngine.Object unityObject && unityObject == null)
+                continue;
+
+            if (gate is not ISceneRevealGateFailureSource failureSource
+                || !failureSource.HasFailed)
+            {
+                continue;
+            }
+
+            failureReason = string.IsNullOrWhiteSpace(failureSource.FailureReason)
+                ? "목적 Scene 준비에 실패했습니다."
+                : failureSource.FailureReason.Trim();
+            return true;
+        }
+
+        failureReason = string.Empty;
+        return false;
+    }
+
+    private static SceneLoadResult ResolveSceneLoadResult(
+        bool sceneActivated,
+        SceneRevealGateState gateState)
+    {
+        if (!sceneActivated)
+            return SceneLoadResult.LoadFailed;
+
+        return gateState switch
+        {
+            SceneRevealGateState.Failed => SceneLoadResult.DestinationPreparationFailed,
+            SceneRevealGateState.TimedOut => SceneLoadResult.DestinationPreparationTimedOut,
+            _ => SceneLoadResult.Succeeded
+        };
+    }
     private bool IsRevealGateTimedOut(float startedAt)
     {
         return _sceneRevealGateTimeout > 0f
@@ -376,6 +480,25 @@ public class SceneLoader : MonoBehaviour
         }
 
         return true;
+    }
+
+    private enum SceneRevealGateState
+    {
+        Ready,
+        Failed,
+        TimedOut
+    }
+
+    private sealed class SceneRevealGateWait
+    {
+        public SceneRevealGateState State { get; private set; } = SceneRevealGateState.Ready;
+        public string FailureReason { get; private set; } = string.Empty;
+
+        public void Set(SceneRevealGateState state, string failureReason)
+        {
+            State = state;
+            FailureReason = failureReason ?? string.Empty;
+        }
     }
 
     protected virtual void OnDestroy()

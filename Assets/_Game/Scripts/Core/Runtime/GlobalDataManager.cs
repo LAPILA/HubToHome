@@ -25,9 +25,14 @@ public class GlobalDataManager : MonoBehaviour
 
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
+    private readonly Dictionary<string, int> _equipmentInventoryDict = new Dictionary<string, int>();
     private readonly Dictionary<string, OverworldEnemyRuntimeState> _overworldEnemyStates = new Dictionary<string, OverworldEnemyRuntimeState>();
     private readonly Dictionary<string, EncounterMemorySaveData> _encounterMemory = new Dictionary<string, EncounterMemorySaveData>();
+    private readonly MapReturnBookmarkStack _mapReturnBookmarks = new MapReturnBookmarkStack();
     public int Money { get; private set; } = 0;
+
+    public event System.Action<string, int, int> FlagChanged;
+    public event System.Action<CharacterSaveData> CharacterGrowthChanged;
     
     public List<EnemyData> PendingEnemies { get; set; } = new List<EnemyData>();
     public AudioClip PendingBattleBGM { get; set; }
@@ -45,6 +50,8 @@ public class GlobalDataManager : MonoBehaviour
     public string SpawnScene { get; set; } = SceneName.Overworld;
     public string CurrentRoomId { get; set; } = string.Empty;
     public string SpawnPointId { get; set; } = string.Empty;
+    public string CurrentTrainStopId { get; set; } = string.Empty;
+    public bool SpawnFallbackAllowed { get; set; }
     public float  SpawnX     { get; set; } = 0f;
     public float  SpawnY     { get; set; } = 0f;
     public int    LookingDir { get; set; } = 0; 
@@ -68,53 +75,506 @@ public class GlobalDataManager : MonoBehaviour
 
     private void InitializeDefaults()
     {
+        PlayerName = "Rapley";
+        Money = 0;
         _eventFlags.Clear();
         _inventoryDict.Clear();
+        _equipmentInventoryDict.Clear();
         _encounterMemory.Clear();
         _overworldEnemyStates.Clear();
-        Party.Clear(); // 기존 더미 데이터 추가 로직 삭제
+        _mapReturnBookmarks.Clear();
+        PendingEnemies ??= new List<EnemyData>();
+        PendingEnemies.Clear();
+        PendingBattleBGM = null;
+        PendingBattleScenario = null;
+        EndOverworldEnemyEncounterContext();
+        LastOverworldScene = string.Empty;
+        SpawnScene = SceneName.Overworld;
+        CurrentRoomId = string.Empty;
+        SpawnPointId = string.Empty;
+        CurrentTrainStopId = string.Empty;
+        SpawnFallbackAllowed = false;
+        SpawnX = 0f;
+        SpawnY = 0f;
+        LookingDir = 0;
+        Party.Clear();
+    }
+
+    public void ResetForNewGame()
+    {
+        InitializeDefaults();
     }
 
     /// <summary>
-    /// 게임 시작 시 글로벌 데이터가 비어있다면, 씬에 배치된 플레이어의 인스펙터 값을 기준으로 파티를 셋업합니다.
+    /// 씬 캐릭터와 대응하는 파티 저장 객체를 찾거나, 파티가 비어 있을 때 새로 만듭니다.
     /// </summary>
-    public void InitializePartyFromScene(PlayerCharacter scenePlayer)
+    public CharacterSaveData InitializePartyFromScene(PlayerCharacter scenePlayer)
     {
-        if (scenePlayer == null) return;
+        if (scenePlayer == null) return null;
 
         CharacterData characterData = scenePlayer.CharacterData;
+        string stableId = NormalizeCharacterId(characterData != null ? characterData.CharacterID : null);
+        CharacterSaveData existing = FindPartyMember(stableId);
+        if (existing != null)
+            return existing;
+
+        if (Party.Count > 0)
+        {
+            CharacterSaveData legacyLeader = Party[0];
+            if (legacyLeader != null && string.IsNullOrWhiteSpace(legacyLeader.CharacterDataID))
+            {
+                legacyLeader.CharacterDataID = stableId;
+                return legacyLeader;
+            }
+
+            Debug.LogWarning(
+                $"[GlobalDataManager] Scene character has no matching party save. CharacterDataID={stableId}",
+                scenePlayer);
+            return null;
+        }
 
         int startMaxHP = characterData != null ? characterData.BaseMaxHP : (scenePlayer.BaseMaxHP > 0 ? scenePlayer.BaseMaxHP : 100);
-        int startMaxMP = characterData != null ? characterData.BaseMaxMP : (scenePlayer.BaseMaxMP > 0 ? scenePlayer.BaseMaxMP : 50);
+        int startMaxAP = characterData != null ? characterData.BaseMaxAP : (scenePlayer.BaseMaxAP > 0 ? scenePlayer.BaseMaxAP : 50);
         int startATK   = characterData != null ? characterData.BaseATK : (scenePlayer.BaseATK > 0 ? scenePlayer.BaseATK : 10);
         int startDEF   = characterData != null ? characterData.BaseDEF : scenePlayer.BaseDEF;
         int startSPD   = characterData != null ? characterData.BaseSPD : (scenePlayer.BaseSPD > 0 ? scenePlayer.BaseSPD : 10);
 
         var newData = new CharacterSaveData()
         {
-            CharacterDataID = characterData != null ? characterData.CharacterID : string.Empty,
-            CharacterID = scenePlayer.CharacterID,
-            // 🚨 캐릭터 이름(ID)을 입력받은 플레이어 이름으로 덮어쓸 수도 있습니다!
-            // CharacterID = string.IsNullOrEmpty(PlayerName) ? scenePlayer.CharacterID : PlayerName,
+            CharacterDataID = stableId,
+            CharacterID = scenePlayer.DisplayName,
             Level       = scenePlayer.Level,
             EXP         = scenePlayer.EXP,
             MaxHP       = startMaxHP,
             HP          = startMaxHP,
-            MaxMP       = startMaxMP,
-            MP          = startMaxMP,
+            MaxAP       = startMaxAP,
+            AP          = startMaxAP,
             ATK         = startATK,
             DEF         = startDEF,
             SPD         = startSPD
         };
 
+        EquipmentLoadoutService.NormalizeSlots(newData);
+        CharacterGrowthService.EnsureInitialized(newData, characterData);
+        newData.HP = newData.MaxHP;
+        newData.AP = newData.MaxAP;
+        PowerProgressionService.SynchronizeUnlockedSkills(newData, characterData);
+        SkillTreeProgressionService.Synchronize(newData, characterData);
         Party.Add(newData);
         Debug.Log($"<color=yellow>[GlobalData] 파티원 초기화 완료: {newData.CharacterID} (이름: {PlayerName})</color>");
+        return newData;
     }
+
+    public CharacterLevelUpResult GrantCharacterExperience(
+        CharacterSaveData character,
+        int amount)
+    {
+        if (character == null || !Party.Contains(character) || amount <= 0)
+            return null;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        CharacterLevelUpResult result = CharacterProgressionService.GrantExperience(
+            character,
+            data,
+            amount);
+        PowerProgressionService.SynchronizeUnlockedSkills(character, data);
+        SkillTreeProgressionService.Synchronize(character, data);
+        CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public GrowthInvestmentResult TryInvestGrowthStat(
+        CharacterSaveData character,
+        GrowthStat stat,
+        int amount = 1)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new GrowthInvestmentResult(
+                GrowthInvestmentStatus.InvalidCharacter,
+                stat,
+                0,
+                0,
+                0);
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        CharacterGrowthService.EnsureInitialized(character, data);
+        if (!CanMutateGrowth())
+        {
+            return new GrowthInvestmentResult(
+                GrowthInvestmentStatus.MutationLocked,
+                stat,
+                character.Growth.Investments.Get(stat),
+                character.Growth.Investments.Get(stat),
+                character.Growth.AvailableAttributePoints);
+        }
+
+        GrowthInvestmentResult result = CharacterGrowthService.TryInvest(
+            character,
+            data,
+            stat,
+            amount);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public bool TryRefundGrowthStat(
+        CharacterSaveData character,
+        GrowthStat stat,
+        int amount = 1)
+    {
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        bool changed = CharacterGrowthService.TryRefund(
+            character,
+            data,
+            stat,
+            amount);
+        if (changed)
+            CharacterGrowthChanged?.Invoke(character);
+        return changed;
+    }
+
+    public bool TryResetGrowthStats(
+        CharacterSaveData character,
+        out int refundedPoints)
+    {
+        refundedPoints = 0;
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        CharacterGrowthService.EnsureInitialized(character, data);
+        refundedPoints = CharacterGrowthService.ResetInvestments(character, data);
+        if (refundedPoints > 0)
+            CharacterGrowthChanged?.Invoke(character);
+        return true;
+    }
+
+    public bool TrySpendSkillPoints(CharacterSaveData character, int amount)
+    {
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        bool changed = CharacterGrowthService.TrySpendSkillPoints(
+            character,
+            data,
+            amount);
+        if (changed)
+            CharacterGrowthChanged?.Invoke(character);
+        return changed;
+    }
+
+    public bool TryRefundSkillPoints(CharacterSaveData character, int amount)
+    {
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        bool changed = CharacterGrowthService.TryRefundSkillPoints(
+            character,
+            data,
+            amount);
+        if (changed)
+            CharacterGrowthChanged?.Invoke(character);
+        return changed;
+    }
+
+    public bool TryResetSkillPoints(
+        CharacterSaveData character,
+        out int refundedPoints)
+    {
+        refundedPoints = 0;
+        if (!CanMutateOwnedGrowth(character))
+            return false;
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        if (data?.SkillTree != null)
+        {
+            SkillTreeActionResult treeResult =
+                SkillTreeProgressionService.Reset(character, data);
+            refundedPoints = Mathf.Max(0, treeResult.PointsChanged);
+            if (treeResult.Succeeded)
+                CharacterGrowthChanged?.Invoke(character);
+            return treeResult.Succeeded
+                || treeResult.Status == SkillTreeActionStatus.NoChanges;
+        }
+
+        refundedPoints = CharacterGrowthService.ResetSkillPointSpending(
+            character,
+            data);
+        if (refundedPoints > 0)
+            CharacterGrowthChanged?.Invoke(character);
+        return true;
+    }
+
+    public SkillTreeActionResult TryUnlockSkillTreeNode(
+        CharacterSaveData character,
+        string nodeId)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.InvalidCharacter,
+                nodeId,
+                0,
+                "캐릭터가 없습니다.");
+        }
+        if (!CanMutateGrowth())
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.MutationLocked,
+                nodeId,
+                0,
+                "전투 중에는 성장 설정을 변경할 수 없습니다.");
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        SkillTreeActionResult result =
+            SkillTreeProgressionService.TryUnlock(character, data, nodeId);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public SkillTreeActionResult TryToggleSkillEquipped(
+        CharacterSaveData character,
+        string nodeId)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.InvalidCharacter,
+                nodeId,
+                0,
+                "캐릭터가 없습니다.");
+        }
+        if (!CanMutateGrowth())
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.MutationLocked,
+                nodeId,
+                0,
+                "전투 중에는 스킬 장착을 변경할 수 없습니다.");
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        SkillTreeActionResult result =
+            SkillTreeProgressionService.TryToggleEquipped(
+                character,
+                data,
+                nodeId);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    public SkillTreeActionResult TryResetSkillTree(
+        CharacterSaveData character)
+    {
+        if (character == null || !Party.Contains(character))
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.InvalidCharacter,
+                string.Empty,
+                0,
+                "캐릭터가 없습니다.");
+        }
+        if (!CanMutateGrowth())
+        {
+            return new SkillTreeActionResult(
+                SkillTreeActionStatus.MutationLocked,
+                string.Empty,
+                0,
+                "전투 중에는 스킬 투자를 초기화할 수 없습니다.");
+        }
+
+        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
+        SkillTreeActionResult result =
+            SkillTreeProgressionService.Reset(character, data);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
+    private bool CanMutateOwnedGrowth(CharacterSaveData character)
+    {
+        return character != null && Party.Contains(character) && CanMutateGrowth();
+    }
+
+    private static bool CanMutateGrowth()
+    {
+        return GameStateManager.Instance == null
+            || GameStateManager.Instance.CurrentState != GameState.Battle;
+    }
+
+    private CharacterSaveData FindPartyMember(string stableId)
+    {
+        if (string.IsNullOrEmpty(stableId))
+            return null;
+
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member != null
+                && string.Equals(
+                    NormalizeCharacterId(member.CharacterDataID),
+                    stableId,
+                    System.StringComparison.Ordinal))
+            {
+                return member;
+            }
+        }
+
+        return null;
+    }
+    public bool TryApplyOverworldPartyDamage(
+        int requestedDamage,
+        out CharacterSaveData leader,
+        out int previousHP,
+        out int currentHP)
+    {
+        leader = Party.Count > 0 ? Party[0] : null;
+        previousHP = leader != null ? Mathf.Max(0, leader.HP) : 0;
+        currentHP = previousHP;
+        if (leader == null || requestedDamage <= 0)
+            return false;
+
+        int maxHP = Mathf.Max(1, leader.MaxHP);
+        previousHP = Mathf.Clamp(previousHP, 0, maxHP);
+        currentHP = Mathf.Max(0, previousHP - requestedDamage);
+        leader.HP = currentHP;
+        return true;
+    }
+
     #endregion
 
     #region [ Event Flags API ]
-    public void SetFlag(string key, int value) => _eventFlags[key] = value;
-    public int GetFlag(string key, int defaultValue = 0) => _eventFlags.TryGetValue(key, out int val) ? val : defaultValue;
+    public void SetFlag(string key, int value)
+    {
+        string normalizedKey = NormalizeFlagKey(key);
+        if (string.IsNullOrEmpty(normalizedKey))
+            return;
+
+        int oldValue = GetFlag(normalizedKey);
+        if (oldValue == value)
+            return;
+
+        _eventFlags[normalizedKey] = value;
+        NotifyFlagChangedSafely(normalizedKey, oldValue, value);
+    }
+
+    public int GetFlag(string key, int defaultValue = 0)
+    {
+        string normalizedKey = NormalizeFlagKey(key);
+        return !string.IsNullOrEmpty(normalizedKey)
+            && _eventFlags.TryGetValue(normalizedKey, out int value)
+                ? value
+                : defaultValue;
+    }
+
+    public bool TryGetFlag(string key, out int value)
+    {
+        string normalizedKey = NormalizeFlagKey(key);
+        if (string.IsNullOrEmpty(normalizedKey))
+        {
+            value = 0;
+            return false;
+        }
+
+        return _eventFlags.TryGetValue(normalizedKey, out value);
+    }
+    private void NotifyFlagChangedSafely(string key, int oldValue, int newValue)
+    {
+        System.Action<string, int, int> handlers = FlagChanged;
+        if (handlers == null)
+            return;
+
+        System.Delegate[] subscribers = handlers.GetInvocationList();
+        for (int i = 0; i < subscribers.Length; i++)
+        {
+            try
+            {
+                ((System.Action<string, int, int>)subscribers[i]).Invoke(key, oldValue, newValue);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogException(exception, this);
+            }
+        }
+    }
+
+    private void NotifyFlagSnapshotDifferences(
+        IReadOnlyDictionary<string, int> previousFlags)
+    {
+        var changedKeys = new HashSet<string>(System.StringComparer.Ordinal);
+        if (previousFlags != null)
+        {
+            foreach (KeyValuePair<string, int> entry in previousFlags)
+                changedKeys.Add(entry.Key);
+        }
+
+        foreach (KeyValuePair<string, int> entry in _eventFlags)
+            changedKeys.Add(entry.Key);
+
+        foreach (string key in changedKeys)
+        {
+            int oldValue = previousFlags != null
+                && previousFlags.TryGetValue(key, out int previousValue)
+                    ? previousValue
+                    : 0;
+            int newValue = _eventFlags.TryGetValue(key, out int currentValue)
+                ? currentValue
+                : 0;
+            if (oldValue != newValue)
+                NotifyFlagChangedSafely(key, oldValue, newValue);
+        }
+    }
+
+    #endregion
+
+    #region [ Map Return Bookmark API ]
+    public int MapReturnBookmarkCount => _mapReturnBookmarks.Count;
+
+    public MapReturnBookmarkToken PushPendingMapReturnBookmark(MapReturnBookmark bookmark)
+    {
+        return _mapReturnBookmarks.PushPending(bookmark);
+    }
+
+    public bool CommitMapReturnBookmark(MapReturnBookmarkToken token)
+    {
+        return _mapReturnBookmarks.Commit(token);
+    }
+
+    public bool RollbackMapReturnBookmark(MapReturnBookmarkToken token)
+    {
+        return _mapReturnBookmarks.Rollback(token);
+    }
+
+    public bool TryPeekMapReturnBookmark(
+        out MapReturnBookmark bookmark,
+        out MapReturnBookmarkToken token)
+    {
+        return _mapReturnBookmarks.TryPeek(out bookmark, out token);
+    }
+
+    public bool TryPopMapReturnBookmark(
+        MapReturnBookmarkToken expectedToken,
+        out MapReturnBookmark bookmark)
+    {
+        return _mapReturnBookmarks.TryPop(expectedToken, out bookmark);
+    }
+
+    public void ClearMapReturnBookmarks()
+    {
+        _mapReturnBookmarks.Clear();
+    }
+
     #endregion
 
     #region [ Inventory API ]
@@ -163,6 +623,52 @@ public class GlobalDataManager : MonoBehaviour
 
     public IReadOnlyDictionary<string, int> GetInventory() => _inventoryDict;
 
+    public int AddEquipmentAndGetAddedAmount(string equipmentId, int amount = 1)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentId) || amount <= 0)
+            return 0;
+
+        string normalizedId = equipmentId.Trim();
+        int current = _equipmentInventoryDict.TryGetValue(normalizedId, out int existing)
+            ? Mathf.Max(0, existing)
+            : 0;
+        int next = (int)System.Math.Min((long)current + amount, int.MaxValue);
+        if (next <= current)
+            return 0;
+
+        _equipmentInventoryDict[normalizedId] = next;
+        return next - current;
+    }
+
+    public bool RemoveEquipment(string equipmentId, int amount = 1)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentId) || amount <= 0)
+            return false;
+
+        string normalizedId = equipmentId.Trim();
+        if (!_equipmentInventoryDict.TryGetValue(normalizedId, out int current) || current < amount)
+            return false;
+
+        int remaining = current - amount;
+        if (remaining > 0)
+            _equipmentInventoryDict[normalizedId] = remaining;
+        else
+            _equipmentInventoryDict.Remove(normalizedId);
+        return true;
+    }
+
+    public int GetEquipmentCount(string equipmentId)
+    {
+        if (string.IsNullOrWhiteSpace(equipmentId))
+            return 0;
+
+        return _equipmentInventoryDict.TryGetValue(equipmentId.Trim(), out int count)
+            ? Mathf.Max(0, count)
+            : 0;
+    }
+
+    public IReadOnlyDictionary<string, int> GetEquipmentInventory() => _equipmentInventoryDict;
+
     public void AddMoney(int amount)
     {
         if (amount <= 0) return;
@@ -175,6 +681,7 @@ public class GlobalDataManager : MonoBehaviour
         Money -= amount;
         return true;
     }
+
     #endregion
 
     #region [ Encounter Memory API ]
@@ -242,6 +749,32 @@ public class GlobalDataManager : MonoBehaviour
         }
     }
 
+    public void RecordEncounterOutcome(string encounterId, BattleEncounterOutcome outcome)
+    {
+        if (outcome == BattleEncounterOutcome.Unknown)
+            return;
+
+        EncounterMemorySaveData memory = GetOrCreateEncounterMemory(encounterId);
+        if (memory == null)
+            return;
+
+        memory.LastOutcome = outcome;
+        switch (outcome)
+        {
+            case BattleEncounterOutcome.Victory:
+                memory.Defeated = true;
+                memory.VictoryCount = SaturatingIncrement(memory.VictoryCount);
+                break;
+
+            case BattleEncounterOutcome.Escaped:
+                memory.EscapeCount = SaturatingIncrement(memory.EscapeCount);
+                break;
+
+            case BattleEncounterOutcome.PartyDefeated:
+                memory.PartyDefeatCount = SaturatingIncrement(memory.PartyDefeatCount);
+                break;
+        }
+    }
     public void RememberEncounterBeatIds(string encounterId, IEnumerable<string> beatIds)
     {
         if (beatIds == null)
@@ -270,6 +803,7 @@ public class GlobalDataManager : MonoBehaviour
 
         return memory.SeenBeatIds.ToArray();
     }
+
     #endregion
 
     #region [ Overworld Enemy Runtime State ]
@@ -376,23 +910,28 @@ public class GlobalDataManager : MonoBehaviour
 
         return highest;
     }
+
     #endregion
 
     #region [ Save & Load ]
     public SaveData ToSaveData()
     {
+        SynchronizePartyGrowth();
+
         var data = new SaveData
         {
             playerName       = PlayerName, // 🚨 세이브 데이터에 이름 추가!
             currentScene     = NormalizeSceneName(SpawnScene),
             currentRoomId    = CurrentRoomId,
             spawnPointId     = SpawnPointId,
+            currentTrainStopId = CurrentTrainStopId,
             playerX          = SpawnX,
             playerY          = SpawnY,
             lookingDirection = LookingDir,
             
             // 안전한 깊은 복사(Deep Copy)
             InventoryDict = new Dictionary<string, int>(_inventoryDict),
+            EquipmentInventoryDict = new Dictionary<string, int>(_equipmentInventoryDict),
             eventFlags    = new Dictionary<string, int>(_eventFlags),
             EncounterMemory = CloneEncounterMemoryDictionary(_encounterMemory),
             OverworldEnemies = CloneOverworldEnemyStates(_overworldEnemyStates),
@@ -410,13 +949,24 @@ public class GlobalDataManager : MonoBehaviour
             return;
         }
 
+        PendingEnemies ??= new List<EnemyData>();
+        PendingEnemies.Clear();
+        PendingBattleBGM = null;
+        PendingBattleScenario = null;
+        EndOverworldEnemyEncounterContext();
+
         PlayerName = data.playerName ?? string.Empty;
         SpawnScene = NormalizeSceneName(data.currentScene);
         CurrentRoomId = data.currentRoomId ?? string.Empty;
         SpawnPointId = data.spawnPointId ?? string.Empty;
+        CurrentTrainStopId = string.IsNullOrWhiteSpace(data.currentTrainStopId)
+            ? string.Empty
+            : data.currentTrainStopId.Trim();
+        SpawnFallbackAllowed = false;
         SpawnX = data.playerX;
         SpawnY = data.playerY;
         LookingDir = data.lookingDirection;
+        _mapReturnBookmarks.Clear();
 
         _inventoryDict.Clear();
         if (data.InventoryDict != null)
@@ -425,14 +975,25 @@ public class GlobalDataManager : MonoBehaviour
                 AddItem(entry.Key, entry.Value);
         }
 
+        _equipmentInventoryDict.Clear();
+        if (data.EquipmentInventoryDict != null)
+        {
+            foreach (KeyValuePair<string, int> entry in data.EquipmentInventoryDict)
+                AddEquipmentAndGetAddedAmount(entry.Key, entry.Value);
+        }
+
+        var previousEventFlags = new Dictionary<string, int>(_eventFlags);
         _eventFlags.Clear();
         if (data.eventFlags != null)
         {
             foreach (KeyValuePair<string, int> entry in data.eventFlags)
             {
-                _eventFlags[entry.Key] = entry.Value;
+                string normalizedKey = NormalizeFlagKey(entry.Key);
+                if (!string.IsNullOrEmpty(normalizedKey))
+                    _eventFlags[normalizedKey] = entry.Value;
             }
         }
+        NotifyFlagSnapshotDifferences(previousEventFlags);
 
         _encounterMemory.Clear();
         if (data.EncounterMemory != null)
@@ -470,7 +1031,66 @@ public class GlobalDataManager : MonoBehaviour
         }
 
         Party = CloneParty(data.PartyData);
+        EnsureEquipmentOwnershipCoversLoadouts();
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member == null)
+                continue;
+
+            EquipmentLoadoutService.NormalizeSlots(member);
+            CharacterData characterData = CharacterDatabase.FindById(
+                member.CharacterDataID);
+            CharacterGrowthService.EnsureInitialized(member, characterData);
+            PowerProgressionService.SynchronizeUnlockedSkills(
+                member,
+                characterData);
+            SkillTreeProgressionService.Synchronize(member, characterData);
+        }
         Money = Mathf.Max(0, data.Money);
+    }
+
+    private void EnsureEquipmentOwnershipCoversLoadouts()
+    {
+        var requiredCounts = new Dictionary<string, int>(System.StringComparer.Ordinal);
+        for (int memberIndex = 0; memberIndex < Party.Count; memberIndex++)
+        {
+            CharacterSaveData member = Party[memberIndex];
+            if (member == null)
+                continue;
+
+            EquipmentLoadoutService.NormalizeSlots(member);
+            for (int slotIndex = 0; slotIndex < member.EquippedEquipmentIDs.Count; slotIndex++)
+            {
+                string id = member.EquippedEquipmentIDs[slotIndex];
+                if (string.IsNullOrEmpty(id))
+                    continue;
+
+                requiredCounts[id] = requiredCounts.TryGetValue(id, out int count) ? count + 1 : 1;
+            }
+        }
+
+        foreach (KeyValuePair<string, int> required in requiredCounts)
+        {
+            int missing = required.Value - GetEquipmentCount(required.Key);
+            if (missing > 0)
+                AddEquipmentAndGetAddedAmount(required.Key, missing);
+        }
+    }
+
+    private void SynchronizePartyGrowth()
+    {
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member == null)
+                continue;
+
+            EquipmentLoadoutService.NormalizeSlots(member);
+            CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
+            CharacterGrowthService.EnsureInitialized(member, data);
+            SkillTreeProgressionService.Synchronize(member, data);
+        }
     }
 
     private static List<CharacterSaveData> CloneParty(IReadOnlyList<CharacterSaveData> source)
@@ -490,14 +1110,22 @@ public class GlobalDataManager : MonoBehaviour
                 EXP = Mathf.Max(0, member.EXP),
                 HP = member.HP,
                 MaxHP = member.MaxHP,
-                MP = member.MP,
-                MaxMP = member.MaxMP,
+                AP = member.AP,
+                MaxAP = member.MaxAP,
                 ATK = member.ATK,
                 DEF = member.DEF,
                 SPD = member.SPD,
+                Growth = member.Growth?.Clone() ?? new CharacterGrowthSaveData(),
                 EquippedSkillIDs = member.EquippedSkillIDs != null
                     ? new List<string>(member.EquippedSkillIDs)
-                    : new List<string>()
+                    : new List<string>(),
+                UnlockedSkillIDs = member.UnlockedSkillIDs != null
+                    ? new List<string>(member.UnlockedSkillIDs)
+                    : new List<string>(),
+                EquippedEquipmentIDs = member.EquippedEquipmentIDs != null
+                    ? new List<string>(member.EquippedEquipmentIDs)
+                    : new List<string>(),
+                HasInitializedEquipment = member.HasInitializedEquipment
             });
         }
 
@@ -557,6 +1185,12 @@ public class GlobalDataManager : MonoBehaviour
             EncounterId = NormalizeEncounterId(fallbackEncounterId),
             MeetCount = source != null ? Mathf.Max(0, source.MeetCount) : 0,
             Defeated = source != null && source.Defeated,
+            LastOutcome = source != null
+                ? NormalizeEncounterOutcome(source.LastOutcome)
+                : BattleEncounterOutcome.Unknown,
+            VictoryCount = source != null ? Mathf.Max(0, source.VictoryCount) : 0,
+            EscapeCount = source != null ? Mathf.Max(0, source.EscapeCount) : 0,
+            PartyDefeatCount = source != null ? Mathf.Max(0, source.PartyDefeatCount) : 0,
             SeenBeatIds = new List<string>()
         };
 
@@ -571,6 +1205,17 @@ public class GlobalDataManager : MonoBehaviour
         return clone;
     }
 
+    private static int SaturatingIncrement(int value)
+    {
+        return value >= int.MaxValue ? int.MaxValue : Mathf.Max(0, value) + 1;
+    }
+
+    private static BattleEncounterOutcome NormalizeEncounterOutcome(BattleEncounterOutcome outcome)
+    {
+        return System.Enum.IsDefined(typeof(BattleEncounterOutcome), outcome)
+            ? outcome
+            : BattleEncounterOutcome.Unknown;
+    }
     private static void AddUniqueSeenBeatId(EncounterMemorySaveData memory, string beatId)
     {
         if (memory == null || string.IsNullOrWhiteSpace(beatId))
@@ -595,9 +1240,20 @@ public class GlobalDataManager : MonoBehaviour
         return string.IsNullOrWhiteSpace(encounterId) ? string.Empty : encounterId.Trim();
     }
 
+    private static string NormalizeCharacterId(string characterId)
+    {
+        return string.IsNullOrWhiteSpace(characterId) ? string.Empty : characterId.Trim();
+    }
+
+    private static string NormalizeFlagKey(string key)
+    {
+        return string.IsNullOrWhiteSpace(key) ? string.Empty : key.Trim();
+    }
+
     private static string NormalizeSceneName(string sceneName)
     {
         return string.IsNullOrWhiteSpace(sceneName) ? SceneName.Overworld : sceneName.Trim();
     }
+
     #endregion
 }

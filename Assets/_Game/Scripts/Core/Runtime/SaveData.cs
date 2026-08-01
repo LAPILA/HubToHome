@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 [Serializable]
 public class CharacterSaveData
@@ -13,14 +14,35 @@ public class CharacterSaveData
     [UnityEngine.Header("Stats")]
     public int HP = 100;
     public int MaxHP = 100;
-    public int MP = 100;
-    public int MaxMP = 100;
+    public int AP = 100;
+    public int MaxAP = 100;
 
     public int ATK = 10;
     public int DEF = 5;
     public int SPD = 10;
 
+    public CharacterGrowthSaveData Growth = new CharacterGrowthSaveData();
+
     public List<string> EquippedSkillIDs = new List<string>();
+    public List<string> UnlockedSkillIDs = new List<string>();
+    public List<string> EquippedEquipmentIDs = new List<string>();
+
+    [JsonIgnore]
+    [Obsolete("Use AP. This property only preserves source compatibility.")]
+    public int MP
+    {
+        get => AP;
+        set => AP = value;
+    }
+
+    [JsonIgnore]
+    [Obsolete("Use MaxAP. This property only preserves source compatibility.")]
+    public int MaxMP
+    {
+        get => MaxAP;
+        set => MaxAP = value;
+    }
+    public bool HasInitializedEquipment;
 }
 
 [Serializable]
@@ -40,6 +62,7 @@ public class SaveData
     public string currentScene = SceneName.Overworld;
     public string currentRoomId = "";
     public string spawnPointId = "";
+    public string currentTrainStopId = "";
     public float  playerX = 0f;
     public float  playerY = 0f;
     public int    lookingDirection = 0; 
@@ -49,6 +72,7 @@ public class SaveData
 
     // ── 3. 소지품 및 플래그 ──
     public Dictionary<string, int> InventoryDict = new Dictionary<string, int>();
+    public Dictionary<string, int> EquipmentInventoryDict = new Dictionary<string, int>();
     public Dictionary<string, int> eventFlags = new Dictionary<string, int>();
     public Dictionary<string, EncounterMemorySaveData> EncounterMemory = new Dictionary<string, EncounterMemorySaveData>();
     public Dictionary<string, OverworldEnemySaveData> OverworldEnemies = new Dictionary<string, OverworldEnemySaveData>();

@@ -11,6 +11,7 @@ public static class RoomMapValidationScanner
 
         RoomInstance[] rooms = input.Rooms ?? Array.Empty<RoomInstance>();
         AreaMarkerBase[] markers = input.Markers ?? Array.Empty<AreaMarkerBase>();
+        OverworldEnemy[] overworldEnemies = input.OverworldEnemies ?? Array.Empty<OverworldEnemy>();
         SpawnPoint[] spawnPoints = input.SpawnPoints ?? Array.Empty<SpawnPoint>();
         DoorTransition[] doors = input.Doors ?? Array.Empty<DoorTransition>();
 
@@ -30,8 +31,9 @@ public static class RoomMapValidationScanner
 
         ValidateSceneInfrastructure(input, report);
         ValidateMarkers(markers, roomSet, report);
+        CollectOverworldEnemies(overworldEnemies, roomSet, report);
         ValidateRoomBounds(rooms, report);
-        ValidateSpawnPoints(spawnPoints, report);
+        ValidateSpawnPoints(spawnPoints, input.RequiredSpawnPointIds, report);
         ValidateDoors(doors, spawnPoints, report);
         ValidateConnections(markers, spawnPoints, report);
 
@@ -149,6 +151,25 @@ public static class RoomMapValidationScanner
         }
     }
 
+    private static void CollectOverworldEnemies(
+        OverworldEnemy[] enemies,
+        HashSet<RoomInstance> roomSet,
+        RoomMapValidationReport report)
+    {
+        var instanceIds = new HashSet<int>();
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            OverworldEnemy enemy = enemies[i];
+            if (enemy == null || !instanceIds.Add(enemy.GetInstanceID()))
+                continue;
+
+            RoomInstance room = enemy.GetComponentInParent<RoomInstance>(true);
+            if (room == null || !roomSet.Contains(room))
+                room = null;
+            report.AddEnemy(enemy, room);
+        }
+    }
+
     private static void ValidateRoomBounds(
         RoomInstance[] rooms,
         RoomMapValidationReport report)
@@ -194,6 +215,7 @@ public static class RoomMapValidationScanner
 
     private static void ValidateSpawnPoints(
         SpawnPoint[] spawnPoints,
+        string[] requiredSpawnPointIds,
         RoomMapValidationReport report)
     {
         var pointsById = new Dictionary<string, List<SpawnPoint>>(StringComparer.Ordinal);
@@ -203,8 +225,8 @@ public static class RoomMapValidationScanner
             if (spawnPoint == null)
                 continue;
 
-            string spawnPointId = spawnPoint.SpawnPointId;
-            if (string.IsNullOrWhiteSpace(spawnPointId))
+            string spawnPointId = NormalizeId(spawnPoint.SpawnPointId);
+            if (string.IsNullOrEmpty(spawnPointId))
             {
                 report.AddIssue(new RoomMapValidationIssue(
                     RoomMapValidationCodes.SpawnPointIdMissing,
@@ -233,13 +255,34 @@ public static class RoomMapValidationScanner
                 SpawnPoint spawnPoint = entry.Value[i];
                 report.AddIssue(new RoomMapValidationIssue(
                     RoomMapValidationCodes.DuplicateSpawnPointId,
-                    RoomMapValidationSeverity.Warning,
+                    RoomMapValidationSeverity.Error,
                     $"현재 편집 범위에 SpawnPoint ID '{entry.Key}'가 {entry.Value.Count}개 있습니다.",
                     spawnPoint));
             }
         }
+
+        var checkedRequiredIds = new HashSet<string>(StringComparer.Ordinal);
+        string[] required = requiredSpawnPointIds ?? Array.Empty<string>();
+        for (int i = 0; i < required.Length; i++)
+        {
+            string requiredId = NormalizeId(required[i]);
+            if (string.IsNullOrEmpty(requiredId) || !checkedRequiredIds.Add(requiredId))
+                continue;
+
+            if (pointsById.ContainsKey(requiredId))
+                continue;
+
+            report.AddIssue(new RoomMapValidationIssue(
+                RoomMapValidationCodes.RequiredSpawnPointMissing,
+                RoomMapValidationSeverity.Error,
+                $"필수 SpawnPoint ID '{requiredId}'를 찾을 수 없습니다."));
+        }
     }
 
+    private static string NormalizeId(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
     private static void ValidateDoors(
         DoorTransition[] doors,
         SpawnPoint[] currentScopeSpawnPoints,

@@ -1009,14 +1009,14 @@ MonoBehaviour:
     Disabled: 0
   - ActionId: battle.participant.consume_mp
     Category: battle
-    DisplayNameKo: "MP \uC18C\uBE44"
-    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 MP\uB97C \uC9C0\uC815\uD55C
+    DisplayNameKo: "AP \uC18C\uBE44"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 AP\uB97C \uC9C0\uC815\uD55C
       \uC591\uB9CC\uD07C \uC18C\uBE44\uD558\uB3C4\uB85D \uC804\uD22C \uBA85\uB839
       \uACC4\uCE35\uC5D0 \uC694\uCCAD\uD569\uB2C8\uB2E4."
     UsageKo: "Game Module\uC774\uB098 \uC2DC\uB098\uB9AC\uC624 \uC561\uC158\uC5D0\uC11C
       \uC2A4\uD0AC \uBE44\uC6A9\uC744 \uC2E4\uC81C \uC804\uD22C \uC0C1\uD0DC\uC5D0
       \uBC18\uC601\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
-    SummaryTemplateKo: '{subject} MP -{amount}'
+    SummaryTemplateKo: '{subject} AP -{amount}'
     Subcategory: 
     Tags:
     - battle
@@ -1030,7 +1030,7 @@ MonoBehaviour:
     - Name: subject
       Type: actorRef
       DisplayNameKo: "\uB300\uC0C1"
-      DescriptionKo: "MP\uB97C \uC18C\uBE44\uD560 \uC804\uD22C \uCC38\uAC00\uC790
+      DescriptionKo: "AP\uB97C \uC18C\uBE44\uD560 \uC804\uD22C \uCC38\uAC00\uC790
         ID\uC785\uB2C8\uB2E4."
       Required: 1
       DefaultValue: 
@@ -1052,7 +1052,7 @@ MonoBehaviour:
     - Name: amount
       Type: int
       DisplayNameKo: "\uC591"
-      DescriptionKo: "\uC18C\uBE44\uD560 \uC591\uC758 \uC815\uC218 MP\uC785\uB2C8\uB2E4."
+      DescriptionKo: "\uC18C\uBE44\uD560 \uC591\uC758 \uC815\uC218 AP\uC785\uB2C8\uB2E4."
       Required: 1
       DefaultValue: 
       EditorControlId: integer
@@ -1237,13 +1237,13 @@ MonoBehaviour:
     Disabled: 0
   - ActionId: battle.participant.heal_mp
     Category: battle
-    DisplayNameKo: "MP \uD68C\uBCF5"
-    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 MP\uB97C \uC9C0\uC815\uD55C
+    DisplayNameKo: "AP \uD68C\uBCF5"
+    DescriptionKo: "\uC804\uD22C \uCC38\uAC00\uC790\uC758 AP\uB97C \uC9C0\uC815\uD55C
       \uC591\uB9CC\uD07C \uD68C\uBCF5\uD558\uB3C4\uB85D \uC804\uD22C \uBA85\uB839
       \uACC4\uCE35\uC5D0 \uC694\uCCAD\uD569\uB2C8\uB2E4."
     UsageKo: "\uC2DC\uB098\uB9AC\uC624 \uBCF4\uC0C1\uC774\uB098 \uD2B9\uC218 Game
-      Module\uC774 \uC2E4\uC81C MP\uB97C \uD68C\uBCF5\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
-    SummaryTemplateKo: '{subject} MP +{amount}'
+      Module\uC774 \uC2E4\uC81C AP\uB97C \uD68C\uBCF5\uD560 \uB54C \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+    SummaryTemplateKo: '{subject} AP +{amount}'
     Subcategory: 
     Tags:
     - battle
@@ -1252,13 +1252,14 @@ MonoBehaviour:
     - heal
     Aliases:
     - "\uB9C8\uB098\uD68C\uBCF5"
+    - "AP\uD68C\uBCF5"
     - "MP\uD68C\uBCF5"
     RuntimeAdapterId: BattleParticipantHealMpActionAdapter
     Parameters:
     - Name: subject
       Type: actorRef
       DisplayNameKo: "\uB300\uC0C1"
-      DescriptionKo: "MP\uB97C \uD68C\uBCF5\uD560 \uC804\uD22C \uCC38\uAC00\uC790
+      DescriptionKo: "AP\uB97C \uD68C\uBCF5\uD560 \uC804\uD22C \uCC38\uAC00\uC790
         ID\uC785\uB2C8\uB2E4."
       Required: 1
       DefaultValue: 
@@ -1280,7 +1281,7 @@ MonoBehaviour:
     - Name: amount
       Type: int
       DisplayNameKo: "\uD68C\uBCF5\uB7C9"
-      DescriptionKo: "\uC801\uC6A9\uD560 \uC591\uC758 \uC815\uC218 MP \uD68C\uBCF5\uB7C9\uC785\uB2C8\uB2E4."
+      DescriptionKo: "\uC801\uC6A9\uD560 \uC591\uC758 \uC815\uC218 AP \uD68C\uBCF5\uB7C9\uC785\uB2C8\uB2E4."
       Required: 1
       DefaultValue: 
       EditorControlId: integer

@@ -331,7 +331,7 @@ public class BattleScenarioRuntimeTests
         Assert.That(runtime.SessionState.Participants.Count, Is.EqualTo(1));
         Assert.That(runtime.SessionState.TryGetParticipant("zev", out _), Is.False);
         Assert.That(runtime.SessionState.TryGetParticipant("player_001", out BattleParticipantSnapshot player), Is.True);
-        Assert.That(player.MpRatio, Is.EqualTo(1f));
+        Assert.That(player.ApRatio, Is.EqualTo(1f));
     }
 
     [Test]

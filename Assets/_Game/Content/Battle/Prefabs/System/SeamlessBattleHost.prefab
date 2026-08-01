@@ -129,10 +129,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OverworldPartySlotView
   _nameText: {fileID: 8992399046023873883}
   _hpText: {fileID: 2304326817709460375}
-  _mpText: {fileID: 2022053678436057534}
+  _apText: {fileID: 2022053678436057534}
   _portrait: {fileID: 5470749038995121060}
   _hpBar: {fileID: 3220942695705551520}
-  _mpBar: {fileID: 8623418483006019590}
+  _apBar: {fileID: 8623418483006019590}
 --- !u!1 &225492913409049099
 GameObject:
   m_ObjectHideFlags: 0
@@ -198,7 +198,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'MP
+  m_text: 'AP
 
 '
   m_isRightToLeft: 0
@@ -401,6 +401,7 @@ MonoBehaviour:
   _hideDuration: 0.15
   _showEase: 6
   _hideEase: 5
+  _defaultSelection: {fileID: 0}
   _barFill: {fileID: 8583262387780300927}
   _resultLabel: {fileID: 8891707809144163389}
   _colorPerfect: {r: 1, g: 0.9, b: 0.1, a: 1}
@@ -426,6 +427,7 @@ MonoBehaviour:
   _hideDuration: 0.15
   _showEase: 6
   _hideEase: 5
+  _defaultSelection: {fileID: 0}
 --- !u!1 &331208838904337195
 GameObject:
   m_ObjectHideFlags: 0
@@ -577,7 +579,7 @@ GameObject:
   - component: {fileID: 4276403637923596077}
   - component: {fileID: 3542123506107055105}
   m_Layer: 5
-  m_Name: MPBackground
+  m_Name: APBackground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -665,7 +667,7 @@ Transform:
   m_GameObject: {fileID: 495343940149726368}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 7.25, y: 1.45, z: 1}
+  m_LocalPosition: {x: 4.75, y: 1.5, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -962,7 +964,7 @@ GameObject:
   - component: {fileID: 7310197939196844525}
   - component: {fileID: 8730231471069724511}
   m_Layer: 5
-  m_Name: MPText
+  m_Name: APText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1456,6 +1458,7 @@ MonoBehaviour:
   _hideDuration: 0.15
   _showEase: 6
   _hideEase: 5
+  _defaultSelection: {fileID: 0}
   _attackBtn: {fileID: 2519051793865604692}
   _actBtn: {fileID: 2590613461791730842}
   _itemBtn: {fileID: 8123143444409499601}
@@ -2024,22 +2027,22 @@ MonoBehaviour:
     NameText: {fileID: 148331318119704195}
     HPFill: {fileID: 531785443430725870}
     HPText: {fileID: 822206805555302123}
-    MPFill: {fileID: 7409779781938122696}
-    MPText: {fileID: 1393118653213335075}
+    APFill: {fileID: 7409779781938122696}
+    APText: {fileID: 1393118653213335075}
     Root: {fileID: 6587569922123740389}
   - Portrait: {fileID: 8781226052325897793}
     NameText: {fileID: 7830776057987933357}
     HPFill: {fileID: 7405246619169092064}
     HPText: {fileID: 2789807208184344381}
-    MPFill: {fileID: 2893887063938234039}
-    MPText: {fileID: 8730231471069724511}
+    APFill: {fileID: 2893887063938234039}
+    APText: {fileID: 8730231471069724511}
     Root: {fileID: 9042889265406867410}
   - Portrait: {fileID: 5470749038995121060}
     NameText: {fileID: 8992399046023873883}
     HPFill: {fileID: 3220942695705551520}
     HPText: {fileID: 2304326817709460375}
-    MPFill: {fileID: 8623418483006019590}
-    MPText: {fileID: 2022053678436057534}
+    APFill: {fileID: 8623418483006019590}
+    APText: {fileID: 2022053678436057534}
     Root: {fileID: 111315605758395827}
   _turnLabel: {fileID: 7030113331361991798}
   _targetCursor: {fileID: 4640033430333961172}
@@ -2047,11 +2050,15 @@ MonoBehaviour:
   _battleMenuUI: {fileID: 1086117883737939602}
   _defenseQTEUI: {fileID: 7249543494483391181}
   _narrationUI: {fileID: 0}
+  _damagePopupPresenter: {fileID: 0}
+  _damagePopupFont: {fileID: 11400000, guid: dd108a4fce9d41743a9526bcdb6f3504, type: 2}
   _cursorOffset: {x: 0, y: 0.6, z: 0}
   _cursorBobHeight: 8
   _cursorBobSpeed: 0.5
   _cursorBobFrequency: 10
   _barTweenDuration: 0.4
+  _damagePopupFontSize: 60
+  _damagePopupOriginOffset: {x: 10, y: 10}
 --- !u!223 &5445973571512333522
 Canvas:
   m_ObjectHideFlags: 0
@@ -2332,7 +2339,7 @@ RectTransform:
   m_GameObject: {fileID: 1999422152517759065}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7112610297115253664}
@@ -2382,8 +2389,8 @@ MonoBehaviour:
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 640, y: 480}
-  m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 1
+  m_ScreenMatchMode: 2
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -2707,7 +2714,7 @@ GameObject:
   - component: {fileID: 7320920572603187193}
   - component: {fileID: 8623418483006019590}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2873,7 +2880,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'MP
+  m_text: 'AP
 
 '
   m_isRightToLeft: 0
@@ -3092,6 +3099,7 @@ MonoBehaviour:
   _hideDuration: 0.15
   _showEase: 6
   _hideEase: 5
+  _defaultSelection: {fileID: 0}
 --- !u!1 &3533006318873375941
 GameObject:
   m_ObjectHideFlags: 0
@@ -3254,7 +3262,7 @@ Transform:
   m_GameObject: {fileID: 3627037241725939039}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -4.25, y: 0.050000012, z: 1}
+  m_LocalPosition: {x: -3.25, y: 0, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3270,7 +3278,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6419741428746262132}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3399,7 +3407,7 @@ GameObject:
   m_Component:
   - component: {fileID: 720199745231143569}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3791,7 +3799,7 @@ GameObject:
   - component: {fileID: 109449523639266953}
   - component: {fileID: 2015091738215236963}
   m_Layer: 5
-  m_Name: MPBackground
+  m_Name: APBackground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3886,10 +3894,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 7112610297115253664}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -195, y: 180}
-  m_SizeDelta: {x: -450, y: -420}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 125, y: -60}
+  m_SizeDelta: {x: 190, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2251154051715770628
 MonoBehaviour:
@@ -3903,8 +3911,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3312d7739989d2b4e91e6319e9a96d76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RectMask2D
-  m_Padding: {x: -100, y: -130, z: 0, w: -100}
-  m_Softness: {x: 10, y: 10}
+  m_Padding: {x: 0, y: 0, z: 0, w: 0}
+  m_Softness: {x: 0, y: 0}
 --- !u!114 &8209746447054355752
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4298,7 +4306,7 @@ GameObject:
   - component: {fileID: 9103659941149865270}
   - component: {fileID: 2893887063938234039}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4373,7 +4381,7 @@ GameObject:
   - component: {fileID: 3377172558814628361}
   - component: {fileID: 2022053678436057534}
   m_Layer: 5
-  m_Name: MPText
+  m_Name: APText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4523,7 +4531,7 @@ Transform:
   m_GameObject: {fileID: 5405182626200799720}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.25, y: 1.45, z: 1}
+  m_LocalPosition: {x: -4.25, y: 1.5, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4730,7 +4738,7 @@ Transform:
   m_GameObject: {fileID: 5726142355345140640}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 7.25, y: -1.45, z: 1}
+  m_LocalPosition: {x: 4.75, y: -1.5, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4898,7 +4906,7 @@ Transform:
   m_GameObject: {fileID: 5759046721298698868}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.75, y: -1.45, z: 1}
+  m_LocalPosition: {x: -5.75, y: -1.5, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5051,7 +5059,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5549611839105661562}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5323,7 +5331,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'MP
+  m_text: 'AP
 
 '
   m_isRightToLeft: 0
@@ -5738,10 +5746,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OverworldPartySlotView
   _nameText: {fileID: 148331318119704195}
   _hpText: {fileID: 822206805555302123}
-  _mpText: {fileID: 1393118653213335075}
+  _apText: {fileID: 1393118653213335075}
   _portrait: {fileID: 1019402336138794206}
   _hpBar: {fileID: 531785443430725870}
-  _mpBar: {fileID: 7409779781938122696}
+  _apBar: {fileID: 7409779781938122696}
 --- !u!1 &6821280259346499709
 GameObject:
   m_ObjectHideFlags: 0
@@ -5931,8 +5939,8 @@ MonoBehaviour:
   _enemies: []
   _impulseSource: {fileID: 2548836064680235689}
   _hitImpulse: 0.15
-  _mpPerTurn: 5
-  _mpOnParryPerfect: 20
+  _apPerTurn: 5
+  _apOnParryPerfect: 20
   _maxTurnQueueSize: 8
   _visibleTurnQueueSize: 4
   _runSuccessChance: 0.6
@@ -5940,6 +5948,7 @@ MonoBehaviour:
   _fallbackSceneName: LobbyScene
   _postRunEnemyDisableDuration: 3
   _postRunEnemyAlpha: 0.5
+  _seamlessBgmRestoreFadeDuration: 0.6
   _battleUICanvas: {fileID: 1999422152517759065}
   _enemyBasePrefab: {fileID: 3461299171839533844, guid: 15fa88e0bc5908e448f5be65a1a40fa4, type: 3}
   _playerBasePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
@@ -6472,7 +6481,7 @@ GameObject:
   - component: {fileID: 779098611307872953}
   - component: {fileID: 7409779781938122696}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6547,7 +6556,7 @@ GameObject:
   - component: {fileID: 8405679978998818992}
   - component: {fileID: 4754996562520484047}
   m_Layer: 5
-  m_Name: MPBackground
+  m_Name: APBackground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7031,7 +7040,7 @@ Transform:
   m_GameObject: {fileID: 8124573454764756987}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 5.75, y: 0.050000012, z: 1}
+  m_LocalPosition: {x: 3.25, y: 0, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7062,7 +7071,7 @@ Transform:
   m_GameObject: {fileID: 8154274742057090661}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -4.25, y: 0.050000012, z: 1}
+  m_LocalPosition: {x: -4.25, y: 0, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7369,7 +7378,7 @@ Transform:
   m_GameObject: {fileID: 8503900075365773334}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.25, y: 1.45, z: 1}
+  m_LocalPosition: {x: -5.25, y: 1.5, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7400,7 +7409,7 @@ Transform:
   m_GameObject: {fileID: 8684000680982449094}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.75, y: -1.45, z: 1}
+  m_LocalPosition: {x: -4.75, y: -1.5, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7418,7 +7427,7 @@ GameObject:
   - component: {fileID: 7131835138013361621}
   - component: {fileID: 1393118653213335075}
   m_Layer: 5
-  m_Name: MPText
+  m_Name: APText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7597,7 +7606,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OverworldPartySlotView
   _nameText: {fileID: 7830776057987933357}
   _hpText: {fileID: 2789807208184344381}
-  _mpText: {fileID: 8730231471069724511}
+  _apText: {fileID: 8730231471069724511}
   _portrait: {fileID: 8781226052325897793}
   _hpBar: {fileID: 7405246619169092064}
-  _mpBar: {fileID: 2893887063938234039}
+  _apBar: {fileID: 2893887063938234039}

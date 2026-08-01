@@ -6,6 +6,7 @@ using DG.Tweening;
 using Unity.Cinemachine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
 /// <summary>
@@ -23,7 +24,15 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public event Action<PlayerCharacter>            OnPlayerTurnStarted;  
     public event Action<EnemyCharacter, EnemyAttackType> OnEnemyActionStarted;
     public event Action<CharacterBase, int, bool>   OnDamageDealt;        
-    public event Action<PlayerCharacter, int>       OnMPChanged;          
+    public event Action<BattleDamageFeedback>      OnDamageFeedbackRequested;
+    public event Action<PlayerCharacter, int>       OnAPChanged;
+
+    [Obsolete("Use OnAPChanged.")]
+    public event Action<PlayerCharacter, int> OnMPChanged
+    {
+        add => OnAPChanged += value;
+        remove => OnAPChanged -= value;
+    }
     public event Action<bool>                       OnBattleEnded;
     public event Action<BattleRewardResult>         OnBattleRewardsGranted;
     public event Action<PlayerMenuAction>           OnTargetSelectionStarted;
@@ -43,10 +52,15 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [BoxGroup("Camera Settings"), LabelWidth(140)] 
     public float _hitImpulse = 0.15f;
 
-    [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("턴 시작 시 회복되는 MP량")]
-    public int _mpPerTurn = 5;   
-    [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("패링 퍼펙트 성공 시 회복되는 MP량")]
-    public int _mpOnParryPerfect = 20; 
+    [FormerlySerializedAs("_mpPerTurn")]
+    [BoxGroup("System Rules"), LabelWidth(140)]
+    [Tooltip("턴 시작 시 회복되는 AP입니다.")]
+    public int _apPerTurn = 5;
+
+    [FormerlySerializedAs("_mpOnParryPerfect")]
+    [BoxGroup("System Rules"), LabelWidth(140)]
+    [Tooltip("퍼펙트 패링 성공 시 회복되는 AP입니다.")]
+    public int _apOnParryPerfect = 20;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("우측 상단에 표시될 턴 대기열 아이콘의 최대 개수")]
     [SerializeField] private int _maxTurnQueueSize = 8;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("실제로 UI에 노출할 턴 대기열 아이콘 수")]
@@ -529,118 +543,6 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _battleScenarioRuntime.SessionState.SetParticipants(participants);
     }
 
-    private BattleParticipantCommandResult ApplyPureDamageToParticipant(string subjectId, int amount)
-    {
-        if (amount <= 0)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "Damage amount must be greater than zero.");
-        }
-
-        CharacterBase target = FindBattleParticipant(subjectId);
-        if (target == null)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
-        }
-
-        int previousHp = target.CurrentHP;
-        int appliedDamage = target.TakePureDamage(amount);
-        InvokeDamageEvent(target, appliedDamage, false, previousHp);
-        return BattleParticipantCommandResult.Succeeded(
-            ResolveCommandSubjectId(target, subjectId),
-            amount,
-            appliedDamage,
-            previousHp,
-            target.CurrentHP);
-    }
-
-    private BattleParticipantCommandResult HealHpParticipant(string subjectId, int amount)
-    {
-        if (amount <= 0)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "Heal amount must be greater than zero.");
-        }
-
-        CharacterBase target = FindBattleParticipant(subjectId);
-        if (target == null)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
-        }
-
-        int previousHp = target.CurrentHP;
-        target.HealHP(amount);
-        int healedAmount = Mathf.Max(0, target.CurrentHP - previousHp);
-        RefreshBattleSessionParticipants();
-        OnDamageDealt?.Invoke(target, -healedAmount, false);
-        return BattleParticipantCommandResult.Succeeded(
-            ResolveCommandSubjectId(target, subjectId),
-            amount,
-            healedAmount,
-            previousHp,
-            target.CurrentHP);
-    }
-
-    private BattleParticipantCommandResult HealMpParticipant(string subjectId, int amount)
-    {
-        if (amount <= 0)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "MP heal amount must be greater than zero.");
-        }
-
-        CharacterBase target = FindBattleParticipant(subjectId);
-        if (target == null)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
-        }
-
-        int previousMp = target.CurrentMP;
-        target.HealMP(amount);
-        int healedAmount = Mathf.Max(0, target.CurrentMP - previousMp);
-        RefreshBattleSessionParticipants();
-        PlayerCharacter player = target as PlayerCharacter;
-        if (player != null)
-        {
-            OnMPChanged?.Invoke(player, player.CurrentMP);
-        }
-
-        return BattleParticipantCommandResult.Succeeded(
-            ResolveCommandSubjectId(target, subjectId),
-            amount,
-            healedAmount,
-            previousMp,
-            target.CurrentMP);
-    }
-
-    private BattleParticipantCommandResult ConsumeMpParticipant(string subjectId, int amount)
-    {
-        if (amount <= 0)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "MP consume amount must be greater than zero.");
-        }
-
-        CharacterBase target = FindBattleParticipant(subjectId);
-        if (target == null)
-        {
-            return BattleParticipantCommandResult.Failed(subjectId, "Battle participant was not found: " + subjectId);
-        }
-
-        int previousMp = target.CurrentMP;
-        target.ConsumeMP(amount);
-        int consumedAmount = Mathf.Max(0, previousMp - target.CurrentMP);
-        RefreshBattleSessionParticipants();
-        PlayerCharacter player = target as PlayerCharacter;
-        if (player != null)
-        {
-            OnMPChanged?.Invoke(player, player.CurrentMP);
-        }
-
-        return BattleParticipantCommandResult.Succeeded(
-            ResolveCommandSubjectId(target, subjectId),
-            amount,
-            consumedAmount,
-            previousMp,
-            target.CurrentMP);
-    }
-
     private CharacterBase FindBattleParticipant(string subjectId)
     {
         if (string.IsNullOrWhiteSpace(subjectId))
@@ -902,10 +804,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                 return false;
             }
 
-            GameObject prefab = ResolveEnemyBattlePrefab(enemy);
+            GameObject prefab = ResolveEnemyPrefab(enemy);
             if (prefab == null || prefab.GetComponent<EnemyCharacter>() == null)
             {
-                error = $"'{enemy.EnemyName}'의 전투 프리팹에 EnemyCharacter가 없습니다.";
+                error = $"'{enemy.EnemyName}'의 공용 적 프리팹에 EnemyCharacter가 없습니다.";
                 return false;
             }
         }
@@ -965,17 +867,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         
         if (playerChar != null)
         {
-            var global = GlobalDataManager.Instance;
-            
-            if (global != null && global.Party.Count == 0)
-            {
-                global.InitializePartyFromScene(playerChar);
-            }
-
-            if (global != null && global.Party.Count > 0)
-            {
-                playerChar.LoadDataFromGlobal(global.Party[0]); 
-            }
+            GlobalDataManager global = GlobalDataManager.Instance;
+            CharacterSaveData saveData = global != null
+                ? global.InitializePartyFromScene(playerChar)
+                : null;
+            if (saveData != null)
+                playerChar.LoadDataFromGlobal(saveData);
             
             _playerParty.Add(playerChar);
         }
@@ -1012,7 +909,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         
         for (int i = 0; i < encounterEnemies.Count; i++)
         {
-            GameObject enemyPrefab = ResolveEnemyBattlePrefab(encounterEnemies[i]);
+            GameObject enemyPrefab = ResolveEnemyPrefab(encounterEnemies[i]);
             if (pm != null && enemyPrefab != null)
             {
                 Vector3 spawnPos = pm.GetEnemyDefaultPos(i);
@@ -1031,12 +928,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                 }
                 else
                 {
-                    Debug.LogError($"[BattleManager] 전투 프리팹 '{enemyPrefab.name}' 에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
+                    Debug.LogError($"[BattleManager] 공용 적 프리팹 '{enemyPrefab.name}'에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
                 }
             }
             else
             {
-                Debug.LogError($"[BattleManager] 전투 적 프리팹을 찾지 못했습니다. EnemyData={encounterEnemies[i]?.EnemyName}");
+                Debug.LogError($"[BattleManager] 공용 적 프리팹을 찾지 못했습니다. EnemyData={encounterEnemies[i]?.EnemyName}");
             }
         }
 
@@ -1214,7 +1111,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             for (int i = 0; i < global.PendingEnemies.Count; i++)
             {
                 Vector3 spawnPos = pm != null ? pm.GetEnemyDefaultPos(i) : new Vector3(6f, -1f, 0f);
-                GameObject enemyPrefab = ResolveEnemyBattlePrefab(global.PendingEnemies[i]);
+                GameObject enemyPrefab = ResolveEnemyPrefab(global.PendingEnemies[i]);
                 if (enemyPrefab != null)
                 {
                     GameObject enemyObj = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
@@ -1230,12 +1127,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                     }
                     else
                     {
-                        Debug.LogError($"[BattleManager] 전투 프리팹 '{enemyPrefab.name}' 에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
+                        Debug.LogError($"[BattleManager] 공용 적 프리팹 '{enemyPrefab.name}'에 EnemyCharacter 컴포넌트가 없어 적을 생성할 수 없습니다.", enemyObj);
                     }
                 }
                 else
                 {
-                    Debug.LogError($"[BattleManager] 전투 적 프리팹을 찾지 못했습니다. EnemyData={global.PendingEnemies[i]?.EnemyName}");
+                    Debug.LogError($"[BattleManager] 공용 적 프리팹을 찾지 못했습니다. EnemyData={global.PendingEnemies[i]?.EnemyName}");
                 }
             }
             global.PendingEnemies.Clear();
@@ -1287,10 +1184,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             : _playerBasePrefab;
     }
 
-    private GameObject ResolveEnemyBattlePrefab(EnemyData enemyData)
+    private GameObject ResolveEnemyPrefab(EnemyData enemyData)
     {
-        if (enemyData != null && enemyData.BattlePrefab != null)
-            return enemyData.BattlePrefab;
+        if (enemyData != null && enemyData.Prefab != null)
+            return enemyData.Prefab;
 
         return _enemyBasePrefab;
     }
@@ -1525,7 +1422,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         OnDamageDealt?.Invoke(target, -Mathf.Max(0, healedAmount), false);
     }
-    void IBattleParticipantCommandHost.EmitParticipantMpChanged(PlayerCharacter player, int newMp) => InvokeMPChangedEvent(player, newMp);
+    void IBattleParticipantCommandHost.EmitParticipantApChanged(PlayerCharacter player, int newAp) => InvokeAPChangedEvent(player, newAp);
 
     IReadOnlyList<PlayerCharacter> IBattleTurnQteHost.PlayerParty => _playerParty;
     IReadOnlyList<EnemyCharacter> IBattleTurnQteHost.Enemies => _enemies;
@@ -1533,8 +1430,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     IDictionary<EnemyCharacter, BattleQueuedEnemyAction> IBattleTurnQteHost.ReservedEnemyActions => _reservedEnemyActionByActor;
     WaitForSeconds IBattleTurnQteHost.WaitShort => _waitShort;
     int IBattleTurnQteHost.MaxTurnQueueSize => _maxTurnQueueSize;
-    int IBattleTurnQteHost.MpPerTurn => _mpPerTurn;
-    int IBattleTurnQteHost.MpOnParryPerfect => _mpOnParryPerfect;
+    int IBattleTurnQteHost.ApPerTurn => _apPerTurn;
+    int IBattleTurnQteHost.ApOnParryPerfect => _apOnParryPerfect;
     float IBattleTurnQteHost.EnemyDefenseQteWindow => _enemyDefenseQTEWindow;
     float IBattleTurnQteHost.EnemyAttackVisualDuration => _enemyAttackVisualDuration;
     float IBattleTurnQteHost.EnemyPostHitDelay => _enemyPostHitDelay;
@@ -1575,8 +1472,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     void IBattleTurnQteHost.SetActorForeground(CharacterBase actor, bool active) => SetActorForeground(actor, active);
     void IBattleTurnQteHost.EmitDamage(CharacterBase target, int damage, bool isPerfect) => InvokeDamageEvent(target, damage, isPerfect);
     void IBattleTurnQteHost.EmitDamage(CharacterBase target, int damage, bool isPerfect, int previousHp) => InvokeDamageEvent(target, damage, isPerfect, previousHp);
-    void IBattleTurnQteHost.EmitMpChanged(PlayerCharacter player, int newMp) => InvokeMPChangedEvent(player, newMp);
+    void IBattleTurnQteHost.EmitDamage(CharacterBase source, CharacterBase target, int damage, bool isCritical) => InvokeDamageEvent(source, target, damage, isCritical, target != null ? Mathf.Clamp(target.CurrentHP + Mathf.Max(0, damage), 0, target.MaxHP) : 0);
+    void IBattleTurnQteHost.EmitApChanged(PlayerCharacter player, int newAp) => InvokeAPChangedEvent(player, newAp);
     void IBattleTurnQteHost.EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) => NotifyDamageDealt(target, damage, isPerfect);
+    void IBattleTurnQteHost.EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical) => NotifyDamageDealt(source, target, damage, isCritical);
+    void IBattleTurnQteHost.EmitMiss(CharacterBase source, CharacterBase target) => InvokeMissFeedback(source, target);
     void IBattleTurnQteHost.PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing) => PublishEnemyHpScenarioEvent(target, previousHp, currentHp, maxHp, timing);
     void IBattleTurnQteHost.PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor) => PublishEnemyDefeatedScenarioEvent(target, sourceActor);
     void IBattleTurnQteHost.PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor) => PublishSkillCompletedScenarioEvent(skill, sourceActor);
@@ -1694,9 +1594,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         if (success)
         {
-            CommitOverworldEncounterResult(false);
+            CommitOverworldEncounterResult(BattleEncounterOutcome.Escaped);
             _isRunInProgress = false;
-            yield return StartCoroutine(BattleOutroRoutine(false));
+            yield return StartCoroutine(BattleOutroRoutine(BattleEncounterOutcome.Escaped));
         }
         else
         {
@@ -1708,16 +1608,19 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     private IEnumerator BattleEndRoutine()
     {
         bool victory = CheckVictory();
+        BattleEncounterOutcome outcome = victory
+            ? BattleEncounterOutcome.Victory
+            : BattleEncounterOutcome.PartyDefeated;
         _isBattleEnding = true;
         _turnQteModuleController?.CancelActiveCameraPresentation();
         QTEManager.Instance?.ForceStop();
-        CommitOverworldEncounterResult(victory);
+        CommitOverworldEncounterResult(outcome);
         RequestNarration(victory
             ? new BattleNarrationMessage("전투에서 승리했다!", BattleNarrationStyle.System, BattleNarrationPriority.Critical, 0.8f, true)
             : new BattleNarrationMessage("눈 앞이 캄캄해졌다...", BattleNarrationStyle.System, BattleNarrationPriority.Critical, 2.0f, true));
         yield return StartCoroutine(WaitForNarrationToFinish());
         if (!victory) yield return new WaitForSecondsRealtime(0.75f);
-        yield return StartCoroutine(BattleOutroRoutine(victory));
+        yield return StartCoroutine(BattleOutroRoutine(outcome));
     }
 
     #if UNITY_EDITOR
@@ -1739,7 +1642,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     }
     #endif
 
-    private void CommitOverworldEncounterResult(bool isVictory)
+    private void CommitOverworldEncounterResult(BattleEncounterOutcome outcome)
     {
         var global = GlobalDataManager.Instance;
         if (global == null) return;
@@ -1750,20 +1653,20 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             _battleScenarioRuntime,
             global,
             enemyId,
-            isVictory);
+            outcome);
 
         if (!string.IsNullOrWhiteSpace(enemyId))
         {
             string sceneName = global.LastOverworldScene;
 
-            if (isVictory)
+            if (outcome == BattleEncounterOutcome.Victory)
             {
                 if (global.CurrentEncounterDefeatsOnVictory)
                     global.MarkOverworldEnemyDefeated(enemyId, sceneName);
                 else
                     global.ClearOverworldEnemyCooldown(enemyId);
             }
-            else
+            else if (outcome == BattleEncounterOutcome.Escaped)
             {
                 global.MarkOverworldEnemyEscaped(enemyId, sceneName, _postRunEnemyDisableDuration, _postRunEnemyAlpha);
             }
@@ -1801,8 +1704,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         return _lastRewardResult;
     }
 
-    private IEnumerator BattleOutroRoutine(bool isVictory)
+    private IEnumerator BattleOutroRoutine(BattleEncounterOutcome outcome)
     {
+        bool isVictory = outcome == BattleEncounterOutcome.Victory;
         Time.timeScale = 1.0f; // 슬로우 모션 방지
         AudioManager.Instance?.StopBGM(isVictory ? 0.35f : 0.15f);
         OnBattleEnded?.Invoke(isVictory);
@@ -1815,6 +1719,25 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             if (player != null && player.IsAlive) player.SaveDataToGlobal();
         }
 
+        if (outcome == BattleEncounterOutcome.PartyDefeated)
+        {
+            if (_isDedicatedBattleScene)
+            {
+                GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
+                GameStateManager.Instance?.ChangeState(GameState.Cutscene);
+            }
+            else
+            {
+                CompleteSeamlessBattleCleanup(outcome, true);
+            }
+
+            GameOverUI gameOver = GameOverUI.EnsureGlobal();
+            if (gameOver != null)
+                yield return StartCoroutine(gameOver.Show());
+            else
+                SceneLoader.Instance?.LoadScene(SceneName.Title);
+            yield break;
+        }
         if (isVictory)
         {
             BattleRewardResult rewards = CommitVictoryRewards();
@@ -1851,7 +1774,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
         else
         {
-            CompleteSeamlessBattleCleanup(isVictory, true);
+            CompleteSeamlessBattleCleanup(outcome, true);
         }
     }
 
@@ -1861,20 +1784,21 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             return false;
 
         StopAllCoroutines();
-        CompleteSeamlessBattleCleanup(false, false);
+        CompleteSeamlessBattleCleanup(BattleEncounterOutcome.Unknown, false);
         return true;
     }
 
-    private void CompleteSeamlessBattleCleanup(bool isVictory, bool notifyEncounterSource)
+    private void CompleteSeamlessBattleCleanup(BattleEncounterOutcome outcome, bool notifyEncounterSource)
     {
         if (_isDedicatedBattleScene)
             return;
 
+        bool isVictory = outcome == BattleEncounterOutcome.Victory;
         _turnQteModuleController?.CancelActiveCameraPresentation();
         ClearTurnQtePendingActionState();
         PlayerController encounterPlayer = ResolveActiveEncounterPlayer();
         RestoreSeamlessPlayers(encounterPlayer);
-        NotifyEncounterResolved(notifyEncounterSource, isVictory, encounterPlayer);
+        NotifyEncounterResolved(notifyEncounterSource, outcome, encounterPlayer);
         DestroySeamlessBattleActors();
         RestoreSeamlessBattlePresentation();
         RestoreSeamlessBgm();
@@ -1957,7 +1881,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private void NotifyEncounterResolved(
         bool shouldNotify,
-        bool isVictory,
+        BattleEncounterOutcome outcome,
         PlayerController encounterPlayer)
     {
         IEncounterSource source = _activeEncounterSource;
@@ -1968,7 +1892,12 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         try
         {
-            source.OnEncounterResolved(isVictory, encounterPlayer);
+            if (source is IEncounterOutcomeSource outcomeSource)
+                outcomeSource.OnEncounterResolved(outcome, encounterPlayer);
+            else
+                source.OnEncounterResolved(
+                    outcome == BattleEncounterOutcome.Victory,
+                    encounterPlayer);
         }
         catch (Exception exception)
         {
@@ -2050,7 +1979,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (target == null || item == null) return;
 
         int previousHp = target.CurrentHP;
-        int previousMp = target.CurrentMP;
+        int previousAp = target.CurrentAP;
         if (!ItemEffectService.TryApply(item, target, true, out string error))
         {
             Debug.LogWarning($"[BattleManager] Item effect failed: {error}");
@@ -2061,18 +1990,28 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         int hpDelta = previousHp - target.CurrentHP;
         if (hpDelta != 0)
             Instance.InvokeDamageEvent(target, hpDelta, false, previousHp);
-        if (target is PlayerCharacter player && player.CurrentMP != previousMp)
-            Instance.InvokeMPChangedEvent(player, player.CurrentMP);
+        if (target is PlayerCharacter player && player.CurrentAP != previousAp)
+            Instance.InvokeAPChangedEvent(player, player.CurrentAP);
     }
 
 
     public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect)
     {
         int previousHp = target != null ? Mathf.Clamp(target.CurrentHP + Mathf.Max(0, damage), 0, target.MaxHP) : 0;
-        InvokeDamageEvent(target, damage, isPerfect, previousHp);
+        InvokeDamageEvent(null, target, damage, isPerfect, previousHp);
     }
 
     public void InvokeDamageEvent(CharacterBase target, int damage, bool isPerfect, int previousHp)
+    {
+        InvokeDamageEvent(null, target, damage, isPerfect, previousHp);
+    }
+
+    public void InvokeDamageEvent(
+        CharacterBase source,
+        CharacterBase target,
+        int damage,
+        bool isCritical,
+        int previousHp)
     {
         if (target != null)
         {
@@ -2085,21 +2024,68 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
 
         RefreshBattleSessionParticipants();
-        OnDamageDealt?.Invoke(target, damage, isPerfect);
+        OnDamageDealt?.Invoke(target, damage, isCritical);
+        PublishDamageFeedback(source, target, damage, isCritical);
     }
 
-    public void InvokeMPChangedEvent(PlayerCharacter player, int newMP)
+    public void InvokeMissFeedback(CharacterBase source, CharacterBase target)
+    {
+        if (target == null)
+            return;
+
+        OnDamageFeedbackRequested?.Invoke(new BattleDamageFeedback(
+            source,
+            target,
+            0,
+            false,
+            BattleDamageFeedbackKind.Miss));
+    }
+
+    public void InvokeAPChangedEvent(PlayerCharacter player, int newAP)
     {
         RefreshBattleSessionParticipants();
-        OnMPChanged?.Invoke(player, newMP);
+        OnAPChanged?.Invoke(player, newAP);
+    }
+
+    [Obsolete("Use InvokeAPChangedEvent.")]
+    public void InvokeMPChangedEvent(PlayerCharacter player, int newAP)
+    {
+        InvokeAPChangedEvent(player, newAP);
     }
 
     private void NotifyDamageDealt(CharacterBase target, int damage, bool isPerfect)
     {
-        RefreshBattleSessionParticipants();
-        OnDamageDealt?.Invoke(target, damage, isPerfect);
+        NotifyDamageDealt(null, target, damage, isPerfect);
     }
 
+    private void NotifyDamageDealt(
+        CharacterBase source,
+        CharacterBase target,
+        int damage,
+        bool isCritical)
+    {
+        RefreshBattleSessionParticipants();
+        OnDamageDealt?.Invoke(target, damage, isCritical);
+        PublishDamageFeedback(source, target, damage, isCritical);
+    }
+
+    private void PublishDamageFeedback(
+        CharacterBase source,
+        CharacterBase target,
+        int damage,
+        bool isCritical)
+    {
+        if (target == null || damage <= 0)
+            return;
+
+        AudioManager.Instance?.PlayCombatHitSfx();
+        OnDamageFeedbackRequested?.Invoke(new BattleDamageFeedback(
+            source,
+            target,
+            damage,
+            isCritical,
+            BattleDamageFeedbackKind.Damage));
+    }
     private void NotifyPlayerTurnStarted(PlayerCharacter player)
     {
         OnPlayerTurnStarted?.Invoke(player);

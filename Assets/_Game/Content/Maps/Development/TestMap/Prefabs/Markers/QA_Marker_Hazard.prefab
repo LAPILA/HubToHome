@@ -185,8 +185,8 @@ MonoBehaviour:
   areaId: testmap.qa
   markerType: 2
   displayName: Knockback Hazard
-  description: "\uC811\uCD09 \uB109\uBC31\uC744 \uAC80\uC99D\uD569\uB2C8\uB2E4. \uD604\uC7AC
-    damage\uB294 HP\uC5D0 \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC740 \uAE30\uD68D \uC218\uCE58\uC785\uB2C8\uB2E4."
+  description: "\uC811\uCD09 HP \uD53C\uD574\xB7\uB109\uBC31\xB7\uC7AC\uD53C\uACA9
+    \uC9C0\uC5F0\uACFC HP 0 GameOver\uB97C \uAC80\uC99D\uD569\uB2C8\uB2E4."
   isOneShot: 0
   requiredFlag: 
   setFlagOnComplete: 
@@ -194,6 +194,7 @@ MonoBehaviour:
   showLabelInSceneView: 1
   gizmoColor: {r: 1, g: 0.43, b: 0.17, a: 1}
   damage: 10
+  rehitDelay: 0.5
   knockback: 1.25
   triggerOnEnter: 1
 --- !u!1 &3778683908574466016

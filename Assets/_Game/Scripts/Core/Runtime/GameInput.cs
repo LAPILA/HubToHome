@@ -153,6 +153,11 @@ public static class GameInput
     public static bool RunHeld        { get { if (_configModalActive) return false; EnsureInitialized(); return _playerRun.IsPressed(); } }
     public static bool PreemptiveAttackPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.F); } }
 
+    public static bool PowerPreviousCharacterPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.Q) || GamepadPressed(Gamepad.current != null ? Gamepad.current.leftShoulder : null); } }
+    public static bool PowerNextCharacterPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.E) || GamepadPressed(Gamepad.current != null ? Gamepad.current.rightShoulder : null); } }
+    public static bool PowerTabPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.C) || GamepadPressed(Gamepad.current != null ? Gamepad.current.buttonNorth : null); } }
+    public static bool PowerResetPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.R) || GamepadPressed(Gamepad.current != null ? Gamepad.current.selectButton : null); } }
+
     public static bool UIUpPressed    { get { UpdateCache(); return PressedUp(_prevUINavigate, _currUINavigate); } }
     public static bool UIDownPressed  { get { UpdateCache(); return PressedDown(_prevUINavigate, _currUINavigate); } }
     public static bool UILeftPressed  { get { UpdateCache(); return PressedLeft(_prevUINavigate, _currUINavigate); } }
@@ -406,6 +411,11 @@ public static class GameInput
         if (keyboard == null) return false;
 
         KeyControl control = keyboard[key];
+        return control != null && control.wasPressedThisFrame;
+    }
+
+    private static bool GamepadPressed(ButtonControl control)
+    {
         return control != null && control.wasPressedThisFrame;
     }
 

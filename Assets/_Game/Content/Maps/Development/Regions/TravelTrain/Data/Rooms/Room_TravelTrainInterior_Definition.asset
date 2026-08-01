@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d8c9eece50d5894d8a10e0e64a85161, type: 3}
+  m_Name: Room_TravelTrainInterior_Definition
+  m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
+  _roomId: travel_train.main_car
+  _roomPrefab: {fileID: 7597638113957334367, guid: 61025a8f63c2338479f9dfb5b7db6149, type: 3}
+  _areaDefinition: {fileID: 11400000, guid: 31d68012dd07f7f4185c7266de352d5d, type: 2}
+  _bgmOverride: {fileID: 0}
+  _keepCurrentBgm: 1
+  _bgmFadeDuration: 0.75

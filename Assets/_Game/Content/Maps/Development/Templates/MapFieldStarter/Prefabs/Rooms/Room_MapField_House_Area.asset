@@ -1,0 +1,141 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aca8f2575afc9243be1cd531a8c1373, type: 3}
+  m_Name: Room_MapField_House_Area
+  m_EditorClassIdentifier: Assembly-CSharp::AreaDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _markerSummaries
+      Entry: 7
+      Data: 0|System.Collections.Generic.List`1[[AreaMarkerSummaryEntry, Assembly-CSharp]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: 1|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.house.house.bookshelf_note
+    - Name: MarkerType
+      Entry: 3
+      Data: 8
+    - Name: DisplayName
+      Entry: 1
+      Data: house.bookshelf_note
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.house
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_House/Marker_house.bookshelf_note
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 2|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.house.house.bed_item
+    - Name: MarkerType
+      Entry: 3
+      Data: 7
+    - Name: DisplayName
+      Entry: 1
+      Data: house.bed_item
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.house
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_House/Marker_house.bed_item
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 3|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.house.house.shortcut_locked
+    - Name: MarkerType
+      Entry: 3
+      Data: 5
+    - Name: DisplayName
+      Entry: 1
+      Data: house.shortcut_locked
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.house
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_House/Marker_house.shortcut_locked
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "MapTransition \uB610\uB294 targetSceneName \uC911 \uD558\uB098\uB294
+        \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition \uC624\uB958:
+        Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774 \uBE44\uC5B4
+        \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 4|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_0_-1.95
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_House/Door
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+  _areaId: mapfield.house
+  _roomDefinition: {fileID: 11400000, guid: eee5fa23b5a14ec42a5cce3ff9e7aa7c, type: 2}
+  _description: 

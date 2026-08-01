@@ -670,7 +670,7 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
         _builtinCatalog.Entries.Add(CreateEntry(
             BattleParticipantHealMpActionAdapter.Id,
             "battle",
-            "전투 참가자 MP 회복",
+            "전투 참가자 AP 회복",
             nameof(BattleParticipantHealMpActionAdapter),
             "battle.participant.heal_mp:\n  subject: player\n  amount: 10",
             CreateParameter("subject", "actorId", "대상 ActorKey", "PartyIds/EnemyIds 기준 subject", true, string.Empty),
@@ -678,7 +678,7 @@ public sealed class ScenarioSequenceOdinEditorWindow : OdinEditorWindow
         _builtinCatalog.Entries.Add(CreateEntry(
             BattleParticipantConsumeMpActionAdapter.Id,
             "battle",
-            "전투 참가자 MP 소비",
+            "전투 참가자 AP 소비",
             nameof(BattleParticipantConsumeMpActionAdapter),
             "battle.participant.consume_mp:\n  subject: player\n  amount: 5",
             CreateParameter("subject", "actorId", "대상 ActorKey", "PartyIds/EnemyIds 기준 subject", true, string.Empty),

@@ -64,7 +64,7 @@ public class BattleEncounterServiceTests
     [Test]
     public void StartEncounter_WhileDedicatedRequestIsPending_PreservesFirstRequestContext()
     {
-        _sceneLoader.CanLoadScene = true;
+        _sceneLoader.SceneIsLoadable = true;
         EnemyData firstEnemy = CreateScriptableObject<EnemyData>();
         EnemyData secondEnemy = CreateScriptableObject<EnemyData>();
 
@@ -115,7 +115,7 @@ public class BattleEncounterServiceTests
             true);
         _gameState.ChangeState(GameState.Cutscene);
         Time.timeScale = 0.35f;
-        _sceneLoader.CanLoadScene = false;
+        _sceneLoader.SceneIsLoadable = false;
 
         bool started = BattleEncounterService.StartEncounter(
             _player,
@@ -144,7 +144,7 @@ public class BattleEncounterServiceTests
     [Test]
     public void StartEncounter_WhenPreparationThrows_RollsBackAndAcceptsNextRequest()
     {
-        _sceneLoader.CanLoadScene = true;
+        _sceneLoader.SceneIsLoadable = true;
         EnemyData failedEnemy = CreateScriptableObject<EnemyData>();
         EnemyData nextEnemy = CreateScriptableObject<EnemyData>();
         Action<GameState> throwingObserver = state =>
@@ -185,7 +185,7 @@ public class BattleEncounterServiceTests
     [Test]
     public void StartEncounter_WhenRollbackObserverThrows_ReleasesRequestGate()
     {
-        _sceneLoader.CanLoadScene = true;
+        _sceneLoader.SceneIsLoadable = true;
         EnemyData firstEnemy = CreateScriptableObject<EnemyData>();
         EnemyData nextEnemy = CreateScriptableObject<EnemyData>();
 
@@ -210,7 +210,7 @@ public class BattleEncounterServiceTests
         CompleteActiveSceneLoad(SceneLoadResult.LoadFailed);
         _gameState.OnStateChanged -= throwingObserver;
 
-        _sceneLoader.CanLoadScene = true;
+        _sceneLoader.SceneIsLoadable = true;
         bool nextStarted = BattleEncounterService.StartEncounter(
             _player,
             new List<EnemyData> { nextEnemy },
@@ -280,10 +280,10 @@ public class BattleEncounterServiceTests
 
 public sealed class BattleEncounterSceneLoaderTestDouble : SceneLoader
 {
-    public bool CanLoadScene { get; set; }
+    public bool SceneIsLoadable { get; set; }
 
     protected override bool IsSceneLoadable(string sceneName)
     {
-        return CanLoadScene;
+        return SceneIsLoadable;
     }
 }

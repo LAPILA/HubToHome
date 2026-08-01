@@ -6,3 +6,7 @@ public interface IDialogueRunner
 
     void ShowAndWait(string dialogueId, Action onComplete);
 }
+public interface ICancellableDialogueRunner
+{
+    void Cancel();
+}

@@ -16,7 +16,7 @@ MonoBehaviour:
   SkillName: "\uC5F0\uC1C4\uACF5\uACA9"
   SkillID: player.multi_slash
   Description: "\uC804\uCCB4\uC801 \uC5F0\uC1C4\uACF5\uACA9"
-  MPCost: 10
+  APCost: 10
   TargetType: 1
   IsAoE: 1
   ActionTimeline:

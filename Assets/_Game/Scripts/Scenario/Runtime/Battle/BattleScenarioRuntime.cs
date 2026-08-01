@@ -135,8 +135,8 @@ public sealed class BattleParticipantSnapshot
         string displayName,
         int currentHp,
         int maxHp,
-        int currentMp,
-        int maxMp,
+        int currentAp,
+        int maxAp,
         bool isAlive,
         bool isBound,
         bool isStunned,
@@ -149,8 +149,8 @@ public sealed class BattleParticipantSnapshot
         DisplayName = string.IsNullOrWhiteSpace(displayName) ? SubjectId : displayName.Trim();
         CurrentHp = Mathf.Max(0, currentHp);
         MaxHp = Mathf.Max(0, maxHp);
-        CurrentMp = Mathf.Max(0, currentMp);
-        MaxMp = Mathf.Max(0, maxMp);
+        CurrentAp = Mathf.Max(0, currentAp);
+        MaxAp = Mathf.Max(0, maxAp);
         IsAlive = isAlive;
         IsBound = isBound;
         IsStunned = isStunned;
@@ -164,8 +164,14 @@ public sealed class BattleParticipantSnapshot
     public string DisplayName { get; }
     public int CurrentHp { get; }
     public int MaxHp { get; }
-    public int CurrentMp { get; }
-    public int MaxMp { get; }
+    public int CurrentAp { get; }
+    public int MaxAp { get; }
+
+    [Obsolete("Use CurrentAp.")]
+    public int CurrentMp => CurrentAp;
+
+    [Obsolete("Use MaxAp.")]
+    public int MaxMp => MaxAp;
     public bool IsAlive { get; }
     public bool IsBound { get; }
     public bool IsStunned { get; }
@@ -178,10 +184,13 @@ public sealed class BattleParticipantSnapshot
         get { return MaxHp > 0 ? Mathf.Clamp01((float)CurrentHp / MaxHp) : 0f; }
     }
 
-    public float MpRatio
+    public float ApRatio
     {
-        get { return MaxMp > 0 ? Mathf.Clamp01((float)CurrentMp / MaxMp) : 0f; }
+        get { return MaxAp > 0 ? Mathf.Clamp01((float)CurrentAp / MaxAp) : 0f; }
     }
+
+    [Obsolete("Use ApRatio.")]
+    public float MpRatio => ApRatio;
 
     public static BattleParticipantSnapshot FromCharacter(CharacterBase character)
     {
@@ -208,8 +217,8 @@ public sealed class BattleParticipantSnapshot
             character.name,
             character.CurrentHP,
             character.MaxHP,
-            character.CurrentMP,
-            character.MaxMP,
+            character.CurrentAP,
+            character.MaxAP,
             character.IsAlive,
             character.IsBound,
             character.IsStunned,
@@ -235,8 +244,8 @@ public sealed class BattleParticipantSnapshot
             player.DisplayName,
             player.CurrentHP,
             player.MaxHP,
-            player.CurrentMP,
-            player.MaxMP,
+            player.CurrentAP,
+            player.MaxAP,
             player.IsAlive,
             player.IsBound,
             player.IsStunned,
@@ -262,8 +271,8 @@ public sealed class BattleParticipantSnapshot
             displayName,
             enemy.CurrentHP,
             enemy.MaxHP,
-            enemy.CurrentMP,
-            enemy.MaxMP,
+            enemy.CurrentAP,
+            enemy.MaxAP,
             enemy.IsAlive,
             enemy.IsBound,
             enemy.IsStunned,

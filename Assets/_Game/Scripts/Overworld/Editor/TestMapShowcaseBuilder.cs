@@ -13,17 +13,22 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public static class TestMapShowcaseBuilder
 {
-    private const string ScenePath = "Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity";
+    private const string ScenePath = DevelopmentContentPaths.TestMapScene;
     private const string GeneratedRootName = "__TEST_MAP_QA__";
-    private const string TestMapRoot = "Assets/_Game/Content/Maps/Development/TestMap";
+    private const string TestMapRoot = DevelopmentContentPaths.TestMapRoot;
     private const string MarkerPrefabRoot = TestMapRoot + "/Prefabs/Markers";
     private const string NpcPrefabRoot = TestMapRoot + "/Prefabs/NPC";
     private const string LabPrefabRoot = TestMapRoot + "/Prefabs/Labs";
+    private const string DataRoot = TestMapRoot + "/Data";
+    private const string PuzzleDefinitionPath = DataRoot + "/QA_Puzzle_Sequence.asset";
+    private const string ShopDefinitionPath = DataRoot + "/QA_Shop_DebugInventory.asset";
+    private const string DebugItemPath = DataRoot + "/QA_Item_DebugTonic.asset";
+    private const string ContentCatalogPath = "Assets/_Game/Resources/HubToHome/GameContentCatalog.asset";
     private const string PlayerPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Player/Player_Base.prefab";
     private const string BootstrapPrefabPath = "Assets/_Game/Core/Prefabs/[GameBootstrap].prefab";
-    private const string ZevPrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/ZEV_Prefab.prefab";
-    private const string ZevEnemyDataPath = "Assets/_Game/Content/Characters/EnemyDB/ZEV/Enemy_ZEV.asset";
-    private const string TestNpcSpritePath = "Assets/_Game/Content/Art/Samples/TestNPC.png";
+    private const string MarkerEnemyDataPath = "Assets/_Game/Content/Characters/EnemyDB/DB_Slime.asset";
+    private const string BunnySlimePrefabPath = "Assets/_Game/Content/Characters/Prefabs/Enemy/BunnySlime.prefab";
+    private const string TestNpcSpritePath = DevelopmentContentPaths.TestNpcSprite;
     private const string WhiteSpritePath = "Assets/_Game/Content/Maps/Shared/Generated/RoomMap_WhiteSquare.png";
     private const string LabelFontPath = "Assets/_Game/Presentation/UI/Fonts/Silver SDF.asset";
     private const string AreaId = "testmap.qa";
@@ -47,7 +52,6 @@ public static class TestMapShowcaseBuilder
     private static Sprite _whiteSprite;
     private static Sprite _testNpcSprite;
     private static Sprite _playerSprite;
-    private static Sprite _zevSprite;
     private static TMP_FontAsset _labelFont;
 
     private enum StationVisual
@@ -85,6 +89,7 @@ public static class TestMapShowcaseBuilder
         EnsureFolder(MarkerPrefabRoot);
         EnsureFolder(NpcPrefabRoot);
         EnsureFolder(LabPrefabRoot);
+        EnsureFolder(DataRoot);
         EnsureSceneInBuildSettings();
         LoadSourceAssets();
 
@@ -133,9 +138,6 @@ public static class TestMapShowcaseBuilder
         SpriteRenderer playerRenderer = playerPrefab != null ? playerPrefab.GetComponent<SpriteRenderer>() : null;
         _playerSprite = playerRenderer != null ? playerRenderer.sprite : null;
 
-        GameObject zevPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ZevPrefabPath);
-        SpriteRenderer zevRenderer = zevPrefab != null ? zevPrefab.GetComponent<SpriteRenderer>() : null;
-        _zevSprite = zevRenderer != null ? zevRenderer.sprite : null;
 
         if (_whiteSprite == null)
             throw new InvalidOperationException("TestMap 블록용 공용 스프라이트를 찾지 못했습니다: " + WhiteSpritePath);
@@ -314,7 +316,11 @@ public static class TestMapShowcaseBuilder
     private static Dictionary<string, GameObject> BuildStationPrefabs()
     {
         Dictionary<string, GameObject> result = new Dictionary<string, GameObject>();
-        EnemyData zevData = AssetDatabase.LoadAssetAtPath<EnemyData>(ZevEnemyDataPath);
+        EnemyData markerEnemyData = AssetDatabase.LoadAssetAtPath<EnemyData>(MarkerEnemyDataPath);
+        if (markerEnemyData == null)
+            throw new InvalidOperationException("전투 마커용 Slime 데이터를 찾지 못했습니다: " + MarkerEnemyDataPath);
+        SequencePuzzleDefinition qaPuzzle = CreateOrUpdatePuzzleDefinition();
+        ShopDefinition qaShop = CreateOrUpdateDebugShop();
 
         result["npc_guide"] = CreateStationPrefab<NPCMarker>(
             NpcPrefabRoot + "/QA_NPC_TestGuide.prefab",
@@ -323,7 +329,7 @@ public static class TestMapShowcaseBuilder
             "NPC / REPEAT",
             "qa.npc.guide",
             "QA Guide",
-            "반복 대화, 입력 잠금 해제, TestNPC 32px/30 PPU 표시를 검증합니다.",
+            "반복 대화, 입력 잠금 해제, TestNPC 32px/32 PPU 표시를 검증합니다.",
             new Color(0.35f, 0.95f, 0.62f),
             so =>
             {
@@ -421,30 +427,28 @@ public static class TestMapShowcaseBuilder
             MarkerPrefabRoot + "/QA_Marker_Puzzle.prefab",
             AreaMarkerType.Puzzle,
             StationVisual.Puzzle,
-            "PUZZLE / FLAG",
-            "qa.puzzle.switch",
-            "Shortcut Switch",
-            "임시 퍼즐 완료 seam과 숏컷 해제 플래그를 검증합니다.",
+            "PUZZLE / A-B-C",
+            "qa.puzzle.sequence",
+            "Sequence Console",
+            "A, B, C 순서 입력·오답 초기화·저장 플래그·숏컷 해제를 검증합니다.",
             new Color(0.70f, 0.42f, 1f),
-            so =>
-            {
-                SetString(so, "puzzleId", "qa_testmap_shortcut_switch");
-                SetString(so, "solvedFlag", "qa.testmap.puzzle.solved");
-            });
+            so => SetString(so, "puzzleId", "qa_testmap_shortcut_switch"),
+            configureRoot: (root, marker) => ConfigurePuzzleStation(root, marker, qaPuzzle));
 
         result["vendor"] = CreateStationPrefab<VendorMarker>(
             MarkerPrefabRoot + "/QA_Marker_Vendor.prefab",
             AreaMarkerType.Vendor,
             StationVisual.Vendor,
-            "VENDOR / SEAM",
+            "VENDOR / BUY-SELL",
             "qa.vendor.counter",
             "QA Vendor",
-            "vendorId/shopId 전달과 현재 Debug.Log 연결 지점을 검증합니다.",
+            "Vendor 진입, 구매·판매·취소·재진입과 저장 연동을 검증합니다.",
             new Color(1f, 0.84f, 0.25f),
             so =>
             {
                 SetString(so, "vendorId", "qa_vendor_test_counter");
-                SetString(so, "shopId", "qa_shop_debug_inventory");
+                SetString(so, "shopId", qaShop.ShopId);
+                so.FindProperty("shopDefinition").objectReferenceValue = qaShop;
             });
 
         result["shortcut"] = CreateStationPrefab<ShortcutDoorMarker>(
@@ -491,6 +495,7 @@ public static class TestMapShowcaseBuilder
                 SetString(so, "targetSceneName", "TestMap");
                 SetString(so, "targetAreaId", AreaId);
                 SetString(so, "targetSpawnId", "qa.testmap.spawn.sublocation");
+                SetString(so, "returnSpawnPointId", "qa.testmap.spawn.sublocation");
                 SetFloat(so, "fadeDuration", 0.2f);
             });
 
@@ -501,7 +506,7 @@ public static class TestMapShowcaseBuilder
             "HAZARD / TOUCH",
             "qa.hazard.knockback",
             "Knockback Hazard",
-            "접촉 넉백을 검증합니다. 현재 damage는 HP에 연결되지 않은 기획 수치입니다.",
+            "접촉 HP 피해·넉백·재피격 지연과 HP 0 GameOver를 검증합니다.",
             new Color(1f, 0.43f, 0.17f),
             so =>
             {
@@ -515,23 +520,23 @@ public static class TestMapShowcaseBuilder
             AreaMarkerType.Enemy,
             StationVisual.Enemy,
             "ENEMY / Z BATTLE",
-            "qa.enemy.zev.marker",
-            "ZEV Marker Encounter",
+            "qa.enemy.slime.marker",
+            "Slime Marker Encounter",
             "Area Enemy Marker의 Z 상호작용과 전용 BattleScene 왕복을 검증합니다.",
             new Color(1f, 0.25f, 0.28f),
             so =>
             {
-                SetString(so, "enemyId", "qa_enemy_zev_marker");
+                SetString(so, "enemyId", "qa_enemy_slime_marker");
                 SetInt(so, "enemyLevel", 1);
-                SetString(so, "battleEncounterId", "qa.testmap.encounter.zev_marker");
-                SetObject(so, "enemyData", zevData);
+                SetString(so, "battleEncounterId", "qa.testmap.encounter.slime_marker");
+                SetObject(so, "enemyData", markerEnemyData);
                 SetBool(so, "useDedicatedBattleScene", true);
                 SetString(so, "battleSceneName", "BattleScene");
                 SetFloat(so, "battleFadeDuration", 0.08f);
             },
             false,
             string.Empty,
-            _zevSprite != null ? _zevSprite : _testNpcSprite);
+            _testNpcSprite);
 
         return result;
     }
@@ -548,7 +553,8 @@ public static class TestMapShowcaseBuilder
         Action<SerializedObject> configure,
         bool oneShot = false,
         string completionFlag = "",
-        Sprite characterSprite = null)
+        Sprite characterSprite = null,
+        Action<GameObject, T> configureRoot = null)
         where T : AreaMarkerBase
     {
         GameObject root = new GameObject(System.IO.Path.GetFileNameWithoutExtension(path));
@@ -571,6 +577,7 @@ public static class TestMapShowcaseBuilder
         SetColor(so, "gizmoColor", accent);
         configure?.Invoke(so);
         so.ApplyModifiedPropertiesWithoutUndo();
+        configureRoot?.Invoke(root, marker);
 
         BuildStationVisual(root.transform, markerType, visual, label, accent, oneShot, characterSprite);
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
@@ -578,6 +585,134 @@ public static class TestMapShowcaseBuilder
         return prefab;
     }
 
+    private static ShopDefinition CreateOrUpdateDebugShop()
+    {
+        ItemData item = AssetDatabase.LoadAssetAtPath<ItemData>(DebugItemPath);
+        if (item == null)
+        {
+            item = ScriptableObject.CreateInstance<ItemData>();
+            AssetDatabase.CreateAsset(item, DebugItemPath);
+        }
+
+        item.ItemID = "qa_debug_tonic";
+        item.ItemName = "QA Debug Tonic";
+        item.Description = "TestMap 구매·판매·저장 검증용 아이템";
+        item.Type = ItemType.Consumable;
+        item.IsStackable = true;
+        item.MaxStackSize = 99;
+        item.IsSellable = true;
+        item.Price = 20;
+        item.ActionType = EffectActionType.Heal;
+        item.TargetStat = TargetStatType.HP;
+        item.CalcType = ValueCalcType.Flat;
+        item.EffectValue = 10;
+        EditorUtility.SetDirty(item);
+
+        ShopDefinition shop =
+            AssetDatabase.LoadAssetAtPath<ShopDefinition>(ShopDefinitionPath);
+        if (shop == null)
+        {
+            shop = ScriptableObject.CreateInstance<ShopDefinition>();
+            AssetDatabase.CreateAsset(shop, ShopDefinitionPath);
+        }
+
+        shop.Configure(
+            "qa_shop_debug_inventory",
+            "QA Buy / Sell Counter",
+            new[]
+            {
+                new ShopEntry(
+                    "debug_tonic",
+                    item,
+                    10,
+                    1,
+                    0,
+                    "qa.testmap.shop.debug_tonic.purchases")
+            });
+        EditorUtility.SetDirty(shop);
+        RegisterCatalogItem(item);
+        return shop;
+    }
+
+    private static void RegisterCatalogItem(ItemData item)
+    {
+        GameContentCatalog catalog =
+            AssetDatabase.LoadAssetAtPath<GameContentCatalog>(ContentCatalogPath);
+        if (catalog == null)
+            throw new InvalidOperationException("GameContentCatalog을 찾지 못했습니다: " + ContentCatalogPath);
+
+        catalog.Items ??= new List<ItemData>();
+        if (!catalog.Items.Contains(item))
+        {
+            catalog.Items.Add(item);
+            EditorUtility.SetDirty(catalog);
+        }
+
+        GameContentCatalog.InvalidateRuntimeCache();
+    }
+    private static SequencePuzzleDefinition CreateOrUpdatePuzzleDefinition()
+    {
+        SequencePuzzleDefinition definition =
+            AssetDatabase.LoadAssetAtPath<SequencePuzzleDefinition>(PuzzleDefinitionPath);
+        if (definition == null)
+        {
+            definition = ScriptableObject.CreateInstance<SequencePuzzleDefinition>();
+            AssetDatabase.CreateAsset(definition, PuzzleDefinitionPath);
+        }
+
+        definition.Configure(
+            "qa_testmap_shortcut_switch",
+            new[] { "terminal.a", "terminal.b", "terminal.c" },
+            "qa.testmap.puzzle.solved",
+            0.6f);
+        EditorUtility.SetDirty(definition);
+        return definition;
+    }
+
+    private static void ConfigurePuzzleStation(
+        GameObject root,
+        PuzzleMarker marker,
+        SequencePuzzleDefinition definition)
+    {
+        GameObject controllerObject = new GameObject("Sequence Controller");
+        controllerObject.transform.SetParent(root.transform, false);
+        SequencePuzzleController controller = controllerObject.AddComponent<SequencePuzzleController>();
+        controller.Configure(definition);
+
+        SerializedObject markerObject = new SerializedObject(marker);
+        SetString(markerObject, "solvedFlag", string.Empty);
+        SetString(
+            markerObject,
+            "fallbackInstructionText",
+            "* 아래 단자를 A, B, C 순서로 작동시킨다.\n* 틀리면 잠시 뒤 처음부터 다시 시작한다.");
+        markerObject.FindProperty("puzzleRuntimeSource").objectReferenceValue = controller;
+        markerObject.ApplyModifiedPropertiesWithoutUndo();
+
+        CreatePuzzleSwitch(root.transform, "terminal.a", "A", new Vector3(-1.25f, -2.25f), controller, new Color(0.84f, 0.30f, 0.28f));
+        CreatePuzzleSwitch(root.transform, "terminal.b", "B", new Vector3(0f, -2.25f), controller, new Color(0.36f, 0.78f, 0.42f));
+        CreatePuzzleSwitch(root.transform, "terminal.c", "C", new Vector3(1.25f, -2.25f), controller, new Color(0.32f, 0.58f, 0.90f));
+    }
+
+    private static void CreatePuzzleSwitch(
+        Transform parent,
+        string nodeId,
+        string label,
+        Vector3 position,
+        SequencePuzzleController controller,
+        Color color)
+    {
+        GameObject switchObject = new GameObject("PuzzleSwitch_" + label);
+        switchObject.layer = ResolveLayer("Interactable");
+        switchObject.transform.SetParent(parent, false);
+        switchObject.transform.localPosition = position;
+        CircleCollider2D collider = switchObject.AddComponent<CircleCollider2D>();
+        collider.isTrigger = true;
+        collider.radius = 0.38f;
+        PuzzleSwitch puzzleSwitch = switchObject.AddComponent<PuzzleSwitch>();
+        puzzleSwitch.Configure(nodeId, controller);
+        CreateBlock("Visual", switchObject.transform, Vector3.zero, new Vector2(0.68f, 0.68f), color, "Characters", 3);
+        CreateText("Label", switchObject.transform, new Vector3(0f, 0f), label, 0.05f, Color.white, 5300);
+    }
     private static string GetMarkerShortName(AreaMarkerType markerType)
     {
         switch (markerType)
@@ -626,7 +761,7 @@ public static class TestMapShowcaseBuilder
             case AreaMarkerType.SavePoint:
                 return "Z SAVE SLOT 0";
             case AreaMarkerType.Puzzle:
-                return "Z SET FLAG";
+                return "Z GUIDE / SWITCH A-B-C";
             case AreaMarkerType.ShortcutDoor:
                 return "Z DOOR / LOCK";
             case AreaMarkerType.Vendor:
@@ -735,47 +870,35 @@ public static class TestMapShowcaseBuilder
 
         CreateMarkerNote(zone.transform, "Note_Item", new Vector3(-27f, -5.75f), "Item", "Z: pickup x3\nthen one-shot flag", Color.white, 4.6f);
         CreateMarkerNote(zone.transform, "Note_Save", new Vector3(-21f, -5.75f), "SAVE", "Z: save slot 0\nreal save write", new Color(0.24f, 1f, 1f), 4.6f);
-        CreateMarkerNote(zone.transform, "Note_Puzzle", new Vector3(-15f, -5.75f), "Puzzle", "Z: set solved flag\nunlocks shortcut", new Color(0.70f, 0.42f, 1f), 4.6f);
+        CreateMarkerNote(zone.transform, "Note_Puzzle", new Vector3(-15f, -5.75f), "Puzzle", "Z: read guide\nthen A-B-C switches", new Color(0.70f, 0.42f, 1f), 4.6f);
         CreateMarkerNote(zone.transform, "Note_Shortcut", new Vector3(-8f, -5.75f), "Shortcut", "Z: locked first\ntry after puzzle", new Color(0.36f, 0.94f, 0.62f), 4.8f);
-        CreateMarkerNote(zone.transform, "Note_Vendor", new Vector3(-27f, -11.65f), "Vendor", "Z: shop hook\nlogs vendor/shop id", new Color(1f, 0.84f, 0.25f), 4.6f);
+        CreateMarkerNote(zone.transform, "Note_Vendor", new Vector3(-27f, -11.65f), "Vendor", "Z: buy / sell\ncancel and reopen", new Color(1f, 0.84f, 0.25f), 4.6f);
         CreateMarkerNote(zone.transform, "Note_Connection", new Vector3(-19f, -11.65f), "Connection", "Z: map link\nreloads TestMap", new Color(0.48f, 0.82f, 1f), 4.8f);
         CreateMarkerNote(zone.transform, "Note_Sublocation", new Vector3(-10f, -11.65f), "Sublocation", "Z: sub map link\nreturns to spawn", new Color(0.70f, 0.68f, 1f), 4.8f);
 
-        CreateText("System_Test_Order", zone.transform, new Vector3(-17f, -17.05f), "PUZZLE FIRST -> SHORTCUT UNLOCKS   |   DOORS RELOAD THIS MAP", 0.044f, new Color(0.90f, 0.94f, 0.59f), 5200);
+        CreateText("System_Test_Order", zone.transform, new Vector3(-17f, -17.05f), "ITEM PICKUP -> VENDOR SELL/BUY   |   PUZZLE A-B-C -> SHORTCUT", 0.044f, new Color(0.90f, 0.94f, 0.59f), 5200);
     }
 
     private static void BuildCombatZone(Transform parent, Transform environment, Dictionary<string, GameObject> prefabs)
     {
         GameObject zone = CreateGroup("D_COMBAT_AND_COLLISION", parent);
-        PlacePrefab(prefabs["enemy"], zone.transform, new Vector3(8f, -8.4f));
-        PlacePrefab(prefabs["hazard"], zone.transform, new Vector3(27f, -8.4f));
-        CreateMarkerNote(zone.transform, "Note_EnemyMarker", new Vector3(8f, -5.85f), "Enemy Marker", "Z: battle marker\ndata-driven test", new Color(1f, 0.45f, 0.45f));
-        CreateMarkerNote(zone.transform, "Note_ZevPrefab", new Vector3(17f, -5.85f), "ZEV Prefab", "touch: normal\nF: preemptive", new Color(1f, 0.62f, 0.62f));
-        CreateMarkerNote(zone.transform, "Note_Hazard", new Vector3(27f, -5.85f), "Hazard", "touch: knockback\nHP not wired yet", new Color(1f, 0.42f, 0.18f));
+        PlacePrefab(prefabs["enemy"], zone.transform, new Vector3(6f, -8.4f));
+        PlacePrefab(prefabs["hazard"], zone.transform, new Vector3(21f, -8.4f));
+        CreateMarkerNote(zone.transform, "Note_EnemyMarker", new Vector3(6f, -5.85f), "Enemy Marker", "Z: battle marker\ndata-driven test", new Color(1f, 0.45f, 0.45f), 4.8f);
+        CreateMarkerNote(zone.transform, "Note_BunnySlime", new Vector3(13.5f, -5.85f), "Bunny Slime", "touch / F: seamless\nnever attacks", new Color(0.95f, 0.78f, 0.88f), 5.2f);
+        CreateMarkerNote(zone.transform, "Note_Hazard", new Vector3(21f, -5.85f), "Hazard", "touch: HP damage\n0 HP: GameOver", new Color(1f, 0.42f, 0.18f), 4.8f);
 
-        GameObject zevPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ZevPrefabPath);
-        if (zevPrefab != null)
+        GameObject bunnyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BunnySlimePrefabPath);
+        if (bunnyPrefab != null)
         {
-            GameObject zev = (GameObject)PrefabUtility.InstantiatePrefab(zevPrefab);
-            zev.name = "QA_ZEV_CONTACT_OR_F_ATTACK";
-            zev.transform.SetParent(zone.transform, false);
-            zev.transform.position = new Vector3(17f, -8.4f);
-
-            OverworldEnemy enemy = zev.GetComponent<OverworldEnemy>();
-            if (enemy != null)
-            {
-                SerializedObject enemySo = new SerializedObject(enemy);
-                SetString(enemySo, "_enemyId", "qa.testmap.zev.field_attack");
-                SetBool(enemySo, "_useDedicatedBattleScene", true);
-                SetString(enemySo, "_battleSceneName", "BattleScene");
-                SetEnum(enemySo, "_victoryHandling", 0);
-                enemySo.ApplyModifiedPropertiesWithoutUndo();
-            }
-
-            ApplyStaticYSort(zev);
+            GameObject bunny = (GameObject)PrefabUtility.InstantiatePrefab(bunnyPrefab);
+            bunny.name = "QA_BUNNY_SLIME_PASSIVE_ENCOUNTER";
+            bunny.transform.SetParent(zone.transform, false);
+            bunny.transform.position = new Vector3(13.5f, -8.4f);
+            ApplyStaticYSort(bunny);
         }
 
-        CreateText("Combat_Hint", zone.transform, new Vector3(17f, -4.55f), "READ EACH PLATE: MARKER BATTLE / ZEV TOUCH / F PREEMPTIVE / HAZARD", 0.04f, new Color(1f, 0.72f, 0.67f), 5200);
+        CreateText("Combat_Hint", zone.transform, new Vector3(17f, -4.55f), "MARKER / PASSIVE BUNNY / PREEMPTIVE / HAZARD", 0.04f, new Color(1f, 0.72f, 0.67f), 5200);
 
         GameObject collision = CreateGroup("Collision_And_YSort_Course", environment);
         CreateBlock("CollisionWall_Left", collision.transform, new Vector3(7.5f, -14.8f), new Vector2(0.7f, 5.4f), new Color(0.54f, 0.57f, 0.62f), "Characters", 0, true);
@@ -812,15 +935,14 @@ public static class TestMapShowcaseBuilder
         }
 
         CreateText("Scale_Title", root.transform, new Vector3(0f, 4.8f), "1 GRID CELL = 1 WORLD UNIT", 0.052f, new Color(0.95f, 0.83f, 1f), 5400);
-        CreateSpriteSample(root.transform, "Player_Current", _playerSprite, new Vector3(-8f, 2.1f), 1f, Color.white, "PLAYER CURRENT");
-        CreateSpriteSample(root.transform, "TestNPC_Native", _testNpcSprite, new Vector3(0f, 2.1f), 1f, Color.white, "TESTNPC 32px / 30PPU / 1.07u");
-        CreateSpriteSample(root.transform, "ZEV_Current", _zevSprite, new Vector3(8f, 2.1f), 1f, Color.white, "ZEV CURRENT");
+        CreateSpriteSample(root.transform, "Player_Current", _playerSprite, new Vector3(-5f, 2.1f), 1f, Color.white, "PLAYER CURRENT");
+        CreateSpriteSample(root.transform, "TestNPC_Native", _testNpcSprite, new Vector3(5f, 2.1f), 1f, Color.white, "TESTNPC 32px / 32PPU / 1.00u");
 
-        CreateSpriteSample(root.transform, "TestNPC_050", _testNpcSprite, new Vector3(-9f, -2.4f), 0.5f, Color.white, "0.50x / 0.53u");
-        CreateSpriteSample(root.transform, "TestNPC_075", _testNpcSprite, new Vector3(-4.5f, -2.4f), 0.75f, Color.white, "0.75x / 0.80u");
-        CreateSpriteSample(root.transform, "TestNPC_100", _testNpcSprite, new Vector3(0f, -2.4f), 1f, Color.white, "1.00x / 1.07u");
-        CreateSpriteSample(root.transform, "TestNPC_150", _testNpcSprite, new Vector3(4.5f, -2.4f), 1.5f, Color.white, "1.50x / 1.60u");
-        CreateSpriteSample(root.transform, "TestNPC_200", _testNpcSprite, new Vector3(9f, -2.4f), 2f, Color.white, "2.00x / 2.13u");
+        CreateSpriteSample(root.transform, "TestNPC_050", _testNpcSprite, new Vector3(-9f, -2.4f), 0.5f, Color.white, "0.50x / 0.50u");
+        CreateSpriteSample(root.transform, "TestNPC_075", _testNpcSprite, new Vector3(-4.5f, -2.4f), 0.75f, Color.white, "0.75x / 0.75u");
+        CreateSpriteSample(root.transform, "TestNPC_100", _testNpcSprite, new Vector3(0f, -2.4f), 1f, Color.white, "1.00x / 1.00u");
+        CreateSpriteSample(root.transform, "TestNPC_150", _testNpcSprite, new Vector3(4.5f, -2.4f), 1.5f, Color.white, "1.50x / 1.50u");
+        CreateSpriteSample(root.transform, "TestNPC_200", _testNpcSprite, new Vector3(9f, -2.4f), 2f, Color.white, "2.00x / 2.00u");
 
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, LabPrefabRoot + "/QA_SpriteScaleLab.prefab");
         UnityEngine.Object.DestroyImmediate(root);

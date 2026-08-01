@@ -17,7 +17,7 @@ MonoBehaviour:
   SkillID: zev.combo_slash
   Description: "\uAC00\uB85C \uC138\uB85C \uB9C8\uBB34\uB9AC!"
   UsageProfile: 2
-  MPCost: 0
+  APCost: 0
   TargetType: 1
   IsAoE: 0
   ActionTimeline:

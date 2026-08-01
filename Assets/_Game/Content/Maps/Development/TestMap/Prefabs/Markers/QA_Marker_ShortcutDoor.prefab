@@ -658,6 +658,7 @@ MonoBehaviour:
     TargetSceneName: TestMap
     TargetRoom: {fileID: 0}
     TargetSpawnPointId: qa.testmap.spawn.shortcut
+    TargetRoomId: 
     TargetAreaId: testmap.qa
     FacingAfterEnter: 0
     FallbackPosition: {x: 0, y: 0}
@@ -667,6 +668,10 @@ MonoBehaviour:
   linkedDoorId: qa_shortcut_b
   isLocked: 1
   unlockFlag: qa.testmap.puzzle.solved
+  lockedDialogue: {fileID: 0}
+  lockedFallbackSpeaker: {fileID: 0}
+  lockedFallbackEmotion: 1
+  lockedFallbackText: "\uC7A0\uACA8 \uC788\uB2E4."
 --- !u!1 &3062921465371613619
 GameObject:
   m_ObjectHideFlags: 0

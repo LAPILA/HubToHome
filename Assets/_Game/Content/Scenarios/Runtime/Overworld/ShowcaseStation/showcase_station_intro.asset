@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: showcase_station_intro
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: showcase.station.intro
+  DisplayNameKo: "\uC1FC\uCF00\uC774\uC2A4 \uC5ED - \uB3C4\uCC29"
+  Contract:
+    DescriptionKo: "\uBA48\uCD98 \uC5F4\uCC28\uC640 \uC2B9\uAC15\uC7A5\uC744 \uACF5\uAC1C\uD558\uACE0
+      \uCCAB \uC548\uB0B4 \uB300\uD654\uB97C \uC7AC\uC0DD\uD55C\uB2E4."
+    UsageKo: "Showcase Station \uCCAB \uC9C4\uC785\uC5D0\uC11C \uD55C \uBC88 \uC2E4\uD589\uD55C\uB2E4."
+    Lifecycle: 1
+    Tags:
+    - overworld
+    - cinematic
+    - showcase
+    AllowedPrimaryModes:
+    - overworld
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/ShowcaseStation/showcase_station_intro.sequence.yaml
+    SourceHash: 328abc2a1e6b7885bf19ce054f0cf63327eed8f404d60449e009491ddae6853a
+    ImportedAtIso8601: 2026-07-27T01:25:24.1609721Z
+  Actions:
+  - BlockId: 6e2fa7c4c72f4f02974fde6958804801
+    DesignerLabel: "\uB3C4\uCC29 Stage \uC900\uBE44"
+    ActionId: cinematic.stage.prepare
+    ParametersJson: '{"stage":"showcase.station.intro","shot":"showcase.station.intro.train"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 0b80eb81f5c34cbf9845d203b7d6221a
+    DesignerLabel: "\uC2B9\uAC15\uC7A5 \uACF5\uAC1C"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"black","duration":0.7}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: d52ece5cc8f74e7b8f32bd73e9370b2a
+    DesignerLabel: "\uBA48\uCD98 \uC5F4\uCC28 \uB3C4\uCC29 \uC0F7"
+    ActionId: cinematic.shot.play
+    ParametersJson: '{"stage":"showcase.station.intro","shot":"showcase.station.intro.train"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: bd6488415f614245b90dbd74bc65bd99
+    DesignerLabel: "\uB3C4\uCC29 \uC548\uB0B4 \uB300\uD654"
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"showcase.station.intro.arrival"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: f82e4db9ad41411a8662429f4f133b0e
+    DesignerLabel: "\uAC8C\uC784 \uCE74\uBA54\uB77C \uC804\uD658 \uAC00\uB9AC\uAE30"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"black","duration":0.25}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: d15d5e9d1b61494397bcbaf1102c5dd3
+    DesignerLabel: "\uB3C4\uCC29 Stage \uD574\uC81C"
+    ActionId: cinematic.stage.release
+    ParametersJson: '{"stage":"showcase.station.intro"}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 45d0d348eb2a44738765075dbddae461
+    DesignerLabel: "\uD50C\uB808\uC774 \uD654\uBA74 \uBCF5\uADC0"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"black","duration":0.35}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

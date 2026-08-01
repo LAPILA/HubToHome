@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_StationNpc_Completed
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  Nodes:
+  - Speaker: {fileID: 0}
+    Emotion: 1
+    LocalizationKey: 
+    DefaultText: "* \uC5F4\uCC28\uAC00 \uB2E4\uC2DC \uC6C0\uC9C1\uC774\uB124. \uB355\uBD84\uC5D0
+      \uC774 \uC5ED\uB3C4 \uD55C\uC228 \uB3CC\uB9AC\uACA0\uC5B4."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []

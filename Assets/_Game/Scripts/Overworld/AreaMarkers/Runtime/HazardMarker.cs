@@ -5,39 +5,87 @@ using UnityEngine;
 public class HazardMarker : AreaMarkerBase
 {
     [TitleGroup("Hazard 설정")]
-    [InfoBox("현재 Hazard는 플레이어를 밀어내는 연출 seam만 연결되어 있습니다. damage 값은 로그/기획 수치이며 실제 HP는 아직 감소하지 않습니다.")]
-    [SerializeField, Min(0), LabelText("디자인 피해량(HP 미연동)")] private int damage = 10;
+    [SerializeField, Min(1), LabelText("피해량")] private int damage = 10;
+    [TitleGroup("Hazard 설정")]
+    [SerializeField, Min(0f), LabelText("재피격 대기")] private float rehitDelay = 0.5f;
     [TitleGroup("Hazard 설정")]
     [SerializeField, Min(0f), LabelText("넉백")] private float knockback = 0.5f;
     [TitleGroup("Hazard 설정")]
     [SerializeField, LabelText("접촉 즉시 발동")] private bool triggerOnEnter = true;
+
+    private IOverworldPartyHealthService _healthService;
+    private IOverworldTimeSource _timeSource;
+    private int _lastPlayerInstanceId;
+    private float _nextDamageTime;
 
     protected override void Reset()
     {
         markerType = AreaMarkerType.Hazard;
         gizmoColor = AreaMarkerDefaults.GetColor(markerType);
         base.Reset();
-        Collider2D c = GetComponent<Collider2D>();
-        if (c != null) c.isTrigger = true;
+        Collider2D collider = GetComponent<Collider2D>();
+        if (collider != null)
+            collider.isTrigger = true;
+    }
+
+    public void SetRuntimeServices(
+        IOverworldPartyHealthService healthService,
+        IOverworldTimeSource timeSource)
+    {
+        _healthService = healthService;
+        _timeSource = timeSource;
+        _lastPlayerInstanceId = 0;
+        _nextDamageTime = 0f;
     }
 
     public override void Interact(PlayerController player)
     {
-        if (!CanInteract(player) || !IsPlayerInRange(player)) return;
-        ApplyHazard(player);
+        if (!CanInteract(player) || !IsPlayerInRange(player))
+            return;
+        TryApplyHazard(player);
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!triggerOnEnter || !CanInteract()) return;
+        if (!triggerOnEnter || !CanInteract())
+            return;
+
         PlayerController player = other.GetComponent<PlayerController>();
-        if (player != null) ApplyHazard(player);
+        if (player != null)
+            TryApplyHazard(player);
     }
 
-    private void ApplyHazard(PlayerController player)
+    public bool TryApplyHazard(PlayerController player)
     {
-        AreaMarkerRuntimeService.ApplyHazard(this, player, damage, knockback);
-        if (isOneShot) CompleteMarker();
+        if (player == null)
+            return false;
+
+        float now = ResolveTimeSource().UnscaledTime;
+        int playerId = player.GetInstanceID();
+        if (_lastPlayerInstanceId == playerId && now < _nextDamageTime)
+            return false;
+
+        IOverworldPartyHealthService healthService = _healthService
+            ??= new OverworldPartyHealthService(GlobalDataManager.Instance);
+        OverworldPartyDamageResult result = AreaMarkerRuntimeService.ApplyHazard(
+            this,
+            player,
+            damage,
+            knockback,
+            healthService);
+        if (result.Status == OverworldPartyDamageStatus.InvalidDamage
+            || result.Status == OverworldPartyDamageStatus.PartyMissing)
+        {
+            return false;
+        }
+
+        _lastPlayerInstanceId = playerId;
+        _nextDamageTime = now + Mathf.Max(0f, rehitDelay);
+        if (result.CurrentHP <= 0)
+            GameOverUI.Request();
+        if (isOneShot)
+            CompleteMarker();
+        return true;
     }
 
     public override void CollectValidationIssues(List<string> issues)
@@ -45,5 +93,12 @@ public class HazardMarker : AreaMarkerBase
         base.CollectValidationIssues(issues);
         if (damage <= 0)
             issues.Add("damage는 1 이상이어야 합니다.");
+        if (rehitDelay < 0f)
+            issues.Add("rehitDelay는 0 이상이어야 합니다.");
+    }
+
+    private IOverworldTimeSource ResolveTimeSource()
+    {
+        return _timeSource ??= new UnityOverworldTimeSource();
     }
 }

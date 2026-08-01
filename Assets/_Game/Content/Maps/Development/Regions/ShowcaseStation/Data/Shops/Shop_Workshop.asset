@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d55bc05f911349819ca577a6a4a16336, type: 3}
+  m_Name: Shop_Workshop
+  m_EditorClassIdentifier: Assembly-CSharp::ShopDefinition
+  _shopId: showcase.workshop.supplies
+  _displayName: "\uC815\uBE44 \uACF5\uBC29 \uBCF4\uAE09\uD488"
+  _entries:
+  - _entryId: small_potion
+    _item: {fileID: 11400000, guid: a073f5e7de19d044dba149b5f2c35c7a, type: 2}
+    _price: 25
+    _quantity: 1
+    _purchaseLimit: 5
+    _purchaseCounterFlag: shop.showcase.workshop.small_potion.purchases

@@ -661,6 +661,7 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
 
         FacingDirection = global.LookingDir;
         global.SpawnPointId = string.Empty;
+        global.SpawnFallbackAllowed = false;
     }
 
     // ── 액션 쿨타임 체크 ──────────────────────────────────────

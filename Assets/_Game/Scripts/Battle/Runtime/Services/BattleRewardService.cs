@@ -105,6 +105,7 @@ public static class BattleRewardService
             if (member == null) continue;
             CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
             result.LevelUps.Add(CharacterProgressionService.GrantExperience(member, data, result.Experience));
+            PowerProgressionService.SynchronizeUnlockedSkills(member, data);
         }
 
         return result;

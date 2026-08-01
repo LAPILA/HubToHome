@@ -113,6 +113,66 @@ public class MapTransitionServiceTests
     }
 
     [Test]
+    public void SceneTransition_CompletionCallbackRunsAfterTransitionStateIsReleased()
+    {
+        MapTransitionRequest request = CreateSceneRequest("ArrivalSpawn");
+        GameState stateObservedByCallback = GameState.Cutscene;
+        SceneLoadResult? callbackResult = null;
+
+        Assert.That(
+            _service.TryRequestTransition(
+                request,
+                _player,
+                result =>
+                {
+                    callbackResult = result;
+                    stateObservedByCallback = _gameState.CurrentState;
+                    _gameState.ChangeState(GameState.Battle);
+                }),
+            Is.True);
+
+        _service.Complete(SceneLoadResult.Succeeded);
+
+        Assert.That(callbackResult, Is.EqualTo(SceneLoadResult.Succeeded));
+        Assert.That(stateObservedByCallback, Is.EqualTo(GameState.Exploration));
+        Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Battle));
+        Assert.That(_service.IsTransitioning, Is.False);
+    }
+
+    [Test]
+    public void SceneTransition_WhenDestinationChangedState_DoesNotOverwriteDestinationOwner()
+    {
+        MapTransitionRequest request = CreateSceneRequest("ArrivalSpawn");
+
+        Assert.That(_service.TryRequestTransition(request, _player), Is.True);
+        _gameState.ChangeState(GameState.Dialogue);
+        _service.Complete(SceneLoadResult.Succeeded);
+
+        Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Dialogue));
+        Assert.That(_service.IsTransitioning, Is.False);
+    }
+
+    [Test]
+    public void SceneTransition_FailureCallbackReportsFailureAfterRollback()
+    {
+        SetOriginalSpawnState();
+        SceneLoadResult? callbackResult = null;
+
+        Assert.That(
+            _service.TryRequestTransition(
+                CreateSceneRequest("ArrivalSpawn"),
+                _player,
+                result => callbackResult = result),
+            Is.True);
+        _service.Complete(SceneLoadResult.LoadFailed);
+
+        Assert.That(callbackResult, Is.EqualTo(SceneLoadResult.LoadFailed));
+        AssertOriginalSpawnState();
+        Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Exploration));
+        Assert.That(_service.IsTransitioning, Is.False);
+    }
+
+    [Test]
     public void PlayerArrival_ConsumesSpawnPointBeforeCoordinateFallback()
     {
         SpawnPoint spawnPoint = CreateComponent<SpawnPoint>("ArrivalSpawn");

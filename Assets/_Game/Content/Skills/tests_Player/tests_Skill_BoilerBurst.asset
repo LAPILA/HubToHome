@@ -1,0 +1,94 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: tests_Skill_BoilerBurst
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  SkillName: "보일러 파열"
+  SkillID: tests_player.boiler_burst
+  Description: "전장 중앙에서 증기를 폭발시켜 모든 적을 두 차례 휩쓴다."
+  UsageProfile: 1
+  APCost: 26
+  TargetType: 1
+  IsAoE: 1
+  ActionTimeline:
+  - rid: 910000000023781901
+  - rid: 910000000023781902
+  - rid: 910000000023781903
+  - rid: 910000000023781904
+  - rid: 910000000023781905
+  - rid: 910000000023781906
+  - rid: 910000000023781907
+  - rid: 910000000023781908
+  - rid: 910000000023781909
+  references:
+    version: 2
+    RefIds:
+    - rid: 910000000023781901
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 3
+        Duration: 0.2
+        MoveEase: 6
+    - rid: 910000000023781902
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        TimeLimit: 1.25
+        SuccessMultiplier: 1.5
+        FailMultiplier: 0.65
+        Nodes:
+          - PosX: 0.34
+            PosY: 0.66
+            TargetKey: z
+          - PosX: 0.52
+            PosY: 0.58
+            TargetKey: x
+          - PosX: 0.69
+            PosY: 0.68
+            TargetKey: c
+    - rid: 910000000023781903
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        AnimTriggerName: Attack
+        DelayAfter: 0
+    - rid: 910000000023781904
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: a92d3e7dae3e14040994a16acae887e0, type: 3}
+        Pivot: 3
+        UseActorRotation: 0
+    - rid: 910000000023781905
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 1.7
+        ShakeCamera: 0
+    - rid: 910000000023781906
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        WaitTime: 0.12
+    - rid: 910000000023781907
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        VfxPrefab: {fileID: 4748681987041982144, guid: c6d8472fd2a44b24c90abc54bb1ee63f, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 910000000023781908
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        SkillMultiplier: 0.8
+        ShakeCamera: 1
+    - rid: 910000000023781909
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Destination: 4
+        Duration: 0.24
+        MoveEase: 6

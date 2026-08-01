@@ -1,0 +1,270 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aca8f2575afc9243be1cd531a8c1373, type: 3}
+  m_Name: Room_MapField_Village_Area
+  m_EditorClassIdentifier: Assembly-CSharp::AreaDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _markerSummaries
+      Entry: 7
+      Data: 0|System.Collections.Generic.List`1[[AreaMarkerSummaryEntry, Assembly-CSharp]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 9
+    - Name: 
+      Entry: 7
+      Data: 1|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.village.village.guide
+    - Name: MarkerType
+      Entry: 3
+      Data: 6
+    - Name: DisplayName
+      Entry: 1
+      Data: village.guide
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.village
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Marker_village.guide
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 2|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.village.village.test_item
+    - Name: MarkerType
+      Entry: 3
+      Data: 7
+    - Name: DisplayName
+      Entry: 1
+      Data: village.test_item
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.village
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Marker_village.test_item
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 3|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.village.village.lantern_puzzle
+    - Name: MarkerType
+      Entry: 3
+      Data: 3
+    - Name: DisplayName
+      Entry: 1
+      Data: village.lantern_puzzle
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.village
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Marker_village.lantern_puzzle
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 4|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.village.village.street_vendor
+    - Name: MarkerType
+      Entry: 3
+      Data: 4
+    - Name: DisplayName
+      Entry: 1
+      Data: village.street_vendor
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.village
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Marker_village.street_vendor
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 5|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_-5.55_0
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Door
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 6|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_To_Inn_1.9_0.45
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door_To_Inn
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Door_To_Inn
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 7|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_To_Shop_3.7_0.65
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door_To_Shop
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Door_To_Shop
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 8|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_To_House_-0.25_0.8
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door_To_House
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Door_To_House
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 9|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_To_ForestPath_5.65_-0.9
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door_To_ForestPath
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_Village/Door_To_ForestPath
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+  _areaId: mapfield.village
+  _roomDefinition: {fileID: 11400000, guid: 9c222b7f102237040a495576385058e5, type: 2}
+  _description: 

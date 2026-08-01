@@ -4,14 +4,54 @@ using UnityEngine;
 
 public class ShortcutDoorMarker : AreaConnectionMarker
 {
-    [TitleGroup("Shortcut Door 설정")]
-    [SerializeField, LabelText("문 ID")] private string doorId;
-    [TitleGroup("Shortcut Door 설정")]
-    [SerializeField, LabelText("연결 문 ID")] private string linkedDoorId;
-    [TitleGroup("Shortcut Door 설정")]
-    [SerializeField, LabelText("잠금 상태")] private bool isLocked = true;
-    [TitleGroup("Shortcut Door 설정")]
-    [SerializeField, ShowIf(nameof(isLocked)), LabelText("해제 플래그")] private string unlockFlag;
+    [TitleGroup("Shortcut Door 설정/기본")]
+    [SerializeField, LabelText("문 ID")]
+    private string doorId;
+
+    [TitleGroup("Shortcut Door 설정/기본")]
+    [SerializeField, LabelText("연결 문 ID")]
+    private string linkedDoorId;
+
+    [TitleGroup("Shortcut Door 설정/잠금")]
+    [SerializeField, LabelText("잠금 사용")]
+    private bool isLocked = true;
+
+    [TitleGroup("Shortcut Door 설정/잠금")]
+    [SerializeField, ShowIf(nameof(isLocked)), LabelText("해제 플래그")]
+    private string unlockFlag;
+
+    [TitleGroup("Shortcut Door 설정/잠금 안내")]
+    [SerializeField, ShowIf(nameof(isLocked)), LabelText("잠금 DialogueData")]
+    private DialogueData lockedDialogue;
+
+    [TitleGroup("Shortcut Door 설정/잠금 안내")]
+    [SerializeField, ShowIf(nameof(UseLockedFallback)), LabelText("Fallback Speaker")]
+    private SpeakerData lockedFallbackSpeaker;
+
+    [TitleGroup("Shortcut Door 설정/잠금 안내")]
+    [SerializeField, ShowIf(nameof(UseLockedFallback)), LabelText("Fallback Emotion")]
+    private EmotionType lockedFallbackEmotion = EmotionType.Normal;
+
+    [TitleGroup("Shortcut Door 설정/잠금 안내")]
+    [TextArea(2, 4)]
+    [SerializeField, ShowIf(nameof(UseLockedFallback)), LabelText("Fallback 안내")]
+    private string lockedFallbackText = "잠겨 있다.";
+
+    public bool IsUnlocked
+    {
+        get
+        {
+            if (!isLocked)
+                return true;
+            if (string.IsNullOrWhiteSpace(unlockFlag))
+                return false;
+
+            GlobalDataManager global = ResolveLockGlobalData();
+            return global != null && global.GetFlag(unlockFlag, 0) != 0;
+        }
+    }
+
+    private bool UseLockedFallback => isLocked && lockedDialogue == null;
 
     protected override void Reset()
     {
@@ -23,33 +63,53 @@ public class ShortcutDoorMarker : AreaConnectionMarker
     protected override void EnsureDefaults()
     {
         base.EnsureDefaults();
-        if (string.IsNullOrWhiteSpace(doorId)) doorId = markerId;
+        if (string.IsNullOrWhiteSpace(doorId))
+            doorId = markerId;
+        if (string.IsNullOrWhiteSpace(lockedFallbackText))
+            lockedFallbackText = "잠겨 있다.";
     }
 
     public override bool CanInteract(PlayerController player)
     {
-        if (!AreaMarkerBaseCanInteract(player)) return false;
-        if (!isLocked) return true;
-        if (!string.IsNullOrWhiteSpace(unlockFlag) && GlobalDataManager.Instance != null && GlobalDataManager.Instance.GetFlag(unlockFlag, 0) != 0)
-            return true;
-
-        return true;
+        // A locked door remains interactable so it can explain why it cannot move.
+        return base.CanInteract(player);
     }
 
+    protected virtual GlobalDataManager ResolveLockGlobalData()
+    {
+        return GlobalDataManager.Instance;
+    }
     protected override void RequestConnection(PlayerController player)
     {
-        if (isLocked && (string.IsNullOrWhiteSpace(unlockFlag) || GlobalDataManager.Instance == null || GlobalDataManager.Instance.GetFlag(unlockFlag, 0) == 0))
+        if (!IsUnlocked)
         {
-            Debug.Log($"[ShortcutDoorMarker] 잠긴 문: door={doorId}, linked={linkedDoorId}, unlockFlag={unlockFlag}", this);
+            ShowLockedFeedback();
             return;
         }
-        Debug.Log($"[ShortcutDoorMarker] 문 이동 요청: door={doorId}, linked={linkedDoorId}", this);
-        base.RequestConnection(player);
+
+        RequestUnlockedConnection(player);
     }
 
-    private bool AreaMarkerBaseCanInteract(PlayerController player)
+    protected virtual bool ShowLockedFeedback()
     {
-        return base.CanInteract(player);
+        bool started = TryStartDialogue(
+            lockedDialogue,
+            lockedFallbackText,
+            lockedFallbackSpeaker,
+            lockedFallbackEmotion);
+        if (!started)
+        {
+            Debug.LogWarning(
+                $"[ShortcutDoorMarker] 잠금 안내 실패: door={doorId}, linked={linkedDoorId}, unlockFlag={unlockFlag}",
+                this);
+        }
+
+        return started;
+    }
+
+    protected virtual void RequestUnlockedConnection(PlayerController player)
+    {
+        base.RequestConnection(player);
     }
 
     public override void CollectValidationIssues(List<string> issues)
@@ -60,6 +120,8 @@ public class ShortcutDoorMarker : AreaConnectionMarker
         if (string.IsNullOrWhiteSpace(linkedDoorId))
             issues.Add("linkedDoorId가 비어 있습니다.");
         if (isLocked && string.IsNullOrWhiteSpace(unlockFlag))
-            issues.Add("잠긴 문이면 unlockFlag를 지정하는 것을 권장합니다.");
+            issues.Add("잠금 사용 시 unlockFlag가 필요합니다.");
+        if (isLocked && lockedDialogue == null && string.IsNullOrWhiteSpace(lockedFallbackText))
+            issues.Add("잠금 DialogueData 또는 fallback 안내가 필요합니다.");
     }
 }

@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acb57da03c4f8564e8d8b7266098b6af, type: 3}
+  m_Name: travel_train_departure
+  m_EditorClassIdentifier: Assembly-CSharp::CinematicShotAsset
+  StageId: travel_train.departure
+  ShotId: travel_train.departure.run
+  DisplayNameKo: "\uACF5\uC6A9 \uC5F4\uCC28 \uCD9C\uBC1C"
+  CameraRailSubjectId: camera_rail
+  StartOrthographicSize: 4
+  EndOrthographicSize: 3.6
+  CameraDelay: 0
+  CameraDuration: 1.1
+  CameraEase: 4
+  CameraPositionDamping: {x: 0.12, y: 0.08, z: 0}
+  Motions:
+  - SubjectId: camera_rail
+    StartLocalPosition: {x: 0, y: 0, z: 0}
+    EndLocalPosition: {x: 1.8, y: 0.15, z: 0}
+    Delay: 0
+    Duration: 1.1
+    Ease: 4
+  - SubjectId: window_streaks
+    StartLocalPosition: {x: -3.6, y: 0.65, z: 0}
+    EndLocalPosition: {x: 3.6, y: 0.65, z: 0}
+    Delay: 0.05
+    Duration: 0.85
+    Ease: 7

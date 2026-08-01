@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
-using System.IO;
+using System;
+using System.Collections.Generic;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -8,190 +10,325 @@ using UnityEngine.SceneManagement;
 public static class SeamlessBattleHostPrefabBuilder
 {
     public const string BattleScenePath = "Assets/_Game/Content/Maps/Battle/BattleScene.unity";
-    public const string TestMapScenePath = "Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity";
+    public const string TestMapScenePath = DevelopmentContentPaths.TestMapScene;
     public const string PrefabPath = "Assets/_Game/Content/Battle/Prefabs/System/SeamlessBattleHost.prefab";
 
-    [MenuItem("Hub To Home/Battle/Rebuild Seamless Battle Host")]
-    public static void RebuildMenu()
+    [MenuItem("Hub To Home/Battle/Open Shared Battle Host Prefab")]
+    public static void OpenSharedPrefab()
     {
-        GameObject prefab = RebuildPrefab();
-        if (prefab != null)
-            Debug.Log($"[SeamlessBattleHost] Rebuilt: {PrefabPath}", prefab);
+        GameObject prefab = LoadSharedPrefab(out string error);
+        if (prefab == null)
+        {
+            Debug.LogError(error);
+            return;
+        }
+
+        AssetDatabase.OpenAsset(prefab);
     }
 
-    [MenuItem("Hub To Home/Battle/Rebuild Host And Place In TestMap")]
-    public static void RebuildAndPlaceInTestMap()
+    [MenuItem("Hub To Home/Battle/Sync Shared Host To BattleScene")]
+    public static void SyncBattleSceneMenu()
     {
-        GameObject prefab = RebuildPrefab();
-        if (prefab == null) return;
-
-        SceneSetup[] setup = EditorSceneManager.GetSceneManagerSetup();
-        try
+        if (!SyncBattleScene(out string error))
         {
-            Scene scene = EditorSceneManager.OpenScene(TestMapScenePath, OpenSceneMode.Single);
-            SeamlessBattleHost existing = Object.FindFirstObjectByType<SeamlessBattleHost>(FindObjectsInactive.Include);
-            if (existing == null)
-            {
-                GameObject instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
-                if (instance != null) instance.name = "[System] SeamlessBattleHost";
-            }
-
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            Debug.LogError($"[SharedBattleHost] BattleScene 동기화 실패: {error}");
+            return;
         }
-        finally
+
+        Debug.Log($"[SharedBattleHost] BattleScene 동기화 완료: {BattleScenePath}");
+    }
+
+    [MenuItem("Hub To Home/Battle/Place Shared Host In TestMap")]
+    public static void PlaceInTestMap()
+    {
+        GameObject prefab = LoadSharedPrefab(out string error);
+        if (prefab == null)
         {
-            RestoreOrCreateEmptyScene(setup);
+            Debug.LogError(error);
+            return;
+        }
+
+        string placementError = string.Empty;
+        bool succeeded = EditScene(
+            TestMapScenePath,
+            scene => EnsureSharedHostInstance(scene, prefab, false, out placementError),
+            out string sceneError);
+        error = !string.IsNullOrWhiteSpace(placementError) ? placementError : sceneError;
+        if (!succeeded || !string.IsNullOrWhiteSpace(error))
+        {
+            Debug.LogError($"[SharedBattleHost] TestMap 배치 실패: {error}");
         }
     }
 
     public static GameObject RebuildPrefab()
     {
-        if (!File.Exists(BattleScenePath))
+        return LoadSharedPrefab(out _);
+    }
+
+    public static bool SyncBattleScene(out string error)
+    {
+        GameObject prefab = LoadSharedPrefab(out error);
+        if (prefab == null)
+            return false;
+
+        string syncError = string.Empty;
+        bool succeeded = EditScene(
+            BattleScenePath,
+            scene => SyncDedicatedHost(scene, prefab, out syncError),
+            out string sceneError);
+        error = !string.IsNullOrWhiteSpace(syncError) ? syncError : sceneError;
+        return succeeded && string.IsNullOrWhiteSpace(error);
+    }
+
+    private static bool SyncDedicatedHost(Scene scene, GameObject prefab, out string error)
+    {
+        Camera sceneCamera = FindSceneCamera(scene);
+        if (sceneCamera == null)
         {
-            Debug.LogError($"Battle scene is missing: {BattleScenePath}");
-            return null;
+            error = "BattleScene 카메라를 찾지 못했습니다.";
+            return false;
         }
 
-        SceneSetup[] setup = EditorSceneManager.GetSceneManagerSetup();
-        GameObject root = null;
+        SeamlessBattleHost prefabHost = prefab.GetComponent<SeamlessBattleHost>();
+        if (!HasRequiredReferences(prefabHost))
+        {
+            error = "공용 Battle Host 프리팹의 필수 참조가 누락됐습니다.";
+            return false;
+        }
+
+        SeamlessBattleHost host = FindInScene<SeamlessBattleHost>(scene);
+        if (host != null && !IsSharedPrefabInstance(host.gameObject))
+        {
+            UnityEngine.Object.DestroyImmediate(host.gameObject);
+            host = null;
+        }
+
+        if (host == null)
+        {
+            GameObject instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
+            if (instance == null)
+            {
+                error = "공용 Battle Host 프리팹 인스턴스 생성에 실패했습니다.";
+                return false;
+            }
+
+            instance.name = "[System] SharedBattleHost";
+            host = instance.GetComponent<SeamlessBattleHost>();
+        }
+
+        if (!HasRequiredReferences(host))
+        {
+            error = "공용 Battle Host 필수 참조가 누락됐습니다.";
+            return false;
+        }
+
+        RemoveLegacyBattleRoots(scene, host.gameObject);
+
+        SerializedObject manager = new SerializedObject(host.BattleManager);
+        SerializedProperty dedicated = manager.FindProperty("_isDedicatedBattleScene");
+        if (dedicated == null)
+        {
+            error = "BattleManager._isDedicatedBattleScene 필드를 찾지 못했습니다.";
+            return false;
+        }
+
+        dedicated.boolValue = true;
+        manager.ApplyModifiedPropertiesWithoutUndo();
+
+        host.BattleUiRoot.SetActive(true);
+        RevertSharedUiOverrides(host.BattleUiRoot);
+
+        SerializedObject ui = new SerializedObject(host.BattleUiController);
+        SerializedProperty worldCamera = ui.FindProperty("_worldCamera");
+        if (worldCamera != null)
+        {
+            worldCamera.objectReferenceValue = sceneCamera;
+            ui.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        EditorUtility.SetDirty(host.gameObject);
+        EditorUtility.SetDirty(host.BattleManager);
+        EditorUtility.SetDirty(host.BattleUiController);
+        EditorSceneManager.MarkSceneDirty(scene);
+        error = string.Empty;
+        return true;
+    }
+
+    private static bool HasRequiredReferences(SeamlessBattleHost host)
+    {
+        return host != null
+            && host.BattleManager != null
+            && host.PositionManager != null
+            && host.BattleUiRoot != null
+            && host.BattleUiController != null;
+    }
+
+    private static void RevertSharedUiOverrides(GameObject battleUiRoot)
+    {
+        if (battleUiRoot == null)
+            return;
+
+        Transform uiTransform = battleUiRoot.transform;
+        if (PrefabUtility.IsPartOfPrefabInstance(uiTransform))
+            PrefabUtility.RevertObjectOverride(uiTransform, InteractionMode.AutomatedAction);
+
+        TMP_Text[] texts = battleUiRoot.GetComponentsInChildren<TMP_Text>(true);
+        for (int i = 0; i < texts.Length; i++)
+        {
+            SerializedObject text = new SerializedObject(texts[i]);
+            SerializedProperty sharedMaterial = text.FindProperty("m_sharedMaterial");
+            if (sharedMaterial == null || !sharedMaterial.prefabOverride)
+                continue;
+
+            PrefabUtility.RevertPropertyOverride(sharedMaterial, InteractionMode.AutomatedAction);
+        }
+    }
+
+    private static bool EnsureSharedHostInstance(
+        Scene scene,
+        GameObject prefab,
+        bool dedicated,
+        out string error)
+    {
+        SeamlessBattleHost existing = FindInScene<SeamlessBattleHost>(scene);
+        if (existing != null)
+        {
+            if (!IsSharedPrefabInstance(existing.gameObject))
+            {
+                error = "씬의 Battle Host가 공용 프리팹 인스턴스가 아닙니다.";
+                return false;
+            }
+
+            error = string.Empty;
+            return false;
+        }
+
+        GameObject instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
+        if (instance == null)
+        {
+            error = "공용 Battle Host 프리팹 인스턴스 생성에 실패했습니다.";
+            return false;
+        }
+
+        instance.name = dedicated ? "[System] SharedBattleHost" : "[System] SeamlessBattleHost";
+        error = string.Empty;
+        return true;
+    }
+
+    private static void RemoveLegacyBattleRoots(Scene scene, GameObject sharedHostRoot)
+    {
+        var rootsToRemove = new HashSet<GameObject>();
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
+        {
+            GameObject root = roots[i];
+            if (root == null || root == sharedHostRoot)
+                continue;
+
+            bool ownsLegacyRuntime = root.GetComponentInChildren<BattleManager>(true) != null
+                || root.GetComponentInChildren<PositionManager>(true) != null
+                || root.GetComponentInChildren<BattleUIController>(true) != null;
+            bool isLegacyPositionRoot = string.Equals(root.name, "[BattlePositions]", StringComparison.Ordinal);
+            if (ownsLegacyRuntime || isLegacyPositionRoot)
+                rootsToRemove.Add(root);
+        }
+
+        foreach (GameObject root in rootsToRemove)
+            UnityEngine.Object.DestroyImmediate(root);
+    }
+
+    private static bool EditScene(
+        string scenePath,
+        Func<Scene, bool> edit,
+        out string error)
+    {
+        Scene scene = SceneManager.GetSceneByPath(scenePath);
+        bool openedForEdit = !scene.IsValid() || !scene.isLoaded;
         try
         {
-            EditorSceneManager.OpenScene(BattleScenePath, OpenSceneMode.Single);
-            BattleManager sourceManager = Object.FindFirstObjectByType<BattleManager>(FindObjectsInactive.Include);
-            PositionManager sourcePositions = Object.FindFirstObjectByType<PositionManager>(FindObjectsInactive.Include);
-            if (sourceManager == null || sourcePositions == null)
+            if (openedForEdit)
+                scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+
+            if (!scene.IsValid() || !scene.isLoaded)
             {
-                Debug.LogError("BattleScene must contain BattleManager and PositionManager.");
-                return null;
+                error = $"씬을 열지 못했습니다: {scenePath}";
+                return false;
             }
 
-            SerializedObject sourceSerialized = new SerializedObject(sourceManager);
-            GameObject sourceUi = sourceSerialized.FindProperty("_battleUICanvas").objectReferenceValue as GameObject;
-            if (sourceUi == null)
+            bool changed = edit(scene);
+            if (changed && !EditorSceneManager.SaveScene(scene))
             {
-                Debug.LogError("BattleManager._battleUICanvas is missing in BattleScene.");
-                return null;
+                error = $"씬 저장에 실패했습니다: {scenePath}";
+                return false;
             }
 
-            root = new GameObject("SeamlessBattleHost");
-            BattleManager manager = Object.Instantiate(sourceManager.gameObject, root.transform).GetComponent<BattleManager>();
-            manager.gameObject.name = "BattleManager";
-            PositionManager embeddedPositions = manager.GetComponent<PositionManager>();
-            if (embeddedPositions != null)
-                Object.DestroyImmediate(embeddedPositions);
-
-            PositionManager positions = CreatePositionManager(root.transform, sourcePositions);
-            GameObject ui = Object.Instantiate(sourceUi, root.transform);
-            ui.name = "BattleUI";
-            ui.SetActive(false);
-            BattleUIController uiController = ui.GetComponentInChildren<BattleUIController>(true);
-            if (uiController == null)
-            {
-                Debug.LogError("Battle UI must contain BattleUIController.");
-                return null;
-            }
-
-            SerializedObject managerSerialized = new SerializedObject(manager);
-            managerSerialized.FindProperty("_isDedicatedBattleScene").boolValue = false;
-            managerSerialized.FindProperty("_battleUICanvas").objectReferenceValue = ui;
-            managerSerialized.ApplyModifiedPropertiesWithoutUndo();
-
-            SeamlessBattleHost host = root.AddComponent<SeamlessBattleHost>();
-            SerializedObject hostSerialized = new SerializedObject(host);
-            hostSerialized.FindProperty("_battleManager").objectReferenceValue = manager;
-            hostSerialized.FindProperty("_positionManager").objectReferenceValue = positions;
-            hostSerialized.FindProperty("_battleUiRoot").objectReferenceValue = ui;
-            hostSerialized.FindProperty("_battleUiController").objectReferenceValue = uiController;
-            hostSerialized.ApplyModifiedPropertiesWithoutUndo();
-
-            EnsureFolder(Path.GetDirectoryName(PrefabPath)?.Replace('\\', '/'));
-            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool success);
-            if (!success) Debug.LogError($"Failed to save prefab: {PrefabPath}");
-            AssetDatabase.SaveAssets();
-            return success ? prefab : null;
+            error = string.Empty;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error = exception.Message;
+            return false;
         }
         finally
         {
-            if (root != null) Object.DestroyImmediate(root);
-            RestoreOrCreateEmptyScene(setup);
+            if (openedForEdit && scene.IsValid() && scene.isLoaded)
+                EditorSceneManager.CloseScene(scene, true);
         }
     }
 
-    private static PositionManager CreatePositionManager(Transform parent, PositionManager source)
+    private static GameObject LoadSharedPrefab(out string error)
     {
-        GameObject positionRoot = new GameObject("PositionManager");
-        positionRoot.transform.SetParent(parent, false);
-        PositionManager result = positionRoot.AddComponent<PositionManager>();
-
-        SerializedObject sourceSerialized = new SerializedObject(source);
-        SerializedObject resultSerialized = new SerializedObject(result);
-        CopyTransformList(sourceSerialized, resultSerialized, "_playerDefaultPos", "Player");
-        CopyTransformList(sourceSerialized, resultSerialized, "_enemyDefaultPos", "Enemy");
-        CopyTransformList(sourceSerialized, resultSerialized, "_enemyAttackPos", "EnemyAttack");
-
-        Transform sourceCenter = sourceSerialized.FindProperty("_centerPos").objectReferenceValue as Transform;
-        Transform center = CreateMarker(positionRoot.transform, "Center", sourceCenter);
-        resultSerialized.FindProperty("_centerPos").objectReferenceValue = center;
-        resultSerialized.ApplyModifiedPropertiesWithoutUndo();
-        return result;
-    }
-
-    private static void CopyTransformList(
-        SerializedObject source,
-        SerializedObject destination,
-        string propertyName,
-        string markerPrefix)
-    {
-        SerializedProperty sourceList = source.FindProperty(propertyName);
-        SerializedProperty destinationList = destination.FindProperty(propertyName);
-        destinationList.arraySize = sourceList != null ? sourceList.arraySize : 0;
-        for (int i = 0; i < destinationList.arraySize; i++)
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+        if (prefab == null)
         {
-            Transform sourceMarker = sourceList.GetArrayElementAtIndex(i).objectReferenceValue as Transform;
-            Transform marker = CreateMarker(
-                ((PositionManager)destination.targetObject).transform,
-                $"{markerPrefix}_{i + 1}",
-                sourceMarker);
-            destinationList.GetArrayElementAtIndex(i).objectReferenceValue = marker;
+            error = $"공용 Battle Host 프리팹이 없습니다: {PrefabPath}";
+            return null;
         }
+
+        error = string.Empty;
+        return prefab;
     }
 
-    private static Transform CreateMarker(Transform parent, string name, Transform source)
+    private static bool IsSharedPrefabInstance(GameObject instance)
     {
-        GameObject markerObject = new GameObject(name);
-        Transform marker = markerObject.transform;
-        marker.SetParent(parent, false);
-        if (source != null)
+        return instance != null
+            && string.Equals(
+                PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(instance),
+                PrefabPath,
+                StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static T FindInScene<T>(Scene scene) where T : Component
+    {
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
         {
-            marker.position = source.position;
-            marker.rotation = source.rotation;
-            marker.localScale = source.lossyScale;
+            T component = roots[i].GetComponentInChildren<T>(true);
+            if (component != null)
+                return component;
         }
-        return marker;
+
+        return null;
     }
 
-    private static void RestoreOrCreateEmptyScene(SceneSetup[] setup)
+    private static Camera FindSceneCamera(Scene scene)
     {
-        bool hasLoadedScene = false;
-        if (setup != null)
+        Camera fallback = null;
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int i = 0; i < roots.Length; i++)
         {
-            for (int i = 0; i < setup.Length; i++)
-                hasLoadedScene |= setup[i].isLoaded;
+            Camera[] cameras = roots[i].GetComponentsInChildren<Camera>(true);
+            for (int cameraIndex = 0; cameraIndex < cameras.Length; cameraIndex++)
+            {
+                Camera camera = cameras[cameraIndex];
+                fallback ??= camera;
+                if (camera.CompareTag("MainCamera"))
+                    return camera;
+            }
         }
 
-        if (hasLoadedScene)
-            EditorSceneManager.RestoreSceneManagerSetup(setup);
-        else
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-    }
-
-    private static void EnsureFolder(string folder)
-    {
-        if (string.IsNullOrWhiteSpace(folder) || AssetDatabase.IsValidFolder(folder)) return;
-        string parent = Path.GetDirectoryName(folder)?.Replace('\\', '/');
-        EnsureFolder(parent);
-        AssetDatabase.CreateFolder(parent, Path.GetFileName(folder));
+        return fallback;
     }
 }
 #endif

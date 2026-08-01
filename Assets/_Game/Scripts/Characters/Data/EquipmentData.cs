@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
 public enum EquipmentSlot
@@ -18,15 +19,27 @@ public class EquipmentData : SerializedScriptableObject
     [BoxGroup("Identity")] public EquipmentSlot Slot;
     [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
 
+    [BoxGroup("Equip Rules")]
+    [Tooltip("비워 두면 모든 캐릭터가 장착할 수 있습니다. CharacterData.CharacterID를 사용합니다.")]
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    public List<string> AllowedCharacterIDs = new List<string>();
+
     [BoxGroup("Stat Bonuses")] 
     [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxHP = 0;
-    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxMP = 0;
+    [FormerlySerializedAs("BonusMaxMP")]
+    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxAP = 0;
     
     [BoxGroup("Stat Bonuses")] 
     [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusATK   = 0;
     [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusDEF   = 0;
     [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusSPD   = 0;
 
+    [System.Obsolete("Use BonusMaxAP.")]
+    public int BonusMaxMP
+    {
+        get => BonusMaxAP;
+        set => BonusMaxAP = value;
+    }
     // ── 🚨 추가됨: 상태이상 방어(내성) 보너스 ──
     [BoxGroup("Resistances (상태이상 방어력)")]
     [InfoBox("음수(-)를 넣으면 해당 상태이상에 걸릴 확률이나 데미지가 감소합니다. (예: Burn -50 = 화상 확률 50% 감소)")]
@@ -41,4 +54,21 @@ public class EquipmentData : SerializedScriptableObject
     [BoxGroup("Special Effects")]
     [Tooltip("특정 캐릭터가 이 장비를 장착할 때 트리거할 대화 ID")]
     public string EquipReactionDialogueID = "";
+
+    public bool CanEquip(string characterDataId)
+    {
+        if (AllowedCharacterIDs == null || AllowedCharacterIDs.Count == 0)
+            return true;
+
+        string normalized = string.IsNullOrWhiteSpace(characterDataId)
+            ? string.Empty
+            : characterDataId.Trim();
+        for (int i = 0; i < AllowedCharacterIDs.Count; i++)
+        {
+            if (string.Equals(AllowedCharacterIDs[i]?.Trim(), normalized, System.StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
 }

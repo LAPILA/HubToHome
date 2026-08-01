@@ -18,12 +18,20 @@ public class DialogueManager : MonoBehaviour
     private bool _isPlaying = false;
     private bool _isNaming = false;
     private Action _onCompleteCallback;
+    private Action _onCancelledCallback;
     private DialogueEncounterContext _encounterContext;
+    private GameState _stateBeforeDialogue = GameState.Exploration;
+    private bool _ownsDialogueState;
+    private int _playbackGeneration;
+    private List<ChoiceData> _promptChoices;
+    private Action<int> _promptChoiceCallback;
 
     public bool IsPlaying
     {
         get { return _isPlaying; }
     }
+
+    public int PlaybackGeneration => _playbackGeneration;
 
     private void Awake() 
     { 
@@ -35,20 +43,75 @@ public class DialogueManager : MonoBehaviour
 
     public void StartDialogue(DialogueData data, Action onComplete = null, DialogueEncounterContext encounterContext = null)
     {
-        LogDialogueConsole($"StartDialogue requested data={GetDialogueName(data)}");
-
         if (_isPlaying)
         {
             LogDialogueConsole($"StartDialogue ignored: already playing current={GetDialogueName(_currentDialogue)} requested={GetDialogueName(data)}");
             return;
         }
 
+        if (!TryStartDialogue(data, onComplete, null, encounterContext, out _))
+            onComplete?.Invoke();
+    }
+
+    public bool TryStartChoicePrompt(
+        string prompt,
+        IReadOnlyList<string> choiceLabels,
+        Action<int> onSelected,
+        Action onCancelled = null)
+    {
+        if (_isPlaying || _overworldPanel == null || choiceLabels == null || choiceLabels.Count == 0)
+            return false;
+
+        _promptChoices = new List<ChoiceData>(choiceLabels.Count);
+        for (int i = 0; i < choiceLabels.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(choiceLabels[i]))
+            {
+                _promptChoices = null;
+                return false;
+            }
+
+            _promptChoices.Add(new ChoiceData { ChoiceText = choiceLabels[i].Trim() });
+        }
+
+        _isPlaying = true;
+        _currentDialogue = null;
+        _currentNodeIndex = 0;
+        _onCompleteCallback = null;
+        _onCancelledCallback = onCancelled;
+        _encounterContext = null;
+        _activeUI = _overworldPanel;
+        _promptChoiceCallback = onSelected;
+        _playbackGeneration++;
+
+        AcquireDialogueState();
+        _activeUI.RebindCanvasCameraImmediate();
+        _activeUI.OpenPanel();
+        _activeUI.DisplayPrompt(prompt);
+        _activeUI.ShowChoices(_promptChoices, OnPromptChoiceSelected);
+        return true;
+    }
+
+    public bool TryStartDialogue(
+        DialogueData data,
+        Action onComplete,
+        Action onCancelled,
+        DialogueEncounterContext encounterContext,
+        out int playbackGeneration)
+    {
+        playbackGeneration = 0;
+        LogDialogueConsole($"StartDialogue requested data={GetDialogueName(data)}");
+
+        if (_isPlaying)
+        {
+            LogDialogueConsole($"StartDialogue rejected: already playing current={GetDialogueName(_currentDialogue)} requested={GetDialogueName(data)}");
+            return false;
+        }
+
         if (!DialoguePlaybackPolicy.TryValidate(data, out string validationError))
         {
-            LogDialogueConsole(
-                $"StartDialogue rejected: {validationError} data={GetDialogueName(data)}");
-            onComplete?.Invoke();
-            return;
+            LogDialogueConsole($"StartDialogue rejected: {validationError} data={GetDialogueName(data)}");
+            return false;
         }
 
         DialogueUI activeUI = data.Style == DialogueStyle.Cinematic
@@ -57,27 +120,25 @@ public class DialogueManager : MonoBehaviour
         if (activeUI == null)
         {
             LogDialogueConsole($"StartDialogue failed: active UI missing data={GetDialogueName(data)} style={data.Style}");
-            onComplete?.Invoke();
-            return;
+            return false;
         }
 
+        playbackGeneration = ++_playbackGeneration;
         _isPlaying = true;
         _currentDialogue = data;
         _currentNodeIndex = 0;
         _onCompleteCallback = onComplete;
+        _onCancelledCallback = onCancelled;
         _encounterContext = encounterContext;
-
         _activeUI = activeUI;
 
+        AcquireDialogueState();
         LogDialogueConsole($"StartDialogue started data={GetDialogueName(data)} style={data.Style} nodes={data.Nodes.Count}");
 
-        // DontDestroyOnLoad UI가 새 씬 카메라를 확실히 물도록 대화 시작 직전에 즉시 재바인딩
         _activeUI.RebindCanvasCameraImmediate();
-
-        GameStateManager.Instance?.ChangeState(GameState.Dialogue); 
         _activeUI.OpenPanel();
-        
         PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
+        return true;
     }
 
     private void Update()
@@ -167,6 +228,25 @@ public class DialogueManager : MonoBehaviour
         EndDialogue();
     }
 
+    private void OnPromptChoiceSelected(ChoiceData choice)
+    {
+        int selectedIndex = _promptChoices != null
+            ? _promptChoices.IndexOf(choice)
+            : -1;
+        Action<int> callback = _promptChoiceCallback;
+
+        _promptChoiceCallback = null;
+        _promptChoices = null;
+        if (selectedIndex < 0)
+        {
+            FinishDialogue(completed: false);
+            return;
+        }
+
+        FinishDialogue(completed: true);
+        callback?.Invoke(selectedIndex);
+    }
+
     private IEnumerator CoStartBattleFromChoice(ChoiceData choice)
     {
         PlayerController player = FindFirstObjectByType<PlayerController>();
@@ -220,13 +300,19 @@ public class DialogueManager : MonoBehaviour
 
         _isNaming = true;
         _activeUI.ClosePanel();
+        int generation = _playbackGeneration;
 
-        _nameInputUI.Open((newName) => {
-            if (GlobalDataManager.Instance != null) GlobalDataManager.Instance.PlayerName = newName;
+        _nameInputUI.Open(newName =>
+        {
+            if (!_isPlaying || generation != _playbackGeneration)
+                return;
+
+            if (GlobalDataManager.Instance != null)
+                GlobalDataManager.Instance.PlayerName = newName;
             _isNaming = false;
             _activeUI.RebindCanvasCameraImmediate();
             _activeUI.OpenPanel();
-            NextNode(); // 이름 입력 후 다음 대사로
+            NextNode();
         });
     }
 
@@ -239,18 +325,95 @@ public class DialogueManager : MonoBehaviour
 
     public void EndDialogue()
     {
-        LogDialogueConsole($"EndDialogue data={GetDialogueName(_currentDialogue)} nodeIndex={_currentNodeIndex}");
+        FinishDialogue(completed: true);
+    }
 
+    public bool CancelDialogue(int playbackGeneration)
+    {
+        if (!_isPlaying || playbackGeneration != _playbackGeneration)
+            return false;
+
+        FinishDialogue(completed: false);
+        return true;
+    }
+
+    public void CancelDialogue()
+    {
+        if (_isPlaying)
+            FinishDialogue(completed: false);
+    }
+
+    private void FinishDialogue(bool completed)
+    {
+        if (!_isPlaying)
+            return;
+
+        LogDialogueConsole($"FinishDialogue completed={completed} data={GetDialogueName(_currentDialogue)} nodeIndex={_currentNodeIndex}");
+
+        Action callback = completed ? _onCompleteCallback : _onCancelledCallback;
         _isPlaying = false;
-        if (_activeUI != null) _activeUI.ClosePanel(); 
-        _encounterContext = null;
-        GameInput.SuppressPlayerConfirmForCurrentFrame();
-        
-        GameStateManager.Instance?.ChangeState(GameState.Exploration); 
-        
-        var cb = _onCompleteCallback;
+        _isNaming = false;
         _onCompleteCallback = null;
-        cb?.Invoke(); // 🚨 인트로 매니저의 OnNameConfirmed 등이 여기서 실행됨
+        _onCancelledCallback = null;
+        _encounterContext = null;
+        _currentDialogue = null;
+        _currentNodeIndex = 0;
+        _promptChoices = null;
+        _promptChoiceCallback = null;
+
+        _nameInputUI?.CancelImmediate();
+        if (_activeUI != null)
+        {
+            if (completed)
+                _activeUI.ClosePanel();
+            else
+                _activeUI.HideImmediate();
+        }
+        _activeUI = null;
+
+        GameInput.SuppressPlayerConfirmForCurrentFrame();
+        RestoreDialogueStateIfOwned();
+        callback?.Invoke();
+    }
+
+    private void AcquireDialogueState()
+    {
+        GameStateManager stateManager = GameStateManager.Instance;
+        if (stateManager == null)
+        {
+            _ownsDialogueState = false;
+            return;
+        }
+
+        _stateBeforeDialogue = stateManager.CurrentState;
+        _ownsDialogueState = _stateBeforeDialogue != GameState.Dialogue;
+        if (_ownsDialogueState)
+            stateManager.ChangeState(GameState.Dialogue);
+    }
+
+    private void RestoreDialogueStateIfOwned()
+    {
+        GameStateManager stateManager = GameStateManager.Instance;
+        if (_ownsDialogueState
+            && stateManager != null
+            && stateManager.CurrentState == GameState.Dialogue)
+        {
+            stateManager.ChangeState(_stateBeforeDialogue);
+        }
+
+        _ownsDialogueState = false;
+    }
+
+    private void OnDisable()
+    {
+        CancelDialogue();
+    }
+
+    private void OnDestroy()
+    {
+        CancelDialogue();
+        if (Instance == this)
+            Instance = null;
     }
 
     private static string GetDialogueName(DialogueData data)

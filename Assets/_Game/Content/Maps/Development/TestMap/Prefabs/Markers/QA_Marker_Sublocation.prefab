@@ -828,10 +828,12 @@ MonoBehaviour:
   interactionRange: 1.5
   showLabelInSceneView: 1
   gizmoColor: {r: 0.6, g: 0.78, b: 1, a: 1}
+  travelMode: 0
   sublocationId: qa_testmap_subroom
   targetSceneName: TestMap
   targetAreaId: testmap.qa
   targetSpawnId: qa.testmap.spawn.sublocation
+  returnSpawnPointId: qa.testmap.spawn.sublocation
   fadeDuration: 0.2
 --- !u!1 &5358094230619164338
 GameObject:

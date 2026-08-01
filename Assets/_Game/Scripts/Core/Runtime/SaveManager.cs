@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using UnityEngine;
 
 /// <summary>
@@ -143,6 +144,51 @@ public static class SaveManager
         return inspection != null && inspection.IsLoadable;
     }
 
+    public static bool TryLoadMostRecent(
+        out int slotIndex,
+        out SaveLoadResult loadResult)
+    {
+        slotIndex = -1;
+        loadResult = null;
+        DateTime bestTimestamp = DateTime.MinValue;
+        int[] candidates = { 0, 1, 2, AutoSlotIndex };
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            int candidateSlot = candidates[i];
+            SaveLoadResult candidate = TryLoad(candidateSlot);
+            if (!candidate.Success || candidate.Data == null)
+                continue;
+
+            DateTime timestamp = ParseSaveTime(candidate.Data.saveTime);
+            if (loadResult != null && timestamp < bestTimestamp)
+                continue;
+
+            bestTimestamp = timestamp;
+            slotIndex = candidateSlot;
+            loadResult = candidate;
+        }
+
+        if (loadResult != null)
+            return true;
+
+        loadResult = SaveLoadResult.Failed(
+            SaveLoadFailure.NotFound,
+            "불러올 수 있는 저장 슬롯이 없습니다.");
+        return false;
+    }
+
+    private static DateTime ParseSaveTime(string value)
+    {
+        return DateTime.TryParseExact(
+            value,
+            "yyyy-MM-dd HH:mm:ss",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeLocal,
+            out DateTime parsed)
+            ? parsed
+            : DateTime.MinValue;
+    }
     public static bool HasAnySave()
     {
         for (int slotIndex = 0; slotIndex < ManualSlotCount; slotIndex++)

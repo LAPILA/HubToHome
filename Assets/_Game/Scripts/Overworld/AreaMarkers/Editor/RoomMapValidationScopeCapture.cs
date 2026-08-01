@@ -49,6 +49,7 @@ public static class RoomMapValidationScopeCapture
             RequiresSceneInfrastructure = requiresSceneInfrastructure,
             Rooms = Collect<RoomInstance>(safeRoots),
             Markers = Collect<AreaMarkerBase>(safeRoots),
+            OverworldEnemies = Collect<OverworldEnemy>(safeRoots),
             SpawnPoints = Collect<SpawnPoint>(safeRoots),
             Doors = Collect<DoorTransition>(safeRoots),
             MapTransitionServices = Collect<MapTransitionService>(safeRoots),

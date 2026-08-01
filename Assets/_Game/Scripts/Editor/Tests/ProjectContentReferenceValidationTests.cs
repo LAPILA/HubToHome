@@ -18,7 +18,7 @@ public sealed class ProjectContentReferenceValidationTests
             character.BattlePrefab = wrongCharacterPrefab;
             character.DefaultSkills.Add(externalSkill);
             enemy.EnemyId = "enemy.test";
-            enemy.BattlePrefab = null;
+            enemy.Prefab = null;
             enemy.StrongSkillList.Add(externalSkill);
 
             var snapshot = new ProjectContentSnapshot();

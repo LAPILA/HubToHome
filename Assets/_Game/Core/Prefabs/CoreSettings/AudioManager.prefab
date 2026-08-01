@@ -57,6 +57,9 @@ MonoBehaviour:
   _uiSource: {fileID: 6868091589320321650}
   _voiceSource: {fileID: 3109789633022063109}
   _ambienceSource: {fileID: 2345513100919469074}
+  _combatHitSfx: {fileID: 8300000, guid: ddd78eee911b0fb408b2f7a8ed4a6894, type: 3}
+  _enemyEncounterSfx: {fileID: 8300000, guid: 6ad1ec81ab1a6774989652d8b79cdbc2, type: 3}
+  _selectionSfx: {fileID: 8300000, guid: 61aa4a1eaa73f42448e06abc7b3b16b4, type: 3}
 --- !u!1 &1184429424181623588
 GameObject:
   m_ObjectHideFlags: 0

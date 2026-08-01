@@ -1,6 +1,6 @@
 libraryId: battle
 name: "전투"
-description: "전투 참가자의 스킬, HP/MP, 임시 플래그를 명시적으로 변경합니다."
+description: "전투 참가자의 스킬, HP/AP, 임시 플래그를 명시적으로 변경합니다."
 category: battle
 order: 90
 accent: "#D35D68"
@@ -59,10 +59,10 @@ actions:
         default: "true"
         sources: [literal, input, event, session, context, result]
   battle.participant.consume_mp:
-    name: "MP 소비"
-    description: "전투 참가자의 MP를 지정한 양만큼 소비하도록 전투 명령 계층에 요청합니다."
+    name: "AP 소비"
+    description: "전투 참가자의 AP를 지정한 양만큼 소비하도록 전투 명령 계층에 요청합니다."
     usage: "Game Module이나 시나리오 액션에서 스킬 비용을 실제 전투 상태에 반영할 때 사용합니다."
-    summary: "{subject} MP -{amount}"
+    summary: "{subject} AP -{amount}"
     runtimeAdapter: BattleParticipantConsumeMpActionAdapter
     tags: [battle, participant, mp]
     aliases: [마나소비, 비용]
@@ -75,7 +75,7 @@ actions:
     parameters:
       subject:
         name: "대상"
-        description: "MP를 소비할 전투 참가자 ID입니다."
+        description: "AP를 소비할 전투 참가자 ID입니다."
         type: actorRef
         control: actor
         required: true
@@ -83,7 +83,7 @@ actions:
         sources: [literal, input, event, session, context]
       amount:
         name: "양"
-        description: "소비할 양의 정수 MP입니다."
+        description: "소비할 양의 정수 AP입니다."
         type: int
         control: integer
         required: true
@@ -155,13 +155,13 @@ actions:
         min: 1
         sources: [literal, input, event, session, context, result]
   battle.participant.heal_mp:
-    name: "MP 회복"
-    description: "전투 참가자의 MP를 지정한 양만큼 회복하도록 전투 명령 계층에 요청합니다."
-    usage: "시나리오 보상이나 특수 Game Module이 실제 MP를 회복할 때 사용합니다."
-    summary: "{subject} MP +{amount}"
+    name: "AP 회복"
+    description: "전투 참가자의 AP를 지정한 양만큼 회복하도록 전투 명령 계층에 요청합니다."
+    usage: "시나리오 보상이나 특수 Game Module이 실제 AP를 회복할 때 사용합니다."
+    summary: "{subject} AP +{amount}"
     runtimeAdapter: BattleParticipantHealMpActionAdapter
     tags: [battle, participant, mp, heal]
-    aliases: [마나회복, MP회복]
+    aliases: [마나회복, AP회복, MP회복]
     contexts: [battle_participant_commands]
     modes: [battle]
     preview: live_only
@@ -171,7 +171,7 @@ actions:
     parameters:
       subject:
         name: "대상"
-        description: "MP를 회복할 전투 참가자 ID입니다."
+        description: "AP를 회복할 전투 참가자 ID입니다."
         type: actorRef
         control: actor
         required: true
@@ -179,7 +179,7 @@ actions:
         sources: [literal, input, event, session, context]
       amount:
         name: "회복량"
-        description: "적용할 양의 정수 MP 회복량입니다."
+        description: "적용할 양의 정수 AP 회복량입니다."
         type: int
         control: integer
         required: true

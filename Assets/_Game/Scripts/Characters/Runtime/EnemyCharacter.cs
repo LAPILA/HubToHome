@@ -116,7 +116,7 @@ public class EnemyCharacter : CharacterBase
             BaseSPD   = Data.SPD;
             
             CurrentHP = MaxHP; 
-            CurrentMP = MaxMP;
+            CurrentAP = MaxAP;
         }
     }
 
@@ -254,7 +254,7 @@ public class EnemyCharacter : CharacterBase
         }
     }
 
-    public EnemyAction DecideAction()
+    public virtual EnemyAction DecideAction()
     {
         if (Data == null) return EnemyAction.BasicAttack;
 
@@ -314,4 +314,4 @@ public class EnemyCharacter : CharacterBase
     }
 }
 
-public enum EnemyAction { BasicAttack, UseSkill, UseStrongSkill, EnragedAttack, Defend }
+public enum EnemyAction { BasicAttack, UseSkill, UseStrongSkill, EnragedAttack, Defend, Wait }

@@ -5,6 +5,7 @@ public static class GameConfigPolicy
 {
     public const int ReferenceWidth = 640;
     public const int ReferenceHeight = 480;
+    public const int WorldPixelsPerUnit = 32;
     public const int MinWindowScale = 1;
     public const int MaxWindowScale = 2;
     public const int MinTargetFps = 30;
@@ -56,4 +57,7 @@ public static class GameConfigPolicy
             ReferenceWidth * normalizedScale,
             ReferenceHeight * normalizedScale);
     }
+
+    public static Vector2 ReferenceResolution =>
+        new Vector2(ReferenceWidth, ReferenceHeight);
 }

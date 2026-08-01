@@ -19,7 +19,7 @@ public enum PlayerMenuAction
 {
     Attack,
     Act,     // 🚨 [추가됨] (적에게 말걸기 등)
-    Skill,   // 마법/특수기 (TP/MP 소모)
+    Skill,   // 마법/특수기 (AP 소모)
     Item,
     Defend,  // 🚨 [추가됨] 방어 (받는 피해 절반 감소 + TP 회복)
     Run
@@ -31,7 +31,7 @@ public enum PlayerMenuAction
 public enum DefenseInput
 {
     None,
-    Parry,  // Z — 패링 (타이밍 맞출 시 데미지 무효화 + MP 회복)
+    Parry,  // Z — 패링 (타이밍 맞출 시 데미지 무효화 + AP 회복)
     Dodge,  // C — 회피 (무적 프레임)
     Jump,   // Space — 점프 (하단 판정 공격 회피)
 }

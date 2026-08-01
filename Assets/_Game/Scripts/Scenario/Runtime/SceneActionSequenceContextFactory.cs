@@ -9,6 +9,7 @@ public static class SceneActionSequenceContextFactory
     {
         var registry = new ActionAdapterRegistry();
         registry.Register(new FlowWaitActionAdapter());
+        registry.Register(new DialogueWaitActionAdapter());
         registry.Register(new ScreenFadeActionAdapter());
         registry.Register(new CinematicStagePrepareActionAdapter());
         registry.Register(new CinematicShotPlayActionAdapter());
@@ -22,7 +23,8 @@ public static class SceneActionSequenceContextFactory
         ICinematicStageRunner cinematicStageRunner,
         IScreenTransitionRunner screenTransitionRunner = null,
         IActionClock clock = null,
-        IActionSequenceResolver sequenceResolver = null)
+        IActionSequenceResolver sequenceResolver = null,
+        IDialogueRunner dialogueRunner = null)
     {
         var context = new ActionExecutionContext(new ActionExecutionHandle("scene_action_sequence"));
         context.ScenarioId = sequence != null ? sequence.SequenceId : string.Empty;
@@ -45,6 +47,11 @@ public static class SceneActionSequenceContextFactory
         if (sequenceResolver != null)
         {
             context.SetService<IActionSequenceResolver>(sequenceResolver);
+        }
+
+        if (dialogueRunner != null)
+        {
+            context.SetService<IDialogueRunner>(dialogueRunner);
         }
 
         return context;

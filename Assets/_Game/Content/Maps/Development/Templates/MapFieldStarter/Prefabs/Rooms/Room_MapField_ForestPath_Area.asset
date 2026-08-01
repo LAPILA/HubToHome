@@ -1,0 +1,192 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aca8f2575afc9243be1cd531a8c1373, type: 3}
+  m_Name: Room_MapField_ForestPath_Area
+  m_EditorClassIdentifier: Assembly-CSharp::AreaDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _markerSummaries
+      Entry: 7
+      Data: 0|System.Collections.Generic.List`1[[AreaMarkerSummaryEntry, Assembly-CSharp]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 6
+    - Name: 
+      Entry: 7
+      Data: 1|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.forest_path.forest.thorn_patch
+    - Name: MarkerType
+      Entry: 3
+      Data: 2
+    - Name: DisplayName
+      Entry: 1
+      Data: forest.thorn_patch
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.forest_path
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_ForestPath/Marker_forest.thorn_patch
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 2|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.forest_path.forest.rock_switch
+    - Name: MarkerType
+      Entry: 3
+      Data: 3
+    - Name: DisplayName
+      Entry: 1
+      Data: forest.rock_switch
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.forest_path
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_ForestPath/Marker_forest.rock_switch
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 3|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.forest_path.forest.shortcut_locked
+    - Name: MarkerType
+      Entry: 3
+      Data: 5
+    - Name: DisplayName
+      Entry: 1
+      Data: forest.shortcut_locked
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.forest_path
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_ForestPath/Marker_forest.shortcut_locked
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "MapTransition \uB610\uB294 targetSceneName \uC911 \uD558\uB098\uB294
+        \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition \uC624\uB958:
+        Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774 \uBE44\uC5B4
+        \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 4|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: mapfield.forest_path.forest.ambush_warning
+    - Name: MarkerType
+      Entry: 3
+      Data: 10
+    - Name: DisplayName
+      Entry: 1
+      Data: forest.ambush_warning
+    - Name: AreaId
+      Entry: 1
+      Data: mapfield.forest_path
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_ForestPath/Marker_forest.ambush_warning
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 5|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_To_Village_-5.15_0
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door_To_Village
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_ForestPath/Door_To_Village
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 6|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: Connection_Door_To_DungeonEntrance_5.15_0
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: Door_To_DungeonEntrance
+    - Name: AreaId
+      Entry: 1
+      Data: 
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_MapField_ForestPath/Door_To_DungeonEntrance
+    - Name: ValidationSummary
+      Entry: 1
+      Data: "areaId\uAC00 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.\nMapTransition \uB610\uB294
+        targetSceneName \uC911 \uD558\uB098\uB294 \uC720\uD6A8\uD574\uC57C \uD569\uB2C8\uB2E4.\nMapTransition
+        \uC624\uB958: Room \uC804\uD658 \uC694\uCCAD\uC778\uB370 TargetRoom\uC774
+        \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+  _areaId: mapfield.forest_path
+  _roomDefinition: {fileID: 11400000, guid: 4bfa81d5fd1a41c4b9a08ff65d6be6bf, type: 2}
+  _description: 

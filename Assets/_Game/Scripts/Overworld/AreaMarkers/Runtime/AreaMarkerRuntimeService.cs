@@ -5,8 +5,30 @@ using UnityEngine.SceneManagement;
 
 public static class AreaMarkerRuntimeService
 {
+    private static IShopSessionLauncher s_shopSessionLauncher;
+
+    public static bool RegisterShopSessionLauncher(IShopSessionLauncher launcher)
+    {
+        if (launcher == null)
+            return false;
+        if (s_shopSessionLauncher != null
+            && !ReferenceEquals(s_shopSessionLauncher, launcher))
+        {
+            return false;
+        }
+
+        s_shopSessionLauncher = launcher;
+        return true;
+    }
+
+    public static void UnregisterShopSessionLauncher(IShopSessionLauncher launcher)
+    {
+        if (ReferenceEquals(s_shopSessionLauncher, launcher))
+            s_shopSessionLauncher = null;
+    }
+
     public static bool TryStartDialogue(
-        AreaMarkerBase owner,
+        UnityEngine.Object owner,
         DialogueData dialogue,
         string fallbackText,
         SpeakerData fallbackSpeaker,
@@ -22,14 +44,18 @@ public static class AreaMarkerRuntimeService
 
         if (manager.IsPlaying)
         {
-            Debug.Log("[AreaMarkerRuntimeService] 이미 대화가 재생 중이라 새 Area Marker 대화를 무시합니다.", owner);
+            Debug.Log("[AreaMarkerRuntimeService] 이미 대화가 재생 중이라 새 오버월드 대화를 무시합니다.", owner);
             return false;
         }
 
         if (dialogue != null)
         {
-            manager.StartDialogue(dialogue, onComplete);
-            return true;
+            return manager.TryStartDialogue(
+                dialogue,
+                onComplete,
+                null,
+                null,
+                out _);
         }
 
         if (string.IsNullOrWhiteSpace(fallbackText))
@@ -48,14 +74,50 @@ public static class AreaMarkerRuntimeService
             DefaultText = fallbackText
         });
 
-        manager.StartDialogue(transientDialogue, () =>
+        bool released = false;
+        Action release = () =>
         {
-            if (transientDialogue != null)
-                UnityEngine.Object.Destroy(transientDialogue);
-            onComplete?.Invoke();
-        });
+            if (released)
+                return;
+            released = true;
+            DestroyTransientDialogue(transientDialogue);
+        };
 
-        return true;
+        bool started;
+        try
+        {
+            started = manager.TryStartDialogue(
+                transientDialogue,
+                () =>
+                {
+                    release();
+                    onComplete?.Invoke();
+                },
+                release,
+                null,
+                out _);
+        }
+        catch
+        {
+            release();
+            throw;
+        }
+
+        if (!started)
+            release();
+
+        return started;
+    }
+
+    private static void DestroyTransientDialogue(DialogueData dialogue)
+    {
+        if (dialogue == null)
+            return;
+
+        if (Application.isPlaying)
+            UnityEngine.Object.Destroy(dialogue);
+        else
+            UnityEngine.Object.DestroyImmediate(dialogue);
     }
 
     public static bool TryRequestConnection(
@@ -134,15 +196,68 @@ public static class AreaMarkerRuntimeService
 
     public static void GrantItem(AreaMarkerBase owner, string itemId, int amount)
     {
+        int grantedAmount = 0;
         if (!string.IsNullOrWhiteSpace(itemId) && GlobalDataManager.Instance != null)
-            GlobalDataManager.Instance.AddItem(itemId, amount);
+            grantedAmount = GlobalDataManager.Instance.AddItemAndGetAddedAmount(itemId, amount);
 
-        Debug.Log($"[AreaMarkerRuntimeService] 아이템 획득: itemId={itemId}, amount={amount}", owner);
+        if (grantedAmount > 0)
+            AudioManager.Instance?.PlaySelectionSfx();
+
+        Debug.Log($"[AreaMarkerRuntimeService] 아이템 획득: itemId={itemId}, amount={grantedAmount}", owner);
     }
 
     public static void RequestVendor(AreaMarkerBase owner, string vendorId, string shopId)
     {
-        Debug.Log($"[AreaMarkerRuntimeService] 상점 요청: vendorId={vendorId}, shopId={shopId}. 현재는 Shop UI를 자동으로 열지 않는 연결 지점입니다.", owner);
+        RequestVendor(owner, vendorId, shopId, null, null);
+    }
+
+    public static bool RequestVendor(
+        AreaMarkerBase owner,
+        string vendorId,
+        string shopId,
+        ShopDefinition shop,
+        Action<ShopSessionResult> onClosed)
+    {
+        if (shop != null && s_shopSessionLauncher == null && Application.isPlaying)
+            ShopUI.EnsureGlobal();
+
+        if (shop == null || s_shopSessionLauncher == null)
+        {
+            Debug.Log(
+                $"[AreaMarkerRuntimeService] 상점 요청: vendorId={vendorId}, shopId={shopId}. "
+                + "ShopDefinition 또는 Shop Session Launcher가 없어 연결 요청만 기록합니다.",
+                owner);
+            return false;
+        }
+
+        string resolvedShopId = string.IsNullOrWhiteSpace(shopId)
+            ? shop.ShopId
+            : shopId.Trim();
+        if (!string.Equals(resolvedShopId, shop.ShopId, StringComparison.Ordinal))
+        {
+            Debug.LogError(
+                $"[AreaMarkerRuntimeService] Vendor shopId와 ShopDefinition ID가 다릅니다: "
+                + $"vendor={vendorId}, markerShop={resolvedShopId}, definition={shop.ShopId}",
+                owner);
+            return false;
+        }
+
+        bool callbackConsumed = false;
+        try
+        {
+            return s_shopSessionLauncher.TryOpen(shop, vendorId, result =>
+            {
+                if (callbackConsumed)
+                    return;
+                callbackConsumed = true;
+                onClosed?.Invoke(result);
+            });
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception, owner);
+            return false;
+        }
     }
 
     public static bool RequestSavePoint(AreaMarkerBase owner, PlayerController player, string savePointId, int slotIndex = 0)
@@ -159,60 +274,92 @@ public static class AreaMarkerRuntimeService
         return true;
     }
 
-    public static void ApplyHazard(AreaMarkerBase owner, PlayerController player, int damage, float knockback)
+    public static OverworldPartyDamageResult ApplyHazard(
+        AreaMarkerBase owner,
+        PlayerController player,
+        int damage,
+        float knockback,
+        IOverworldPartyHealthService healthService = null)
     {
         if (player == null)
-            return;
+        {
+            return new OverworldPartyDamageResult(
+                OverworldPartyDamageStatus.PartyMissing,
+                damage,
+                0,
+                0,
+                0);
+        }
 
-        Vector2 dir = ((Vector2)player.transform.position - (Vector2)owner.transform.position).normalized;
-        if (dir.sqrMagnitude < 0.001f)
-            dir = player.GetFacingVector2();
+        Vector2 origin = owner != null ? owner.transform.position : player.transform.position;
+        Vector2 direction = ((Vector2)player.transform.position - origin).normalized;
+        if (direction.sqrMagnitude < 0.001f)
+            direction = player.GetFacingVector2();
+        player.NudgeFromEncounter(direction, knockback);
 
-        player.NudgeFromEncounter(dir, knockback);
-        Debug.Log($"[AreaMarkerRuntimeService] Hazard 요청: damage={damage}, knockback={knockback}. 현재는 넉백만 적용되고 HP는 감소하지 않습니다.", owner);
+        IOverworldPartyHealthService resolvedService = healthService
+            ?? new OverworldPartyHealthService(GlobalDataManager.Instance);
+        PlayerCharacter scenePlayer = player.GetComponent<PlayerCharacter>();
+        OverworldPartyDamageResult result = resolvedService.ApplyDamage(damage, scenePlayer);
+        Debug.Log(
+            $"[AreaMarkerRuntimeService] Hazard damage={result.AppliedDamage}, hp={result.CurrentHP}, knockback={knockback}",
+            owner);
+        return result;
     }
 
-    public static void CompletePuzzle(AreaMarkerBase owner, string puzzleId, string solvedFlag)
-    {
-        Debug.Log($"[AreaMarkerRuntimeService] 퍼즐 요청: puzzleId={puzzleId}, solvedFlag={solvedFlag}. 현재는 퍼즐 플레이 없이 solvedFlag를 즉시 설정합니다.", owner);
-        if (!string.IsNullOrWhiteSpace(solvedFlag))
-            GlobalDataManager.Instance?.SetFlag(solvedFlag, 1);
-    }
 
     public static bool RequestSublocation(
         AreaMarkerBase owner,
         string targetSceneName,
-        string targetAreaId,
+        string targetRoomId,
         string targetSpawnId,
         float fadeDuration)
     {
-        if (string.IsNullOrWhiteSpace(targetSceneName))
+        var request = new MapTransitionRequest
         {
-            Debug.LogWarning("[AreaMarkerRuntimeService] targetSceneName이 비어 있어 sublocation 이동을 실행할 수 없습니다.", owner);
+            TransitionType = MapTransitionType.Scene,
+            TargetSceneName = targetSceneName,
+            TargetRoomId = targetRoomId,
+            TargetAreaId = targetRoomId,
+            TargetSpawnPointId = targetSpawnId,
+            FadeDuration = fadeDuration
+        };
+        return RequestSublocation(owner, request, null);
+    }
+
+    public static bool RequestSublocation(
+        AreaMarkerBase owner,
+        MapTransitionRequest request,
+        Action<SceneLoadResult> onCompleted)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.TargetSceneName))
+        {
+            Debug.LogWarning(
+                "[AreaMarkerRuntimeService] targetSceneName이 비어 있어 sublocation 이동을 실행할 수 없습니다.",
+                owner);
             return false;
         }
 
         if (MapTransitionService.Instance == null)
         {
-            Debug.LogError("[AreaMarkerRuntimeService] MapTransitionService가 씬에 없어 sublocation 이동을 실행할 수 없습니다.", owner);
+            Debug.LogError(
+                "[AreaMarkerRuntimeService] MapTransitionService가 씬에 없어 sublocation 이동을 실행할 수 없습니다.",
+                owner);
             return false;
         }
 
-        var request = new MapTransitionRequest
-        {
-            TransitionType = MapTransitionType.Scene,
-            TargetSceneName = targetSceneName,
-            TargetAreaId = targetAreaId,
-            TargetSpawnPointId = targetSpawnId,
-            FadeDuration = fadeDuration
-        };
-
-        bool accepted = MapTransitionService.Instance.TryRequestTransition(request);
+        bool accepted = MapTransitionService.Instance.TryRequestTransition(
+            request,
+            null,
+            onCompleted);
         if (accepted)
         {
-            Debug.Log($"[AreaMarkerRuntimeService] 내부맵 이동 요청: scene={targetSceneName}, area={targetAreaId}, spawn={targetSpawnId}", owner);
+            Debug.Log(
+                "[AreaMarkerRuntimeService] 내부맵 이동 요청: scene=" + request.TargetSceneName
+                + ", room=" + request.ResolvedTargetRoomId
+                + ", spawn=" + request.TargetSpawnPointId,
+                owner);
         }
 
         return accepted;
-    }
-}
+    }}

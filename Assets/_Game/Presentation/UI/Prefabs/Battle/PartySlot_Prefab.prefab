@@ -149,7 +149,7 @@ GameObject:
   - component: {fileID: 3825231957334483413}
   - component: {fileID: 5037750760535567095}
   m_Layer: 5
-  m_Name: MPBackground
+  m_Name: APBackground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -436,7 +436,7 @@ GameObject:
   - component: {fileID: 4428788783512872883}
   - component: {fileID: 6053523993977651310}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -623,7 +623,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6189025606753178553}
   m_Layer: 5
-  m_Name: MPBar
+  m_Name: APBar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -792,7 +792,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'MP
+  m_text: 'AP
 
 '
   m_isRightToLeft: 0
@@ -878,7 +878,7 @@ GameObject:
   - component: {fileID: 4184096600339640697}
   - component: {fileID: 3041334605109408679}
   m_Layer: 5
-  m_Name: MPText
+  m_Name: APText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1196,7 +1196,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OverworldPartySlotView
   _nameText: {fileID: 2981301728083299484}
   _hpText: {fileID: 6001441255282904861}
-  _mpText: {fileID: 3041334605109408679}
+  _apText: {fileID: 3041334605109408679}
   _portrait: {fileID: 20427800439180059}
   _hpBar: {fileID: 5214252867577241004}
-  _mpBar: {fileID: 6053523993977651310}
+  _apBar: {fileID: 6053523993977651310}

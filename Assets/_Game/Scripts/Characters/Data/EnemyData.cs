@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
 [System.Serializable]
@@ -28,10 +29,11 @@ public class EnemyData : SerializedScriptableObject
     [Tooltip("이 적과 전투 시작 시 우선 재생할 전투 BGM입니다. 비워두면 맵 기본 전투 BGM을 사용합니다.")]
     public AudioClip BattleBGM;
 
-    [BoxGroup("Battle Presentation")]
+    [BoxGroup("Runtime Presentation")]
     [Required, AssetsOnly]
-    [Tooltip("BattleScene 또는 심리스 전투에서 실제로 생성할 전투용 적 프리팹입니다. 비워두면 BattleManager의 기본 Enemy Base Prefab을 사용합니다.")]
-    public GameObject BattlePrefab;
+    [FormerlySerializedAs("BattlePrefab")]
+    [Tooltip("오버월드 배치와 전투 생성에 함께 사용하는 공용 적 프리팹입니다. 비워두면 BattleManager의 기본 Enemy Base Prefab을 사용합니다.")]
+    public GameObject Prefab;
     [BoxGroup("Battle Presentation")]
     [Tooltip("공격 후 원래 자리로 돌아갈 때 사용할 애니메이션 Trigger 이름입니다. 기본값은 BattleMove 입니다.")]
     public string ReturnMoveTrigger = "BattleMove";

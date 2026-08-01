@@ -237,7 +237,7 @@ public class BattleSkillTimelineRunnerTests
             playerData.DisplayName = "Player";
             Player.SetCharacterData(playerData);
             Player.HealHP(Player.MaxHP);
-            Player.HealMP(Player.MaxMP);
+            Player.RestoreAP(Player.MaxAP);
             _createdAssets.Add(playerData);
 
             _enemyObject = new GameObject("Enemy");

@@ -14,6 +14,8 @@ public class TitleMenuManager : MonoBehaviour
     
     [Header("씬 이동 세팅")]
     [SerializeField] private string _newGameSceneName = "01_IntroScene";
+    [Tooltip("-1이면 가장 최근 슬롯, 0 이상이면 해당 슬롯을 불러옵니다.")]
+    [SerializeField] private int _continueSlot = -1;
 
     [Header("오디오 세팅")]
     [SerializeField] private AudioClip _titleBGM;
@@ -114,16 +116,59 @@ public class TitleMenuManager : MonoBehaviour
 
     public void OnClickNewGame(TextMeshProUGUI buttonText)
     {
-        ExecuteWithBlink(buttonText, () => {
+        ExecuteWithBlink(buttonText, () =>
+        {
+            GlobalDataManager.Instance?.ResetForNewGame();
+            Time.timeScale = 1f;
             SceneLoader.Instance?.LoadScene(_newGameSceneName);
         });
     }
 
     public void OnClickContinue(TextMeshProUGUI buttonText)
     {
-        ExecuteWithBlink(buttonText, () => {
-            _isLocked = false; 
-        });
+        ExecuteWithBlink(buttonText, BeginContinue);
+    }
+
+    public void SetContinueSlot(int slotIndex)
+    {
+        _continueSlot = slotIndex;
+    }
+
+    private void BeginContinue()
+    {
+        LockTitleInput();
+        if (_btnContinue != null)
+            _btnContinue.interactable = false;
+
+        GameLoadStartResult result = _continueSlot >= 0
+            ? GameLoadCoordinator.LoadSlot(_continueSlot, HandleContinueCompleted)
+            : GameLoadCoordinator.LoadMostRecent(HandleContinueCompleted);
+        if (result.Accepted)
+            return;
+
+        Debug.LogError("[TitleMenuManager] Continue 실패: " + result.Message, this);
+        RestoreContinueInput();
+    }
+
+    private void HandleContinueCompleted(SceneLoadResult result)
+    {
+        if (SceneLoadResultUtility.WasDestinationActivated(result))
+            return;
+
+        Debug.LogError("[TitleMenuManager] Continue Scene 이동 실패: " + result, this);
+        RestoreContinueInput();
+    }
+
+    private void RestoreContinueInput()
+    {
+        if (_btnContinue != null)
+        {
+            _btnContinue.interactable = true;
+            _btnContinue.Select();
+            _lastSelected = _btnContinue.gameObject;
+        }
+
+        UnlockTitleInput();
     }
 
     public void OnClickSettings(TextMeshProUGUI buttonText)

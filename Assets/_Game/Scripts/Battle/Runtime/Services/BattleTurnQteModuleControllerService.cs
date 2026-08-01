@@ -47,7 +47,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         if (_host.Enemies == null || _host.Enemies.Count == 0)
         {
-            Debug.LogError("[BattleTurnQteModuleControllerService] 전투 시작 시 적 리스트가 비어 있습니다. BattlePrefab 또는 EnemyCharacter 설정을 확인해주세요.");
+            Debug.LogError("[BattleTurnQteModuleControllerService] 전투 시작 시 적 리스트가 비어 있습니다. EnemyData.Prefab 또는 EnemyCharacter 설정을 확인해주세요.");
             yield break;
         }
 
@@ -124,8 +124,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         _host.ResetAllPlayerBattlePoses();
         player.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-        player.HealMP(_host.MpPerTurn);
-        _host.EmitMpChanged(player, player.CurrentMP);
+        player.RestoreAP(_host.ApPerTurn);
+        _host.EmitApChanged(player, player.CurrentAP);
         if (player.TryShowBattleSpeech(BattleSpeechTrigger.TurnStart, null, null, _host.BattleTurnCounter))
         {
             yield return _host.StartManagedCoroutine(player.WaitForBattleSpeech());
@@ -188,6 +188,23 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         {
             action = enemy.DecideAction();
             enemySkill = _host.ResolveEnemySequenceSkill(enemy, action);
+        }
+
+        if (action == EnemyAction.Wait)
+        {
+            BattleNarrationMessage narration = enemy is BunnySlimeCharacter bunnySlime
+                ? bunnySlime.GetNextWaitNarration()
+                : new BattleNarrationMessage(
+                    $"{BattleNarrationFormatter.ActorName(enemy)}은 가만히 있다...",
+                    BattleNarrationStyle.Normal,
+                    BattleNarrationPriority.Normal,
+                    0.55f,
+                    requiresConfirm: false);
+
+            _host.RequestNarration(narration);
+            yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
+            CompleteAction();
+            yield break;
         }
 
         EnemyAttackType attackType = action switch
@@ -302,19 +319,20 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                         int dmg = target.TakePureDamage(enemy.ATK);
                         targetCtrl?.PlayHurtEffect();
                         CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
-                        _host.EmitDamage(target, dmg, false);
+                        _host.EmitDamage(enemy, target, dmg, false);
                     }
                     else
                     {
                         targetCtrl?.ConfirmDefenseSuccess(finalResult.Input);
                         if (finalResult.Input == DefenseInput.Parry && finalResult.Grade == QTEManager.QTEGrade.Perfect)
                         {
-                            target.HealMP(_host.MpOnParryPerfect);
-                            _host.EmitMpChanged(target, target.CurrentMP);
+                            target.RestoreAP(_host.ApOnParryPerfect);
+                            _host.EmitApChanged(target, target.CurrentAP);
                         }
 
                         if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
                         {
+                            _host.EmitMiss(enemy, target);
                             yield return targetCtrl != null ? _host.StartManagedCoroutine(targetCtrl.WaitForDefenseVisualComplete(0.5f)) : null;
                         }
                     }
@@ -364,7 +382,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
                     int dmg = player.TakePureDamage(enemy.ATK);
                     player.GetComponent<PlayerController>()?.PlayHurtEffect();
-                    _host.EmitDamage(player, dmg, false);
+                    _host.EmitDamage(enemy, player, dmg, false);
                 }
 
                 yield return new WaitForSeconds(_host.EnemyPostHitDelay);
@@ -470,9 +488,9 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         }
         else if (_host.PendingAction == PlayerMenuAction.Skill && _host.PendingSkill != null)
         {
-            if (_host.PendingActor.CurrentMP < _host.PendingSkill.MPCost)
+            if (_host.PendingActor.CurrentAP < _host.PendingSkill.APCost)
             {
-                _host.RequestNarration(new BattleNarrationMessage("MP가 부족하다.", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
+                _host.RequestNarration(new BattleNarrationMessage("AP가 부족하다.", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
                 _host.PendingActor?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
                 _host.PendingSkill = null;
                 _host.PendingItem = null;
@@ -557,7 +575,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             int dmg = target.TakeDamage(actor.ATK);
             CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
             _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
-            _host.EmitDamageNotificationOnly(target, dmg, false);
+            _host.EmitDamageNotificationOnly(actor, target, dmg, false);
             _host.PublishEnemyDefeatedScenarioEvent(target, actor);
 
             yield return new WaitForSeconds(_host.PlayerAttackRecoverDelay);
@@ -591,8 +609,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
-        actor.ConsumeMP(skill.MPCost);
-        _host.EmitMpChanged(actor, actor.CurrentMP);
+        actor.ConsumeAP(skill.APCost);
+        _host.EmitApChanged(actor, actor.CurrentAP);
         if (actor.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, skill, null, _host.BattleTurnCounter))
         {
             yield return _host.StartManagedCoroutine(actor.WaitForBattleSpeech());

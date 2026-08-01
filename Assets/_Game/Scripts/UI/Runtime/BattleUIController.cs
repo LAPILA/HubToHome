@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 using Febucci.TextAnimatorForUnity;
@@ -19,21 +20,22 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     #region [ UI Components ]
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private Transform _turnQueueContainer;
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private GameObject _turnIconPrefab;
-    
+
     // 🚨 체력창 패널 본체를 제어하기 위한 변수 추가
     [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private RectTransform _partyStatusPanel;
     [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private PartySlotUI[] _partySlots;
-    
+
     [BoxGroup("Labels"), LabelWidth(120)] [SerializeField] private TMPro.TextMeshProUGUI _turnLabel;
-    
-    [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private RectTransform _targetCursor; 
+
+    [BoxGroup("Enemy Cursor"), LabelWidth(120)] [SerializeField] private RectTransform _targetCursor;
     [BoxGroup("Enemy Cursor"), LabelWidth(120)]
     [Tooltip("전용 전투 씬에서는 직접 연결합니다. 심리스 전투에서는 현재 맵의 MainCamera를 자동 연결합니다.")]
     [SerializeField] private Camera _worldCamera;
-    
+
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleMenuUI  _battleMenuUI;
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private DefenseQTEUI  _defenseQTEUI;
     [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleNarrationUI _narrationUI;
+    [BoxGroup("Sub Panels"), LabelWidth(120)] [SerializeField] private BattleDamagePopupPresenter _damagePopupPresenter;
     #endregion
 
     #region [ UI Settings & Magic Numbers ]
@@ -44,6 +46,15 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     [SerializeField] private float _cursorBobFrequency = 10f;
 
     [FoldoutGroup("Tween Settings"), LabelWidth(140)] [SerializeField] private float _barTweenDuration = 0.4f;
+
+    [FoldoutGroup("Damage Popup"), AssetsOnly, LabelWidth(140), LabelText("데미지 폰트")]
+    [SerializeField] private TMP_FontAsset _damagePopupFont;
+
+    [FoldoutGroup("Damage Popup"), MinValue(1f), LabelWidth(140), LabelText("글자 크기")]
+    [SerializeField] private float _damagePopupFontSize = 60f;
+
+    [FoldoutGroup("Damage Popup"), LabelWidth(140), LabelText("기준 위치 보정")]
+    [SerializeField] private Vector2 _damagePopupOriginOffset = new Vector2(0f, 12f);
     #endregion
 
     #region [ Internal State ]
@@ -52,7 +63,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private int _selectedTargetIndex = 0;
     private bool _isBattleEnding = false;
     private bool _isScenarioCinematicMode;
-    
+
     // 🚨 체력창의 기본 Y좌표를 기억해둘 변수
     private float _defaultPartyPanelY;
     private Image _scenarioFlashOverlay;
@@ -76,11 +87,12 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         Instance = this;
         TryResolveWorldCamera();
         NormalizeForCurrentResolution();
+        EnsureDamagePopupPresenter();
 
         if (_narrationUI == null)
             _narrationUI = BattleNarrationUI.FindInActiveScene();
 
-        _battleMenuUI?.HideImmediate(); 
+        _battleMenuUI?.HideImmediate();
         _defenseQTEUI?.HideImmediate();
         if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
 
@@ -94,6 +106,33 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
     }
 
+    private void EnsureDamagePopupPresenter()
+    {
+        if (_damagePopupPresenter == null)
+            _damagePopupPresenter = GetComponent<BattleDamagePopupPresenter>();
+        if (_damagePopupPresenter == null)
+            _damagePopupPresenter = gameObject.AddComponent<BattleDamagePopupPresenter>();
+
+        RectTransform host = transform as RectTransform;
+        if (host == null)
+        {
+            Canvas canvas = GetComponentInParent<Canvas>();
+            host = canvas != null ? canvas.transform as RectTransform : null;
+        }
+
+        if (host == null)
+        {
+            Debug.LogWarning("[BattleUIController] 피해 숫자를 배치할 RectTransform을 찾지 못했습니다.", this);
+            return;
+        }
+
+        TMP_FontAsset fallbackFont = _damagePopupFont != null
+            ? _damagePopupFont
+            : _turnLabel != null ? _turnLabel.font : null;
+        _damagePopupPresenter.SetFontSize(_damagePopupFontSize);
+        _damagePopupPresenter.SetOriginOffset(_damagePopupOriginOffset);
+        _damagePopupPresenter.Initialize(host, _worldCamera, fallbackFont);
+    }
     public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
     {
         _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
@@ -106,11 +145,12 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void Start()
     {
+        EnsureDamagePopupPresenter();
         if (_narrationUI == null)
             _narrationUI = BattleNarrationUI.FindInActiveScene();
 
         var bm = BattleManager.Instance;
-        if (bm == null) 
+        if (bm == null)
         {
             Debug.LogWarning("[BattleUIController] BattleManager.Instance가 없습니다!");
             return;
@@ -123,7 +163,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         bm.OnPlayerTurnStarted      += HandlePlayerTurnStarted;
         bm.OnEnemyActionStarted     += HandleEnemyActionStarted;
         bm.OnDamageDealt            += HandleDamageDealt;
-        bm.OnMPChanged              += HandleMPChanged;
+        bm.OnDamageFeedbackRequested += HandleDamageFeedbackRequested;
+        bm.OnAPChanged              += HandleAPChanged;
         bm.OnBattleEnded            += HandleBattleEnded;
         bm.OnTargetSelectionStarted += HandleTargetSelectionStarted;
         bm.OnBattleNarrationRequested += HandleBattleNarrationRequested;
@@ -133,6 +174,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         if (Instance == this)
             Instance = null;
+
+        _damagePopupPresenter?.ReleaseAll();
 
         var bm = BattleManager.Instance;
         if (bm == null) return;
@@ -144,7 +187,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         bm.OnPlayerTurnStarted      -= HandlePlayerTurnStarted;
         bm.OnEnemyActionStarted     -= HandleEnemyActionStarted;
         bm.OnDamageDealt            -= HandleDamageDealt;
-        bm.OnMPChanged              -= HandleMPChanged;
+        bm.OnDamageFeedbackRequested -= HandleDamageFeedbackRequested;
+        bm.OnAPChanged              -= HandleAPChanged;
         bm.OnBattleEnded            -= HandleBattleEnded;
         bm.OnTargetSelectionStarted -= HandleTargetSelectionStarted;
         bm.OnBattleNarrationRequested -= HandleBattleNarrationRequested;
@@ -200,7 +244,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         else if (cancel)
         {
             ExitTargetingMode();
-            BattleManager.Instance.CancelActionSelection(); // 타겟팅 취소 시 
+            BattleManager.Instance.CancelActionSelection(); // 타겟팅 취소 시
         }
     }
 
@@ -209,15 +253,15 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         int maxTargets = _isAllyTargeting ? _party.Count : _enemies.Count;
         if (maxTargets == 0) return;
 
-        int loopCount = 0; 
+        int loopCount = 0;
         do
         {
             _selectedTargetIndex = (_selectedTargetIndex + direction + maxTargets) % maxTargets;
             loopCount++;
-            
+
             bool isAlive = _isAllyTargeting ? _party[_selectedTargetIndex].IsAlive : _enemies[_selectedTargetIndex].IsAlive;
-            if (isAlive) break; 
-            
+            if (isAlive) break;
+
         } while (loopCount < maxTargets);
     }
 
@@ -228,6 +272,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _worldCamera = worldCamera;
         _hasWarnedMissingWorldCamera = false;
         BindCameraToCanvases(worldCamera);
+        _damagePopupPresenter?.BindWorldCamera(worldCamera);
     }
 
     public bool TryResolveWorldCamera()
@@ -285,7 +330,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
 
         Transform targetTf = null;
-        CharacterBase targetChar = _isAllyTargeting 
+        CharacterBase targetChar = _isAllyTargeting
             ? (_party != null && _selectedTargetIndex < _party.Count ? _party[_selectedTargetIndex] : null)
             : (_enemies != null && _selectedTargetIndex < _enemies.Count ? _enemies[_selectedTargetIndex] : null);
 
@@ -309,7 +354,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
                 screenPoint,
                 uiCamera,
                 out Vector2 localPoint);
-            
+
             float bobbingY = Mathf.Sin(Time.time * _cursorBobSpeed * _cursorBobFrequency) * _cursorBobHeight;
             _targetCursor.localPosition = new Vector2(Mathf.Round(localPoint.x), Mathf.Round(localPoint.y + bobbingY));
         }
@@ -323,7 +368,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private int GetFirstAliveTargetIndex()
     {
-        return _isAllyTargeting 
+        return _isAllyTargeting
             ? _party.FindIndex(p => p != null && p.IsAlive)
             : _enemies.FindIndex(e => e != null && e.IsAlive);
     }
@@ -344,11 +389,11 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _narrationUI?.Clear();
         for (int i = 0; i < _partySlots.Length; i++)
         {
-            if (i < party.Count && party[i] != null) 
+            if (i < party.Count && party[i] != null)
             {
                 _partySlots[i].Init(party[i]);
             }
-            else 
+            else
             {
                 _partySlots[i].Hide();
             }
@@ -374,7 +419,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         switch (state)
         {
             case BattleState.Init:
-                SetTurnLabel("<wave>전투 시작!</wave>"); 
+                SetTurnLabel("<wave>전투 시작!</wave>");
                 ExitTargetingMode();
                 _battleMenuUI?.HideImmediate();
                 ResetPartyPanelPosition(0f); // 🚨 초기화 시 즉시 원래 자리로
@@ -400,7 +445,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void HandleTargetSelectionStarted(PlayerMenuAction action)
     {
         _isTargetingMode = true;
-        _isAllyTargeting = false; 
+        _isAllyTargeting = false;
 
         var bm = BattleManager.Instance;
 
@@ -410,12 +455,21 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             _isAllyTargeting = (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly);
 
         _selectedTargetIndex = GetFirstAliveTargetIndex();
-        
+
         if (_targetCursor != null)
         {
             _targetCursor.gameObject.SetActive(true);
-            UpdateCursorPosition(); 
+            UpdateCursorPosition();
         }
+    }
+
+    private void HandleDamageFeedbackRequested(BattleDamageFeedback feedback)
+    {
+        if (_isBattleEnding)
+            return;
+
+        EnsureDamagePopupPresenter();
+        _damagePopupPresenter?.TryShow(feedback, out _);
     }
 
     private void HandleDamageDealt(CharacterBase target, int damage, bool isCrit)
@@ -448,11 +502,11 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
     }
 
-    private void HandleMPChanged(PlayerCharacter player, int newMP)
+    private void HandleAPChanged(PlayerCharacter player, int newAP)
     {
         int idx = _party?.IndexOf(player) ?? -1;
         if (idx >= 0 && idx < _partySlots.Length)
-            _partySlots[idx].RefreshMP(newMP, player.MaxMP, _barTweenDuration, Ease.OutQuad);
+            _partySlots[idx].RefreshAP(newAP, player.MaxAP, _barTweenDuration, Ease.OutQuad);
     }
 
     private void HandleTurnQueueUpdated(List<CharacterBase> queue)
@@ -488,8 +542,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
                     img.enabled = true;
                 }
             }
-                
-            if (go.GetComponentInChildren<TMPro.TextMeshProUGUI>() is var txt && txt != null) 
+
+            if (go.GetComponentInChildren<TMPro.TextMeshProUGUI>() is var txt && txt != null)
                 txt.text = GetActorDisplayName(actor);
 
             if (go != null)
@@ -529,6 +583,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void HandleBattleEnded(bool victory)
     {
         _isBattleEnding = true;
+        _damagePopupPresenter?.ReleaseAll();
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
         _battleMenuUI?.HideImmediate();
@@ -829,12 +884,14 @@ public class PartySlotUI
     [HorizontalGroup("Row"),  LabelWidth(60)] public TMPro.TextMeshProUGUI NameText;
     [HorizontalGroup("Row2"), LabelWidth(60)] public Image                 HPFill;
     [HorizontalGroup("Row2"), LabelWidth(60)] public TMPro.TextMeshProUGUI HPText;
-    [HorizontalGroup("Row3"), LabelWidth(60)] public Image                 MPFill;
-    [HorizontalGroup("Row3"), LabelWidth(60)] public TMPro.TextMeshProUGUI MPText;
+    [FormerlySerializedAs("MPFill")]
+    [HorizontalGroup("Row3"), LabelWidth(60)] public Image APFill;
+    [FormerlySerializedAs("MPText")]
+    [HorizontalGroup("Row3"), LabelWidth(60)] public TMPro.TextMeshProUGUI APText;
     [HorizontalGroup("Row4"), LabelWidth(60)] public GameObject            Root;
 
     private int _displayHP;
-    private int _displayMP;
+    private int _displayAP;
 
     public void Init(PlayerCharacter player)
     {
@@ -849,10 +906,10 @@ public class PartySlotUI
         }
 
         _displayHP = player.CurrentHP;
-        _displayMP = player.CurrentMP;
+        _displayAP = player.CurrentAP;
 
         RefreshHP(player.CurrentHP, player.MaxHP, 0f, Ease.Linear);
-        RefreshMP(player.CurrentMP, player.MaxMP, 0f, Ease.Linear);
+        RefreshAP(player.CurrentAP, player.MaxAP, 0f, Ease.Linear);
     }
 
     public void Hide() => Root?.SetActive(false);
@@ -862,16 +919,16 @@ public class PartySlotUI
         if (Portrait == null) return;
         Portrait.DOKill();
         Portrait.DOColor(active ? Color.yellow : Color.white, 0.15f);
-        
-        if (active && Root != null) 
+
+        if (active && Root != null)
             Root.transform.DOPunchPosition(new Vector3(0, 5f, 0), 0.2f, 5, 1f);
     }
 
     public void RefreshHP(int current, int max, float duration, Ease ease)
     {
         float ratio = max > 0 ? (float)current / max : 0f;
-        
-        if (HPFill != null) 
+
+        if (HPFill != null)
         {
             HPFill.DOKill();
             HPFill.DOFillAmount(ratio, duration).SetEase(ease);
@@ -880,7 +937,7 @@ public class PartySlotUI
         if (Root != null && duration > 0f)
         {
             Root.transform.DOKill(true);
-            if (current < _displayHP) 
+            if (current < _displayHP)
             {
                 Root.transform.DOPunchPosition(new Vector3(10f, 0, 0), 0.3f, 15, 1f);
                 if (HPFill != null) HPFill.DOColor(Color.red, 0.1f).SetLoops(2, LoopType.Yoyo).OnComplete(() => HPFill.color = Color.white);
@@ -894,8 +951,8 @@ public class PartySlotUI
 
         if (HPText != null)
         {
-            DOTween.Kill(HPText); 
-            DOTween.To(() => _displayHP, x => 
+            DOTween.Kill(HPText);
+            DOTween.To(() => _displayHP, x =>
             {
                 _displayHP = x;
                 HPText.text = $"{_displayHP}/{max}";
@@ -903,44 +960,42 @@ public class PartySlotUI
         }
     }
 
-    public void RefreshMP(int current, int max, float duration, Ease ease)
+    public void RefreshAP(int current, int max, float duration, Ease ease)
     {
         float ratio = max > 0 ? (float)current / max : 0f;
-        
-        if (MPFill != null) 
+
+        if (APFill != null)
         {
-            MPFill.DOKill();
-            MPFill.DOFillAmount(ratio, duration).SetEase(ease);
+            APFill.DOKill();
+            APFill.DOFillAmount(ratio, duration).SetEase(ease);
         }
 
         if (Root != null && duration > 0f)
         {
             Root.transform.DOKill(true);
-            if (current < _displayMP)
+            if (current < _displayAP)
                 Root.transform.DOPunchScale(new Vector3(0.03f, 0.03f, 0f), 0.2f, 5, 1f);
-            else if (current > _displayMP)
+            else if (current > _displayAP)
                 Root.transform.DOPunchPosition(new Vector3(0, 5f, 0), 0.2f, 5, 1f);
         }
 
-        if (MPText != null)
+        if (APText != null)
         {
-            DOTween.Kill(MPText); 
-            DOTween.To(() => _displayMP, x => 
+            DOTween.Kill(APText);
+            DOTween.To(() => _displayAP, x =>
             {
-                _displayMP = x;
-                MPText.text = $"{_displayMP}/{max}";
-            }, current, duration).SetEase(ease).SetTarget(MPText);
+                _displayAP = x;
+                APText.text = $"{_displayAP}/{max}";
+            }, current, duration).SetEase(ease).SetTarget(APText);
         }
     }
 }
 
 public static class UIRuntimeGuard
 {
-    private static readonly Vector2 DefaultReferenceResolution = new Vector2(1920f, 1080f);
-
     public static void NormalizeCanvas(GameObject owner)
     {
-        NormalizeCanvas(owner, DefaultReferenceResolution);
+        NormalizeCanvas(owner, GameConfigPolicy.ReferenceResolution);
     }
 
     public static void NormalizeCanvas(GameObject owner, Vector2 referenceResolution)

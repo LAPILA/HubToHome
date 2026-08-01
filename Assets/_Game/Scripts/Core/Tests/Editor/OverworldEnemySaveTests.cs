@@ -102,8 +102,8 @@ public class OverworldEnemySaveTests
                 EXP = 0,
                 HP = 100,
                 MaxHP = 100,
-                MP = 20,
-                MaxMP = 20,
+                AP = 20,
+                MaxAP = 20,
                 ATK = 10,
                 DEF = 5,
                 SPD = 10

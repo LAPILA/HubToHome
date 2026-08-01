@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d8c9eece50d5894d8a10e0e64a85161, type: 3}
+  m_Name: Room_SteamPassage_Definition
+  m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
+  _roomId: showcase.steam_passage
+  _roomPrefab: {fileID: 465406176805799302, guid: d21c04d3b7cd9f34fb65d3e38dbe8845, type: 3}
+  _areaDefinition: {fileID: 11400000, guid: 88356caef2198c84caace5632eb23083, type: 2}
+  _bgmOverride: {fileID: 0}
+  _keepCurrentBgm: 1
+  _bgmFadeDuration: 0.75

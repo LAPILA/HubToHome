@@ -34,9 +34,9 @@
 | 구역 | 용도 |
 | --- | --- |
 | A NPC + Dialogue | 반복 NPC, 1회성 NPC, Sign, 자동 Plot Point |
-| B Sprite Scale + Camera | Player/TestNPC/ZEV 실제 스프라이트 크기 비교, TestNPC 0.5~2.0배 비교, 카메라 추적/경계 확인 |
+| B Sprite Scale + Camera | Player/TestNPC의 32 PPU 기준과 TestNPC 0.5~2.0배, 카메라 추적/경계 확인 |
 | C System Markers | Item, SAVE, Puzzle, Shortcut, Vendor, Connection, Sublocation |
-| D Combat + Collision | Enemy Marker, 실제 ZEV 접촉/F 선공, Hazard, 좁은 충돌 통로, Y-sort 기둥 |
+| D Combat + Collision | Slime 데이터 전투 마커, 비공격형 BunnySlime 심리스 조우, Hazard, 충돌 통로, Y-sort 기둥 |
 | E Sprite Drop Yard | 새 임시 스프라이트를 위쪽 빈 슬롯에 올려 크기와 기준선을 비교하는 공간 |
 
 ## E Sprite Drop Yard 사용법
@@ -50,11 +50,11 @@
 ## 추천 테스트 순서
 
 1. A 구역에서 반복 NPC, 1회성 NPC, Sign, Plot Point를 확인합니다.
-2. B 구역에서 Player/TestNPC/ZEV와 스케일 샘플을 비교합니다.
+2. B 구역에서 Player/TestNPC와 32 PPU 기준 스케일 샘플을 비교합니다.
 3. E 구역에 새 임시 스프라이트를 올려 발 기준선과 크기를 확인합니다.
 4. C 구역에서 Item과 SAVE를 확인한 뒤 Puzzle을 작동합니다.
 5. Puzzle 이후 Shortcut이 열리고, Connection/Sublocation이 TestMap 자기 전환 후 올바른 SpawnPoint로 돌아오는지 확인합니다.
-6. D 구역에서 Enemy Marker 전투, ZEV 접촉 전투, ZEV F 선공, Hazard 넉백을 각각 확인합니다.
+6. D 구역에서 Slime 전투 마커, BunnySlime 접촉/F 선공, Hazard 피해와 넉백을 각각 확인합니다.
 7. 좁은 통로와 기둥 위아래를 지나며 충돌과 Y-sort 표시 순서를 확인합니다.
 
 ## 현재 기능 경계

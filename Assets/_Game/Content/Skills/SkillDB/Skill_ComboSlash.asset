@@ -17,7 +17,7 @@ MonoBehaviour:
   SkillID: player.combo_slash
   Description: "\uAC00\uB85C \uC138\uB85C \uB9C8\uBB34\uB9AC!"
   UsageProfile: 0
-  MPCost: 10
+  APCost: 10
   TargetType: 1
   IsAoE: 0
   ActionTimeline:

@@ -12,7 +12,7 @@ using Sirenix.OdinInspector;
 [RequireComponent(typeof(Collider2D))]
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(EnemyCharacter))]
-public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttackTarget
+public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcomeSource, IPreemptiveAttackTarget
 {
     private static float s_globalEncounterLockUntil;
 
@@ -21,6 +21,14 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
     {
         KeepAlive,
         DefeatOnVictory
+    }
+
+    [System.Serializable]
+    private enum InstantVictoryStateHandling
+    {
+        FollowVictoryHandling,
+        KeepAlive,
+        DefeatPermanently
     }
 
     public enum EncounterMode
@@ -52,6 +60,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
     [Header("Persistence")]
     [SerializeField] private string _enemyId;
     [SerializeField] private PersistentEnemyStateHandling _victoryHandling = PersistentEnemyStateHandling.DefeatOnVictory;
+    [SerializeField] private InstantVictoryStateHandling _instantVictoryHandling = InstantVictoryStateHandling.FollowVictoryHandling;
 
     [Header("Patrol")]
     [SerializeField] private Transform[] _waypoints;
@@ -97,7 +106,12 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         new GameConfigScreenFlashScaleProvider();
 
     public string EnemyId => _enemyId;
+    public string EncounterMemoryKey => BattleEncounterMemoryRecorder.ResolveMemoryKey(
+        _battleScenarioData,
+        _enemyId);
     public bool DefeatsOnVictory => _victoryHandling == PersistentEnemyStateHandling.DefeatOnVictory;
+    public bool InstantVictoryDefeatsPermanently => _instantVictoryHandling == InstantVictoryStateHandling.DefeatPermanently
+        || (_instantVictoryHandling == InstantVictoryStateHandling.FollowVictoryHandling && DefeatsOnVictory);
     public bool CanStartPreemptiveAttack(PlayerController player) => isActiveAndEnabled
         && player != null
         && !_runtimeDisabledForBattle
@@ -157,6 +171,13 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
 
     private void FixedUpdate()
     {
+        if (!OverworldActionGate.AllowsWorldActions)
+        {
+            if (_rb != null) _rb.linearVelocity = Vector2.zero;
+            UpdateMoveAnimation(Vector2.zero);
+            return;
+        }
+
         RefreshEncounterExitWait();
         if (!_encounterInProgress
             && _triggered
@@ -285,9 +306,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         }
 
         GlobalDataManager global = GlobalDataManager.Instance;
-        bool previouslyDefeated = global != null
-            && global.TryGetEncounterMemory(_enemyId, out EncounterMemorySaveData memory)
-            && memory.Defeated;
+        bool previouslyDefeated = HasRecordedEncounterVictory(global);
         FieldEncounterResolution resolution = FieldEncounterPolicy.Evaluate(
             global != null ? global.GetHighestPartyLevel() : 1,
             resolvedEnemies,
@@ -309,7 +328,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         s_globalEncounterLockUntil = Time.unscaledTime + 1f;
         if (_rb != null) _rb.linearVelocity = Vector2.zero;
         UpdateMoveAnimation(Vector2.zero);
-        AudioManager.Instance?.PlaySFX(_encounterSFX);
+        AudioManager.Instance?.PlayEnemyEncounterSfx(_encounterSFX);
 
         GlobalDataManager global = GlobalDataManager.Instance;
         BattleEncounterMemoryRecorder.RecordBattleStarted(_battleScenarioData, global, _enemyId);
@@ -339,7 +358,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
             _enemyId,
             true);
 
-        if (global != null && DefeatsOnVictory)
+        if (global != null && InstantVictoryDefeatsPermanently)
             global.MarkOverworldEnemyDefeated(_enemyId, _sceneName);
 
         BattleResultUI resultUi = BattleResultUI.EnsureGlobal();
@@ -353,7 +372,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         _localEncounterBlockedUntil = Time.unscaledTime + Mathf.Max(0f, _postBattleGraceDuration);
         EncounterCollisionGuard.NudgePlayerOutOf(_collider, player, _postBattleNudgeDistance);
 
-        if (DefeatsOnVictory)
+        if (InstantVictoryDefeatsPermanently)
         {
             DisablePermanently();
             yield break;
@@ -397,7 +416,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
             _collider.enabled = false;
         player.SetBattleMode(true);
 
-        AudioManager.Instance?.PlaySFX(_encounterSFX);
+        AudioManager.Instance?.PlayEnemyEncounterSfx(_encounterSFX);
 
         if (entryDelay > 0f)
             yield return new WaitForSecondsRealtime(entryDelay);
@@ -460,6 +479,14 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         foreach (var p in _animator.parameters)
             if (p.nameHash == hash && p.type == type) return true;
         return false;
+    }
+
+    private bool HasRecordedEncounterVictory(GlobalDataManager global)
+    {
+        string memoryKey = EncounterMemoryKey;
+        return global != null
+            && global.TryGetEncounterMemory(memoryKey, out EncounterMemorySaveData memory)
+            && memory.Defeated;
     }
 
     private List<EnemyData> ResolveEncounterEnemies()
@@ -581,6 +608,13 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
 
     public void OnEncounterResolved(bool victory, PlayerController player)
     {
+        OnEncounterResolved(
+            victory ? BattleEncounterOutcome.Victory : BattleEncounterOutcome.Escaped,
+            player);
+    }
+
+    public void OnEncounterResolved(BattleEncounterOutcome outcome, PlayerController player)
+    {
         _encounterInProgress = false;
         _pendingRearmPlayer = player;
         EncounterCollisionGuard.BlockAll(_postBattleGraceDuration);
@@ -590,16 +624,41 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IPreemptiveAttack
         EncounterCollisionGuard.NudgePlayerOutOf(_collider, player, _postBattleNudgeDistance);
         _waitForPlayerExitBeforeRearm = EncounterCollisionGuard.IsPlayerOverlapping(_collider, player);
 
-        if (victory && DefeatsOnVictory)
+        if (outcome == BattleEncounterOutcome.Victory && DefeatsOnVictory)
         {
             DisablePermanently();
             return;
         }
 
-        if (victory)
-            RestoreActiveState();
-        else
-            StartCooldown(Mathf.Max(_postBattleGraceDuration, 0.75f), _postEscapeAlpha);
+        if (outcome == BattleEncounterOutcome.Escaped)
+        {
+            ResolveEscapeCooldown(out float duration, out float alpha);
+            StartCooldown(duration, alpha);
+            return;
+        }
+
+        RestoreActiveState();
+    }
+
+    private void ResolveEscapeCooldown(out float duration, out float alpha)
+    {
+        duration = Mathf.Max(_postBattleGraceDuration, 0.75f);
+        alpha = Mathf.Clamp01(_postEscapeAlpha);
+
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global == null)
+            return;
+
+        float remaining = global.GetOverworldEnemyCooldownRemaining(_enemyId);
+        if (remaining <= 0f)
+        {
+            global.MarkOverworldEnemyEscaped(_enemyId, _sceneName, duration, alpha);
+            return;
+        }
+
+        duration = remaining;
+        if (global.TryGetOverworldEnemyState(_enemyId, out OverworldEnemyRuntimeState state))
+            alpha = Mathf.Clamp01(state.CooldownAlpha);
     }
 
     private void RefreshEncounterExitWait()

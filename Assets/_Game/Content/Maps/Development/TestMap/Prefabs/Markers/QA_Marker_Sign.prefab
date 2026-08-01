@@ -102,6 +102,7 @@ MonoBehaviour:
   showLabelInSceneView: 1
   gizmoColor: {r: 0.95, g: 0.68, b: 0.25, a: 1}
   dialogueData: {fileID: 0}
+  dialogueSelector: {fileID: 0}
   signText: "* \uC774\uB3D9: WASD / \uBC29\uD5A5\uD0A4\n* \uC0C1\uD638\uC791\uC6A9:
     Z\n* \uD544\uB4DC \uC120\uACF5: F\n* \uBA54\uB274: C"
   fallbackSpeaker: {fileID: 0}

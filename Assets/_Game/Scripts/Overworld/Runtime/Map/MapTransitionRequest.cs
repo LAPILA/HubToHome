@@ -12,6 +12,7 @@ public class MapTransitionRequest
     public string TargetSceneName;
     public RoomDefinition TargetRoom;
     public string TargetSpawnPointId;
+    public string TargetRoomId;
     public string TargetAreaId;
 
     [Header("Arrival")]
@@ -21,6 +22,16 @@ public class MapTransitionRequest
 
     [Header("Presentation")]
     [Min(0f)] public float FadeDuration = 0.25f;
+
+    public string ResolvedTargetRoomId
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(TargetRoomId))
+                return TargetRoomId.Trim();
+            return string.IsNullOrWhiteSpace(TargetAreaId) ? string.Empty : TargetAreaId.Trim();
+        }
+    }
 
     public bool IsValid(out string error)
     {

@@ -2,28 +2,30 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-public enum StatType { MaxHP, MaxMP, ATK, DEF, SPD }
+public enum StatType { MaxHP = 0, MaxAP = 1, ATK = 2, DEF = 3, SPD = 4 }
 public enum DamageElement { Physical, Fire, Ice, Electric, Dark, Light, True }
 
 public abstract class CharacterBase : MonoBehaviour
 {
     [Header("Base Stats (순수 능력치)")]
     public int BaseMaxHP = 100;
-    public int BaseMaxMP = 100;
+    [FormerlySerializedAs("BaseMaxMP")]
+    public int BaseMaxAP = 100;
     public int BaseATK = 10;
     public int BaseDEF = 5;
     public int BaseSPD = 10;
     
     // ── 🚨 1단계: 최종 스탯 계산 ──
     public int MaxHP => GetCalculatedStat(StatType.MaxHP, BaseMaxHP);
-    public int MaxMP => GetCalculatedStat(StatType.MaxMP, BaseMaxMP);
+    public int MaxAP => GetCalculatedStat(StatType.MaxAP, BaseMaxAP);
     public int ATK   => GetCalculatedStat(StatType.ATK, BaseATK);
     public int DEF   => GetCalculatedStat(StatType.DEF, BaseDEF);
     public int SPD   => GetCalculatedStat(StatType.SPD, BaseSPD);
 
     public int CurrentHP { get; protected set; }
-    public int CurrentMP { get; protected set; }
+    public int CurrentAP { get; protected set; }
     public bool IsAlive => CurrentHP > 0;
     
     [Header("Runtime Status")]
@@ -35,7 +37,31 @@ public abstract class CharacterBase : MonoBehaviour
 
     public event Action OnActionExecuted; 
     public event Action<CharacterBase, int, int> OnHPChanged;
-    public event Action<CharacterBase, int, int> OnMPChanged;
+    public event Action<CharacterBase, int, int> OnAPChanged;
+
+    [Obsolete("Use BaseMaxAP.")]
+    public int BaseMaxMP
+    {
+        get => BaseMaxAP;
+        set => BaseMaxAP = value;
+    }
+
+    [Obsolete("Use MaxAP.")]
+    public int MaxMP => MaxAP;
+
+    [Obsolete("Use CurrentAP.")]
+    public int CurrentMP
+    {
+        get => CurrentAP;
+        protected set => CurrentAP = value;
+    }
+
+    [Obsolete("Use OnAPChanged.")]
+    public event Action<CharacterBase, int, int> OnMPChanged
+    {
+        add => OnAPChanged += value;
+        remove => OnAPChanged -= value;
+    }
 
     protected readonly List<StatusEffect> _activeEffects = new List<StatusEffect>();
     private readonly Dictionary<string, GameObject> _activeLoopVFX = new Dictionary<string, GameObject>();
@@ -50,7 +76,7 @@ public abstract class CharacterBase : MonoBehaviour
     protected virtual void Awake()
     {
         CurrentHP = BaseMaxHP;
-        CurrentMP = BaseMaxMP;
+        CurrentAP = BaseMaxAP;
     }
 
     public void SetScreenFlashScaleProvider(IScreenFlashScaleProvider provider)
@@ -157,7 +183,7 @@ public abstract class CharacterBase : MonoBehaviour
         }
 
         float finalValue = (baseValue + flatBonus) * (1f + percentBonus);
-        return Mathf.Max(type == StatType.MaxMP ? 0 : 1, Mathf.RoundToInt(finalValue));
+        return Mathf.Max(type == StatType.MaxAP ? 0 : 1, Mathf.RoundToInt(finalValue));
     }
 
     protected virtual int GetFlatStatBonus(StatType type) => 0;
@@ -239,10 +265,28 @@ public abstract class CharacterBase : MonoBehaviour
         return damage;
     }
 
+    protected void SetCurrentHPValue(int value)
+    {
+        CurrentHP = Mathf.Clamp(value, 0, MaxHP);
+        OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
+    }
+
+    protected void SetCurrentAPValue(int value)
+    {
+        CurrentAP = Mathf.Clamp(value, 0, MaxAP);
+        OnAPChanged?.Invoke(this, CurrentAP, MaxAP);
+    }
+
     // ── 회복, 상태이상 관리 ──
     public virtual void HealHP(int amount) { CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount); OnHPChanged?.Invoke(this, CurrentHP, MaxHP); }
-    public virtual void HealMP(int amount) { CurrentMP = Mathf.Min(MaxMP, CurrentMP + amount); OnMPChanged?.Invoke(this, CurrentMP, MaxMP); }
-    public virtual void ConsumeMP(int amount) { CurrentMP = Mathf.Max(0, CurrentMP - amount); OnMPChanged?.Invoke(this, CurrentMP, MaxMP); }
+    public virtual void RestoreAP(int amount) { CurrentAP = Mathf.Min(MaxAP, CurrentAP + amount); OnAPChanged?.Invoke(this, CurrentAP, MaxAP); }
+    public virtual void ConsumeAP(int amount) { CurrentAP = Mathf.Max(0, CurrentAP - amount); OnAPChanged?.Invoke(this, CurrentAP, MaxAP); }
+
+    [Obsolete("Use RestoreAP.")]
+    public void HealMP(int amount) => RestoreAP(amount);
+
+    [Obsolete("Use ConsumeAP.")]
+    public void ConsumeMP(int amount) => ConsumeAP(amount);
 
     public void AddEffect(StatusEffect effect)
     {

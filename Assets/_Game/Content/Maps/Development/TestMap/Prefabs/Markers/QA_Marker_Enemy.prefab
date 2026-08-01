@@ -360,10 +360,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75b00e2ec23b1c74588a4a66cc39e024, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OverworldEnemyMarker
-  markerId: qa.enemy.zev.marker
+  markerId: qa.enemy.slime.marker
   areaId: testmap.qa
   markerType: 1
-  displayName: ZEV Marker Encounter
+  displayName: Slime Marker Encounter
   description: "Area Enemy Marker\uC758 Z \uC0C1\uD638\uC791\uC6A9\uACFC \uC804\uC6A9
     BattleScene \uC655\uBCF5\uC744 \uAC80\uC99D\uD569\uB2C8\uB2E4."
   isOneShot: 0
@@ -372,11 +372,11 @@ MonoBehaviour:
   interactionRange: 1.5
   showLabelInSceneView: 1
   gizmoColor: {r: 1, g: 0.25, b: 0.28, a: 1}
-  enemyId: qa_enemy_zev_marker
+  enemyId: qa_enemy_slime_marker
   enemyLevel: 1
-  battleEncounterId: qa.testmap.encounter.zev_marker
+  battleEncounterId: qa.testmap.encounter.slime_marker
   canInstantKillLater: 1
-  enemyData: {fileID: 11400000, guid: 2ecad76fe6f59d642b2989116b593269, type: 2}
+  enemyData: {fileID: 11400000, guid: 0d809955dfe6144459f4205e92356daa, type: 2}
   additionalEnemies: []
   battleBgmOverride: {fileID: 0}
   battleScenarioData: {fileID: 0}
@@ -736,12 +736,12 @@ SpriteRenderer:
   m_SortingLayer: -1
   m_SortingOrder: 1
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 7443066013462779277, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 4a8aa3a2ab7868a44b53ab751a263387, type: 3}
   m_Color: {r: 1, g: 0.62, b: 0.62, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 4.6666665, y: 4.5333333}
+  m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1

@@ -1,0 +1,129 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 798c52be946c481db43d16e35dd52907, type: 3}
+  m_Name: Player_SkillTree
+  m_EditorClassIdentifier: Assembly-CSharp::SkillTreeDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes:
+    ReferencedUnityObjects: []
+    SerializedBytesString:
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  MaximumEquippedSkills: 6
+  Nodes:
+  - NodeId: player.multi_slash
+    Skill: {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
+    Cost: 0
+    RequiredLevel: 1
+    AutoEquip: 1
+    Position: {x: -125, y: 20}
+    PrerequisiteNodeIds: []
+  - NodeId: tests_player.pressure_slash
+    Skill: {fileID: 11400000, guid: ee055df595b7439a8c2459e18f6727f9, type: 2}
+    Cost: 1
+    RequiredLevel: 2
+    AutoEquip: 1
+    Position: {x: -45, y: 60}
+    PrerequisiteNodeIds:
+    - player.multi_slash
+  - NodeId: tests_player.twin_pressure
+    Skill: {fileID: 11400000, guid: 1d778d5fcac64e52922116330e51cc23, type: 2}
+    Cost: 1
+    RequiredLevel: 3
+    AutoEquip: 1
+    Position: {x: 35, y: 60}
+    PrerequisiteNodeIds:
+    - tests_player.pressure_slash
+  - NodeId: tests_player.turbine_rush
+    Skill: {fileID: 11400000, guid: e15c24950bb54712b06d2eb57c1ce3e9, type: 2}
+    Cost: 2
+    RequiredLevel: 4
+    AutoEquip: 1
+    Position: {x: 115, y: 60}
+    PrerequisiteNodeIds:
+    - tests_player.twin_pressure
+  - NodeId: player.combo_slash
+    Skill: {fileID: 11400000, guid: a6266718f8bf9094698650cb43978de1, type: 2}
+    Cost: 1
+    RequiredLevel: 2
+    AutoEquip: 1
+    Position: {x: -45, y: 20}
+    PrerequisiteNodeIds:
+    - player.multi_slash
+  - NodeId: player.crash
+    Skill: {fileID: 11400000, guid: b3261d09b33d084429857ad2e5dfc63b, type: 2}
+    Cost: 2
+    RequiredLevel: 3
+    AutoEquip: 1
+    Position: {x: 35, y: 20}
+    PrerequisiteNodeIds:
+    - player.combo_slash
+  - NodeId: tests_player.pressure_release
+    Skill: {fileID: 11400000, guid: cded5b567fb14003b7894dbd0581125a, type: 2}
+    Cost: 4
+    RequiredLevel: 8
+    AutoEquip: 1
+    Position: {x: 115, y: 20}
+    PrerequisiteNodeIds:
+    - player.crash
+    - tests_player.critical_breakthrough
+  - NodeId: tests_player.steam_thrust
+    Skill: {fileID: 11400000, guid: 3f3574652473478aa8fb9998e801191f, type: 2}
+    Cost: 1
+    RequiredLevel: 2
+    AutoEquip: 1
+    Position: {x: -45, y: -20}
+    PrerequisiteNodeIds:
+    - player.multi_slash
+  - NodeId: tests_player.reverse_flow
+    Skill: {fileID: 11400000, guid: d036bcc5ff804720aa5b3ba96373a42b, type: 2}
+    Cost: 2
+    RequiredLevel: 4
+    AutoEquip: 1
+    Position: {x: 35, y: -20}
+    PrerequisiteNodeIds:
+    - tests_player.steam_thrust
+  - NodeId: tests_player.overheat_dive
+    Skill: {fileID: 11400000, guid: 3251ab113ec845b08a13c7804b568e03, type: 2}
+    Cost: 3
+    RequiredLevel: 6
+    AutoEquip: 1
+    Position: {x: 115, y: -20}
+    PrerequisiteNodeIds:
+    - tests_player.reverse_flow
+  - NodeId: tests_player.steam_traverse
+    Skill: {fileID: 11400000, guid: d596a25410854f90ba050a72065f0285, type: 2}
+    Cost: 1
+    RequiredLevel: 3
+    AutoEquip: 1
+    Position: {x: -45, y: -60}
+    PrerequisiteNodeIds:
+    - player.multi_slash
+  - NodeId: tests_player.boiler_burst
+    Skill: {fileID: 11400000, guid: 4252841c14574abd8e028f4baf631ef1, type: 2}
+    Cost: 2
+    RequiredLevel: 5
+    AutoEquip: 1
+    Position: {x: 35, y: -60}
+    PrerequisiteNodeIds:
+    - tests_player.steam_traverse
+  - NodeId: tests_player.critical_breakthrough
+    Skill: {fileID: 11400000, guid: 387a2119dc324f0182d7edc4b5ea3a83, type: 2}
+    Cost: 3
+    RequiredLevel: 7
+    AutoEquip: 1
+    Position: {x: 115, y: -60}
+    PrerequisiteNodeIds:
+    - tests_player.boiler_burst

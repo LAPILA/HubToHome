@@ -23,6 +23,18 @@ public sealed class CheatManager : MonoBehaviour
     private const float MaxWidth = 630f;
     private const float MinHeight = 450f;
     private const float MaxHeight = 810f;
+    private const int SampleItemGrantAmount = 5;
+
+    private static readonly string[] SampleItemIds =
+    {
+        "tests_consumable.emergency_bandage",
+        "tests_consumable.advanced_repair_tonic",
+        "tests_consumable.full_repair_kit",
+        "tests_consumable.small_pressure_cell",
+        "tests_consumable.reserve_boiler",
+        "tests_consumable.field_rations",
+        "tests_consumable.shared_pressure_supply"
+    };
 
     private static CheatManager _instance;
 
@@ -33,6 +45,7 @@ public sealed class CheatManager : MonoBehaviour
     private bool _visible;
     private bool _godMode;
     private SpeechBubbleCheatDirectionMode _speechBubbleDirectionMode = SpeechBubbleCheatDirectionMode.Top;
+    private string _dataStatus = string.Empty;
 
     private GUIStyle _windowStyle;
     private GUIStyle _headerStyle;
@@ -193,8 +206,8 @@ public sealed class CheatManager : MonoBehaviour
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Heal Party", _buttonStyle, GUILayout.Height(45f)))
             HealParty(battle);
-        if (GUILayout.Button("Refill MP", _buttonStyle, GUILayout.Height(45f)))
-            RefillPartyMP(battle);
+        if (GUILayout.Button("Refill AP", _buttonStyle, GUILayout.Height(45f)))
+            RefillPartyAP(battle);
         GUILayout.EndHorizontal();
 
         GUILayout.Space(9f);
@@ -221,13 +234,13 @@ public sealed class CheatManager : MonoBehaviour
         foreach (PlayerCharacter player in players)
         {
             if (player == null) continue;
-            DrawHelp($"{player.DisplayName}  HP {player.CurrentHP}/{player.MaxHP}  MP {player.CurrentMP}/{player.MaxMP}");
+            DrawHelp($"{player.DisplayName}  HP {player.CurrentHP}/{player.MaxHP}  AP {player.CurrentAP}/{player.MaxAP}");
 
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Heal", _buttonStyle, GUILayout.Height(42f)))
                 player.HealHP(player.MaxHP);
-            if (GUILayout.Button("MP", _buttonStyle, GUILayout.Height(42f)))
-                player.HealMP(player.MaxMP);
+            if (GUILayout.Button("AP", _buttonStyle, GUILayout.Height(42f)))
+                player.RestoreAP(player.MaxAP);
             if (GUILayout.Button(player.IsInvincible ? "Invincible On" : "Invincible Off", _buttonStyle, GUILayout.Height(42f)))
                 player.IsInvincible = !player.IsInvincible;
             GUILayout.EndHorizontal();
@@ -254,8 +267,7 @@ public sealed class CheatManager : MonoBehaviour
 
     private void DrawDataCategory()
     {
-        DrawSection("Data");
-        DrawHelp("Reserved for inventory, flags, save, and progression cheats.");
+        DrawSection("Progression Data");
 
         GlobalDataManager global = GlobalDataManager.Instance;
         if (global == null)
@@ -266,6 +278,96 @@ public sealed class CheatManager : MonoBehaviour
 
         DrawHelp($"Player Name: {global.PlayerName}");
         DrawHelp($"Party Count: {global.Party.Count}");
+        if (global.Party.Count == 0 || global.Party[0] == null)
+            return;
+
+        CharacterSaveData member = global.Party[0];
+        CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
+        CharacterGrowthService.EnsureInitialized(member, data);
+        DrawHelp(
+            $"{member.CharacterID}  LV {member.Level}  EXP {member.EXP}  " +
+            $"ATTRIBUTE {member.Growth.AvailableAttributePoints}  SKILL {member.Growth.AvailableSkillPoints}");
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Grant 100 EXP", _buttonStyle, GUILayout.Height(45f)))
+            GrantProgressionExperience(global, member, 100);
+        if (GUILayout.Button("Gain Next Level", _buttonStyle, GUILayout.Height(45f)))
+        {
+            int maximumLevel = CharacterGrowthService.ResolveMaxLevel(data);
+            if (member.Level >= maximumLevel)
+            {
+                _dataStatus = "Already at maximum level.";
+            }
+            else
+            {
+                int required = CharacterProgressionService.ExperienceRequiredForNextLevel(data, member.Level);
+                GrantProgressionExperience(global, member, Mathf.Max(1, required - member.EXP));
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        DrawSection("Sample Items");
+        DrawHelp("Adds five of each tests_ HP/AP recovery item through the normal inventory API.");
+        if (GUILayout.Button("Grant Sample Items", _buttonStyle, GUILayout.Height(45f)))
+            GrantSampleItems(global);
+
+        if (!string.IsNullOrEmpty(_dataStatus))
+            DrawHelp(_dataStatus);
+    }
+
+    private void GrantSampleItems(GlobalDataManager global)
+    {
+        if (global == null)
+        {
+            _dataStatus = "Sample item grant failed: GlobalDataManager is missing.";
+            return;
+        }
+
+        int added = 0;
+        int missing = 0;
+        for (int i = 0; i < SampleItemIds.Length; i++)
+        {
+            string itemId = SampleItemIds[i];
+            if (ItemDatabase.FindById(itemId) == null)
+            {
+                missing++;
+                continue;
+            }
+
+            added += global.AddItemAndGetAddedAmount(itemId, SampleItemGrantAmount);
+        }
+
+        _dataStatus = missing > 0
+            ? $"Sample items: {added} added, {missing} catalog entries missing."
+            : $"Sample items: {added} added ({SampleItemGrantAmount} each).";
+    }
+
+    private void GrantProgressionExperience(
+        GlobalDataManager global,
+        CharacterSaveData member,
+        int amount)
+    {
+        CharacterLevelUpResult result = global.GrantCharacterExperience(member, amount);
+        if (result == null)
+        {
+            _dataStatus = "Experience grant failed.";
+            return;
+        }
+
+        List<PlayerCharacter> players = GetPlayers();
+        for (int i = 0; i < players.Count; i++)
+        {
+            PlayerCharacter player = players[i];
+            if (player != null
+                && string.Equals(player.CharacterID, member.CharacterDataID, StringComparison.Ordinal))
+            {
+                player.LoadDataFromGlobal(member);
+            }
+        }
+
+        _dataStatus = result.DidLevelUp
+            ? $"LV {result.PreviousLevel} -> {result.NewLevel}  +{result.AttributePointsGained} ATTRIBUTE  +{result.SkillPointsGained} SKILL"
+            : $"EXP +{result.ExperienceGained}  ({result.RemainingExperience})";
     }
 
     private void DrawFooter()
@@ -447,13 +549,13 @@ public sealed class CheatManager : MonoBehaviour
         }
     }
 
-    private void RefillPartyMP(BattleManager battle)
+    private void RefillPartyAP(BattleManager battle)
     {
         foreach (PlayerCharacter player in battle._playerParty)
         {
             if (player == null) continue;
-            player.HealMP(player.MaxMP);
-            battle.InvokeMPChangedEvent(player, player.CurrentMP);
+            player.RestoreAP(player.MaxAP);
+            battle.InvokeAPChangedEvent(player, player.CurrentAP);
         }
     }
 

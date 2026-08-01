@@ -12,17 +12,17 @@ public class RoomInstance : MonoBehaviour
     public string RoomId => _roomId;
     public PolygonCollider2D CameraBounds => _cameraBounds;
 
-    public void OnRoomEntered(PlayerController player)
+    public bool OnRoomEntered(PlayerController player)
     {
-        ConfigureCamera(player);
+        return ConfigureCamera(player);
     }
 
     public void OnRoomExited()
     {
     }
 
-    public void ConfigureCamera(PlayerController player)
+    public bool ConfigureCamera(PlayerController player)
     {
-        OverworldCameraBinding.TryApply(player, _cameraBounds, this);
+        return OverworldCameraBinding.TryApply(player, _cameraBounds, this);
     }
 }

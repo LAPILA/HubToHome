@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 public static class SaveSchema
 {
     public const int LegacyVersion = 0;
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 4;
 }
 
 public enum SaveDecodeFailure
@@ -78,6 +78,7 @@ public sealed class SaveDataCodec
             "lookingDirection",
             "PartyData",
             "InventoryDict",
+            "EquipmentInventoryDict",
             "eventFlags",
             "EncounterMemory",
             "OverworldEnemies",
@@ -156,6 +157,8 @@ public sealed class SaveDataCodec
                 sourceVersion);
         }
 
+        PrepareLegacyActionPointFields(root, sourceVersion);
+
         SaveData data;
         try
         {
@@ -185,6 +188,18 @@ public sealed class SaveDataCodec
                 case SaveSchema.LegacyVersion:
                     MigrateLegacyToVersionOne(data);
                     workingVersion = 1;
+                    break;
+                case 1:
+                    MigrateVersionOneToVersionTwo(data);
+                    workingVersion = 2;
+                    break;
+                case 2:
+                    MigrateVersionTwoToVersionThree(data);
+                    workingVersion = 3;
+                    break;
+                case 3:
+                    MigrateVersionThreeToVersionFour(data);
+                    workingVersion = 4;
                     break;
                 default:
                     return SaveDecodeResult.Failed(
@@ -248,6 +263,24 @@ public sealed class SaveDataCodec
         data.schemaVersion = 1;
     }
 
+    private static void MigrateVersionOneToVersionTwo(SaveData data)
+    {
+        data.currentTrainStopId = NormalizeText(data.currentTrainStopId);
+        data.schemaVersion = 2;
+    }
+
+    private static void MigrateVersionTwoToVersionThree(SaveData data)
+    {
+        data.EquipmentInventoryDict ??= new Dictionary<string, int>();
+        data.schemaVersion = 3;
+    }
+
+    private static void MigrateVersionThreeToVersionFour(SaveData data)
+    {
+        data.PartyData ??= new List<CharacterSaveData>();
+        data.schemaVersion = 4;
+    }
+
     private static void Normalize(SaveData data)
     {
         data.currentScene = string.IsNullOrWhiteSpace(data.currentScene)
@@ -255,12 +288,13 @@ public sealed class SaveDataCodec
             : data.currentScene.Trim();
         data.currentRoomId = NormalizeText(data.currentRoomId);
         data.spawnPointId = NormalizeText(data.spawnPointId);
+        data.currentTrainStopId = NormalizeText(data.currentTrainStopId);
         data.playerName = NormalizeText(data.playerName);
         data.saveTime = NormalizeText(data.saveTime);
 
         data.PartyData = NormalizeParty(data.PartyData);
-        data.InventoryDict = data.InventoryDict
-            ?? new Dictionary<string, int>();
+        data.InventoryDict = NormalizePositiveCounts(data.InventoryDict);
+        data.EquipmentInventoryDict = NormalizePositiveCounts(data.EquipmentInventoryDict);
         data.eventFlags = data.eventFlags
             ?? new Dictionary<string, int>();
         data.EncounterMemory = NormalizeEncounterMemory(data.EncounterMemory);
@@ -283,6 +317,30 @@ public sealed class SaveDataCodec
             member.CharacterDataID = NormalizeText(member.CharacterDataID);
             member.CharacterID = NormalizeText(member.CharacterID);
             member.EquippedSkillIDs = NormalizeUniqueIds(member.EquippedSkillIDs);
+            member.Level = Math.Max(1, member.Level);
+            member.EXP = Math.Max(0, member.EXP);
+            member.MaxHP = Math.Max(1, member.MaxHP);
+            member.HP = Math.Max(0, member.HP);
+            member.MaxAP = Math.Max(0, member.MaxAP);
+            member.AP = Math.Max(0, member.AP);
+            member.ATK = Math.Max(1, member.ATK);
+            member.DEF = Math.Max(0, member.DEF);
+            member.SPD = Math.Max(1, member.SPD);
+            member.Growth ??= new CharacterGrowthSaveData();
+            member.Growth.Investments ??= new CharacterStatInvestments();
+            member.Growth.SkillTreeUnlocks ??=
+                new List<SkillTreeUnlockSaveData>();
+            SkillTreeProgressionService.NormalizeUnlockRecords(
+                member.Growth.SkillTreeUnlocks,
+                null);
+            member.Growth.Investments.Clamp(GrowthBalanceProfile.DefaultMaxInvestmentRank);
+            member.Growth.AttributePointsEarned = Math.Max(
+                member.Growth.Investments.Total,
+                member.Growth.AttributePointsEarned);
+            member.Growth.SkillPointsEarned = Math.Max(0, member.Growth.SkillPointsEarned);
+            member.Growth.SkillPointsSpent = Math.Clamp(member.Growth.SkillPointsSpent, 0, member.Growth.SkillPointsEarned);
+            member.UnlockedSkillIDs = NormalizeUniqueIds(member.UnlockedSkillIDs);
+            member.EquippedEquipmentIDs = NormalizeEquipmentSlots(member.EquippedEquipmentIDs);
             result.Add(member);
         }
 
@@ -313,6 +371,14 @@ public sealed class SaveDataCodec
 
             memory.EncounterId = encounterId;
             memory.MeetCount = Math.Max(0, memory.MeetCount);
+            memory.LastOutcome = Enum.IsDefined(
+                typeof(BattleEncounterOutcome),
+                memory.LastOutcome)
+                ? memory.LastOutcome
+                : BattleEncounterOutcome.Unknown;
+            memory.VictoryCount = Math.Max(0, memory.VictoryCount);
+            memory.EscapeCount = Math.Max(0, memory.EscapeCount);
+            memory.PartyDefeatCount = Math.Max(0, memory.PartyDefeatCount);
             memory.SeenBeatIds = NormalizeUniqueIds(memory.SeenBeatIds);
             result[encounterId] = memory;
         }
@@ -346,6 +412,67 @@ public sealed class SaveDataCodec
                 : state.EnemyId.Trim();
             state.SceneName = NormalizeText(state.SceneName);
             result[enemyId] = state;
+        }
+
+        return result;
+    }
+
+    private static Dictionary<string, int> NormalizePositiveCounts(Dictionary<string, int> source)
+    {
+        var result = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (source == null)
+            return result;
+
+        foreach (KeyValuePair<string, int> entry in source)
+        {
+            string id = NormalizeText(entry.Key);
+            if (!string.IsNullOrEmpty(id) && entry.Value > 0)
+                result[id] = entry.Value;
+        }
+
+        return result;
+    }
+
+    private static void PrepareLegacyActionPointFields(
+        JObject root,
+        int sourceVersion)
+    {
+        if (root == null || sourceVersion >= 4 || root["PartyData"] is not JArray party)
+            return;
+
+        for (int i = 0; i < party.Count; i++)
+        {
+            if (party[i] is not JObject member)
+                continue;
+
+            CopyIntegerIfMissing(member, "AP", "MP");
+            CopyIntegerIfMissing(member, "MaxAP", "MaxMP");
+        }
+    }
+
+    private static void CopyIntegerIfMissing(
+        JObject source,
+        string destinationName,
+        string legacyName)
+    {
+        if (source[destinationName] != null)
+            return;
+
+        JToken legacy = source[legacyName];
+        if (legacy != null && legacy.Type == JTokenType.Integer)
+            source[destinationName] = legacy.DeepClone();
+    }
+
+    private static List<string> NormalizeEquipmentSlots(List<string> source)
+    {
+        int slotCount = EquipmentLoadoutService.SlotCount;
+        var result = new List<string>(slotCount);
+        for (int i = 0; i < slotCount; i++)
+        {
+            string value = source != null && i < source.Count
+                ? NormalizeText(source[i])
+                : string.Empty;
+            result.Add(value);
         }
 
         return result;

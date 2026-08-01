@@ -829,6 +829,7 @@ MonoBehaviour:
   plotId: qa_plot_npc_zone_entry
   triggerMode: 0
   dialogueData: {fileID: 0}
+  dialogueSelector: {fileID: 0}
   fallbackDialogueText: "* \uC790\uB3D9 \uD50C\uB86F \uD3EC\uC778\uD2B8\uAC00 \uBC1C\uB3D9\uD588\uB2E4.\n*
     \uC774\uB3D9\uC774 \uBA48\uCD94\uACE0, \uB300\uD654 \uC885\uB8CC \uD6C4 \uB2E4\uC2DC
     \uD480\uB824\uC57C \uD55C\uB2E4."

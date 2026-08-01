@@ -8,6 +8,11 @@ public interface IEncounterSource
     void OnEncounterResolved(bool victory, PlayerController player);
 }
 
+public interface IEncounterOutcomeSource
+{
+    void OnEncounterResolved(BattleEncounterOutcome outcome, PlayerController player);
+}
+
 public static class EncounterCollisionGuard
 {
     private const float NudgePadding = 0.18f;
@@ -202,7 +207,8 @@ public static class BattleEncounterService
                 return false;
             }
 
-            bool accepted = !operation.IsDone || operation.Result == SceneLoadResult.Succeeded;
+            bool accepted = !operation.IsDone
+                || SceneLoadResultUtility.WasDestinationActivated(operation.Result);
             if (!accepted)
                 transaction.Rollback();
 
@@ -221,9 +227,14 @@ public static class BattleEncounterService
         EncounterStartTransaction transaction,
         SceneLoadResult result)
     {
-        if (result == SceneLoadResult.Succeeded)
+        if (SceneLoadResultUtility.WasDestinationActivated(result))
         {
             transaction.Commit();
+            if (result != SceneLoadResult.Succeeded)
+            {
+                Debug.LogError(
+                    $"[BattleEncounterService] 전투 Scene은 활성화됐지만 준비에 실패했습니다. Result={result}");
+            }
             return;
         }
 

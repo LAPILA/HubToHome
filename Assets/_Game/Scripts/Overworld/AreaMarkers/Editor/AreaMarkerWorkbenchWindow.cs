@@ -79,7 +79,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
 
         _scroll = EditorGUILayout.BeginScrollView(_scroll);
         DrawScopeIssues();
-        DrawMarkers();
+        DrawFeatures();
         EditorGUILayout.EndScrollView();
     }
 
@@ -139,6 +139,49 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
             || ContainsIgnoreCase(marker.MarkerType.ToString(), search);
     }
 
+    public static bool MatchesFeature(
+        RoomMapFeatureEntry entry,
+        RoomMapValidationReport report,
+        string search,
+        string roomFilter,
+        int typeFilter,
+        AreaMarkerIssueFilter issueFilter)
+    {
+        if (entry?.Context == null || report == null)
+            return false;
+        if (entry.Marker != null)
+        {
+            return MatchesMarker(
+                new RoomMapMarkerEntry(entry.Marker, entry.Room),
+                report,
+                search,
+                roomFilter,
+                typeFilter,
+                issueFilter);
+        }
+
+        if (!string.IsNullOrEmpty(roomFilter)
+            && roomFilter != AllRoomsKey
+            && !string.Equals(GetRoomKey(entry.Room), roomFilter, StringComparison.Ordinal))
+            return false;
+        if (typeFilter >= 0 && (int)entry.FeatureType != typeFilter)
+            return false;
+
+        bool hasIssues = report.HasIssue(entry.Context);
+        if (issueFilter == AreaMarkerIssueFilter.Problems && !hasIssues)
+            return false;
+        if (issueFilter == AreaMarkerIssueFilter.Clean && hasIssues)
+            return false;
+        if (string.IsNullOrWhiteSpace(search))
+            return true;
+
+        return ContainsIgnoreCase(entry.StableId, search)
+            || ContainsIgnoreCase(entry.DisplayName, search)
+            || ContainsIgnoreCase(entry.Description, search)
+            || ContainsIgnoreCase(entry.RoomId, search)
+            || ContainsIgnoreCase(entry.FeatureType.ToString(), search);
+    }
+
     private void DrawHeader()
     {
         using (new EditorGUILayout.HorizontalScope())
@@ -155,7 +198,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
         }
 
         EditorGUILayout.LabelField(
-            $"{_report.ScopeName}  |  Room {_report.RoomCount}  |  Marker {_report.Markers.Count}  "
+            $"{_report.ScopeName}  |  Room {_report.RoomCount}  |  기능 {_report.Features.Count}  "
             + $"|  Spawn {_report.SpawnPointCount}  |  Error {_report.ErrorCount}  "
             + $"|  Warning {_report.WarningCount}",
             EditorStyles.miniLabel);
@@ -229,34 +272,31 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
             EditorGUILayout.Space(5f);
     }
 
-    private void DrawMarkers()
+    private void DrawFeatures()
     {
         int visibleCount = 0;
-        for (int i = 0; i < _report.Markers.Count; i++)
+        for (int i = 0; i < _report.Features.Count; i++)
         {
-            RoomMapMarkerEntry entry = _report.Markers[i];
-            if (!MatchesMarker(
+            RoomMapFeatureEntry entry = _report.Features[i];
+            if (!MatchesFeature(
                     entry,
                     _report,
                     _search,
                     _roomFilter,
                     _typeFilter,
                     _issueFilter))
-            {
                 continue;
-            }
 
-            DrawMarker(entry);
+            DrawFeature(entry);
             visibleCount++;
         }
 
         if (visibleCount == 0)
-            EditorGUILayout.HelpBox("현재 필터에 표시할 마커가 없습니다.", MessageType.Info);
+            EditorGUILayout.HelpBox("현재 필터에 표시할 기능이 없습니다.", MessageType.Info);
     }
 
-    private void DrawMarker(RoomMapMarkerEntry entry)
+    private void DrawFeature(RoomMapFeatureEntry entry)
     {
-        AreaMarkerBase marker = entry.Marker;
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
             using (new EditorGUILayout.HorizontalScope())
@@ -266,41 +306,44 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
                     12f,
                     GUILayout.Width(12f),
                     GUILayout.Height(12f));
-                EditorGUI.DrawRect(swatch, marker.GizmoColor);
-
+                EditorGUI.DrawRect(swatch, entry.GizmoColor);
                 EditorGUILayout.LabelField(
-                    $"[{marker.ShortTypeLabel}] {marker.DisplayName}",
+                    $"[{entry.ShortTypeLabel}] {entry.DisplayName}",
                     EditorStyles.boldLabel,
                     GUILayout.MinWidth(140f));
                 GUILayout.FlexibleSpace();
 
-                int issueCount = _report.GetIssueCount(marker);
+                int issueCount = _report.GetIssueCount(entry.Context);
                 if (issueCount > 0)
                     GUILayout.Label($"{issueCount} 문제", EditorStyles.miniBoldLabel);
-
                 if (GUILayout.Button("선택", GUILayout.Width(52f)))
                 {
                     TrySelectAndFrame(new RoomMapValidationIssue(
-                        "AREA_MARKER_SELECT",
+                        "AREA_FEATURE_SELECT",
                         RoomMapValidationSeverity.Warning,
                         string.Empty,
-                        marker,
+                        entry.Context,
                         entry.Room,
-                        marker));
+                        entry.Marker));
                 }
             }
 
             string roomLabel = entry.Room != null
                 ? GetRoomDisplayName(entry.Room)
                 : "Room 미지정";
+            string stableId = string.IsNullOrWhiteSpace(entry.StableId)
+                ? "(미지정)"
+                : entry.StableId;
             EditorGUILayout.LabelField(
-                $"ID: {marker.MarkerId}    Room: {roomLabel}",
+                $"ID: {stableId}    Room: {roomLabel}",
                 EditorStyles.miniLabel);
+            if (!string.IsNullOrWhiteSpace(entry.Description))
+                EditorGUILayout.LabelField(entry.Description, EditorStyles.wordWrappedMiniLabel);
 
             for (int issueIndex = 0; issueIndex < _report.Issues.Count; issueIndex++)
             {
                 RoomMapValidationIssue issue = _report.Issues[issueIndex];
-                if (issue.Marker == marker && IsSeverityVisible(issue))
+                if (issue.Context == entry.Context && IsSeverityVisible(issue))
                     DrawIssue(issue);
             }
         }
@@ -347,9 +390,9 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
     {
         var labelsByKey = new Dictionary<string, string>(StringComparer.Ordinal);
         bool hasUnbound = false;
-        for (int i = 0; i < _report.Markers.Count; i++)
+        for (int i = 0; i < _report.Features.Count; i++)
         {
-            RoomInstance room = _report.Markers[i].Room;
+            RoomInstance room = _report.Features[i].Room;
             if (room == null)
             {
                 hasUnbound = true;

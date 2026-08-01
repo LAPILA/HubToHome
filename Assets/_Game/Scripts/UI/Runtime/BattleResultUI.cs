@@ -71,16 +71,16 @@ public sealed class BattleResultUI : MonoBehaviour
         RectTransform panelRect = panel.GetComponent<RectTransform>();
         panelRect.anchorMin = panelRect.anchorMax = new Vector2(0.5f, 0.5f);
         panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(680f, 250f);
+        panelRect.sizeDelta = new Vector2(576f, 208f);
 
         Image background = panel.GetComponent<Image>();
         background.color = new Color(0.035f, 0.04f, 0.055f, 0.96f);
 
         BattleResultUI view = panel.GetComponent<BattleResultUI>();
         view._canvasGroup = panel.GetComponent<CanvasGroup>();
-        view._title = CreateText(panel.transform, "Title", font, 38f, FontStyles.Bold, new Vector2(0f, 72f));
-        view._rewardText = CreateText(panel.transform, "Rewards", font, 27f, FontStyles.Normal, new Vector2(0f, 16f));
-        view._levelText = CreateText(panel.transform, "LevelUps", font, 23f, FontStyles.Normal, new Vector2(0f, -54f));
+        view._title = CreateText(panel.transform, "Title", font, 28f, FontStyles.Bold, new Vector2(0f, 58f));
+        view._rewardText = CreateText(panel.transform, "Rewards", font, 22f, FontStyles.Normal, new Vector2(0f, 8f));
+        view._levelText = CreateText(panel.transform, "LevelUps", font, 20f, FontStyles.Normal, new Vector2(0f, -46f));
         panel.SetActive(false);
         return view;
     }
@@ -102,7 +102,7 @@ public sealed class BattleResultUI : MonoBehaviour
 
         CanvasScaler scaler = root.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.referenceResolution = GameConfigPolicy.ReferenceResolution;
         scaler.matchWidthOrHeight = 0.5f;
 
         _globalInstance = Ensure(root.transform);
@@ -252,7 +252,7 @@ public sealed class BattleResultUI : MonoBehaviour
         textObject.transform.SetParent(parent, false);
         RectTransform rect = textObject.GetComponent<RectTransform>();
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(620f, 52f);
+        rect.sizeDelta = new Vector2(536f, 48f);
         rect.anchoredPosition = position;
 
         TMP_Text text = textObject.GetComponent<TMP_Text>();
@@ -311,11 +311,14 @@ public sealed class BattleResultUI : MonoBehaviour
     private static string BuildStatGainText(CharacterLevelUpResult level)
     {
         var builder = new StringBuilder();
-        AppendStatGain(builder, "HP", level.MaxHpGained);
-        AppendStatGain(builder, "MP", level.MaxMpGained);
-        AppendStatGain(builder, "ATK", level.AttackGained);
-        AppendStatGain(builder, "DEF", level.DefenseGained);
-        AppendStatGain(builder, "SPD", level.SpeedGained);
+        AppendStatGain(
+            builder,
+            "ATTRIBUTE POINT",
+            level.AttributePointsGained);
+        AppendStatGain(
+            builder,
+            "SKILL POINT",
+            level.SkillPointsGained);
         return builder.Length > 0 ? builder.ToString() : " ";
     }
 

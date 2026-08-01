@@ -302,7 +302,7 @@ public class Action_Damage : SkillActionBlock
             
             int previousHp = target.CurrentHP;
             int dmg = target.TakeDamage(finalDamage);
-            BattleManager.Instance.InvokeDamageEvent(target, dmg, context.IsPerfectQTE, previousHp);
+            BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dmg, context.IsPerfectQTE, previousHp);
             
             if (ShakeCamera) 
                 CameraController.Instance?.PlayHeavySlam(Vector3.right, context.IsPerfectQTE ? 1.2f : 0.6f, true);
@@ -715,6 +715,7 @@ public class Action_DefenseWindow : SkillActionBlock
 
                 if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
                 {
+                    BattleManager.Instance?.InvokeMissFeedback(context.Actor, target);
                     yield return targetController != null
                         ? targetController.WaitForDefenseVisualComplete(0.5f)
                         : null;
@@ -725,8 +726,8 @@ public class Action_DefenseWindow : SkillActionBlock
                     && target is PlayerCharacter playerTarget
                     && BattleManager.Instance != null)
                 {
-                    playerTarget.HealMP(BattleManager.Instance._mpOnParryPerfect);
-                    BattleManager.Instance.InvokeMPChangedEvent(playerTarget, playerTarget.CurrentMP);
+                    playerTarget.RestoreAP(BattleManager.Instance._apOnParryPerfect);
+                    BattleManager.Instance.InvokeAPChangedEvent(playerTarget, playerTarget.CurrentAP);
                 }
             }
             else
@@ -815,12 +816,21 @@ public class Action_Projectile : SkillActionBlock
             CharacterVFX.ApplyRuntimeAudioNormalization(impactVfx);
         }
         
-        int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
+        float effectiveDamageMultiplier = DamageMultiplier * context.CurrentDamageMultiplier;
+        if (effectiveDamageMultiplier <= 0f)
+        {
+            context.CurrentDamageMultiplier = 1.0f;
+            context.IsPerfectQTE = false;
+            yield break;
+        }
+
+        int dmg = Mathf.RoundToInt(context.Actor.ATK * effectiveDamageMultiplier);
         int previousHp = context.MainTarget.CurrentHP;
         int dealt = context.MainTarget.TakeDamage(dmg);
-        BattleManager.Instance.InvokeDamageEvent(context.MainTarget, dealt, context.IsPerfectQTE, previousHp);
+        BattleManager.Instance.InvokeDamageEvent(context.Actor, context.MainTarget, dealt, context.IsPerfectQTE, previousHp);
 
-        context.CurrentDamageMultiplier = 1.0f; 
+        context.CurrentDamageMultiplier = 1.0f;
+        context.IsPerfectQTE = false;
     }
 }
 
@@ -844,6 +854,12 @@ public class Action_SequentialMelee : SkillActionBlock
     public override IEnumerator Execute(SkillContext context)
     {
         if (context.Targets.Count == 0) yield break;
+        if (context.CurrentDamageMultiplier <= 0f)
+        {
+            context.CurrentDamageMultiplier = 1.0f;
+            context.IsPerfectQTE = false;
+            yield break;
+        }
 
         // 잔상 컴포넌트 찾기
         var ghostTrail = context.Actor.GetComponentInChildren<CharacterGhostTrail>();
@@ -880,12 +896,13 @@ public class Action_SequentialMelee : SkillActionBlock
             int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
             int previousHp = target.CurrentHP;
             int dealt = target.TakeDamage(dmg);
-            BattleManager.Instance.InvokeDamageEvent(target, dealt, context.IsPerfectQTE, previousHp);
+            BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dealt, context.IsPerfectQTE, previousHp);
             CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.4f, true);
 
             yield return new WaitForSeconds(0.2f); 
         }
 
-        context.CurrentDamageMultiplier = 1.0f; 
+        context.CurrentDamageMultiplier = 1.0f;
+        context.IsPerfectQTE = false;
     }
 }
