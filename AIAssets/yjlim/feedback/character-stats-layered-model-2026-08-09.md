@@ -192,9 +192,8 @@ ResolvedStats
 
 ## 실제 Play Mode 검증 결과
 
-- 전용 씬: Assets/_Game/Content/Characters/Tests/StatAttributeVerification/StatAttributeVerification.unity
-- 더미 데이터: StatVerification_PlayerData.asset, StatVerification_EnemyData.asset
-- 검증 러너: Assets/_Game/Scripts/Characters/Tests/PlayMode/StatAttributeVerificationRunner.cs
+- 임시 전용 씬·더미 데이터·검증 러너를 사용해 검증을 완료한 뒤, 일회성 검증 산출물은 제거했다.
+- 검증 당시 구성: StatAttributeVerification 씬, StatVerification Player/Enemy 데이터, StatAttributeVerificationRunner
 - 검증 항목: StatBlock 주입, 초기 HP/AP, AP 소비·복구, 물리 피해의 DEF 적용, 속성 피해의 속성 저항 적용, 공격자 피해 배율, DamageResult, 피해 후 HP
 - 실제 콘솔 결과: PASS
   - 물리: 100 × 1.25 × 100/(100+300) = 31
