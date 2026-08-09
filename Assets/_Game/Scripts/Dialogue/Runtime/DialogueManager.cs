@@ -8,11 +8,11 @@ public class DialogueManager : MonoBehaviour
     public static DialogueManager Instance { get; private set; }
 
     [Header("UI 패널 참조")]
-    [SerializeField] private DialogueUI _overworldPanel; 
-    [SerializeField] private DialogueUI _cinematicPanel; 
+    [SerializeField] private DialogueUIToolkit _overworldPanel;
+    [SerializeField] private DialogueUIToolkit _cinematicPanel;
     [SerializeField] private NameInputUI _nameInputUI; // 🚨 인스펙터에서 꼭 연결
 
-    private DialogueUI _activeUI; 
+    private DialogueUIToolkit _activeUI;
     private DialogueData _currentDialogue;
     private int _currentNodeIndex;
     private bool _isPlaying = false;
@@ -114,7 +114,7 @@ public class DialogueManager : MonoBehaviour
             return false;
         }
 
-        DialogueUI activeUI = data.Style == DialogueStyle.Cinematic
+        DialogueUIToolkit activeUI = data.Style == DialogueStyle.Cinematic
             ? _cinematicPanel
             : _overworldPanel;
         if (activeUI == null)

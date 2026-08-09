@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="dialogue-root" class="dialogue-root">
+        <ui:VisualElement name="overworld-dialogue-panel" class="dialogue-panel">
+            <ui:VisualElement name="dialogue-window" class="dialogue-window">
+                <ui:VisualElement name="dialogue-content" class="dialogue-content">
+                    <ui:Image name="speaker-portrait" class="dialogue-portrait" />
+                    <ui:VisualElement name="dialogue-copy" class="dialogue-copy">
+                        <ui:Label name="speaker-name" class="dialogue-speaker" text="" />
+                        <Febucci.TextAnimatorForUnity.AnimatedLabel name="body-text" class="dialogue-body" text="" enable-rich-text="true" parse-escape-sequences="true" selectable="false" focusable="false" display-tooltip-when-elided="false" emoji-fallback-support="true" enable-in-edit-mode="false" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:Label name="continue-indicator" class="dialogue-continue" text="▼" />
+                <ui:VisualElement name="choices-root" class="dialogue-choices" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

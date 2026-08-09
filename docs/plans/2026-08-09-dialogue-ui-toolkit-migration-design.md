@@ -10,7 +10,7 @@
 
 현재 대화 UI는 `DialogueManager`가 프로젝트 자체 uGUI 구현인 `DialogueUI`를 직접 호출하고, `DialogueCanvas.prefab`이 Canvas, TextMeshPro, Febucci TMP Typewriter, 선택지 템플릿을 소유한다. 프로젝트 기준 해상도는 640x480이며, 현재 텍스트와 패널은 uGUI CanvasScaler와 TMP 렌더링 경로에 의존한다.
 
-목표는 기존 대화 기능과 사용성을 유지한 채 `DialogueUI`의 실제 표시 구현을 UI Toolkit으로 직접 교체하는 것이다. 이는 uGUI와 UITK를 런타임에 병렬 실행하거나, UI 요소마다 브릿지를 추가하는 작업이 아니다.
+목표는 기존 대화 기능과 사용성을 유지한 채 활성 대화 표시 구현을 UI Toolkit으로 직접 교체하는 것이다. 기존 `DialogueUI` 클래스와 프리팹은 `Legacy UI Baseline`으로 보존하고, 새 `DialogueUIToolkit` 구현을 매니저에 직접 연결한다. 이는 uGUI와 UITK를 런타임에 병렬 실행하거나, UI 요소마다 브릿지를 추가하는 작업이 아니다.
 
 ## 확정된 운영 원칙
 
@@ -18,7 +18,7 @@
 2. 기존 uGUI는 `Legacy UI Baseline`으로 보존한다. 비교·회귀 기준으로만 사용하며 런타임 폴백으로 연결하지 않는다.
 3. UITK가 기능·사용성·시각 기준을 충족하면 기존 uGUI 구현과 관련 자산을 제거한다.
 4. `DialogueManager`의 대화 흐름·분기·상태 복원 책임은 유지한다.
-5. `DialogueManager`가 호출하는 `OpenPanel`, `DisplayNode`, `DisplayPrompt`, `ShowChoices`, `SkipTyping`, `ClosePanel`, `HideImmediate` 등의 명령 계약은 1차 교체에서 유지한다.
+5. `DialogueManager`가 호출하는 `OpenPanel`, `DisplayNode`, `DisplayPrompt`, `ShowChoices`, `SkipTyping`, `ClosePanel`, `HideImmediate` 등의 명령 계약은 1차 교체에서 유지한다. 기존 `DialogueUI`를 직접 참조하던 직렬화 타입은 새 활성 `DialogueUIToolkit` 타입으로 바꾼다.
 6. 프레젠테이션 구현은 하나의 대화 화면 소유 단위로 만들며, 패널·텍스트·선택지·키보드 입력·타이핑 효과를 내부에서 함께 관리한다.
 7. UI Toolkit은 앞으로 새 런타임 UI를 만드는 기본 기술로 사용한다. 기존 uGUI는 마이그레이션이 끝나는 시점에 제거한다.
 
@@ -70,7 +70,7 @@ TestMap에서 일반 오버월드 대화를 시작하고 끝내는 흐름을 UIT
 
 ### 직접 교체하는 소유권
 
-새 UITK `DialogueUI` 구현은 다음을 소유한다.
+새 UITK `DialogueUIToolkit` 구현은 다음을 소유한다.
 
 - `UIDocument`와 UXML/USS 루트
 - 패널 표시 상태와 전환
@@ -87,7 +87,7 @@ TestMap에서 일반 오버월드 대화를 시작하고 끝내는 흐름을 UIT
 ```text
 DialogueManager
   └─ 기존 명령 계약 호출
-       └─ DialogueUI (UITK 직접 구현)
+       └─ DialogueUIToolkit (UITK 직접 구현)
             ├─ UIDocument
             ├─ UXML/USS
             ├─ Overworld Dialogue mode
@@ -97,7 +97,7 @@ DialogueManager
             └─ Febucci UITK AnimatedLabel
 ```
 
-여기서 `DialogueUI`는 별도 브릿지가 아니다. 기존 `DialogueUI`가 담당하던 표시 책임을 UITK로 다시 구현한 직접 교체 대상이다. 1차에서는 오버월드 모드만 실제로 연결하고, 후속 모드는 같은 화면 소유 단위에 추가한다.
+여기서 `DialogueUIToolkit`은 별도 브릿지가 아니다. 기존 `DialogueUI`가 담당하던 표시 책임을 UITK로 다시 구현한 활성 직접 교체 대상이다. 기존 `DialogueUI`는 레거시 기준 구현으로만 남긴다. 1차에서는 오버월드 모드만 실제로 연결하고, 후속 모드는 같은 화면 소유 단위에 추가한다.
 
 ## 폰트와 텍스트 처리
 

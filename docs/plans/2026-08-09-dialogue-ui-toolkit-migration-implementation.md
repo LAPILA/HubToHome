@@ -4,7 +4,7 @@
 
 **Goal:** TestMap의 일반 오버월드 대화 UI를 기존 기능과 입력 계약을 유지한 채 UI Toolkit 단일 런타임 구현으로 직접 교체한다.
 
-**Architecture:** `DialogueManager`는 대화 흐름·분기·상태 복원과 기존 명령 호출만 유지한다. 프로젝트 자체 `DialogueUI` 구현은 uGUI/TMP 의존성을 제거하고 `UIDocument`/UXML/USS/Febucci UITK `AnimatedLabel`을 직접 소유한다. 기존 uGUI 프리팹은 `Legacy UI Baseline`으로 별도 보존하며 TestMap 런타임에는 연결하지 않는다. `RebindCanvasCameraImmediate()`는 기존 호출 계약을 보존하는 UITK 초기화/검증 메서드로 유지한다.
+**Architecture:** `DialogueManager`는 대화 흐름·분기·상태 복원과 기존 명령 호출만 유지한다. 새 `DialogueUIToolkit` 구현은 `UIDocument`/UXML/USS/Febucci UITK `AnimatedLabel`을 직접 소유하고, 기존 `DialogueUI` uGUI 클래스/프리팹은 `Legacy UI Baseline`으로 보존한다. TestMap 런타임에는 `DialogueUIToolkit`만 연결한다. `RebindCanvasCameraImmediate()`는 기존 호출 계약을 보존하는 UITK 초기화/검증 메서드로 유지한다.
 
 **Tech Stack:** Unity 6.3.8f1, UI Toolkit runtime, UXML, USS, Febucci Text Animator 3.11.1 UITK integration, Silver.ttf, Input System, NUnit EditMode tests, TestMap PlayMode/manual QA.
 
@@ -65,9 +65,10 @@ Expected: only the baseline note is committed; unrelated character-stat changes 
 - Create: `Assets/_Game/Presentation/UI/Dialogue/DialogueUI.uxml`
 - Create: `Assets/_Game/Presentation/UI/Dialogue/DialogueUI.uss`
 - Create: `Assets/_Game/Presentation/UI/Dialogue/DialogueUI_Tokens.uss`
+- Create: `Assets/_Game/Presentation/UI/Dialogue/DialogueUI_PanelSettings.asset` (reference resolution 640x480, Scale With Screen Size)
 - Create: `Assets/_Game/Scripts/UI/Tests/Editor/DialogueUIAssetValidationTests.cs`
-- Create via Unity Editor: `Assets/_Game/Presentation/UI/Fonts/Silver UITK.asset`
-- Create via Unity Editor: `Assets/_Game/Presentation/UI/Fonts/HubToHome Runtime Text Settings.asset`
+- Reuse: `Assets/_Game/Presentation/UI/Fonts/Silver.ttf` directly as the UITK font source
+- Reuse: existing Febucci shared typewriter/animation settings assets; do not create a parallel text-settings asset in the first slice
 
 **Step 1: Write the failing structure/selector checks**
 
@@ -110,10 +111,11 @@ git add Assets/_Game/Presentation/UI/Dialogue Assets/_Game/Presentation/UI/Fonts
 git commit -m "feat: add dialogue UI Toolkit document"
 ```
 
-## Task 3: Replace `DialogueUI` internals with direct UITK presentation behavior
+## Task 3: Create the direct UITK presentation implementation
 
 **Files:**
-- Modify: `Assets/_Game/Scripts/UI/Runtime/DialogueUI.cs`
+- Create: `Assets/_Game/Scripts/UI/Runtime/DialogueUIToolkit.cs`
+- Modify: `Assets/_Game/Scripts/Dialogue/Runtime/DialogueManager.cs` (presentation field types only)
 - Read-only reference: `Assets/_Game/Scripts/UI/Runtime/NameInputUI.cs`
 - Read-only reference: `Packages/com.febucci.text-animator-unity/Scripts/Runtime/Components/Animator/UIToolkit/AnimatedLabel.cs`
 - Read-only reference: `Packages/com.febucci.text-animator-unity/Scripts/Runtime/Components/Animator/UIToolkit/TypewriterExtensions.cs`
@@ -135,7 +137,7 @@ Expected before the UITK implementation: the tests either fail to compile agains
 
 **Step 2: Replace uGUI fields with UITK-owned fields**
 
-Remove the runtime implementation’s direct dependence on `Canvas`, `CanvasGroup`, `Image`, `TextMeshProUGUI`, `RectTransform`, and TMP `TypewriterComponent`. Keep the public command methods and observable properties used by `DialogueManager`, including `RebindCanvasCameraImmediate()` as a compatibility-preserving UITK initialization/validation method.
+Implement the active `DialogueUIToolkit` presentation without any dependence on `Canvas`, `CanvasGroup`, `Image`, `TextMeshProUGUI`, `RectTransform`, or TMP `TypewriterComponent`. Keep the public command methods and observable properties used by `DialogueManager`, including `RebindCanvasCameraImmediate()` as a compatibility-preserving UITK initialization/validation method. Leave the old `DialogueUI.cs` untouched as the legacy baseline.
 
 Use `UIDocument.rootVisualElement` and cached `VisualElement`/`Label`/`TextElement` references. Query elements once during initialization and validate missing names with a clear error.
 
@@ -162,14 +164,14 @@ Expected: all presentation state/input tests pass without loading the TestMap sc
 **Step 7: Commit the direct implementation**
 
 ```powershell
-git add Assets/_Game/Scripts/UI/Runtime/DialogueUI.cs Assets/_Game/Scripts/UI/Tests/Editor/DialogueUIContractTests.cs
+git add Assets/_Game/Scripts/UI/Runtime/DialogueUIToolkit.cs Assets/_Game/Scripts/Dialogue/Runtime/DialogueManager.cs Assets/_Game/Scripts/UI/Tests/Editor/DialogueUIContractTests.cs
 git commit -m "feat: replace dialogue presentation with UI Toolkit"
 ```
 
 ## Task 4: Build the active UITK prefab and preserve the legacy baseline
 
 **Files:**
-- Create via Unity Editor: `Assets/_Game/Content/Dialogue/Prefabs/DialogueCanvas_UITK.prefab`
+- Create via Unity Editor: `Assets/_Game/Presentation/UI/Dialogue/DialogueUIToolkit.prefab`
 - Preserve unchanged as the legacy baseline: `Assets/_Game/Content/Dialogue/Prefabs/DialogueCanvas.prefab`
 - Modify via Unity Editor: `Assets/_Game/Core/Prefabs/CoreSettings/DialogueManager.prefab`
 - Modify via Unity Editor if required: `Assets/_Game/Core/Prefabs/CoreSettings/CoreSettings.prefab`
@@ -180,11 +182,11 @@ Keep `DialogueCanvas.prefab` unchanged. Its existing Canvas, TMP references, and
 
 **Step 2: Create the UITK prefab**
 
-Create one prefab with a `UIDocument` and the new `DialogueUI` component. Assign the UXML, runtime panel settings/text settings, and any required sorting/order configuration. Keep the root as a single dialogue screen owner. The same `DialogueUI` component must be assigned to both `DialogueManager._overworldPanel` and `_cinematicPanel` so the existing manager contract remains valid without creating two presentation instances. Cinematic behavior remains out of the first slice but must not fail due to a null reference.
+Create one prefab with a `UIDocument` and the new `DialogueUIToolkit` component. Assign the UXML, runtime panel settings/text settings, and any required sorting/order configuration. Keep the root as a single dialogue screen owner. The same `DialogueUIToolkit` component must be assigned to both `DialogueManager._overworldPanel` and `_cinematicPanel` so the existing manager contract remains valid without creating two presentation instances. Cinematic behavior remains out of the first slice but must not fail due to a null reference.
 
 **Step 3: Rewire only the active manager reference**
 
-Point the manager’s overworld presentation reference to the UITK `DialogueUI` component while preserving the existing manager-facing serialized field contract as far as Unity serialization allows. Do not connect both legacy and UITK views.
+Point the manager’s overworld and cinematic presentation references to the same UITK `DialogueUIToolkit` component after changing the serialized field type. Do not connect both legacy and UITK views; the original `DialogueUI` reference remains only inside the preserved legacy prefab.
 
 **Step 4: Verify serialized references**
 
@@ -199,7 +201,7 @@ Use Unity Inspector and a text scan to confirm:
 **Step 5: Commit the prefab wiring**
 
 ```powershell
-git add Assets/_Game/Content/Dialogue/Prefabs/DialogueCanvas_UITK.prefab Assets/_Game/Core/Prefabs/CoreSettings/DialogueManager.prefab Assets/_Game/Core/Prefabs/CoreSettings/CoreSettings.prefab
+git add Assets/_Game/Presentation/UI/Dialogue/DialogueUIToolkit.prefab Assets/_Game/Core/Prefabs/CoreSettings/DialogueManager.prefab Assets/_Game/Core/Prefabs/CoreSettings/CoreSettings.prefab
 git commit -m "feat: activate UITK dialogue prefab"
 ```
 
