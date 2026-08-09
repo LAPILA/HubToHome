@@ -110,13 +110,10 @@ public class EnemyCharacter : CharacterBase
         Data = data;
         if (Data != null)
         {
-            BaseMaxHP = Data.MaxHP;
-            BaseATK   = Data.ATK;
-            BaseDEF   = Data.DEF;
-            BaseSPD   = Data.SPD;
-            
-            CurrentHP = MaxHP; 
-            CurrentAP = MaxAP;
+            // EnemyData도 Player와 동일하게 BaseStats를 CharacterStats에 주입한다.
+            SetBaseStats(Data.BaseStats);
+            SetCurrentHPValue(MaxHP);
+            SetCurrentAPValue(MaxAP);
         }
     }
 
@@ -281,28 +278,6 @@ public class EnemyCharacter : CharacterBase
         }
 
         return EnemyAction.BasicAttack;
-    }
-
-    // ── 🚨 LINQ 제거 및 최적화된 속성 상성 체크 ──
-    public override float GetElementAffinity(DamageElement element)
-    {
-        float baseAffinity = 1.0f;
-
-        if (Data != null)
-        {
-            if (Data.EnemyName == "얼음 골렘" && element == DamageElement.Fire)
-                baseAffinity = 1.5f; 
-            else if (Data.EnemyName == "얼음 골렘" && element == DamageElement.Ice)
-                baseAffinity = 0.5f; 
-        }
-
-        float effectModifier = 0f;
-        for (int i = 0; i < _activeEffects.Count; i++)
-        {
-            effectModifier += _activeEffects[i].GetElementResistanceModifier(element);
-        }
-        
-        return Mathf.Max(0f, baseAffinity + effectModifier);
     }
 
     private void KillVisualTweens()

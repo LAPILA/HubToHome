@@ -407,11 +407,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6decced32cae3cf41a9820b7fc1cbfdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyCharacter
-  BaseMaxHP: 100
-  BaseMaxAP: 100
-  BaseATK: 10
-  BaseDEF: 5
-  BaseSPD: 10
   Data: {fileID: 11400000, guid: 0d809955dfe6144459f4205e92356daa, type: 2}
   _isBattleMode: 1
   _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}

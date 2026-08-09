@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3eba3bde5818ed94ba397256558aaa34, type: 3}
-  m_Name: DB_Slime
+  m_Name: StatVerification_EnemyData
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   serializationData:
     SerializedFormat: 2
@@ -21,30 +21,30 @@ MonoBehaviour:
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
     SerializationNodes: []
-  Portrait: {fileID: 1978778067983403588, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+  Portrait: {fileID: 0}
   TurnOrderPortrait: {fileID: 0}
-  EnemyId: enemy_db_slime_0d809955
-  EnemyName: Slime
+  EnemyId: stat_verification_enemy
+  EnemyName: Stat Verification Enemy
   BattleBGM: {fileID: 0}
-  Prefab: {fileID: 3461299171839533844, guid: 15fa88e0bc5908e448f5be65a1a40fa4, type: 3}
+  Prefab: {fileID: 0}
   ReturnMoveTrigger: BattleMove
   BaseStats:
-    MaxHP: 30
+    MaxHP: 1000
     MaxAP: 100
-    ATK: 8
-    DEF: 2
+    ATK: 10
+    DEF: 300
     SPD: 5
     PhysicalResistance: 1
-    FireResistance: 1
-    IceResistance: 1
+    FireResistance: 0.5
+    IceResistance: 2
     ElectricResistance: 1
     CorrosionResistance: 1
     IncomingDamageMultiplier: 1
     OutgoingDamageMultiplier: 1
   ThreatLevel: 1
-  AllowInstantKillAfterDefeat: 1
+  AllowInstantKillAfterDefeat: 0
   InstantKillLevelGap: 5
-  SkillUseChance: 0
+  SkillUseChance: 0.3
   StrongSkillUseChance: 0.25
   TelegraphStrongSkill: 1
   TelegraphTurns: 1
@@ -52,11 +52,7 @@ MonoBehaviour:
   IsLargeEnemy: 0
   SkillList: []
   StrongSkillList: []
-  Drops:
-  - ItemId: consumable.small_potion
-    MinAmount: 1
-    MaxAmount: 1
-    DropChance: 0.5
+  Drops: []
   DropItemIDs: []
-  EXPReward: 10
+  EXPReward: 20
   GoldReward: 10

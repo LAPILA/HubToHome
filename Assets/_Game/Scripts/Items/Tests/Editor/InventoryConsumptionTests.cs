@@ -9,6 +9,7 @@ public class InventoryConsumptionTests
     private GameObject _inventoryObject;
     private GameObject _targetObject;
     private ItemData _createdItem;
+    private CharacterData _characterData;
 
     [SetUp]
     public void SetUp()
@@ -19,8 +20,10 @@ public class InventoryConsumptionTests
         _inventoryObject = new GameObject("InventoryManager");
         InventoryManager inventory = _inventoryObject.AddComponent<InventoryManager>();
         SetSingleton(typeof(InventoryManager), inventory);
+        _characterData = ScriptableObject.CreateInstance<CharacterData>();
         _targetObject = new GameObject("Target");
-        _targetObject.AddComponent<PlayerCharacter>();
+        PlayerCharacter target = _targetObject.AddComponent<PlayerCharacter>();
+        target.SetCharacterData(_characterData);
     }
 
     [TearDown]
@@ -32,6 +35,7 @@ public class InventoryConsumptionTests
         Object.DestroyImmediate(_inventoryObject);
         Object.DestroyImmediate(_globalObject);
         if (_createdItem != null) Object.DestroyImmediate(_createdItem);
+        if (_characterData != null) Object.DestroyImmediate(_characterData);
     }
 
     private static void SetSingleton(System.Type type, object value)

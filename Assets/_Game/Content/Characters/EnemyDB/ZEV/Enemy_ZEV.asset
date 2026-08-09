@@ -21,7 +21,7 @@ MonoBehaviour:
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
     SerializationNodes:
-    - Name: StatusResistances
+    - Name: BaseStats.StatusResistances
       Entry: 7
       Data: 0|System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Single,
         mscorlib]], mscorlib
@@ -120,10 +120,19 @@ MonoBehaviour:
   BattleBGM: {fileID: 8300000, guid: 715eb49a792787c48b2dcaf68b3512c0, type: 3}
   Prefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
   ReturnMoveTrigger: BattleMove
-  MaxHP: 500
-  ATK: 20
-  DEF: 25
-  SPD: 8
+  BaseStats:
+    MaxHP: 500
+    MaxAP: 100
+    ATK: 20
+    DEF: 25
+    SPD: 8
+    PhysicalResistance: 1
+    FireResistance: 1
+    IceResistance: 1
+    ElectricResistance: 1
+    CorrosionResistance: 1
+    IncomingDamageMultiplier: 1
+    OutgoingDamageMultiplier: 1
   ThreatLevel: 1
   AllowInstantKillAfterDefeat: 0
   InstantKillLevelGap: 5

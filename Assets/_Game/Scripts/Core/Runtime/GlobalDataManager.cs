@@ -113,6 +113,12 @@ public class GlobalDataManager : MonoBehaviour
         if (scenePlayer == null) return null;
 
         CharacterData characterData = scenePlayer.CharacterData;
+        if (characterData == null || characterData.BaseStats == null)
+        {
+            Debug.LogError("[GlobalDataManager] 씬 플레이어에 CharacterData.BaseStats가 없습니다.", scenePlayer);
+            return null;
+        }
+
         string stableId = NormalizeCharacterId(characterData != null ? characterData.CharacterID : null);
         CharacterSaveData existing = FindPartyMember(stableId);
         if (existing != null)
@@ -133,11 +139,12 @@ public class GlobalDataManager : MonoBehaviour
             return null;
         }
 
-        int startMaxHP = characterData != null ? characterData.BaseMaxHP : (scenePlayer.BaseMaxHP > 0 ? scenePlayer.BaseMaxHP : 100);
-        int startMaxAP = characterData != null ? characterData.BaseMaxAP : (scenePlayer.BaseMaxAP > 0 ? scenePlayer.BaseMaxAP : 50);
-        int startATK   = characterData != null ? characterData.BaseATK : (scenePlayer.BaseATK > 0 ? scenePlayer.BaseATK : 10);
-        int startDEF   = characterData != null ? characterData.BaseDEF : scenePlayer.BaseDEF;
-        int startSPD   = characterData != null ? characterData.BaseSPD : (scenePlayer.BaseSPD > 0 ? scenePlayer.BaseSPD : 10);
+        StatBlock startStats = characterData.BaseStats;
+        int startMaxHP = Mathf.Max(1, startStats.MaxHP);
+        int startMaxAP = Mathf.Max(0, startStats.MaxAP);
+        int startATK   = Mathf.Max(1, startStats.ATK);
+        int startDEF   = Mathf.Max(0, startStats.DEF);
+        int startSPD   = Mathf.Max(1, startStats.SPD);
 
         var newData = new CharacterSaveData()
         {

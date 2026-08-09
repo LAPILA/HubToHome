@@ -372,7 +372,7 @@ public class BattleScenarioRuntimeTests
         EnemyData data = ScriptableObject.CreateInstance<EnemyData>();
         data.EnemyId = "zev";
         data.EnemyName = "ZEV";
-        data.MaxHP = 200;
+        data.BaseStats.MaxHP = 200;
 
         try
         {

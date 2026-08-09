@@ -92,7 +92,7 @@ public static class ItemEffectService
                     error = $"Unknown status effect: {item.StatusEffectID}";
                     return false;
                 }
-                target.AddEffect(effect);
+                target.TryApplyStatusEffect(effect);
                 break;
         }
 

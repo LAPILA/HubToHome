@@ -418,19 +418,32 @@ public sealed class OverworldMenuUI : UIPanel
 
             view.gameObject.SetActive(true);
             CharacterSaveData member = party[i];
-            view.Apply(member, GetPartyDisplayName(member), ResolvePortraitSprite(member));
+            view.Apply(
+                member,
+                ResolveCharacterData(member),
+                GetPartyDisplayName(member),
+                ResolvePortraitSprite(member));
         }
     }
 
     private Sprite ResolvePortraitSprite(CharacterSaveData data)
     {
-        CharacterData characterData = CharacterDatabase.FindById(data.CharacterDataID);
-        if (characterData == null)
-            characterData = CharacterDatabase.FindById(data.CharacterID);
+        CharacterData characterData = ResolveCharacterData(data);
 
         return characterData != null && characterData.Portrait != null
             ? characterData.Portrait
             : _fallbackPortraitSprite;
+    }
+
+    private static CharacterData ResolveCharacterData(CharacterSaveData data)
+    {
+        if (data == null)
+            return null;
+
+        CharacterData characterData = CharacterDatabase.FindById(data.CharacterDataID);
+        return characterData != null
+            ? characterData
+            : CharacterDatabase.FindById(data.CharacterID);
     }
 
     private static bool PressedLeftFallback()
@@ -773,11 +786,14 @@ public sealed class OverworldMenuUI : UIPanel
             text.Append('\n');
         }
 
-        text.Append("\nHP ").Append(member.MaxHP + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusMaxHP));
-        text.Append("  AP ").Append(member.MaxAP + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusMaxAP));
-        text.Append("  ATK ").Append(member.ATK + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusATK));
-        text.Append("  DEF ").Append(member.DEF + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusDEF));
-        text.Append("  SPD ").Append(member.SPD + EquipmentLoadoutService.GetFlatBonus(member, equipment => equipment.BonusSPD));
+        StatBlock resolvedStats = CharacterStatsProjectionService.ResolveFromSave(
+            member,
+            ResolveCharacterData(member));
+        text.Append("\nHP ").Append(resolvedStats.MaxHP);
+        text.Append("  AP ").Append(resolvedStats.MaxAP);
+        text.Append("  ATK ").Append(resolvedStats.ATK);
+        text.Append("  DEF ").Append(resolvedStats.DEF);
+        text.Append("  SPD ").Append(resolvedStats.SPD);
         text.Append("\n<color=#8F779B>↑↓ 슬롯  Z 변경  X 뒤로</color>");
         if (!string.IsNullOrEmpty(_categoryStatus))
             text.Append("\n").Append(_categoryStatus);

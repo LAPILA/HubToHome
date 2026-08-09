@@ -54,7 +54,10 @@ public sealed class EquipmentAndPowerServicesTests
             EquipmentLoadoutService.GetEquippedId(hero, EquipmentSlot.Weapon),
             Is.EqualTo(weapon.ItemID));
         Assert.That(
-            EquipmentLoadoutService.GetFlatBonus(hero, item => item.BonusATK),
+            CharacterStatsProjectionService.ResolveFromSave(
+                hero,
+                CreateCharacterData("hero"))
+                .ATK,
             Is.EqualTo(7));
         Assert.That(
             EquipmentLoadoutService.TryEquip(_global, hero, EquipmentSlot.Head, weapon).Status,
@@ -141,9 +144,17 @@ public sealed class EquipmentAndPowerServicesTests
         equipment.ItemID = id;
         equipment.ItemName = id;
         equipment.Slot = slot;
-        equipment.BonusATK = attack;
+        equipment.StatBonuses.ATK = attack;
         _created.Add(equipment);
         return equipment;
+    }
+
+    private CharacterData CreateCharacterData(string id)
+    {
+        CharacterData data = ScriptableObject.CreateInstance<CharacterData>();
+        data.CharacterID = id;
+        _created.Add(data);
+        return data;
     }
 
     private SkillData Skill(string id, string name)

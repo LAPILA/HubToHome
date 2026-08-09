@@ -9,11 +9,14 @@ public sealed class CharacterGrowthServiceTests
     public void SetUp()
     {
         _data = ScriptableObject.CreateInstance<CharacterData>();
-        _data.BaseMaxHP = 100;
-        _data.BaseMaxAP = 20;
-        _data.BaseATK = 10;
-        _data.BaseDEF = 5;
-        _data.BaseSPD = 7;
+        _data.BaseStats = new StatBlock
+        {
+            MaxHP = 100,
+            MaxAP = 20,
+            ATK = 10,
+            DEF = 5,
+            SPD = 7,
+        };
         _data.BaseExperienceToLevel = 10;
         _data.ExperienceGrowth = 1f;
         _data.MaxLevel = 99;
@@ -140,13 +143,13 @@ public sealed class CharacterGrowthServiceTests
             CharacterDataID = "hero",
             CharacterID = "hero",
             Level = level,
-            HP = _data.BaseMaxHP,
-            MaxHP = _data.BaseMaxHP,
-            AP = _data.BaseMaxAP,
-            MaxAP = _data.BaseMaxAP,
-            ATK = _data.BaseATK,
-            DEF = _data.BaseDEF,
-            SPD = _data.BaseSPD
+            HP = _data.BaseStats.MaxHP,
+            MaxHP = _data.BaseStats.MaxHP,
+            AP = _data.BaseStats.MaxAP,
+            MaxAP = _data.BaseStats.MaxAP,
+            ATK = _data.BaseStats.ATK,
+            DEF = _data.BaseStats.DEF,
+            SPD = _data.BaseStats.SPD
         };
     }
 }
