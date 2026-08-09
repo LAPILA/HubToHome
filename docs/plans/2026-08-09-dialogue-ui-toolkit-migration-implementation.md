@@ -4,7 +4,7 @@
 
 **Goal:** TestMap의 일반 오버월드 대화 UI를 기존 기능과 입력 계약을 유지한 채 UI Toolkit 단일 런타임 구현으로 직접 교체한다.
 
-**Architecture:** `DialogueManager`는 대화 흐름·분기·상태 복원과 기존 명령 호출만 유지한다. 프로젝트 자체 `DialogueUI` 구현은 uGUI/TMP 의존성을 제거하고 `UIDocument`/UXML/USS/Febucci UITK `AnimatedLabel`을 직접 소유한다. 기존 uGUI 프리팹은 `Legacy UI Baseline`으로 별도 보존하며 TestMap 런타임에는 연결하지 않는다.
+**Architecture:** `DialogueManager`는 대화 흐름·분기·상태 복원과 기존 명령 호출만 유지한다. 프로젝트 자체 `DialogueUI` 구현은 uGUI/TMP 의존성을 제거하고 `UIDocument`/UXML/USS/Febucci UITK `AnimatedLabel`을 직접 소유한다. 기존 uGUI 프리팹은 `Legacy UI Baseline`으로 별도 보존하며 TestMap 런타임에는 연결하지 않는다. `RebindCanvasCameraImmediate()`는 기존 호출 계약을 보존하는 UITK 초기화/검증 메서드로 유지한다.
 
 **Tech Stack:** Unity 6.3.8f1, UI Toolkit runtime, UXML, USS, Febucci Text Animator 3.11.1 UITK integration, Silver.ttf, Input System, NUnit EditMode tests, TestMap PlayMode/manual QA.
 
@@ -135,7 +135,7 @@ Expected before the UITK implementation: the tests either fail to compile agains
 
 **Step 2: Replace uGUI fields with UITK-owned fields**
 
-Remove the runtime implementation’s direct dependence on `Canvas`, `CanvasGroup`, `Image`, `TextMeshProUGUI`, `RectTransform`, and TMP `TypewriterComponent`. Keep the public command methods and observable properties used by `DialogueManager`.
+Remove the runtime implementation’s direct dependence on `Canvas`, `CanvasGroup`, `Image`, `TextMeshProUGUI`, `RectTransform`, and TMP `TypewriterComponent`. Keep the public command methods and observable properties used by `DialogueManager`, including `RebindCanvasCameraImmediate()` as a compatibility-preserving UITK initialization/validation method.
 
 Use `UIDocument.rootVisualElement` and cached `VisualElement`/`Label`/`TextElement` references. Query elements once during initialization and validate missing names with a clear error.
 
@@ -180,7 +180,7 @@ Keep `DialogueCanvas.prefab` unchanged. Its existing Canvas, TMP references, and
 
 **Step 2: Create the UITK prefab**
 
-Create one prefab with a `UIDocument` and the new `DialogueUI` component. Assign the UXML, runtime panel settings/text settings, and any required sorting/order configuration. Keep the root as a single dialogue screen owner.
+Create one prefab with a `UIDocument` and the new `DialogueUI` component. Assign the UXML, runtime panel settings/text settings, and any required sorting/order configuration. Keep the root as a single dialogue screen owner. The same `DialogueUI` component must be assigned to both `DialogueManager._overworldPanel` and `_cinematicPanel` so the existing manager contract remains valid without creating two presentation instances. Cinematic behavior remains out of the first slice but must not fail due to a null reference.
 
 **Step 3: Rewire only the active manager reference**
 
