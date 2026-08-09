@@ -74,18 +74,6 @@ _Avoid_: forcing all actions into a tiny shared abstraction when author discover
 Globally callable systems for dialogue, cinematic, UI, camera, audio, and VFX. These may be invoked by any Primary Mode, Game Module, or Action Sequence.
 _Avoid_: making dialogue or cinematic systems subordinate to a combat module.
 
-**Dialogue Presentation**:
-The replaceable runtime presentation implementation owned by the dialogue Presentation Service. It displays speaker information, body text, typing state, continuation affordances, choices, and related keyboard input feedback. During the UI Toolkit migration, the UI Toolkit implementation is the only active runtime implementation on the TestMap verification path.
-_Avoid_: treating Dialogue Presentation as the owner of dialogue branching/state, or treating the preserved uGUI implementation as a runtime fallback.
-
-**Dialogue Presentation Contract**:
-The small command-level API used by dialogue flow to control its active visual/input presentation. This is not a runtime bridge or fallback adapter: the migration directly replaces the current uGUI `DialogueUI` implementation with a UI Toolkit implementation that owns the complete dialogue screen, including panels, text, choices, focus, keyboard input, and typewriter integration. `DialogueManager` owns dialogue node progression, choice branching, state capture/restore, and lifecycle decisions, while the presentation implementation owns rendering details.
-_Avoid_: creating one bridge per visual element or per panel, or allowing `DialogueManager` to manipulate TMP, VisualElement, panel layout, or typewriter implementation details directly.
-
-**Legacy UI Baseline**:
-The original uGUI implementation preserved during migration for visual/behavioral comparison, regression reference, and temporary recovery while UI Toolkit parity is being verified. It is not a second active implementation for the same dialogue session and is scheduled for removal after the accepted UI Toolkit parity gate.
-_Avoid_: wiring both implementations to process one interaction, or treating the legacy baseline as a permanent parallel UI.
-
 **Battle Session State**:
 The battle-scoped truth that persists while Game Modules switch, including party/enemy survival, resources, status, current Game Module, phase progress, already-fired battle beats, and battle-scoped flags. The first concrete runtime class is `BattleSessionState`, currently focused on scenario identity, Primary Mode, opening/current module continuity, read-only participant snapshots bridged from the current `CharacterBase` runtime objects, and `Battle Session Flag` values. Runtime actions and Game Modules should read it through `IBattleSessionStateReader` from `ActionExecutionContext` rather than reaching back into `BattleManager`.
 _Avoid_: storing battle-wide facts inside a single combat module.
