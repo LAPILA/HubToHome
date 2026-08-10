@@ -372,9 +372,10 @@ public class BattleSpeechBubble : MonoBehaviour
         float textMaxWidth = Mathf.Max(1f, maxWidth - extraSize.x);
 
         Vector2 preferred = _speechText.GetPreferredValues(text, textMaxWidth, Mathf.Infinity);
-        Vector2 size = new Vector2(
-            Mathf.Clamp(preferred.x + extraSize.x, _minSize.x, maxWidth),
-            Mathf.Max(preferred.y + extraSize.y, _minSize.y));
+        Vector2 size = BattleSpeechBubbleLayout.ClampBoxSize(
+            preferred + extraSize,
+            _minSize,
+            _maxSize);
         BattleSpeechBubbleLayoutResult layout = GetLayout(direction, size);
 
         if (_layoutElement != null)
