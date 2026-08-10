@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
 public enum CharacterDisplayNameMode
@@ -39,14 +38,15 @@ public class CharacterData : SerializedScriptableObject
     public CharacterDisplayNameMode DisplayNameMode = CharacterDisplayNameMode.StaticData;
 
     [BoxGroup("Base Stats")]
-    [HorizontalGroup("Base Stats/R1", LabelWidth = 60)] public int BaseMaxHP = 100;
-    [FormerlySerializedAs("BaseMaxMP")]
-    [HorizontalGroup("Base Stats/R1", LabelWidth = 60)] public int BaseMaxAP = 50;
-
-    [BoxGroup("Base Stats")]
-    [HorizontalGroup("Base Stats/R2", LabelWidth = 60)] public int BaseATK = 10;
-    [HorizontalGroup("Base Stats/R2", LabelWidth = 60)] public int BaseDEF = 5;
-    [HorizontalGroup("Base Stats/R2", LabelWidth = 60)] public int BaseSPD = 10;
+    [InfoBox("새 캐릭터의 모든 기본 전투 수치는 이 StatBlock에 입력합니다.")]
+    public StatBlock BaseStats = new StatBlock
+    {
+        MaxHP = 100,
+        MaxAP = 50,
+        ATK = 10,
+        DEF = 5,
+        SPD = 10,
+    };
 
 
     [BoxGroup("Progression"), Required]
@@ -61,7 +61,6 @@ public class CharacterData : SerializedScriptableObject
     [HideInInspector] public int BaseExperienceToLevel = 100;
     [HideInInspector] public float ExperienceGrowth = 1.18f;
     [HideInInspector] public int MaxHpPerLevel = 5;
-    [HideInInspector] public int MaxMpPerLevel = 2;
     [HideInInspector] public int AttackPerLevel = 1;
     [HideInInspector] public int DefensePerLevel = 1;
     [HideInInspector] public int SpeedPerLevel = 0;
@@ -73,13 +72,6 @@ public class CharacterData : SerializedScriptableObject
     [BoxGroup("Battle Loadout")]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<CharacterPowerUnlock> PowerUnlocks = new List<CharacterPowerUnlock>();
-
-    [System.Obsolete("Use BaseMaxAP. This property only preserves source compatibility.")]
-    public int BaseMaxMP
-    {
-        get => BaseMaxAP;
-        set => BaseMaxAP = value;
-    }
 
     public string ResolveDisplayName(string runtimePlayerName = null)
     {

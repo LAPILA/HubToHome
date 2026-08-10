@@ -95,32 +95,21 @@ public class PlayerCharacter : CharacterBase
         return false;
     }
 
-    // ── 🚨 장비 스탯 적용 (Flat 고정값) ──
-    protected override int GetFlatStatBonus(StatType type)
+    protected override void PopulateEquipmentStatModifiers(List<StatModifier> modifiers)
     {
-        return type switch
-        {
-            StatType.ATK   => GetEquipSum(e => e?.BonusATK ?? 0),
-            StatType.DEF   => GetEquipSum(e => e?.BonusDEF ?? 0),
-            StatType.SPD   => GetEquipSum(e => e?.BonusSPD ?? 0),
-            StatType.MaxHP => GetEquipSum(e => e?.BonusMaxHP ?? 0),
-            StatType.MaxAP => GetEquipSum(e => e?.BonusMaxAP ?? 0),
-            _ => 0
-        };
+        AppendEquipmentModifier(modifiers, WeaponSlot);
+        AppendEquipmentModifier(modifiers, Accessory1Slot);
+        AppendEquipmentModifier(modifiers, Accessory2Slot);
+        AppendEquipmentModifier(modifiers, HeadSlot);
+        AppendEquipmentModifier(modifiers, BodySlot);
+        AppendEquipmentModifier(modifiers, ShoesSlot);
     }
 
-    // ── 🚨 장비 스탯 적용 (Percent 비율 증가값 - 훗날 대비) ──
-    // 추후 EquipmentData에 BonusPercentATK 같은 값이 생기면 여기에 연결하시면 됩니다.
-    protected override float GetPercentStatBonus(StatType type)
+    private static void AppendEquipmentModifier(
+        List<StatModifier> modifiers,
+        EquipmentData equipment)
     {
-        return 0f; 
-    }
-
-    // Null 조건부 연산자(?.) 덕분에 장비 슬롯이 비어있어도 안전하게 0을 반환합니다.
-    private int GetEquipSum(System.Func<EquipmentData, int> selector)
-    {
-        return selector(WeaponSlot) + selector(Accessory1Slot) + selector(Accessory2Slot) +
-               selector(HeadSlot) + selector(BodySlot) + selector(ShoesSlot);
+        equipment?.AppendStatModifiers(modifiers);
     }
 
     public void SetCharacterData(CharacterData data)
@@ -137,11 +126,10 @@ public class PlayerCharacter : CharacterBase
 
         if (_characterData == null) return;
 
-        BaseMaxHP = _characterData.BaseMaxHP;
-        BaseMaxAP = _characterData.BaseMaxAP;
-        BaseATK = _characterData.BaseATK;
-        BaseDEF = _characterData.BaseDEF;
-        BaseSPD = _characterData.BaseSPD;
+        // CharacterData가 유일한 기본 스탯 원천이며, 이후 레이어는 CharacterStats가 계산한다.
+        SetBaseStats(_characterData.BaseStats);
+        SetCurrentHPValue(MaxHP);
+        SetCurrentAPValue(MaxAP);
 
         if (_characterData.DefaultSkills != null && _characterData.DefaultSkills.Count > 0)
             Skills = new List<SkillData>(_characterData.DefaultSkills);
@@ -191,20 +179,15 @@ public class PlayerCharacter : CharacterBase
             _characterData,
             Level);
 
-        BaseMaxHP = Mathf.Max(1, saveData.MaxHP);
-        CurrentHP = Mathf.Clamp(saveData.HP, 0, MaxHP);
-        BaseMaxAP = Mathf.Max(0, saveData.MaxAP);
-        CurrentAP = Mathf.Clamp(saveData.AP, 0, MaxAP);
+        SetProgressedBaseStats(CreateProgressedBaseStats(saveData));
+        SetCurrentHPValue(Mathf.Clamp(saveData.HP, 0, MaxHP));
+        SetCurrentAPValue(Mathf.Clamp(saveData.AP, 0, MaxAP));
 
         if (CurrentHP <= 0) 
         {
-            CurrentHP = 1;
+            SetCurrentHPValue(1);
             saveData.HP = 1;
         }
-
-        BaseATK     = saveData.ATK; 
-        BaseDEF     = saveData.DEF;
-        BaseSPD     = saveData.SPD;
     }
 
     public bool SynchronizePersistentVitals(CharacterSaveData saveData)
@@ -228,8 +211,7 @@ public class PlayerCharacter : CharacterBase
 
         _mySaveDataRef = saveData;
         CharacterGrowthService.EnsureInitialized(saveData, _characterData);
-        BaseMaxHP = Mathf.Max(1, saveData.MaxHP);
-        BaseMaxAP = Mathf.Max(0, saveData.MaxAP);
+        SetProgressedBaseStats(CreateProgressedBaseStats(saveData));
         SetCurrentHPValue(Mathf.Clamp(saveData.HP, 0, MaxHP));
         SetCurrentAPValue(Mathf.Clamp(saveData.AP, 0, MaxAP));
         return true;
@@ -256,13 +238,9 @@ public class PlayerCharacter : CharacterBase
         SaveEquipmentToGlobal(_mySaveDataRef);
 
         CharacterGrowthService.EnsureInitialized(_mySaveDataRef, _characterData);
-        BaseMaxHP = _mySaveDataRef.MaxHP;
-        BaseMaxAP = _mySaveDataRef.MaxAP;
-        BaseATK = _mySaveDataRef.ATK;
-        BaseDEF = _mySaveDataRef.DEF;
-        BaseSPD = _mySaveDataRef.SPD;
-        CurrentHP = Mathf.Clamp(_mySaveDataRef.HP, 0, MaxHP);
-        CurrentAP = Mathf.Clamp(_mySaveDataRef.AP, 0, MaxAP);
+        SetProgressedBaseStats(CreateProgressedBaseStats(_mySaveDataRef));
+        SetCurrentHPValue(Mathf.Clamp(_mySaveDataRef.HP, 0, MaxHP));
+        SetCurrentAPValue(Mathf.Clamp(_mySaveDataRef.AP, 0, MaxAP));
         _mySaveDataRef.HP = CurrentHP;
         _mySaveDataRef.AP = CurrentAP;
 
@@ -280,6 +258,19 @@ public class PlayerCharacter : CharacterBase
             if (skill != null && !string.IsNullOrWhiteSpace(skill.SkillID))
                 _mySaveDataRef.EquippedSkillIDs.Add(skill.SkillID);
         }
+    }
+
+    private StatBlock CreateProgressedBaseStats(CharacterSaveData saveData)
+    {
+        StatBlock stats = Stats.BaseStats.Clone();
+        CharacterBaseStatSnapshot calculated =
+            CharacterGrowthService.CalculateBaseStats(saveData, _characterData);
+        stats.MaxHP = calculated.MaxHP;
+        stats.MaxAP = calculated.MaxAP;
+        stats.ATK = calculated.Attack;
+        stats.DEF = calculated.Defense;
+        stats.SPD = calculated.Speed;
+        return stats;
     }
 
     private void ApplyEquipmentFromSave(CharacterSaveData saveData)

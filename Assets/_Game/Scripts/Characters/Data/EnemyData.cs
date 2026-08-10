@@ -38,13 +38,16 @@ public class EnemyData : SerializedScriptableObject
     [Tooltip("공격 후 원래 자리로 돌아갈 때 사용할 애니메이션 Trigger 이름입니다. 기본값은 BattleMove 입니다.")]
     public string ReturnMoveTrigger = "BattleMove";
 
-    [BoxGroup("Base Stats")] 
-    [HorizontalGroup("Base Stats/R1", LabelWidth = 40)] public int MaxHP = 100;
-    [HorizontalGroup("Base Stats/R1", LabelWidth = 40)] public int ATK = 8;
-    
-    [BoxGroup("Base Stats")] 
-    [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int DEF = 3;
-    [HorizontalGroup("Base Stats/R2", LabelWidth = 40)] public int SPD = 8;
+    [BoxGroup("Base Stats")]
+    [InfoBox("새 적의 모든 기본 전투 수치는 이 StatBlock에 입력합니다.")]
+    public StatBlock BaseStats = new StatBlock
+    {
+        MaxHP = 100,
+        MaxAP = 100,
+        ATK = 8,
+        DEF = 3,
+        SPD = 8,
+    };
 
     [BoxGroup("Overworld Encounter"), MinValue(1)]
     public int ThreatLevel = 1;
@@ -83,12 +86,6 @@ public class EnemyData : SerializedScriptableObject
     [BoxGroup("Resistances (상태이상 내성)")]
     [InfoBox("1.0은 기본 확률, 0.0이면 완전 면역, 2.0이면 2배로 잘 걸림")]
     [DictionaryDrawerSettings(KeyLabel = "상태이상", ValueLabel = "걸릴 확률 배율")]
-    public Dictionary<string, float> StatusResistances = new Dictionary<string, float>()
-    {
-        { "Burn", 1.0f }, { "Freeze", 1.0f }, { "Poison", 1.0f }, 
-        { "Bleed", 1.0f }, { "Stun", 1.0f }, { "Bind", 1.0f }
-    };
-
     [BoxGroup("Rewards")]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<EnemyDropEntry> Drops = new List<EnemyDropEntry>();
@@ -101,4 +98,5 @@ public class EnemyData : SerializedScriptableObject
     [BoxGroup("Rewards")]
     [HorizontalGroup("Rewards/R1", LabelWidth = 60)] public int EXPReward  = 20;
     [HorizontalGroup("Rewards/R1", LabelWidth = 60)] public int GoldReward = 10;
+
 }

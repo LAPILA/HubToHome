@@ -158,11 +158,14 @@ public sealed class GlobalDataRuntimeStateTests
         CharacterData data = ScriptableObject.CreateInstance<CharacterData>();
         data.CharacterID = characterDataId;
         data.DisplayName = "Hero";
-        data.BaseMaxHP = 80;
-        data.BaseMaxAP = 25;
-        data.BaseATK = 9;
-        data.BaseDEF = 4;
-        data.BaseSPD = 7;
+        data.BaseStats = new StatBlock
+        {
+            MaxHP = 80,
+            MaxAP = 25,
+            ATK = 9,
+            DEF = 4,
+            SPD = 7,
+        };
         _createdObjects.Add(data);
 
         var playerObject = new GameObject("Player");

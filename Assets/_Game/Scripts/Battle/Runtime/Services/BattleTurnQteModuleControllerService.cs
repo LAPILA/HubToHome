@@ -572,7 +572,11 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield return new WaitForSeconds(_host.PlayerAttackHitDelay);
 
             int previousHp = target.CurrentHP;
-            int dmg = target.TakeDamage(actor.ATK);
+            DamageResult damageResult = target.TakeDamage(
+                actor.ATK,
+                DamageElement.Physical,
+                actor);
+            int dmg = damageResult.FinalDamage;
             CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
             _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
             _host.EmitDamageNotificationOnly(actor, target, dmg, false);

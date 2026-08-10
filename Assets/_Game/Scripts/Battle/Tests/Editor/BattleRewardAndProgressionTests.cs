@@ -112,11 +112,14 @@ public class BattleRewardAndProgressionTests
             data.BaseExperienceToLevel = 10;
             data.ExperienceGrowth = 1f;
             data.MaxLevel = 10;
-            data.BaseMaxHP = 50;
-            data.BaseMaxAP = 10;
-            data.BaseATK = 4;
-            data.BaseDEF = 1;
-            data.BaseSPD = 2;
+            data.BaseStats = new StatBlock
+            {
+                MaxHP = 50,
+                MaxAP = 10,
+                ATK = 4,
+                DEF = 1,
+                SPD = 2,
+            };
 
             var save = new CharacterSaveData
             {
@@ -168,9 +171,17 @@ public class BattleRewardAndProgressionTests
             SPD = 2
         };
 
-        CharacterProgressionService.GrantExperience(save, null, 100);
+        CharacterData data = ScriptableObject.CreateInstance<CharacterData>();
+        try
+        {
+            CharacterProgressionService.GrantExperience(save, data, 100);
 
-        Assert.That(save.EXP, Is.GreaterThanOrEqualTo(0));
-        Assert.That(save.Level, Is.GreaterThanOrEqualTo(1));
+            Assert.That(save.EXP, Is.GreaterThanOrEqualTo(0));
+            Assert.That(save.Level, Is.GreaterThanOrEqualTo(1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+        }
     }
 }
