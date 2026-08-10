@@ -67,8 +67,9 @@ public class ConfigPanelUI : UIPanel
     private bool _skipOneFrame;
     private readonly Dictionary<TextMeshProUGUI, bool> _lastSelectedState = new Dictionary<TextMeshProUGUI, bool>();
     private readonly Dictionary<TextMeshProUGUI, float> _baseFontSize = new Dictionary<TextMeshProUGUI, float>();
-    private RectTransform _runtimeAutoContent;
     private Coroutine _textPreviewRoutine;
+    private string _lastScrollContractError;
+    private string _lastRowContractError;
     private bool _ownsModalState;
     private float _timeScaleBeforeOpen = 1f;
     private GameState _stateBeforeOpen = GameState.Exploration;
@@ -77,8 +78,11 @@ public class ConfigPanelUI : UIPanel
 
     protected override void Awake()
     {
+        UIRuntimeGuard.NormalizeCanvas(gameObject, GameConfigPolicy.ReferenceResolution);
         base.Awake();
         GameInput.SetConfigModalActive(false);
+        if (_gameplayPreviewText != null)
+            _gameplayPreviewText.maxVisibleLines = 2;
     }
 
     public override void Show()
@@ -91,7 +95,6 @@ public class ConfigPanelUI : UIPanel
         _skipOneFrame = true;
 
         RebuildRows();
-        EnsureScrollBinding();
         Refresh();
     }
 
@@ -298,100 +301,151 @@ public class ConfigPanelUI : UIPanel
     private void RebuildRows()
     {
         ClearRows();
-        EnsureScrollBinding();
-        Transform spawnRoot = GetResolvedSpawnRoot();
-        if (spawnRoot == null || _rowPrefab == null)
-        {
-            Debug.LogWarning("[ConfigPanelUI] detailRoot/rowPrefab missing", this);
+        if (!ValidateScrollContract())
             return;
-        }
 
         List<RowType> defs = GetRowsForCategory(_selectedCategory);
         for (int i = 0; i < defs.Count; i++)
         {
-            GameObject go = Instantiate(_rowPrefab, spawnRoot);
+            GameObject go = Instantiate(_rowPrefab, _detailRoot);
             go.name = "Row_" + defs[i];
-            TextMeshProUGUI[] tmps = go.GetComponentsInChildren<TextMeshProUGUI>(true);
-            if (tmps.Length == 0)
+            if (!TryGetRowBindings(go, out TextMeshProUGUI nameText, out TextMeshProUGUI valueText, out string missing))
             {
-                Debug.LogWarning("[ConfigPanelUI] rowPrefab needs at least one TMP child", this);
-                Destroy(go);
-                continue;
+                LogRowContractErrorOnce(missing);
+                go.SetActive(false);
+                DestroyRowObject(go);
+                ClearRows();
+                return;
             }
+
+            _lastRowContractError = null;
 
             SpawnedRow row = new SpawnedRow();
             row.type = defs[i];
             row.go = go;
-            row.name = tmps[0];
-            row.value = tmps.Length > 1 ? tmps[1] : null;
+            row.name = nameText;
+            row.value = valueText;
             _rows.Add(row);
         }
 
         if (_rowIndex >= _rows.Count) _rowIndex = Mathf.Max(0, _rows.Count - 1);
-        EnsureScrollBinding();
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_detailRoot);
+        ResetScrollToTop();
     }
 
-    private Transform GetResolvedSpawnRoot()
+    private bool ValidateScrollContract()
     {
-        if (_scrollRect == null) return _detailRoot;
-        EnsureScrollBinding();
-        return _scrollRect.content != null ? _scrollRect.content : _detailRoot as RectTransform;
-    }
-
-    private void EnsureScrollBinding()
-    {
-        if (_scrollRect == null || _detailRoot == null) return;
-
+        string missing = null;
         RectTransform content = _detailRoot as RectTransform;
-        if (content == null) return;
+        RectTransform viewport = _scrollRect != null ? _scrollRect.viewport : null;
 
-        // ScrollRect만 붙이고 세팅 안 한 경우를 위해 자동 Content 컨테이너 생성
-        if ((_scrollRect.content == null || _scrollRect.content == _scrollRect.transform as RectTransform) && _runtimeAutoContent == null)
+        if (_rowPrefab == null) missing = "rowPrefab";
+        else if (_detailRoot == null) missing = "detailRoot/content";
+        else if (content == null) missing = "detailRoot RectTransform";
+        else if (_scrollRect == null) missing = "scrollRect";
+        else if (viewport == null) missing = "viewport";
+        else if (_scrollRect.content == null) missing = "scrollRect.content";
+        else if (_scrollRect.content != content) missing = "content binding";
+        else if (content == viewport || !content.IsChildOf(viewport)) missing = "content/viewport hierarchy";
+        else if (viewport.GetComponent<RectMask2D>() == null) missing = "viewport RectMask2D";
+
+        if (missing == null)
         {
-            var go = new GameObject("__AutoScrollContent", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-            _runtimeAutoContent = go.GetComponent<RectTransform>();
-            _runtimeAutoContent.SetParent(content, false);
-            _runtimeAutoContent.anchorMin = new Vector2(0f, 1f);
-            _runtimeAutoContent.anchorMax = new Vector2(1f, 1f);
-            _runtimeAutoContent.pivot = new Vector2(0.5f, 1f);
-            _runtimeAutoContent.offsetMin = new Vector2(0f, 0f);
-            _runtimeAutoContent.offsetMax = new Vector2(0f, 0f);
-
-            var vlg = _runtimeAutoContent.GetComponent<VerticalLayoutGroup>();
-            vlg.childControlWidth = true;
-            vlg.childControlHeight = true;
-            vlg.childForceExpandWidth = true;
-            vlg.childForceExpandHeight = false;
-
-            var fitter = _runtimeAutoContent.GetComponent<ContentSizeFitter>();
-            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _lastScrollContractError = null;
+            return true;
         }
 
-        if (_runtimeAutoContent != null)
-            content = _runtimeAutoContent;
-
-        if (_scrollRect.content != content)
-            _scrollRect.content = content;
-
-        // 잘못된 연결 자동 보정: viewport/content가 같은 오브젝트면 스크롤 계산이 깨짐
-        if (_scrollRect.viewport == null || _scrollRect.viewport == content)
+        if (_lastScrollContractError != missing)
         {
-            RectTransform parentRect = content.parent as RectTransform;
-            if (parentRect != null && parentRect != content)
-                _scrollRect.viewport = parentRect;
+            _lastScrollContractError = missing;
+            Debug.LogError("[ConfigPanelUI] config_panel_scroll_contract_invalid: " + missing, this);
         }
+        return false;
+    }
+
+    private void LogRowContractErrorOnce(string missing)
+    {
+        if (_lastRowContractError == missing)
+            return;
+
+        _lastRowContractError = missing;
+        Debug.LogError("[ConfigPanelUI] config_panel_row_contract_invalid: " + missing, this);
+    }
+
+    private static bool TryGetRowBindings(
+        GameObject rowObject,
+        out TextMeshProUGUI nameText,
+        out TextMeshProUGUI valueText,
+        out string missing)
+    {
+        nameText = null;
+        valueText = null;
+        missing = null;
+
+        if (rowObject == null)
+        {
+            missing = "row instance";
+            return false;
+        }
+
+        if (rowObject.GetComponent<HorizontalLayoutGroup>() == null)
+        {
+            missing = "HorizontalLayoutGroup";
+            return false;
+        }
+
+        if (rowObject.GetComponent<LayoutElement>() == null)
+        {
+            missing = "LayoutElement";
+            return false;
+        }
+
+        TextMeshProUGUI[] texts = rowObject.GetComponentsInChildren<TextMeshProUGUI>(true);
+        if (texts.Length != 2)
+        {
+            missing = "TMP children count=" + texts.Length + " (expected 2)";
+            return false;
+        }
+
+        nameText = texts[0];
+        valueText = texts[1];
+        return true;
+    }
+
+    private void ResetScrollToTop()
+    {
+        RectTransform content = _scrollRect != null ? _scrollRect.content : null;
+        if (content != null)
+            content.anchoredPosition = new Vector2(content.anchoredPosition.x, 0f);
+
+        if (_scrollRect == null) return;
+        _scrollRect.StopMovement();
+        _scrollRect.verticalNormalizedPosition = 1f;
     }
 
     private void ClearRows()
     {
         for (int i = 0; i < _rows.Count; i++)
         {
-            if (_rows[i] != null && _rows[i].go != null) Destroy(_rows[i].go);
+            if (_rows[i] == null || _rows[i].go == null) continue;
+            _rows[i].go.SetActive(false);
+            DestroyRowObject(_rows[i].go);
         }
         _rows.Clear();
         _lastSelectedState.Clear();
         _baseFontSize.Clear();
+    }
+
+    private static void DestroyRowObject(GameObject rowObject)
+    {
+        if (rowObject == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(rowObject);
+        else
+            DestroyImmediate(rowObject);
     }
 
     private void Refresh()
@@ -576,23 +630,28 @@ public class ConfigPanelUI : UIPanel
         float viewportH = viewport.rect.height;
         if (contentH <= viewportH + 0.01f) return;
 
-        // row 중심점을 content 상단 기준 y로 변환
         Vector3 worldCenter = row.TransformPoint(row.rect.center);
         Vector3 localInContent = content.InverseTransformPoint(worldCenter);
-        float centerFromTop = -localInContent.y + (contentH * 0.5f);
+        _scrollRect.verticalNormalizedPosition = CalculateVerticalNormalizedPosition(
+            content.rect.yMax,
+            localInContent.y,
+            contentH,
+            viewportH);
+    }
 
-        float targetTop = centerFromTop - (viewportH * 0.5f);
-        float maxTop = Mathf.Max(0f, contentH - viewportH);
-        targetTop = Mathf.Clamp(targetTop, 0f, maxTop);
-
+    private static float CalculateVerticalNormalizedPosition(
+        float contentYMax,
+        float rowCenterY,
+        float contentHeight,
+        float viewportHeight)
+    {
+        float maxTop = Mathf.Max(0f, contentHeight - viewportHeight);
         if (maxTop <= 0.001f)
-        {
-            _scrollRect.verticalNormalizedPosition = 1f;
-            return;
-        }
+            return 1f;
 
-        float normalized = 1f - (targetTop / maxTop);
-        _scrollRect.verticalNormalizedPosition = Mathf.Clamp01(normalized);
+        float centerFromTop = contentYMax - rowCenterY;
+        float targetTop = Mathf.Clamp(centerFromTop - (viewportHeight * 0.5f), 0f, maxTop);
+        return Mathf.Clamp01(1f - (targetTop / maxTop));
     }
 
     private void SetRowText(SpawnedRow r)
