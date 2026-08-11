@@ -266,7 +266,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
             case RowType.WindowScale: Config.SetWindowScale(Config.WindowScale + dir); break;
             case RowType.VSync: Config.SetVSync(!Config.UseVSync); break;
-            case RowType.TargetFps: Config.SetTargetFps(Config.TargetFps + dir * 30); break;
+            case RowType.TargetFps: Config.AdjustTargetFps(dir); break;
         }
         AudioManager.Instance?.PlayUISFX(_moveSfx);
         Refresh();

@@ -83,3 +83,18 @@
 - 구간: 오버월드 적 밀집 Room 5분, 3+3 전투와 잔상/VFX 반복 5분
 - 기록: CPU Main Thread/Render Thread, GPU frame time, GC Alloc/frame, Batches/SetPass, 메모리, 평균 FPS와 1% low
 - 열 센서 값은 기기 API가 제공할 때만 기록하고, 없으면 시작/종료 표면 온도와 thermal throttling 발생 시점을 별도 기록한다.
+
+## 2026-08-11 구현 반영
+
+이번 구현에서는 위 권장 순서 중 사용자 지정에 따라 1, 2, 4와 안전한 반복 폴링 축소만 반영했다.
+
+- 모바일 목표 FPS: 30/60으로 제한, PC 30~240 유지
+- CharacterGhostTrail: 비사용 Update 제거, 캐릭터 소유 수명, 최대 16개 재사용
+- ObjectPoolManager: 프리팹 참조 키, 기본 예열 3, 종류별 최대 보관 20, 중복 반환·종료 정리
+- CharacterVFX: AudioSource 검색·원본 설정 1회 캐시, 볼륨 누적 곱 제거
+- InteractionSystem: 이동·회전 즉시 검사, 정지 중 0.1초 검사
+- VFXAutoDespawn: 비스케일 시간 기준 0.05초 검사
+- UIResolutionRefreshService: 연속 전체 TMP 갱신 요청 병합
+- DialogueUI: 타이핑 중 Typewriter 속도 매 프레임 재적용 제거
+
+오버월드 적 Animator와 Mobile URP는 사용자가 제외해 변경하지 않았다. 이 문서의 실제 Android 기기 A/B 측정은 여전히 필요하다.

@@ -1,10 +1,14 @@
 using UnityEngine;
 using Sirenix.OdinInspector;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Sirenix.Serialization;
 
 public class CharacterVFX : SerializedMonoBehaviour
 {
+    private static readonly ConditionalWeakTable<GameObject, AudioNormalizationState>
+        AudioNormalizationByInstance = new ConditionalWeakTable<GameObject, AudioNormalizationState>();
+
     [Header("Runtime Audio Normalization")]
     [SerializeField, Min(0.01f)] private float _embeddedSfxVolumeMultiplier = 0.675f;
     [SerializeField] private bool _forceEmbeddedSfxTo2D = true;
@@ -74,21 +78,60 @@ public class CharacterVFX : SerializedMonoBehaviour
     {
         if (vfx == null) return;
 
-        AudioSource[] audioSources = vfx.GetComponentsInChildren<AudioSource>(true);
-        if (audioSources == null || audioSources.Length == 0) return;
+        AudioNormalizationState state = AudioNormalizationByInstance.GetValue(
+            vfx,
+            CreateAudioNormalizationState);
+        state.Apply(volumeMultiplier, forceTo2D);
+    }
 
-        for (int i = 0; i < audioSources.Length; i++)
+    private static AudioNormalizationState CreateAudioNormalizationState(GameObject vfx)
+    {
+        return new AudioNormalizationState(vfx);
+    }
+
+    private sealed class AudioNormalizationState
+    {
+        private readonly AudioSource[] _sources;
+        private readonly float[] _originalVolumes;
+        private readonly float[] _originalSpatialBlends;
+        private readonly float[] _originalSpreads;
+        private readonly float[] _originalDopplerLevels;
+
+        public AudioNormalizationState(GameObject vfx)
         {
-            AudioSource source = audioSources[i];
-            if (source == null) continue;
+            _sources = vfx.GetComponentsInChildren<AudioSource>(true);
+            int count = _sources != null ? _sources.Length : 0;
+            _originalVolumes = new float[count];
+            _originalSpatialBlends = new float[count];
+            _originalSpreads = new float[count];
+            _originalDopplerLevels = new float[count];
 
-            source.volume *= volumeMultiplier;
-
-            if (forceTo2D)
+            for (int i = 0; i < count; i++)
             {
-                source.spatialBlend = 0f;
-                source.spread = 0f;
-                source.dopplerLevel = 0f;
+                AudioSource source = _sources[i];
+                if (source == null)
+                    continue;
+
+                _originalVolumes[i] = source.volume;
+                _originalSpatialBlends[i] = source.spatialBlend;
+                _originalSpreads[i] = source.spread;
+                _originalDopplerLevels[i] = source.dopplerLevel;
+            }
+        }
+
+        public void Apply(float volumeMultiplier, bool forceTo2D)
+        {
+            float normalizedMultiplier = Mathf.Max(0f, volumeMultiplier);
+            for (int i = 0; i < _sources.Length; i++)
+            {
+                AudioSource source = _sources[i];
+                if (source == null)
+                    continue;
+
+                source.volume = _originalVolumes[i] * normalizedMultiplier;
+                source.spatialBlend = forceTo2D ? 0f : _originalSpatialBlends[i];
+                source.spread = forceTo2D ? 0f : _originalSpreads[i];
+                source.dopplerLevel = forceTo2D ? 0f : _originalDopplerLevels[i];
             }
         }
     }

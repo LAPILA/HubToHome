@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// [최적화됨] 매 프레임 플레이어 전면을 탐색하여 상호작용 대상을 캐싱합니다.
+/// 플레이어 이동/방향 전환 시 즉시, 정지 중에는 낮은 주기로 전면을 탐색하여 상호작용 대상을 캐싱합니다.
 /// 메모리 할당(GC)이 없는 NonAlloc 물리 캐스트를 사용합니다.
 /// </summary>
 public class InteractionSystem : MonoBehaviour
@@ -12,10 +12,15 @@ public class InteractionSystem : MonoBehaviour
     [SerializeField] private Vector2 _boxSize      = new Vector2(0.8f, 0.8f);
     [SerializeField] private float   _boxDistance  = 0.6f;
     [SerializeField] private LayerMask _interactLayer;
+    [SerializeField, Min(0.02f)] private float _stationaryPollInterval = 0.1f;
 
     private IInteractable _currentTarget; 
     private readonly Collider2D[] _hitResults = new Collider2D[1]; 
     private PlayerController _player;
+    private Vector2 _lastPlayerPosition;
+    private int _lastFacingDirection;
+    private float _nextStationaryPollTime;
+    private bool _hasDetectionSample;
     
     private ContactFilter2D _contactFilter;
 
@@ -42,21 +47,36 @@ public class InteractionSystem : MonoBehaviour
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) 
         {
             ClearTarget();
+            _hasDetectionSample = false;
             return;
         }
 
-        DetectInteractable();
-    }
-
-    private void DetectInteractable()
-    {
         PlayerController player = CachePlayerIfNeeded();
         if (player == null)
         {
             ClearTarget();
+            _hasDetectionSample = false;
             return;
         }
 
+        Vector2 position = player.transform.position;
+        int facingDirection = player.FacingDirection;
+        bool movedOrTurned = !_hasDetectionSample
+            || (position - _lastPlayerPosition).sqrMagnitude > 0.000001f
+            || facingDirection != _lastFacingDirection;
+
+        if (!movedOrTurned && Time.unscaledTime < _nextStationaryPollTime)
+            return;
+
+        _hasDetectionSample = true;
+        _lastPlayerPosition = position;
+        _lastFacingDirection = facingDirection;
+        _nextStationaryPollTime = Time.unscaledTime + _stationaryPollInterval;
+        DetectInteractable(player);
+    }
+
+    private void DetectInteractable(PlayerController player)
+    {
         Vector2 dir = _directionVectors[player.FacingDirection];
         Vector2 origin = (Vector2)player.transform.position + dir * _boxDistance;
 

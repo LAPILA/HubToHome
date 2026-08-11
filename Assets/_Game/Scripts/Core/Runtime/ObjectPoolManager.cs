@@ -5,8 +5,24 @@ public class ObjectPoolManager : MonoBehaviour
 {
     public static ObjectPoolManager Instance { get; private set; }
 
-    private readonly Dictionary<string, Queue<GameObject>> _pools = new Dictionary<string, Queue<GameObject>>();
-    private readonly Dictionary<string, GameObject> _prefabRegistry = new Dictionary<string, GameObject>();
+    [SerializeField, Min(0)] private int _maxRetainedPerPool = 20;
+
+    private readonly Dictionary<GameObject, PoolState> _pools = new Dictionary<GameObject, PoolState>();
+    private readonly Dictionary<GameObject, PoolState> _instanceOwners = new Dictionary<GameObject, PoolState>();
+
+    private sealed class PoolState
+    {
+        public PoolState(GameObject prefab, int capacity)
+        {
+            Prefab = prefab;
+            Available = new Queue<GameObject>(capacity);
+            InPool = new HashSet<GameObject>();
+        }
+
+        public GameObject Prefab { get; }
+        public Queue<GameObject> Available { get; }
+        public HashSet<GameObject> InPool { get; }
+    }
 
     private void Awake()
     {
@@ -15,41 +31,98 @@ public class ObjectPoolManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    public void RegisterPool(GameObject prefab, int initialSize = 10)
+    private void OnDestroy()
     {
-        string key = prefab.name;
-        if (_pools.ContainsKey(key)) return;
+        if (Instance != this)
+            return;
 
-        _prefabRegistry[key] = prefab;
-        var queue = new Queue<GameObject>(initialSize);
+        Instance = null;
+        var instances = new List<GameObject>(_instanceOwners.Keys);
+        _instanceOwners.Clear();
+        _pools.Clear();
 
-        for (int i = 0; i < initialSize; i++)
+        for (int i = 0; i < instances.Count; i++)
         {
-            queue.Enqueue(CreateNew(prefab));
+            GameObject instance = instances[i];
+            if (instance == null)
+                continue;
+
+            Transform instanceTransform = instance.transform;
+            if (instanceTransform != null && instanceTransform.IsChildOf(transform))
+                continue;
+
+            DestroyManagedObject(instance);
         }
-        _pools[key] = queue;
+    }
+
+    public void RegisterPool(GameObject prefab, int initialSize = 3)
+    {
+        if (prefab == null)
+        {
+            Debug.LogError("[ObjectPoolManager] null prefab은 등록할 수 없습니다.", this);
+            return;
+        }
+
+        if (_pools.ContainsKey(prefab))
+            return;
+
+        int retainedLimit = Mathf.Max(0, _maxRetainedPerPool);
+        int prewarmCount = Mathf.Clamp(initialSize, 0, retainedLimit);
+        var state = new PoolState(prefab, prewarmCount);
+        _pools.Add(prefab, state);
+
+        for (int i = 0; i < prewarmCount; i++)
+        {
+            GameObject instance = CreateNew(state);
+            state.InPool.Add(instance);
+            state.Available.Enqueue(instance);
+        }
     }
 
     public GameObject Spawn(GameObject prefab, Vector3 position, Quaternion rotation)
     {
-        string key = prefab.name;
-        if (!_pools.ContainsKey(key)) RegisterPool(prefab);
+        if (prefab == null)
+        {
+            Debug.LogError("[ObjectPoolManager] null prefab은 Spawn할 수 없습니다.", this);
+            return null;
+        }
+
+        if (!_pools.TryGetValue(prefab, out PoolState state))
+        {
+            RegisterPool(prefab);
+            if (!_pools.TryGetValue(prefab, out state))
+                return null;
+        }
 
         GameObject obj = null;
-
-        // 방어 로직: 파괴되지 않은 온전한 객체 찾기
-        while (_pools[key].Count > 0)
+        while (state.Available.Count > 0)
         {
-            obj = _pools[key].Dequeue();
-            if (obj != null) break;
+            GameObject candidate = state.Available.Dequeue();
+            if (object.ReferenceEquals(candidate, null))
+                continue;
+
+            state.InPool.Remove(candidate);
+            if (candidate == null)
+            {
+                _instanceOwners.Remove(candidate);
+                continue;
+            }
+
+            if (!_instanceOwners.TryGetValue(candidate, out PoolState owner) || owner != state)
+            {
+                _instanceOwners.Remove(candidate);
+                DestroyManagedObject(candidate);
+                continue;
+            }
+
+            obj = candidate;
+            break;
         }
 
-        // 큐가 비었거나 전부 파괴되었다면 재생성
         if (obj == null)
-        {
-            obj = CreateNew(_prefabRegistry[key]);
-        }
+            obj = CreateNew(state);
 
+        obj.transform.SetParent(transform, false);
         obj.transform.SetPositionAndRotation(position, rotation);
         obj.SetActive(true);
         return obj;
@@ -57,20 +130,51 @@ public class ObjectPoolManager : MonoBehaviour
 
     public void Despawn(GameObject obj)
     {
-        string key = obj.name;
+        if (obj == null)
+            return;
+
+        if (!_instanceOwners.TryGetValue(obj, out PoolState state))
+        {
+            Debug.LogWarning($"[ObjectPoolManager] 이 Manager가 생성하지 않은 객체를 폐기합니다: {obj.name}", obj);
+            DestroyManagedObject(obj);
+            return;
+        }
+
+        if (state.InPool.Contains(obj))
+            return;
+
         obj.SetActive(false);
 
-        if (!_pools.ContainsKey(key))
-            _pools[key] = new Queue<GameObject>();
+        int retainedLimit = Mathf.Max(0, _maxRetainedPerPool);
+        if (state.Available.Count >= retainedLimit)
+        {
+            _instanceOwners.Remove(obj);
+            DestroyManagedObject(obj);
+            return;
+        }
 
-        _pools[key].Enqueue(obj);
+        obj.transform.SetParent(transform, false);
+        state.InPool.Add(obj);
+        state.Available.Enqueue(obj);
     }
 
-    private GameObject CreateNew(GameObject prefab)
+    private GameObject CreateNew(PoolState state)
     {
-        var obj = Instantiate(prefab, transform);
-        obj.name = prefab.name; 
+        GameObject obj = Instantiate(state.Prefab, transform);
+        obj.name = state.Prefab.name;
         obj.SetActive(false);
+        _instanceOwners.Add(obj, state);
         return obj;
+    }
+
+    private static void DestroyManagedObject(GameObject obj)
+    {
+        if (obj == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(obj);
+        else
+            DestroyImmediate(obj);
     }
 }

@@ -10,6 +10,8 @@ public static class GameConfigPolicy
     public const int MaxWindowScale = 2;
     public const int MinTargetFps = 30;
     public const int MaxTargetFps = 240;
+    public const int HandheldMinTargetFps = MinTargetFps;
+    public const int HandheldMaxTargetFps = 60;
 
     public static float NormalizeFinite(
         float value,
@@ -41,6 +43,32 @@ public static class GameConfigPolicy
     public static int NormalizeTargetFps(int value)
     {
         return Mathf.Clamp(value, MinTargetFps, MaxTargetFps);
+    }
+
+    public static int NormalizeTargetFps(int value, bool isHandheld)
+    {
+        if (!isHandheld)
+            return NormalizeTargetFps(value);
+
+        int midpoint = (HandheldMinTargetFps + HandheldMaxTargetFps) / 2;
+        return value < midpoint ? HandheldMinTargetFps : HandheldMaxTargetFps;
+    }
+
+    public static int StepTargetFps(int current, int direction, bool isHandheld)
+    {
+        int normalized = NormalizeTargetFps(current, isHandheld);
+        if (direction == 0)
+            return normalized;
+
+        int step = direction < 0 ? -30 : 30;
+        return NormalizeTargetFps(normalized + step, isHandheld);
+    }
+
+    public static bool IsHandheldPlatform(RuntimePlatform platform, DeviceType deviceType)
+    {
+        return platform == RuntimePlatform.Android
+            || platform == RuntimePlatform.IPhonePlayer
+            || deviceType == DeviceType.Handheld;
     }
 
     public static LanguageType NormalizeLanguage(int value, LanguageType fallback)

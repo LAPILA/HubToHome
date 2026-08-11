@@ -54,9 +54,51 @@ public sealed class GameConfigPolicyTests
     [TestCase(-1, 30)]
     [TestCase(60, 60)]
     [TestCase(999, 240)]
-    public void NormalizeTargetFpsClampsSupportedRange(int input, int expected)
+    public void NormalizeTargetFpsClampsPcSupportedRange(int input, int expected)
     {
         Assert.That(GameConfigPolicy.NormalizeTargetFps(input), Is.EqualTo(expected));
+    }
+
+    [TestCase(-1, 30)]
+    [TestCase(30, 30)]
+    [TestCase(44, 30)]
+    [TestCase(45, 60)]
+    [TestCase(60, 60)]
+    [TestCase(999, 60)]
+    public void NormalizeTargetFpsRestrictsHandheldToThirtyOrSixty(int input, int expected)
+    {
+        Assert.That(GameConfigPolicy.NormalizeTargetFps(input, true), Is.EqualTo(expected));
+    }
+
+    [TestCase(30, -1, true, 30)]
+    [TestCase(30, 1, true, 60)]
+    [TestCase(60, -1, true, 30)]
+    [TestCase(60, 1, true, 60)]
+    [TestCase(60, 1, false, 90)]
+    [TestCase(240, 1, false, 240)]
+    public void StepTargetFpsUsesThePlatformPolicy(
+        int current,
+        int direction,
+        bool isHandheld,
+        int expected)
+    {
+        Assert.That(
+            GameConfigPolicy.StepTargetFps(current, direction, isHandheld),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(RuntimePlatform.Android, DeviceType.Desktop, true)]
+    [TestCase(RuntimePlatform.IPhonePlayer, DeviceType.Desktop, true)]
+    [TestCase(RuntimePlatform.WindowsPlayer, DeviceType.Handheld, true)]
+    [TestCase(RuntimePlatform.WindowsPlayer, DeviceType.Desktop, false)]
+    public void IsHandheldPlatformRecognizesMobilePlayersAndHandheldDevices(
+        RuntimePlatform platform,
+        DeviceType deviceType,
+        bool expected)
+    {
+        Assert.That(
+            GameConfigPolicy.IsHandheldPlatform(platform, deviceType),
+            Is.EqualTo(expected));
     }
 
     [TestCase(0f, 0f)]
