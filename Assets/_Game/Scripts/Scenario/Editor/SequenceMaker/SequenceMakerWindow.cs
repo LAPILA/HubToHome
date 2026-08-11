@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 
 public sealed class SequenceMakerWindow : EditorWindow
 {
-    public const string MenuPath = "HubToHome/시나리오/시퀀스 메이커";
+    public const string MenuPath = "Hub To Home/시나리오/시퀀스 메이커";
     public const string UxmlPath =
         "Assets/_Game/Scripts/Scenario/Editor/SequenceMaker/SequenceMakerWindow.uxml";
     public const string UssPath =

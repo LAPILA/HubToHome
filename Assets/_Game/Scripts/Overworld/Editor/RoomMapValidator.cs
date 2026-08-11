@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 public static class RoomMapValidator
 {
-    [MenuItem("HubToHome/오버월드/맵 검사/현재 열린 룸 맵 검사")]
+    [MenuItem("Hub To Home/오버월드/맵 검사/현재 열린 룸 맵 검사")]
     public static void ValidateOpenRoomMap()
     {
         RoomMapValidationInput input = RoomMapValidationScopeCapture.CaptureCurrent();

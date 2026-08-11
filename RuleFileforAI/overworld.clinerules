@@ -27,8 +27,8 @@
 - 큰 지역 이동은 `MapTransitionType.Scene`, 같은 지역 안의 방/실내/통로 이동은 `MapTransitionType.Room`을 우선한다.
 - 맵 월드 Scene, RoomDefinition, Room Prefab은 `Assets/_Game/Scenes/Overworld/MapWorlds` 아래에 둔다.
 - 런타임 코드와 에디터 생성기는 `Assets/_Game/Features/Overworld`에 두고, 기획자가 편집할 월드 산출물과 분리한다.
-- 룸 연결 검사는 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사` 메뉴를 사용한다.
-- 기획자 마커 탐색은 `HubToHome > 오버월드 > Area 마커 > 마커 작업창`을 사용한다. Prefab Mode에서는 현재 Prefab만, 그 외에는 로드된 Scene 범위만 검사한다.
+- 룸 연결 검사는 `Hub To Home > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사` 메뉴를 사용한다.
+- 기획자 마커 탐색은 `Hub To Home > 오버월드 > Area 마커 > 마커 작업창`을 사용한다. Prefab Mode에서는 현재 Prefab만, 그 외에는 로드된 Scene 범위만 검사한다.
 - Room/Area Marker 검증 규칙은 `RoomMapValidationScanner`가 소유한다. 콘솔 메뉴나 새 Editor UI에서 ID·Bounds·SpawnPoint·이동 참조 규칙을 중복 구현하지 않는다.
 - 짧은 오버월드 전환 연출은 새 Scene을 만들지 말고 같은 Scene의 오프스테이지 `Cinematic Stage`와 전용 Cinemachine Camera를 우선 사용한다.
 - 기본 게임플레이 대상(Player, 동료, 적)은 시네마틱 때문에 기본적으로 숨기거나 비활성화하지 않는다. 카메라 프레이밍으로 분리하고, 같은 공간에서만 별도 Presentation visibility 계약을 추가한다.

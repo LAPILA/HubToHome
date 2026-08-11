@@ -29,9 +29,9 @@ Regions/지역이름/
 2. `Scenes`에 `Region_지역이름.unity`를 만듭니다.
 3. `Prefabs/Rooms`에 한 화면 단위의 Room Prefab과 대응하는 RoomDefinition을 둡니다.
 4. 문과 통로에는 `AreaConnectionMarker`를 배치하고 도착 Room과 SpawnPoint를 연결합니다.
-5. Unity 메뉴 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 누락을 확인합니다.
+5. Unity 메뉴 `Hub To Home > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 누락을 확인합니다.
 
-빠르게 시작하려면 `HubToHome > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`을 사용합니다. 생성 결과는 `Regions/MapFieldStarter`에 만들어집니다.
+빠르게 시작하려면 `Hub To Home > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`을 사용합니다. 생성 결과는 `Regions/MapFieldStarter`에 만들어집니다.
 
 ## 공용 마커 배치
 
@@ -48,7 +48,7 @@ Regions/지역이름/
 
 ### 마커 작업창
 
-`HubToHome > 오버월드 > Area 마커 > 마커 작업창`에서 현재 편집 중인 마커를 한꺼번에 확인합니다.
+`Hub To Home > 오버월드 > Area 마커 > 마커 작업창`에서 현재 편집 중인 마커를 한꺼번에 확인합니다.
 
 1. Region Scene 또는 Room Prefab을 엽니다. Prefab Mode가 열려 있으면 해당 Prefab만 검사합니다.
 2. Room, 마커 타입, `문제 있음` 필터 또는 검색어로 대상을 좁힙니다.

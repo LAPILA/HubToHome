@@ -8,7 +8,7 @@
 2. Play Mode에 진입합니다.
 3. 중앙 허브에서 `WASD/방향키`로 이동하고, `Z`로 상호작용, `F`로 필드 공격, `C`로 메뉴를 확인합니다.
 
-맵을 다시 만들려면 Unity 메뉴의 `HubToHome > 오버월드 > 맵 생성 > TestMap QA 쇼케이스 재생성`을 사용합니다. 재생성은 `__TEST_MAP_QA__` 루트만 교체하고 기존 Player/Camera는 유지합니다.
+맵을 다시 만들려면 Unity 메뉴의 `Hub To Home > 오버월드 > 맵 생성 > TestMap QA 쇼케이스 재생성`을 사용합니다. 재생성은 `__TEST_MAP_QA__` 루트만 교체하고 기존 Player/Camera는 유지합니다.
 
 ## 마커 구분
 
