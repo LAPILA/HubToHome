@@ -20,6 +20,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     #region [ Events ]
     public event Action<BattleState>                OnStateChanged;
     public event Action<List<PlayerCharacter>, List<EnemyCharacter>> OnBattleStarted;
+    public event Action<List<PlayerCharacter>>      OnPlayerPartyChanged;
     public event Action<List<CharacterBase>>        OnTurnQueueUpdated;  
     public event Action<PlayerCharacter>            OnPlayerTurnStarted;  
     public event Action<EnemyCharacter, EnemyAttackType> OnEnemyActionStarted;
@@ -119,6 +120,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private readonly List<CharacterBase> _turnQueue = new List<CharacterBase>();
     private readonly List<PlayerCharacter> _seamlessSpawnedPlayers = new List<PlayerCharacter>();
+    private readonly List<PlayerCharacter> _reserveParty = new List<PlayerCharacter>();
+    private readonly List<PlayerCharacter> _battlePartyRoster = new List<PlayerCharacter>();
+    private const int ActivePartyLimit = 3;
+    private const int BattleRosterLimit = 6;
     private int _currentActorIndex = 0;
 
     // 캐싱된 대기 시간 (가비지 최적화)
@@ -132,6 +137,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private bool _isRunInProgress;
     private bool _isBattleEnding;
     private bool _isBattleActive;
+    private bool _isPartyWaveTransitioning;
+    private Coroutine _partyWaveTransitionCoroutine;
+    private int _partyWaveTransitionVersion;
     private bool _rewardCommitted;
     private bool _playerPreemptiveAttackAvailable;
     private BattleRewardResult _lastRewardResult;
@@ -522,9 +530,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _battleParticipantIdRegistry?.Rebuild(_playerParty, _enemies);
 
         var participants = new List<BattleParticipantSnapshot>();
-        for (int i = 0; i < _playerParty.Count; i++)
+        List<PlayerCharacter> sessionPlayers = _battlePartyRoster.Count > 0
+            ? _battlePartyRoster
+            : _playerParty;
+        for (int i = 0; i < sessionPlayers.Count; i++)
         {
-            BattleParticipantSnapshot snapshot = BattleParticipantSnapshot.FromPlayer(_playerParty[i]);
+            BattleParticipantSnapshot snapshot = BattleParticipantSnapshot.FromPlayer(sessionPlayers[i]);
             if (snapshot != null)
             {
                 participants.Add(snapshot);
@@ -631,6 +642,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void OnDestroy()
     {
+        CancelPartyWaveTransition();
         _turnQteModuleController?.CancelActiveCameraPresentation();
         BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
         if (Instance == this)
@@ -862,19 +874,20 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         yield return StartCoroutine(WarmupBattlePresentation());
 
-        _playerParty.Clear();
+        ResetBattlePartyCollections();
         PlayerCharacter playerChar = playerCtrl.GetComponent<PlayerCharacter>();
+        CharacterSaveData scenePlayerSaveData = null;
         
         if (playerChar != null)
         {
             GlobalDataManager global = GlobalDataManager.Instance;
-            CharacterSaveData saveData = global != null
+            scenePlayerSaveData = global != null
                 ? global.InitializePartyFromScene(playerChar)
                 : null;
-            if (saveData != null)
-                playerChar.LoadDataFromGlobal(saveData);
-            
-            _playerParty.Add(playerChar);
+            if (scenePlayerSaveData != null)
+                playerChar.LoadDataFromGlobal(scenePlayerSaveData);
+
+            RegisterPreparedPartyMember(playerChar, PositionManager.Instance, false);
         }
 
         // 2. 적군 셋업
@@ -885,24 +898,40 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         GlobalDataManager globalData = GlobalDataManager.Instance;
         if (globalData != null)
         {
-            for (int i = 1; i < globalData.Party.Count; i++)
+            if (globalData.Party.Count > BattleRosterLimit)
+            {
+                Debug.LogWarning(
+                    $"[BattleManager] 전투 파티는 앞 {BattleRosterLimit}명만 사용합니다. 저장 파티원 수={globalData.Party.Count}",
+                    this);
+            }
+
+            int sourceCount = Mathf.Min(globalData.Party.Count, BattleRosterLimit);
+            for (int i = 0; i < sourceCount && _battlePartyRoster.Count < BattleRosterLimit; i++)
             {
                 CharacterSaveData saveData = globalData.Party[i];
-                GameObject playerPrefab = ResolvePlayerBattlePrefab(saveData);
-                if (playerPrefab == null) continue;
+                bool representsScenePlayer = scenePlayerSaveData != null
+                    ? ReferenceEquals(saveData, scenePlayerSaveData)
+                    : i == 0;
+                if (representsScenePlayer)
+                    continue;
 
-                GameObject playerObject = Instantiate(playerPrefab, pm.GetPlayerDefaultPos(i), Quaternion.identity);
+                GameObject playerPrefab = ResolvePlayerBattlePrefab(saveData);
+                if (playerPrefab == null)
+                {
+                    Debug.LogError($"[BattleManager] Battle prefab is missing for party index {i}.", this);
+                    continue;
+                }
+
+                GameObject playerObject = Instantiate(playerPrefab, Vector3.zero, Quaternion.identity);
                 if (!playerObject.TryGetComponent(out PlayerCharacter additionalPlayer))
                 {
+                    Debug.LogError($"[BattleManager] Player prefab '{playerPrefab.name}' has no PlayerCharacter.", playerObject);
                     Destroy(playerObject);
                     continue;
                 }
 
                 additionalPlayer.LoadDataFromGlobal(saveData);
-                PlayerController controller = additionalPlayer.GetComponent<PlayerController>();
-                if (controller != null)
-                    controller.SetBattleMode(true);
-                _playerParty.Add(additionalPlayer);
+                RegisterPreparedPartyMember(additionalPlayer, pm, true);
                 _seamlessSpawnedPlayers.Add(additionalPlayer);
             }
         }
@@ -1058,9 +1087,17 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             }
         }
 
-        _playerParty.Clear();
+        ResetBattlePartyCollections();
         int partyCount = global != null && global.Party.Count > 0 ? global.Party.Count : 1;
-        for (int i = 0; i < partyCount; i++)
+        if (partyCount > BattleRosterLimit)
+        {
+            Debug.LogWarning(
+                $"[BattleManager] 전투 파티는 앞 {BattleRosterLimit}명만 사용합니다. 저장 파티원 수={partyCount}",
+                this);
+        }
+
+        int sourceCount = Mathf.Min(partyCount, BattleRosterLimit);
+        for (int i = 0; i < sourceCount && _battlePartyRoster.Count < BattleRosterLimit; i++)
         {
             CharacterSaveData saveData = global != null && global.Party.Count > i ? global.Party[i] : null;
             GameObject playerPrefab = ResolvePlayerBattlePrefab(saveData);
@@ -1078,13 +1115,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                 continue;
             }
 
-            _playerParty.Add(playerCharacter);
             if (saveData != null)
                 playerCharacter.LoadDataFromGlobal(saveData);
 
-            PlayerController controller = playerCharacter.GetComponent<PlayerController>();
-            if (controller != null)
-                controller.SetBattleMode(true);
+            RegisterPreparedPartyMember(playerCharacter, pm, true);
         }
 
         yield return null; 
@@ -1172,6 +1206,63 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             yield return StartCoroutine(WaitForNarrationToFinish());
         }
         yield return StartCoroutine(StartOpeningBattleGameModule());
+    }
+
+    private void ResetBattlePartyCollections()
+    {
+        CancelPartyWaveTransition();
+        _playerParty.Clear();
+        _reserveParty.Clear();
+        _battlePartyRoster.Clear();
+    }
+
+    private bool RegisterPreparedPartyMember(
+        PlayerCharacter player,
+        PositionManager positionManager,
+        bool activateImmediately)
+    {
+        if (player == null || _battlePartyRoster.Count >= BattleRosterLimit)
+            return false;
+
+        _battlePartyRoster.Add(player);
+        if (_playerParty.Count < ActivePartyLimit)
+        {
+            int slotIndex = _playerParty.Count;
+            _playerParty.Add(player);
+            if (activateImmediately)
+                ActivatePartyMemberAtSlot(player, slotIndex, positionManager);
+            return true;
+        }
+
+        _reserveParty.Add(player);
+        player.gameObject.SetActive(false);
+        return true;
+    }
+
+    private static void ActivatePartyMemberAtSlot(
+        PlayerCharacter player,
+        int slotIndex,
+        PositionManager positionManager)
+    {
+        if (player == null)
+            return;
+
+        player.gameObject.SetActive(true);
+        Vector3 targetPosition = positionManager != null
+            ? positionManager.GetPlayerDefaultPos(slotIndex)
+            : new Vector3(-6f + (slotIndex * 2f), -1f, 0f);
+        player.transform.position = targetPosition;
+
+        Rigidbody2D body = player.GetComponent<Rigidbody2D>();
+        if (body != null)
+            body.position = targetPosition;
+
+        PlayerController controller = player.GetComponent<PlayerController>();
+        if (controller != null)
+        {
+            controller.SetFacingDirection(3);
+            controller.SetBattleMode(true);
+        }
     }
 
     private GameObject ResolvePlayerBattlePrefab(CharacterSaveData saveData)
@@ -1452,6 +1543,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     void IBattleTurnQteHost.ChangeBattleState(BattleState state) => ChangeState(state);
     bool IBattleTurnQteHost.CheckVictory() => CheckVictory();
     bool IBattleTurnQteHost.CheckDefeat() => CheckDefeat();
+    bool IBattleTurnQteHost.TryStartNextPartyWave() => TryStartNextPartyWave();
     bool IBattleTurnQteHost.ConsumePlayerPreemptiveAttack()
     {
         bool available = _playerPreemptiveAttackAvailable;
@@ -1577,7 +1669,115 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     #region [ Outro & Scene Transitions ]
     private bool CheckVictory() => _enemies != null && _enemies.Count > 0 && _enemies.TrueForAll(e => e == null || !e.IsAlive);
-    private bool CheckDefeat()  => _playerParty.TrueForAll(p => !p.IsAlive);
+    private bool CheckDefeat()  => _playerParty.TrueForAll(p => p == null || !p.IsAlive);
+
+    private bool TryStartNextPartyWave()
+    {
+        if (_isPartyWaveTransitioning || _isBattleEnding)
+            return false;
+
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player != null && player.IsAlive)
+                return false;
+        }
+
+        int transitionVersion = ++_partyWaveTransitionVersion;
+        _isPartyWaveTransitioning = true;
+        if (!TryPromoteReservePartyWave())
+        {
+            _isPartyWaveTransitioning = false;
+            return false;
+        }
+
+        _partyWaveTransitionCoroutine = StartCoroutine(
+            CompletePartyWaveTransition(transitionVersion));
+        return true;
+    }
+
+    private bool TryPromoteReservePartyWave()
+    {
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player != null && player.IsAlive)
+                return false;
+        }
+
+        int availableReserveCount = 0;
+        for (int i = 0; i < _reserveParty.Count; i++)
+        {
+            PlayerCharacter reserve = _reserveParty[i];
+            if (reserve != null && reserve.IsAlive)
+                availableReserveCount++;
+        }
+
+        if (availableReserveCount == 0)
+            return false;
+
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player != null)
+                player.gameObject.SetActive(false);
+        }
+
+        _playerParty.Clear();
+        PositionManager positionManager = PositionManager.Instance;
+        for (int i = 0; i < _reserveParty.Count && _playerParty.Count < ActivePartyLimit; i++)
+        {
+            PlayerCharacter reserve = _reserveParty[i];
+            if (reserve == null || !reserve.IsAlive)
+                continue;
+
+            int slotIndex = _playerParty.Count;
+            _playerParty.Add(reserve);
+            ActivatePartyMemberAtSlot(reserve, slotIndex, positionManager);
+        }
+
+        _reserveParty.Clear();
+        _turnQueue.Clear();
+        _currentActorIndex = 0;
+        RefreshBattleSessionParticipants();
+        OnPlayerPartyChanged?.Invoke(_playerParty);
+        return _playerParty.Count > 0;
+    }
+
+    private IEnumerator CompletePartyWaveTransition(int transitionVersion)
+    {
+        RequestNarration(new BattleNarrationMessage(
+            "후열이 전투에 합류했다!",
+            BattleNarrationStyle.System,
+            BattleNarrationPriority.Critical,
+            0.6f,
+            true));
+        yield return StartCoroutine(WaitForNarrationToFinish());
+
+        if (transitionVersion != _partyWaveTransitionVersion
+            || !_isPartyWaveTransitioning
+            || _isBattleEnding)
+        {
+            yield break;
+        }
+
+        _partyWaveTransitionCoroutine = null;
+        _isPartyWaveTransitioning = false;
+        if (IsTurnQteCombatInputActive())
+            ChangeState(BattleState.TurnCalc);
+    }
+
+    private void CancelPartyWaveTransition()
+    {
+        _partyWaveTransitionVersion++;
+        if (_partyWaveTransitionCoroutine != null)
+        {
+            StopCoroutine(_partyWaveTransitionCoroutine);
+            _partyWaveTransitionCoroutine = null;
+        }
+
+        _isPartyWaveTransitioning = false;
+    }
 
     private IEnumerator RunRoutine()
     {
@@ -1607,6 +1807,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator BattleEndRoutine()
     {
+        CancelPartyWaveTransition();
         bool victory = CheckVictory();
         BattleEncounterOutcome outcome = victory
             ? BattleEncounterOutcome.Victory
@@ -1639,6 +1840,44 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         if (CheckVictory())
             ChangeState(BattleState.BattleEnd);
+    }
+
+    public bool EditorCheatDefeatActivePartyWave(out string error)
+    {
+        if (_isBattleEnding || CurrentState != BattleState.PlayerActionSelect)
+        {
+            error = "Defeat Active Wave is only available during player action selection.";
+            return false;
+        }
+
+        if (_turnQteModuleController == null)
+        {
+            error = "Turn QTE controller is not ready.";
+            return false;
+        }
+
+        for (int i = 0; i < _playerParty.Count; i++)
+        {
+            PlayerCharacter player = _playerParty[i];
+            if (player == null || !player.IsAlive)
+                continue;
+
+            player.IsInvincible = false;
+            int previousHp = player.CurrentHP;
+            player.TakePureDamage(Mathf.Max(1, player.MaxHP));
+            int dealt = Mathf.Max(0, previousHp - player.CurrentHP);
+            OnDamageDealt?.Invoke(player, dealt, false);
+        }
+
+        if (!CheckDefeat())
+        {
+            error = "At least one active party member is still alive.";
+            return false;
+        }
+
+        _turnQteModuleController.CompleteAction();
+        error = string.Empty;
+        return true;
     }
     #endif
 
@@ -1673,6 +1912,69 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
     }
 
+    private static CharacterSaveData FindUniquePartySave(
+        IReadOnlyList<CharacterSaveData> party,
+        string characterId)
+    {
+        if (party == null || string.IsNullOrWhiteSpace(characterId))
+            return null;
+
+        string normalizedId = characterId.Trim();
+        CharacterSaveData match = null;
+        for (int i = 0; i < party.Count; i++)
+        {
+            CharacterSaveData candidate = party[i];
+            if (candidate == null
+                || !string.Equals(
+                    normalizedId,
+                    candidate.CharacterDataID?.Trim(),
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (match != null)
+                return null;
+
+            match = candidate;
+        }
+
+        return match;
+    }
+
+    private void ReloadBattlePartyFromGlobal(GlobalDataManager global)
+    {
+        if (global == null)
+            return;
+
+        List<PlayerCharacter> runtimePlayers = _battlePartyRoster.Count > 0
+            ? _battlePartyRoster
+            : _playerParty;
+        var reportedIds = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < runtimePlayers.Count; i++)
+        {
+            PlayerCharacter player = runtimePlayers[i];
+            if (player == null)
+                continue;
+
+            string characterId = player.CharacterID?.Trim();
+            CharacterSaveData saveData = FindUniquePartySave(global.Party, characterId);
+            if (saveData != null)
+            {
+                player.LoadDataFromGlobal(saveData);
+                continue;
+            }
+
+            string diagnosticId = string.IsNullOrEmpty(characterId) ? "<empty>" : characterId;
+            if (reportedIds.Add(diagnosticId))
+            {
+                Debug.LogError(
+                    $"[BattleManager] 보상 적용 뒤 파티원을 고유 ID로 다시 불러올 수 없습니다. CharacterDataID={diagnosticId}",
+                    player);
+            }
+        }
+    }
+
     private BattleRewardResult CommitVictoryRewards()
     {
         if (_rewardCommitted)
@@ -1691,14 +1993,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _lastRewardResult = BattleRewardService.Grant(defeatedEnemies, global);
 
         if (global != null)
-        {
-            int count = Mathf.Min(_playerParty.Count, global.Party.Count);
-            for (int i = 0; i < count; i++)
-            {
-                if (_playerParty[i] != null)
-                    _playerParty[i].LoadDataFromGlobal(global.Party[i]);
-            }
-        }
+            ReloadBattlePartyFromGlobal(global);
 
         OnBattleRewardsGranted?.Invoke(_lastRewardResult);
         return _lastRewardResult;
@@ -1706,6 +2001,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator BattleOutroRoutine(BattleEncounterOutcome outcome)
     {
+        CancelPartyWaveTransition();
         bool isVictory = outcome == BattleEncounterOutcome.Victory;
         Time.timeScale = 1.0f; // 슬로우 모션 방지
         AudioManager.Instance?.StopBGM(isVictory ? 0.35f : 0.15f);
@@ -1714,9 +2010,13 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             BattleUIController.Instance?.ClearNarrationLog();
         yield return new WaitForSecondsRealtime(0.25f);
 
-        foreach (var player in _playerParty)
+        List<PlayerCharacter> playersToSave = _battlePartyRoster.Count > 0
+            ? _battlePartyRoster
+            : _playerParty;
+        foreach (var player in playersToSave)
         {
-            if (player != null && player.IsAlive) player.SaveDataToGlobal();
+            if (player != null)
+                player.SaveDataToGlobal();
         }
 
         if (outcome == BattleEncounterOutcome.PartyDefeated)
@@ -1793,6 +2093,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (_isDedicatedBattleScene)
             return;
 
+        CancelPartyWaveTransition();
         bool isVictory = outcome == BattleEncounterOutcome.Victory;
         _turnQteModuleController?.CancelActiveCameraPresentation();
         ClearTurnQtePendingActionState();
@@ -1844,6 +2145,14 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     {
         if (_activeEncounterPlayer != null)
             return _activeEncounterPlayer;
+
+        for (int i = 0; i < _battlePartyRoster.Count; i++)
+        {
+            PlayerCharacter player = _battlePartyRoster[i];
+            if (player != null && !_seamlessSpawnedPlayers.Contains(player))
+                return player.GetComponent<PlayerController>();
+        }
+
         if (_playerParty.Count > 0 && _playerParty[0] != null)
             return _playerParty[0].GetComponent<PlayerController>();
         return null;
@@ -1851,9 +2160,18 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private void RestoreSeamlessPlayers(PlayerController encounterPlayer)
     {
-        for (int i = 0; i < _playerParty.Count; i++)
+        PlayerCharacter encounterCharacter = encounterPlayer != null
+            ? encounterPlayer.GetComponent<PlayerCharacter>()
+            : null;
+        if (encounterCharacter != null && !encounterCharacter.gameObject.activeSelf)
+            encounterCharacter.gameObject.SetActive(true);
+
+        List<PlayerCharacter> playersToRestore = _battlePartyRoster.Count > 0
+            ? _battlePartyRoster
+            : _playerParty;
+        for (int i = 0; i < playersToRestore.Count; i++)
         {
-            PlayerCharacter player = _playerParty[i];
+            PlayerCharacter player = playersToRestore[i];
             if (player == null)
                 continue;
 
@@ -1929,10 +2247,13 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         }
         _seamlessSpawnedPlayers.Clear();
         _playerParty.Clear();
+        _reserveParty.Clear();
+        _battlePartyRoster.Clear();
     }
 
     private void ResetSeamlessBattleState()
     {
+        CancelPartyWaveTransition();
         BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
         _battleParticipantIdRegistry = null;
         _battleScenarioRuntime = null;
@@ -1945,6 +2266,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _aimShooterModuleController = null;
         _scenarioDefeatPublished.Clear();
         _turnQueue.Clear();
+        _playerParty.Clear();
+        _reserveParty.Clear();
+        _battlePartyRoster.Clear();
         _reservedEnemyActionByActor.Clear();
         _pendingBattleScenarioData = null;
         _currentActorIndex = 0;

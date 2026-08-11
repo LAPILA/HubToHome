@@ -530,7 +530,15 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             return;
         }
 
-        if (_host.CheckVictory() || _host.CheckDefeat())
+        if (_host.CheckVictory())
+        {
+            _host.ChangeBattleState(BattleState.BattleEnd);
+        }
+        else if (_host.TryStartNextPartyWave())
+        {
+            return;
+        }
+        else if (_host.CheckDefeat())
         {
             _host.ChangeBattleState(BattleState.BattleEnd);
         }

@@ -45,6 +45,7 @@ public sealed class CheatManager : MonoBehaviour
     private bool _visible;
     private bool _godMode;
     private SpeechBubbleCheatDirectionMode _speechBubbleDirectionMode = SpeechBubbleCheatDirectionMode.Top;
+    private string _battleStatus = string.Empty;
     private string _dataStatus = string.Empty;
 
     private GUIStyle _windowStyle;
@@ -194,8 +195,17 @@ public sealed class CheatManager : MonoBehaviour
         {
             if (GUILayout.Button("Instant Victory", _buttonStyle, GUILayout.Height(54f)))
                 battle.EditorCheatWinBattle();
+            if (GUILayout.Button("Defeat Active Wave", _buttonStyle, GUILayout.Height(54f)))
+            {
+                _battleStatus = battle.EditorCheatDefeatActivePartyWave(out string error)
+                    ? "Active wave defeated through the normal action-complete boundary."
+                    : error;
+            }
             GUILayout.Space(10f);
         }
+
+        if (!string.IsNullOrEmpty(_battleStatus))
+            DrawHelp(_battleStatus);
 
         if (IsBattleCheatContext(battle))
         {
@@ -278,6 +288,15 @@ public sealed class CheatManager : MonoBehaviour
 
         DrawHelp($"Player Name: {global.PlayerName}");
         DrawHelp($"Party Count: {global.Party.Count}");
+
+        DrawSection("3+3 Party Wave Test");
+        DrawHelp("Prepare six runtime party entries before battle. Distinct catalog characters are preferred; missing slots clone the leader for wave-flow testing only.");
+        if (GUILayout.Button("Prepare 6-Member Wave Party", _buttonStyle, GUILayout.Height(48f)))
+            PrepareSixMemberWaveParty(global);
+
+        if (!string.IsNullOrEmpty(_dataStatus))
+            DrawHelp(_dataStatus);
+
         if (global.Party.Count == 0 || global.Party[0] == null)
             return;
 
@@ -311,8 +330,113 @@ public sealed class CheatManager : MonoBehaviour
         if (GUILayout.Button("Grant Sample Items", _buttonStyle, GUILayout.Height(45f)))
             GrantSampleItems(global);
 
-        if (!string.IsNullOrEmpty(_dataStatus))
-            DrawHelp(_dataStatus);
+    }
+
+    private void PrepareSixMemberWaveParty(GlobalDataManager global)
+    {
+        if (global == null)
+        {
+            _dataStatus = "Party setup failed: GlobalDataManager is missing.";
+            return;
+        }
+
+        BattleManager battle = BattleManager.Instance;
+        if (battle != null && IsBattleActive(battle))
+        {
+            _dataStatus = "Party setup is only available before battle starts.";
+            return;
+        }
+
+        if (global.Party.Count == 0 || global.Party[0] == null)
+        {
+            _dataStatus = "Party setup failed: initialize the scene leader first.";
+            return;
+        }
+
+        if (global.Party.Count >= 6)
+        {
+            _dataStatus = global.Party.Count == 6
+                ? "Party already contains six members."
+                : $"Party contains {global.Party.Count} members. Battle uses the first six; no entries were removed.";
+            return;
+        }
+
+        var existingIds = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < global.Party.Count; i++)
+        {
+            CharacterSaveData member = global.Party[i];
+            if (member != null && !string.IsNullOrWhiteSpace(member.CharacterDataID))
+                existingIds.Add(member.CharacterDataID.Trim());
+        }
+
+        GameContentCatalog catalog = GameContentCatalog.Instance;
+        if (catalog != null && catalog.Characters != null)
+        {
+            for (int i = 0; i < catalog.Characters.Count && global.Party.Count < 6; i++)
+            {
+                CharacterData data = catalog.Characters[i];
+                string characterId = data != null ? data.CharacterID?.Trim() : string.Empty;
+                if (data == null
+                    || data.BaseStats == null
+                    || string.IsNullOrEmpty(characterId)
+                    || existingIds.Contains(characterId))
+                {
+                    continue;
+                }
+
+                global.Party.Add(CreateDebugPartyMember(data, global.PlayerName));
+                existingIds.Add(characterId);
+            }
+        }
+
+        int clonedLeaderCount = 0;
+        CharacterSaveData leader = global.Party[0];
+        while (global.Party.Count < 6)
+        {
+            CharacterSaveData clone = CloneDebugPartyMember(leader);
+            if (clone == null)
+                break;
+
+            global.Party.Add(clone);
+            clonedLeaderCount++;
+        }
+
+        _dataStatus = clonedLeaderCount > 0
+            ? $"Prepared {global.Party.Count} members. {clonedLeaderCount} leader clones share one CharacterDataID; use them only to test wave activation/UI."
+            : $"Prepared {global.Party.Count} distinct party members.";
+    }
+
+    private static CharacterSaveData CreateDebugPartyMember(CharacterData data, string runtimePlayerName)
+    {
+        StatBlock baseStats = data.BaseStats;
+        var member = new CharacterSaveData
+        {
+            CharacterDataID = data.CharacterID.Trim(),
+            CharacterID = data.ResolveDisplayName(runtimePlayerName),
+            Level = 1,
+            EXP = 0,
+            MaxHP = Mathf.Max(1, baseStats.MaxHP),
+            HP = Mathf.Max(1, baseStats.MaxHP),
+            MaxAP = Mathf.Max(0, baseStats.MaxAP),
+            AP = Mathf.Max(0, baseStats.MaxAP),
+            ATK = Mathf.Max(1, baseStats.ATK),
+            DEF = Mathf.Max(0, baseStats.DEF),
+            SPD = Mathf.Max(1, baseStats.SPD)
+        };
+        EquipmentLoadoutService.NormalizeSlots(member);
+        CharacterGrowthService.EnsureInitialized(member, data);
+        PowerProgressionService.SynchronizeUnlockedSkills(member, data);
+        SkillTreeProgressionService.Synchronize(member, data);
+        return member;
+    }
+
+    private static CharacterSaveData CloneDebugPartyMember(CharacterSaveData source)
+    {
+        if (source == null)
+            return null;
+
+        string json = Newtonsoft.Json.JsonConvert.SerializeObject(source);
+        return Newtonsoft.Json.JsonConvert.DeserializeObject<CharacterSaveData>(json);
     }
 
     private void GrantSampleItems(GlobalDataManager global)
@@ -394,6 +518,7 @@ public sealed class CheatManager : MonoBehaviour
         {
             0 => 1280f,
             1 => Mathf.Max(540f, GetPlayers().Count * 114f + 135f),
+            3 => 760f,
             _ => 540f
         };
     }
