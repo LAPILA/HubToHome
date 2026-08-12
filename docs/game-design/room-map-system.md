@@ -66,7 +66,7 @@
 
 Unity Editor에서 아래 메뉴를 실행하면 테스트용 씬과 룸 프리팹 2개가 생성됩니다.
 
-`HubToHome > 오버월드 > 맵 생성 > 기본 Room 샘플 생성`
+`Hub To Home > 오버월드 > 맵 생성 > 기본 Room 샘플 생성`
 
 생성되는 에셋:
 
@@ -93,7 +93,7 @@ Unity Editor에서 아래 메뉴를 실행하면 테스트용 씬과 룸 프리�
 
 필드/마을/실내 연결 흐름을 확인하는 Room 기반 맵팩 샘플은 아래 메뉴로 생성합니다.
 
-`HubToHome > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`
+`Hub To Home > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`
 
 생성 위치:
 
@@ -183,11 +183,11 @@ Assets/_Game/Features/Overworld/Maps/
 
 현재 열려 있는 Scene/Room의 전체 검사 결과를 Console에 남기려면 아래 메뉴를 사용합니다.
 
-`HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`
+`Hub To Home > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`
 
 마커를 목록과 필터로 탐색하고 문제 위치로 이동하려면 아래 작업창을 사용합니다.
 
-`HubToHome > 오버월드 > Area 마커 > 마커 작업창`
+`Hub To Home > 오버월드 > Area 마커 > 마커 작업창`
 
 Prefab Mode에서는 현재 Room Prefab만 검사하고, 그 외에는 로드된 Scene 범위를 검사합니다. 작업창에서 대상을 선택한 뒤 기존 Odin Inspector에서 세부 값을 편집합니다.
 

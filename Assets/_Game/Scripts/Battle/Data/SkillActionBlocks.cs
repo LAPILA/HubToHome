@@ -277,6 +277,7 @@ public class Action_PlayAnim : SkillActionBlock
 public class Action_Damage : SkillActionBlock
 {
     [LabelText("기본 스킬 배율")] public float SkillMultiplier = 1.0f;
+    [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
     [LabelText("카메라 흔들림")] public bool ShakeCamera = true;
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
@@ -301,7 +302,8 @@ public class Action_Damage : SkillActionBlock
             if (!target.IsAlive) continue;
             
             int previousHp = target.CurrentHP;
-            int dmg = target.TakeDamage(finalDamage);
+            DamageResult damageResult = target.TakeDamage(finalDamage, Element, context.Actor);
+            int dmg = damageResult.FinalDamage;
             BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dmg, context.IsPerfectQTE, previousHp);
             
             if (ShakeCamera) 
@@ -336,7 +338,7 @@ public class Action_ApplyStatus : SkillActionBlock
 
             if (StatusEffectFactory.TryCreate(StatusID, DurationTurns, out StatusEffect effect))
             {
-                target.AddEffect(effect);
+                target.TryApplyStatusEffect(effect);
             }
             else
             {
@@ -780,6 +782,7 @@ public class Action_Projectile : SkillActionBlock
     [AssetsOnly, LabelText("충돌 VFX 프리팹")] public GameObject ImpactVFXPrefab;
     [LabelText("비행 시간")] public float FlightDuration = 0.3f;
     [LabelText("데미지 배율")] public float DamageMultiplier = 1.0f;
+    [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
     {
@@ -826,7 +829,8 @@ public class Action_Projectile : SkillActionBlock
 
         int dmg = Mathf.RoundToInt(context.Actor.ATK * effectiveDamageMultiplier);
         int previousHp = context.MainTarget.CurrentHP;
-        int dealt = context.MainTarget.TakeDamage(dmg);
+        DamageResult damageResult = context.MainTarget.TakeDamage(dmg, Element, context.Actor);
+        int dealt = damageResult.FinalDamage;
         BattleManager.Instance.InvokeDamageEvent(context.Actor, context.MainTarget, dealt, context.IsPerfectQTE, previousHp);
 
         context.CurrentDamageMultiplier = 1.0f;
@@ -843,6 +847,7 @@ public class Action_SequentialMelee : SkillActionBlock
 {
     [LabelText("공격 애니메이션 트리거"), Required] public string AttackAnimTrigger = "Attack";
     [LabelText("데미지 배율")] public float DamageMultiplier = 0.8f;
+    [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
     [LabelText("대시 속도")] public float DashSpeed = 0.15f;
     [AssetsOnly, LabelText("히트 VFX 프리팹")] public GameObject HitVfxPrefab;
 
@@ -895,7 +900,8 @@ public class Action_SequentialMelee : SkillActionBlock
             
             int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
             int previousHp = target.CurrentHP;
-            int dealt = target.TakeDamage(dmg);
+            DamageResult damageResult = target.TakeDamage(dmg, Element, context.Actor);
+            int dealt = damageResult.FinalDamage;
             BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dealt, context.IsPerfectQTE, previousHp);
             CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.4f, true);
 

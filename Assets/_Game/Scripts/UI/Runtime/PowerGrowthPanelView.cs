@@ -355,13 +355,14 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
             ranks.Speed,
             ranks.ActionPoints
         };
+        StatBlock resolvedStats = CharacterStatsProjectionService.ResolveFromSave(member, data);
         int[] finalValues =
         {
-            AddEquipment(member.MaxHP, member, equipment => equipment.BonusMaxHP),
-            AddEquipment(member.ATK, member, equipment => equipment.BonusATK),
-            AddEquipment(member.DEF, member, equipment => equipment.BonusDEF),
-            AddEquipment(member.SPD, member, equipment => equipment.BonusSPD),
-            AddEquipment(member.MaxAP, member, equipment => equipment.BonusMaxAP)
+            resolvedStats.MaxHP,
+            resolvedStats.ATK,
+            resolvedStats.DEF,
+            resolvedStats.SPD,
+            resolvedStats.MaxAP
         };
         string[] valueNames = { "HP", "ATK", "DEF", "SPD", "AP" };
 
@@ -646,17 +647,6 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
             SkillTreeNodeState.Equipped => "EQUIPPED",
             _ => string.IsNullOrWhiteSpace(node.LockReason) ? "LOCKED" : node.LockReason
         };
-    }
-
-    private static int AddEquipment(
-        int value,
-        CharacterSaveData member,
-        Func<EquipmentData, int> selector)
-    {
-        long total = (long)value + EquipmentLoadoutService.GetFlatBonus(member, selector);
-        return total >= int.MaxValue
-            ? int.MaxValue
-            : total <= int.MinValue ? int.MinValue : (int)total;
     }
 
     private void ApplyFont(TMP_FontAsset font)

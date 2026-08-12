@@ -9,6 +9,7 @@ public sealed class BattleDamageFeedbackEventTests
     private BattleManager _manager;
     private EnemyCharacter _source;
     private PlayerCharacter _target;
+    private CharacterData _targetData;
 
     [SetUp]
     public void SetUp()
@@ -19,11 +20,23 @@ public sealed class BattleDamageFeedbackEventTests
         _source = _sourceObject.AddComponent<EnemyCharacter>();
         _targetObject = new GameObject("Player Target");
         _target = _targetObject.AddComponent<PlayerCharacter>();
+        _targetData = ScriptableObject.CreateInstance<CharacterData>();
+        _targetData.BaseStats = new StatBlock
+        {
+            MaxHP = 100,
+            MaxAP = 50,
+            ATK = 10,
+            DEF = 5,
+            SPD = 10,
+        };
+        // 테스트도 런타임과 동일하게 CharacterData가 StatBlock을 주입한다.
+        _target.SetCharacterData(_targetData);
     }
 
     [TearDown]
     public void TearDown()
     {
+        if (_targetData != null) Object.DestroyImmediate(_targetData);
         if (_targetObject != null) Object.DestroyImmediate(_targetObject);
         if (_sourceObject != null) Object.DestroyImmediate(_sourceObject);
         if (_managerObject != null) Object.DestroyImmediate(_managerObject);

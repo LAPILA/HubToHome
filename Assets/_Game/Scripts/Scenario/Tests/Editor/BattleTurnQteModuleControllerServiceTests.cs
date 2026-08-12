@@ -10,6 +10,69 @@ using UnityEngine;
 public class BattleTurnQteModuleControllerServiceTests
 {
     [Test]
+    public void CompleteAction_WhenPartyIsDefeatedAndReserveExists_StartsNextWave()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.Defeat = true;
+            fixture.Host.CanStartNextPartyWave = true;
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            service.CompleteAction();
+
+            Assert.That(fixture.Host.PartyWaveStartCalls, Is.EqualTo(1));
+            Assert.That(fixture.Host.CurrentBattleState, Is.Not.EqualTo(BattleState.BattleEnd));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void CompleteAction_WhenVictoryAndReserveExists_EndsBattleWithoutStartingWave()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.Victory = true;
+            fixture.Host.Defeat = true;
+            fixture.Host.CanStartNextPartyWave = true;
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            service.CompleteAction();
+
+            Assert.That(fixture.Host.PartyWaveStartCalls, Is.Zero);
+            Assert.That(fixture.Host.CurrentBattleState, Is.EqualTo(BattleState.BattleEnd));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void CompleteAction_WhenPartyIsDefeatedWithoutReserve_EndsBattle()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.Defeat = true;
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            service.CompleteAction();
+
+            Assert.That(fixture.Host.PartyWaveStartCalls, Is.EqualTo(1));
+            Assert.That(fixture.Host.CurrentBattleState, Is.EqualTo(BattleState.BattleEnd));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
     public void ExecuteSkill_SkipsDisabledSkillBlocksInTurnQtePath()
     {
         var fixture = new TurnQteFixture();
@@ -427,6 +490,10 @@ public class BattleTurnQteModuleControllerServiceTests
         }
 
         public int FlushCalls { get; private set; }
+        public bool Victory { get; set; }
+        public bool Defeat { get; set; }
+        public bool CanStartNextPartyWave { get; set; }
+        public int PartyWaveStartCalls { get; private set; }
         public IReadOnlyList<PlayerCharacter> PlayerParty => _players;
         public IReadOnlyList<EnemyCharacter> Enemies => _enemies;
         public IList<CharacterBase> TurnQueue => _turnQueue;
@@ -472,8 +539,13 @@ public class BattleTurnQteModuleControllerServiceTests
         public bool IsTurnQteCombatInputActive() => true;
         public void StartTurnQteCombatLoop() { }
         public void ChangeBattleState(BattleState state) => CurrentBattleState = state;
-        public bool CheckVictory() => false;
-        public bool CheckDefeat() => false;
+        public bool CheckVictory() => Victory;
+        public bool CheckDefeat() => Defeat;
+        public bool TryStartNextPartyWave()
+        {
+            PartyWaveStartCalls++;
+            return CanStartNextPartyWave;
+        }
         public bool ConsumePlayerPreemptiveAttack() => false;
         public void BroadcastVisibleTurnQueue() { }
         public void ResetAllPlayerBattlePoses() { }

@@ -329,11 +329,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74ac3363c0b61f247b8c4d438c9445f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacter
-  BaseMaxHP: 100
-  BaseMaxAP: 100
-  BaseATK: 10
-  BaseDEF: 5
-  BaseSPD: 10
   _characterData: {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
   _fallbackCharacterID: Player
   Level: 1
@@ -641,15 +636,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 73bb9c4fc8e64f50b102dc991747192a, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 73bb9c4fc8e64f50b102dc991747192a, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 73bb9c4fc8e64f50b102dc991747192a, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 73bb9c4fc8e64f50b102dc991747192a, type: 3}
       propertyPath: m_LocalPosition.x

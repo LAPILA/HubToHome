@@ -8,7 +8,7 @@ public static class AreaMarkerPrefabGenerator
     private const string SampleRoomPath = SampleFolder + "/Room_AreaMarker_AllGizmos.prefab";
     private const string InteractableLayerName = "Interactable";
 
-    [MenuItem("HubToHome/오버월드/Area 마커/마커 Prefab 생성")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/마커 Prefab 생성")]
     public static void GenerateMarkerPrefabs()
     {
         EnsureFolder(PrefabFolder);
@@ -22,32 +22,32 @@ public static class AreaMarkerPrefabGenerator
         AssetDatabase.Refresh();
     }
 
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Connection")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Connection")]
     private static void CreateConnection() => CreateSceneMarker(AreaMarkerType.Connection);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Enemy")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Enemy")]
     private static void CreateEnemy() => CreateSceneMarker(AreaMarkerType.Enemy);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Hazard")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Hazard")]
     private static void CreateHazard() => CreateSceneMarker(AreaMarkerType.Hazard);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Puzzle")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Puzzle")]
     private static void CreatePuzzle() => CreateSceneMarker(AreaMarkerType.Puzzle);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Vendor")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Vendor")]
     private static void CreateVendor() => CreateSceneMarker(AreaMarkerType.Vendor);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Shortcut Door")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Shortcut Door")]
     private static void CreateShortcutDoor() => CreateSceneMarker(AreaMarkerType.ShortcutDoor);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/NPC")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/NPC")]
     private static void CreateNpc() => CreateSceneMarker(AreaMarkerType.NPC);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Item")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Item")]
     private static void CreateItem() => CreateSceneMarker(AreaMarkerType.Item);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Sign")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Sign")]
     private static void CreateSign() => CreateSceneMarker(AreaMarkerType.Sign);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Save Point")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Save Point")]
     private static void CreateSavePoint() => CreateSceneMarker(AreaMarkerType.SavePoint);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Plot Point")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Plot Point")]
     private static void CreatePlotPoint() => CreateSceneMarker(AreaMarkerType.PlotPoint);
-    [MenuItem("HubToHome/오버월드/Area 마커/선택 위치에 마커 생성/Sublocation")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Sublocation")]
     private static void CreateSublocation() => CreateSceneMarker(AreaMarkerType.Sublocation);
 
-    [MenuItem("HubToHome/오버월드/Area 마커/샘플/전체 마커 Room Prefab 생성")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/샘플/전체 마커 Room Prefab 생성")]
     public static void GenerateAllMarkerSampleRoomPrefab()
     {
         EnsureFolder(SampleFolder);

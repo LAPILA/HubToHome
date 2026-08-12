@@ -421,11 +421,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 388b83b5ffc66174480fc384268c3d6b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BunnySlimeCharacter
-  BaseMaxHP: 100
-  BaseMaxAP: 100
-  BaseATK: 10
-  BaseDEF: 5
-  BaseSPD: 10
   Data: {fileID: 11400000, guid: da4ccaf31b3fd9646898d6da8eda6136, type: 2}
   _isBattleMode: 0
   _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
@@ -614,15 +609,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalPosition.x

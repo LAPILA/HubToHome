@@ -158,6 +158,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
         // Observer 구독
         bm.OnBattleStarted          += HandleBattleStarted;
+        bm.OnPlayerPartyChanged     += HandlePlayerPartyChanged;
         bm.OnStateChanged           += HandleStateChanged;
         bm.OnTurnQueueUpdated       += HandleTurnQueueUpdated;
         bm.OnPlayerTurnStarted      += HandlePlayerTurnStarted;
@@ -182,6 +183,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
         // Observer 해제
         bm.OnBattleStarted          -= HandleBattleStarted;
+        bm.OnPlayerPartyChanged     -= HandlePlayerPartyChanged;
         bm.OnStateChanged           -= HandleStateChanged;
         bm.OnTurnQueueUpdated       -= HandleTurnQueueUpdated;
         bm.OnPlayerTurnStarted      -= HandlePlayerTurnStarted;
@@ -383,26 +385,45 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (_narrationUI == null)
             Debug.LogWarning("[BattleUIController] BattleNarrationUI를 찾지 못했습니다. BattleNarrationPanel 참조를 확인하세요.");
 
-        _party   = party;
         _enemies = enemies;
         _isBattleEnding = false;
         _narrationUI?.Clear();
-        for (int i = 0; i < _partySlots.Length; i++)
-        {
-            if (i < party.Count && party[i] != null)
-            {
-                _partySlots[i].Init(party[i]);
-            }
-            else
-            {
-                _partySlots[i].Hide();
-            }
-        }
+        BindPartySlots(party);
 
         _enemyTopPivots.Clear();
         foreach (var enemy in enemies)
         {
             if (enemy != null) _enemyTopPivots[enemy] = enemy.GetPivot(CharacterPivotId.Top);
+        }
+    }
+
+    private void HandlePlayerPartyChanged(List<PlayerCharacter> party)
+    {
+        ExitTargetingMode();
+        _selectedTargetIndex = 0;
+        _battleMenuUI?.HideImmediate();
+        ResetPartyPanelPosition(0f);
+        BindPartySlots(party);
+    }
+
+    private void BindPartySlots(List<PlayerCharacter> party)
+    {
+        _party = party;
+        if (_partySlots == null)
+            return;
+
+        int partyCount = party != null ? party.Count : 0;
+        for (int i = 0; i < _partySlots.Length; i++)
+        {
+            PartySlotUI slot = _partySlots[i];
+            if (slot == null)
+                continue;
+
+            slot.SetHighlight(false);
+            if (i < partyCount && party[i] != null)
+                slot.Init(party[i]);
+            else
+                slot.Hide();
         }
     }
 

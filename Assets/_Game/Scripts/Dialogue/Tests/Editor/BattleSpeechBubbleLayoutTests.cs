@@ -90,4 +90,37 @@ public class BattleSpeechBubbleLayoutTests
         Assert.That(result.BoxAnchoredPosition, Is.EqualTo(new Vector2(10f, 0f)));
         Assert.That(result.TailAnchoredPosition, Is.EqualTo(new Vector2(-5f, 0f)));
     }
+
+    [Test]
+    public void ClampBoxSizeCapsPreferredWidthAndHeight()
+    {
+        Vector2 result = BattleSpeechBubbleLayout.ClampBoxSize(
+            new Vector2(720f, 540f),
+            new Vector2(120f, 56f),
+            new Vector2(480f, 240f));
+
+        Assert.That(result, Is.EqualTo(new Vector2(480f, 240f)));
+    }
+
+    [Test]
+    public void ClampBoxSizePreservesPreferredSizeInsideBounds()
+    {
+        Vector2 result = BattleSpeechBubbleLayout.ClampBoxSize(
+            new Vector2(260f, 96f),
+            new Vector2(120f, 56f),
+            new Vector2(480f, 240f));
+
+        Assert.That(result, Is.EqualTo(new Vector2(260f, 96f)));
+    }
+
+    [Test]
+    public void ClampBoxSizeRaisesPreferredSizeToMinimum()
+    {
+        Vector2 result = BattleSpeechBubbleLayout.ClampBoxSize(
+            new Vector2(40f, 24f),
+            new Vector2(120f, 56f),
+            new Vector2(480f, 240f));
+
+        Assert.That(result, Is.EqualTo(new Vector2(120f, 56f)));
+    }
 }

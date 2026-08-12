@@ -8,11 +8,11 @@ public class DialogueManager : MonoBehaviour
     public static DialogueManager Instance { get; private set; }
 
     [Header("UI 패널 참조")]
-    [SerializeField] private DialogueUI _overworldPanel; 
-    [SerializeField] private DialogueUI _cinematicPanel; 
+    [SerializeField] private DialogueUI _overworldPanel;
+    [SerializeField] private DialogueUI _cinematicPanel;
     [SerializeField] private NameInputUI _nameInputUI; // 🚨 인스펙터에서 꼭 연결
 
-    private DialogueUI _activeUI; 
+    private DialogueUI _activeUI;
     private DialogueData _currentDialogue;
     private int _currentNodeIndex;
     private bool _isPlaying = false;

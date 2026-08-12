@@ -70,7 +70,7 @@ public static class TestMapShowcaseBuilder
         Connection
     }
 
-    [MenuItem("HubToHome/오버월드/맵 생성/TestMap QA 쇼케이스 재생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/TestMap QA 쇼케이스 재생성")]
     public static void BuildFromMenu()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())

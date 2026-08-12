@@ -59,6 +59,9 @@ public class GameConfigManager : MonoBehaviour
     public int TargetFps { get; private set; } = DefaultTargetFps;
     public int WindowScale { get; private set; } = DefaultWindowScale;
     public Vector2Int WindowSize => GameConfigPolicy.ResolveWindowSize(WindowScale);
+    public bool IsHandheldPlatform => GameConfigPolicy.IsHandheldPlatform(
+        Application.platform,
+        SystemInfo.deviceType);
 
     private void Awake()
     {
@@ -103,7 +106,7 @@ public class GameConfigManager : MonoBehaviour
         FlashIntensity = GameConfigPolicy.NormalizeUnit(
             PlayerPrefs.GetFloat(FlashIntensityKey, DefaultFlashIntensity), DefaultFlashIntensity);
         UseVSync = PlayerPrefs.GetInt(VSyncKey, 0) == 1;
-        TargetFps = GameConfigPolicy.NormalizeTargetFps(
+        TargetFps = NormalizeTargetFps(
             PlayerPrefs.GetInt(TargetFpsKey, DefaultTargetFps));
         WindowScale = GameConfigPolicy.NormalizeWindowScale(
             PlayerPrefs.GetInt(WindowScaleKey, DefaultWindowScale));
@@ -271,12 +274,20 @@ public class GameConfigManager : MonoBehaviour
 
     public void SetTargetFps(int value)
     {
-        int normalized = GameConfigPolicy.NormalizeTargetFps(value);
+        int normalized = NormalizeTargetFps(value);
         if (TargetFps == normalized) return;
 
         TargetFps = normalized;
         ApplyFrameTiming();
         Save();
+    }
+
+    public void AdjustTargetFps(int direction)
+    {
+        SetTargetFps(GameConfigPolicy.StepTargetFps(
+            TargetFps,
+            direction,
+            IsHandheldPlatform));
     }
 
     public Key GetKey(ConfigurableAction action)
@@ -315,7 +326,7 @@ public class GameConfigManager : MonoBehaviour
         ScreenShake = DefaultScreenShake;
         FlashIntensity = DefaultFlashIntensity;
         UseVSync = false;
-        TargetFps = DefaultTargetFps;
+        TargetFps = NormalizeTargetFps(DefaultTargetFps);
         WindowScale = DefaultWindowScale;
 
         foreach (ConfigurableAction action in Enum.GetValues(typeof(ConfigurableAction)))
@@ -374,5 +385,10 @@ public class GameConfigManager : MonoBehaviour
             ConfigurableAction.Menu => GameInput.MenuPressed,
             _ => false
         };
+    }
+
+    private int NormalizeTargetFps(int value)
+    {
+        return GameConfigPolicy.NormalizeTargetFps(value, IsHandheldPlatform);
     }
 }

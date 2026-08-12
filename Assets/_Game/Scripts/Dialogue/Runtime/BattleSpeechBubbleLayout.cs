@@ -76,6 +76,20 @@ public static class BattleSpeechBubbleLayout
             tailPosition);
     }
 
+    public static Vector2 ClampBoxSize(Vector2 preferredSize, Vector2 minSize, Vector2 maxSize)
+    {
+        Vector2 lowerBound = new Vector2(
+            Mathf.Min(minSize.x, maxSize.x),
+            Mathf.Min(minSize.y, maxSize.y));
+        Vector2 upperBound = new Vector2(
+            Mathf.Max(minSize.x, maxSize.x),
+            Mathf.Max(minSize.y, maxSize.y));
+
+        return new Vector2(
+            Mathf.Clamp(preferredSize.x, lowerBound.x, upperBound.x),
+            Mathf.Clamp(preferredSize.y, lowerBound.y, upperBound.y));
+    }
+
     private static Vector2 GetBoxPivot(BattleSpeechBubbleDirection direction)
     {
         switch (direction)

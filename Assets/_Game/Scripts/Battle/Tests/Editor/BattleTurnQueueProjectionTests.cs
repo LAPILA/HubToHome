@@ -71,7 +71,9 @@ public class BattleTurnQueueProjectionTests
         var gameObject = new GameObject(name);
         _objects.Add(gameObject);
         PlayerCharacter character = gameObject.AddComponent<PlayerCharacter>();
-        character.BaseSPD = speed;
+        StatBlock stats = character.Stats.ProgressedBaseStats.Clone();
+        stats.SPD = speed;
+        character.Stats.SetProgressedBaseStats(stats);
         character.HealHP(character.MaxHP);
         return character;
     }
@@ -81,7 +83,9 @@ public class BattleTurnQueueProjectionTests
         var gameObject = new GameObject(name);
         _objects.Add(gameObject);
         EnemyCharacter character = gameObject.AddComponent<EnemyCharacter>();
-        character.BaseSPD = speed;
+        StatBlock stats = character.Stats.ProgressedBaseStats.Clone();
+        stats.SPD = speed;
+        character.Stats.SetProgressedBaseStats(stats);
         character.HealHP(character.MaxHP);
         return character;
     }

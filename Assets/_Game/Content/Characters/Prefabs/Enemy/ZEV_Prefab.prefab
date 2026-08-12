@@ -407,11 +407,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6decced32cae3cf41a9820b7fc1cbfdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyCharacter
-  BaseMaxHP: 100
-  BaseMaxAP: 100
-  BaseATK: 10
-  BaseDEF: 5
-  BaseSPD: 10
   Data: {fileID: 11400000, guid: 2ecad76fe6f59d642b2989116b593269, type: 2}
   _isBattleMode: 1
   _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
@@ -595,15 +590,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.01
+      value: 0.005
       objectReference: {fileID: 0}
     - target: {fileID: 910000000000000002, guid: 8d9f5a25b7984b02a857cfdb657e4d6f, type: 3}
       propertyPath: m_LocalPosition.x

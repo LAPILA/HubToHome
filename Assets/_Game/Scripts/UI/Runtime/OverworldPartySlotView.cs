@@ -16,23 +16,17 @@ public sealed class OverworldPartySlotView : MonoBehaviour
 
     public void Apply(
         CharacterSaveData data,
+        CharacterData characterData,
         string displayName,
         Sprite portraitSprite)
     {
         if (data == null)
             return;
 
-        int maxHp = Mathf.Max(
-            1,
-            data.MaxHP + EquipmentLoadoutService.GetFlatBonus(
-                data,
-                equipment => equipment.BonusMaxHP));
+        StatBlock stats = CharacterStatsProjectionService.ResolveFromSave(data, characterData);
+        int maxHp = Mathf.Max(1, stats.MaxHP);
         int hp = Mathf.Clamp(data.HP, 0, maxHp);
-        int maxAp = Mathf.Max(
-            0,
-            data.MaxAP + EquipmentLoadoutService.GetFlatBonus(
-                data,
-                equipment => equipment.BonusMaxAP));
+        int maxAp = Mathf.Max(0, stats.MaxAP);
         int ap = Mathf.Clamp(data.AP, 0, maxAp);
 
         if (_nameText != null)

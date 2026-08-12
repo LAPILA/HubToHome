@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public abstract class StatusEffect
@@ -34,16 +35,7 @@ public abstract class StatusEffect
         DurationTurns = Mathf.Max(DurationTurns, turns); 
     }
 
-    // [Step 1] 수치 직접 증가 & 비율 증가
-    public virtual int GetFlatModifier(StatType type) => 0;
-    public virtual float GetPercentModifier(StatType type) => 0f;
-
-    // [Step 3] 속성 저항력 증감 (예: +0.5f 이면 해당 속성 피해를 50% 더 받음)
-    public virtual float GetElementResistanceModifier(DamageElement element) => 0f;
-
-    // [Step 4] 받는/주는 최종 피해 증감 (곱연산)
-    public virtual float GetIncomingDamageModifier() => 0f;
-    public virtual float GetOutgoingDamageModifier() => 0f;
+    public virtual void AppendStatModifiers(List<StatModifier> modifiers) { }
 
     public virtual void OnTick() { DurationTurns--; }
 
@@ -75,13 +67,18 @@ public class FreezeEffect : StatusEffect
 
     private void CheckBindTrigger()
     {
-        if (Stacks >= 10 && !Target.HasEffect(StatusEffectIds.Bind)) Target.AddEffect(new BindEffect(DurationTurns));
+        if (Stacks >= 10 && !Target.HasEffect(StatusEffectIds.Bind))
+            Target.TryApplyStatusEffect(new BindEffect(DurationTurns));
     }
 
-    public override float GetPercentModifier(StatType type)
+    public override void AppendStatModifiers(List<StatModifier> modifiers)
     {
-        if (type == StatType.SPD) return -0.1f * Stacks; // 1스택당 속도 10% 깎임
-        return 0f;
+        if (modifiers == null) return;
+        modifiers.Add(StatModifier.ForPrimary(
+            StatLayer.Battle,
+            StatType.SPD,
+            additivePercent: -0.1f * Stacks,
+            sourceId: EffectID));
     }
 }
 
@@ -143,11 +140,19 @@ public class BerserkEffect : StatusEffect
     
     public override void OnApply(CharacterBase target) { base.OnApply(target); Target.IsBerserk = true; }
 
-    public override float GetPercentModifier(StatType type)
+    public override void AppendStatModifiers(List<StatModifier> modifiers)
     {
-        if (type == StatType.ATK) return 1.0f;  // 공격력 +100%
-        if (type == StatType.DEF) return -0.5f; // 방어력 -50%
-        return 0f;
+        if (modifiers == null) return;
+        modifiers.Add(StatModifier.ForPrimary(
+            StatLayer.Battle,
+            StatType.ATK,
+            additivePercent: 1.0f,
+            sourceId: EffectID));
+        modifiers.Add(StatModifier.ForPrimary(
+            StatLayer.Battle,
+            StatType.DEF,
+            additivePercent: -0.5f,
+            sourceId: EffectID));
     }
 
     public override void OnRemove() { if (Target != null) Target.IsBerserk = false; base.OnRemove(); }
@@ -168,8 +173,16 @@ public class StatModifierEffect : StatusEffect
         _percentModifier = percentMod;
     }
 
-    public override int GetFlatModifier(StatType type) => type == _statType ? _flatModifier * Stacks : 0;
-    public override float GetPercentModifier(StatType type) => type == _statType ? _percentModifier * Stacks : 0f;
+    public override void AppendStatModifiers(List<StatModifier> modifiers)
+    {
+        if (modifiers == null) return;
+        modifiers.Add(StatModifier.ForPrimary(
+            StatLayer.Battle,
+            _statType,
+            _flatModifier * Stacks,
+            _percentModifier * Stacks,
+            EffectID));
+    }
 }
 
 // ── 🛡️ 보호막 버프 예시 ──
@@ -177,8 +190,14 @@ public class IceShieldEffect : StatusEffect
 {
     public IceShieldEffect(int duration) : base(StatusEffectIds.IceShield, duration) {}
     
-    // 받는 최종 피해 20% 깎음 (-0.2f)
-    public override float GetIncomingDamageModifier() => -0.2f; 
+    public override void AppendStatModifiers(List<StatModifier> modifiers)
+    {
+        if (modifiers == null) return;
+        modifiers.Add(StatModifier.ForIncomingDamageMultiplier(
+            StatLayer.Battle,
+            flatValue: -0.2f,
+            sourceId: EffectID));
+    }
 }
 
 // ── 💦 디버프 예시: 흠뻑 젖음 ──
@@ -186,10 +205,13 @@ public class WetEffect : StatusEffect
 {
     public WetEffect(int duration) : base(StatusEffectIds.Wet, duration) {}
     
-    public override float GetElementResistanceModifier(DamageElement element)
+    public override void AppendStatModifiers(List<StatModifier> modifiers)
     {
-        // 번개 속성 피해를 맞으면 데미지 50% 추가로 더 받음! (+0.5f)
-        if (element == DamageElement.Electric) return +0.5f; 
-        return 0f;
+        if (modifiers == null) return;
+        modifiers.Add(StatModifier.ForElementResistance(
+            StatLayer.Battle,
+            DamageElement.Electric,
+            flatValue: +0.5f,
+            sourceId: EffectID));
     }
 }

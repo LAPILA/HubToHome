@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 public enum EquipmentChangeStatus
 {
@@ -141,21 +142,21 @@ public static class EquipmentLoadoutService
             string.IsNullOrEmpty(previous) ? "비어 있는 슬롯입니다." : "장비를 해제했습니다.");
     }
 
-    public static int GetFlatBonus(CharacterSaveData character, Func<EquipmentData, int> selector)
+    public static List<StatModifier> BuildStatModifiers(CharacterSaveData character)
     {
-        if (character == null || selector == null)
-            return 0;
+        var modifiers = new List<StatModifier>();
+        if (character == null)
+            return modifiers;
 
         NormalizeSlots(character);
-        int total = 0;
         for (int i = 0; i < SlotCount; i++)
         {
             EquipmentData equipment = EquipmentDatabase.FindById(character.EquippedEquipmentIDs[i]);
             if (equipment != null)
-                total += selector(equipment);
+                equipment.AppendStatModifiers(modifiers);
         }
 
-        return total;
+        return modifiers;
     }
 
     public static bool TryGetSlotIndex(EquipmentSlot slot, out int index)

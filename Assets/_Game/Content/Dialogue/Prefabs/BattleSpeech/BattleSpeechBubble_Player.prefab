@@ -106,7 +106,7 @@ MonoBehaviour:
   _sideTailSize: 32
   _topTailSize: 32
   _minSize: {x: 120, y: 56}
-  _maxSize: {x: 720, y: 540}
+  _maxSize: {x: 480, y: 240}
   _sidePivotName: FrontMiddle
   _topPivotName: Top
   _sideGap: -0.4

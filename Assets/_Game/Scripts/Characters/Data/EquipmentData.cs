@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
 public enum EquipmentSlot
@@ -24,27 +23,21 @@ public class EquipmentData : SerializedScriptableObject
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<string> AllowedCharacterIDs = new List<string>();
 
-    [BoxGroup("Stat Bonuses")] 
-    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxHP = 0;
-    [FormerlySerializedAs("BonusMaxMP")]
-    [HorizontalGroup("Stat Bonuses/Row1", LabelWidth = 60)] public int BonusMaxAP = 0;
-    
-    [BoxGroup("Stat Bonuses")] 
-    [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusATK   = 0;
-    [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusDEF   = 0;
-    [HorizontalGroup("Stat Bonuses/Row2", LabelWidth = 60)] public int BonusSPD   = 0;
+    [BoxGroup("Stat Bonuses")]
+    [InfoBox("장비가 제공하는 모든 전투 수치는 이 StatBlock에 입력합니다. 기본값은 0인 보정 블록입니다.")]
+    public StatBlock StatBonuses = StatBlock.CreateZeroModifier();
 
-    [System.Obsolete("Use BonusMaxAP.")]
-    public int BonusMaxMP
+    public void AppendStatModifiers(List<StatModifier> destination)
     {
-        get => BonusMaxAP;
-        set => BonusMaxAP = value;
+        if (destination == null)
+            return;
+
+        StatModifier.AppendStatBlock(
+            destination,
+            StatLayer.Equipment,
+            StatBonuses,
+            string.IsNullOrWhiteSpace(ItemID) ? name : ItemID);
     }
-    // ── 🚨 추가됨: 상태이상 방어(내성) 보너스 ──
-    [BoxGroup("Resistances (상태이상 방어력)")]
-    [InfoBox("음수(-)를 넣으면 해당 상태이상에 걸릴 확률이나 데미지가 감소합니다. (예: Burn -50 = 화상 확률 50% 감소)")]
-    [DictionaryDrawerSettings(KeyLabel = "상태이상", ValueLabel = "저항 수치")]
-    public Dictionary<string, int> StatusResistanceBonus = new Dictionary<string, int>();
 
     // ── 🚨 추가됨: 특수 패시브 스킬 ──
     [BoxGroup("Special Effects")]

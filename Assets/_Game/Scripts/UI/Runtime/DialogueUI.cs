@@ -72,14 +72,7 @@ public class DialogueUI : MonoBehaviour
     private void Update()
     {
         if (IsWaitingForChoice)
-        {
             HandleChoiceInput();
-            return;
-        }
-
-        // Typewriter Timings/DB가 매 프레임 속도를 덮어쓰는 경우를 강제로 상쇄
-        if (IsTyping && _typewriter != null)
-            ApplyConfiguredTextSpeed();
     }
 
     public void OpenPanel()

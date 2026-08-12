@@ -255,9 +255,12 @@ public static class CharacterGrowthService
         CharacterSaveData character,
         CharacterData data)
     {
+        if (data == null)
+            throw new ArgumentNullException(nameof(data));
+
         CharacterStatInvestments investments =
             character?.Growth?.Investments ?? new CharacterStatInvestments();
-        GrowthBalanceProfile profile = data != null ? data.GrowthProfile : null;
+        GrowthBalanceProfile profile = data.GrowthProfile;
         int maximumRank = ResolveMaxInvestmentRank(profile);
 
         int vitality = Mathf.Clamp(investments.Vitality, 0, maximumRank);
@@ -269,21 +272,12 @@ public static class CharacterGrowthService
             0,
             maximumRank);
 
-        int baseMaxHp = data != null
-            ? data.BaseMaxHP
-            : Mathf.Max(1, character?.MaxHP ?? 100);
-        int baseMaxAp = data != null
-            ? data.BaseMaxAP
-            : Mathf.Max(0, character?.MaxAP ?? 50);
-        int baseAttack = data != null
-            ? data.BaseATK
-            : Mathf.Max(1, character?.ATK ?? 10);
-        int baseDefense = data != null
-            ? data.BaseDEF
-            : Mathf.Max(0, character?.DEF ?? 5);
-        int baseSpeed = data != null
-            ? data.BaseSPD
-            : Mathf.Max(1, character?.SPD ?? 10);
+        StatBlock authoredBaseStats = data.BaseStats;
+        int baseMaxHp = authoredBaseStats.MaxHP;
+        int baseMaxAp = authoredBaseStats.MaxAP;
+        int baseAttack = authoredBaseStats.ATK;
+        int baseDefense = authoredBaseStats.DEF;
+        int baseSpeed = authoredBaseStats.SPD;
 
         return new CharacterBaseStatSnapshot(
             SaturatingAdd(
@@ -319,16 +313,8 @@ public static class CharacterGrowthService
 
         int previousMaxHp = Mathf.Max(1, character.MaxHP);
         int previousMaxAp = Mathf.Max(0, character.MaxAP);
-        int equipmentMaxHp = EquipmentLoadoutService.GetFlatBonus(
-            character,
-            equipment => equipment.BonusMaxHP);
-        int equipmentMaxAp = EquipmentLoadoutService.GetFlatBonus(
-            character,
-            equipment => equipment.BonusMaxAP);
-        int previousFinalMaxHp = AddSignedAndClamp(previousMaxHp, equipmentMaxHp, 1);
-        int previousFinalMaxAp = AddSignedAndClamp(previousMaxAp, equipmentMaxAp, 0);
-        int missingHp = Mathf.Max(0, previousFinalMaxHp - Mathf.Max(0, character.HP));
-        int missingAp = Mathf.Max(0, previousFinalMaxAp - Mathf.Max(0, character.AP));
+        int missingHp = Mathf.Max(0, previousMaxHp - Mathf.Max(0, character.HP));
+        int missingAp = Mathf.Max(0, previousMaxAp - Mathf.Max(0, character.AP));
 
         CharacterBaseStatSnapshot calculated = CalculateBaseStats(character, data);
         character.MaxHP = calculated.MaxHP;
@@ -337,23 +323,21 @@ public static class CharacterGrowthService
         character.DEF = calculated.Defense;
         character.SPD = calculated.Speed;
 
-        int finalMaxHp = AddSignedAndClamp(calculated.MaxHP, equipmentMaxHp, 1);
-        int finalMaxAp = AddSignedAndClamp(calculated.MaxAP, equipmentMaxAp, 0);
         if (preserveResourceDeficit)
         {
             character.HP = Mathf.Clamp(
-                finalMaxHp - missingHp,
+                calculated.MaxHP - missingHp,
                 0,
-                finalMaxHp);
+                calculated.MaxHP);
             character.AP = Mathf.Clamp(
-                finalMaxAp - missingAp,
+                calculated.MaxAP - missingAp,
                 0,
-                finalMaxAp);
+                calculated.MaxAP);
         }
         else
         {
-            character.HP = Mathf.Clamp(character.HP, 0, finalMaxHp);
-            character.AP = Mathf.Clamp(character.AP, 0, finalMaxAp);
+            character.HP = Mathf.Clamp(character.HP, 0, calculated.MaxHP);
+            character.AP = Mathf.Clamp(character.AP, 0, calculated.MaxAP);
         }
     }
 
@@ -635,12 +619,6 @@ public static class CharacterGrowthService
         return profile != null
             ? Mathf.Max(1, profile.ActionPointsPerRank)
             : GrowthBalanceProfile.DefaultStatValuePerRank;
-    }
-
-    private static int AddSignedAndClamp(int value, int delta, int minimum)
-    {
-        long sum = (long)value + delta;
-        return (int)Math.Max(minimum, Math.Min(sum, int.MaxValue));
     }
 
     private static int SaturatingMultiply(int left, int right)
