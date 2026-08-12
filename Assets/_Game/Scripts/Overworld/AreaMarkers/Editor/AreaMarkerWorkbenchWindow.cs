@@ -34,7 +34,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
     private string[] _roomKeys = { AllRoomsKey };
     private string[] _roomLabels = { "모든 Room" };
 
-    [MenuItem("HubToHome/오버월드/Area 마커/마커 작업창")]
+    [MenuItem("Hub To Home/오버월드/Area 마커/마커 작업창")]
     private static void Open()
     {
         AreaMarkerWorkbenchWindow window =

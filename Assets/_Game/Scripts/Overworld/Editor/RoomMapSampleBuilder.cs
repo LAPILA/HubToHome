@@ -41,7 +41,7 @@ public static class RoomMapSampleBuilder
     private const string TemplateRoot = DevelopmentContentPaths.TemplatesRoot;
 
     private const string DesignerGuidePath = SceneWorldRoot + "/README_MapAuthoring.md";
-    [MenuItem("HubToHome/오버월드/맵 생성/기본 Room 샘플 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/기본 Room 샘플 생성")]
     public static void CreateBasicSample()
     {
         EnsureDesignerGuide();
@@ -81,7 +81,7 @@ public static class RoomMapSampleBuilder
         Debug.Log($"[RoomMapSampleBuilder] 기본 샘플 생성 완료: {BasicScenePath}");
     }
 
-    [MenuItem("HubToHome/오버월드/맵 생성/맵 필드 스타터팩 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/맵 필드 스타터팩 생성")]
     public static void CreateMapFieldStarterPack()
     {
         EnsureDesignerGuide();
@@ -192,13 +192,13 @@ public static class RoomMapSampleBuilder
         Debug.Log($"[RoomMapSampleBuilder] Map Field Starter 맵팩 생성 완료: {StarterPackRoot}");
     }
 
-    [MenuItem("HubToHome/오버월드/맵 정렬/MapFieldStarter 프리팹 정렬 적용")]
+    [MenuItem("Hub To Home/오버월드/맵 정렬/MapFieldStarter 프리팹 정렬 적용")]
     public static void ApplySortingToMapFieldStarterPrefabs()
     {
         ApplySortingRulesToPrefabsInFolder(StarterPackPrefabFolder);
     }
 
-    [MenuItem("HubToHome/오버월드/맵 생성/템플릿/필드 템플릿 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/템플릿/필드 템플릿 생성")]
     public static void CreateFieldTemplate() => CreateSingleRoomTemplatePack(
         "FieldTemplate",
         "template.field",
@@ -207,7 +207,7 @@ public static class RoomMapSampleBuilder
         new Color(0.36f, 0.62f, 0.34f),
         new Color(0.18f, 0.36f, 0.18f));
 
-    [MenuItem("HubToHome/오버월드/맵 생성/템플릿/마을 템플릿 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/템플릿/마을 템플릿 생성")]
     public static void CreateTownTemplate() => CreateSingleRoomTemplatePack(
         "TownTemplate",
         "template.town",
@@ -216,7 +216,7 @@ public static class RoomMapSampleBuilder
         new Color(0.58f, 0.52f, 0.43f),
         new Color(0.30f, 0.25f, 0.20f));
 
-    [MenuItem("HubToHome/오버월드/맵 생성/템플릿/실내 템플릿 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/템플릿/실내 템플릿 생성")]
     public static void CreateInteriorTemplate() => CreateSingleRoomTemplatePack(
         "InteriorTemplate",
         "template.interior",
@@ -225,7 +225,7 @@ public static class RoomMapSampleBuilder
         new Color(0.44f, 0.32f, 0.24f),
         new Color(0.22f, 0.14f, 0.10f));
 
-    [MenuItem("HubToHome/오버월드/맵 생성/템플릿/던전 템플릿 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/템플릿/던전 템플릿 생성")]
     public static void CreateDungeonTemplate() => CreateSingleRoomTemplatePack(
         "DungeonTemplate",
         "template.dungeon",
@@ -234,7 +234,7 @@ public static class RoomMapSampleBuilder
         new Color(0.20f, 0.22f, 0.28f),
         new Color(0.10f, 0.11f, 0.15f));
 
-    [MenuItem("HubToHome/오버월드/맵 생성/템플릿/전체 템플릿 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 생성/템플릿/전체 템플릿 생성")]
     public static void CreateAllTemplatePacks()
     {
         EnsureDesignerGuide();
@@ -1064,7 +1064,7 @@ public static class RoomMapSampleBuilder
         AssetDatabase.ImportAsset(path);
     }
 
-    [MenuItem("HubToHome/오버월드/맵 문서/기획자용 맵 가이드 생성")]
+    [MenuItem("Hub To Home/오버월드/맵 문서/기획자용 맵 가이드 생성")]
     public static void CreateDesignerGuide()
     {
         WriteDesignerGuide();

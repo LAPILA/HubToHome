@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 
 public sealed class ActionPickerWindow : EditorWindow
 {
-    public const string MenuPath = "HubToHome/시나리오/액션 라이브러리";
+    public const string MenuPath = "Hub To Home/시나리오/액션 라이브러리";
 
     [SerializeField] private ActionCatalogAsset _catalog;
     private ActionPickerContext _context;

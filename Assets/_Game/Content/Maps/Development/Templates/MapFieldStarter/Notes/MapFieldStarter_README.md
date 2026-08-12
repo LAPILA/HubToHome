@@ -35,4 +35,4 @@
 3. `Prefabs/Rooms`의 RoomDefinition을 열어 룸 ID, 프리팹, BGM 설정을 확인합니다.
 4. 문 이동은 각 룸 프리팹 안의 `AreaConnectionMarker` 컴포넌트에서 MapTransition.TargetRoom/TargetSpawnPointId로 확인합니다.
 5. 각 Room Prefab의 `Marker_*` 오브젝트가 Interactable 레이어와 Trigger Collider를 갖는지 확인합니다.
-6. 메뉴 `HubToHome > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 연결 누락을 확인합니다.
+6. 메뉴 `Hub To Home > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 연결 누락을 확인합니다.

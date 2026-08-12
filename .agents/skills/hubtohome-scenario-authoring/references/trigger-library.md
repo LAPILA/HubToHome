@@ -88,6 +88,6 @@ conditions:
     parameters: {}
 ```
 
-Run `HubToHome > 시나리오 > Trigger Library 다시 만들기` after source changes. `ProductionTriggerLibraryBuildCommand` parses and merges every source, validates duplicate IDs and field contracts, checks runtime `ITriggerConditionEvaluator` coverage in both directions, then replaces `Generated/TriggerLibrary.asset`. A validation failure must leave the previous generated asset intact.
+After source changes, call `ProductionTriggerLibraryBuildCommand.Rebuild()`. It parses and merges every source, validates duplicate IDs and field contracts, checks runtime `ITriggerConditionEvaluator` coverage in both directions, then replaces `Generated/TriggerLibrary.asset`. This rebuild is not exposed as a discoverable Unity menu. A validation failure must leave the previous generated asset intact.
 
 The current official contract contains 6 Events and 7 Conditions. Any new runtime Condition requires a matching YAML contract in the same change; any YAML Condition requires a registered runtime evaluator.

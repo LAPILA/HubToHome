@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using DG.Tweening;
 using NUnit.Framework;
 using UnityEngine;
@@ -124,7 +125,11 @@ public sealed class UIManagerStackTests
             typeof(CanvasGroup),
             typeof(ConfigPanelUI));
         ConfigPanelUI panel = panelObject.GetComponent<ConfigPanelUI>();
-        LogAssert.Expect(LogType.Warning, "[ConfigPanelUI] detailRoot/rowPrefab missing");
+        LogAssert.Expect(
+            LogType.Error,
+            new Regex(
+                "\\[ConfigPanelUI\\] config_panel_scroll_contract_invalid: "
+                + "(rowPrefab|detailRoot/content)"));
 
         panel.Show();
         panel.HideImmediate();

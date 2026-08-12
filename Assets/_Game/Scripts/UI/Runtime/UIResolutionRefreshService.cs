@@ -10,9 +10,11 @@ using UnityEngine.UI;
 [DefaultExecutionOrder(-1000)]
 public sealed class UIResolutionRefreshService : MonoBehaviour
 {
+    private static readonly WaitForEndOfFrame EndOfFrame = new WaitForEndOfFrame();
     private static UIResolutionRefreshService _instance;
 
     private Coroutine _refreshRoutine;
+    private bool _refreshRequested;
     private int _lastScreenWidth;
     private int _lastScreenHeight;
     private FullScreenMode _lastFullScreenMode;
@@ -68,6 +70,14 @@ public sealed class UIResolutionRefreshService : MonoBehaviour
     {
         GameConfigManager.DisplaySettingsChanged -= RequestRefresh;
         SceneManager.sceneLoaded -= HandleSceneLoaded;
+
+        if (_refreshRoutine != null)
+        {
+            StopCoroutine(_refreshRoutine);
+            _refreshRoutine = null;
+        }
+
+        _refreshRequested = false;
     }
 
     private void Update()
@@ -101,32 +111,37 @@ public sealed class UIResolutionRefreshService : MonoBehaviour
     {
         if (!isActiveAndEnabled) return;
 
-        if (_refreshRoutine != null)
-            StopCoroutine(_refreshRoutine);
+        _refreshRequested = true;
+        if (_refreshRoutine != null) return;
 
         _refreshRoutine = StartCoroutine(CoRefreshAfterDisplaySettles());
     }
 
     private IEnumerator CoRefreshAfterDisplaySettles()
     {
-        yield return null;
-        yield return new WaitForEndOfFrame();
-
-        Canvas.ForceUpdateCanvases();
-
-        TMP_Text[] texts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        for (int i = 0; i < texts.Length; i++)
+        while (_refreshRequested)
         {
-            TMP_Text text = texts[i];
-            if (text == null) continue;
+            _refreshRequested = false;
+            yield return null;
+            yield return EndOfFrame;
 
-            text.UpdateMeshPadding();
-            text.SetVerticesDirty();
-            text.SetMaterialDirty();
-            text.ForceMeshUpdate(true, true);
+            Canvas.ForceUpdateCanvases();
+
+            TMP_Text[] texts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text == null) continue;
+
+                text.UpdateMeshPadding();
+                text.SetVerticesDirty();
+                text.SetMaterialDirty();
+                text.ForceMeshUpdate(true, true);
+            }
+
+            Canvas.ForceUpdateCanvases();
         }
 
-        Canvas.ForceUpdateCanvases();
         _refreshRoutine = null;
     }
 }

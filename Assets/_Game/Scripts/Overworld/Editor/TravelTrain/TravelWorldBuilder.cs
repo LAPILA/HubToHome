@@ -4,13 +4,13 @@ using UnityEngine;
 
 public static class TravelWorldBuilder
 {
-    [MenuItem("HubToHome/Build Travel World")]
+    [MenuItem("Hub To Home/Build Travel World")]
     private static void BuildFromAsciiMenu()
     {
         BuildOrUpdate();
     }
 
-    [MenuItem("HubToHome/오버월드/본편 월드/열차와 WideField 생성-갱신")]
+    [MenuItem("Hub To Home/오버월드/본편 월드/열차와 WideField 생성-갱신")]
     public static TravelWorldBuildResult BuildOrUpdate()
     {
         if (!TravelWorldBuildPreflight.ValidateNoDirtyOwnedContent(out string preflightError))
