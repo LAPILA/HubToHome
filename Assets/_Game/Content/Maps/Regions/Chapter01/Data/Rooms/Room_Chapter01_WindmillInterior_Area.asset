@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aca8f2575afc9243be1cd531a8c1373, type: 3}
+  m_Name: Room_Chapter01_WindmillInterior_Area
+  m_EditorClassIdentifier: Assembly-CSharp::AreaDefinition
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes:
+    - Name: _markerSummaries
+      Entry: 7
+      Data: 0|System.Collections.Generic.List`1[[AreaMarkerSummaryEntry, Assembly-CSharp]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: 1|AreaMarkerSummaryEntry, Assembly-CSharp
+    - Name: MarkerId
+      Entry: 1
+      Data: chapter01.windmill.interior.to_exterior
+    - Name: MarkerType
+      Entry: 3
+      Data: 0
+    - Name: DisplayName
+      Entry: 1
+      Data: "\uD48D\uCC28 \uBC16\uC73C\uB85C"
+    - Name: AreaId
+      Entry: 1
+      Data: chapter01.windmill.interior
+    - Name: HierarchyPath
+      Entry: 1
+      Data: Room_Chapter01_WindmillInterior/Markers/Marker chapter01.windmill.interior.to_exterior
+    - Name: ValidationSummary
+      Entry: 1
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+  _areaId: chapter01.windmill.interior
+  _roomDefinition: {fileID: 11400000, guid: 033373633f866a7459f5a07b9a32bab6, type: 2}
+  _description: "\uD48D\uCC28 \uB0B4\uBD80\uC758 \uAE30\uBCF8 \uBE14\uB85D\uC544\uC6C3\uC785\uB2C8\uB2E4."

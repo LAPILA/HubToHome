@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d8c9eece50d5894d8a10e0e64a85161, type: 3}
+  m_Name: Room_Chapter01_WindmillInterior_Definition
+  m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
+  _roomId: chapter01.windmill.interior
+  _roomPrefab: {fileID: 3814492349257251879, guid: 7032b083df2d07d489f8ca8e02730a53, type: 3}
+  _areaDefinition: {fileID: 11400000, guid: 0c9f7db0d7ae68f438c66a87e3556ee5, type: 2}
+  _bgmOverride: {fileID: 0}
+  _keepCurrentBgm: 1
+  _bgmFadeDuration: 0.75
