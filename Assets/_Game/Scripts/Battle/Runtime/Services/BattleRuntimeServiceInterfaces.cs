@@ -150,6 +150,8 @@ public interface IBattleTurnQteHost
 
     BattleState CurrentBattleState { get; }
 
+    bool CanEscape { get; }
+
     bool IsTurnQteCombatInputActive();
 
     void StartTurnQteCombatLoop();

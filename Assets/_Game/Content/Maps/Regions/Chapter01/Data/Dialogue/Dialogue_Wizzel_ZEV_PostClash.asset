@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_Wizzel_ZEV_PostClash
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
+    Emotion: 1
+    LocalizationKey: chapter01.windmill.zev_duel.post.001
+    DefaultText: "너무 약하시군요..."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: d0a8d7fc4bc8456e8ae9b7aaf71bcb65, type: 2}
+    Emotion: 1
+    LocalizationKey: chapter01.windmill.zev_duel.post.002
+    DefaultText: "으윽..."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []

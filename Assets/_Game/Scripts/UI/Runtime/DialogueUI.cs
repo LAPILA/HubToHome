@@ -27,7 +27,7 @@ public class DialogueUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _choiceTemplate;
 
     [Header("선택지 배치 (640 x 480 기준)")]
-    [SerializeField] private Vector2 _choiceAnchoredPosition = new Vector2(0f, 120f);
+    [SerializeField] private Vector2 _choiceAnchoredPosition = Vector2.zero;
     [SerializeField] private Vector2 _choiceSize = new Vector2(520f, 132f);
 
     [Header("기본 오디오 설정")]

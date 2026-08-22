@@ -596,6 +596,7 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
     public void SetFacingDirection(int dir)
     {
         FacingDirection = dir;
+        SyncOverworldAttackDirection();
     }
 
     // ── 전투 모드 전환 ────────────────────────────────────────

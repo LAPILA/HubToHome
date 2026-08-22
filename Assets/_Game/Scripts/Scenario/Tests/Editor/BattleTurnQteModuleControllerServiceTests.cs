@@ -10,6 +10,47 @@ using UnityEngine;
 public class BattleTurnQteModuleControllerServiceTests
 {
     [Test]
+    public void SelectPlayerAction_WhenEscapeIsDisabled_RejectsRunWithoutMutatingPendingState()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.CanEscape = false;
+            fixture.Host.PendingAction = PlayerMenuAction.Attack;
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            service.SelectPlayerAction(fixture.Player, PlayerMenuAction.Run);
+
+            Assert.That(fixture.Host.PendingAction, Is.EqualTo(PlayerMenuAction.Attack));
+            Assert.That(fixture.Host.RunAwayCalls, Is.Zero);
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void SelectPlayerAction_WhenEscapeIsEnabled_StartsRunNormally()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            fixture.Host.CanEscape = true;
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+
+            service.SelectPlayerAction(fixture.Player, PlayerMenuAction.Run);
+
+            Assert.That(fixture.Host.PendingAction, Is.EqualTo(PlayerMenuAction.Run));
+            Assert.That(fixture.Host.RunAwayCalls, Is.EqualTo(1));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
     public void CompleteAction_WhenPartyIsDefeatedAndReserveExists_StartsNextWave()
     {
         var fixture = new TurnQteFixture();
@@ -493,7 +534,9 @@ public class BattleTurnQteModuleControllerServiceTests
         public bool Victory { get; set; }
         public bool Defeat { get; set; }
         public bool CanStartNextPartyWave { get; set; }
+        public bool CanEscape { get; set; } = true;
         public int PartyWaveStartCalls { get; private set; }
+        public int RunAwayCalls { get; private set; }
         public IReadOnlyList<PlayerCharacter> PlayerParty => _players;
         public IReadOnlyList<EnemyCharacter> Enemies => _enemies;
         public IList<CharacterBase> TurnQueue => _turnQueue;
@@ -562,7 +605,7 @@ public class BattleTurnQteModuleControllerServiceTests
             NarrationRequests++;
             LastNarration = message;
         }
-        public IEnumerator RunAwayRoutine() { yield break; }
+        public IEnumerator RunAwayRoutine() { RunAwayCalls++; yield break; }
         public void ClearTurnQtePendingActionState() { PendingSkill = null; PendingItem = null; PendingAction = default; }
         public Coroutine StartManagedCoroutine(IEnumerator routine)
         {

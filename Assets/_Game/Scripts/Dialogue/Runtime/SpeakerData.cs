@@ -1,9 +1,10 @@
 using UnityEngine;
 using Sirenix.OdinInspector;
+using Sirenix.Serialization;
 using System.Collections.Generic;
 
 [CreateAssetMenu(fileName = "NewSpeaker", menuName = "Dialogue/Speaker Data")]
-public class SpeakerData : ScriptableObject
+public class SpeakerData : SerializedScriptableObject
 {
     [BoxGroup("기본 정보")] public string SpeakerID;
     public string DisplayName;
@@ -21,6 +22,7 @@ public class SpeakerData : ScriptableObject
     public float VoicePitch = 1.0f;
 
     [BoxGroup("초상화 (표정별)")]
+    [OdinSerialize]
     [DictionaryDrawerSettings(KeyLabel = "표정 (Emotion)", ValueLabel = "이미지")]
     public Dictionary<EmotionType, Sprite> Portraits = new Dictionary<EmotionType, Sprite>();
 
@@ -31,4 +33,13 @@ public class SpeakerData : ScriptableObject
     }
 }
 
-public enum EmotionType { None, Normal, Happy, Sad, Angry, Shocked }
+public enum EmotionType
+{
+    None = 0,
+    Normal = 1,
+    Happy = 2,
+    Sad = 3,
+    Angry = 4,
+    Shocked = 5,
+    Confused = 6
+}

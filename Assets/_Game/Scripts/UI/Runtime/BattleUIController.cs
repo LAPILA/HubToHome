@@ -388,6 +388,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _enemies = enemies;
         _isBattleEnding = false;
         _narrationUI?.Clear();
+        _battleMenuUI?.SetRunEnabled(BattleManager.Instance == null || BattleManager.Instance.AllowEscape);
         BindPartySlots(party);
 
         _enemyTopPivots.Clear();
@@ -580,6 +581,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         SetTurnLabel($"{player.DisplayName} 턴");
         _battleMenuUI?.SetActor(player);
+        _battleMenuUI?.SetRunEnabled(BattleManager.Instance == null || BattleManager.Instance.AllowEscape);
 
         for (int i = 0; i < _partySlots.Length; i++)
             _partySlots[i].SetHighlight(_party != null && i < _party.Count && _party[i] == player);

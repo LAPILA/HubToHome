@@ -13,6 +13,15 @@ public interface IEncounterOutcomeSource
     void OnEncounterResolved(BattleEncounterOutcome outcome, PlayerController player);
 }
 
+/// <summary>
+/// 심리스 전투가 정상 결과 없이 강제 중단될 때 복구가 필요한 조우만 구현합니다.
+/// 기존 IEncounterSource는 중단 콜백을 받지 않는 계약을 그대로 유지합니다.
+/// </summary>
+public interface IEncounterAbortSource
+{
+    void OnEncounterAborted(PlayerController player);
+}
+
 public static class EncounterCollisionGuard
 {
     private const float NudgePadding = 0.18f;
@@ -108,7 +117,8 @@ public static class BattleEncounterService
         bool defeatsOnVictory = false,
         IEncounterSource encounterSource = null,
         BattleScenarioData battleScenarioData = null,
-        bool playerPreemptiveAttack = false)
+        bool playerPreemptiveAttack = false,
+        bool allowEscape = true)
     {
         if (player == null)
         {
@@ -176,7 +186,8 @@ public static class BattleEncounterService
                 encounterId,
                 defeatsOnVictory,
                 battleScenarioData,
-                playerPreemptiveAttack);
+                playerPreemptiveAttack,
+                allowEscape);
 
             if (useSeamlessBattle)
             {
@@ -280,7 +291,8 @@ public static class BattleEncounterService
         string encounterId,
         bool defeatsOnVictory,
         BattleScenarioData battleScenarioData,
-        bool playerPreemptiveAttack)
+        bool playerPreemptiveAttack,
+        bool allowEscape)
     {
         global.LastOverworldScene = SceneManager.GetActiveScene().name;
         global.PendingEnemies = new List<EnemyData>(encounterEnemies);
@@ -290,7 +302,8 @@ public static class BattleEncounterService
             encounterId,
             global.LastOverworldScene,
             defeatsOnVictory,
-            playerPreemptiveAttack);
+            playerPreemptiveAttack,
+            allowEscape);
 
         player.SetBattleMode(true);
         player.SavePositionToGlobal();
@@ -313,6 +326,7 @@ public static class BattleEncounterService
         private readonly string _encounterId;
         private readonly bool _defeatsOnVictory;
         private readonly bool _playerPreemptiveAttack;
+        private readonly bool _allowEscape;
         private readonly bool _playerWasInBattle;
         private readonly GameState _gameState;
         private readonly float _timeScale;
@@ -341,6 +355,7 @@ public static class BattleEncounterService
             _encounterId = global.CurrentEncounterEnemyId;
             _defeatsOnVictory = global.CurrentEncounterDefeatsOnVictory;
             _playerPreemptiveAttack = global.CurrentEncounterPlayerPreemptiveAttack;
+            _allowEscape = global.CurrentEncounterAllowsEscape;
             _playerWasInBattle = player.State == PlayerController.PlayerState.InBattle;
             _gameState = gameStateManager != null
                 ? gameStateManager.CurrentState
@@ -401,7 +416,8 @@ public static class BattleEncounterService
                 _encounterId,
                 _lastOverworldScene,
                 _defeatsOnVictory,
-                _playerPreemptiveAttack);
+                _playerPreemptiveAttack,
+                _allowEscape);
         }
 
         private void RestorePlayerMode()

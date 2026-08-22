@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 public sealed class DialogueStateRestoreTests
@@ -151,6 +152,133 @@ public sealed class DialogueStateRestoreTests
         }
     }
 
+    [Test]
+    public void DialogueBattleNpc_DefaultModePreservesLegacyDialoguePlayback()
+    {
+        GameObject playerObject = new GameObject("Legacy Dialogue Player", typeof(PlayerController));
+        GameObject npcObject = new GameObject("Legacy Dialogue NPC", typeof(DialogueBattleNPC));
+        try
+        {
+            DialogueBattleNPC npc = npcObject.GetComponent<DialogueBattleNPC>();
+            PlayerController player = playerObject.GetComponent<PlayerController>();
+            var serialized = new SerializedObject(npc);
+            serialized.FindProperty("_dialogue").objectReferenceValue = _dialogue;
+            serialized.FindProperty("_encounterIdOverride").stringValue = "legacy.dialogue.encounter";
+            serialized.FindProperty("_allowEscape").boolValue = false;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            npc.Interact(player);
+
+            Assert.That(_manager.IsPlaying, Is.True);
+            Assert.That(serialized.FindProperty("_useStagedEncounter").boolValue, Is.False);
+            Assert.That(GetPrivateBool(npc, "_stagedEncounterInProgress"), Is.False);
+            DialogueEncounterContext context = GetPrivateField<DialogueEncounterContext>(
+                _manager,
+                "_encounterContext");
+            Assert.That(context, Is.Not.Null);
+            Assert.That(context.EncounterIdOverride, Is.EqualTo("legacy.dialogue.encounter"));
+            Assert.That(context.DefeatEnemyOnVictory, Is.False);
+            Assert.That(context.AllowEscape, Is.False);
+            _manager.EndDialogue();
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(npcObject);
+            UnityEngine.Object.DestroyImmediate(playerObject);
+        }
+    }
+
+    [Test]
+    public void DialogueBattleNpc_DefaultModeWithoutExplicitIdKeepsLegacyNullEncounterKey()
+    {
+        GameObject playerObject = new GameObject("Legacy Dialogue Player Without Id", typeof(PlayerController));
+        GameObject npcObject = new GameObject("Legacy Dialogue NPC Without Id", typeof(DialogueBattleNPC));
+        EnemyData fallbackEnemy = ScriptableObject.CreateInstance<EnemyData>();
+        try
+        {
+            DialogueBattleNPC npc = npcObject.GetComponent<DialogueBattleNPC>();
+            PlayerController player = playerObject.GetComponent<PlayerController>();
+            var serialized = new SerializedObject(npc);
+            serialized.FindProperty("_dialogue").objectReferenceValue = _dialogue;
+            SerializedProperty enemies = serialized.FindProperty("_fallbackEncounterEnemies");
+            enemies.arraySize = 1;
+            enemies.GetArrayElementAtIndex(0).objectReferenceValue = fallbackEnemy;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            npc.Interact(player);
+
+            DialogueEncounterContext context = GetPrivateField<DialogueEncounterContext>(
+                _manager,
+                "_encounterContext");
+            Assert.That(context, Is.Not.Null);
+            Assert.That(
+                context.EncounterIdOverride,
+                Is.Null,
+                "기존 일반 대화 전투는 EnemyData ID를 새 글로벌 상태 키로 암묵 승격하면 안 됩니다.");
+            _manager.EndDialogue();
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(fallbackEnemy);
+            UnityEngine.Object.DestroyImmediate(npcObject);
+            UnityEngine.Object.DestroyImmediate(playerObject);
+        }
+    }
+
+    [Test]
+    public void DialogueBattleNpc_DisableCancelsOnlyItsOwnedStagedDialogueAndRestoresState()
+    {
+        GameObject playerObject = new GameObject("Staged Dialogue Player", typeof(PlayerController));
+        GameObject npcObject = new GameObject("Staged Dialogue NPC");
+        npcObject.AddComponent<SpriteRenderer>();
+        EnemyCharacter npcEnemy = npcObject.AddComponent<EnemyCharacter>();
+        DialogueBattleNPC npc = npcObject.AddComponent<DialogueBattleNPC>();
+        DialogueData postDialogue = ScriptableObject.CreateInstance<DialogueData>();
+        postDialogue.Nodes.Add(new DialogueNode { DefaultText = "post" });
+        EnemyData enemy = ScriptableObject.CreateInstance<EnemyData>();
+        try
+        {
+            PlayerController player = playerObject.GetComponent<PlayerController>();
+            Assert.That(npcEnemy, Is.Not.Null);
+            Assert.That(npcObject.GetComponent<EnemyCharacter>(), Is.SameAs(npcEnemy));
+            var serialized = new SerializedObject(npc);
+            serialized.FindProperty("_dialogue").objectReferenceValue = _dialogue;
+            serialized.FindProperty("_postClashDialogue").objectReferenceValue = postDialogue;
+            serialized.FindProperty("_useStagedEncounter").boolValue = true;
+            SerializedProperty enemies = serialized.FindProperty("_fallbackEncounterEnemies");
+            enemies.arraySize = 1;
+            enemies.GetArrayElementAtIndex(0).objectReferenceValue = enemy;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            npc.Interact(player);
+            int ownedGeneration = _manager.PlaybackGeneration;
+
+            Assert.That(_manager.IsPlaying, Is.True);
+            Assert.That(GetPrivateBool(npc, "_stagedEncounterInProgress"), Is.True);
+            Assert.That(npc.CanStartPreemptiveAttack(player), Is.False);
+
+            InvokePrivateLifecycle(npc, "OnDisable");
+
+            Assert.That(_manager.IsPlaying, Is.False, "OnDisable must cancel the NPC-owned dialogue generation.");
+            Assert.That(
+                _manager.CancelDialogue(ownedGeneration),
+                Is.False,
+                "The owned generation must already be closed after OnDisable.");
+            Assert.That(
+                GetPrivateBool(npc, "_stagedEncounterInProgress"),
+                Is.False,
+                "OnDisable must clear the staged encounter guard.");
+            Assert.That(_state.CurrentState, Is.EqualTo(GameState.Exploration));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(enemy);
+            UnityEngine.Object.DestroyImmediate(postDialogue);
+            UnityEngine.Object.DestroyImmediate(npcObject);
+            UnityEngine.Object.DestroyImmediate(playerObject);
+        }
+    }
+
     private static void SetPrivateField<T>(DialogueManager target, string fieldName, T value)
     {
         FieldInfo field = typeof(DialogueManager).GetField(
@@ -167,5 +295,32 @@ public sealed class DialogueStateRestoreTests
             BindingFlags.Public | BindingFlags.Static);
         Assert.That(property, Is.Not.Null, "Missing singleton property on " + type.Name);
         property.SetValue(null, value);
+    }
+
+    private static bool GetPrivateBool(object target, string fieldName)
+    {
+        FieldInfo field = target.GetType().GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, "Missing private field: " + fieldName);
+        return (bool)field.GetValue(target);
+    }
+
+    private static T GetPrivateField<T>(object target, string fieldName)
+    {
+        FieldInfo field = target.GetType().GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, "Missing private field: " + fieldName);
+        return (T)field.GetValue(target);
+    }
+
+    private static void InvokePrivateLifecycle(object target, string methodName)
+    {
+        MethodInfo method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null, "Missing private method: " + methodName);
+        method.Invoke(target, null);
     }
 }

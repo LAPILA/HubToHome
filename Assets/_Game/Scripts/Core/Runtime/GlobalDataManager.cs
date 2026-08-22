@@ -40,6 +40,7 @@ public class GlobalDataManager : MonoBehaviour
     public string CurrentEncounterEnemyId { get; private set; }
     public bool CurrentEncounterDefeatsOnVictory { get; private set; }
     public bool CurrentEncounterPlayerPreemptiveAttack { get; private set; }
+    public bool CurrentEncounterAllowsEscape { get; private set; } = true;
     
     // 🚨 다중 파티 시스템 
     public List<CharacterSaveData> Party { get; private set; } = new List<CharacterSaveData>();
@@ -814,11 +815,17 @@ public class GlobalDataManager : MonoBehaviour
     #endregion
 
     #region [ Overworld Enemy Runtime State ]
-    public void BeginOverworldEnemyEncounter(string enemyId, string sceneName, bool defeatsOnVictory, bool playerPreemptiveAttack = false)
+    public void BeginOverworldEnemyEncounter(
+        string enemyId,
+        string sceneName,
+        bool defeatsOnVictory,
+        bool playerPreemptiveAttack = false,
+        bool allowEscape = true)
     {
         CurrentEncounterEnemyId = string.IsNullOrWhiteSpace(enemyId) ? string.Empty : enemyId.Trim();
         CurrentEncounterDefeatsOnVictory = defeatsOnVictory;
         CurrentEncounterPlayerPreemptiveAttack = playerPreemptiveAttack;
+        CurrentEncounterAllowsEscape = allowEscape;
 
         if (string.IsNullOrEmpty(CurrentEncounterEnemyId)) return;
 
@@ -830,6 +837,7 @@ public class GlobalDataManager : MonoBehaviour
         CurrentEncounterEnemyId = null;
         CurrentEncounterDefeatsOnVictory = false;
         CurrentEncounterPlayerPreemptiveAttack = false;
+        CurrentEncounterAllowsEscape = true;
     }
     public void CancelPendingBattleEncounter()
     {

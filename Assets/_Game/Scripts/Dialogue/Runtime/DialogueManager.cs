@@ -274,6 +274,7 @@ public class DialogueManager : MonoBehaviour
             : 0.08f;
         string encounterId = encounterContext != null ? encounterContext.EncounterIdOverride : null;
         bool defeatsOnVictory = encounterContext != null && encounterContext.DefeatEnemyOnVictory;
+        bool allowEscape = encounterContext == null || encounterContext.AllowEscape;
         BattleScenarioData battleScenarioData = encounterContext != null ? encounterContext.BattleScenarioData : null;
 
         BattleEncounterService.StartEncounter(
@@ -286,7 +287,9 @@ public class DialogueManager : MonoBehaviour
             encounterId,
             defeatsOnVictory,
             null,
-            battleScenarioData);
+            battleScenarioData,
+            false,
+            allowEscape);
     }
 
     private void StartNamingProcess()

@@ -15,4 +15,5 @@ public class DialogueEncounterContext
     public float BattleSceneFadeDuration = 0.08f;
     public string EncounterIdOverride;
     public bool DefeatEnemyOnVictory;
+    public bool AllowEscape = true;
 }

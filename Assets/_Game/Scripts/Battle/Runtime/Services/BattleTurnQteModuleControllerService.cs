@@ -404,6 +404,11 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             return;
         }
 
+        if (action == PlayerMenuAction.Run && !_host.CanEscape)
+        {
+            return;
+        }
+
         _host.PendingActor = actor;
         _host.PendingAction = action;
         _host.PendingSkill = null;
