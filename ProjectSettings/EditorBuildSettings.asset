@@ -6,8 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/_Game/Content/Maps/Regions/Chapter01/Scenes/Region_Chapter01_Windmill.unity
-    guid: 9b07fd33843811a4d9f78e94174ee460
+    path: Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity
+    guid: ab3ad379232158a4ba849675b37b1afb
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
