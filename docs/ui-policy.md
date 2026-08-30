@@ -1,6 +1,6 @@
 # HubToHome UI Policy
 
-상태: 초안 v0.2 — 오버월드 Canvas A 구현 중
+상태: 초안 v0.3 — Overworld 및 Dialogue 고정 viewport 적용 중
 
 이 문서는 HubToHome의 uGUI Canvas, Game Camera, UI Camera, 해상도 변경, 전체화면 전환 정책을 정의하는 대표 문서다. UI 작업은 이 문서의 정책을 먼저 확인하고, 새 UI는 반드시 아래 세 가지 표시 모드 중 하나로 분류한다.
 
@@ -82,9 +82,11 @@ WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지�
 
 단순히 모든 CanvasScaler 값을 일괄 변경하지 않는다. Canvas의 표시 모드와 카메라 viewport를 먼저 확인한 뒤 FixedViewport Canvas에만 정책을 적용한다.
 
-## 첫 적용 대상
+## 적용 순서 및 대상
 
-첫 번째 검증 대상은 `OverworldMenuUI`다. 인벤토리, 장비, 파티, 재화 패널이 이 루트 아래에 포함되어 있으므로 오버월드 메뉴 루트를 고정 viewport에 연결하면 관련 UI를 한 번에 검증할 수 있다.
+첫 번째 적용 대상은 `OverworldMenuUI`다. 인벤토리, 장비, 파티, 재화 패널이 이 루트 아래에 포함되어 있으므로 오버월드 메뉴 루트를 고정 viewport에 연결하면 관련 UI를 한 번에 검증할 수 있다.
+
+현재 빌드 캡처에서 확인된 두 번째 대상은 `DialogueCanvas`다. 하단 대화창의 실제 소유자는 `DialogueCanvas/OverworldPanel`이며, 상단 Battle Speech Bubble은 별도 WorldSpace Canvas이므로 같은 대상으로 취급하지 않는다.
 
 첫 적용에서 보존해야 하는 동작:
 
@@ -94,6 +96,13 @@ WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지�
 - 인벤토리 목록/장비/파티/재화 갱신
 - 기존 RectTransform 계층과 직렬화 참조
 - 기존 애니메이션과 Pixel Perfect Safe Area 보정
+
+DialogueCanvas 적용에서 보존해야 하는 동작:
+
+- 타이프라이터 및 음성 블립
+- 선택지와 이름 입력 패널
+- BattleNarrationPanel 표시/숨김
+- 상단 WorldSpace Speech Bubble의 월드 추적
 
 ## 아직 결정하지 않은 항목
 
