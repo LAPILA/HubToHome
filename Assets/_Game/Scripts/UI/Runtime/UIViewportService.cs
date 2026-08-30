@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
@@ -23,6 +24,7 @@ public sealed class UIViewportService : MonoBehaviour
 
     private readonly List<Canvas> _fixedCanvases = new List<Canvas>();
     private Camera _sharedCamera;
+    private Coroutine _settleRoutine;
     private Rect _lastCameraRect;
     private int _lastScreenWidth;
     private int _lastScreenHeight;
@@ -53,6 +55,9 @@ public sealed class UIViewportService : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (_settleRoutine != null)
+            StopCoroutine(_settleRoutine);
+
         if (s_instance == this)
             s_instance = null;
     }
@@ -137,21 +142,58 @@ public sealed class UIViewportService : MonoBehaviour
         if (!changed)
             return;
 
-        for (int i = _fixedCanvases.Count - 1; i >= 0; i--)
+        if (_settleRoutine == null)
+            _settleRoutine = StartCoroutine(CoApplyAfterDisplaySettles());
+    }
+
+    private IEnumerator CoApplyAfterDisplaySettles()
+    {
+        // Fullscreen 전환 직후에는 Screen 크기, PPC rect, CanvasScaler 순서가
+        // 서로 다른 프레임에 확정될 수 있다. 두 프레임을 기다린 뒤 한 번에
+        // Canvas → SafeArea → Layout 순서로 재계산한다.
+        yield return null;
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        Camera camera = ResolveSharedCamera();
+        if (camera != null)
         {
-            Canvas canvas = _fixedCanvases[i];
-            if (canvas == null)
+            for (int i = _fixedCanvases.Count - 1; i >= 0; i--)
             {
-                _fixedCanvases.RemoveAt(i);
-                continue;
+                Canvas canvas = _fixedCanvases[i];
+                if (canvas == null)
+                {
+                    _fixedCanvases.RemoveAt(i);
+                    continue;
+                }
+
+                ConfigureFixedViewport(canvas, camera);
             }
 
-            ConfigureFixedViewport(canvas, camera);
+            UIPixelPerfectSafeAreaFitter[] fitters = FindObjectsByType<UIPixelPerfectSafeAreaFitter>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < fitters.Length; i++)
+                fitters[i]?.ApplyNow();
+
+            Canvas.ForceUpdateCanvases();
+            for (int i = 0; i < _fixedCanvases.Count; i++)
+            {
+                Canvas canvas = _fixedCanvases[i];
+                if (canvas == null) continue;
+
+                RectTransform root = canvas.transform as RectTransform;
+                if (root != null)
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(root);
+            }
+
+            Canvas.ForceUpdateCanvases();
+            _lastCameraRect = camera.rect;
+            _lastScreenWidth = Screen.width;
+            _lastScreenHeight = Screen.height;
         }
 
-        _lastCameraRect = cameraRect;
-        _lastScreenWidth = Screen.width;
-        _lastScreenHeight = Screen.height;
+        _settleRoutine = null;
     }
 
     private static Canvas FindCanvas(Component owner)
