@@ -2,7 +2,7 @@
 
 상태: 확정 v1.0 — FixedViewport 공통 정책 적용
 
-이 문서는 HubToHome의 uGUI Canvas, Game Camera, UI Camera, 해상도 변경, 전체화면 전환 정책을 정의하는 대표 문서다. UI 작업은 이 문서를 먼저 읽고, 새 UI는 반드시 아래 세 가지 표시 모드 중 하나로 분류한다. 이 문서와 코드 주석의 `FixedViewport`, `WorldTracked`, `Fullscreen` 용어는 동일한 계약을 가리킨다.
+이 문서는 HubToHome의 uGUI Canvas, Game Camera, UI Camera, 해상도 변경, 전체화면 전환 정책을 정의하는 대표 문서다. 우리 게임은 640x480 픽셀 아트 화면을 중심으로 플레이되고, 와이드 모니터에서는 그 게임 화면을 중앙 4:3 viewport로 유지한다. 따라서 UI도 모니터의 현재 크기를 기준으로 다시 설계하는 것이 아니라, UI가 게임 화면과 어떤 관계를 갖는지를 먼저 판단하고 그 관계에 맞는 공통 규칙을 적용한다. 이 문서와 코드 주석의 `FixedViewport`, `WorldTracked`, `Fullscreen` 용어는 동일한 계약을 가리킨다.
 
 ## 기준
 
@@ -78,19 +78,21 @@ Canvas 개수는 제한하지 않는다. 중요한 것은 Canvas 루트가 어�
 
 WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지만, 위치 계산과 월드 추적 책임은 각 기능이 유지한다.
 
-## 현재 UI 소유자와 표시 모드
+## 화면 기반 UI를 설계하는 방법
 
-| 소유자 | 주요 화면 | 표시 모드 | 계약 진입점 |
-|---|---|---|---|
-| `OverworldMenuUI` | 메뉴, 인벤토리, 장비, POWER, 파티/재화 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
-| `DialogueUI` / `DialogueCanvas` | 오버월드 대화창, 선택지 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
-| `ShopUI` | 구매/판매 상점 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
-| `ConfigPanelUI` / `SettingPanel` | C 메뉴 CONFIG | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
-| `BattleUIController` | 전투 HUD, QTE 표시 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` 또는 전투 초기화 |
-| Battle Speech Bubble | 월드상의 말풍선 | WorldTracked | 월드 카메라/WorldSpace 유지 |
-| 화면 페이드·로딩 배경 | 모니터 전체 효과 | Fullscreen | 명시적 Overlay 예외 |
+새 UI를 만들 때 UI 이름이나 기능별 예외부터 정하지 않는다. 먼저 아래 질문으로 게임 화면과의 관계를 결정한다.
 
-CONFIG처럼 `C` 메뉴에서 진입하더라도 설정 패널은 별도 `SettingPanel` Canvas 소유자다. 오버월드 메뉴의 `CategoryLabel`을 설정 패널 제목으로 재사용하지 않는다.
+1. 이 UI가 게임 월드의 일부처럼 보여야 하는가, 아니면 게임 화면 위에 고정되어야 하는가?
+2. 와이드 모니터의 검은 여백까지 UI가 덮어야 하는가, 아니면 중앙 게임 viewport 안에만 있어야 하는가?
+3. UI가 월드 좌표를 따라 움직이는가, 아니면 논리 해상도의 고정 좌표에 있어야 하는가?
+
+게임 플레이 화면 위에 고정되는 모든 HUD, 메뉴, 대화, 상점, 설정, 전투 UI는 기본적으로 `FixedViewport`로 처리한다. 이 UI들은 기능이 달라도 같은 출력 카메라, 같은 논리 해상도, 같은 전체화면 전환 정책을 공유한다.
+
+월드 캐릭터나 오브젝트를 따라가야 하는 요소만 `WorldTracked`로 분리한다. 말풍선, 타겟 커서, 데미지 팝업처럼 위치가 월드에 종속되는 요소는 고정 UI 규칙을 억지로 적용하지 않고, Game Camera의 월드 투영을 유지한다.
+
+게임 viewport 자체와 무관하게 모니터 전체를 덮어야 하는 효과만 `Fullscreen` 예외로 둔다. 페이드나 로딩 배경이 대표적인 예이며, 인게임 UI를 화면이 넓다는 이유로 Fullscreen으로 분류하지 않는다.
+
+이렇게 분류하면 인벤토리와 상점, 설정과 전투 HUD가 서로 다른 기능이어도 해상도 처리 방식은 달라지지 않는다. 달라지는 것은 각 기능의 내부 콘텐츠 배치뿐이며, Canvas 출력 정책은 공통 계약을 따른다.
 
 ## 레이아웃 작성 규칙
 
@@ -106,7 +108,7 @@ CONFIG처럼 `C` 메뉴에서 진입하더라도 설정 패널은 별도 `Settin
 
 작업 전:
 
-- [ ] 이 UI의 표시 모드를 위 표에 추가하거나 기존 소유자와 연결했다.
+- [ ] UI가 게임 viewport 고정인지, 월드 추적인지, 모니터 전체 예외인지 판단했다.
 - [ ] Canvas 루트, 출력 카메라, CanvasScaler, 실제 콘텐츠 부모를 확인했다.
 - [ ] 기존 직렬화 참조와 입력/애니메이션 동작을 보존하는 범위를 정했다.
 
@@ -134,13 +136,11 @@ Canvas를 생성하거나 정규화하는 코드에는 다음 정보를 짧게 �
 
 단순히 모든 CanvasScaler 값을 일괄 변경하지 않는다. Canvas의 표시 모드와 카메라 viewport를 먼저 확인한 뒤 FixedViewport Canvas에만 정책을 적용한다.
 
-## 적용 순서 및 대상
+## 기존 UI에 정책을 적용할 때
 
-첫 번째 적용 대상은 `OverworldMenuUI`다. 인벤토리, 장비, 파티, 재화 패널이 이 루트 아래에 포함되어 있으므로 오버월드 메뉴 루트를 고정 viewport에 연결하면 관련 UI를 한 번에 검증할 수 있다.
+기존 UI를 수정할 때는 기능별로 별도 해상도 보정 코드를 만들지 않는다. 먼저 해당 Canvas 루트를 표시 모드로 분류하고, `FixedViewport`라면 `UIRuntimeGuard.NormalizeCanvas`를 통해 `UIViewportService`에 연결한다. 여러 Canvas가 있어도 Canvas 개수 자체를 줄이는 것이 목표가 아니며, 모든 FixedViewport Canvas가 같은 게임 viewport를 공유하는 것이 목표다.
 
-현재 빌드 캡처에서 확인된 두 번째 대상은 `DialogueCanvas`다. 하단 대화창의 실제 소유자는 `DialogueCanvas/OverworldPanel`이며, 상단 Battle Speech Bubble은 별도 WorldSpace Canvas이므로 같은 대상으로 취급하지 않는다.
-
-첫 적용에서 보존해야 하는 동작:
+정책 적용 중 보존해야 하는 동작:
 
 - UIManager 패널 등록/스택
 - 메뉴 열기/닫기
@@ -149,18 +149,13 @@ Canvas를 생성하거나 정규화하는 코드에는 다음 정보를 짧게 �
 - 기존 RectTransform 계층과 직렬화 참조
 - 기존 애니메이션과 Pixel Perfect Safe Area 보정
 
-DialogueCanvas 적용에서 보존해야 하는 동작:
+- 월드 추적 요소의 카메라 투영과 위치 계산
 
-- 타이프라이터 및 음성 블립
-- 선택지와 이름 입력 패널
-- BattleNarrationPanel 표시/숨김
-- 상단 WorldSpace Speech Bubble의 월드 추적
-
-## 향후 별도 결정이 필요한 항목
+## 현재 보류 중인 구조 결정
 
 - 별도 UI Camera를 도입할지, Game Camera 재사용을 유지할지
 - URP 카메라 스택을 사용할지, 독립 UI Camera를 사용할지
-- 설정 메뉴는 현재 FixedViewport로 확정했다. Fullscreen으로 바꾸려면 별도 결정과 시각 검증이 필요하다.
+- 설정 메뉴를 Fullscreen 예외로 바꿀지는 별도 결정과 시각 검증이 필요하다.
 - 기존 `UIPixelPerfectSafeAreaFitter`를 공통 관리자의 하위 호환 계층으로 유지할 범위
 
 전용 UI Camera와 URP 카메라 스택 도입 여부는 현재 보류한다. 도입 시 이 문서의 공통 출력 카메라 계약과 모든 FixedViewport 등록 경로를 함께 검토한다.
