@@ -54,7 +54,10 @@ public class UIManager : MonoBehaviour
         if (_pausePanel != null) RegisterPanel(UIPanelId.Pause, _pausePanel);
         if (_saveLoadPanel != null) RegisterPanel(UIPanelId.SaveLoad, _saveLoadPanel);
         if (_overworldPanel != null)
+        {
             RegisterPanel(UIPanelId.Overworld, _overworldPanel, _fitOverworldPanelToPixelPerfectSafeArea);
+            UIViewportService.GetOrCreate().RegisterFixedViewport(_overworldPanel);
+        }
     }
 
     private void OnDestroy()
