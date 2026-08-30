@@ -451,7 +451,7 @@ MonoBehaviour:
   _dialogueText: {fileID: 1611557340164344866}
   _choiceRoot: {fileID: 5583284590288876190}
   _choiceTemplate: {fileID: 6030842279275098199, guid: 33001103212cdf342a13b60d0e24489b, type: 3}
-  _choiceAnchoredPosition: {x: 0, y: 120}
+  _choiceAnchoredPosition: {x: 0, y: 0}
   _choiceSize: {x: 520, y: 132}
   _defaultVoiceBlip: {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}
   _defaultPitch: 1
@@ -1011,7 +1011,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 120}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 520, y: 132}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7045489858658563191
@@ -1317,7 +1317,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 120}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 520, y: 132}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7389405915791212219
@@ -1542,7 +1542,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &604092536136034148
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1604,7 +1604,7 @@ MonoBehaviour:
   _dialogueText: {fileID: 6834743147808217499}
   _choiceRoot: {fileID: 7640548806869593329}
   _choiceTemplate: {fileID: 6030842279275098199, guid: 33001103212cdf342a13b60d0e24489b, type: 3}
-  _choiceAnchoredPosition: {x: 0, y: 120}
+  _choiceAnchoredPosition: {x: 0, y: 0}
   _choiceSize: {x: 520, y: 132}
   _defaultVoiceBlip: {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}
   _defaultPitch: 1
@@ -1637,7 +1637,7 @@ RectTransform:
   m_GameObject: {fileID: 7582505938803683177}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5486682297355495232}

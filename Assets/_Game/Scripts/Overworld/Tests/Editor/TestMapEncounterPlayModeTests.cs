@@ -6,6 +6,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 public class TestMapEncounterPlayModeTests
 {
@@ -313,6 +314,152 @@ public class TestMapEncounterPlayModeTests
     }
 
     [UnityTest]
+    public IEnumerator SeamlessAbort_NotifiesOnlyOptInAbortSourceOnce()
+    {
+        EditorSceneManager.OpenScene(
+            SeamlessBattleHostPrefabBuilder.TestMapScenePath,
+            OpenSceneMode.Single);
+
+        yield return new EnterPlayMode();
+        yield return null;
+
+        SeamlessBattleHost host = Object.FindFirstObjectByType<SeamlessBattleHost>(FindObjectsInactive.Include);
+        PlayerController player = Object.FindFirstObjectByType<PlayerController>();
+        EnemyData enemy = AssetDatabase.LoadAssetAtPath<EnemyData>(SlimeDataPath);
+        var sourceObject = new GameObject("Opt-in Abort Encounter Source");
+        TestMapAbortEncounterSourceProbe source = sourceObject.AddComponent<TestMapAbortEncounterSourceProbe>();
+
+        Assert.That(host, Is.Not.Null);
+        Assert.That(player, Is.Not.Null);
+        Assert.That(enemy, Is.Not.Null);
+
+        bool started = BattleEncounterService.StartEncounter(
+            player,
+            new System.Collections.Generic.List<EnemyData> { enemy },
+            useDedicatedBattleScene: false,
+            encounterId: "test.seamless.abort.opt-in",
+            encounterSource: source);
+
+        Assert.That(started, Is.True);
+        yield return WaitUntilOrFail(
+            () => host.BattleUiRoot.activeSelf && host.BattleManager._enemies.Count > 0,
+            12f,
+            "Seamless battle did not create its runtime actors.");
+
+        Assert.That(host.BattleManager.AbortSeamlessBattle(), Is.True);
+        Assert.That(host.BattleManager.AbortSeamlessBattle(), Is.False);
+        yield return null;
+
+        Assert.That(source.AbortCalls, Is.EqualTo(1));
+        Assert.That(source.WasResolved, Is.False);
+        Assert.That(source.AbortedPlayer, Is.SameAs(player));
+
+        Object.Destroy(sourceObject);
+        yield return null;
+        yield return new ExitPlayMode();
+    }
+
+    [UnityTest]
+    public IEnumerator MandatoryEncounter_KeepsRunVisibleDisabledAndRejectsRun()
+    {
+        EditorSceneManager.OpenScene(
+            SeamlessBattleHostPrefabBuilder.TestMapScenePath,
+            OpenSceneMode.Single);
+
+        yield return new EnterPlayMode();
+        yield return null;
+
+        SeamlessBattleHost host = Object.FindFirstObjectByType<SeamlessBattleHost>(FindObjectsInactive.Include);
+        PlayerController player = Object.FindFirstObjectByType<PlayerController>();
+        EnemyData enemy = AssetDatabase.LoadAssetAtPath<EnemyData>(SlimeDataPath);
+
+        Assert.That(host, Is.Not.Null);
+        Assert.That(player, Is.Not.Null);
+        Assert.That(enemy, Is.Not.Null);
+
+        bool started = BattleEncounterService.StartEncounter(
+            player,
+            new System.Collections.Generic.List<EnemyData> { enemy },
+            useDedicatedBattleScene: false,
+            encounterId: "test.seamless.mandatory",
+            allowEscape: false);
+
+        Assert.That(started, Is.True);
+        yield return WaitUntilOrFail(
+            () => host.BattleUiRoot.activeSelf
+                && host.BattleManager._playerParty.Count > 0
+                && host.BattleManager.CurrentState == BattleState.PlayerActionSelect,
+            12f,
+            "Mandatory seamless battle did not reach player input.");
+
+        BattleMenuUI menu = host.BattleUiRoot.GetComponentInChildren<BattleMenuUI>(true);
+        Assert.That(menu, Is.Not.Null);
+        var menuObject = new SerializedObject(menu);
+        Button runButton = menuObject.FindProperty("_runBtn").objectReferenceValue as Button;
+        Assert.That(runButton, Is.Not.Null);
+        Assert.That(runButton.gameObject.activeInHierarchy, Is.True);
+        Assert.That(runButton.interactable, Is.False);
+        Assert.That(host.BattleManager.AllowEscape, Is.False);
+
+        host.BattleManager.OnPlayerActionSelected(
+            host.BattleManager._playerParty[0],
+            PlayerMenuAction.Run);
+        yield return null;
+
+        Assert.That(host.BattleManager.IsSeamlessBattleActive, Is.True);
+        Assert.That(host.BattleManager.CurrentState, Is.EqualTo(BattleState.PlayerActionSelect));
+
+        Assert.That(host.BattleManager.AbortSeamlessBattle(), Is.True);
+        yield return null;
+        yield return new ExitPlayMode();
+    }
+
+    [UnityTest]
+    public IEnumerator StagedApproach_NormalAutoKillCompletionDoesNotAbort()
+    {
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        yield return new EnterPlayMode();
+
+        var playerObject = new GameObject("Staged Approach Player");
+        playerObject.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
+        PlayerController player = playerObject.AddComponent<PlayerController>();
+        playerObject.transform.position = Vector3.zero;
+
+        var npcObject = new GameObject("Staged Approach NPC");
+        DialogueBattleNPC npc = npcObject.AddComponent<DialogueBattleNPC>();
+        npcObject.transform.position = new Vector3(4f, 0f, 0f);
+
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        System.Type npcType = typeof(DialogueBattleNPC);
+        npcType.GetField("_stagedPlayer", flags).SetValue(npc, player);
+        npcType.GetField("_stagedEncounterInProgress", flags).SetValue(npc, true);
+        npcType.GetField("_stagedApproachStopDistance", flags).SetValue(npc, 0.5f);
+        npcType.GetField("_stagedApproachDuration", flags).SetValue(npc, 0.05f);
+
+        var approachMethod = npcType.GetMethod("CoApproachEachOther", flags);
+        Assert.That(approachMethod, Is.Not.Null);
+        var approach = approachMethod.Invoke(npc, null) as IEnumerator;
+        Assert.That(approach, Is.Not.Null);
+        npc.StartCoroutine(approach);
+
+        yield return new WaitForSecondsRealtime(0.15f);
+
+        Assert.That(
+            (bool)npcType.GetField("_stagedEncounterInProgress", flags).GetValue(npc),
+            Is.True,
+            "DOTween 정상 완료를 AutoKill 뒤의 IsComplete 값 때문에 중단으로 오판하면 안 됩니다.");
+        Assert.That(
+            Vector3.Distance(playerObject.transform.position, npcObject.transform.position),
+            Is.EqualTo(0.5f).Within(0.02f));
+
+        Object.Destroy(playerObject);
+        Object.Destroy(npcObject);
+        yield return null;
+        yield return new ExitPlayMode();
+    }
+
+    [UnityTest]
     public IEnumerator DuplicateSeamlessBattleHostLeavesOneCompleteRoot()
     {
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -363,5 +510,23 @@ public sealed class TestMapEncounterSourceProbe : MonoBehaviour, IEncounterSourc
     {
         WasResolved = true;
         Victory = victory;
+    }
+}
+
+public sealed class TestMapAbortEncounterSourceProbe : MonoBehaviour, IEncounterSource, IEncounterAbortSource
+{
+    public bool WasResolved { get; private set; }
+    public int AbortCalls { get; private set; }
+    public PlayerController AbortedPlayer { get; private set; }
+
+    public void OnEncounterResolved(bool victory, PlayerController player)
+    {
+        WasResolved = true;
+    }
+
+    public void OnEncounterAborted(PlayerController player)
+    {
+        AbortCalls++;
+        AbortedPlayer = player;
     }
 }

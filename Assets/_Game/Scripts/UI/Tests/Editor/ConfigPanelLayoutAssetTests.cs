@@ -30,7 +30,7 @@ public sealed class ConfigPanelLayoutAssetTests
             "SettingPanel referenceResolution");
         Assert.That(
             scaler.screenMatchMode,
-            Is.EqualTo(CanvasScaler.ScreenMatchMode.Expand));
+            Is.EqualTo(CanvasScaler.ScreenMatchMode.MatchWidthOrHeight));
     }
 
     [Test]

@@ -27,7 +27,7 @@ public class DialogueUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _choiceTemplate;
 
     [Header("선택지 배치 (640 x 480 기준)")]
-    [SerializeField] private Vector2 _choiceAnchoredPosition = new Vector2(0f, 120f);
+    [SerializeField] private Vector2 _choiceAnchoredPosition = Vector2.zero;
     [SerializeField] private Vector2 _choiceSize = new Vector2(520f, 132f);
 
     [Header("기본 오디오 설정")]
@@ -78,6 +78,8 @@ public class DialogueUI : MonoBehaviour
     public void OpenPanel()
     {
         gameObject.SetActive(true);
+        // 비활성 상태에서 처음 표시되는 UI도 공통 Canvas 정책을 통과시킨다.
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
         RebindCanvasCameraImmediate();
         StartCameraRebindRetry();
         ApplyConfiguredTextSpeed();

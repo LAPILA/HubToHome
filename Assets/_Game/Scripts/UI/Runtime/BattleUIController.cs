@@ -388,6 +388,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _enemies = enemies;
         _isBattleEnding = false;
         _narrationUI?.Clear();
+        _battleMenuUI?.SetRunEnabled(BattleManager.Instance == null || BattleManager.Instance.AllowEscape);
         BindPartySlots(party);
 
         _enemyTopPivots.Clear();
@@ -580,6 +581,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         SetTurnLabel($"{player.DisplayName} 턴");
         _battleMenuUI?.SetActor(player);
+        _battleMenuUI?.SetRunEnabled(BattleManager.Instance == null || BattleManager.Instance.AllowEscape);
 
         for (int i = 0; i < _partySlots.Length; i++)
             _partySlots[i].SetHighlight(_party != null && i < _party.Count && _party[i] == player);
@@ -1037,8 +1039,13 @@ public static class UIRuntimeGuard
 
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = referenceResolution;
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
         scaler.matchWidthOrHeight = 0.5f;
+
+        // 실제 플레이 중에만 런타임 viewport 서비스에 등록한다. EditMode에서는
+        // Canvas 정책 값만 정규화해 테스트/에디터 객체에 DontDestroyOnLoad가 생기지 않게 한다.
+        if (Application.isPlaying)
+            UIViewportService.GetOrCreate().RegisterFixedViewport(owner);
     }
 
     private static bool IsZeroScale(Vector3 scale)

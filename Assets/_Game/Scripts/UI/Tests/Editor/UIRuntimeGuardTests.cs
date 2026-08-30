@@ -33,7 +33,7 @@ public sealed class UIRuntimeGuardTests
 
         Assert.That(scaler.uiScaleMode, Is.EqualTo(CanvasScaler.ScaleMode.ScaleWithScreenSize));
         Assert.That(scaler.referenceResolution, Is.EqualTo(GameConfigPolicy.ReferenceResolution));
-        Assert.That(scaler.screenMatchMode, Is.EqualTo(CanvasScaler.ScreenMatchMode.Expand));
+        Assert.That(scaler.screenMatchMode, Is.EqualTo(CanvasScaler.ScreenMatchMode.MatchWidthOrHeight));
         Assert.That(_root.transform.localScale, Is.EqualTo(Vector3.one));
     }
 }

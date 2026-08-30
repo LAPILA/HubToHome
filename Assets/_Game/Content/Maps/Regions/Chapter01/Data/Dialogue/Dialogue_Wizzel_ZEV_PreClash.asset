@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_Wizzel_ZEV_PreClash
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: d0a8d7fc4bc8456e8ae9b7aaf71bcb65, type: 2}
+    Emotion: 1
+    LocalizationKey: chapter01.windmill.zev_duel.pre.001
+    DefaultText: "굳이 싸워야 하는 건가요...?"
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
+    Emotion: 1
+    LocalizationKey: chapter01.windmill.zev_duel.pre.002
+    DefaultText: "어쩔 수 없습니다만, 의뢰인의 요청입니다."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: d0a8d7fc4bc8456e8ae9b7aaf71bcb65, type: 2}
+    Emotion: 6
+    LocalizationKey: chapter01.windmill.zev_duel.pre.003
+    DefaultText: "굳이 의뢰라고 싸워야 할 필요는 없잖아요!"
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: d0a8d7fc4bc8456e8ae9b7aaf71bcb65, type: 2}
+    Emotion: 2
+    LocalizationKey: chapter01.windmill.zev_duel.pre.004
+    DefaultText: "그냥 적당히 못 찾은 척 넘어가면 되죠!"
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
+    Emotion: 1
+    LocalizationKey: chapter01.windmill.zev_duel.pre.005
+    DefaultText: "저희 용병단의 운영 원칙에 어긋납니다. 죄송하지만..."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: d0a8d7fc4bc8456e8ae9b7aaf71bcb65, type: 2}
+    Emotion: 4
+    LocalizationKey: chapter01.windmill.zev_duel.pre.006
+    DefaultText: "그럼 싸워야겠네요."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []

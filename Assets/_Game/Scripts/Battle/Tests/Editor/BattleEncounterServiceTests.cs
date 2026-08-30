@@ -74,7 +74,8 @@ public class BattleEncounterServiceTests
             useDedicatedBattleScene: true,
             battleSceneName: "PendingBattleScene",
             battleSceneFadeDuration: 30f,
-            encounterId: "encounter.first");
+            encounterId: "encounter.first",
+            allowEscape: false);
 
         bool secondStarted = BattleEncounterService.StartEncounter(
             _player,
@@ -88,6 +89,7 @@ public class BattleEncounterServiceTests
         Assert.That(_globalData.PendingEnemies, Has.Count.EqualTo(1));
         Assert.That(_globalData.PendingEnemies[0], Is.SameAs(firstEnemy));
         Assert.That(_globalData.CurrentEncounterEnemyId, Is.EqualTo("encounter.first"));
+        Assert.That(_globalData.CurrentEncounterAllowsEscape, Is.False);
         Assert.That(_player.State, Is.EqualTo(PlayerController.PlayerState.InBattle));
         Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Battle));
     }
@@ -112,7 +114,8 @@ public class BattleEncounterServiceTests
             "encounter.previous",
             "PreviousWorld",
             true,
-            true);
+            true,
+            false);
         _gameState.ChangeState(GameState.Cutscene);
         Time.timeScale = 0.35f;
         _sceneLoader.SceneIsLoadable = false;
@@ -136,6 +139,7 @@ public class BattleEncounterServiceTests
         Assert.That(_globalData.CurrentEncounterEnemyId, Is.EqualTo("encounter.previous"));
         Assert.That(_globalData.CurrentEncounterDefeatsOnVictory, Is.True);
         Assert.That(_globalData.CurrentEncounterPlayerPreemptiveAttack, Is.True);
+        Assert.That(_globalData.CurrentEncounterAllowsEscape, Is.False);
         Assert.That(_player.State, Is.EqualTo(PlayerController.PlayerState.Idle));
         Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Cutscene));
         Assert.That(Time.timeScale, Is.EqualTo(0.35f));
@@ -167,6 +171,7 @@ public class BattleEncounterServiceTests
         Assert.That(failedStart, Is.False);
         Assert.That(_globalData.PendingEnemies, Is.Empty);
         Assert.That(_globalData.CurrentEncounterEnemyId, Is.Null.Or.Empty);
+        Assert.That(_globalData.CurrentEncounterAllowsEscape, Is.True);
         Assert.That(_player.State, Is.EqualTo(PlayerController.PlayerState.Idle));
         Assert.That(_gameState.CurrentState, Is.EqualTo(GameState.Exploration));
 
@@ -180,6 +185,7 @@ public class BattleEncounterServiceTests
 
         Assert.That(nextStarted, Is.True);
         Assert.That(_globalData.CurrentEncounterEnemyId, Is.EqualTo("encounter.next"));
+        Assert.That(_globalData.CurrentEncounterAllowsEscape, Is.True);
     }
 
     [Test]

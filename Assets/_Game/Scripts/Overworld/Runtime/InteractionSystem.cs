@@ -14,8 +14,8 @@ public class InteractionSystem : MonoBehaviour
     [SerializeField] private LayerMask _interactLayer;
     [SerializeField, Min(0.02f)] private float _stationaryPollInterval = 0.1f;
 
-    private IInteractable _currentTarget; 
-    private readonly Collider2D[] _hitResults = new Collider2D[1]; 
+    private IInteractable _currentTarget;
+    private readonly Collider2D[] _hitResults = new Collider2D[16];
     private PlayerController _player;
     private Vector2 _lastPlayerPosition;
     private int _lastFacingDirection;
@@ -40,6 +40,12 @@ public class InteractionSystem : MonoBehaviour
     private void Start()
     {
         CachePlayerIfNeeded();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     private void Update()
@@ -82,22 +88,38 @@ public class InteractionSystem : MonoBehaviour
 
         int hitCount = Physics2D.OverlapBox(origin, _boxSize, 0f, _contactFilter, _hitResults);
 
-        if (hitCount > 0)
+        IInteractable nearest = null;
+        float nearestDistanceSqr = float.PositiveInfinity;
+        for (int i = 0; i < hitCount; i++)
         {
-            var interactable = _hitResults[0].GetComponent<IInteractable>();
-            if (interactable != null && interactable.CanInteract(player))
+            Collider2D hit = _hitResults[i];
+            if (hit == null)
+                continue;
+
+            IInteractable interactable = hit.GetComponentInParent<IInteractable>();
+            if (interactable == null || !interactable.CanInteract(player))
+                continue;
+
+            float distanceSqr = ((Vector2)hit.bounds.center - origin).sqrMagnitude;
+            if (distanceSqr < nearestDistanceSqr)
             {
-                if (_currentTarget != interactable)
-                {
-                    _currentTarget?.ShowHighlight(false);
-                    _currentTarget = interactable;
-                    _currentTarget.ShowHighlight(true); // 하이라이트 켜기
-                }
-                return;
+                nearest = interactable;
+                nearestDistanceSqr = distanceSqr;
             }
         }
 
-        ClearTarget();
+        if (nearest == null)
+        {
+            ClearTarget();
+            return;
+        }
+
+        if (_currentTarget == nearest)
+            return;
+
+        _currentTarget?.ShowHighlight(false);
+        _currentTarget = nearest;
+        _currentTarget.ShowHighlight(true);
     }
 
     private PlayerController CachePlayerIfNeeded()
@@ -120,6 +142,15 @@ public class InteractionSystem : MonoBehaviour
     /// <summary>플레이어가 Z키를 누르면 호출 (탐색 로직 없이 캐싱된 타겟 즉시 실행)</summary>
     public void TryInteract(PlayerController player)
     {
+        if (player == null)
+        {
+            ClearTarget();
+            return;
+        }
+
+        // Update 실행 순서나 정지 중 폴링 간격 때문에 Confirm 입력을 놓치지 않도록
+        // 입력 순간의 위치와 방향으로 한 번 더 검사합니다.
+        DetectInteractable(player);
         if (_currentTarget != null && _currentTarget.CanInteract(player))
         {
             _currentTarget.Interact(player);

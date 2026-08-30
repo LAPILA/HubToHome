@@ -8428,6 +8428,10 @@ PrefabInstance:
       propertyPath: Target.TrackingTarget
       value: 
       objectReference: {fileID: 58424542}
+    - target: {fileID: 2820754610113687333, guid: c0515653d43070348953a475e02fc95f, type: 3}
+      propertyPath: orthographic size
+      value: 3.75
+      objectReference: {fileID: 0}
     - target: {fileID: 5271908229650173906, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

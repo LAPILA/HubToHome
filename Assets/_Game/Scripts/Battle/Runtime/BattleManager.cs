@@ -135,6 +135,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private int _battleTurnCounter = 0;
     private readonly Dictionary<EnemyCharacter, BattleQueuedEnemyAction> _reservedEnemyActionByActor = new Dictionary<EnemyCharacter, BattleQueuedEnemyAction>();
     private bool _isRunInProgress;
+    private bool _allowEscape = true;
+    private bool _isAbortCleanupInProgress;
     private bool _isBattleEnding;
     private bool _isBattleActive;
     private bool _isPartyWaveTransitioning;
@@ -165,6 +167,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public bool IsReadyToReveal => !_isDedicatedBattleScene || _isReadyToReveal;
 
     public bool IsSeamlessBattleActive => !_isDedicatedBattleScene && (_isBattleActive || _isBattleEnding);
+
+    public bool AllowEscape => _allowEscape;
 
     public IBattleAimShooterModuleController AimShooterModuleController => _aimShooterModuleController;
 
@@ -333,6 +337,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         GlobalDataManager global = GlobalDataManager.Instance;
         string fallbackEncounterId = global != null ? global.CurrentEncounterEnemyId : null;
+        _allowEscape = global == null || global.CurrentEncounterAllowsEscape;
 
         if (global != null)
         {
@@ -1538,6 +1543,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     SkillData IBattleTurnQteHost.PendingSkill { get => CurrentPendingSkill; set => CurrentPendingSkill = value; }
     ItemData IBattleTurnQteHost.PendingItem { get => CurrentPendingItem; set => CurrentPendingItem = value; }
     BattleState IBattleTurnQteHost.CurrentBattleState => CurrentState;
+    bool IBattleTurnQteHost.CanEscape => _allowEscape;
     bool IBattleTurnQteHost.IsTurnQteCombatInputActive() => IsTurnQteCombatInputActive();
     void IBattleTurnQteHost.StartTurnQteCombatLoop() => StartTurnQteCombatLoop();
     void IBattleTurnQteHost.ChangeBattleState(BattleState state) => ChangeState(state);
@@ -1781,6 +1787,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator RunRoutine()
     {
+        if (!_allowEscape) yield break;
         if (_isRunInProgress) yield break;
         _isRunInProgress = true;
         _turnQteModuleController?.CancelActiveCameraPresentation();
@@ -2080,12 +2087,39 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     public bool AbortSeamlessBattle()
     {
-        if (_isDedicatedBattleScene || (!_isBattleActive && !_isBattleEnding))
+        if (_isDedicatedBattleScene
+            || _isAbortCleanupInProgress
+            || (!_isBattleActive && !_isBattleEnding))
             return false;
 
-        StopAllCoroutines();
-        CompleteSeamlessBattleCleanup(BattleEncounterOutcome.Unknown, false);
-        return true;
+        _isAbortCleanupInProgress = true;
+        try
+        {
+            StopAllCoroutines();
+            NotifyEncounterAbortedIfSupported(ResolveActiveEncounterPlayer());
+            CompleteSeamlessBattleCleanup(BattleEncounterOutcome.Unknown, false);
+            return true;
+        }
+        finally
+        {
+            _isAbortCleanupInProgress = false;
+        }
+    }
+
+    private void NotifyEncounterAbortedIfSupported(PlayerController encounterPlayer)
+    {
+        if (!(_activeEncounterSource is IEncounterAbortSource abortSource))
+            return;
+
+        try
+        {
+            abortSource.OnEncounterAborted(encounterPlayer);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"[BattleManager] 조우 중단 콜백에 실패했습니다: {exception.Message}", this);
+            Debug.LogException(exception, this);
+        }
     }
 
     private void CompleteSeamlessBattleCleanup(BattleEncounterOutcome outcome, bool notifyEncounterSource)
@@ -2274,6 +2308,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _currentActorIndex = 0;
         _battleTurnCounter = 0;
         _isRunInProgress = false;
+        _allowEscape = true;
+        _isAbortCleanupInProgress = false;
         _isBattleActive = false;
         _isBattleEnding = false;
         _rewardCommitted = false;
