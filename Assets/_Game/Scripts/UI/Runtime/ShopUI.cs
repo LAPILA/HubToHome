@@ -98,6 +98,7 @@ public sealed class ShopUI : MonoBehaviour, IShopSessionLauncher
         s_instance = this;
         DontDestroyOnLoad(gameObject);
         BuildView();
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
         HideImmediate();
         AreaMarkerRuntimeService.RegisterShopSessionLauncher(this);
     }

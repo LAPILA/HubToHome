@@ -74,6 +74,12 @@ public sealed class UIViewportService : MonoBehaviour
         ConfigureFixedViewport(canvas, ResolveSharedCamera());
     }
 
+    public void RegisterFixedViewport(GameObject owner)
+    {
+        if (owner != null)
+            RegisterFixedViewport(owner.transform);
+    }
+
     public void Unregister(Component owner)
     {
         Canvas canvas = FindCanvas(owner);

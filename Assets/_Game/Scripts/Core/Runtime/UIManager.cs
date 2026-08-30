@@ -56,7 +56,7 @@ public class UIManager : MonoBehaviour
         if (_overworldPanel != null)
         {
             RegisterPanel(UIPanelId.Overworld, _overworldPanel, _fitOverworldPanelToPixelPerfectSafeArea);
-            UIViewportService.GetOrCreate().RegisterFixedViewport(_overworldPanel);
+            UIRuntimeGuard.NormalizeCanvas(_overworldPanel.gameObject);
         }
     }
 

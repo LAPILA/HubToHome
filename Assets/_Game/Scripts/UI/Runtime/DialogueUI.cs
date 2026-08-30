@@ -47,7 +47,6 @@ public class DialogueUI : MonoBehaviour
     {
         UIRuntimeGuard.NormalizeCanvas(gameObject);
         if (_rootCanvas == null) _rootCanvas = GetComponentInParent<Canvas>(true);
-        UIViewportService.GetOrCreate().RegisterFixedViewport(this);
         if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
         if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
         DialogueTextAnimationPolicy.UsePlainTypewriter(_typewriter);
@@ -79,6 +78,8 @@ public class DialogueUI : MonoBehaviour
     public void OpenPanel()
     {
         gameObject.SetActive(true);
+        // 비활성 상태에서 처음 표시되는 UI도 공통 Canvas 정책을 통과시킨다.
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
         RebindCanvasCameraImmediate();
         StartCameraRebindRetry();
         ApplyConfiguredTextSpeed();
