@@ -17,6 +17,10 @@ public enum PowerGrowthTab
 /// </summary>
 public sealed class PowerGrowthPanelView : MonoBehaviour
 {
+    // CategoryWindow의 Content는 프레임 안쪽 여백(-48)을 적용하므로
+    // PowerGrowthPanel이 실제로 사용할 수 있는 기준 가로 크기는 483입니다.
+    // 이 값보다 큰 좌표를 사용하면 화면 비율이 바뀌지 않아도 우측 프레임 밖으로 넘칩니다.
+    private const float ContentWidth = 483f;
     private const float FadeDuration = 0.12f;
     private const float SkillNodeSpacing = 1.5f;
     private const float SkillTreePadding = 12f;
@@ -210,13 +214,13 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
         PlaceTopLeft(_levelLabel.rectTransform, 188f, 8f, 64f, 26f);
 
         _pointLabel = CreateText(_root, "Points", 13f, Cyan, TextAlignmentOptions.Right);
-        PlaceTopLeft(_pointLabel.rectTransform, 254f, 8f, 124f, 26f);
+        PlaceTopLeft(_pointLabel.rectTransform, 230f, 8f, 110f, 26f);
 
-        CreateTab(_root, "StatsTab", "STATS", 384f, out _statsTabFill, out _statsTabLabel);
-        CreateTab(_root, "SkillsTab", "SKILLS", 453f, out _skillsTabFill, out _skillsTabLabel);
+        CreateTab(_root, "StatsTab", "STATS", 350f, out _statsTabFill, out _statsTabLabel);
+        CreateTab(_root, "SkillsTab", "SKILLS", 419f, out _skillsTabFill, out _skillsTabLabel);
 
         Image divider = CreateImage(_root, "HeaderDivider", Purple);
-        PlaceTopLeft(divider.rectTransform, 14f, 38f, 503f, 2f);
+        PlaceTopLeft(divider.rectTransform, 14f, 38f, 455f, 2f);
 
         _expLabel = CreateText(_root, "ExpLabel", 11f, Muted, TextAlignmentOptions.Left);
         PlaceTopLeft(_expLabel.rectTransform, 14f, 43f, 175f, 18f);
@@ -230,7 +234,7 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
         _expFill.fillAmount = 0f;
 
         RectTransform content = CreateRect(_root, "Content");
-        PlaceTopLeft(content, 0f, 64f, 531f, 184f);
+        PlaceTopLeft(content, 0f, 64f, ContentWidth, 184f);
         _contentGroup = content.gameObject.AddComponent<CanvasGroup>();
 
         _statsRoot = CreateRect(content, "StatsContent");
@@ -242,7 +246,7 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
         BuildSkillsView();
 
         _statusLabel = CreateText(_root, "Status", 12f, White, TextAlignmentOptions.Left);
-        PlaceTopLeft(_statusLabel.rectTransform, 14f, 249f, 503f, 18f);
+        PlaceTopLeft(_statusLabel.rectTransform, 14f, 249f, 455f, 18f);
         _statusLabel.overflowMode = TextOverflowModes.Ellipsis;
     }
 
@@ -258,7 +262,7 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
         for (int i = 0; i < names.Length; i++)
         {
             Image row = CreateFramedImage(_statsRoot, "Stat_" + i, PanelBlack, Purple, 1f);
-            PlaceTopLeft(row.rectTransform, 162f, i * 35f, 355f, 31f);
+            PlaceTopLeft(row.rectTransform, 150f, i * 35f, 319f, 31f);
 
             var visual = new StatRowVisual
             {
@@ -268,9 +272,9 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
                 Rank = CreateText(row.rectTransform, "Rank", 12f, Muted, TextAlignmentOptions.Center),
                 Value = CreateText(row.rectTransform, "Value", 13f, White, TextAlignmentOptions.Right)
             };
-            PlaceTopLeft(visual.Name.rectTransform, 10f, 2f, 112f, 27f);
-            PlaceTopLeft(visual.Rank.rectTransform, 126f, 2f, 94f, 27f);
-            PlaceTopLeft(visual.Value.rectTransform, 226f, 2f, 117f, 27f);
+            PlaceTopLeft(visual.Name.rectTransform, 10f, 2f, 100f, 27f);
+            PlaceTopLeft(visual.Rank.rectTransform, 110f, 2f, 80f, 27f);
+            PlaceTopLeft(visual.Value.rectTransform, 194f, 2f, 110f, 27f);
             visual.Name.text = names[i];
             _statRows.Add(visual);
         }
@@ -279,7 +283,7 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
     private void BuildSkillsView()
     {
         Image treePanel = CreateFramedImage(_skillsRoot, "TreePanel", PanelBlack, Purple, 1f);
-        PlaceTopLeft(treePanel.rectTransform, 14f, 0f, 327f, 178f);
+        PlaceTopLeft(treePanel.rectTransform, 14f, 0f, 285f, 178f);
         treePanel.raycastTarget = true;
 
         _treeViewport = CreateViewport(treePanel.rectTransform, "Viewport");
@@ -310,7 +314,7 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
             _treeVerticalScrollbar);
 
         Image detailPanel = CreateFramedImage(_skillsRoot, "DetailPanel", PanelBlack, Purple, 1f);
-        PlaceTopLeft(detailPanel.rectTransform, 351f, 0f, 166f, 178f);
+        PlaceTopLeft(detailPanel.rectTransform, 307f, 0f, 162f, 178f);
         detailPanel.raycastTarget = true;
 
         _skillDetailViewport = CreateViewport(detailPanel.rectTransform, "Viewport");

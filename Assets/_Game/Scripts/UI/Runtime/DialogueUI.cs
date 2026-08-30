@@ -8,6 +8,10 @@ using Febucci.UI.Examples;
 using Febucci.TextAnimatorForUnity;
 using UnityEngine.SceneManagement;
 
+/// <summary>
+/// 오버월드 대화창 소유자. 표시 모드는 FixedViewport이며, Battle Speech Bubble처럼
+/// 월드를 따라가는 별도 WorldTracked UI와 혼동하지 않는다.
+/// </summary>
 public class DialogueUI : MonoBehaviour
 {
     private static readonly Color ChoiceSelectedColor = new Color(1f, 0.95f, 0.3f);

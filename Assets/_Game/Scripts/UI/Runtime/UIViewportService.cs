@@ -11,6 +11,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class UIViewportService : MonoBehaviour
 {
+    // UI 정책: FixedViewport Canvas만 이 서비스에 등록한다. 기준 해상도는
+    // 640x480이며, 와이드 화면의 검은 여백에는 UI를 확장하지 않는다.
     public enum DisplayMode
     {
         FixedViewport,

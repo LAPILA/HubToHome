@@ -7,6 +7,10 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
+/// <summary>
+/// 구매/판매 UI. 런타임 생성 Canvas도 FixedViewport 정책을 따르며, 모든 좌표는
+/// 640x480 논리 영역과 생성된 부모 콘텐츠 영역 안에서 배치한다.
+/// </summary>
 public sealed class ShopUI : MonoBehaviour, IShopSessionLauncher
 {
     private enum ShopMode
@@ -338,7 +342,9 @@ public sealed class ShopUI : MonoBehaviour, IShopSessionLauncher
 
         _title = CreateText("Title", transform, font, 30f, FontStyles.Bold);
         _title.alignment = TextAlignmentOptions.Left;
-        SetRect(_title.rectTransform, new Vector2(-205f, 188f), new Vector2(330f, 42f));
+        // 640 기준 뷰포트의 좌측 여백 10을 유지한다. 기존 x=-205는
+        // 폭 330의 좌측 경계를 -370까지 밀어 제목이 화면 밖으로 나갔다.
+        SetRect(_title.rectTransform, new Vector2(-145f, 188f), new Vector2(330f, 42f));
 
         _tabs = CreateText("Tabs", transform, font, 20f, FontStyles.Normal);
         _tabs.alignment = TextAlignmentOptions.Center;
