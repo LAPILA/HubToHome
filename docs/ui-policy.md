@@ -1,8 +1,8 @@
 # HubToHome UI Policy
 
-상태: 초안 v0.3 — Overworld 및 Dialogue 고정 viewport 적용 중
+상태: 확정 v1.0 — FixedViewport 공통 정책 적용
 
-이 문서는 HubToHome의 uGUI Canvas, Game Camera, UI Camera, 해상도 변경, 전체화면 전환 정책을 정의하는 대표 문서다. UI 작업은 이 문서의 정책을 먼저 확인하고, 새 UI는 반드시 아래 세 가지 표시 모드 중 하나로 분류한다.
+이 문서는 HubToHome의 uGUI Canvas, Game Camera, UI Camera, 해상도 변경, 전체화면 전환 정책을 정의하는 대표 문서다. UI 작업은 이 문서를 먼저 읽고, 새 UI는 반드시 아래 세 가지 표시 모드 중 하나로 분류한다. 이 문서와 코드 주석의 `FixedViewport`, `WorldTracked`, `Fullscreen` 용어는 동일한 계약을 가리킨다.
 
 ## 기준
 
@@ -11,6 +11,8 @@
 - 현재 TestMap 런타임에는 `PPC` Game Camera만 존재한다. 첫 구현은 이 카메라를 FixedViewport UI의 공통 출력 카메라로 재사용한다.
 - 와이드 화면: 게임 카메라가 만드는 중앙 4:3 viewport 밖에는 게임 UI를 배치하지 않는다.
 - 기존 패널 ID, 직렬화된 참조, 자식 계층, 입력 및 표시 로직은 UI viewport 수정만으로 보존한다.
+- 논리 해상도 안의 좌표와 크기는 실제 부모 RectTransform의 영역 안에 둔다. 부모가 483 폭이면 640 기준 좌표를 그대로 복사하지 않는다.
+- 런타임 생성 UI도 프리팹 UI와 같은 기준 영역을 사용하며, 화면 크기를 읽어 UI별로 별도 배율을 만들지 않는다.
 
 ## 표시 모드
 
@@ -76,6 +78,56 @@ Canvas 개수는 제한하지 않는다. 중요한 것은 Canvas 루트가 어�
 
 WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지만, 위치 계산과 월드 추적 책임은 각 기능이 유지한다.
 
+## 현재 UI 소유자와 표시 모드
+
+| 소유자 | 주요 화면 | 표시 모드 | 계약 진입점 |
+|---|---|---|---|
+| `OverworldMenuUI` | 메뉴, 인벤토리, 장비, POWER, 파티/재화 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
+| `DialogueUI` / `DialogueCanvas` | 오버월드 대화창, 선택지 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
+| `ShopUI` | 구매/판매 상점 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
+| `ConfigPanelUI` / `SettingPanel` | C 메뉴 CONFIG | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` |
+| `BattleUIController` | 전투 HUD, QTE 표시 | FixedViewport | `UIRuntimeGuard.NormalizeCanvas` 또는 전투 초기화 |
+| Battle Speech Bubble | 월드상의 말풍선 | WorldTracked | 월드 카메라/WorldSpace 유지 |
+| 화면 페이드·로딩 배경 | 모니터 전체 효과 | Fullscreen | 명시적 Overlay 예외 |
+
+CONFIG처럼 `C` 메뉴에서 진입하더라도 설정 패널은 별도 `SettingPanel` Canvas 소유자다. 오버월드 메뉴의 `CategoryLabel`을 설정 패널 제목으로 재사용하지 않는다.
+
+## 레이아웃 작성 규칙
+
+1. 고정 UI 루트는 `UIRuntimeGuard.NormalizeCanvas`를 호출한다. 새 UI에서 `UIViewportService`를 직접 호출하지 않는다.
+2. `ScreenSpaceOverlay`를 FixedViewport UI에 남겨두지 않는다. 예외가 필요하면 이 문서의 Fullscreen 분류와 이유를 함께 기록한다.
+3. `CanvasScaler`는 `ScaleWithScreenSize`, 기준 `640 x 480`, `MatchWidthOrHeight`를 사용한다. FixedViewport에서 `Expand`를 사용하지 않는다.
+4. 프리팹의 고정 좌표는 해당 프레임의 실제 콘텐츠 부모 폭/높이를 기준으로 계산한다. 런타임 생성 뷰는 부모가 제공하는 폭을 넘지 않도록 설계 상수를 부모 계약과 함께 둔다.
+5. 텍스트 하나를 화면 경계 안으로 옮기는 임시 보정 대신, 넘친 부모/열/레이아웃 그룹의 계약을 먼저 고친다.
+6. 화면 크기 변경 직후에만 발생하는 문제는 개별 UI에 지연 코드를 추가하지 말고 `UIViewportService`의 공통 안정화 루틴을 사용한다.
+7. UI Camera를 새로 만들지 않는다. 현재 정책은 활성 Pixel Perfect Game Camera 재사용이며, 전용 UI Camera 도입은 이 문서와 카메라 구조를 함께 갱신하는 별도 결정이다.
+
+## 작업 전·후 체크리스트
+
+작업 전:
+
+- [ ] 이 UI의 표시 모드를 위 표에 추가하거나 기존 소유자와 연결했다.
+- [ ] Canvas 루트, 출력 카메라, CanvasScaler, 실제 콘텐츠 부모를 확인했다.
+- [ ] 기존 직렬화 참조와 입력/애니메이션 동작을 보존하는 범위를 정했다.
+
+작업 후:
+
+- [ ] `Expand`, Overlay 잔존, 부모 영역 초과 좌표가 없는지 확인했다.
+- [ ] 640x480 창, 와이드 전체화면, Alt+Enter 왕복 직후를 확인했다.
+- [ ] UI가 화면 밖으로 나가지 않고, WorldTracked 요소를 FixedViewport로 잘못 변환하지 않았는지 확인했다.
+- [ ] 관련 EditMode 테스트와 Windows 개발 빌드를 수행하고 결과를 update note에 남겼다.
+
+## 코드 주석 규칙
+
+Canvas를 생성하거나 정규화하는 코드에는 다음 정보를 짧게 남긴다.
+
+- 표시 모드와 적용 대상
+- 기준 해상도 및 부모 콘텐츠 영역
+- 공통 진입점(`UIRuntimeGuard`/`UIViewportService`)
+- 의도적인 예외가 있다면 그 이유
+
+이 주석은 수치 자체의 설명보다 “왜 이 Canvas가 이 정책을 따라야 하는가”를 설명해야 한다. 정책이 바뀌면 코드 주석과 이 문서를 같은 커밋에서 갱신한다.
+
 ## CanvasScaler 규칙
 
 `Expand`는 고정 640x480 구성을 위한 기본값으로 사용하지 않는다. Expand는 화면 비율이 넓어질 때 논리 UI 영역 자체를 좌우로 확장하기 때문에, 640x480 게임 구성의 UI가 검은 여백으로 확장되는 원인이 될 수 있다.
@@ -104,11 +156,11 @@ DialogueCanvas 적용에서 보존해야 하는 동작:
 - BattleNarrationPanel 표시/숨김
 - 상단 WorldSpace Speech Bubble의 월드 추적
 
-## 아직 결정하지 않은 항목
+## 향후 별도 결정이 필요한 항목
 
 - 별도 UI Camera를 도입할지, Game Camera 재사용을 유지할지
 - URP 카메라 스택을 사용할지, 독립 UI Camera를 사용할지
-- 설정 메뉴를 FixedViewport로 유지할지 Fullscreen 예외로 둘지
+- 설정 메뉴는 현재 FixedViewport로 확정했다. Fullscreen으로 바꾸려면 별도 결정과 시각 검증이 필요하다.
 - 기존 `UIPixelPerfectSafeAreaFitter`를 공통 관리자의 하위 호환 계층으로 유지할 범위
 
-이 항목은 Canvas A 런타임 검증 전에 확인하고, 결정 후 이 문서를 갱신한다.
+전용 UI Camera와 URP 카메라 스택 도입 여부는 현재 보류한다. 도입 시 이 문서의 공통 출력 카메라 계약과 모든 FixedViewport 등록 경로를 함께 검토한다.

@@ -48,7 +48,7 @@ public sealed class ConfigPanelLayoutAssetTests
             background,
             Vector2.zero,
             new Vector2(536.7313f, 389.67944f));
-        AssertCenteredRect(title, new Vector2(0f, 160f), new Vector2(496f, 40f));
+        AssertCenteredRect(title, new Vector2(0f, 140f), new Vector2(496f, 40f));
         AssertCenteredRect(categories, new Vector2(-178f, -5f), new Vector2(140f, 250f));
         AssertCenteredRect(detail, new Vector2(78f, -5f), new Vector2(340f, 250f));
         AssertCenteredRect(preview, new Vector2(78f, -160f), new Vector2(324f, 40f));

@@ -7,6 +7,10 @@ using UnityEngine.InputSystem;
 using DG.Tweening;
 using UnityEngine.UI;
 
+/// <summary>
+/// C 메뉴의 설정 패널. SettingPanel Canvas를 FixedViewport로 정규화하며,
+/// 프레임 안쪽의 카테고리/상세 콘텐츠 영역을 기준으로 레이아웃한다.
+/// </summary>
 public class ConfigPanelUI : UIPanel
 {
     private enum Focus { Category, RowList, KeyCapture }

@@ -17,6 +17,7 @@ public enum OverworldMenuCategory
 /// <summary>
 /// Deltarune-style overworld menu shell. The static UI hierarchy is owned by the prefab;
 /// this component only drives state, animation, and prefab-backed view state.
+/// 표시 모드: FixedViewport. 메뉴/인벤토리/장비/POWER는 공통 UIRuntimeGuard 계약을 따른다.
 /// </summary>
 public sealed class OverworldMenuUI : UIPanel
 {

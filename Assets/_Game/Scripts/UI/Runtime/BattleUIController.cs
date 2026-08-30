@@ -13,6 +13,10 @@ using Febucci.TextAnimatorForUnity;
 /// 전투 UI 총괄 View 컨트롤러 (Mediator 패턴).
 /// BattleManager(Model/Controller)의 이벤트를 구독(Observer)하여 UI를 갱신합니다.
 /// </summary>
+/// <summary>
+/// 전투 고정 UI 소유자. HUD/QTE/결과 표시 중 FixedViewport 대상은 공통 UI 정책을
+/// 따르고, 월드상의 말풍선은 이 계약에 포함되지 않는다.
+/// </summary>
 public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationController
 {
     public static BattleUIController Instance { get; private set; }
