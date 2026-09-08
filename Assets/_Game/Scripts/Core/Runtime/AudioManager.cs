@@ -72,6 +72,8 @@ public class AudioManager : MonoBehaviour
     private bool _requestedBgmShouldPlay;
     private Coroutine _bgmTransitionRoutine;
     private Tween _bgmDuckTween;
+    private int _ambienceSilenceCount;
+    private bool _ambienceMutedBeforeSilence;
 
     private const string MixerBGM   = "BGMVolume";
     private const string MixerSFX   = "SFXVolume";
@@ -576,6 +578,46 @@ public class AudioManager : MonoBehaviour
         }
 
         _sfxSource?.PlayOneShot(clip, safeVolume);
+    }
+
+    /// <summary>
+    /// 환경음만 임시 음소거합니다. 재생 위치/맵의 새 환경음 선택/볼륨 페이드는 유지하며,
+    /// 마지막 사용자가 해제할 때 원래 음소거 상태로 돌아갑니다. BGM·UI·음성은 영향 없습니다.
+    /// </summary>
+    public System.IDisposable SuppressAmbience()
+    {
+        if (_ambienceSource == null)
+            return null;
+
+        if (_ambienceSilenceCount++ == 0)
+        {
+            _ambienceMutedBeforeSilence = _ambienceSource.mute;
+            _ambienceSource.mute = true;
+        }
+        return new AmbienceSilenceScope(this);
+    }
+
+    private void ReleaseAmbienceSilence()
+    {
+        if (_ambienceSilenceCount <= 0)
+            return;
+        _ambienceSilenceCount--;
+        if (_ambienceSilenceCount == 0 && _ambienceSource != null)
+            _ambienceSource.mute = _ambienceMutedBeforeSilence;
+    }
+
+    private sealed class AmbienceSilenceScope : System.IDisposable
+    {
+        private AudioManager _owner;
+
+        public AmbienceSilenceScope(AudioManager owner) => _owner = owner;
+
+        public void Dispose()
+        {
+            if (_owner != null)
+                _owner.ReleaseAmbienceSilence();
+            _owner = null;
+        }
     }
 
     public void PlayAmbience(

@@ -21,6 +21,7 @@
 - Use `ObjectPoolManager` for repeated spawned objects.
 - Keep UI panel stack behavior consistent with `UIManager`.
 - Input should go through `GameInput` unless there is a documented reason.
+- 상점처럼 환경음을 잠시 숨기는 화면은 `AudioManager.SuppressAmbience()`의 반환 핸들을 보관하고 닫기/강제 종료 때 Dispose한다. BGM 교체만으로 환경음이 사라지지 않으며, AudioListener 전체나 SFX/UI/음성 채널을 음소거하지 않는다.
 - 공용 게임 UI EventSystem은 Move/Submit/Cancel만 연결하고 마우스 포인터/클릭/휠은 연결하지 않는다. 자세한 계약은 `docs/ui-policy.md`를 따른다. 설정 UI의 VSync/목표 FPS 항목은 노출하지 않지만 내부 프레임 제한·저장 정책은 유지한다.
 - Do not modify third-party package source without explicit approval.
 

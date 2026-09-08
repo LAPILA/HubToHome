@@ -460,6 +460,60 @@ public class GlobalDataManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 오버월드에서 사용하는 파티 전체 회복입니다. 상점·휴식 지점처럼
+    /// 성장·장비를 반영한 최대치로 회복하고 현재 씬의 파티원에게도 반영합니다.
+    /// </summary>
+    public int RestorePartyVitals(bool restoreHp, bool restoreAp)
+    {
+        if ((!restoreHp && !restoreAp) || Party == null || Party.Count == 0
+            || (GameStateManager.Instance != null
+                && GameStateManager.Instance.CurrentState == GameState.Battle)
+            || (BattleManager.Instance != null && BattleManager.Instance.IsSeamlessBattleActive))
+            return 0;
+
+        int changedMemberCount = 0;
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member == null)
+                continue;
+
+            CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
+            StatBlock resolved = data != null
+                ? CharacterStatsProjectionService.ResolveFromSave(member, data)
+                : null;
+            int restoredHp = restoreHp
+                ? Mathf.Max(1, resolved != null ? resolved.MaxHP : member.MaxHP)
+                : member.HP;
+            int restoredAp = restoreAp
+                ? Mathf.Max(0, resolved != null ? resolved.MaxAP : member.MaxAP)
+                : member.AP;
+            if (member.HP != restoredHp || member.AP != restoredAp)
+                changedMemberCount++;
+
+            member.HP = restoredHp;
+            member.AP = restoredAp;
+        }
+
+        // 서비스 선택 시에만 조회합니다. 리더 이외의 활성 동료도 이전 수치로 덮어쓰지 않게 합니다.
+        PlayerCharacter[] scenePlayers = UnityEngine.Object.FindObjectsByType<PlayerCharacter>(
+            FindObjectsSortMode.None);
+        for (int i = 0; i < scenePlayers.Length; i++)
+        {
+            PlayerCharacter scenePlayer = scenePlayers[i];
+            if (scenePlayer.CharacterData == null)
+                continue;
+
+            CharacterSaveData member = FindPartyMember(
+                NormalizeCharacterId(scenePlayer.CharacterData.CharacterID));
+            if (member != null)
+                scenePlayer.SynchronizePersistentVitals(member);
+        }
+
+        return changedMemberCount;
+    }
+
     #endregion
 
     #region [ Event Flags API ]
@@ -1056,11 +1110,16 @@ public class GlobalDataManager : MonoBehaviour
             EquipmentLoadoutService.NormalizeSlots(member);
             CharacterData characterData = CharacterDatabase.FindById(
                 member.CharacterDataID);
-            CharacterGrowthService.EnsureInitialized(member, characterData);
+            int savedHp = member.HP;
+            int savedAp = member.AP;
+            if (characterData != null)
+                CharacterGrowthService.EnsureInitialized(member, characterData);
             PowerProgressionService.SynchronizeUnlockedSkills(
                 member,
                 characterData);
-            SkillTreeProgressionService.Synchronize(member, characterData);
+            if (characterData != null)
+                SkillTreeProgressionService.Synchronize(member, characterData);
+            RestoreResolvedVitals(member, characterData, savedHp, savedAp);
         }
         Money = Mathf.Max(0, data.Money);
     }
@@ -1103,9 +1162,25 @@ public class GlobalDataManager : MonoBehaviour
 
             EquipmentLoadoutService.NormalizeSlots(member);
             CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
-            CharacterGrowthService.EnsureInitialized(member, data);
-            SkillTreeProgressionService.Synchronize(member, data);
+            int savedHp = member.HP;
+            int savedAp = member.AP;
+            if (data != null)
+            {
+                CharacterGrowthService.EnsureInitialized(member, data);
+                SkillTreeProgressionService.Synchronize(member, data);
+            }
+            RestoreResolvedVitals(member, data, savedHp, savedAp);
         }
+    }
+
+    private static void RestoreResolvedVitals(
+        CharacterSaveData member, CharacterData data, int hp, int ap)
+    {
+        StatBlock resolved = data != null
+            ? CharacterStatsProjectionService.ResolveFromSave(member, data)
+            : null;
+        member.HP = Mathf.Clamp(hp, 0, Mathf.Max(1, resolved != null ? resolved.MaxHP : member.MaxHP));
+        member.AP = Mathf.Clamp(ap, 0, Mathf.Max(0, resolved != null ? resolved.MaxAP : member.MaxAP));
     }
 
     private static List<CharacterSaveData> CloneParty(IReadOnlyList<CharacterSaveData> source)

@@ -23,7 +23,7 @@
 | SavePoint | `SAVE`, `Z SAVE SLOT 0` | 실제 슬롯 0 저장 호출 |
 | Puzzle | `PUZZLE`, `Z SET FLAG` | 퍼즐 완료 플래그 설정 |
 | ShortcutDoor | `DOOR`, `Z DOOR / LOCK` | 퍼즐 전 잠김, 퍼즐 후 자기 맵 전환 |
-| Vendor | `VENDOR`, `Z SHOP HOOK` | vendorId/shopId 전달 로그 |
+| Vendor | `IAN / SHOP + CARE` | 이안 상점: 대화, 구매·판매, 무료 회복 |
 | Connection | `LINK`, `Z MAP LINK` | 다른 지역 연결용 자기 맵 전환 |
 | Sublocation | `SUB MAP`, `Z SUB MAP` | 하위 맵 진입/복귀용 자기 맵 전환 |
 | Enemy | `ENEMY`, `Z BATTLE MARKER` | 데이터 기반 전투 마커 |
@@ -59,7 +59,7 @@
 
 ## 현재 기능 경계
 
-- Vendor는 아직 Shop UI가 아니라 `vendorId/shopId`를 전달하는 연결 지점입니다.
+- Vendor는 `QA_Shop_DebugInventory.asset`에 연결된 이안 샘플 상점입니다. 방향키로 선택, 확인으로 실행, 취소로 뒤로/종료합니다. 무료 상담·마사지는 파티 전체 HP/AP를 회복하고, 대화의 `남자? 여자?` 주제는 DOTween 화면 흔들림을 재생합니다. 이미지·상품·대화·서비스는 같은 상점 데이터에서 편집합니다.
 - Hazard의 `damage`는 아직 플레이어 HP를 줄이지 않고 넉백만 적용합니다.
 - Puzzle은 별도 퍼즐 UI 없이 완료 플래그를 즉시 설정합니다.
 - SAVE는 실제 슬롯 0을 사용하므로 저장 파일을 보존해야 하는 테스트 환경에서는 주의합니다.

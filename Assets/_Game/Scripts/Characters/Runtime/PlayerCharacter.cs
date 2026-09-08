@@ -139,6 +139,8 @@ public class PlayerCharacter : CharacterBase
     public void LoadDataFromGlobal(CharacterSaveData saveData)
     {
         if (saveData == null) return;
+        int savedHp = saveData.HP;
+        int savedAp = saveData.AP;
         _mySaveDataRef = saveData;
 
         if (!string.IsNullOrWhiteSpace(saveData.CharacterDataID))
@@ -180,8 +182,11 @@ public class PlayerCharacter : CharacterBase
             Level);
 
         SetProgressedBaseStats(CreateProgressedBaseStats(saveData));
-        SetCurrentHPValue(Mathf.Clamp(saveData.HP, 0, MaxHP));
-        SetCurrentAPValue(Mathf.Clamp(saveData.AP, 0, MaxAP));
+        // 성장 초기화는 기본 최대치로 제한하므로, 장비 포함 실제 최대치로 다시 적용합니다.
+        SetCurrentHPValue(Mathf.Clamp(savedHp, 0, MaxHP));
+        SetCurrentAPValue(Mathf.Clamp(savedAp, 0, MaxAP));
+        saveData.HP = CurrentHP;
+        saveData.AP = CurrentAP;
 
         if (CurrentHP <= 0) 
         {
@@ -210,10 +215,14 @@ public class PlayerCharacter : CharacterBase
         }
 
         _mySaveDataRef = saveData;
+        int savedHp = saveData.HP;
+        int savedAp = saveData.AP;
         CharacterGrowthService.EnsureInitialized(saveData, _characterData);
         SetProgressedBaseStats(CreateProgressedBaseStats(saveData));
-        SetCurrentHPValue(Mathf.Clamp(saveData.HP, 0, MaxHP));
-        SetCurrentAPValue(Mathf.Clamp(saveData.AP, 0, MaxAP));
+        SetCurrentHPValue(Mathf.Clamp(savedHp, 0, MaxHP));
+        SetCurrentAPValue(Mathf.Clamp(savedAp, 0, MaxAP));
+        saveData.HP = CurrentHP;
+        saveData.AP = CurrentAP;
         return true;
     }
 
@@ -233,16 +242,16 @@ public class PlayerCharacter : CharacterBase
         _mySaveDataRef.CharacterID = DisplayName;
         _mySaveDataRef.Level = Mathf.Max(1, Level);
         _mySaveDataRef.EXP = Mathf.Max(0, EXP);
-        _mySaveDataRef.HP = CurrentHP;
-        _mySaveDataRef.AP = CurrentAP;
+        int savedHp = CurrentHP;
+        int savedAp = CurrentAP;
+        _mySaveDataRef.HP = savedHp;
+        _mySaveDataRef.AP = savedAp;
         SaveEquipmentToGlobal(_mySaveDataRef);
 
         CharacterGrowthService.EnsureInitialized(_mySaveDataRef, _characterData);
         SetProgressedBaseStats(CreateProgressedBaseStats(_mySaveDataRef));
-        SetCurrentHPValue(Mathf.Clamp(_mySaveDataRef.HP, 0, MaxHP));
-        SetCurrentAPValue(Mathf.Clamp(_mySaveDataRef.AP, 0, MaxAP));
-        _mySaveDataRef.HP = CurrentHP;
-        _mySaveDataRef.AP = CurrentAP;
+        SetCurrentHPValue(Mathf.Clamp(savedHp, 0, MaxHP));
+        SetCurrentAPValue(Mathf.Clamp(savedAp, 0, MaxAP));
 
         PowerProgressionService.SynchronizeUnlockedSkills(
             _mySaveDataRef,
@@ -250,6 +259,8 @@ public class PlayerCharacter : CharacterBase
         SkillTreeProgressionService.Synchronize(
             _mySaveDataRef,
             _characterData);
+        _mySaveDataRef.HP = CurrentHP;
+        _mySaveDataRef.AP = CurrentAP;
         _mySaveDataRef.EquippedSkillIDs ??= new List<string>();
         _mySaveDataRef.EquippedSkillIDs.Clear();
         for (int i = 0; i < Skills.Count; i++)

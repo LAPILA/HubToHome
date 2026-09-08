@@ -13,7 +13,20 @@ MonoBehaviour:
   m_Name: QA_Shop_DebugInventory
   m_EditorClassIdentifier: Assembly-CSharp::ShopDefinition
   _shopId: qa_shop_debug_inventory
-  _displayName: QA Buy / Sell Counter
+  _displayName: 이안의 휴식 상담소
+  _vendorPortrait: {fileID: 21300000, guid: a696714086d3d2145b6a9ba7e7b4b42c, type: 3}
+  _vendorDisplayName: 이안
+  _serviceMenuLabel: 상담·마사지
+  _reactions:
+  - _eventId: shop.ian.gender_reveal
+    _portrait: {fileID: 0}
+    _shake: 1
+    _shakeDuration: 0.28
+    _shakeStrength: 1
+  _backgroundMusic: {fileID: 8300000, guid: 3a042c53a6c9caf45b7e4048c36825d1, type: 3}
+  _entryFadeOutDuration: 0.12
+  _entryFadeInDuration: 0.3
+  _musicFadeDuration: 0.35
   _entries:
   - _entryId: debug_tonic
     _item: {fileID: 11400000, guid: ef7525fcdb1df8741a6823ab8041d953, type: 2}
@@ -21,3 +34,59 @@ MonoBehaviour:
     _quantity: 1
     _purchaseLimit: 0
     _purchaseCounterFlag: qa.testmap.shop.debug_tonic.purchases
+  - _entryId: herb_tea
+    _item: {fileID: 11400000, guid: 887c833346404e72a14c5a236d10deee, type: 2}
+    _price: 30
+    _quantity: 1
+    _purchaseLimit: 0
+    _purchaseCounterFlag: ian.shop.herb_tea.purchases
+  - _entryId: stabilizer
+    _item: {fileID: 11400000, guid: 4b08a68874b646f8a3653b5917207872, type: 2}
+    _price: 45
+    _quantity: 1
+    _purchaseLimit: 0
+    _purchaseCounterFlag: ian.shop.stabilizer.purchases
+  _dialogues:
+  - _topicId: greeting
+    _displayName: 인사하기
+    _emotion: 1
+    _localizationKey: shop.ian.greeting
+    _defaultText: "어서 오세요. 이안입니다.\n급한 일은 잠깐 문밖에 두고, 편한 자리에 앉으세요."
+    _eventTriggerId:
+  - _topicId: care
+    _displayName: 상담 안내
+    _emotion: 2
+    _localizationKey: shop.ian.care
+    _defaultText: "상담과 마사지는 무료예요.\n무슨 말을 해야 할지 모르겠으면, 차부터 마셔도 괜찮아요."
+    _eventTriggerId:
+  - _topicId: tea
+    _displayName: 허브티 이야기
+    _emotion: 1
+    _localizationKey: shop.ian.tea
+    _defaultText: "허브티는 제가 직접 블렌딩해요.\n맛이 없다는 의견도 듣습니다. ...상담보다 조금 어렵지만요."
+    _eventTriggerId:
+  - _topicId: gender
+    _displayName: 남자? 여자?
+    _emotion: 5
+    _localizationKey: shop.ian.gender
+    _defaultText: "남자라구요!\n...죄송해요. 방금은 제가 심호흡을 할 차례였네요."
+    _eventTriggerId: shop.ian.gender_reveal
+  - _topicId: goodbye
+    _displayName: 작별 인사
+    _emotion: 1
+    _localizationKey: shop.ian.goodbye
+    _defaultText: "무리하지 말고, 필요하면 다시 들러 주세요.\n아, 찻잔은 놓고 가셔야 해요. 그건 무료가 아닙니다."
+    _eventTriggerId:
+  _services:
+  - _serviceId: free_massage
+    _displayName: 무료 마사지
+    _description: "잠깐 쉬며 뭉친 어깨를 풉니다. 파티 전원의 HP와 AP를 완전히 회복합니다."
+    _price: 0
+    _restoreHp: 1
+    _restoreAp: 1
+  - _serviceId: free_counseling
+    _displayName: 무료 상담
+    _description: "마음을 가라앉히고 파티 전원의 HP와 AP를 회복합니다."
+    _price: 0
+    _restoreHp: 1
+    _restoreAp: 1

@@ -438,10 +438,10 @@ public static class TestMapShowcaseBuilder
             MarkerPrefabRoot + "/QA_Marker_Vendor.prefab",
             AreaMarkerType.Vendor,
             StationVisual.Vendor,
-            "VENDOR / BUY-SELL",
+            "IAN / SHOP + CARE",
             "qa.vendor.counter",
-            "QA Vendor",
-            "Vendor 진입, 구매·판매·취소·재진입과 저장 연동을 검증합니다.",
+            "이안의 휴식 상담소",
+            "이안의 대화, 구매·판매, 무료 회복 서비스와 저장 연동을 검증합니다.",
             new Color(1f, 0.84f, 0.25f),
             so =>
             {
@@ -613,6 +613,15 @@ public static class TestMapShowcaseBuilder
         {
             shop = ScriptableObject.CreateInstance<ShopDefinition>();
             AssetDatabase.CreateAsset(shop, ShopDefinitionPath);
+        }
+
+        // 초상화가 연결된 상점은 authored 상점으로 간주하고, QA 재생성으로
+        // 대화·서비스·판매 목록을 덮어쓰지 않습니다. 기존 QA 아이템만
+        // 카탈로그에 보장한 뒤 호출자가 현재 ShopDefinition을 사용하게 합니다.
+        if (shop.VendorPortrait != null)
+        {
+            RegisterCatalogItem(item);
+            return shop;
         }
 
         shop.Configure(

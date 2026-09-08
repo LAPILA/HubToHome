@@ -67,6 +67,8 @@ public class MapTransitionService : MonoBehaviour
             return false;
         }
 
+        // 상점의 임시 Cutscene을 전환 후 복귀 상태로 저장하지 않도록 먼저 닫습니다.
+        ShopUI.Instance?.CloseForTransition();
         GameState previousState = GameStateManager.Instance != null
             ? GameStateManager.Instance.CurrentState
             : GameState.Exploration;

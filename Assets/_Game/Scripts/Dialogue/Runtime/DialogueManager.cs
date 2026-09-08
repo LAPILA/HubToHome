@@ -23,6 +23,7 @@ public class DialogueManager : MonoBehaviour
     private GameState _stateBeforeDialogue = GameState.Exploration;
     private bool _ownsDialogueState;
     private int _playbackGeneration;
+    private int _playbackStartFrame = -1;
     private List<ChoiceData> _promptChoices;
     private Action<int> _promptChoiceCallback;
 
@@ -83,6 +84,7 @@ public class DialogueManager : MonoBehaviour
         _activeUI = _overworldPanel;
         _promptChoiceCallback = onSelected;
         _playbackGeneration++;
+        _playbackStartFrame = Time.frameCount;
 
         AcquireDialogueState();
         _activeUI.RebindCanvasCameraImmediate();
@@ -124,6 +126,7 @@ public class DialogueManager : MonoBehaviour
         }
 
         playbackGeneration = ++_playbackGeneration;
+        _playbackStartFrame = Time.frameCount;
         _isPlaying = true;
         _currentDialogue = data;
         _currentNodeIndex = 0;
@@ -144,7 +147,7 @@ public class DialogueManager : MonoBehaviour
     private void Update()
     {
         // 🚨 이름 입력 중이거나 재생 중이 아니면 무시
-        if (!_isPlaying || _isNaming || _activeUI == null) return;
+        if (!_isPlaying || _isNaming || _activeUI == null || _playbackStartFrame == Time.frameCount) return;
 
         bool isConfirmPressed = GameInput.DialogueAdvancePressed;
 

@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18de9e20d427627418d7201e43ca5d52, type: 3}
+  m_Name: QA_Item_IanCalmingTonic
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  Icon: {fileID: 0}
+  ItemID: ian_stabilizer
+  ItemName: 안정제
+  Description: "불안한 상태를 가라앉히는 안정제. 오버월드와 전투에서 AP 10을 회복합니다."
+  Type: 0
+  TargetType: 0
+  IsAoE: 0
+  UsableInOverworld: 1
+  UsableInBattle: 1
+  IsSellable: 1
+  Price: 45
+  ActionType: 1
+  TargetStat: 2
+  CalcType: 0
+  EffectValue: 10
+  StatusEffectID:
+  StatusDurationTurns: 0
+  IsStackable: 1
+  MaxStackSize: 99

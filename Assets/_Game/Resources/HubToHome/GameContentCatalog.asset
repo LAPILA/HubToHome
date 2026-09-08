@@ -48,5 +48,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 44aec8244fa54db59a702571482a4d5b, type: 2}
   - {fileID: 11400000, guid: 08f7c984e543434fb5ba95a8d25436e4, type: 2}
   - {fileID: 11400000, guid: 586a0bc557cf440fa05c1fba8bc51de8, type: 2}
+  - {fileID: 11400000, guid: 887c833346404e72a14c5a236d10deee, type: 2}
+  - {fileID: 11400000, guid: 4b08a68874b646f8a3653b5917207872, type: 2}
   Equipment: []
   DefaultUiFont: {fileID: 11400000, guid: 4da9911c543a2a048a95035371d0d669, type: 2}

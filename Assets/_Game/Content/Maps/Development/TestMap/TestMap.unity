@@ -2615,12 +2615,12 @@ AudioSource:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 234319518}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 71e70314c58e28a43a4afa2fa3c4e100, type: 3}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 0.5
   m_Pitch: 1
   Loop: 1
@@ -4894,11 +4894,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7261153563315235426, guid: 63b9df99ac0555b4c8b5838f6cc9d0a6, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -27
+      value: -29.29749
       objectReference: {fileID: 0}
     - target: {fileID: 7261153563315235426, guid: 63b9df99ac0555b4c8b5838f6cc9d0a6, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -14.2
+      value: -17.47871
       objectReference: {fileID: 0}
     - target: {fileID: 7261153563315235426, guid: 63b9df99ac0555b4c8b5838f6cc9d0a6, type: 3}
       propertyPath: m_LocalPosition.z
@@ -7545,7 +7545,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c92989d3a40b9d94da998f07a07185de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapSettings
-  _mapBGM: {fileID: 0}
+  _mapBGM: {fileID: 8300000, guid: 71e70314c58e28a43a4afa2fa3c4e100, type: 3}
   _defaultBattleBGM: {fileID: 0}
   _bgmFadeDuration: 0.25
   _ambienceLoop: {fileID: 0}
