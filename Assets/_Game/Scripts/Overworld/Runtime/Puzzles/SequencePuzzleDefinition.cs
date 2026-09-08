@@ -4,7 +4,7 @@ using UnityEngine;
 
 [CreateAssetMenu(
     fileName = "SequencePuzzleDefinition",
-    menuName = "Hub To Home/Overworld/Sequence Puzzle Definition")]
+    menuName = "Hub To Home/맵/순서 퍼즐")]
 public sealed class SequencePuzzleDefinition : ScriptableObject
 {
     [TitleGroup("기본 정보")]

@@ -111,7 +111,7 @@ public sealed class ShopEntry
     }
 }
 
-[CreateAssetMenu(fileName = "ShopDefinition", menuName = "Hub To Home/Items/Shop Definition")]
+[CreateAssetMenu(fileName = "ShopDefinition", menuName = "Hub To Home/아이템/상점 데이터")]
 public sealed class ShopDefinition : ScriptableObject
 {
     [TitleGroup("기본 정보")]

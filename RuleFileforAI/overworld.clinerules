@@ -6,8 +6,9 @@
 - `IInteractable` / `InteractableBase`: 상호작용 대상 공통 규약.
 - `AreaTrigger`: 씬 전환, 자동 대화, 전투 조우 처리.
 - `Scripts/Map`: 델타룬식 Room 기반 맵 전환 런타임. `RoomDefinition`, `RoomInstance`, `RoomContainer`, `DoorTransition`, `MapTransitionService`, `SpawnPoint` 포함.
-- `Editor/RoomMapSampleBuilder`: 룸 기반 샘플/템플릿/스타터팩 생성기. 실제 월드 산출물은 `Assets/_Game/Scenes/Overworld/MapWorlds` 아래에 생성한다.
-- `Assets/_Game/Scenes/Overworld/README_OverworldMapGuide.md`: 기획자용 맵 제작 가이드.
+- `Editor/RoomMapSampleBuilder`: 고정 경로의 개발용 샘플/템플릿/스타터팩 재생성기. 메뉴 등록은 제거했으며 기존 호출 호환용 함수만 보존한다. 본편 제작창에서 호출하거나 샘플별 메뉴를 다시 추가하지 않는다.
+- `Assets/_Game/Content/Maps/README_MapAuthoring.md`: 기획자용 맵 제작 가이드.
+- `Scripts/Editor/ContentMaker`: `Hub To Home/제작/콘텐츠 메이커`. 기존 데이터/Prefab을 유지하는 Editor 전용 지역·Room·마커·NPC·대사 제작창이다.
 
 ## 조작
 - 이동: 방향키/WASD.
@@ -25,10 +26,15 @@
 - `AreaTrigger`의 AutoEvent는 `DialogueData` 에셋을 직접 받는다.
 - 씬 전환 전 위치/방향 저장을 잊지 않는다.
 - 큰 지역 이동은 `MapTransitionType.Scene`, 같은 지역 안의 방/실내/통로 이동은 `MapTransitionType.Room`을 우선한다.
-- 맵 월드 Scene, RoomDefinition, Room Prefab은 `Assets/_Game/Scenes/Overworld/MapWorlds` 아래에 둔다.
-- 런타임 코드와 에디터 생성기는 `Assets/_Game/Features/Overworld`에 두고, 기획자가 편집할 월드 산출물과 분리한다.
-- 룸 연결 검사는 `Hub To Home > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사` 메뉴를 사용한다.
-- 기획자 마커 탐색은 `Hub To Home > 오버월드 > Area 마커 > 마커 작업창`을 사용한다. Prefab Mode에서는 현재 Prefab만, 그 외에는 로드된 Scene 범위만 검사한다.
+- Room BGM은 성공한 진입 뒤 `RoomContainer.ApplyCurrentRoomAudio()`로 적용한다. 초기 Room 로드, `MapTransitionService` 이동, `RegionEntryCoordinator` 복원이 같은 규칙을 사용하며 후보 검증 중에는 음악을 변경하지 않는다. `BgmOverride`가 있으면 전환하고, 없으면 `KeepCurrentBgm=true`는 기존 곡 유지, false는 명시적 fade-out이다. Scene의 `MapSettings` 기본 BGM과 Room BGM을 중복 소유시키지 않는다.
+- 본편 맵은 `Assets/_Game/Content/Maps/Regions/<지역>`에 둔다. Scene은 `Scenes`, Room/NPC Prefab은 `Prefabs/Rooms`, `Prefabs/NPCs`, Room/Area 데이터는 `Data/Rooms`, 지역 대화는 `Data/Dialogue`로 분리한다.
+- 런타임 코드/기존 생성기는 `Assets/_Game/Scripts/Overworld`, 통합 제작창은 `Assets/_Game/Scripts/Editor/ContentMaker`에 둔다. 개발 템플릿은 `Content/Maps/Development/Templates`에 두고 본편 자산과 구분한다.
+- 콘텐츠 메이커는 신규 경로만 생성하고 공유 원본을 덮어쓰지 않는다. Room 배치는 선택한 Room의 Prefab Stage에서만 실행한다. 복제는 개체 ID를 새로 발급하되 공유 대화/적 데이터와 조건/완료 플래그는 유지하고 검토를 안내한다.
+- 제작창의 Scene 생성/등록은 명시적 대상과 사용자 버튼으로만 실행하며 dirty Scene/다른 Prefab을 저장하지 않는다. Build Settings를 자동 변경하지 않는다.
+- 방 생성은 콘텐츠 메이커의 `방 만들기` 하나로 제공한다. 마을·던전·실내·쇼케이스별 생성 메뉴를 추가하지 않는다. 동일한 Room 구조의 지형/콘텐츠로 구분한다.
+- 메이커의 챕터는 `Regions/<지역>` 폴더를 뜻한다. 챕터·Room은 목록으로 선택하고 추가·삭제 및 설정/복제/씬 관리 화면을 전환한다. 새로운 챕터 런타임 데이터나 장소별 생성기를 만들지 않는다.
+- 메이커의 삭제는 명시적 미리보기와 확인 후 휴지통 이동으로만 구현한다. 대상 경계/외부 참조/편집 상태/빌드 등록을 검사하고 실행 직전 재검증한다. 방 삭제에 공유 대화·아트는 포함하지 않으며 외부 연결 자동 해제나 강제 삭제는 금지한다.
+- 선택한 방 검사는 콘텐츠 메이커의 `방 검사`, 현재 편집 범위의 전체 검색/연결 검사는 `Hub To Home > 검사 > 맵·마커 검사`를 사용한다. Prefab Mode에서는 현재 Prefab만, 그 외에는 로드된 Scene 범위만 검사한다.
 - Room/Area Marker 검증 규칙은 `RoomMapValidationScanner`가 소유한다. 콘솔 메뉴나 새 Editor UI에서 ID·Bounds·SpawnPoint·이동 참조 규칙을 중복 구현하지 않는다.
 - 짧은 오버월드 전환 연출은 새 Scene을 만들지 말고 같은 Scene의 오프스테이지 `Cinematic Stage`와 전용 Cinemachine Camera를 우선 사용한다.
 - 기본 게임플레이 대상(Player, 동료, 적)은 시네마틱 때문에 기본적으로 숨기거나 비활성화하지 않는다. 카메라 프레이밍으로 분리하고, 같은 공간에서만 별도 Presentation visibility 계약을 추가한다.
@@ -44,4 +50,4 @@
 ## 주의점
 - `InteractionSystem`은 현재 `FindFirstObjectByType<PlayerController>()`를 매 프레임 호출하므로, 나중에 캐싱 개선 여지가 있다.
 - `AreaTrigger`의 `DestroyOnVictory`는 현재 전투 시작 직후 Destroy되는 구조라 이름과 실제 동작 차이가 있다.
-- `Features/Overworld/Maps/_Shared/Generated`는 생성기 공용 리소스 위치다. 실제 맵 월드 산출물 위치로 사용하지 않는다.
+- `Assets/_Game/Content/Maps/Shared/Generated`는 생성기 공용 리소스 위치다. 실제 맵 월드 산출물 위치로 사용하지 않는다.

@@ -17,10 +17,10 @@ public sealed class SaveDiagnosticsWindow : EditorWindow
         new List<SaveSlotInspection>();
     private Vector2 _scroll;
 
-    [MenuItem("Hub To Home/Save/Diagnostics")]
+    [MenuItem("Hub To Home/도구/저장 데이터 진단", false, 301)]
     public static void Open()
     {
-        GetWindow<SaveDiagnosticsWindow>("Save Diagnostics");
+        GetWindow<SaveDiagnosticsWindow>("저장 데이터 진단");
     }
 
     public static int[] GetInspectableSlotIndices()
@@ -39,6 +39,7 @@ public sealed class SaveDiagnosticsWindow : EditorWindow
 
     private void OnEnable()
     {
+        titleContent = new GUIContent("저장 데이터 진단");
         RefreshInspections();
     }
 
@@ -50,7 +51,7 @@ public sealed class SaveDiagnosticsWindow : EditorWindow
     private void OnGUI()
     {
         EditorGUILayout.LabelField(
-            "Save Diagnostics",
+            "저장 데이터 진단",
             EditorStyles.boldLabel);
         DrawToolbar();
 
@@ -100,11 +101,11 @@ public sealed class SaveDiagnosticsWindow : EditorWindow
 
         EditorGUILayout.EndHorizontal();
 
-        DrawCandidate("Primary", inspection.Primary);
-        DrawCandidate("Backup", inspection.Backup);
-        DrawCandidate("Temporary", inspection.Temporary);
+        DrawCandidate("본 파일", inspection.Primary);
+        DrawCandidate("백업 파일", inspection.Backup);
+        DrawCandidate("임시 파일", inspection.Temporary);
         if (inspection.CorruptExists)
-            EditorGUILayout.LabelField("Corrupt", "격리 파일 있음");
+            EditorGUILayout.LabelField("손상 파일", "격리 파일 있음");
 
         SaveLoadResult load = inspection.LoadResult;
         if (load != null && !string.IsNullOrWhiteSpace(load.Message))
@@ -156,13 +157,24 @@ public sealed class SaveDiagnosticsWindow : EditorWindow
 
         string source = load.Source == SaveLoadSource.Primary
             ? "정상"
-            : "복구 가능: " + load.Source;
+            : "복구 가능: " + GetSourceDisplayName(load.Source);
         string saveTime = load.Data != null
             ? load.Data.saveTime
             : string.Empty;
         return string.IsNullOrWhiteSpace(saveTime)
             ? source
             : source + " · " + saveTime;
+    }
+
+    private static string GetSourceDisplayName(SaveLoadSource source)
+    {
+        switch (source)
+        {
+            case SaveLoadSource.Primary: return "본 파일";
+            case SaveLoadSource.Backup: return "백업 파일";
+            case SaveLoadSource.Temporary: return "임시 파일";
+            default: return "없음";
+        }
     }
 
     private static bool HasAnyCandidate(SaveSlotInspection inspection)
@@ -206,7 +218,7 @@ public sealed class SaveDiagnosticsWindow : EditorWindow
         bool confirmed = EditorUtility.DisplayDialog(
             "저장 슬롯 삭제",
             GetSlotDisplayName(slotIndex)
-            + "의 Primary, Backup, Temporary, Corrupt 파일을 삭제합니다.",
+            + "의 본 파일, 백업 파일, 임시 파일, 손상 격리 파일을 삭제합니다.",
             "삭제",
             "취소");
         if (!confirmed)

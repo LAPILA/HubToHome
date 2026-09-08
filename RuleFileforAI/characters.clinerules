@@ -16,6 +16,7 @@
 - Normal damage uses `TakeDamage`.
 - Defense-ignoring damage uses `TakePureDamage`.
 - Status effects process through `ProcessEffects()`.
+- Status effects and temporary buffs are battle-scoped. End them through `CharacterBase.ClearBattleStatusEffects()` so `OnRemove` releases effect subscriptions/VFX and transient flags are cleared, including on dead/inactive participants. Preserve permanent growth/equipment and remaining HP/AP, capped to restored maxima.
 - Player save/restore uses `CharacterSaveData` and `GlobalDataManager.Party`.
 
 ## Work Rules

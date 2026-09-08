@@ -30,8 +30,8 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/TravelTrain/travel_train_departure.sequence.yaml
-    SourceHash: 611f8cc35c3e3c8566ca802165ab15956590ee03bb28643a1ca3decf60db263a
-    ImportedAtIso8601: 2026-07-27T05:42:24.6579000Z
+    SourceHash: 94bc2b70f00460861279154f70a1bbbba84282a157c51810c72bb80878438208
+    ImportedAtIso8601: 2026-09-07T02:40:21.5025897Z
   Actions:
   - BlockId: 8c2e7f9d04b14be6a6e385c6afce0a11
     DesignerLabel: "\uC5F4\uCC28 \uCD9C\uBC1C Stage \uC900\uBE44"

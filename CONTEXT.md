@@ -195,7 +195,7 @@ The migrated Game Module for the existing QTE/turn battle. `turn_qte` starts thr
 _Avoid_: adding new QTE state/input/action branches directly to battle setup or bypassing the controller when switching modules.
 
 **Defense Judgement Pipeline**:
-The shared parry/dodge/jump contract. `DefenseJudgementPolicy` determines timing grade, requirement matching, outcome, and damage prevention from a `DefenseQteRequest`; `QTEManager` owns realtime execution and publishes `DefenseQteResult`; `IDefenseInputSource` identifies the defending actor without hard-coding the first party member.
+The shared defense contract. Default combat uses one fresh Z press per impact: hold for up to 0.4 seconds for partial damage (default multiplier 0.5), or press within the Perfect window (default 0.12 seconds, difficulty-adjusted) for zero damage and the existing AP reward. `TimedGuardAttempt` prevents held input or repeated presses from renewing that attempt. `DefenseJudgementPolicy` owns timing, outcome, and `DamageMultiplier`; `QTEManager` owns realtime input/execution and publishes `DefenseQteResult` at impact. `IDefenseInputSource` identifies the defender; optional `ITimedGuardInputSource` supplies held state. Basic single/AoE attacks and skill blocks consume the same result; a party-wide impact uses one defense window and one AP reward. Serialized parry/dodge/jump requirements remain available when timed guard is disabled; attack skill sequence Z/X/C input is unchanged. Grid movement and new counterattack damage are not implemented by this change.
 _Avoid_: recomputing defense success from raw input and grade inside basic attacks, skill blocks, UI, or character controllers.
 
 **Aim Shooter Combat Module**:

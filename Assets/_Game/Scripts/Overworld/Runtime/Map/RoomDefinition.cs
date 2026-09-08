@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// 룸 프리팹과 룸 단위 연출 데이터를 묶는 ScriptableObject입니다.
 /// </summary>
-[CreateAssetMenu(menuName = "HubToHome/Overworld/Room Definition", fileName = "RoomDefinition")]
+[CreateAssetMenu(menuName = "Hub To Home/맵/방 데이터", fileName = "RoomDefinition")]
 public class RoomDefinition : ScriptableObject
 {
     [SerializeField] private string _roomId;

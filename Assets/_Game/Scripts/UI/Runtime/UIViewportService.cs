@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -21,11 +22,16 @@ public sealed class UIViewportService : MonoBehaviour
     }
 
     private const string ServiceName = "[UIViewportService]";
+    private const float MissingCameraRetryInterval = 0.25f;
+    private static readonly WaitForEndOfFrame EndOfFrame = new WaitForEndOfFrame();
     private static readonly Vector2 GameplayReferenceResolution = new Vector2(640f, 480f);
     private static UIViewportService s_instance;
 
     private readonly List<Canvas> _fixedCanvases = new List<Canvas>();
     private Camera _sharedCamera;
+    private Camera _lastAppliedCamera;
+    private float _nextCameraLookupTime;
+    private bool _resolveCameraAfterSettle;
     private Coroutine _settleRoutine;
     private Rect _lastCameraRect;
     private int _lastScreenWidth;
@@ -52,7 +58,30 @@ public sealed class UIViewportService : MonoBehaviour
 
         s_instance = this;
         DontDestroyOnLoad(gameObject);
-        ApplyRegisteredCanvases(true);
+    }
+
+    private void OnEnable()
+    {
+        if (s_instance != this)
+            return;
+
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        SceneManager.sceneUnloaded += HandleSceneUnloaded;
+        SceneManager.activeSceneChanged += HandleActiveSceneChanged;
+        RequestSceneRefresh();
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        SceneManager.sceneUnloaded -= HandleSceneUnloaded;
+        SceneManager.activeSceneChanged -= HandleActiveSceneChanged;
+
+        if (_settleRoutine != null)
+        {
+            StopCoroutine(_settleRoutine);
+            _settleRoutine = null;
+        }
     }
 
     private void OnDestroy()
@@ -117,35 +146,88 @@ public sealed class UIViewportService : MonoBehaviour
         if (_sharedCamera != null && _sharedCamera.isActiveAndEnabled)
             return _sharedCamera;
 
-        _sharedCamera = Camera.main;
-        if (_sharedCamera == null)
+        _sharedCamera = null;
+        if (Time.unscaledTime < _nextCameraLookupTime)
+            return null;
+
+        // A camera-less loading interval must not perform a global lookup every frame.
+        _nextCameraLookupTime = Time.unscaledTime + MissingCameraRetryInterval;
+        Scene activeScene = SceneManager.GetActiveScene();
+        Camera mainCamera = Camera.main;
+        if (IsUsableCamera(mainCamera) && mainCamera.gameObject.scene == activeScene)
         {
-            PixelPerfectCamera pixelPerfect = FindFirstObjectByType<PixelPerfectCamera>();
-            if (pixelPerfect != null)
-                _sharedCamera = pixelPerfect.GetComponent<Camera>();
+            _sharedCamera = mainCamera;
+            return _sharedCamera;
         }
 
+        // During scene overlap an old MainCamera can still be enabled. Prefer the
+        // active scene's PPC instead of retaining that old scene's cached camera.
+        PixelPerfectCamera[] pixelPerfectCameras = FindObjectsByType<PixelPerfectCamera>(FindObjectsSortMode.None);
+        Camera fallback = IsUsableCamera(mainCamera) ? mainCamera : null;
+        for (int i = 0; i < pixelPerfectCameras.Length; i++)
+        {
+            PixelPerfectCamera pixelPerfect = pixelPerfectCameras[i];
+            if (!pixelPerfect.isActiveAndEnabled)
+                continue;
+
+            Camera candidate = pixelPerfect.GetComponent<Camera>();
+            if (!IsUsableCamera(candidate))
+                continue;
+
+            if (candidate.gameObject.scene == activeScene)
+            {
+                _sharedCamera = candidate;
+                return _sharedCamera;
+            }
+
+            if (fallback == null)
+                fallback = candidate;
+        }
+
+        _sharedCamera = fallback;
         return _sharedCamera;
+    }
+
+    private static bool IsUsableCamera(Camera camera)
+    {
+        return camera != null && camera.isActiveAndEnabled;
+    }
+
+    private bool HasViewportChanged(Camera camera)
+    {
+        // Resolution and application are separate states: opening another panel
+        // may resolve the new camera before existing (including hidden) UI is rebound.
+        return camera != null && (_lastAppliedCamera != camera
+            || _lastCameraRect != camera.rect
+            || _lastScreenWidth != Screen.width
+            || _lastScreenHeight != Screen.height);
     }
 
     private void ApplyRegisteredCanvases(bool force)
     {
+        if (!isActiveAndEnabled)
+            return;
+
         Camera camera = ResolveSharedCamera();
-        if (camera == null)
-            return;
-
-        Rect cameraRect = camera.rect;
-        bool changed = force
-            || _sharedCamera != camera
-            || _lastCameraRect != cameraRect
-            || _lastScreenWidth != Screen.width
-            || _lastScreenHeight != Screen.height;
-
-        if (!changed)
-            return;
-
-        if (_settleRoutine == null)
+        if ((force || HasViewportChanged(camera)) && _settleRoutine == null)
             _settleRoutine = StartCoroutine(CoApplyAfterDisplaySettles());
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode) => RequestSceneRefresh();
+    private void HandleSceneUnloaded(Scene scene) => RequestSceneRefresh();
+    private void HandleActiveSceneChanged(Scene previous, Scene current) => RequestSceneRefresh();
+
+    private void RequestSceneRefresh()
+    {
+        InvalidateCameraCache();
+        _resolveCameraAfterSettle = true;
+        ApplyRegisteredCanvases(true);
+    }
+
+    private void InvalidateCameraCache()
+    {
+        _sharedCamera = null;
+        _nextCameraLookupTime = 0f;
     }
 
     private IEnumerator CoApplyAfterDisplaySettles()
@@ -155,7 +237,15 @@ public sealed class UIViewportService : MonoBehaviour
         // Canvas → SafeArea → Layout 순서로 재계산한다.
         yield return null;
         yield return null;
-        yield return new WaitForEndOfFrame();
+        yield return EndOfFrame;
+
+        if (_resolveCameraAfterSettle)
+        {
+            // Scene-loaded callbacks can run before scene-owned camera setup.
+            // Re-resolve after the existing two-frame stabilization window as well.
+            InvalidateCameraCache();
+            _resolveCameraAfterSettle = false;
+        }
 
         Camera camera = ResolveSharedCamera();
         if (camera != null)
@@ -190,6 +280,7 @@ public sealed class UIViewportService : MonoBehaviour
             }
 
             Canvas.ForceUpdateCanvases();
+            _lastAppliedCamera = camera;
             _lastCameraRect = camera.rect;
             _lastScreenWidth = Screen.width;
             _lastScreenHeight = Screen.height;

@@ -8,7 +8,6 @@ public static class AreaMarkerPrefabGenerator
     private const string SampleRoomPath = SampleFolder + "/Room_AreaMarker_AllGizmos.prefab";
     private const string InteractableLayerName = "Interactable";
 
-    [MenuItem("Hub To Home/오버월드/Area 마커/마커 Prefab 생성")]
     public static void GenerateMarkerPrefabs()
     {
         EnsureFolder(PrefabFolder);
@@ -22,32 +21,6 @@ public static class AreaMarkerPrefabGenerator
         AssetDatabase.Refresh();
     }
 
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Connection")]
-    private static void CreateConnection() => CreateSceneMarker(AreaMarkerType.Connection);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Enemy")]
-    private static void CreateEnemy() => CreateSceneMarker(AreaMarkerType.Enemy);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Hazard")]
-    private static void CreateHazard() => CreateSceneMarker(AreaMarkerType.Hazard);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Puzzle")]
-    private static void CreatePuzzle() => CreateSceneMarker(AreaMarkerType.Puzzle);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Vendor")]
-    private static void CreateVendor() => CreateSceneMarker(AreaMarkerType.Vendor);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Shortcut Door")]
-    private static void CreateShortcutDoor() => CreateSceneMarker(AreaMarkerType.ShortcutDoor);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/NPC")]
-    private static void CreateNpc() => CreateSceneMarker(AreaMarkerType.NPC);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Item")]
-    private static void CreateItem() => CreateSceneMarker(AreaMarkerType.Item);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Sign")]
-    private static void CreateSign() => CreateSceneMarker(AreaMarkerType.Sign);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Save Point")]
-    private static void CreateSavePoint() => CreateSceneMarker(AreaMarkerType.SavePoint);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Plot Point")]
-    private static void CreatePlotPoint() => CreateSceneMarker(AreaMarkerType.PlotPoint);
-    [MenuItem("Hub To Home/오버월드/Area 마커/선택 위치에 마커 생성/Sublocation")]
-    private static void CreateSublocation() => CreateSceneMarker(AreaMarkerType.Sublocation);
-
-    [MenuItem("Hub To Home/오버월드/Area 마커/샘플/전체 마커 Room Prefab 생성")]
     public static void GenerateAllMarkerSampleRoomPrefab()
     {
         EnsureFolder(SampleFolder);
@@ -115,27 +88,6 @@ public static class AreaMarkerPrefabGenerator
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log($"[AreaMarkerPrefabGenerator] Sample room generated: {SampleRoomPath}");
-    }
-
-    private static void CreateSceneMarker(AreaMarkerType type)
-    {
-        GameObject go = new GameObject(GetPrefabName(type));
-        ApplyInteractableLayer(go);
-        EnsureMarkerCollider(go);
-        AreaMarkerBase marker = AddMarkerComponent(go, type);
-        if (marker == null)
-        {
-            Object.DestroyImmediate(go);
-            Debug.LogError($"[AreaMarkerPrefabGenerator] Scene Marker 생성 실패: type={type}");
-            return;
-        }
-
-        if (Selection.activeTransform != null)
-            go.transform.SetParent(Selection.activeTransform, false);
-
-        SceneView.lastActiveSceneView?.MoveToView(go.transform);
-        Selection.activeObject = go;
-        Undo.RegisterCreatedObjectUndo(go, $"Create {type} Marker");
     }
 
     private static void CreatePrefab(AreaMarkerType type)

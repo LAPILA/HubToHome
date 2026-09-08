@@ -50,7 +50,9 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
             Actor = actor,
             Targets = targets,
             CurrentDamageMultiplier = 1.0f,
-            IsPerfectQTE = false
+            IsPerfectQTE = false,
+            IsExecutionActive = () => handle == null
+                || (!handle.IsDone && !handle.IsCancellationRequested)
         };
 
         if (skill.ActionTimeline == null)

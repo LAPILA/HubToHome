@@ -21,6 +21,7 @@
 - Use `ObjectPoolManager` for repeated spawned objects.
 - Keep UI panel stack behavior consistent with `UIManager`.
 - Input should go through `GameInput` unless there is a documented reason.
+- 공용 게임 UI EventSystem은 Move/Submit/Cancel만 연결하고 마우스 포인터/클릭/휠은 연결하지 않는다. 자세한 계약은 `docs/ui-policy.md`를 따른다. 설정 UI의 VSync/목표 FPS 항목은 노출하지 않지만 내부 프레임 제한·저장 정책은 유지한다.
 - Do not modify third-party package source without explicit approval.
 
 ## Save/Load Notes
@@ -34,4 +35,4 @@
 - A `SaveData` format change requires a `SaveSchema` version decision, an explicit migration path, and legacy/future-version tests.
 - Preserve the Primary → Backup → Temporary recovery order. A corrupt Primary must never overwrite a valid Backup.
 - Loading a recovery candidate must not trigger an automatic save. The next explicit save commits the new Primary.
-- Use `Hub To Home > Save > Diagnostics` for read-only slot inspection and explicit reset commands.
+- Use `Hub To Home > 도구 > 저장 데이터 진단` for read-only slot inspection and explicit reset commands.

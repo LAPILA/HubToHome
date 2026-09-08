@@ -7,6 +7,7 @@ using TMPro;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -63,6 +64,44 @@ public sealed class ConfigPanelScrollTests
         Assert.That(Convert.ToSingle(result), Is.EqualTo(expected).Within(0.001f));
     }
 
+    [TestCase(LanguageType.KR, "한국어")]
+    [TestCase(LanguageType.EN, "English")]
+    [TestCase(LanguageType.JP, "日本語")]
+    [TestCase(LanguageType.CN, "简体中文")]
+    public void LanguageValuesUseReadableNativeNames(LanguageType language, string expected)
+    {
+        MethodInfo method = typeof(ConfigPanelUI).GetMethod(
+            "LanguageDisplayName", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        Assert.That(method.Invoke(null, new object[] { language }), Is.EqualTo(expected));
+    }
+
+    [TestCase(RuntimePlatform.WindowsPlayer, true)]
+    [TestCase(RuntimePlatform.OSXPlayer, true)]
+    [TestCase(RuntimePlatform.LinuxPlayer, true)]
+    [TestCase(RuntimePlatform.WindowsEditor, true)]
+    [TestCase(RuntimePlatform.Android, false)]
+    [TestCase(RuntimePlatform.IPhonePlayer, false)]
+    [TestCase(RuntimePlatform.Switch, false)]
+    public void WindowOptionsAreDesktopOnly(RuntimePlatform platform, bool expected)
+    {
+        MethodInfo method = typeof(ConfigPanelUI).GetMethod(
+            "SupportsWindowSettings", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        Assert.That(method.Invoke(null, new object[] { platform }), Is.EqualTo(expected));
+    }
+
+    [TestCase(-1)]
+    [TestCase(999)]
+    public void InvalidStoredKeysUseTheLocalizedUnboundLabel(int invalidValue)
+    {
+        MethodInfo method = typeof(ConfigPanelUI).GetMethod(
+            "KeyDisplayName", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        object unbound = method.Invoke(null, new object[] { Key.None });
+        Assert.That(method.Invoke(null, new object[] { (Key)invalidValue }), Is.EqualTo(unbound));
+    }
+
     [Test]
     public void AwakeNormalizesItsCanvasWithoutDependingOnTheOpenPath()
     {
@@ -81,6 +120,8 @@ public sealed class ConfigPanelScrollTests
             typeof(TextMeshProUGUI));
         TextMeshProUGUI preview = previewObject.GetComponent<TextMeshProUGUI>();
         preview.maxVisibleLines = 99999;
+        Vector2 previewPosition = new Vector2(78f, -160f);
+        preview.rectTransform.anchoredPosition = previewPosition;
         SetPrivateField(panel, "_gameplayPreviewText", preview);
         RectTransform rect = owner.transform as RectTransform;
         CanvasScaler scaler = owner.GetComponent<CanvasScaler>();
@@ -96,6 +137,36 @@ public sealed class ConfigPanelScrollTests
         Assert.That(scaler.referenceResolution, Is.EqualTo(GameConfigPolicy.ReferenceResolution));
         Assert.That(scaler.screenMatchMode, Is.EqualTo(CanvasScaler.ScreenMatchMode.MatchWidthOrHeight));
         Assert.That(preview.maxVisibleLines, Is.EqualTo(2));
+
+        preview.rectTransform.anchoredPosition = Vector2.zero;
+        InvokeInstance(panel, "RestorePreviewPosition");
+        Assert.That(preview.rectTransform.anchoredPosition, Is.EqualTo(previewPosition));
+    }
+
+    [Test]
+    public void SelectionUsesColorWithoutChangingTextSizeOrScale()
+    {
+        GameObject owner = CreateInactiveObject("Config Selection", typeof(RectTransform), typeof(CanvasGroup));
+        ConfigPanelUI panel = owner.AddComponent<ConfigPanelUI>();
+        GameObject labelObject = CreateChild(owner.transform, "Label", typeof(RectTransform),
+            typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+        label.fontSize = 20f;
+        label.enableAutoSizing = true;
+        label.rectTransform.localScale = Vector3.one;
+        MethodInfo applyVisual = typeof(ConfigPanelUI).GetMethod("ApplyVisual", InstancePrivate);
+        Assert.That(applyVisual, Is.Not.Null);
+
+        applyVisual.Invoke(panel, new object[] { label, true, true });
+        Color selectedColor = label.color;
+        Assert.That(label.fontSize, Is.EqualTo(20f));
+        Assert.That(label.enableAutoSizing, Is.True);
+        Assert.That(label.rectTransform.localScale, Is.EqualTo(Vector3.one));
+
+        applyVisual.Invoke(panel, new object[] { label, false, true });
+        Assert.That(label.color, Is.Not.EqualTo(selectedColor));
+        Assert.That(label.fontSize, Is.EqualTo(20f));
+        Assert.That(label.rectTransform.localScale, Is.EqualTo(Vector3.one));
     }
 
     [Test]
@@ -137,6 +208,22 @@ public sealed class ConfigPanelScrollTests
                 Is.False,
                 "거부된 Row 인스턴스는 지연 Destroy 전에 비활성화돼야 합니다.");
         }
+    }
+
+    [Test]
+    public void SystemCategoryOnlyCreatesDisplaySizeAndResetRows()
+    {
+        GameObject rowPrefab = CreateValidRowPrefab("Valid Row Prefab");
+        ConfigPanelUI panel = CreatePanelFixture(rowPrefab, bindViewport: true);
+        SetEnumField(panel, "_selectedCategory", "System");
+
+        InvokeInstance(panel, "RebuildRows");
+
+        List<GameObject> rows = GetRowObjects(panel);
+        Assert.That(rows, Has.Count.EqualTo(3));
+        Assert.That(rows[0].name, Is.EqualTo("Row_Fullscreen"));
+        Assert.That(rows[1].name, Is.EqualTo("Row_WindowScale"));
+        Assert.That(rows[2].name, Is.EqualTo("Row_ResetDefault"));
     }
 
     [Test]

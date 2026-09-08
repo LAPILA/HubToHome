@@ -261,12 +261,15 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             {
                 PlayerCharacter target = _host.PlayerParty[targetIdx];
                 BattleCameraActionScope cameraScope = BeginActiveCameraScope(enemy.transform, target.transform);
+                PlayerController targetCtrl = target != null ? target.GetComponent<PlayerController>() : null;
+                QteExecution qteExecution = null;
                 try
                 {
-                    PlayerController targetCtrl = target != null ? target.GetComponent<PlayerController>() : null;
                     bool movedToCenter = enemy.Data == null || !enemy.Data.IsLargeEnemy;
 
                     yield return _host.StartManagedCoroutine(_host.MoveEnemyToCenterIfNeeded(enemy));
+                    if (!_host.IsTurnQteCombatInputActive() || enemy == null || !enemy.IsAlive)
+                        yield break;
                     _host.SetActorForeground(enemy, true);
 
                     enemy.PlayBasicAttackEffect();
@@ -277,7 +280,6 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
                     targetCtrl?.PrepareDefenseWindow();
                     QTEManager qteManager = QTEManager.Instance;
-                    QteExecution qteExecution = null;
                     if (qteManager != null)
                     {
                         DefenseQteRequest request = qteManager.CreateDefenseRequest(
@@ -303,41 +305,28 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                     }
 
                     yield return new WaitForSeconds(_host.EnemyAttackVisualDuration);
+                    if (!_host.IsTurnQteCombatInputActive() || enemy == null || !enemy.IsAlive)
+                        yield break;
                     enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
                     yield return new WaitUntil(() => qteExecution.IsDone);
 
                     if (qteExecution.Termination == QteTermination.Cancelled
-                        || qteExecution.Termination == QteTermination.Failed)
+                        || qteExecution.Termination == QteTermination.Failed
+                        || !_host.IsTurnQteCombatInputActive()
+                        || enemy == null || !enemy.IsAlive)
                     {
                         targetCtrl?.ResetDefenseReactionLock();
                         _host.SetActorForeground(enemy, false);
                         yield break;
                     }
 
-                    if (!resultReceived || !finalResult.PreventsDamage)
-                    {
-                        int dmg = target.TakePureDamage(enemy.ATK);
-                        targetCtrl?.PlayHurtEffect();
-                        CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
-                        _host.EmitDamage(enemy, target, dmg, false);
-                    }
-                    else
-                    {
-                        targetCtrl?.ConfirmDefenseSuccess(finalResult.Input);
-                        if (finalResult.Input == DefenseInput.Parry && finalResult.Grade == QTEManager.QTEGrade.Perfect)
-                        {
-                            target.RestoreAP(_host.ApOnParryPerfect);
-                            _host.EmitApChanged(target, target.CurrentAP);
-                        }
-
-                        if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
-                        {
-                            _host.EmitMiss(enemy, target);
-                            yield return targetCtrl != null ? _host.StartManagedCoroutine(targetCtrl.WaitForDefenseVisualComplete(0.5f)) : null;
-                        }
-                    }
+                    ApplyEnemyDefenseDamage(enemy, target, targetCtrl, finalResult, resultReceived, true);
+                    if (resultReceived)
+                        ApplyPerfectParryReward(target, targetCtrl, finalResult);
 
                     yield return new WaitForSeconds(_host.EnemyPostHitDelay);
+                    if (!_host.IsTurnQteCombatInputActive())
+                        yield break;
                     targetCtrl?.ResetDefenseReactionLock();
                     if (target != null && target.IsAlive)
                     {
@@ -360,6 +349,11 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 }
                 finally
                 {
+                    if (qteExecution != null && !qteExecution.IsDone)
+                        QTEManager.Instance?.Cancel(qteExecution);
+                    targetCtrl?.ResetDefenseReactionLock();
+                    if (enemy != null)
+                        _host.SetActorForeground(enemy, false);
                     EndActiveCameraScope(cameraScope);
                 }
             }
@@ -369,9 +363,58 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             var cameraTargets = new List<CharacterBase>();
             AddAlivePlayers(cameraTargets);
             BattleCameraActionScope cameraScope = BeginActiveCameraScope(enemy.transform, cameraTargets);
+            PlayerController representativeController = null;
+            QteExecution qteExecution = null;
             try
             {
+                int representativeIndex = FindFirstAlivePlayerIndex();
+                if (representativeIndex < 0)
+                {
+                    CompleteAction();
+                    yield break;
+                }
+
+                PlayerCharacter representative = _host.PlayerParty[representativeIndex];
+                representativeController = representative.GetComponent<PlayerController>();
+                representativeController?.PrepareDefenseWindow();
+                QTEManager qteManager = QTEManager.Instance;
+                if (qteManager == null)
+                {
+                    CompleteAction();
+                    yield break;
+                }
+
+                DefenseQteResult finalResult = default;
+                bool resultReceived = false;
+                DefenseQteRequest request = qteManager.CreateDefenseRequest(
+                    _host.EnemyDefenseQteWindow,
+                    1f,
+                    DefenseRequirement.Any);
+                qteExecution = qteManager.StartDefenseQTEWithResult(
+                    request,
+                    representativeController,
+                    result =>
+                    {
+                        finalResult = result;
+                        resultReceived = true;
+                    });
+
+                if (qteExecution == null)
+                {
+                    CompleteAction();
+                    yield break;
+                }
+
                 yield return new WaitForSeconds(_host.EnemyAoeWindup);
+                yield return new WaitUntil(() => qteExecution.IsDone);
+                if (qteExecution.Termination == QteTermination.Cancelled
+                    || qteExecution.Termination == QteTermination.Failed
+                    || !_host.IsTurnQteCombatInputActive()
+                    || enemy == null || !enemy.IsAlive)
+                {
+                    yield break;
+                }
+
                 for (int i = 0; i < _host.PlayerParty.Count; i++)
                 {
                     PlayerCharacter player = _host.PlayerParty[i];
@@ -380,21 +423,83 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                         continue;
                     }
 
-                    int dmg = player.TakePureDamage(enemy.ATK);
-                    player.GetComponent<PlayerController>()?.PlayHurtEffect();
-                    _host.EmitDamage(enemy, player, dmg, false);
+                    ApplyEnemyDefenseDamage(
+                        enemy,
+                        player,
+                        player.GetComponent<PlayerController>(),
+                        finalResult,
+                        resultReceived,
+                        false);
                 }
+
+                // A party-wide strike owns one defense window and one AP reward.
+                if (resultReceived)
+                    ApplyPerfectParryReward(representative, representativeController, finalResult);
 
                 yield return new WaitForSeconds(_host.EnemyPostHitDelay);
             }
             finally
             {
+                if (qteExecution != null && !qteExecution.IsDone)
+                    QTEManager.Instance?.Cancel(qteExecution);
+                representativeController?.ResetDefenseReactionLock();
                 EndActiveCameraScope(cameraScope);
             }
         }
 
+        if (!_host.IsTurnQteCombatInputActive())
+            yield break;
         yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
         CompleteAction();
+    }
+
+    private void ApplyEnemyDefenseDamage(
+        EnemyCharacter enemy,
+        PlayerCharacter target,
+        PlayerController controller,
+        DefenseQteResult result,
+        bool resultReceived,
+        bool shakeOnHit)
+    {
+        if (!_host.IsTurnQteCombatInputActive() || enemy == null || !enemy.IsAlive
+            || target == null || !target.IsAlive || (resultReceived && result.PreventsDamage))
+            return;
+
+        bool guarded = resultReceived && result.IsGuard;
+        float multiplier = guarded ? result.DamageMultiplier : 1f;
+        DamageResult damageResult = target.TakeDamage(
+            Mathf.RoundToInt(enemy.ATK * multiplier),
+            DamageElement.Physical,
+            enemy);
+        if (guarded)
+        {
+            if (target.IsAlive)
+                controller?.ConfirmGuardSuccess();
+        }
+        else
+        {
+            controller?.PlayHurtEffect();
+            if (shakeOnHit)
+                CameraController.Instance?.PlayHeavySlam(Vector3.left, 1.0f, true);
+        }
+        _host.EmitDamage(enemy, target, damageResult.FinalDamage, false);
+    }
+
+    private void ApplyPerfectParryReward(
+        PlayerCharacter target,
+        PlayerController controller,
+        DefenseQteResult result)
+    {
+        if (!_host.IsTurnQteCombatInputActive() || !result.PreventsDamage
+            || target == null || !target.IsAlive)
+            return;
+
+        controller?.ConfirmDefenseSuccess(result.Input);
+        if (!result.IsPerfectParry)
+            return;
+
+        target.RestoreAP(_host.ApOnParryPerfect);
+        _host.EmitApChanged(target, target.CurrentAP);
     }
 
     public void SelectPlayerAction(PlayerCharacter actor, PlayerMenuAction action)
@@ -626,6 +731,9 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
+        if (!_host.IsTurnQteCombatInputActive() || !actor.IsAlive)
+            yield break;
+
         actor.ConsumeAP(skill.APCost);
         _host.EmitApChanged(actor, actor.CurrentAP);
         if (actor.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, skill, null, _host.BattleTurnCounter))
@@ -672,7 +780,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             Actor = actor,
             Targets = targets,
             CurrentDamageMultiplier = 1.0f,
-            IsPerfectQTE = false
+            IsPerfectQTE = false,
+            IsExecutionActive = _host.IsTurnQteCombatInputActive
         };
 
         BattleCameraActionScope cameraScope = BeginActiveCameraScope(actor.transform, targets);
@@ -682,6 +791,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             {
                 foreach (SkillActionBlock block in skill.ActionTimeline)
                 {
+                    if (!context.CanContinueExecution)
+                        yield break;
                     if (block == null || block.Disabled)
                     {
                         continue;
@@ -694,8 +805,13 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                     }
 
                     yield return _host.StartManagedCoroutine(block.Execute(context));
+                    if (!context.CanContinueExecution)
+                        yield break;
                 }
             }
+
+            if (!context.CanContinueExecution)
+                yield break;
 
             if (Vector3.Distance(actor.transform.position, originalPos) > 0.1f)
             {
@@ -816,6 +932,9 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
+        if (!_host.IsTurnQteCombatInputActive() || !enemy.IsAlive)
+            yield break;
+
         int enemyIndex = FindEnemyIndex(enemy);
         Vector3 defaultPos = enemyIndex >= 0 && PositionManager.Instance != null
             ? PositionManager.Instance.GetEnemyDefaultPos(enemyIndex)
@@ -845,7 +964,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             Actor = enemy,
             Targets = targets,
             CurrentDamageMultiplier = 1.0f,
-            IsPerfectQTE = false
+            IsPerfectQTE = false,
+            IsExecutionActive = _host.IsTurnQteCombatInputActive
         };
 
         BattleCameraActionScope cameraScope = BeginActiveCameraScope(enemy.transform, targets);
@@ -853,23 +973,26 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         {
             foreach (SkillActionBlock block in skill.ActionTimeline)
             {
+                if (!context.CanContinueExecution)
+                    yield break;
                 if (block == null || block.Disabled)
                 {
                     continue;
                 }
 
                 context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-                if (context.Targets.Count == 0 || context.StopTimelineExecution)
+                if (context.Targets.Count == 0)
                 {
                     break;
                 }
 
                 yield return _host.StartManagedCoroutine(block.Execute(context));
-                if (context.StopTimelineExecution)
-                {
-                    break;
-                }
+                if (!context.CanContinueExecution)
+                    yield break;
             }
+
+            if (!context.CanContinueExecution)
+                yield break;
 
             if (Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
             {

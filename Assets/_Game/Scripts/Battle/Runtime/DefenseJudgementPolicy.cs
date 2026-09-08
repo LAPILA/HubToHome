@@ -13,7 +13,8 @@ public enum DefenseOutcome
     Success,
     NearSuccess,
     Failure,
-    Invalid
+    Invalid,
+    Guarded
 }
 
 [Serializable]
@@ -57,19 +58,28 @@ public readonly struct DefenseQteRequest
     public DefenseRequirement Requirement { get; }
     public DefenseTimingProfile TimingProfile { get; }
     public bool AllowNearSuccess { get; }
+    public bool UseTimedGuard { get; }
+    public float GuardDuration { get; }
+    public float GuardDamageMultiplier { get; }
 
     public DefenseQteRequest(
         float duration,
         float difficultyMultiplier,
         DefenseRequirement requirement,
         DefenseTimingProfile timingProfile,
-        bool allowNearSuccess = true)
+        bool allowNearSuccess = true,
+        bool useTimedGuard = false,
+        float guardDuration = 0.4f,
+        float guardDamageMultiplier = 0.5f)
     {
         Duration = Mathf.Max(0.01f, duration);
         DifficultyMultiplier = Mathf.Max(0.01f, difficultyMultiplier);
         Requirement = requirement;
         TimingProfile = timingProfile;
         AllowNearSuccess = allowNearSuccess;
+        UseTimedGuard = useTimedGuard;
+        GuardDuration = Mathf.Max(0.01f, guardDuration);
+        GuardDamageMultiplier = Mathf.Clamp(guardDamageMultiplier, 0.01f, 1f);
     }
 }
 
@@ -83,6 +93,10 @@ public readonly struct DefenseQteResult
     public float SecondsBeforeImpact { get; }
     public bool InputMatched { get; }
     public bool PreventsDamage { get; }
+    public float DamageMultiplier { get; }
+    public bool IsGuard => Outcome == DefenseOutcome.Guarded;
+    public bool IsPerfectParry => PreventsDamage
+        && Input == DefenseInput.Parry && Grade == QTEManager.QTEGrade.Perfect;
 
     public DefenseQteResult(
         DefenseInputReadStatus inputStatus,
@@ -92,7 +106,8 @@ public readonly struct DefenseQteResult
         DefenseRequirement requirement,
         float secondsBeforeImpact,
         bool inputMatched,
-        bool preventsDamage)
+        bool preventsDamage,
+        float damageMultiplier = 1f)
     {
         InputStatus = inputStatus;
         Input = input;
@@ -102,6 +117,37 @@ public readonly struct DefenseQteResult
         SecondsBeforeImpact = Mathf.Max(0f, secondsBeforeImpact);
         InputMatched = inputMatched;
         PreventsDamage = preventsDamage;
+        DamageMultiplier = preventsDamage ? 0f : Mathf.Clamp01(damageMultiplier);
+    }
+}
+
+/// <summary>타격 하나의 첫 입력만 소유합니다. 재입력이나 계속 누르기로 시간이 갱신되지 않습니다.</summary>
+public struct TimedGuardAttempt
+{
+    public bool HasAttempt { get; private set; }
+    public float PressedAt { get; private set; }
+    public bool WasReleased { get; private set; }
+
+    public bool TryPress(float pressedAt, float openedAt, float impactAt)
+    {
+        if (HasAttempt || pressedAt < openedAt || pressedAt >= impactAt)
+            return false;
+
+        HasAttempt = true;
+        PressedAt = pressedAt;
+        return true;
+    }
+
+    public void ObserveHeld(bool held)
+    {
+        if (HasAttempt && !held)
+            WasReleased = true;
+    }
+
+    public float RemainingAt(float now, float duration)
+    {
+        return HasAttempt && !WasReleased
+            ? Mathf.Max(0f, PressedAt + duration - now) : 0f;
     }
 }
 
@@ -134,6 +180,35 @@ public static class DefenseInputSelectionPolicy
 
 public static class DefenseJudgementPolicy
 {
+    public static DefenseQteResult EvaluateTimedGuard(
+        DefenseQteRequest request,
+        TimedGuardAttempt attempt,
+        float impactAt)
+    {
+        float secondsBeforeImpact = impactAt - attempt.PressedAt;
+        if (!attempt.HasAttempt || secondsBeforeImpact < 0f
+            || secondsBeforeImpact > request.Duration)
+        {
+            return CreateTerminalResult(request, DefenseInputReadStatus.None,
+                DefenseInput.None, QTEManager.QTEGrade.Miss, DefenseOutcome.Failure, 0f);
+        }
+
+        float perfectWindow = request.TimingProfile.Normalize(
+            request.Duration, request.DifficultyMultiplier).PerfectWindow;
+        // 정확한 새 입력은 짧게 눌렀다 떼어도 패링입니다. 일반 방어만 유지가 필요합니다.
+        bool perfect = secondsBeforeImpact <= perfectWindow;
+        bool guarded = !perfect && !attempt.WasReleased
+            && secondsBeforeImpact <= request.GuardDuration;
+        return new DefenseQteResult(
+            DefenseInputReadStatus.Valid, DefenseInput.Parry,
+            perfect ? QTEManager.QTEGrade.Perfect
+                : guarded ? QTEManager.QTEGrade.Good : QTEManager.QTEGrade.Miss,
+            perfect ? DefenseOutcome.Success
+                : guarded ? DefenseOutcome.Guarded : DefenseOutcome.Failure,
+            request.Requirement, secondsBeforeImpact, true, perfect,
+            guarded ? request.GuardDamageMultiplier : 1f);
+    }
+
     public static DefenseQteResult Evaluate(
         DefenseQteRequest request,
         DefenseInputReadStatus inputStatus,

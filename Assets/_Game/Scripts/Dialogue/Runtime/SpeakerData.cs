@@ -3,7 +3,7 @@ using Sirenix.OdinInspector;
 using Sirenix.Serialization;
 using System.Collections.Generic;
 
-[CreateAssetMenu(fileName = "NewSpeaker", menuName = "Dialogue/Speaker Data")]
+[CreateAssetMenu(fileName = "NewSpeaker", menuName = "Hub To Home/대사/화자 데이터")]
 public class SpeakerData : SerializedScriptableObject
 {
     [BoxGroup("기본 정보")] public string SpeakerID;

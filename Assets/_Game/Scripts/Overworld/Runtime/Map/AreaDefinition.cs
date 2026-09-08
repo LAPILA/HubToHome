@@ -26,7 +26,7 @@ public sealed class AreaMarkerSummaryEntry
     public string ValidationSummary;
 }
 
-[CreateAssetMenu(menuName = "HubToHome/Overworld/Area Definition", fileName = "AreaDefinition")]
+[CreateAssetMenu(menuName = "Hub To Home/맵/구역 데이터", fileName = "AreaDefinition")]
 public sealed class AreaDefinition : SerializedScriptableObject
 {
     [TitleGroup("기본 정보")]

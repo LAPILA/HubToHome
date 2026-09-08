@@ -2,7 +2,7 @@ using UnityEngine;
 
 [CreateAssetMenu(
     fileName = "TrainStopDefinition",
-    menuName = "HubToHome/Overworld/Travel/Train Stop")]
+    menuName = "Hub To Home/맵/열차 정류장")]
 public sealed class TrainStopDefinition : ScriptableObject
 {
     [SerializeField] private string _stopId = string.Empty;

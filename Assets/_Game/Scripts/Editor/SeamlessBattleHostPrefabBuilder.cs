@@ -13,7 +13,7 @@ public static class SeamlessBattleHostPrefabBuilder
     public const string TestMapScenePath = DevelopmentContentPaths.TestMapScene;
     public const string PrefabPath = "Assets/_Game/Content/Battle/Prefabs/System/SeamlessBattleHost.prefab";
 
-    [MenuItem("Hub To Home/Battle/Open Shared Battle Host Prefab")]
+    [MenuItem("Hub To Home/도구/공용 전투 프리팹 열기", false, 302)]
     public static void OpenSharedPrefab()
     {
         GameObject prefab = LoadSharedPrefab(out string error);
@@ -26,7 +26,6 @@ public static class SeamlessBattleHostPrefabBuilder
         AssetDatabase.OpenAsset(prefab);
     }
 
-    [MenuItem("Hub To Home/Battle/Sync Shared Host To BattleScene")]
     public static void SyncBattleSceneMenu()
     {
         if (!SyncBattleScene(out string error))
@@ -38,7 +37,6 @@ public static class SeamlessBattleHostPrefabBuilder
         Debug.Log($"[SharedBattleHost] BattleScene 동기화 완료: {BattleScenePath}");
     }
 
-    [MenuItem("Hub To Home/Battle/Place Shared Host In TestMap")]
     public static void PlaceInTestMap()
     {
         GameObject prefab = LoadSharedPrefab(out string error);

@@ -3,7 +3,7 @@ using Sirenix.OdinInspector;
 using TMPro;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "GameContentCatalog", menuName = "HubToHome/Game Content Catalog")]
+[CreateAssetMenu(fileName = "GameContentCatalog", menuName = "Hub To Home/시스템/콘텐츠 카탈로그")]
 public sealed class GameContentCatalog : ScriptableObject
 {
     public const string ResourcesPath = "HubToHome/GameContentCatalog";

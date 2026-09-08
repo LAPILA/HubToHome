@@ -51,7 +51,7 @@ public class BattleFlavorRule
     [HideInInspector] public bool TriggeredOnce;
 }
 
-[CreateAssetMenu(fileName = "BattleNarrationConfig", menuName = "HubToHome/BattleNarrationConfig")]
+[CreateAssetMenu(fileName = "BattleNarrationConfig", menuName = "Hub To Home/전투/전투 내레이션 설정")]
 public class BattleNarrationConfig : SerializedScriptableObject
 {
     [BoxGroup("Templates")]

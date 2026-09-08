@@ -24,36 +24,52 @@ MonoBehaviour:
   - rid: 8456611354123173968
   - rid: 8456611354123173969
   - rid: 8456611482560888833
-  - rid: 8456611354123173970
   - rid: 8456611354123173971
+  - rid: 8456611354123173970
   references:
     version: 2
     RefIds:
     - rid: 8456611354123173968
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
         Destination: 3
         Duration: 0.2
         MoveEase: 6
     - rid: 8456611354123173969
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
         AnimTriggerName: CrossCutReady
         DelayAfter: 0.65
     - rid: 8456611354123173970
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
         VfxPrefab: {fileID: 4748681987041982144, guid: 6a096f17e0593e44590ee0ab4539081e, type: 3}
         Pivot: 2
         UseActorRotation: 0
     - rid: 8456611354123173971
       type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
         SkillMultiplier: 5
+        Element: 0
         ShakeCamera: 1
     - rid: 8456611482560888833
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
         PatternMode: 0
         Requirement: 1
         UseTelegraph: 1
@@ -65,8 +81,17 @@ MonoBehaviour:
         TelegraphDuration: 0.2
         DefenseOpenDelay: 0.1
         TimeWindow: 0.2
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.22
+          GoodWindow: 0.4
         FailDamageMultiplier: 1
         ShakeOnFail: 1
+        FailShakeIntensity: 0.35
+        FailShakeDuration: 0.2
+        FailShakeSafety: 0
         DelayAfter: 0
         AttackAnimTriggerName: CrossCutAttack
         AttackAnimDelay: 0

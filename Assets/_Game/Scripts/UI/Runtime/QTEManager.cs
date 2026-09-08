@@ -45,7 +45,17 @@ public class QTEManager : MonoBehaviour
     [BoxGroup("Defense QTE Windows"), LabelWidth(160)]
     [SerializeField, Range(0f, 0.6f)] private float _goodWindow = 0.40f;
 
+    [BoxGroup("시간제 방어"), LabelText("Z 통합 방어 사용")]
+    [SerializeField] private bool _useTimedGuard = true;
+
+    [BoxGroup("시간제 방어"), LabelText("최대 유지 시간 (초)")]
+    [SerializeField, Min(0.01f)] private float _guardDuration = 0.4f;
+
+    [BoxGroup("시간제 방어"), LabelText("방어 시 받는 피해 배율")]
+    [SerializeField, Range(0.01f, 1f)] private float _guardDamageMultiplier = 0.5f;
+
     public bool IsActive { get; private set; }
+    public bool UseTimedGuard => _useTimedGuard;
     public DefenseTimingProfile DefaultDefenseTimingProfile =>
         new DefenseTimingProfile(_perfectWindow, _greatWindow, _goodWindow);
 
@@ -56,6 +66,7 @@ public class QTEManager : MonoBehaviour
     private Coroutine _activeCoroutine;
     private QteExecution _activeExecution;
     private bool _activeIsSequence;
+    private int _lastGuardPressFrame = -1;
 
     private void Awake()
     {
@@ -96,7 +107,10 @@ public class QTEManager : MonoBehaviour
             difficultyMult,
             requirement,
             DefaultDefenseTimingProfile,
-            allowNearSuccess);
+            allowNearSuccess,
+            _useTimedGuard,
+            _guardDuration,
+            _guardDamageMultiplier);
     }
 
     public QteExecution StartDefenseQTEWithResult(
@@ -113,6 +127,10 @@ public class QTEManager : MonoBehaviour
     {
         CancelActiveQTE();
 
+        // 개별 스킬의 판정 구간도 보존하면서, 모든 진입 경로에 같은 기본 방어 방식을 적용합니다.
+        request = new DefenseQteRequest(request.Duration, request.DifficultyMultiplier,
+            request.Requirement, request.TimingProfile, request.AllowNearSuccess,
+            _useTimedGuard, _guardDuration, _guardDamageMultiplier);
         var execution = new QteExecution();
         _activeExecution = execution;
         _activeIsSequence = false;
@@ -136,6 +154,8 @@ public class QTEManager : MonoBehaviour
         DefenseInputReadStatus inputStatus = DefenseInputReadStatus.None;
         DefenseInput input = DefenseInput.None;
         float inputTime = impactAt;
+        var guardAttempt = new TimedGuardAttempt();
+        IDefenseInputSource controller = inputSource ?? ResolveDefenseInputSource();
 
         InvokePresentation(
             () => BattleUIController.Instance?.ShowDefenseQTE(request),
@@ -145,11 +165,52 @@ public class QTEManager : MonoBehaviour
         while (!execution.IsDone)
         {
             float now = Time.realtimeSinceStartup;
+            // 지정한 대상이 사라졌을 때 다른 파티원의 입력으로 대체하지 않습니다.
+            if (controller != null && !IsInputSourceAvailable(controller))
+            {
+                Cancel(execution);
+                yield break;
+            }
+
+            if (request.UseTimedGuard)
+            {
+                bool held = controller is ITimedGuardInputSource guardSource
+                    ? guardSource.IsGuardHeld : GameInput.QTEZHeld;
+                guardAttempt.ObserveHeld(held);
+                if (now >= impactAt)
+                    break;
+
+                if (!guardAttempt.HasAttempt)
+                {
+                    bool hasBuffered = controller != null
+                        && controller.TryConsumeBufferedDefenseInput(out input, out inputTime);
+                    if (hasBuffered && input == DefenseInput.Parry)
+                    {
+                        guardAttempt.TryPress(inputTime, startedAt, impactAt);
+                    }
+                    else if (GameInput.QTEZPressed && _lastGuardPressFrame != Time.frameCount)
+                    {
+                        if (guardAttempt.TryPress(now, startedAt, impactAt))
+                            controller?.PreviewDefenseInput(DefenseInput.Parry);
+                    }
+
+                    if (guardAttempt.HasAttempt)
+                    {
+                        _lastGuardPressFrame = Time.frameCount;
+                        guardAttempt.ObserveHeld(held);
+                    }
+                }
+
+                // UI는 상태가 변할 때만 라벨을 갱신하며, 프레임마다 문자열을 생성하지 않습니다.
+                BattleUIController.Instance?.UpdateDefenseGuard(
+                    guardAttempt.RemainingAt(now, request.GuardDuration), guardAttempt.HasAttempt);
+                yield return null;
+                continue;
+            }
+
             if (now >= impactAt)
                 break;
 
-            IDefenseInputSource controller = IsInputSourceAvailable(inputSource)
-                ? inputSource : ResolveDefenseInputSource();
             if (controller != null
                 && controller.TryConsumeBufferedDefenseInput(out input, out float bufferedInputTime))
             {
@@ -183,12 +244,10 @@ public class QTEManager : MonoBehaviour
         float secondsBeforeImpact = inputStatus == DefenseInputReadStatus.None
             ? 0f
             : Mathf.Clamp(impactAt - inputTime, 0f, request.Duration);
-        DefenseQteResult result = DefenseJudgementPolicy.Evaluate(
-            request,
-            inputStatus,
-            input,
-            secondsBeforeImpact);
-        QteTermination termination = inputStatus == DefenseInputReadStatus.None
+        DefenseQteResult result = request.UseTimedGuard
+            ? DefenseJudgementPolicy.EvaluateTimedGuard(request, guardAttempt, impactAt)
+            : DefenseJudgementPolicy.Evaluate(request, inputStatus, input, secondsBeforeImpact);
+        QteTermination termination = result.InputStatus == DefenseInputReadStatus.None
             ? QteTermination.TimedOut
             : QteTermination.Completed;
 

@@ -593,7 +593,13 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType)
     {
-        string attackName = attackType switch
+        bool useTimedGuard = QTEManager.Instance != null && QTEManager.Instance.UseTimedGuard;
+        string attackName = useTimedGuard ? attackType switch
+        {
+            EnemyAttackType.RangedAoE => "원거리 공격",
+            EnemyAttackType.AoEAll => "전체 공격",
+            _ => "공격"
+        } : attackType switch
         {
             EnemyAttackType.MeleeClose => "ATTACK",
             EnemyAttackType.RangedAoE  => "RANGED",
@@ -820,7 +826,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             .SetTarget(tweenTarget ?? shakeTarget);
     }
 
-    public void ShowDefenseQTE(DefenseQteRequest request) => _defenseQTEUI?.ShowQTE(request.Duration);
+    public void ShowDefenseQTE(DefenseQteRequest request) => _defenseQTEUI?.ShowQTE(request);
+    public void UpdateDefenseGuard(float remainingSeconds, bool attempted) => _defenseQTEUI?.UpdateDefenseGuard(remainingSeconds, attempted);
     public void ShowDefenseQTEResult(DefenseQteResult result) => _defenseQTEUI?.ShowResult(result);
     public void HideDefenseQTE() => _defenseQTEUI?.Hide();
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);

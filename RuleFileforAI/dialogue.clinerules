@@ -27,3 +27,13 @@
 - Keep localization keys and fallback text clear.
 - If choice behavior changes, inspect `DialogueManager`, `DialogueData`, and any encounter context code.
 - Document new event trigger IDs and their owners.
+
+## Content Maker Authoring (2026-09-07)
+
+- Author through `Hub To Home → 제작 → 콘텐츠 메이커 → 대사 · 화자`. The task pages are `대사 / 화자·표정 / 조건·NPC / CSV·번역 / 문서`; do not add another dialogue editor or duplicate the existing Sequence Maker.
+- `ContentMakerDialogueRulesPanel` edits existing `FlagDialogueSelector` assets via SerializedObject. Runtime state remains owned by GlobalDataManager; one rule compares one flag, highest priority wins, ties use list order.
+- NPC linking is restricted to NPCMarker in the explicitly selected Room's open PrefabStage. DialogueBattleNPC staged encounters are not migrated by this tool.
+- CSV import replaces one DialogueData only after validation, preview, and unchanged-target verification. It is not a localization-table importer or XLSX synchronizer.
+- Missing body keys may be generated explicitly without changing existing keys or translation rows. Copies preserve keys; independent text needs independent keys.
+- Current limitations: choice text and speaker display names are not localized; the LocalizationTable loader does not handle quoted physical multiline cells. Do not document these as complete.
+- Usage: `docs/content-maker-guide.md`. Code-grounded study index: `docs/learning/README.md`.

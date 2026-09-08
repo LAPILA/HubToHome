@@ -276,7 +276,7 @@ public class MapTransitionService : MonoBehaviour
 
         room.OnRoomEntered(player);
         SuppressArrivalDoor(request.TargetSpawnPointId);
-        ApplyRoomPresentation(request.TargetRoom);
+        _roomContainer.ApplyCurrentRoomAudio();
         return SceneLoadResult.Succeeded;
     }
 
@@ -429,17 +429,6 @@ public class MapTransitionService : MonoBehaviour
         if (player == null || facing == FacingDirection.Keep)
             return;
         player.SetFacingDirection((int)facing);
-    }
-
-    private static void ApplyRoomPresentation(RoomDefinition definition)
-    {
-        if (definition == null)
-            return;
-
-        if (definition.BgmOverride != null)
-            AudioManager.Instance?.CrossFadeBGM(definition.BgmOverride, definition.BgmFadeDuration);
-        else if (!definition.KeepCurrentBgm)
-            AudioManager.Instance?.FadeOutBGM(definition.BgmFadeDuration);
     }
 
     private void SuppressArrivalDoor(string spawnPointId)

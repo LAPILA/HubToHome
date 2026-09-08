@@ -12,7 +12,7 @@ public sealed class EnemyDropEntry
     [Range(0f, 1f)] public float DropChance = 1f;
 }
 
-[CreateAssetMenu(fileName = "NewEnemyData", menuName = "HubToHome/EnemyData")]
+[CreateAssetMenu(fileName = "NewEnemyData", menuName = "Hub To Home/캐릭터/적 데이터")]
 public class EnemyData : SerializedScriptableObject 
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(60, ObjectFieldAlignment.Left)]

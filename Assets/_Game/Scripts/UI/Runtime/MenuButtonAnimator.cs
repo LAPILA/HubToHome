@@ -14,33 +14,79 @@ public class MenuButtonAnimator : MonoBehaviour, ISelectHandler, IDeselectHandle
     [SerializeField] private Color _selectedColor = Color.yellow;
     [SerializeField] private Color _normalColor = Color.white;
     [SerializeField] private float _scaleSize = 1.4f;
+    [SerializeField] private Color _disabledColor = new Color(0.42f, 0.48f, 0.50f, 1f);
+
+    private UnityEngine.UI.Button _button;
+    private Vector3 _baseScale;
+    private Tween _scaleTween;
+    private Tween _colorTween;
+    private bool _selected;
+    private bool _ready;
 
     private void Awake()
     {
-        // 에디터에서 드래그 안 했을 경우 스스로 찾아오기 (편의성)
+        EnsureReferences();
+    }
+
+    private void OnEnable() => RefreshVisual(true);
+
+    private void EnsureReferences()
+    {
+        if (_ready) return;
         if (_rectTarget == null) _rectTarget = GetComponent<RectTransform>();
         if (_textTarget == null) _textTarget = GetComponentInChildren<TextMeshProUGUI>();
+        _button = GetComponent<UnityEngine.UI.Button>();
+        _baseScale = _rectTarget != null ? _rectTarget.localScale : Vector3.one;
+        _ready = true;
     }
 
     // 유니티 EventSystem이 이 버튼을 선택(키보드 방향키 도달)했을 때 자동 실행
     public void OnSelect(BaseEventData eventData)
     {
-        _rectTarget.DOKill();
-        _textTarget.DOKill();
-
-        // 🚨 쫀득하게 1.4배 커지고 노란색으로 변함
-        _rectTarget.DOScale(_scaleSize, 0.2f).SetEase(Ease.OutBack);
-        _textTarget.DOColor(_selectedColor, 0.2f);
+        _selected = true;
+        RefreshVisual();
     }
 
     // 유니티 EventSystem이 이 버튼에서 떠났을 때(다른 버튼으로 이동) 자동 실행
     public void OnDeselect(BaseEventData eventData)
     {
-        _rectTarget.DOKill();
-        _textTarget.DOKill();
+        _selected = false;
+        RefreshVisual();
+    }
 
-        // 부드럽게 원래 크기(1.0)와 흰색으로 복귀
-        _rectTarget.DOScale(1.0f, 0.2f).SetEase(Ease.OutQuad);
-        _textTarget.DOColor(_normalColor, 0.2f);
+    public void RefreshVisual(bool immediate = false)
+    {
+        EnsureReferences();
+        KillOwnedTweens();
+        bool enabled = _button != null && _button.interactable;
+        bool selected = enabled && _selected;
+        Vector3 scale = _baseScale * (selected ? _scaleSize : 1f);
+        Color color = !enabled ? _disabledColor : selected ? _selectedColor : _normalColor;
+        if (immediate || !isActiveAndEnabled)
+        {
+            if (_rectTarget != null) _rectTarget.localScale = scale;
+            if (_textTarget != null) _textTarget.color = color;
+            return;
+        }
+        if (_rectTarget != null)
+            _scaleTween = _rectTarget.DOScale(scale, 0.12f).SetEase(Ease.OutQuad).SetUpdate(true);
+        if (_textTarget != null)
+            _colorTween = _textTarget.DOColor(color, 0.12f).SetUpdate(true);
+    }
+
+    private void OnDisable()
+    {
+        _selected = false;
+        RefreshVisual(true);
+    }
+
+    private void OnDestroy() => KillOwnedTweens();
+
+    private void KillOwnedTweens()
+    {
+        // 같은 텍스트를 사용하는 타이틀 확인 연출 등 다른 소유자의 tween은 취소하지 않습니다.
+        _scaleTween?.Kill(false);
+        _colorTween?.Kill(false);
+        _scaleTween = _colorTween = null;
     }
 }

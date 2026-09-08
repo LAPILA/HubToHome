@@ -649,6 +649,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     {
         CancelPartyWaveTransition();
         _turnQteModuleController?.CancelActiveCameraPresentation();
+        ClearBattleParticipantStatusEffects();
         BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
         if (Instance == this)
             Instance = null;
@@ -2009,6 +2010,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     private IEnumerator BattleOutroRoutine(BattleEncounterOutcome outcome)
     {
         CancelPartyWaveTransition();
+        // Clear before callbacks, saved vitals and rewards observe the participants.
+        ClearBattleParticipantStatusEffects();
         bool isVictory = outcome == BattleEncounterOutcome.Victory;
         Time.timeScale = 1.0f; // 슬로우 모션 방지
         AudioManager.Instance?.StopBGM(isVictory ? 0.35f : 0.15f);
@@ -2131,6 +2134,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         bool isVictory = outcome == BattleEncounterOutcome.Victory;
         _turnQteModuleController?.CancelActiveCameraPresentation();
         ClearTurnQtePendingActionState();
+        ClearBattleParticipantStatusEffects();
         PlayerController encounterPlayer = ResolveActiveEncounterPlayer();
         RestoreSeamlessPlayers(encounterPlayer);
         NotifyEncounterResolved(notifyEncounterSource, outcome, encounterPlayer);
@@ -2190,6 +2194,32 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (_playerParty.Count > 0 && _playerParty[0] != null)
             return _playerParty[0].GetComponent<PlayerController>();
         return null;
+    }
+
+    private void ClearBattleParticipantStatusEffects()
+    {
+        List<PlayerCharacter> players = _battlePartyRoster.Count > 0
+            ? _battlePartyRoster
+            : _playerParty;
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (players[i] != null)
+                players[i].ClearBattleStatusEffects();
+        }
+
+        // Also cover incomplete setup/legacy callers whose reserve list has no roster yet.
+        for (int i = 0; i < _reserveParty.Count; i++)
+        {
+            PlayerCharacter reserve = _reserveParty[i];
+            if (reserve != null && !players.Contains(reserve))
+                reserve.ClearBattleStatusEffects();
+        }
+
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            if (_enemies[i] != null)
+                _enemies[i].ClearBattleStatusEffects();
+        }
     }
 
     private void RestoreSeamlessPlayers(PlayerController encounterPlayer)

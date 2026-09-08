@@ -2,18 +2,29 @@
 Intro_001,<fade><wave>...들리는가?</wave></fade>\n<size=80%><color=#888888>정신을 차려라.</color></size>,...Can you hear me?,…聞こえるか？,…你听得见吗？
 Intro_002,<shake>네 이름은</shake> <color=#FF5555><b>「{0}」</b></color>이군.\n<rainb>운명이 움직이기 시작했다.</rainb>,Your name is <color=#FF0000>'{0}'.,君の名は<color=#FF0000>「{0}」だな。,你的名字是<color=#FF0000>“{0}”啊。
 Choice_Yes,예,Yes,はい,是
-config.master,마스터 볼륨,Master Volume,マスターボリューム,主音量
-config.bgm,BGM 볼륨,BGM Volume,BGM音量,BGM音量
-config.sfx,SFX 볼륨,SFX Volume,SFX音量,SFX音量
+config.title,설정,Settings,設定,设置
+config.category.audio,오디오,Audio,サウンド,声音
+config.category.gameplay,게임플레이,Gameplay,ゲーム,游戏
+config.category.controls,조작,Controls,操作,操作
+config.category.system,화면,Display,画面,画面
+config.master,전체 음량,Master Volume,全体音量,主音量
+config.bgm,배경음 음량,Music Volume,BGM音量,音乐音量
+config.sfx,효과음 음량,SFX Volume,効果音量,音效音量
 config.language,언어,Language,言語,语言
-config.text_speed,텍스트 속도,Text Speed,テキスト速度,文本速度
+config.language.kr,한국어,한국어,한국어,한국어
+config.language.en,English,English,English,English
+config.language.jp,日本語,日本語,日本語,日本語
+config.language.cn,简体中文,简体中文,简体中文,简体中文
+config.text_speed,대사 속도,Text Speed,文字速度,文字速度
 config.auto_advance,자동 진행,Auto Advance,自動送り,自动播放
 config.screen_shake,화면 흔들림,Screen Shake,画面揺れ,屏幕震动
-config.fullscreen,전체화면,Fullscreen,フルスクリーン,全屏
+config.flash_intensity,점멸 강도,Flash Intensity,点滅の強さ,闪烁强度
+config.fullscreen,전체화면,Fullscreen,全画面,全屏
+config.window_size,창 크기,Window Size,ウィンドウサイズ,窗口大小
 config.vsync,수직동기화,VSync,垂直同期,垂直同步
 config.target_fps,목표 FPS,Target FPS,目標FPS,目标FPS
-config.reset_default,기본값 초기화,Reset Default,デフォルトに戻す,恢复默认
-config.reset_controls,조작키 초기화,Reset Controls,操作キー初期化,重置按键
+config.reset_default,기본값 초기화,Reset Defaults,初期設定に戻す,恢复默认
+config.reset_controls,조작키 초기화,Reset Controls,キー設定を戻す,重置按键
 config.key.up,위로 이동,Move Up,上へ移動,向上移动
 config.key.down,아래로 이동,Move Down,下へ移動,向下移动
 config.key.left,왼쪽 이동,Move Left,左へ移動,向左移动
@@ -22,6 +33,33 @@ config.key.confirm,확인,Confirm,決定,确认
 config.key.cancel,취소,Cancel,キャンセル,取消
 config.key.run,달리기,Run,ダッシュ,奔跑
 config.key.menu,메뉴,Menu,メニュー,菜单
-config.preview.sample,예시 테스트입니다! 확인해주세요!,This is a sample preview. Please check!,サンプル表示です。ご確認ください！,这是示例预览文本，请确认！
+config.key.capture,입력 대기,Press a key,キーを入力,请按键
+config.key.none,미지정,Unbound,未設定,未绑定
+config.key.escape,Esc,Esc,Esc,Esc
+config.key.enter,Enter,Enter,Enter,Enter
+config.key.space,Space,Space,Space,Space
+config.key.tab,Tab,Tab,Tab,Tab
+config.key.backspace,Backspace,Backspace,Backspace,Backspace
+config.key.delete,Delete,Delete,Delete,Delete
+config.key.insert,Insert,Insert,Insert,Insert
+config.key.home,Home,Home,Home,Home
+config.key.end,End,End,End,End
+config.key.page_up,PgUp,PgUp,PgUp,PgUp
+config.key.page_down,PgDn,PgDn,PgDn,PgDn
+config.key.left_shift,L Shift,L Shift,L Shift,L Shift
+config.key.right_shift,R Shift,R Shift,R Shift,R Shift
+config.key.left_ctrl,L Ctrl,L Ctrl,L Ctrl,L Ctrl
+config.key.right_ctrl,R Ctrl,R Ctrl,R Ctrl,R Ctrl
+config.key.left_alt,L Alt,L Alt,L Alt,L Alt
+config.key.right_alt,R Alt,R Alt,R Alt,R Alt
+config.key.duplicate,이미 사용 중,Already used,使用中,已被使用
+config.key.capture_hint,새 키를 누르세요. 취소는 Esc.,Press a new key. Esc to cancel.,新しいキーを押してください。Escで戻ります。,请按新按键。按Esc取消。
+config.controls.keyboard_hint,키보드 키 설정입니다.,Keyboard bindings.,キーボードのキー設定です。,此处设置键盘按键。
+config.controls.fixed_hint,이 기기의 조작은 기본 배치를 사용합니다.,Controls use the default layout on this device.,この機器では標準の操作配置を使用します。,此设备使用默认操作布局。
+config.display.fixed_hint,이 기기에서는 화면 크기가 자동으로 설정됩니다.,Display size is managed by this device.,この機器では画面サイズが自動で設定されます。,此设备自动设置画面大小。
+config.value.unavailable,사용 안 함,Unavailable,利用不可,不可用
+config.preview.sample,이 속도로 대사가 표시됩니다.,Dialogue appears at this speed.,この速さで会話が表示されます。,对话将以此速度显示。
+config.preview.shake,흔들림: {0}%,Shake: {0}%,揺れ: {0}%,震动: {0}%
+config.preview.flash,점멸: {0}%,Flash: {0}%,点滅: {0}%,闪烁: {0}%
 common.on,켜짐,ON,オン,开
 common.off,꺼짐,OFF,オフ,关

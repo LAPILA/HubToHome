@@ -4,7 +4,7 @@ using UnityEngine;
 
 [CreateAssetMenu(
     fileName = "TrainNetworkDefinition",
-    menuName = "HubToHome/Overworld/Travel/Train Network")]
+    menuName = "Hub To Home/맵/열차 노선")]
 public sealed class TrainNetworkDefinition : ScriptableObject
 {
     [SerializeField] private string _networkId = string.Empty;

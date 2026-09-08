@@ -3,7 +3,7 @@ using UnityEngine;
 
 [CreateAssetMenu(
     fileName = "GrowthBalanceProfile",
-    menuName = "HubToHome/Growth/Balance Profile")]
+    menuName = "Hub To Home/캐릭터/성장 밸런스")]
 public sealed class GrowthBalanceProfile : SerializedScriptableObject
 {
     public const int DefaultMaxLevel = 99;

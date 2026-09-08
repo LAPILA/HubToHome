@@ -70,6 +70,7 @@ public abstract class CharacterBase : MonoBehaviour
     private readonly CharacterStats _characterStats = new CharacterStats();
     private readonly List<StatModifier> _battleStatModifiers = new List<StatModifier>();
     private bool _characterStatsDirty = true;
+    private bool _isClearingBattleStatusEffects;
     // CurrentHP/AP는 레이어 계산값이 아니라 전투 대상 인스턴스의 런타임 자원이다.
     private int _currentHP;
     private int _currentAP;
@@ -417,7 +418,7 @@ public abstract class CharacterBase : MonoBehaviour
                 StatusApplicationStatus.InvalidEffect,
                 null,
                 0f);
-        if (!IsAlive)
+        if (!IsAlive || _isClearingBattleStatusEffects)
             return new StatusApplicationResult(
                 StatusApplicationStatus.TargetUnavailable,
                 effect.EffectID,
@@ -463,6 +464,49 @@ public abstract class CharacterBase : MonoBehaviour
             MarkCharacterStatsDirty();
         }
     }
+
+    /// <summary>
+    /// Ends battle-only effects for active, reserved and defeated participants alike.
+    /// Persistent stats/equipment and remaining HP/AP are kept, capped to their restored maxima.
+    /// </summary>
+    public void ClearBattleStatusEffects()
+    {
+        if (_isClearingBattleStatusEffects)
+            return;
+
+        _isClearingBattleStatusEffects = true;
+        try
+        {
+            while (_activeEffects.Count > 0)
+            {
+                int lastIndex = _activeEffects.Count - 1;
+                StatusEffect effect = _activeEffects[lastIndex];
+                _activeEffects.RemoveAt(lastIndex);
+                try
+                {
+                    // Detach first so repeated cleanup cannot remove subscriptions/VFX twice.
+                    effect.OnRemove();
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception, this);
+                }
+            }
+        }
+        finally
+        {
+            IsBound = false;
+            IsStunned = false;
+            IsBerserk = false;
+            IsDefending = false;
+            IsInvincible = false;
+            MarkCharacterStatsDirty();
+            _isClearingBattleStatusEffects = false;
+        }
+
+        if (_characterStats.IsInitialized)
+            EnsureCharacterStats();
+    }
     
     // LINQ Any 제거
     public bool HasEffect(string effectID) 
@@ -503,9 +547,18 @@ public abstract class CharacterBase : MonoBehaviour
     {
         if (_activeLoopVFX.TryGetValue(buffId, out GameObject vfx))
         {
-            vfx.transform.SetParent(null); 
-            ObjectPoolManager.Instance.Despawn(vfx);
             _activeLoopVFX.Remove(buffId);
+            if (vfx == null)
+                return;
+
+            vfx.transform.SetParent(null);
+            ObjectPoolManager pool = ObjectPoolManager.Instance;
+            if (pool != null)
+                pool.Despawn(vfx);
+            else if (Application.isPlaying)
+                Destroy(vfx);
+            else
+                DestroyImmediate(vfx);
         }
     }
 

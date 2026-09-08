@@ -8,7 +8,7 @@ public enum ValueCalcType    { Flat, Percentage, Full }
 public enum ItemType         { Consumable, KeyItem, Equipment }
 public enum TargetAreaType   { AllyOnly, EnemyOnly, Both, AoEAll }
 
-[CreateAssetMenu(fileName = "NewItem", menuName = "HubToHome/ItemData")]
+[CreateAssetMenu(fileName = "NewItem", menuName = "Hub To Home/아이템/아이템 데이터")]
 public class ItemData : ScriptableObject
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(50, ObjectFieldAlignment.Left)]

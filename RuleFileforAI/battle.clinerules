@@ -17,6 +17,8 @@
 - Keep `Assets/_Game/Content/Battle/Prefabs/System/SeamlessBattleHost.prefab` as the common source for dedicated and seamless battle runtime composition. Do not rebuild it from `BattleScene` or copy its runtime children into a scene.
 - Keep `BattleEncounterService` as the common battle entry seam.
 - Seamless victory, run, and Host abort must use BattleManager's shared cleanup boundary so player position/input, encounter context, temporary actors, UI, camera, and battle session state are restored together.
+- Clear battle-scoped status effects for the full party roster (including reserve/defeated actors) and enemies before normal outro callbacks/save/rewards, and again idempotently on seamless abort or manager destruction. Do not clear them on a 3+3 wave change or Game Module switch.
+- Ordinary enemy basic/AoE fallback strikes use `TakeDamage(..., DamageElement.Physical, enemy)` and publish the resolved damage. Keep `TakePureDamage` for explicitly defense-ignoring effects such as authored pure damage and status ticks.
 - DOTween Sequences that can be canceled before their first update must use an owner ID and ID-based cleanup; killing only a nested child target does not own the parent Sequence.
 - Treat `SkillActionBlock` as a legacy battle-skill timeline, not as the root of the future global Action Sequence system.
 - Future flexible combat should run through Primary Mode / Game Module / Action Sequence concepts from `CONTEXT.md`.
@@ -66,14 +68,15 @@
 
 ## Defense / QTE Intent
 
-- Enemy defense reactions are parry/dodge/jump style timing responses.
-- Successful defense should avoid damage according to current balance rules.
-- Perfect parry may reward MP or extra feedback when configured.
+- Default enemy defense uses timed Z hold guard and fresh-input Perfect parry. Initial tuning is guard 0.4 seconds / damage multiplier 0.5; Perfect uses the existing timing profile (default 0.12 seconds, difficulty-adjusted).
+- A defense window accepts one attempt. Holding across impacts or pressing repeatedly must not refresh it. Ordinary guard requires holding through impact; a Perfect tap may be released before impact. X/C do not consume this attempt.
+- Ordinary guard reduces damage; only Perfect prevents all damage and grants the configured AP reward. No new counterattack HP damage or grid movement is included. Serialized legacy requirements and attack skill sequence Z/X/C remain intact; disabling timed guard restores legacy defense policy.
 - Defense visual reactions are currently tied to `PlayerController`; use adapters before moving this responsibility.
-- `DefenseJudgementPolicy` owns input matching, timing grade, outcome, and `PreventsDamage`; do not duplicate those switches in consumers.
+- `DefenseJudgementPolicy` owns input matching, timing grade, outcome, `PreventsDamage`, and `DamageMultiplier`; do not duplicate those switches in consumers. `TimedGuardAttempt` owns first-input/release/expiry state.
 - `QTEManager` owns one active QTE, realtime execution, cancellation, structured result events, and UI delivery.
 - Pass the intended actor through `IDefenseInputSource`; do not assume the first party member is always the defender.
-- Existing gameplay consumers should branch on `DefenseQteResult.PreventsDamage` and keep damage, MP, camera, and VFX effects in their current owners.
+- Gameplay consumers use `PreventsDamage` / `IsGuard` / `IsPerfectParry` / `DamageMultiplier` and retain existing damage, AP, camera, and VFX owners. Basic AoE uses one representative defense window, shares damage treatment across alive front-party members, and grants AP once. A missing/cancelled QTE must not cause unavoidable fallback damage.
+- `SkillContext.CanContinueExecution` protects delayed damage blocks. Controller contexts carry module activity; `BattleSkillTimelineRunner` carries the action handle lifecycle. Cancellation stops following blocks and pending damage; it is not a failed guard result.
 
 ## Work Rules
 

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Room_WideFieldStation_Definition
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   _roomId: wide_field.station
-  _roomPrefab: {fileID: 1646752358789584999, guid: ed34f9a1e236d8d409b8f59e0a20b09e, type: 3}
+  _roomPrefab: {fileID: 1660670008251937607, guid: ed34f9a1e236d8d409b8f59e0a20b09e, type: 3}
   _areaDefinition: {fileID: 11400000, guid: bbdba00dc049fed4daf996baadbca6db, type: 2}
   _bgmOverride: {fileID: 0}
   _keepCurrentBgm: 1

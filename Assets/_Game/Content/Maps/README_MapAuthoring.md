@@ -16,22 +16,28 @@
 
 ## 새 지역 만들기
 
+권장 시작 메뉴는 **`Hub To Home > 제작 > 콘텐츠 메이커`**입니다. 지역 폴더, Room 데이터, Prefab을 자동으로 만들고 같은 창에서 마커·NPC·대화를 편집합니다. 자세한 순서는 [콘텐츠 메이커 사용법](../../../../docs/content-maker-guide.md)을 참고하세요.
+
 ```text
 Regions/지역이름/
 ├─ Scenes/                  # Region_지역이름.unity
 ├─ Prefabs/
-│  └─ Rooms/               # Room Prefab과 RoomDefinition
+│  ├─ Rooms/               # Room Prefab
+│  └─ NPCs/                # 지역 전용 NPC Prefab
+├─ Data/
+│  ├─ Rooms/               # RoomDefinition, AreaDefinition
+│  └─ Dialogue/            # 지역 대화
 ├─ Materials/              # 이 지역에서만 쓰는 재질
 └─ Notes/                   # 연결표와 제작 메모
 ```
 
-1. `Regions` 아래에 지역 폴더를 만듭니다.
-2. `Scenes`에 `Region_지역이름.unity`를 만듭니다.
-3. `Prefabs/Rooms`에 한 화면 단위의 Room Prefab과 대응하는 RoomDefinition을 둡니다.
-4. 문과 통로에는 `AreaConnectionMarker`를 배치하고 도착 Room과 SpawnPoint를 연결합니다.
-5. Unity 메뉴 `Hub To Home > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`로 누락을 확인합니다.
+1. 콘텐츠 메이커의 `맵 만들기`에서 지역을 선택하거나 새 지역을 만듭니다.
+2. 장소 이름과 기본 크기를 입력하여 Room을 만듭니다. Prefab과 대응 데이터는 각각 위 폴더에 생성됩니다.
+3. `지형 배치하기`로 열어 그림·타일·충돌벽을 배치합니다.
+4. `마커 · NPC`에서 문을 추가하고 도착 Room과 시작점을 선택합니다. NPC에는 `대사 · 화자`에서 만든 대화를 연결합니다.
+5. 제작창 상단 `방 검사`로 누락을 확인하고 저장합니다. 지역 씬은 맵 탭에서 명시적으로 생성/등록합니다.
 
-빠르게 시작하려면 `Hub To Home > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`을 사용합니다. 생성 결과는 `Regions/MapFieldStarter`에 만들어집니다.
+맵은 종류를 나누지 않고 `방 만들기` 한 가지로 생성합니다. 같은 기본 방에 지형을 배치해 마을·던전·실내로 꾸미면 됩니다. 쇼케이스·템플릿·스타터팩 재생성 메뉴는 제거했습니다. 기존 샘플 자산과 다른 도구가 사용하는 생성 함수는 보존하며, 새 작업은 콘텐츠 메이커에서 방을 만들거나 복제합니다.
 
 ## 공용 마커 배치
 
@@ -46,16 +52,16 @@ Regions/지역이름/
 
 마커 아이콘과 설명은 Scene View에서만 보이며 게임 화면에는 표시되지 않습니다.
 
-### 마커 작업창
+### 맵·마커 검사
 
-`Hub To Home > 오버월드 > Area 마커 > 마커 작업창`에서 현재 편집 중인 마커를 한꺼번에 확인합니다.
+`Hub To Home > 검사 > 맵·마커 검사`에서 현재 편집 중인 마커를 한꺼번에 확인합니다.
 
 1. Region Scene 또는 Room Prefab을 엽니다. Prefab Mode가 열려 있으면 해당 Prefab만 검사합니다.
 2. Room, 마커 타입, `문제 있음` 필터 또는 검색어로 대상을 좁힙니다.
 3. 오류·경고 행의 `이동`을 눌러 Hierarchy 선택과 Scene View 포커스를 맞춥니다.
-4. 선택된 마커의 Odin Inspector에서 값을 수정한 뒤 `Scan`으로 다시 확인합니다.
+4. 선택된 마커의 Odin Inspector에서 값을 수정한 뒤 `다시 검사`로 확인합니다.
 
-작업창과 기존 `현재 열린 룸 맵 검사` 메뉴는 같은 읽기 전용 검사 규칙을 사용합니다. Scan은 Scene, Prefab, ScriptableObject를 자동 수정하지 않습니다.
+콘텐츠 메이커의 선택한 방 검사와 같은 읽기 전용 검사 규칙을 사용합니다. 이 창은 로드된 씬 또는 현재 프리팹 전체를 검사하며 자산을 자동 수정하지 않습니다. 중복 콘솔 검사 메뉴는 이 창으로 통합했습니다.
 
 ## 델타룬식 방 구성 기준
 
@@ -76,5 +82,5 @@ Regions/지역이름/
 ## 현재 예제
 
 - `Development/TestMap/TestMap.unity`: 모든 마커, NPC, 전투 진입, 스프라이트 크기를 확인하는 QA 맵
-- `Regions/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`: Room 기반 지역 제작 스타터
+- `Development/Templates/MapFieldStarter/Scenes/Region_MapFieldStarter.unity`: Room 기반 지역 제작 스타터
 - `Regions/PrologueSubway/Scenes/OverworldScene.unity`: 프롤로그 열차 지역과 인게임 시네마틱 예제

@@ -286,7 +286,7 @@ public class BattleTurnQteModuleControllerServiceTests
     }
 
     [Test]
-    public void RunEnemyAction_AoeFramesEnemyAndAliveTargetsDuringDamage()
+    public void RunEnemyAction_AoeWithoutQteDoesNotDamageAndRestoresCamera()
     {
         var fixture = new TurnQteFixture();
         try
@@ -296,7 +296,7 @@ public class BattleTurnQteModuleControllerServiceTests
 
             RunToCompletion(service.RunEnemyAction());
 
-            Assert.That(fixture.Host.SawActiveCameraDuringDamage, Is.True);
+            Assert.That(fixture.Host.DamageNotifications, Is.Zero);
             Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
             Assert.That(
                 fixture.CameraController.VirtualCamera.Follow,
@@ -331,6 +331,194 @@ public class BattleTurnQteModuleControllerServiceTests
         }
     }
 
+    [TestCase(100, 1f, 1f, 1f, 50)]
+    [TestCase(0, 0.5f, 1f, 1f, 50)]
+    [TestCase(0, 1f, 0.5f, 1f, 50)]
+    [TestCase(0, 1f, 1f, 2f, 200)]
+    [TestCase(100, 0.5f, 0.5f, 2f, 25)]
+    [TestCase(0, 1f, 1f, 1f, 100)]
+    public void ApplyEnemyDefenseDamage_UsesPhysicalMitigationAndPublishesResolvedDamage(
+        int defense,
+        float physicalResistance,
+        float incomingMultiplier,
+        float outgoingMultiplier,
+        int expectedDamage)
+    {
+        var fixture = new TurnQteFixture(
+            new StatBlock
+            {
+                MaxHP = 1000,
+                DEF = defense,
+                PhysicalResistance = physicalResistance,
+                IncomingDamageMultiplier = incomingMultiplier
+            },
+            new StatBlock
+            {
+                ATK = 100,
+                OutgoingDamageMultiplier = outgoingMultiplier
+            });
+        try
+        {
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            int previousHp = fixture.Player.CurrentHP;
+
+            InvokePrivateApplyEnemyDefenseDamage(service, fixture.Enemy, fixture.Player);
+
+            Assert.That(fixture.Player.CurrentHP, Is.EqualTo(previousHp - expectedDamage));
+            Assert.That(fixture.Host.DamageNotifications, Is.EqualTo(1));
+            Assert.That(fixture.Host.LastDamage, Is.EqualTo(expectedDamage));
+            Assert.That(fixture.Host.LastDamageSource, Is.SameAs(fixture.Enemy));
+            Assert.That(fixture.Host.LastDamageTarget, Is.SameAs(fixture.Player));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [TestCase(DefenseOutcome.Failure, 50, 0, 1)]
+    [TestCase(DefenseOutcome.Guarded, 25, 0, 1)]
+    [TestCase(DefenseOutcome.Success, 0, 20, 0)]
+    public void EnemyDefenseResult_OnlyPerfectPreventsAllDamageAndRewardsAp(
+        DefenseOutcome outcome,
+        int expectedDamage,
+        int expectedAp,
+        int expectedDamageNotifications)
+    {
+        var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 1000, MaxAP = 100, DEF = 100 },
+            new StatBlock { ATK = 100 });
+        try
+        {
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            fixture.Player.ConsumeAP(fixture.Player.CurrentAP);
+            int previousHp = fixture.Player.CurrentHP;
+            bool perfect = outcome == DefenseOutcome.Success;
+            bool guarded = outcome == DefenseOutcome.Guarded;
+            var result = new DefenseQteResult(
+                DefenseInputReadStatus.Valid,
+                DefenseInput.Parry,
+                perfect ? QTEManager.QTEGrade.Perfect
+                    : guarded ? QTEManager.QTEGrade.Good : QTEManager.QTEGrade.Miss,
+                outcome,
+                DefenseRequirement.Any,
+                perfect ? 0.01f : 0.2f,
+                true,
+                perfect,
+                guarded ? 0.5f : 1f);
+
+            InvokePrivateApplyEnemyDefenseDamage(service, fixture.Enemy, fixture.Player, result, true);
+            MethodInfo rewardMethod = typeof(BattleTurnQteModuleControllerService).GetMethod(
+                "ApplyPerfectParryReward", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(rewardMethod, Is.Not.Null);
+            rewardMethod.Invoke(service, new object[] { fixture.Player, null, result });
+
+            Assert.That(fixture.Player.CurrentHP, Is.EqualTo(previousHp - expectedDamage));
+            Assert.That(fixture.Player.CurrentAP, Is.EqualTo(expectedAp));
+            Assert.That(fixture.Host.DamageNotifications, Is.EqualTo(expectedDamageNotifications));
+            Assert.That(fixture.Host.ApNotifications, Is.EqualTo(perfect ? 1 : 0));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SkillTimeline_WhenModuleExitsDuringBlock_SkipsFollowingBlocks(bool playerSkill)
+    {
+        var fixture = new TurnQteFixture();
+        SkillData skill = null;
+        try
+        {
+            RecordingSkillActionBlock.Reset();
+            skill = ScriptableObject.CreateInstance<SkillData>();
+            skill.SkillID = "module_exit_guard_regression";
+            skill.APCost = 0;
+            skill.TargetType = TargetAreaType.EnemyOnly;
+            skill.ActionTimeline.Add(new InterruptingSkillActionBlock
+            {
+                OnExecute = _ => fixture.Host.ModuleActive = false
+            });
+            skill.ActionTimeline.Add(new RecordingSkillActionBlock());
+
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            IEnumerator routine = playerSkill
+                ? InvokePrivateExecuteSkill(service, fixture.Player, 0, skill)
+                : InvokePrivateExecuteEnemySequenceSkill(service, fixture.Enemy, skill);
+            RunToCompletion(routine);
+
+            Assert.That(RecordingSkillActionBlock.Calls, Is.Zero);
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+        }
+        finally
+        {
+            if (skill != null) UnityEngine.Object.DestroyImmediate(skill);
+            fixture.Dispose();
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SkillTimeline_WhenBlockRequestsStop_SkipsFollowingBlocks(bool playerSkill)
+    {
+        var fixture = new TurnQteFixture();
+        SkillData skill = null;
+        try
+        {
+            RecordingSkillActionBlock.Reset();
+            skill = ScriptableObject.CreateInstance<SkillData>();
+            skill.SkillID = "cancelled_defense_guard_regression";
+            skill.APCost = 0;
+            skill.TargetType = TargetAreaType.EnemyOnly;
+            skill.ActionTimeline.Add(new InterruptingSkillActionBlock
+            {
+                OnExecute = context => context.StopTimelineExecution = true
+            });
+            skill.ActionTimeline.Add(new RecordingSkillActionBlock());
+
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            IEnumerator routine = playerSkill
+                ? InvokePrivateExecuteSkill(service, fixture.Player, 0, skill)
+                : InvokePrivateExecuteEnemySequenceSkill(service, fixture.Enemy, skill);
+            RunToCompletion(routine);
+
+            Assert.That(RecordingSkillActionBlock.Calls, Is.Zero);
+            Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+        }
+        finally
+        {
+            if (skill != null) UnityEngine.Object.DestroyImmediate(skill);
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void DamageBlock_WhenExecutionOwnerIsInactive_DoesNotApplyDamage()
+    {
+        var fixture = new TurnQteFixture();
+        try
+        {
+            int previousHp = fixture.Player.CurrentHP;
+            var context = new SkillContext
+            {
+                Actor = fixture.Enemy,
+                Targets = new List<CharacterBase> { fixture.Player },
+                IsExecutionActive = () => false
+            };
+
+            RunToCompletion(new Action_Damage().Execute(context));
+
+            Assert.That(fixture.Player.CurrentHP, Is.EqualTo(previousHp));
+            Assert.That(context.StopTimelineExecution, Is.True);
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
     [Test]
     public void ExitTurnQteModuleCancelsActiveCameraScope()
     {
@@ -358,6 +546,20 @@ public class BattleTurnQteModuleControllerServiceTests
         {
             fixture.Dispose();
         }
+    }
+
+    private static void InvokePrivateApplyEnemyDefenseDamage(
+        BattleTurnQteModuleControllerService service,
+        EnemyCharacter enemy,
+        PlayerCharacter target,
+        DefenseQteResult result = default(DefenseQteResult),
+        bool resultReceived = false)
+    {
+        MethodInfo method = typeof(BattleTurnQteModuleControllerService).GetMethod(
+            "ApplyEnemyDefenseDamage",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        method.Invoke(service, new object[] { enemy, target, null, result, resultReceived, false });
     }
 
     private static IEnumerator InvokePrivateExecuteAttack(
@@ -426,7 +628,7 @@ public class BattleTurnQteModuleControllerServiceTests
         private readonly GameObject _playerObject;
         private readonly GameObject _enemyObject;
 
-        public TurnQteFixture()
+        public TurnQteFixture(StatBlock playerStats = null, StatBlock enemyStats = null)
         {
             _positionManagerObject = new GameObject("PositionManager");
             _positionManager = _positionManagerObject.AddComponent<PositionManager>();
@@ -455,6 +657,8 @@ public class BattleTurnQteModuleControllerServiceTests
             CharacterData playerData = ScriptableObject.CreateInstance<CharacterData>();
             playerData.CharacterID = "player";
             playerData.DisplayName = "Player";
+            if (playerStats != null)
+                playerData.BaseStats = playerStats;
             Player.SetCharacterData(playerData);
             Player.HealHP(Player.MaxHP);
             Player.RestoreAP(Player.MaxAP);
@@ -465,6 +669,8 @@ public class BattleTurnQteModuleControllerServiceTests
             EnemyData enemyData = ScriptableObject.CreateInstance<EnemyData>();
             enemyData.EnemyId = "zev";
             enemyData.EnemyName = "ZEV";
+            if (enemyStats != null)
+                enemyData.BaseStats = enemyStats;
             Enemy.Setup(enemyData);
             _assets.Add(enemyData);
             SetPrivateField(
@@ -535,6 +741,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public bool Defeat { get; set; }
         public bool CanStartNextPartyWave { get; set; }
         public bool CanEscape { get; set; } = true;
+        public bool ModuleActive { get; set; } = true;
         public int PartyWaveStartCalls { get; private set; }
         public int RunAwayCalls { get; private set; }
         public IReadOnlyList<PlayerCharacter> PlayerParty => _players;
@@ -563,6 +770,11 @@ public class BattleTurnQteModuleControllerServiceTests
 
         public bool SawActiveCameraDuringEnemyMove { get; private set; }
         public bool SawActiveCameraDuringDamage { get; private set; }
+        public int DamageNotifications { get; private set; }
+        public int ApNotifications { get; private set; }
+        public int LastDamage { get; private set; }
+        public CharacterBase LastDamageSource { get; private set; }
+        public CharacterBase LastDamageTarget { get; private set; }
         public int NarrationRequests { get; private set; }
         public int EnemyActionNotifications { get; private set; }
         public BattleNarrationMessage LastNarration { get; private set; }
@@ -579,7 +791,7 @@ public class BattleTurnQteModuleControllerServiceTests
             };
         }
 
-        public bool IsTurnQteCombatInputActive() => true;
+        public bool IsTurnQteCombatInputActive() => ModuleActive;
         public void StartTurnQteCombatLoop() { }
         public void ChangeBattleState(BattleState state) => CurrentBattleState = state;
         public bool CheckVictory() => Victory;
@@ -633,8 +845,12 @@ public class BattleTurnQteModuleControllerServiceTests
         public void EmitDamage(CharacterBase source, CharacterBase target, int damage, bool isCritical)
         {
             SawActiveCameraDuringDamage |= CameraController.Instance != null && CameraController.Instance.IsFramingTargets;
+            DamageNotifications++;
+            LastDamage = damage;
+            LastDamageSource = source;
+            LastDamageTarget = target;
         }
-        public void EmitApChanged(PlayerCharacter player, int newMp) { }
+        public void EmitApChanged(PlayerCharacter player, int newMp) { ApNotifications++; }
         public void EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) { }
         public void EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical) { }
         public void EmitMiss(CharacterBase source, CharacterBase target) { }
@@ -650,6 +866,17 @@ public class BattleTurnQteModuleControllerServiceTests
             yield break;
         }
         public int ResolveEnemyReturnMoveHash(EnemyCharacter enemy) => EnemyCharacter.HashBattleMove;
+    }
+
+    private sealed class InterruptingSkillActionBlock : SkillActionBlock
+    {
+        public Action<SkillContext> OnExecute;
+
+        public override IEnumerator Execute(SkillContext context)
+        {
+            OnExecute?.Invoke(context);
+            yield break;
+        }
     }
 
     private sealed class RecordingSkillActionBlock : SkillActionBlock

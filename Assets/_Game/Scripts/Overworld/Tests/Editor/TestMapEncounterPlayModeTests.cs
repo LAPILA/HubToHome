@@ -282,6 +282,11 @@ public class TestMapEncounterPlayModeTests
             Is.Not.Null.And.Not.Empty,
             "The regression setup requires an active speech bubble fade.");
 
+        PlayerCharacter battlePlayer = player.GetComponent<PlayerCharacter>();
+        Assert.That(battlePlayer, Is.Not.Null);
+        battlePlayer.TryApplyStatusEffect(new PoisonEffect(3));
+        battlePlayer.TryApplyStatusEffect(new StunEffect(3));
+
         Assert.That(host.BattleManager.AbortSeamlessBattle(), Is.True);
         Assert.That(host.BattleManager.AbortSeamlessBattle(), Is.False);
         yield return null;
@@ -296,6 +301,9 @@ public class TestMapEncounterPlayModeTests
             DG.Tweening.DOTween.TweensByTarget(speechCanvas, true),
             Is.Null.Or.Empty,
             "Speech bubble retained an active fade after abort.");
+        Assert.That(battlePlayer.HasEffect(StatusEffectIds.Poison), Is.False);
+        Assert.That(battlePlayer.HasEffect(StatusEffectIds.Stun), Is.False);
+        Assert.That(battlePlayer.IsStunned, Is.False);
         Assert.That(audioManager.RequestedBgmClip, Is.SameAs(mapClip));
         CanvasGroup[] canvasGroups = host.BattleUiRoot.GetComponentsInChildren<CanvasGroup>(true);
         for (int i = 0; i < canvasGroups.Length; i++)

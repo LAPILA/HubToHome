@@ -25,17 +25,41 @@ public class TitleMenuManager : MonoBehaviour
     [Header("Config")]
     [SerializeField] private ConfigPanelUI _configPanel;
 
+    [Header("메뉴 표시")]
+    [Tooltip("타이틀 이미지가 아닌 버튼 목록만 연결합니다. 옵션을 여는 동안 숨깁니다.")]
+    [SerializeField] private CanvasGroup _menuGroup;
+
     private GameObject _lastSelected;
     private bool _isLocked = false;
     private int _manualSubmitFrame = -1;
     private EventSystem _lockedEventSystem;
     private GameObject _lockedSelectedObject;
     private bool _restoreNavigationEvents;
+    private bool _optionsCoveringMenu;
+    private int _resumeInputAfterFrame = -1;
+    private Tween _confirmTween;
+    private TextMeshProUGUI _confirmLabel;
+    private float _confirmAlpha;
+    private float _menuAlpha = 1f;
+    private bool _menuInteractable = true;
+    private bool _menuBlocksRaycasts = true;
 
     private void Awake()
     {
         GameConfigManager.EnsureInstance();
         UIRuntimeGuard.NormalizeCanvas(gameObject);
+        if (_menuGroup == null && _firstSelectButton != null && _firstSelectButton.transform.parent != null)
+        {
+            GameObject menu = _firstSelectButton.transform.parent.gameObject;
+            _menuGroup = menu.GetComponent<CanvasGroup>();
+            if (_menuGroup == null) _menuGroup = menu.AddComponent<CanvasGroup>();
+        }
+        if (_menuGroup != null)
+        {
+            _menuAlpha = _menuGroup.alpha;
+            _menuInteractable = _menuGroup.interactable;
+            _menuBlocksRaycasts = _menuGroup.blocksRaycasts;
+        }
 
         #if UNITY_EDITOR
         Cursor.lockState = CursorLockMode.None;
@@ -47,9 +71,11 @@ public class TitleMenuManager : MonoBehaviour
 
         bool hasSaveData = SaveManager.HasAnySave();
 
-        if (!hasSaveData && _btnContinue != null)
+        if (_btnContinue != null)
         {
-            _btnContinue.gameObject.SetActive(false);
+            // 메뉴 항목 수를 유지하여 세이브 유무에 따라 다른 버튼이 재배치되지 않게 합니다.
+            _btnContinue.gameObject.SetActive(true);
+            SetContinueInteractable(hasSaveData);
         }
     }
 
@@ -71,12 +97,17 @@ public class TitleMenuManager : MonoBehaviour
 
     private void OnDisable()
     {
+        CancelConfirmation();
         if (_isLocked)
             UnlockTitleInput();
+        SetOptionsCover(false, false);
     }
 
     private void Update()
     {
+        SyncOptionsCover();
+        if (_optionsCoveringMenu || Time.frameCount <= _resumeInputAfterFrame) return;
+
         if (_isLocked)
         {
             KeepLockedSelection();
@@ -84,13 +115,12 @@ public class TitleMenuManager : MonoBehaviour
         }
 
         if (EventSystem.current == null) return;
-        if (_configPanel != null && _configPanel.IsVisible) return;
 
         if (EventSystem.current.currentSelectedGameObject == null && _lastSelected != null)
         {
             EventSystem.current.SetSelectedGameObject(_lastSelected);
         }
-        else if (EventSystem.current.currentSelectedGameObject != null)
+        else if (IsTitleButton(EventSystem.current.currentSelectedGameObject))
         {
             if (_lastSelected != EventSystem.current.currentSelectedGameObject)
             {
@@ -106,7 +136,7 @@ public class TitleMenuManager : MonoBehaviour
             if (currentSelected != null)
             {
                 Button selectedBtn = currentSelected.GetComponent<Button>();
-                if (selectedBtn != null)
+                if (selectedBtn != null && IsTitleButton(currentSelected) && selectedBtn.IsInteractable())
                 {
                     selectedBtn.onClick.Invoke(); 
                 }
@@ -137,8 +167,7 @@ public class TitleMenuManager : MonoBehaviour
     private void BeginContinue()
     {
         LockTitleInput();
-        if (_btnContinue != null)
-            _btnContinue.interactable = false;
+        SetContinueInteractable(false);
 
         GameLoadStartResult result = _continueSlot >= 0
             ? GameLoadCoordinator.LoadSlot(_continueSlot, HandleContinueCompleted)
@@ -163,7 +192,7 @@ public class TitleMenuManager : MonoBehaviour
     {
         if (_btnContinue != null)
         {
-            _btnContinue.interactable = true;
+            SetContinueInteractable(true);
             _btnContinue.Select();
             _lastSelected = _btnContinue.gameObject;
         }
@@ -180,8 +209,11 @@ public class TitleMenuManager : MonoBehaviour
 
     private void OpenConfig()
     {
-        _isLocked = false;
+        EnsureConfigPanel();
+        if (_configPanel == null) return;
         OptionsPanelService.Open();
+        // Open이 실패해도 반환되므로 실제로 열린 경우에만 메뉴를 숨깁니다.
+        SyncOptionsCover();
     }
 
     private void EnsureConfigPanel()
@@ -201,19 +233,26 @@ public class TitleMenuManager : MonoBehaviour
 
     private void ExecuteWithBlink(TextMeshProUGUI textTarget, System.Action onCompleteAction)
     {
-        if (_isLocked) return;
+        if (_isLocked || _optionsCoveringMenu || Time.frameCount <= _resumeInputAfterFrame
+            || (_configPanel != null && _configPanel.gameObject.activeInHierarchy)) return;
+        CancelConfirmation();
         LockTitleInput();
         AudioManager.Instance?.PlayUISFX(_confirmSFX);
 
         System.Action complete = () =>
         {
+            _confirmTween = null;
+            RestoreConfirmationLabel();
             UnlockTitleInput();
-            onCompleteAction?.Invoke();
+            if (isActiveAndEnabled) onCompleteAction?.Invoke();
         };
 
         if (textTarget != null)
         {
-            textTarget.DOFade(0f, 0.15f).SetLoops(2, LoopType.Yoyo).OnComplete(() => complete());
+            _confirmLabel = textTarget;
+            _confirmAlpha = textTarget.alpha;
+            _confirmTween = textTarget.DOFade(_confirmAlpha * 0.45f, 0.07f)
+                .SetLoops(2, LoopType.Yoyo).SetUpdate(true).OnComplete(() => complete());
         }
         else
         {
@@ -252,5 +291,74 @@ public class TitleMenuManager : MonoBehaviour
         if (eventSystem == null || _lockedSelectedObject == null) return;
         if (eventSystem.currentSelectedGameObject != _lockedSelectedObject)
             eventSystem.SetSelectedGameObject(_lockedSelectedObject);
+    }
+
+    private void SyncOptionsCover()
+    {
+        // alpha는 표시 tween 첫 프레임에 0입니다. 닫기 tween까지 포함한 활성 수명을 사용합니다.
+        bool covered = _configPanel != null && _configPanel.gameObject.activeInHierarchy;
+        if (covered == _optionsCoveringMenu) return;
+        if (covered)
+        {
+            CancelConfirmation();
+            if (_isLocked) UnlockTitleInput();
+        }
+        SetOptionsCover(covered, true);
+    }
+
+    private void SetOptionsCover(bool covered, bool restoreSelection)
+    {
+        _optionsCoveringMenu = covered;
+        if (_menuGroup != null)
+        {
+            _menuGroup.alpha = covered ? 0f : _menuAlpha;
+            _menuGroup.interactable = !covered && _menuInteractable;
+            _menuGroup.blocksRaycasts = !covered && _menuBlocksRaycasts;
+        }
+
+        EventSystem eventSystem = EventSystem.current;
+        if (covered)
+        {
+            if (eventSystem != null && IsTitleButton(eventSystem.currentSelectedGameObject))
+            {
+                _lastSelected = eventSystem.currentSelectedGameObject;
+                eventSystem.SetSelectedGameObject(null);
+            }
+            return;
+        }
+        if (!restoreSelection) return;
+        _resumeInputAfterFrame = Time.frameCount + 1;
+        if (eventSystem == null) return;
+        Button previous = _lastSelected != null ? _lastSelected.GetComponent<Button>() : null;
+        Button target = previous != null && IsTitleButton(previous.gameObject)
+            && previous.IsActive() && previous.IsInteractable() ? previous : _firstSelectButton;
+        if (target != null && target.IsActive() && target.IsInteractable())
+        {
+            _lastSelected = target.gameObject;
+            eventSystem.SetSelectedGameObject(_lastSelected);
+        }
+    }
+
+    private bool IsTitleButton(GameObject candidate) => candidate != null
+        && _menuGroup != null && candidate.transform.IsChildOf(_menuGroup.transform);
+
+    private void SetContinueInteractable(bool interactable)
+    {
+        if (_btnContinue == null) return;
+        _btnContinue.interactable = interactable;
+        _btnContinue.GetComponent<MenuButtonAnimator>()?.RefreshVisual(true);
+    }
+
+    private void CancelConfirmation()
+    {
+        _confirmTween?.Kill(false);
+        _confirmTween = null;
+        RestoreConfirmationLabel();
+    }
+
+    private void RestoreConfirmationLabel()
+    {
+        if (_confirmLabel != null) _confirmLabel.alpha = _confirmAlpha;
+        _confirmLabel = null;
     }
 }

@@ -15,7 +15,7 @@ public struct SkillQTENode
     public string TargetKey;
 }
 
-[CreateAssetMenu(fileName = "NewSequenceSkill", menuName = "HubToHome/SkillData_Sequence")]
+[CreateAssetMenu(fileName = "NewSequenceSkill", menuName = "Hub To Home/전투/스킬 데이터")]
 public class SkillData : ScriptableObject
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(50)]

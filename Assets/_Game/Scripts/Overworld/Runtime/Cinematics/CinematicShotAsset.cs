@@ -14,7 +14,7 @@ public sealed class CinematicShotMotion
     public Ease Ease = Ease.InOutSine;
 }
 
-[CreateAssetMenu(fileName = "CinematicShot", menuName = "HubToHome/Cinematics/Cinematic Shot")]
+[CreateAssetMenu(fileName = "CinematicShot", menuName = "Hub To Home/연출/시네마틱 샷")]
 public sealed class CinematicShotAsset : ScriptableObject
 {
     [Tooltip("Cinematic Stage의 안정적인 stage ID입니다.")]

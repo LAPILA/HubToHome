@@ -16,20 +16,19 @@ public sealed class ContentValidationWindow : EditorWindow
     private string _search = string.Empty;
     private bool _showErrors = true;
     private bool _showWarnings = true;
+    private bool _showMaintenance;
 
-    [MenuItem("Hub To Home/Content/Validation Window")]
+    [MenuItem("Hub To Home/검사/콘텐츠 검사", false, 200)]
     private static void Open()
     {
-        GetWindow<ContentValidationWindow>("Content Validation");
+        GetWindow<ContentValidationWindow>("콘텐츠 검사");
     }
 
-    [MenuItem("Hub To Home/Content/Rebuild Runtime Catalog")]
     public static void RebuildCatalogMenu()
     {
         RebuildCatalog(true);
     }
 
-    [MenuItem("Hub To Home/Content/Prepare Default Content")]
     public static void PrepareDefaultContent()
     {
         EnsureDefaultPotion();
@@ -46,7 +45,6 @@ public sealed class ContentValidationWindow : EditorWindow
         }
     }
 
-    [MenuItem("Hub To Home/Content/Validate Project Content")]
     public static void ValidateProjectContent()
     {
         ContentValidationReport report = ScanProject();
@@ -104,22 +102,24 @@ public sealed class ContentValidationWindow : EditorWindow
 
     private void OnEnable()
     {
+        titleContent = new GUIContent("콘텐츠 검사");
         Scan();
     }
 
     private void OnGUI()
     {
-        EditorGUILayout.LabelField("Project Content Validation", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("프로젝트 콘텐츠 검사", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
-            "Scan은 자산을 변경하지 않습니다. 수정 명령은 해당 버튼을 눌렀을 때만 실행됩니다.",
+            "검사는 자산을 변경하지 않습니다. 오류 행의 '선택'을 눌러 해당 자산을 확인하세요.",
             MessageType.Info);
 
         DrawCommandToolbar();
+        DrawMaintenance();
         DrawFilterToolbar();
 
         EditorGUILayout.Space(6f);
         EditorGUILayout.LabelField(
-            "Errors " + _report.ErrorCount + "  |  Warnings " + _report.WarningCount,
+            "오류 " + _report.ErrorCount + "  |  경고 " + _report.WarningCount,
             EditorStyles.boldLabel);
 
         _scroll = EditorGUILayout.BeginScrollView(_scroll);
@@ -143,21 +143,45 @@ public sealed class ContentValidationWindow : EditorWindow
     {
         using (new EditorGUILayout.HorizontalScope())
         {
-            if (GUILayout.Button("Scan", GUILayout.Height(28f)))
+            if (GUILayout.Button("다시 검사", GUILayout.Height(28f)))
                 Scan();
-            if (GUILayout.Button("Generate Missing IDs", GUILayout.Height(28f)))
+        }
+    }
+
+    private void DrawMaintenance()
+    {
+        _showMaintenance = EditorGUILayout.Foldout(_showMaintenance, "고급 유지보수", true);
+        if (!_showMaintenance)
+            return;
+
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.HelpBox(
+                "아래 명령은 프로젝트 자산을 수정하고 저장합니다. 검사 결과를 확인한 뒤 필요한 명령만 실행하세요.",
+                MessageType.Warning);
+            if (GUILayout.Button("누락된 ID 생성"))
             {
                 GenerateMissingIds();
                 Scan();
             }
-            if (GUILayout.Button("Repair Prefab Links", GUILayout.Height(28f)))
+            if (GUILayout.Button("프리팹 연결 복구"))
             {
                 RepairPrefabLinks();
                 Scan();
             }
-            if (GUILayout.Button("Rebuild Catalog", GUILayout.Height(28f)))
+            if (GUILayout.Button("런타임 카탈로그 다시 만들기"))
             {
                 RebuildCatalog(true);
+                Scan();
+            }
+            if (GUILayout.Button("기본 콘텐츠 준비")
+                && EditorUtility.DisplayDialog(
+                    "기본 콘텐츠 준비",
+                    "기본 포션과 슬라임 드롭을 준비하고, 누락된 ID·프리팹 연결·런타임 카탈로그를 수정합니다. 실행할까요?",
+                    "실행",
+                    "취소"))
+            {
+                PrepareDefaultContent();
                 Scan();
             }
         }
@@ -171,12 +195,12 @@ public sealed class ContentValidationWindow : EditorWindow
             _search = GUILayout.TextField(_search, EditorStyles.toolbarSearchField);
             _showErrors = GUILayout.Toggle(
                 _showErrors,
-                "Errors " + _report.ErrorCount,
+                "오류 " + _report.ErrorCount,
                 EditorStyles.toolbarButton,
                 GUILayout.Width(80f));
             _showWarnings = GUILayout.Toggle(
                 _showWarnings,
-                "Warnings " + _report.WarningCount,
+                "경고 " + _report.WarningCount,
                 EditorStyles.toolbarButton,
                 GUILayout.Width(95f));
         }
@@ -216,7 +240,7 @@ public sealed class ContentValidationWindow : EditorWindow
                 EditorGUILayout.LabelField(issue.Code, EditorStyles.boldLabel);
                 using (new EditorGUI.DisabledScope(!issue.CanSelect))
                 {
-                    if (GUILayout.Button("Select", GUILayout.Width(58f)))
+                    if (GUILayout.Button("선택", GUILayout.Width(58f)))
                         TrySelectIssue(issue);
                 }
             }

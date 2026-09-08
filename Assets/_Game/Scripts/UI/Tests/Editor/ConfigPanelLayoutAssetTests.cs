@@ -1,7 +1,12 @@
 using TMPro;
+using System;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 public sealed class ConfigPanelLayoutAssetTests
@@ -11,6 +16,61 @@ public sealed class ConfigPanelLayoutAssetTests
     private const string RowPrefabPath =
         "Assets/_Game/Presentation/UI/Prefabs/Settings/DetailSettingsPanel.prefab";
     private const float PositionTolerance = 0.01f;
+
+    [Test]
+    public void SettingsLocalizationHasAllUsedKeysInAllFourLanguages()
+    {
+        TextAsset csv = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Resources/LocalizationTable.csv");
+        MonoScript script = AssetDatabase.LoadAssetAtPath<MonoScript>(
+            "Assets/_Game/Scripts/UI/Runtime/ConfigPanelUI.cs");
+        Assert.That(csv, Is.Not.Null);
+        Assert.That(script, Is.Not.Null);
+        var rows = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        string[] lines = csv.text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 1; i < lines.Length; i++)
+        {
+            // 설정 번역은 기존 로더와 같은 한 줄 CSV 형식을 사용합니다.
+            string[] columns = Regex.Split(lines[i], @",(?=(?:[^""]*""[^""]*"")*[^""]*$)");
+            if (!columns[0].StartsWith("config.", StringComparison.Ordinal)
+                && !columns[0].StartsWith("common.", StringComparison.Ordinal)) continue;
+            Assert.That(columns, Has.Length.EqualTo(5), columns[0]);
+            Assert.That(rows.ContainsKey(columns[0]), Is.False, "Duplicate key: " + columns[0]);
+            rows.Add(columns[0], columns);
+            for (int language = 1; language < 5; language++)
+                Assert.That(columns[language].Trim(' ', '"'), Is.Not.Empty, columns[0] + " column " + language);
+        }
+        foreach (Match match in Regex.Matches(script.text, "\"((?:config|common)\\.[a-z_.]+)\""))
+            Assert.That(rows.ContainsKey(match.Groups[1].Value), Is.True, "Missing key: " + match.Groups[1].Value);
+        foreach (string key in new[] { "config.preview.shake", "config.preview.flash" })
+        {
+            for (int language = 1; language < 5; language++)
+                Assert.That(rows[key][language], Does.Contain("{0}"), key);
+        }
+    }
+
+    [Test]
+    public void SharedEventSystemOnlyAcceptsNavigationSubmitAndCancel()
+    {
+        GameObject prefab = LoadPrefab(UiManagerPath);
+        InputSystemUIInputModule module = prefab.GetComponentInChildren<InputSystemUIInputModule>(true);
+
+        Assert.That(module, Is.Not.Null);
+        Assert.That(module.enabled, Is.True);
+        Assert.That(module.GetComponent<EventSystem>().sendNavigationEvents, Is.True);
+        // 명시적 액션 자산을 유지해야 OnEnable이 기본 포인터 액션을 다시 할당하지 않습니다.
+        Assert.That(module.actionsAsset, Is.Not.Null);
+        Assert.That(module.move?.action, Is.Not.Null);
+        Assert.That(module.submit?.action, Is.Not.Null);
+        Assert.That(module.cancel?.action, Is.Not.Null);
+        Assert.That(module.point, Is.Null);
+        Assert.That(module.leftClick, Is.Null);
+        Assert.That(module.rightClick, Is.Null);
+        Assert.That(module.middleClick, Is.Null);
+        Assert.That(module.scrollWheel, Is.Null);
+        Assert.That(module.trackedDevicePosition, Is.Null);
+        Assert.That(module.trackedDeviceOrientation, Is.Null);
+        Assert.That(module.deselectOnBackgroundClick, Is.False);
+    }
 
     [Test]
     public void SettingPanelUsesThe640By480CanvasContract()
@@ -31,6 +91,28 @@ public sealed class ConfigPanelLayoutAssetTests
         Assert.That(
             scaler.screenMatchMode,
             Is.EqualTo(CanvasScaler.ScreenMatchMode.MatchWidthOrHeight));
+    }
+
+    [Test]
+    public void SettingPanelOwnsModalSortingAndABackgroundRaycastBlocker()
+    {
+        GameObject prefab = LoadPrefab(UiManagerPath);
+        RectTransform settingPanel = RequireRect(prefab.transform, "SettingPanel");
+        Canvas canvas = settingPanel.GetComponent<Canvas>();
+        RectTransform scrim = RequireRect(settingPanel, "ModalScrim");
+        Image image = scrim.GetComponent<Image>();
+
+        Assert.That(canvas.sortingOrder, Is.EqualTo(100));
+        Assert.That(canvas.overrideSorting, Is.True);
+        Assert.That(scrim.parent, Is.SameAs(settingPanel));
+        Assert.That(scrim.GetSiblingIndex(), Is.EqualTo(0));
+        AssertVector2(scrim.anchorMin, Vector2.zero, "ModalScrim anchorMin");
+        AssertVector2(scrim.anchorMax, Vector2.one, "ModalScrim anchorMax");
+        AssertVector2(scrim.sizeDelta, Vector2.zero, "ModalScrim sizeDelta");
+        AssertVector2(scrim.anchoredPosition, Vector2.zero, "ModalScrim position");
+        Assert.That(image, Is.Not.Null);
+        Assert.That(image.raycastTarget, Is.True);
+        Assert.That(image.color.a, Is.InRange(0.5f, 0.9f));
     }
 
     [Test]
@@ -173,6 +255,9 @@ public sealed class ConfigPanelLayoutAssetTests
         AssertVector2(rowRect.sizeDelta, new Vector2(340f, 44f), "Row sizeDelta");
         Assert.That(layout, Is.Not.Null, "Row 루트에 HorizontalLayoutGroup이 필요합니다.");
         Assert.That(rowElement, Is.Not.Null, "Row 루트에 LayoutElement가 필요합니다.");
+        Image rowBackground = rowPrefab.GetComponent<Image>();
+        Assert.That(rowBackground, Is.Not.Null, "선택 표시는 Row 배경 Image를 사용합니다.");
+        Assert.That(rowBackground.raycastTarget, Is.False);
         AssertPadding(layout.padding, 8, 8, 4, 4, "Row padding");
         Assert.That(layout.spacing, Is.EqualTo(12f).Within(PositionTolerance));
         Assert.That(layout.childControlWidth, Is.True);
@@ -204,6 +289,7 @@ public sealed class ConfigPanelLayoutAssetTests
 
         AssertTextContract(columns[0], 14f, 20f, "이름 열");
         AssertTextContract(columns[1], 14f, 18f, "값 열");
+        Assert.That(columns[1].horizontalAlignment, Is.EqualTo(HorizontalAlignmentOptions.Right));
     }
 
     [Test]

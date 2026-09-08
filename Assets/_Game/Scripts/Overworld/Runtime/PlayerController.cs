@@ -11,7 +11,7 @@ using Sirenix.OdinInspector;
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Animator))]
-public class PlayerController : MonoBehaviour, IDefenseInputSource
+public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 {
     // ── 플레이어 상태 ─────────────────────────────────────────
     public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
@@ -177,6 +177,10 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
 
     private void HandleBattleDefenseInput()
     {
+        // 통합 방어의 입력/유지 시간은 QTEManager 한 곳에서만 판정합니다.
+        if (QTEManager.Instance != null && QTEManager.Instance.UseTimedGuard)
+            return;
+
         if (BattleManager.Instance == null || BattleManager.Instance.CurrentState != BattleState.EnemyAction)
             return;
 
@@ -754,6 +758,16 @@ public class PlayerController : MonoBehaviour, IDefenseInputSource
                 _vfx?.Play(CharacterVFX.VFXAction.Jump_Dust);
                 break;
         }
+    }
+
+    public bool IsGuardHeld => GameInput.QTEZHeld;
+
+    public void ConfirmGuardSuccess()
+    {
+        // 일반 방어에는 퍼펙트 전용 섬광/반격 연출을 재사용하지 않습니다.
+        _defenseVisualTween?.Kill();
+        TriggerParryAttemptAnim();
+        _defenseVisualTween = DOTween.Sequence().SetUpdate(true).AppendInterval(0.1f);
     }
 
     public IEnumerator WaitForDefenseVisualComplete(float fallbackSeconds = 0.45f)

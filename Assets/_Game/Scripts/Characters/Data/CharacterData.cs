@@ -15,7 +15,7 @@ public sealed class CharacterPowerUnlock
     [Required] public SkillData Skill;
 }
 
-[CreateAssetMenu(fileName = "NewCharacterData", menuName = "HubToHome/CharacterData")]
+[CreateAssetMenu(fileName = "NewCharacterData", menuName = "Hub To Home/캐릭터/아군 데이터")]
 public class CharacterData : SerializedScriptableObject
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(60, ObjectFieldAlignment.Left)]

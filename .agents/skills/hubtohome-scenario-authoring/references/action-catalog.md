@@ -662,7 +662,7 @@ Existing `SkillActionBlock` classes are not the global grammar, but they are use
 - `Action_PlayAnim` -> `actor.animation`
 - `Action_Damage` -> `battle.participant.damage` for scenario-level participant damage; legacy skill timelines may still keep local `Action_Damage` blocks behind `battle.skill.timeline`.
 - `Action_QTE` -> QTE module-specific adapter action
-- `Action_DefenseWindow` -> QTE/defense module adapter action
+- `Action_DefenseWindow` -> QTE/defense module adapter action. Default mode is one fresh Z attempt per impact: hold guard (0.4 seconds, damage multiplier 0.5) or Perfect (existing timing profile, default 0.12 seconds, zero damage and configured AP reward). `QTEManager` applies the effective mode even to custom-timing requests and resolves on the realtime impact deadline. Existing requirement enum values and legacy behavior remain when timed guard is disabled. Use `DefenseQteResult` rather than recomputing grades. `SkillContext.IsExecutionActive` carries module or Action handle lifecycle into delayed blocks; cancellation stops the timeline and prevents later damage. This is not new Scenario Source grammar, a counterattack-damage action, or a grid module.
 - Module-local phase booleans -> `battle.flag.set` / `battle.flag.clear` when the fact must survive Game Module switches.
 
 Do not rename or move existing serialized action classes during initial migration unless a migration plan exists.

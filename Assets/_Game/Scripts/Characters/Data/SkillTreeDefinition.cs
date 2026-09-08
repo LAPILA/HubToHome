@@ -36,7 +36,7 @@ public sealed class SkillTreeNodeDefinition
 
 [CreateAssetMenu(
     fileName = "SkillTreeDefinition",
-    menuName = "HubToHome/Growth/Skill Tree")]
+    menuName = "Hub To Home/캐릭터/스킬 트리")]
 public sealed class SkillTreeDefinition : SerializedScriptableObject
 {
     [MinValue(1)]

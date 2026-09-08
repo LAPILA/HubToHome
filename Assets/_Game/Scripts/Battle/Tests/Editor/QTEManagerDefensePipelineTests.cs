@@ -29,6 +29,31 @@ public class QTEManagerDefensePipelineTests
     }
 
     [Test]
+    public void CreateDefenseRequest_DefaultsToTimedGuardWithConfiguredBaseline()
+    {
+        DefenseQteRequest request = _manager.CreateDefenseRequest(1f, 1f, DefenseRequirement.JumpOnly);
+
+        Assert.That(request.UseTimedGuard, Is.True);
+        Assert.That(request.GuardDuration, Is.EqualTo(0.4f));
+        Assert.That(request.GuardDamageMultiplier, Is.EqualTo(0.5f));
+        Assert.That(request.TimingProfile.PerfectWindow, Is.EqualTo(0.12f));
+        Assert.That(request.Requirement, Is.EqualTo(DefenseRequirement.JumpOnly),
+            "Timed guard must preserve authored requirement data for the legacy path.");
+    }
+
+    [Test]
+    public void CreateDefenseRequest_ExplicitLegacySettingPreservesOldInputContract()
+    {
+        SetPrivateField(_manager, "_useTimedGuard", false);
+
+        DefenseQteRequest request = _manager.CreateDefenseRequest(1f, 1f, DefenseRequirement.JumpOnly);
+
+        Assert.That(request.UseTimedGuard, Is.False);
+        Assert.That(DefenseJudgementPolicy.Matches(request.Requirement, DefenseInput.Jump), Is.True);
+        Assert.That(DefenseJudgementPolicy.Matches(request.Requirement, DefenseInput.Parry), Is.False);
+    }
+
+    [Test]
     public void ForceStop_DoesNotPublishStructuredDefenseResult()
     {
         int eventCount = 0;
@@ -68,6 +93,7 @@ public class QTEManagerDefensePipelineTests
     [Test]
     public void DefenseQte_ConsumesExplicitTargetBufferWithoutBattleManager()
     {
+        SetPrivateField(_manager, "_useTimedGuard", false);
         var playerObject = new GameObject(
             "Explicit Defense Target",
             typeof(Rigidbody2D),
@@ -109,7 +135,8 @@ public class QTEManagerDefensePipelineTests
             duration,
             1f,
             DefenseRequirement.Any,
-            new DefenseTimingProfile(0.1f, 0.2f, 0.4f));
+            new DefenseTimingProfile(0.1f, 0.2f, 0.4f),
+            useTimedGuard: false);
     }
 
     internal static void SetInstance(QTEManager instance)

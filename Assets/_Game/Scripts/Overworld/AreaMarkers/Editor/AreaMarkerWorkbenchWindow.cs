@@ -32,19 +32,20 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
     private bool _scanQueued;
     private double _nextScanAt;
     private string[] _roomKeys = { AllRoomsKey };
-    private string[] _roomLabels = { "모든 Room" };
+    private string[] _roomLabels = { "모든 방" };
 
-    [MenuItem("Hub To Home/오버월드/Area 마커/마커 작업창")]
+    [MenuItem("Hub To Home/검사/맵·마커 검사", false, 201)]
     private static void Open()
     {
         AreaMarkerWorkbenchWindow window =
-            GetWindow<AreaMarkerWorkbenchWindow>("Area Marker");
+            GetWindow<AreaMarkerWorkbenchWindow>("맵·마커 검사");
         window.minSize = new Vector2(620f, 380f);
         window.Show();
     }
 
     private void OnEnable()
     {
+        titleContent = new GUIContent("맵·마커 검사");
         EditorApplication.hierarchyChanged += QueueScan;
         EditorApplication.projectChanged += QueueScan;
         Undo.undoRedoPerformed += QueueScan;
@@ -136,6 +137,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
             || ContainsIgnoreCase(marker.DisplayName, search)
             || ContainsIgnoreCase(marker.Description, search)
             || ContainsIgnoreCase(entry.RoomId, search)
+            || ContainsIgnoreCase(GetTypeLabel(marker.MarkerType), search)
             || ContainsIgnoreCase(marker.MarkerType.ToString(), search);
     }
 
@@ -179,6 +181,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
             || ContainsIgnoreCase(entry.DisplayName, search)
             || ContainsIgnoreCase(entry.Description, search)
             || ContainsIgnoreCase(entry.RoomId, search)
+            || ContainsIgnoreCase(GetTypeLabel(entry.FeatureType), search)
             || ContainsIgnoreCase(entry.FeatureType.ToString(), search);
     }
 
@@ -186,21 +189,21 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
     {
         using (new EditorGUILayout.HorizontalScope())
         {
-            EditorGUILayout.LabelField("Area Marker 작업창", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("맵·마커 검사", EditorStyles.boldLabel);
             GUILayout.FlexibleSpace();
             _autoRefresh = GUILayout.Toggle(
                 _autoRefresh,
                 "자동 갱신",
                 EditorStyles.toolbarButton,
                 GUILayout.Width(72f));
-            if (GUILayout.Button("Scan", GUILayout.Width(72f), GUILayout.Height(22f)))
+            if (GUILayout.Button("다시 검사", GUILayout.Width(72f), GUILayout.Height(22f)))
                 Scan();
         }
 
         EditorGUILayout.LabelField(
-            $"{_report.ScopeName}  |  Room {_report.RoomCount}  |  기능 {_report.Features.Count}  "
-            + $"|  Spawn {_report.SpawnPointCount}  |  Error {_report.ErrorCount}  "
-            + $"|  Warning {_report.WarningCount}",
+            $"{_report.ScopeName}  |  방 {_report.RoomCount}  |  기능 {_report.Features.Count}  "
+            + $"|  시작점 {_report.SpawnPointCount}  |  오류 {_report.ErrorCount}  "
+            + $"|  경고 {_report.WarningCount}",
             EditorStyles.miniLabel);
     }
 
@@ -261,7 +264,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
 
             if (!drewHeader)
             {
-                EditorGUILayout.LabelField("Room / Scope 문제", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("방 · 편집 범위 문제", EditorStyles.boldLabel);
                 drewHeader = true;
             }
 
@@ -308,7 +311,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
                     GUILayout.Height(12f));
                 EditorGUI.DrawRect(swatch, entry.GizmoColor);
                 EditorGUILayout.LabelField(
-                    $"[{entry.ShortTypeLabel}] {entry.DisplayName}",
+                    $"[{GetTypeLabel(entry.FeatureType)}] {entry.DisplayName}",
                     EditorStyles.boldLabel,
                     GUILayout.MinWidth(140f));
                 GUILayout.FlexibleSpace();
@@ -330,12 +333,12 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
 
             string roomLabel = entry.Room != null
                 ? GetRoomDisplayName(entry.Room)
-                : "Room 미지정";
+                : "방 미지정";
             string stableId = string.IsNullOrWhiteSpace(entry.StableId)
                 ? "(미지정)"
                 : entry.StableId;
             EditorGUILayout.LabelField(
-                $"ID: {stableId}    Room: {roomLabel}",
+                $"ID: {stableId}    방: {roomLabel}",
                 EditorStyles.miniLabel);
             if (!string.IsNullOrWhiteSpace(entry.Description))
                 EditorGUILayout.LabelField(entry.Description, EditorStyles.wordWrappedMiniLabel);
@@ -407,7 +410,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
         _roomKeys = new string[keys.Count + (hasUnbound ? 2 : 1)];
         _roomLabels = new string[_roomKeys.Length];
         _roomKeys[0] = AllRoomsKey;
-        _roomLabels[0] = "모든 Room";
+        _roomLabels[0] = "모든 방";
 
         int destination = 1;
         for (int i = 0; i < keys.Count; i++)
@@ -420,7 +423,7 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
         if (hasUnbound)
         {
             _roomKeys[destination] = UnboundRoomKey;
-            _roomLabels[destination] = "Room 미지정";
+            _roomLabels[destination] = "방 미지정";
         }
 
         if (Array.IndexOf(_roomKeys, _roomFilter) < 0)
@@ -465,12 +468,32 @@ public sealed class AreaMarkerWorkbenchWindow : EditorWindow
     {
         Array values = Enum.GetValues(typeof(AreaMarkerType));
         var labels = new string[values.Length + 1];
-        labels[0] = "모든 타입";
+        labels[0] = "모든 종류";
         for (int i = 0; i < values.Length; i++)
         {
-            labels[i + 1] = ObjectNames.NicifyVariableName(values.GetValue(i).ToString());
+            labels[i + 1] = GetTypeLabel((AreaMarkerType)values.GetValue(i));
         }
 
         return labels;
+    }
+
+    private static string GetTypeLabel(AreaMarkerType type)
+    {
+        switch (type)
+        {
+            case AreaMarkerType.Connection: return "문 · 이동";
+            case AreaMarkerType.Enemy: return "적";
+            case AreaMarkerType.Hazard: return "위험 구역";
+            case AreaMarkerType.Puzzle: return "퍼즐";
+            case AreaMarkerType.Vendor: return "상점";
+            case AreaMarkerType.ShortcutDoor: return "지름길";
+            case AreaMarkerType.NPC: return "대화 인물";
+            case AreaMarkerType.Item: return "아이템";
+            case AreaMarkerType.Sign: return "표지판";
+            case AreaMarkerType.SavePoint: return "저장 지점";
+            case AreaMarkerType.PlotPoint: return "진행 지점";
+            case AreaMarkerType.Sublocation: return "별도 공간";
+            default: return type.ToString();
+        }
     }
 }

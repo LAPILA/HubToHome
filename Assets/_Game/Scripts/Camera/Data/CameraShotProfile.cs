@@ -145,7 +145,7 @@ public struct CameraShotSettings
     }
 }
 
-[CreateAssetMenu(fileName = "CameraShotProfile", menuName = "HubToHome/Camera/Shot Profile")]
+[CreateAssetMenu(fileName = "CameraShotProfile", menuName = "Hub To Home/연출/카메라 샷")]
 public sealed class CameraShotProfile : ScriptableObject
 {
     [Title("Camera Shot")]

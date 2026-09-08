@@ -51,6 +51,12 @@ public class SkillContext
     public float CurrentDamageMultiplier = 1.0f;
     public bool IsPerfectQTE = false;
     public bool StopTimelineExecution = false;
+    public System.Func<bool> IsExecutionActive;
+
+    public bool CanContinueExecution => !StopTimelineExecution
+        && Actor != null
+        && Actor.IsAlive
+        && (IsExecutionActive == null || IsExecutionActive());
 
     public CharacterBase MainTarget => Targets != null && Targets.Count > 0 ? Targets[0] : null;
 }
@@ -287,6 +293,12 @@ public class Action_Damage : SkillActionBlock
 
     public override IEnumerator Execute(SkillContext context)
     {
+        if (!context.CanContinueExecution)
+        {
+            context.StopTimelineExecution = true;
+            yield break;
+        }
+
         float finalMultiplier = SkillMultiplier * context.CurrentDamageMultiplier;
         if (finalMultiplier <= 0f)
         {
@@ -299,7 +311,12 @@ public class Action_Damage : SkillActionBlock
 
         foreach (var target in context.Targets)
         {
-            if (!target.IsAlive) continue;
+            if (!context.CanContinueExecution)
+            {
+                context.StopTimelineExecution = true;
+                yield break;
+            }
+            if (target == null || !target.IsAlive) continue;
             
             int previousHp = target.CurrentHP;
             DamageResult damageResult = target.TakeDamage(finalDamage, Element, context.Actor);
@@ -665,7 +682,18 @@ public class Action_DefenseWindow : SkillActionBlock
                     yield return new WaitForSeconds(DefenseOpenDelay);
                 telegraph = SpawnTelegraph(context.Actor);
             }
+            if (!context.CanContinueExecution)
+            {
+                context.StopTimelineExecution = true;
+                yield break;
+            }
+
             CharacterBase target = context.Targets[0];
+            if (target == null || !target.IsAlive)
+            {
+                context.StopTimelineExecution = true;
+                yield break;
+            }
             targetController = GetPlayerController(target);
             DefenseQteResult finalResult = default;
             bool resultReceived = false;
@@ -673,7 +701,10 @@ public class Action_DefenseWindow : SkillActionBlock
             targetController?.PrepareDefenseWindow();
             QTEManager qteManager = QTEManager.Instance;
             if (qteManager == null)
+            {
+                context.StopTimelineExecution = true;
                 yield break;
+            }
 
             DefenseQteRequest request = OverrideTimingProfile
                 ? new DefenseQteRequest(
@@ -704,33 +735,35 @@ public class Action_DefenseWindow : SkillActionBlock
 
             yield return new WaitUntil(() => execution.IsDone);
             if (execution.Termination == QteTermination.Cancelled
-                || execution.Termination == QteTermination.Failed)
+                || execution.Termination == QteTermination.Failed
+                || !context.CanContinueExecution)
             {
+                context.StopTimelineExecution = true;
                 yield break;
             }
 
-            bool success = resultReceived && finalResult.PreventsDamage;
-            if (success)
+            if (resultReceived && finalResult.IsPerfectParry)
             {
-                targetController?.ConfirmDefenseSuccess(finalResult.Input);
+                targetController?.ConfirmDefenseSuccess(DefenseInput.Parry);
                 context.CurrentDamageMultiplier = 0f;
 
-                if (finalResult.Input == DefenseInput.Dodge || finalResult.Input == DefenseInput.Jump)
-                {
-                    BattleManager.Instance?.InvokeMissFeedback(context.Actor, target);
-                    yield return targetController != null
-                        ? targetController.WaitForDefenseVisualComplete(0.5f)
-                        : null;
-                }
-
-                if (finalResult.Input == DefenseInput.Parry
-                    && finalResult.Grade == QTEManager.QTEGrade.Perfect
-                    && target is PlayerCharacter playerTarget
+                if (target is PlayerCharacter playerTarget
                     && BattleManager.Instance != null)
                 {
                     playerTarget.RestoreAP(BattleManager.Instance._apOnParryPerfect);
                     BattleManager.Instance.InvokeAPChangedEvent(playerTarget, playerTarget.CurrentAP);
                 }
+            }
+            else if (resultReceived && finalResult.IsGuard)
+            {
+                context.CurrentDamageMultiplier *= finalResult.DamageMultiplier;
+                targetController?.ConfirmGuardSuccess();
+            }
+            else if (resultReceived && finalResult.PreventsDamage)
+            {
+                // 통합 방어를 끈 기존 회피/점프 판정의 피해 방지는 유지합니다.
+                context.CurrentDamageMultiplier = 0f;
+                targetController?.ConfirmDefenseSuccess(finalResult.Input);
             }
             else
             {
@@ -745,7 +778,10 @@ public class Action_DefenseWindow : SkillActionBlock
         finally
         {
             if (execution != null && !execution.IsDone)
+            {
+                context.StopTimelineExecution = true;
                 QTEManager.Instance?.Cancel(execution);
+            }
 
             DespawnTelegraph(telegraph);
             targetController?.ResetDefenseReactionLock();
@@ -791,6 +827,11 @@ public class Action_Projectile : SkillActionBlock
 
     public override IEnumerator Execute(SkillContext context)
     {
+        if (!context.CanContinueExecution)
+        {
+            context.StopTimelineExecution = true;
+            yield break;
+        }
         if (ProjectilePrefab == null || context.MainTarget == null) yield break;
 
         Vector3 startPos = context.Actor.GetPivot(CharacterPivotId.Center).position;
@@ -810,6 +851,12 @@ public class Action_Projectile : SkillActionBlock
             ObjectPoolManager.Instance.Despawn(proj);
         else
             GameObject.Destroy(proj); 
+
+        if (!context.CanContinueExecution || context.MainTarget == null || !context.MainTarget.IsAlive)
+        {
+            context.StopTimelineExecution = true;
+            yield break;
+        }
 
         if (ImpactVFXPrefab != null)
         {
@@ -858,6 +905,11 @@ public class Action_SequentialMelee : SkillActionBlock
 
     public override IEnumerator Execute(SkillContext context)
     {
+        if (!context.CanContinueExecution)
+        {
+            context.StopTimelineExecution = true;
+            yield break;
+        }
         if (context.Targets.Count == 0) yield break;
         if (context.CurrentDamageMultiplier <= 0f)
         {
@@ -879,7 +931,12 @@ public class Action_SequentialMelee : SkillActionBlock
 
         foreach (var target in shuffledTargets)
         {
-            if (!target.IsAlive) continue;
+            if (!context.CanContinueExecution)
+            {
+                context.StopTimelineExecution = true;
+                yield break;
+            }
+            if (target == null || !target.IsAlive) continue;
 
             Vector3 targetPos = target.GetPivot(CharacterPivotId.Front).position;
 
@@ -889,6 +946,12 @@ public class Action_SequentialMelee : SkillActionBlock
 
             PlayActorBattleAnim(context.Actor, Animator.StringToHash(AttackAnimTrigger));
             yield return new WaitForSeconds(0.1f); 
+
+            if (!context.CanContinueExecution || target == null || !target.IsAlive)
+            {
+                context.StopTimelineExecution = true;
+                yield break;
+            }
 
             if (HitVfxPrefab != null)
             {

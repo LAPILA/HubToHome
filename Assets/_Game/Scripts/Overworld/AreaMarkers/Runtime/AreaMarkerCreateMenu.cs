@@ -4,40 +4,40 @@ using UnityEngine;
 
 public static class AreaMarkerCreateMenu
 {
-    [MenuItem("GameObject/HubToHome/Area Marker/Connection", false, 10)]
+    [MenuItem("GameObject/Hub To Home/마커/이동 연결", false, 10)]
     private static void CreateConnection() => CreateMarker<AreaConnectionMarker>("Marker_Connection", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Enemy", false, 11)]
+    [MenuItem("GameObject/Hub To Home/마커/적", false, 11)]
     private static void CreateEnemy() => CreateMarker<OverworldEnemyMarker>("Marker_Enemy", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Hazard", false, 12)]
+    [MenuItem("GameObject/Hub To Home/마커/위험 지점", false, 12)]
     private static void CreateHazard() => CreateMarker<HazardMarker>("Marker_Hazard", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Puzzle", false, 13)]
+    [MenuItem("GameObject/Hub To Home/마커/퍼즐", false, 13)]
     private static void CreatePuzzle() => CreateMarker<PuzzleMarker>("Marker_Puzzle", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Vendor", false, 14)]
+    [MenuItem("GameObject/Hub To Home/마커/상점", false, 14)]
     private static void CreateVendor() => CreateMarker<VendorMarker>("Marker_Vendor", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Shortcut Door", false, 15)]
+    [MenuItem("GameObject/Hub To Home/마커/지름길 문", false, 15)]
     private static void CreateShortcutDoor() => CreateMarker<ShortcutDoorMarker>("Marker_ShortcutDoor", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/NPC", false, 16)]
+    [MenuItem("GameObject/Hub To Home/마커/대화 NPC", false, 16)]
     private static void CreateNpc() => CreateMarker<NPCMarker>("Marker_NPC", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Item", false, 17)]
+    [MenuItem("GameObject/Hub To Home/마커/아이템", false, 17)]
     private static void CreateItem() => CreateMarker<ItemPickupMarker>("Marker_Item", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Sign", false, 18)]
+    [MenuItem("GameObject/Hub To Home/마커/표지판", false, 18)]
     private static void CreateSign() => CreateMarker<SignMarker>("Marker_Sign", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/SAVE Point", false, 19)]
+    [MenuItem("GameObject/Hub To Home/마커/저장 지점", false, 19)]
     private static void CreateSavePoint() => CreateMarker<SavePointMarker>("Marker_SavePoint", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Plot Point", false, 20)]
+    [MenuItem("GameObject/Hub To Home/마커/이벤트 지점", false, 20)]
     private static void CreatePlotPoint() => CreateMarker<PlotPointMarker>("Marker_PlotPoint", true);
 
-    [MenuItem("GameObject/HubToHome/Area Marker/Sublocation", false, 21)]
+    [MenuItem("GameObject/Hub To Home/마커/하위 구역", false, 21)]
     private static void CreateSublocation() => CreateMarker<SublocationMarker>("Marker_Sublocation", true);
 
     private static void CreateMarker<T>(string objectName, bool addTriggerCollider) where T : AreaMarkerBase

@@ -127,6 +127,7 @@ public sealed class RegionEntryCoordinator : MonoBehaviour, ISceneRevealGateFail
         if (_requireCameraBinding && !cameraBound)
             return Fail(RegionEntryStatus.CameraBindingFailed, "오버월드 카메라 연결에 실패했습니다.", out error);
 
+        _roomContainer.ApplyCurrentRoomAudio();
         global.CurrentRoomId = roomDefinition.RoomId;
         UnityEngine.SceneManagement.Scene activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
         if (activeScene.IsValid())

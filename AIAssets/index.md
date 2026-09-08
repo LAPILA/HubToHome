@@ -9,6 +9,7 @@
 3. `yjlim/TODO.md` - 다음 작업 체크리스트
 4. `yjlim/Patchnote/2026-06-19-aiassets-reorganization.md` - 이번 문서 정리 패치노트
 5. 최신 `YYYY-MM-DD-update.md` - 당일 작업 update note
+6. [프로젝트 학습 자료](../docs/learning/README.md) - 실제 코드 기반 C#·알고리즘·자료구조·Unity·전투·시나리오·제작 도구·패턴·실습
 
 ## 운영 규칙
 

@@ -30,6 +30,20 @@ public class DefenseQTEUI : UIPanel
 
     private Canvas _parentCanvas;
     private Camera _uiCamera;
+    private RectTransform _baselineQteRoot;
+    private Vector2 _qteBaselinePosition;
+    private Vector3 _qteBaselineScale;
+    private TextMeshProUGUI _baselineKeyLabel;
+    private float _keyBaselineFontSize;
+    private bool _keyBaselineAutoSizing;
+    private TextMeshProUGUI _baselineResultLabel;
+    private float _resultBaselineFontSize;
+    private bool _resultBaselineAutoSizing;
+    private bool _showingTimedGuard;
+    private int _guardDisplayState = -1;
+    private string _guardReadyText;
+    private string _guardActiveText;
+    private string _guardEndedText;
     #endregion
 
     protected override void Awake()
@@ -40,13 +54,18 @@ public class DefenseQTEUI : UIPanel
         {
             _uiCamera = _parentCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _parentCanvas.worldCamera;
         }
+        CapturePresentationBaseline();
     }
 
     #region [ Defense QTE Logic ]
     public void ShowQTE(float attackDelay, string attackTypeName = "ATTACK")
     {
+        CapturePresentationBaseline();
         ResetState();
+        RestoreDefenseRootBaseline();
         ShowImmediate();
+        if (_targetKeyLabel != null)
+            _targetKeyLabel.text = attackTypeName ?? "";
 
         if (_barFill != null)
         {
@@ -65,15 +84,53 @@ public class DefenseQTEUI : UIPanel
         }
     }
 
+    public void ShowQTE(DefenseQteRequest request)
+    {
+        ShowQTE(request.Duration);
+        if (!request.UseTimedGuard)
+        {
+            if (_targetKeyLabel != null)
+                _targetKeyLabel.text = GetLegacyDefenseKeys(request.Requirement);
+            return;
+        }
+
+        _showingTimedGuard = true;
+        string key = GetConfiguredKeyName(ConfigurableAction.Confirm, "Z");
+        _guardReadyText = key + " 방어\n<size=65%>정확히 누르면 퍼펙트</size>";
+        _guardActiveText = key + " 방어 중";
+        _guardEndedText = key + " 방어 종료";
+        if (_targetKeyLabel != null)
+        {
+            _targetKeyLabel.enableAutoSizing = false;
+            _targetKeyLabel.fontSize = Mathf.Min(_keyBaselineFontSize, 24f);
+        }
+        UpdateDefenseGuard(request.GuardDuration, false);
+    }
+
+    public void UpdateDefenseGuard(float remainingSeconds, bool attempted)
+    {
+        if (!_showingTimedGuard) return;
+        int state = !attempted ? 0 : remainingSeconds > 0f ? 1 : 2;
+        if (_guardDisplayState == state) return;
+        _guardDisplayState = state;
+        if (_targetKeyLabel == null) return;
+        _targetKeyLabel.text = state == 0 ? _guardReadyText : state == 1 ? _guardActiveText : _guardEndedText;
+    }
+
     public void ShowResult(DefenseQteResult result)
     {
-        string text = result.Outcome switch
+        string text = result.IsPerfectParry ? "퍼펙트 패링"
+            : result.IsGuard ? "방어"
+            : _showingTimedGuard ? "피격"
+            : result.Outcome switch
         {
             DefenseOutcome.Invalid => "INVALID",
             DefenseOutcome.Failure => "MISS",
             _ => GetDefenseResultText(result.Grade, result.Input)
         };
-        Color color = result.Outcome switch
+        Color color = result.IsPerfectParry ? _colorPerfect
+            : result.IsGuard ? _colorGood
+            : result.Outcome switch
         {
             DefenseOutcome.Invalid => _colorBad,
             DefenseOutcome.Failure => _colorMiss,
@@ -89,10 +146,13 @@ public class DefenseQTEUI : UIPanel
 
     private void ShowDefenseResult(string text, Color color)
     {
+        CapturePresentationBaseline();
         ResetState();
         ShowImmediate();
         if (_resultLabel == null) { Hide(); return; }
 
+        _resultLabel.enableAutoSizing = false;
+        _resultLabel.fontSize = Mathf.Min(_resultBaselineFontSize, 24f);
         _resultLabel.text = text;
         _resultLabel.color = color;
         _resultLabel.alpha = 0f;
@@ -116,6 +176,7 @@ public class DefenseQTEUI : UIPanel
     #region [ Skill QTE Logic ]
     public void ShowSkillQTE(Vector2 relativePos, string targetKey, float duration)
     {
+        CapturePresentationBaseline();
         ResetState();
         bool isWarmUp = string.IsNullOrEmpty(targetKey) && duration <= 0;
         ShowImmediate();
@@ -216,6 +277,21 @@ public class DefenseQTEUI : UIPanel
         DOTween.Kill(this, false);
         _barTween = null;
         _resultSequence = null;
+        _showingTimedGuard = false;
+        _guardDisplayState = -1;
+        _guardReadyText = null;
+        _guardActiveText = null;
+        _guardEndedText = null;
+
+        if (_targetKeyLabel != null)
+        {
+            _targetKeyLabel.text = "";
+            if (_baselineKeyLabel == _targetKeyLabel)
+            {
+                _targetKeyLabel.fontSize = _keyBaselineFontSize;
+                _targetKeyLabel.enableAutoSizing = _keyBaselineAutoSizing;
+            }
+        }
 
         if (_resultLabel != null)
         {
@@ -223,7 +299,64 @@ public class DefenseQTEUI : UIPanel
             _resultLabel.transform.DOKill(false);
             _resultLabel.text = "";
             _resultLabel.alpha = 0f;
+            if (_baselineResultLabel == _resultLabel)
+            {
+                _resultLabel.fontSize = _resultBaselineFontSize;
+                _resultLabel.enableAutoSizing = _resultBaselineAutoSizing;
+            }
         }
+    }
+
+    private void CapturePresentationBaseline()
+    {
+        if (_qteRoot != null && _baselineQteRoot != _qteRoot)
+        {
+            _baselineQteRoot = _qteRoot;
+            _qteBaselinePosition = _qteRoot.anchoredPosition;
+            _qteBaselineScale = _qteRoot.localScale;
+        }
+        if (_targetKeyLabel != null && _baselineKeyLabel != _targetKeyLabel)
+        {
+            _baselineKeyLabel = _targetKeyLabel;
+            _keyBaselineFontSize = _targetKeyLabel.fontSize;
+            _keyBaselineAutoSizing = _targetKeyLabel.enableAutoSizing;
+        }
+        if (_resultLabel != null && _baselineResultLabel != _resultLabel)
+        {
+            _baselineResultLabel = _resultLabel;
+            _resultBaselineFontSize = _resultLabel.fontSize;
+            _resultBaselineAutoSizing = _resultLabel.enableAutoSizing;
+        }
+    }
+
+    private void RestoreDefenseRootBaseline()
+    {
+        if (_qteRoot == null || _baselineQteRoot != _qteRoot) return;
+        _qteRoot.anchoredPosition = _qteBaselinePosition;
+        _qteRoot.localScale = _qteBaselineScale;
+    }
+
+    private static string GetConfiguredKeyName(ConfigurableAction action, string fallback)
+    {
+        return GameConfigManager.Instance != null
+            ? GameConfigManager.Instance.GetKey(action).ToString()
+            : fallback;
+    }
+
+    private static string GetLegacyDefenseKeys(DefenseRequirement requirement)
+    {
+        string parry = GetConfiguredKeyName(ConfigurableAction.Confirm, "Z");
+        string dodge = GetConfiguredKeyName(ConfigurableAction.Cancel, "X");
+        string jump = GetConfiguredKeyName(ConfigurableAction.Menu, "C");
+        return requirement switch
+        {
+            DefenseRequirement.ParryOnly => parry,
+            DefenseRequirement.DodgeOnly => dodge,
+            DefenseRequirement.JumpOnly => jump,
+            DefenseRequirement.ParryOrDodge => parry + " / " + dodge,
+            DefenseRequirement.DodgeOrJump => dodge + " / " + jump,
+            _ => parry + " / " + dodge + " / " + jump
+        };
     }
 
     private string GetDefenseResultText(QTEManager.QTEGrade grade, DefenseInput input)

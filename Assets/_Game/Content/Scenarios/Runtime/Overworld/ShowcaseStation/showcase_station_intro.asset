@@ -28,8 +28,8 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/ShowcaseStation/showcase_station_intro.sequence.yaml
-    SourceHash: 328abc2a1e6b7885bf19ce054f0cf63327eed8f404d60449e009491ddae6853a
-    ImportedAtIso8601: 2026-07-27T01:25:24.1609721Z
+    SourceHash: 00a0be2df5588885054d46d0ada331b3c1fb121d3cc8fdc45a829cbf86cc4705
+    ImportedAtIso8601: 2026-09-07T02:40:21.0121895Z
   Actions:
   - BlockId: 6e2fa7c4c72f4f02974fde6958804801
     DesignerLabel: "\uB3C4\uCC29 Stage \uC900\uBE44"

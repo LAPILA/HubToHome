@@ -26,7 +26,6 @@ public sealed class ShowcaseStationValidationReport
 
 public static class ShowcaseStationValidator
 {
-    [MenuItem("Hub To Home/오버월드/본편 월드/Showcase Station 검증")]
     public static void ValidateAndLog()
     {
         ShowcaseStationValidationReport report = ValidateGeneratedAssets();

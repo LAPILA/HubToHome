@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 public enum DialogueStyle { Overworld, Cinematic }
 
-[CreateAssetMenu(fileName = "NewDialogue", menuName = "Dialogue/Dialogue Data")]
+[CreateAssetMenu(fileName = "NewDialogue", menuName = "Hub To Home/대사/대화 데이터")]
 public class DialogueData : ScriptableObject
 {
     [BoxGroup("기본 설정")]

@@ -7,7 +7,7 @@ public enum EquipmentSlot
     Weapon, Accessory1, Accessory2, Head, Body, Shoes,
 }
 
-[CreateAssetMenu(fileName = "NewEquipment", menuName = "HubToHome/EquipmentData")]
+[CreateAssetMenu(fileName = "NewEquipment", menuName = "Hub To Home/캐릭터/장비 데이터")]
 public class EquipmentData : SerializedScriptableObject 
 {
     [BoxGroup("Identity"), HideLabel, PreviewField(50)]

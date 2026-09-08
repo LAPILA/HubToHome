@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
@@ -117,6 +118,49 @@ public sealed class BattlePartyWaveRuntimeTests
         CharacterSaveData match = InvokeFindUniquePartySave(saves, "wolf");
 
         Assert.That(match, Is.Null);
+    }
+
+    [TestCase(BattleEncounterOutcome.Victory)]
+    [TestCase(BattleEncounterOutcome.Escaped)]
+    [TestCase(BattleEncounterOutcome.PartyDefeated)]
+    public void BattleOutro_ClearsDeadFrontAndInactiveReserveBeforeEndingEvent(BattleEncounterOutcome outcome)
+    {
+        _front[0].IsStunned = true;
+        _reserve[0].TryApplyStatusEffect(new PoisonEffect(3));
+        _reserve[0].TryApplyStatusEffect(new BindEffect(3));
+        bool eventObserved = false;
+        _manager.OnBattleEnded += _ =>
+        {
+            eventObserved = true;
+            Assert.That(_front[0].IsStunned, Is.False);
+            Assert.That(_reserve[0].HasEffect(StatusEffectIds.Poison), Is.False);
+            Assert.That(_reserve[0].IsBound, Is.False);
+        };
+        MethodInfo method = typeof(BattleManager).GetMethod(
+            "BattleOutroRoutine", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        IEnumerator routine = (IEnumerator)method.Invoke(_manager, new object[] { outcome });
+
+        Assert.That(routine.MoveNext(), Is.True);
+
+        Assert.That(eventObserved, Is.True);
+        Assert.That(_front[0].CurrentHP, Is.Zero);
+        Assert.That(_reserve[0].CurrentHP, Is.EqualTo(100));
+        Assert.That(_reserve[0].gameObject.activeSelf, Is.False);
+        (routine as System.IDisposable)?.Dispose();
+    }
+
+    [Test]
+    public void ManagerDestruction_ClearsBattleEffectsOnSurvivingSceneCharacters()
+    {
+        _reserve[0].TryApplyStatusEffect(new StunEffect(3));
+        _reserve[0].TryApplyStatusEffect(new PoisonEffect(3));
+
+        Object.DestroyImmediate(_manager.gameObject);
+
+        Assert.That(_reserve[0].HasEffect(StatusEffectIds.Poison), Is.False);
+        Assert.That(_reserve[0].IsStunned, Is.False);
+        Assert.That(_reserve[0].CurrentHP, Is.EqualTo(100));
     }
 
     private PlayerCharacter CreatePlayer(string characterId, bool active)

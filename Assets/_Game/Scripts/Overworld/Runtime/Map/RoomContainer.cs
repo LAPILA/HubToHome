@@ -16,7 +16,8 @@ public class RoomContainer : MonoBehaviour
 
     private void Start()
     {
-        if (_loadInitialRoomOnStart && _initialRoom != null)
+        // RegionEntryCoordinator may already have restored a different Room in Awake.
+        if (CurrentRoom == null && _loadInitialRoomOnStart && _initialRoom != null)
             LoadRoom(_initialRoom, FindFirstObjectByType<PlayerController>());
     }
 
@@ -31,6 +32,7 @@ public class RoomContainer : MonoBehaviour
         try
         {
             room.OnRoomEntered(player);
+            ApplyCurrentRoomAudio();
         }
         catch (Exception exception)
         {
@@ -38,6 +40,23 @@ public class RoomContainer : MonoBehaviour
         }
 
         return room;
+    }
+
+    /// <summary>
+    /// Applies the committed Room's audio after its caller accepts arrival/camera setup.
+    /// Candidate validation must not change the currently playing track.
+    /// </summary>
+    public void ApplyCurrentRoomAudio()
+    {
+        RoomDefinition definition = CurrentDefinition;
+        AudioManager audio = AudioManager.Instance;
+        if (CurrentRoom == null || definition == null || audio == null)
+            return;
+
+        if (definition.BgmOverride != null)
+            audio.CrossFadeBGM(definition.BgmOverride, definition.BgmFadeDuration);
+        else if (!definition.KeepCurrentBgm)
+            audio.FadeOutBGM(definition.BgmFadeDuration);
     }
 
     /// <summary>

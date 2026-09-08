@@ -113,7 +113,7 @@ public sealed class FlagDialogueRule
 
 [CreateAssetMenu(
     fileName = "FlagDialogueSelector",
-    menuName = "Hub To Home/Overworld/Flag Dialogue Selector")]
+    menuName = "Hub To Home/맵/진행별 대화")]
 public sealed class FlagDialogueSelector : ScriptableObject
 {
     [TitleGroup("조건별 대화")]
