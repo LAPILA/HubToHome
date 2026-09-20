@@ -516,11 +516,15 @@ public abstract class CharacterBase : MonoBehaviour
         return false;
     }
     
-    public void ProcessEffects()
+    public void ProcessEffects() => ProcessEffects(false);
+
+    public void ProcessEffects(bool endOfTurn)
     {
         if (!IsAlive) return;
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {
+            if (_activeEffects[i].TickAtTurnEnd != endOfTurn)
+                continue;
             _activeEffects[i].OnTick(); 
             if (_activeEffects[i].IsExpired)
             {

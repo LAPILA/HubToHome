@@ -18,6 +18,8 @@
 - Status effects process through `ProcessEffects()`.
 - Status effects and temporary buffs are battle-scoped. End them through `CharacterBase.ClearBattleStatusEffects()` so `OnRemove` releases effect subscriptions/VFX and transient flags are cleared, including on dead/inactive participants. Preserve permanent growth/equipment and remaining HP/AP, capped to restored maxima.
 - Player save/restore uses `CharacterSaveData` and `GlobalDataManager.Party`.
+- `CharacterGrowthService.EnsureInitialized` normalizes growth/base stats without changing current HP/AP. Use `CharacterStatsProjectionService.ResolveResourceCaps` for equipment-inclusive persistent resource caps; actual growth investment/refund preserves deficits against the old/new projected caps.
+- `ProcessEffects()` ticks turn-start effects; `ProcessEffects(endOfTurn: true)` ticks end-of-turn effects such as bleed. The turn controller checks stun before the start tick and notifies `NotifyActionExecuted` exactly once only after a completed action, before bleed expiry and outcome/wave checks.
 
 ## Work Rules
 

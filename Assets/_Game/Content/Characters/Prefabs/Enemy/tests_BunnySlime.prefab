@@ -423,7 +423,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BunnySlimeCharacter
   Data: {fileID: 11400000, guid: da4ccaf31b3fd9646898d6da8eda6136, type: 2}
   _isBattleMode: 0
-  _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
+  _hurtFlashColor: {r: 1, g: 1, b: 1, a: 1}
   _flashDuration: 0.08
   _shakeStrength: 0.15
   _turnMessages:

@@ -56,6 +56,19 @@ public sealed class SkillMakerBlockEditorTests
     }
 
     [Test]
+    public void DefenseAuthoringHelpDescribesCounterAndLegacyEvadeRoles()
+    {
+        string counter = SkillMakerBlockEditor.GetDefenseAuthoringHelp(DefenseRequirement.Counterable);
+        Assert.That(counter, Does.Contain("Z 가드 불가 / X 회피 / C 연계 반격"));
+        Assert.That(counter, Does.Contain("후열은 참여하지 않습니다"));
+        string legacyJump = SkillMakerBlockEditor.GetDefenseAuthoringHelp(DefenseRequirement.JumpOnly);
+        Assert.That(legacyJump, Does.Contain("X 회피 전용"));
+        Assert.That(legacyJump, Does.Contain("자산 호환"));
+        Assert.That(SkillMakerBlockEditor.GetDefenseAuthoringHelp(DefenseRequirement.Any),
+            Does.Contain("공격 대응 방식"));
+    }
+
+    [Test]
     public void DuplicateCopiesQteNodesWithoutSharingTheList()
     {
         var source = new Action_QTE

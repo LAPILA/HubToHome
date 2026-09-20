@@ -123,6 +123,14 @@ WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지�
 
 ## 작업 전·후 체크리스트
 
+### UI 트윈 수명
+
+- 색상·게이지·위치·지연 콜백을 시작한 UI가 반환 핸들을 보관하고 숨김/재바인딩/비활성화/파괴 때 `Kill(false)`로 해제한다. 완료 콜백으로 게임 명령이 실행될 수 있으므로 종료 처리에 `DOKill(true)`를 쓰지 않는다.
+- 파티 슬롯은 `PartySlotUI.ReleaseTweens`, 전투 메뉴는 `StopOwnedAnimations`, 전투 UI 소유자는 `ReleasePresentationTweens`로 정리한다. 다른 UI가 같은 대상에 실행한 트윈은 건드리지 않는다.
+- 저장한 핸들은 `SetRecyclable(false)`로 다른 트윈으로 재활용되지 않게 한다. GameObject 연결은 `SetLink`를 사용하되 Image/TMP 컴포넌트만 먼저 파괴될 수도 있으므로 콜백에는 Unity null 검사도 둔다.
+- UI 재사용 시 HP/AP는 최신 확정값, 크기/위치는 기존 기준으로 복원한다. 반복 강조만으로 펀치 트윈을 중첩하지 않는다. 이벤트 구독 해제는 현재 Singleton이 아니라 실제 구독한 이벤트 소스에 수행한다.
+- DOTween Safe Mode, 로그 필터, 예외 삼키기, 전역 KillAll은 수명 문제의 해결책으로 사용하지 않는다.
+
 작업 전:
 
 - [ ] UI가 게임 viewport 고정인지, 월드 추적인지, 모니터 전체 예외인지 판단했다.

@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: shot_ice
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "\uB0C9\uAC01\uD0C4 \uBC1C\uC0AC"
+  SkillID: lab.bunny.shot_ice
+  Description: "\uBE59\uACB0 \uC18D\uC131 1.3\uBC30 \uD22C\uC0AC\uCCB4. \uACF5\uACA9
+    QTE \uC131\uACF5 \uC2DC 1.5\uBC30, \uC2E4\uD328 \uC2DC 0.75\uBC30."
+  UsageProfile: 1
+  APCost: 8
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 2817657174576595139
+  - rid: 2817657174576595140
+  - rid: 2817657174576595141
+  - rid: 2817657174576595142
+  references:
+    version: 2
+    RefIds:
+    - rid: 2817657174576595139
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        TimeLimit: 1
+        SuccessMultiplier: 1.5
+        FailMultiplier: 0.75
+        Nodes:
+        - PosX: 0.5
+          PosY: 0.55
+          TargetKey: z
+    - rid: 2817657174576595140
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        AnimTriggerName: Attack
+        DelayAfter: 0.1
+    - rid: 2817657174576595141
+      type: {class: Action_Projectile, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        ProjectilePrefab: {fileID: 4748681987041982144, guid: 2c094461acd8e2a49b2dbc6982bfe8aa, type: 3}
+        ImpactVFXPrefab: {fileID: 4748681987041982144, guid: 25663f8f60fc0504ca6f36128d2e25fc, type: 3}
+        FlightDuration: 0.35
+        DamageMultiplier: 1.3
+        Element: 2
+    - rid: 2817657174576595142
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        WaitTime: 0.15

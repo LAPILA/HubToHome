@@ -71,9 +71,16 @@ public sealed class BattleSkillTimelineActionAdapter : IActionAdapter
             routine,
             context,
             "ISkillTimelineRunner failed during battle.skill.timeline.");
-        while (runnerRoutine.MoveNext())
+        try
         {
-            yield return runnerRoutine.Current;
+            while (runnerRoutine.MoveNext())
+            {
+                yield return runnerRoutine.Current;
+            }
+        }
+        finally
+        {
+            (runnerRoutine as System.IDisposable)?.Dispose();
         }
     }
 }

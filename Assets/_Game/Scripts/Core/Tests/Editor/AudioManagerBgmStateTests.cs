@@ -109,6 +109,22 @@ public sealed class AudioManagerBgmStateTests
     }
 
     [Test]
+    public void SameClipRerequestChangesOwnershipButVolumeSettingsDoNot()
+    {
+        AudioClip clip = CreateClip("Shop");
+        _audioManager.PlayBGM(clip);
+        ulong first = _audioManager.BgmRequestVersion;
+        _audioManager.ApplyConfiguredVolumes(0.5f, 0.5f, 0.5f);
+        Assert.That(_audioManager.BgmRequestVersion, Is.EqualTo(first));
+
+        _audioManager.PlayBGM(clip);
+        Assert.That(_audioManager.BgmRequestVersion, Is.Not.EqualTo(first));
+        ulong second = _audioManager.BgmRequestVersion;
+        _audioManager.StopBGM(0f);
+        Assert.That(_audioManager.BgmRequestVersion, Is.Not.EqualTo(second));
+    }
+
+    [Test]
     public void LatestCrossfadeRequestReplacesPendingSource()
     {
         AudioClip mapClip = CreateClip("Map");

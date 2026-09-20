@@ -248,7 +248,8 @@ public static class CharacterGrowthService
             character.Growth.AttributePointsEarned,
             character.Growth.Investments.Total);
 
-        RecalculateBaseStats(character, data, false);
+        // 메뉴 조회/스킬 정규화에서도 호출됩니다. 현재 HP/AP는 변경하지 않습니다.
+        ApplyBaseStats(character, CalculateBaseStats(character, data));
     }
 
     public static CharacterBaseStatSnapshot CalculateBaseStats(
@@ -311,34 +312,47 @@ public static class CharacterGrowthService
         if (character == null)
             return;
 
-        int previousMaxHp = Mathf.Max(1, character.MaxHP);
-        int previousMaxAp = Mathf.Max(0, character.MaxAP);
+        StatBlock previousResolved = CharacterStatsProjectionService.ResolveFromBaseStats(
+            character,
+            data,
+            new CharacterBaseStatSnapshot(
+                character.MaxHP, character.MaxAP, character.ATK, character.DEF, character.SPD));
+        int previousMaxHp = Mathf.Max(1, previousResolved.MaxHP);
+        int previousMaxAp = Mathf.Max(0, previousResolved.MaxAP);
         int missingHp = Mathf.Max(0, previousMaxHp - Mathf.Max(0, character.HP));
         int missingAp = Mathf.Max(0, previousMaxAp - Mathf.Max(0, character.AP));
 
         CharacterBaseStatSnapshot calculated = CalculateBaseStats(character, data);
+        ApplyBaseStats(character, calculated);
+        StatBlock resolved = CharacterStatsProjectionService.ResolveFromBaseStats(character, data, calculated);
+        int maxHp = Mathf.Max(1, resolved.MaxHP);
+        int maxAp = Mathf.Max(0, resolved.MaxAP);
+
+        if (preserveResourceDeficit)
+        {
+            character.HP = Mathf.Clamp(
+                maxHp - missingHp,
+                0,
+                maxHp);
+            character.AP = Mathf.Clamp(
+                maxAp - missingAp,
+                0,
+                maxAp);
+        }
+        else
+        {
+            character.HP = Mathf.Clamp(character.HP, 0, maxHp);
+            character.AP = Mathf.Clamp(character.AP, 0, maxAp);
+        }
+    }
+
+    private static void ApplyBaseStats(CharacterSaveData character, CharacterBaseStatSnapshot calculated)
+    {
         character.MaxHP = calculated.MaxHP;
         character.MaxAP = calculated.MaxAP;
         character.ATK = calculated.Attack;
         character.DEF = calculated.Defense;
         character.SPD = calculated.Speed;
-
-        if (preserveResourceDeficit)
-        {
-            character.HP = Mathf.Clamp(
-                calculated.MaxHP - missingHp,
-                0,
-                calculated.MaxHP);
-            character.AP = Mathf.Clamp(
-                calculated.MaxAP - missingAp,
-                0,
-                calculated.MaxAP);
-        }
-        else
-        {
-            character.HP = Mathf.Clamp(character.HP, 0, calculated.MaxHP);
-            character.AP = Mathf.Clamp(character.AP, 0, calculated.MaxAP);
-        }
     }
 
     public static GrowthInvestmentResult TryInvest(

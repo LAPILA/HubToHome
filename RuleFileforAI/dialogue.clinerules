@@ -12,6 +12,7 @@
 
 - Start dialogue through `DialogueManager.StartDialogue(...)`.
 - Dialogue should set broad game state to Dialogue where appropriate and restore the previous/expected state on completion.
+- Logical completion is distinct from panel fade-out completion. `DialogueManager.IsPresentationVisible` includes the closing panel; shop menu/input resumes only after it becomes false. Do not duplicate the fade duration with a fixed delay. `DialogueUI` owns its unscaled panel Tween and kills it on reopen/hide/disable; forced close uses generation-guarded `HideFinishedPresentation` without touching a newer playback.
 - Confirm during typewriter output should complete typing; confirm after completion should advance.
 - Name input stores the player name in `GlobalDataManager.PlayerName`.
 

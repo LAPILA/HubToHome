@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 046aa2ce4ab6bf44482c3e48f2ba8799, type: 3}
+  m_Name: support
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  Portrait: {fileID: 21300000, guid: a6834fe30490d174eb09efe7e0b53002, type: 3}
+  TurnOrderPortrait: {fileID: 21300000, guid: a6834fe30490d174eb09efe7e0b53002, type: 3}
+  BattlePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
+  BattleSymbolColor: {r: 0.3, g: 0.8, b: 0.68, a: 1}
+  CharacterID: lab.wizzel.support
+  DisplayName: "\uC704\uC824 \xB7 \uC9C0\uC6D0"
+  DisplayNameMode: 0
+  BaseStats:
+    MaxHP: 220
+    MaxAP: 100
+    ATK: 20
+    DEF: 5
+    SPD: 12
+    PhysicalResistance: 1
+    FireResistance: 1
+    IceResistance: 1
+    ElectricResistance: 1
+    CorrosionResistance: 1
+    IncomingDamageMultiplier: 1
+    OutgoingDamageMultiplier: 1
+  GrowthProfile: {fileID: 11400000, guid: a81c41c95f2847a1aebc9ef15c0b0d7b, type: 2}
+  SkillTree: {fileID: 0}
+  MaxLevel: 99
+  BaseExperienceToLevel: 100
+  ExperienceGrowth: 1.18
+  MaxHpPerLevel: 5
+  AttackPerLevel: 1
+  DefensePerLevel: 1
+  SpeedPerLevel: 0
+  DefaultSkills:
+  - {fileID: 11400000, guid: b40b4d85858a8cd4a9c7c7fc855fac07, type: 2}
+  - {fileID: 11400000, guid: 86f948e75d6e511489eaca42a9d857fe, type: 2}
+  - {fileID: 11400000, guid: 1d09ca8d7483be144a96586ab1b1e6cc, type: 2}
+  - {fileID: 11400000, guid: d596a25410854f90ba050a72065f0285, type: 2}
+  PowerUnlocks: []

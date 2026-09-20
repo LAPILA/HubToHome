@@ -25,6 +25,7 @@
 - 상호작용 대상은 `IInteractable` 구현 또는 `InteractableBase` 상속을 우선한다.
 - `AreaTrigger`의 AutoEvent는 `DialogueData` 에셋을 직접 받는다.
 - 씬 전환 전 위치/방향 저장을 잊지 않는다.
+- `MapTransitionService`의 Room 전환은 실행 context가 잠금/화면 복구/완료 콜백을 소유한다. 비활성·파괴·외부 씬 전환 때 동일 종료 경로를 사용하며 목적 방 commit 뒤에는 이전 출발 상태로 롤백하지 않는다. 암전 두 단계는 `ScreenTransitionRunner.CaptureRestorationScope`로 묶고 더 최신 화면 소유자가 있으면 복원을 포기한다. Scene 전환의 서비스 파괴 후 완료 콜백은 별도로 유지한다.
 - 큰 지역 이동은 `MapTransitionType.Scene`, 같은 지역 안의 방/실내/통로 이동은 `MapTransitionType.Room`을 우선한다.
 - Room BGM은 성공한 진입 뒤 `RoomContainer.ApplyCurrentRoomAudio()`로 적용한다. 초기 Room 로드, `MapTransitionService` 이동, `RegionEntryCoordinator` 복원이 같은 규칙을 사용하며 후보 검증 중에는 음악을 변경하지 않는다. `BgmOverride`가 있으면 전환하고, 없으면 `KeepCurrentBgm=true`는 기존 곡 유지, false는 명시적 fade-out이다. Scene의 `MapSettings` 기본 BGM과 Room BGM을 중복 소유시키지 않는다.
 - 본편 맵은 `Assets/_Game/Content/Maps/Regions/<지역>`에 둔다. Scene은 `Scenes`, Room/NPC Prefab은 `Prefabs/Rooms`, `Prefabs/NPCs`, Room/Area 데이터는 `Data/Rooms`, 지역 대화는 `Data/Dialogue`로 분리한다.

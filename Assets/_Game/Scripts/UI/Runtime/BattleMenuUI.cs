@@ -52,6 +52,11 @@ public class BattleMenuUI : UIPanel
 
     private RectTransform _rectTransform;
     private float _baseMenuY;
+    private Image[] _buttonImages;
+    private Tween[] _buttonColorTweens;
+    private Tween[] _buttonPunchTweens;
+    private Tween _menuMoveTween;
+    private Tween _resumeInputTween;
     #endregion
 
     #region [ Initialization ]
@@ -62,6 +67,9 @@ public class BattleMenuUI : UIPanel
         _baseMenuY = _rectTransform.anchoredPosition.y;
 
         _buttons = new[] { _attackBtn, _actBtn, _itemBtn, _runBtn };
+        _buttonImages = new Image[_buttons.Length];
+        _buttonColorTweens = new Tween[_buttons.Length];
+        _buttonPunchTweens = new Tween[_buttons.Length];
         _mappedActions = new[] { 
             PlayerMenuAction.Attack, 
             PlayerMenuAction.Skill, 
@@ -74,12 +82,62 @@ public class BattleMenuUI : UIPanel
         {
             int index = i;
             if (_buttons[i] != null)
+            {
+                _buttonImages[i] = _buttons[i].GetComponent<Image>();
                 _buttons[i].onClick.AddListener(() => Confirm(index));
+            }
         }
     }
     #endregion
 
     #region [ Lifecycle & State ]
+    public override void Hide()
+    {
+        StopOwnedAnimations();
+        base.Hide();
+    }
+
+    public override void HideImmediate()
+    {
+        StopOwnedAnimations();
+        base.HideImmediate();
+    }
+
+    protected override void OnDisable()
+    {
+        StopOwnedAnimations();
+        base.OnDisable();
+    }
+
+    protected override void OnDestroy()
+    {
+        StopOwnedAnimations();
+        base.OnDestroy();
+    }
+
+    private void StopOwnedAnimations()
+    {
+        _inputEnabled = false;
+        Kill(ref _menuMoveTween);
+        Kill(ref _resumeInputTween);
+        if (_rectTransform != null)
+            _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _baseMenuY);
+        if (_buttons == null) return;
+        for (int i = 0; i < _buttons.Length; i++)
+        {
+            Kill(ref _buttonColorTweens[i]);
+            Kill(ref _buttonPunchTweens[i]);
+            if (_buttons[i] != null) _buttons[i].transform.localScale = Vector3.one;
+        }
+    }
+
+    private static void Kill(ref Tween tween)
+    {
+        Tween owned = tween;
+        tween = null;
+        if (owned != null && owned.IsActive()) owned.Kill(false);
+    }
+
     protected override void OnShowComplete()
     {
         if (_isExternallySuspended) return;
@@ -88,7 +146,7 @@ public class BattleMenuUI : UIPanel
         
         if (_buttons != null && _buttons.Length > 0)
         {
-            if (!_buttons[_selectedIndex].interactable) Navigate(1); 
+            if (_buttons[_selectedIndex] == null || !_buttons[_selectedIndex].interactable) Navigate(1);
             else HighlightButton(_selectedIndex);
         }
     }
@@ -107,7 +165,9 @@ public class BattleMenuUI : UIPanel
         if (_runBtn != null)
         {
             _runBtn.interactable = isEnabled;
-            _runBtn.GetComponent<Image>().color = isEnabled ? _normalColor : _disabledColor;
+            if (_buttonColorTweens != null) Kill(ref _buttonColorTweens[3]);
+            Image image = _runBtn.GetComponent<Image>();
+            if (image != null) image.color = isEnabled ? _normalColor : _disabledColor;
         }
     }
 
@@ -118,22 +178,6 @@ public class BattleMenuUI : UIPanel
 
         _subMenu?.ForceCloseImmediate();
 
-        if (_rectTransform != null)
-        {
-            _rectTransform.DOKill();
-            _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _baseMenuY);
-        }
-
-        if (_buttons != null)
-        {
-            foreach (var button in _buttons)
-            {
-                if (button == null) continue;
-                button.transform.DOKill();
-                button.transform.localScale = Vector3.one;
-            }
-        }
-
         HideImmediate();
     }
 
@@ -143,7 +187,7 @@ public class BattleMenuUI : UIPanel
 
         if (_rectTransform != null)
         {
-            _rectTransform.DOKill();
+            Kill(ref _menuMoveTween);
             _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _baseMenuY);
         }
     }
@@ -169,23 +213,20 @@ public class BattleMenuUI : UIPanel
     {
         if (_buttons == null || _buttons.Length == 0) return;
 
-        int max = _buttons.Length;
-        int loopCount = 0;
-
-        do
+        for (int i = 0; i < _buttons.Length; i++)
         {
-            _selectedIndex = (_selectedIndex + dir + max) % max;
-            loopCount++;
-            
-            if (_buttons[_selectedIndex] == null) continue;
-
-        } while (!_buttons[_selectedIndex].interactable && loopCount < max);
+            _selectedIndex = (_selectedIndex + dir + _buttons.Length) % _buttons.Length;
+            if (_buttons[_selectedIndex] != null && _buttons[_selectedIndex].interactable) break;
+        }
 
         HighlightButton(_selectedIndex);
     }
 
     private void Confirm(int index)
     {
+        if (!_inputEnabled || _isExternallySuspended || !isActiveAndEnabled || !IsVisible
+            || _buttons == null || index < 0 || index >= _buttons.Length || _buttons[index] == null)
+            return;
         if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
         if (!_buttons[index].interactable) return; 
 
@@ -194,7 +235,7 @@ public class BattleMenuUI : UIPanel
         // 🚨 즉각 반응: 도망(Run)을 제외한 모든 액션 클릭 시 즉시 BattleReady 애니메이션 재생
         if (action != PlayerMenuAction.Run)
         {
-            _currentActor?.PlayBattleAnim(PlayerCharacter.HashBattleReady);
+            if (_currentActor != null) _currentActor.PlayBattleAnim(PlayerCharacter.HashBattleReady);
         }
 
         if (action == PlayerMenuAction.Skill) 
@@ -253,61 +294,68 @@ public class BattleMenuUI : UIPanel
 
     private void OnSkillSelected(IMenuEntry entry)
     {
+        if (!CanReceiveSubMenuCallback()) return;
         SlideMenuDown();
         if (entry is EmptyMenuEntry)
         {
-            DOVirtual.DelayedCall(_menuSlideDuration, () => {
-                if (_isExternallySuspended) return;
-                _inputEnabled = true;
-                HighlightButton(_selectedIndex);
-            });
+            ResumeInputAfterSlide();
             return;
         }
-        if (_isExternallySuspended) return;
-        if (entry is SkillMenuEntry skillEntry)
-            BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Skill, skillEntry.Data, null);
+        BattleManager manager = BattleManager.Instance;
+        if (manager != null && entry is SkillMenuEntry skillEntry)
+            manager.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Skill, skillEntry.Data, null);
     }
 
     private void OnItemSelected(IMenuEntry entry)
     {
+        if (!CanReceiveSubMenuCallback()) return;
         SlideMenuDown();
         if (entry is EmptyMenuEntry)
         {
-            DOVirtual.DelayedCall(_menuSlideDuration, () => {
-                if (_isExternallySuspended) return;
-                _inputEnabled = true;
-                HighlightButton(_selectedIndex);
-            });
+            ResumeInputAfterSlide();
             return;
         }
-        if (_isExternallySuspended) return;
-        if (entry is ItemMenuEntry itemEntry)
-            BattleManager.Instance.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Item, null, itemEntry.Data);
+        BattleManager manager = BattleManager.Instance;
+        if (manager != null && entry is ItemMenuEntry itemEntry)
+            manager.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Item, null, itemEntry.Data);
     }
 
     private void OnSubMenuCancelled()
     {
+        if (!CanReceiveSubMenuCallback()) return;
         SlideMenuDown();
-        
-        BattleManager.Instance.CancelActionSelection();
+        BattleManager manager = BattleManager.Instance;
+        if (manager != null) manager.CancelActionSelection();
 
-        DOVirtual.DelayedCall(_menuSlideDuration, () => {
-            if (_isExternallySuspended) return;
+        ResumeInputAfterSlide();
+    }
+
+    private bool CanReceiveSubMenuCallback() => this != null && isActiveAndEnabled && !_isExternallySuspended;
+
+    private void ResumeInputAfterSlide()
+    {
+        Kill(ref _resumeInputTween);
+        _resumeInputTween = DOVirtual.DelayedCall(_menuSlideDuration, () => {
+            _resumeInputTween = null;
+            if (this == null || !isActiveAndEnabled || _isExternallySuspended || !IsVisible) return;
             _inputEnabled = true;
             HighlightButton(_selectedIndex);
-        });
+        }).SetRecyclable(false).SetLink(gameObject, LinkBehaviour.KillOnDisable);
     }
 
     private void ExecuteDirectAction(int index, PlayerMenuAction action)
     {
         if (_buttons[index] == null) return;
-        _buttons[index].transform.DOKill(true);
+        Kill(ref _buttonPunchTweens[index]);
         _buttons[index].transform.localScale = Vector3.one;
-
-        _buttons[index].transform.DOPunchScale(Vector3.one * 0.35f, 0.25f, 8, 0.5f).OnComplete(() => {
-            if (_isExternallySuspended) return;
-            BattleManager.Instance.OnPlayerActionSelected(_currentActor, action);
-        });
+        PlayerCharacter actor = _currentActor;
+        _buttonPunchTweens[index] = _buttons[index].transform.DOPunchScale(Vector3.one * 0.35f, 0.25f, 8, 0.5f)
+            .SetRecyclable(false).SetLink(_buttons[index].gameObject, LinkBehaviour.KillOnDisable)
+            .OnComplete(() => {
+                if (this == null || !isActiveAndEnabled || _isExternallySuspended || actor == null || _currentActor != actor) return;
+                BattleManager manager = BattleManager.Instance;
+                if (manager != null) manager.OnPlayerActionSelected(actor, action);
+            });
     }
     #endregion
 
@@ -316,30 +364,28 @@ public class BattleMenuUI : UIPanel
     {
         float slideOffsetY = ResolveMenuSlideOffsetY();
 
-        _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_baseMenuY + slideOffsetY, _menuSlideDuration).SetEase(Ease.OutCubic);
+        SlideMenu(_baseMenuY + slideOffsetY, Ease.OutCubic);
         BattleUIController.Instance?.MovePartyPanelUp(slideOffsetY, _menuSlideDuration);
     }
 
     private void SlideMenuDown()
     {
-        _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_baseMenuY, _menuSlideDuration).SetEase(Ease.InCubic);
+        SlideMenu(_baseMenuY, Ease.InCubic);
         BattleUIController.Instance?.ResetPartyPanelPosition(_menuSlideDuration);
     }
 
     private void HighlightButton(int index)
     {
+        if (_buttons == null) return;
         for (int i = 0; i < _buttons.Length; i++)
         {
             if (_buttons[i] == null) continue;
             
-            var img = _buttons[i].GetComponent<Image>();
-            img.DOKill();
-            
-            // 🚨 핵심 방어코드: 트윈 강제 종료 및 스케일 초기화
-            _buttons[i].transform.DOKill(true); 
-            _buttons[i].transform.localScale = Vector3.one; 
+            Image img = _buttonImages[i];
+            Kill(ref _buttonColorTweens[i]);
+            Kill(ref _buttonPunchTweens[i]);
+            _buttons[i].transform.localScale = Vector3.one;
+            if (img == null) continue;
 
             if (!_buttons[i].interactable)
             {
@@ -347,14 +393,30 @@ public class BattleMenuUI : UIPanel
             }
             else if (i == index)
             {
-                img.DOColor(_selectedColor, 0.1f);
-                _buttons[i].transform.DOPunchScale(Vector3.one * _bouncePunch, 0.3f, 8, 0.5f);
+                _buttonColorTweens[i] = TweenButtonColor(img, _selectedColor);
+                _buttonPunchTweens[i] = _buttons[i].transform.DOPunchScale(Vector3.one * _bouncePunch, 0.3f, 8, 0.5f)
+                    .SetRecyclable(false).SetLink(_buttons[i].gameObject, LinkBehaviour.KillOnDisable);
             }
             else
             {
-                img.DOColor(_normalColor, 0.1f);
+                _buttonColorTweens[i] = TweenButtonColor(img, _normalColor);
             }
         }
+    }
+
+    private static Tween TweenButtonColor(Image image, Color color)
+    {
+        return DOTween.To(() => image != null ? image.color : color,
+                value => { if (image != null) image.color = value; }, color, 0.1f)
+            .SetTarget(image).SetRecyclable(false).SetLink(image.gameObject, LinkBehaviour.KillOnDisable);
+    }
+
+    private void SlideMenu(float targetY, Ease ease)
+    {
+        Kill(ref _menuMoveTween);
+        if (_rectTransform == null) return;
+        _menuMoveTween = _rectTransform.DOAnchorPosY(targetY, _menuSlideDuration).SetEase(ease)
+            .SetRecyclable(false).SetLink(gameObject, LinkBehaviour.KillOnDisable);
     }
 
     private float ResolveMenuSlideOffsetY()

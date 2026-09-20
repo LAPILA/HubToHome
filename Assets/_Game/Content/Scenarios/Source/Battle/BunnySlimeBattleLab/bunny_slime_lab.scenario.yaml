@@ -1,0 +1,283 @@
+id: lab.bunny_slime.workshop
+title: "말랑한 공방 안전시험"
+primaryMode: battle
+openingModule: turn_qte
+memoryKey: lab.bunny_slime.workshop
+participants:
+  party: [lab.wizzel.front, lab.wizzel.support, lab.wizzel.striker, lab.wizzel.reserve1, lab.wizzel.reserve2, lab.wizzel.reserve3]
+  enemies: [lab.bunny_slime]
+dialogues:
+  - id: lab.bunny_slime.opening_a
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_OpeningA.asset"
+  - id: lab.bunny_slime.opening_b
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_OpeningB.asset"
+  - id: lab.bunny_slime.phase2
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_Phase2.asset"
+  - id: lab.bunny_slime.phase3
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_Phase3.asset"
+  - id: lab.bunny_slime.ending
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_Ending.asset"
+audioClips:
+  - id: lab.bunny_slime.music.phase1
+    audioClip: "Assets/_Game/Content/Audio/PIXABAY/BGM/kaazoom-run-and-catch-x27em-full-version-retro-platform-game-music-442980.mp3"
+  - id: lab.bunny_slime.music.phase2
+    audioClip: "Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta_part1.wav"
+  - id: lab.bunny_slime.music.phase3
+    audioClip: "Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta_part2.wav"
+  - id: lab.bunny_slime.music.ending
+    audioClip: "Assets/_Game/Content/Audio/AI/main_loop.wav"
+rules:
+  - id: lab.bunny_slime.opening
+    when:
+      event: battle.started
+      timing: immediate
+      once: battle
+    do:
+      sequence: lab.bunny_slime.opening
+  - id: lab.bunny_slime.phase2
+    name: "HP 66% · 회피 시험"
+    when:
+      eventId: participant.hp_changed
+      timing: after_current_action
+      once: session
+      conditions:
+        id: lab.bunny_slime.phase2.conditions
+        all:
+          - id: lab.bunny_slime.phase2.subject
+            condition: event.participant
+            params:
+              participant: lab.bunny_slime
+          - id: lab.bunny_slime.phase2.crossed
+            condition: number.crossed_below
+            params:
+              previousPath: event.previousRatio
+              currentPath: event.currentRatio
+              threshold: 0.66
+          - id: lab.bunny_slime.phase2.alive
+            condition: number.compare
+            params:
+              path: event.currentRatio
+              operator: greater
+              value: 0
+    do:
+      sequence: lab.bunny_slime.phase2
+  - id: lab.bunny_slime.phase3
+    name: "HP 33% · 연계 반격 시험"
+    when:
+      eventId: participant.hp_changed
+      timing: after_current_action
+      once: session
+      conditions:
+        id: lab.bunny_slime.phase3.conditions
+        all:
+          - id: lab.bunny_slime.phase3.subject
+            condition: event.participant
+            params:
+              participant: lab.bunny_slime
+          - id: lab.bunny_slime.phase3.crossed
+            condition: number.crossed_below
+            params:
+              previousPath: event.previousRatio
+              currentPath: event.currentRatio
+              threshold: 0.33
+          - id: lab.bunny_slime.phase3.alive
+            condition: number.compare
+            params:
+              path: event.currentRatio
+              operator: greater
+              value: 0
+    do:
+      sequence: lab.bunny_slime.phase3
+  - id: lab.bunny_slime.ending
+    when:
+      event: enemy.defeated
+      enemy: lab.bunny_slime
+      timing: after_current_action
+      once: battle
+    do:
+      sequence: lab.bunny_slime.ending
+sequences:
+  lab.bunny_slime.opening:
+    title: "안전시험 접수"
+    description: "버니슬라임과 위젤이 가벼운 시범을 보입니다. 연출용 공격은 HP를 바꾸지 않습니다."
+    usage: "전투 시작 직후, 첫 턴 이전"
+    status: ready
+    tags: [battle, tutorial, cinematic]
+    allowedPrimaryModes: [battle]
+    - parallel:
+        blockId: b5100000000000000000000000000001
+        designerLabel: "시험장 카메라와 음악"
+        children:
+          - cinematic.letterbox:
+              blockId: b5100000000000000000000000000002
+              mode: show
+              thickness: 0.1
+              duration: 0.2
+          - battle.camera.focus:
+              blockId: b5100000000000000000000000000003
+              subject: lab.bunny_slime
+              zoom: 5.2
+              duration: 0.3
+              style: gameplay_safe
+          - bgm.crossfade:
+              blockId: b5100000000000000000000000000004
+              clip: lab.bunny_slime.music.phase1
+              duration: 0.4
+    - dialogue.wait:
+        blockId: b5100000000000000000000000000005
+        designerLabel: "담당 시험관은 말랑합니다"
+        id: lab.bunny_slime.opening_a
+    - battle.actor.pose:
+        blockId: b5100000000000000000000000000006
+        actor: lab.wizzel.front
+        pose: ready
+        duration: 0.18
+    - battle.actor.fake_attack:
+        blockId: b5100000000000000000000000000007
+        designerLabel: "고무 도장 시범 · 실제 피해 없음"
+        note: "연출용 공격입니다. HP/AP 피해를 추가하지 않습니다."
+        actor: lab.bunny_slime
+        target: lab.wizzel.front
+        targetPose: guard
+        approach: 0.65
+        lunge: 0.18
+        hold: 0.06
+        recover: 0.22
+        impact: 0.25
+    - dialogue.wait:
+        blockId: b5100000000000000000000000000008
+        id: lab.bunny_slime.opening_b
+    - battle.actor.return_slots:
+        blockId: b5100000000000000000000000000009
+        duration: 0.25
+    - parallel:
+        blockId: b510000000000000000000000000000a
+        designerLabel: "첫 시험 시작"
+        children:
+          - battle.camera.reset:
+              blockId: b510000000000000000000000000000b
+              duration: 0.3
+              style: gameplay_safe
+          - cinematic.letterbox:
+              blockId: b510000000000000000000000000000c
+              mode: hide
+              duration: 0.2
+  lab.bunny_slime.phase2:
+    title: "두 번째 시험 · 탄성 과다"
+    description: "행동이 끝난 뒤 회피 위주 두 번째 단계를 알립니다."
+    usage: "버니슬라임 HP가 66% 이하로 내려가고 생존했을 때"
+    status: ready
+    tags: [battle, phase, dodge]
+    allowedPrimaryModes: [battle]
+    - parallel:
+        blockId: b5200000000000000000000000000001
+        children:
+          - cinematic.letterbox:
+              blockId: b5200000000000000000000000000002
+              mode: show
+              thickness: 0.08
+              duration: 0.15
+          - bgm.crossfade:
+              blockId: b5200000000000000000000000000003
+              clip: lab.bunny_slime.music.phase2
+              duration: 0.45
+          - battle.camera.focus:
+              blockId: b5200000000000000000000000000004
+              subject: lab.bunny_slime
+              zoom: 5.5
+              duration: 0.25
+              style: gameplay_safe
+    - dialogue.wait:
+        blockId: b5200000000000000000000000000005
+        id: lab.bunny_slime.phase2
+    - parallel:
+        blockId: b5200000000000000000000000000006
+        children:
+          - cinematic.letterbox:
+              blockId: b5200000000000000000000000000007
+              mode: hide
+              duration: 0.15
+          - battle.camera.reset:
+              blockId: b5200000000000000000000000000008
+              duration: 0.25
+              style: gameplay_safe
+  lab.bunny_slime.phase3:
+    title: "최종 시험 · 다 같이 반격"
+    description: "안전등 점멸 뒤 연계 반격 단계를 알립니다. 점멸 자체는 피해가 없습니다."
+    usage: "버니슬라임 HP가 33% 이하로 내려가고 생존했을 때"
+    status: ready
+    tags: [battle, phase, counter]
+    allowedPrimaryModes: [battle]
+    - screen.fade:
+        blockId: b5300000000000000000000000000001
+        designerLabel: "공방 안전등 짧은 점멸"
+        mode: out
+        color: white
+        duration: 0.06
+    - screen.fade:
+        blockId: b5300000000000000000000000000002
+        mode: in
+        color: white
+        duration: 0.12
+    - parallel:
+        blockId: b5300000000000000000000000000003
+        children:
+          - cinematic.letterbox:
+              blockId: b5300000000000000000000000000004
+              mode: show
+              thickness: 0.1
+              duration: 0.15
+          - bgm.crossfade:
+              blockId: b5300000000000000000000000000005
+              clip: lab.bunny_slime.music.phase3
+              duration: 0.45
+          - battle.camera.focus:
+              blockId: b5300000000000000000000000000006
+              subject: lab.bunny_slime
+              zoom: 5
+              duration: 0.25
+              style: gameplay_safe
+    - dialogue.wait:
+        blockId: b5300000000000000000000000000007
+        id: lab.bunny_slime.phase3
+    - parallel:
+        blockId: b5300000000000000000000000000008
+        children:
+          - cinematic.letterbox:
+              blockId: b5300000000000000000000000000009
+              mode: hide
+              duration: 0.15
+          - battle.camera.reset:
+              blockId: b530000000000000000000000000000a
+              duration: 0.25
+              style: gameplay_safe
+  lab.bunny_slime.ending:
+    title: "합격 도장"
+    description: "행동 마감 시 시험 결과 대화를 한 번 보여 줍니다. 쓰러진 적에게 추가 포즈를 요구하지 않습니다."
+    usage: "버니슬라임 격파 뒤 기존 전투 결과 화면 이전"
+    status: ready
+    tags: [battle, ending, dialogue]
+    allowedPrimaryModes: [battle]
+    - parallel:
+        blockId: b5400000000000000000000000000001
+        children:
+          - battle.camera.reset:
+              blockId: b5400000000000000000000000000002
+              duration: 0.25
+              style: gameplay_safe
+          - bgm.crossfade:
+              blockId: b5400000000000000000000000000003
+              clip: lab.bunny_slime.music.ending
+              duration: 0.5
+          - cinematic.letterbox:
+              blockId: b5400000000000000000000000000004
+              mode: show
+              thickness: 0.08
+              duration: 0.15
+    - dialogue.wait:
+        blockId: b5400000000000000000000000000005
+        id: lab.bunny_slime.ending
+    - cinematic.letterbox:
+        blockId: b5400000000000000000000000000006
+        mode: hide
+        duration: 0.15

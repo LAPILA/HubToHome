@@ -313,7 +313,7 @@ MonoBehaviour:
   _hurtFlashDuration: 0.05
   _hurtShakeDuration: 0.3
   _hurtShakeStrength: 0.15
-  _hurtFlashColor: {r: 1, g: 0, b: 0, a: 1}
+  _hurtFlashColor: {r: 1, g: 1, b: 1, a: 1}
   _dieFlashDuration: 0.12
   _dieFlashColor: {r: 1, g: 1, b: 1, a: 1}
   _defenseAttemptCooldown: 0.2

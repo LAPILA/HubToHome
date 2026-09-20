@@ -409,7 +409,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyCharacter
   Data: {fileID: 11400000, guid: 2ecad76fe6f59d642b2989116b593269, type: 2}
   _isBattleMode: 1
-  _hurtFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
+  _hurtFlashColor: {r: 1, g: 1, b: 1, a: 1}
   _flashDuration: 0.08
   _shakeStrength: 0.15
 --- !u!114 &8575338402871891709

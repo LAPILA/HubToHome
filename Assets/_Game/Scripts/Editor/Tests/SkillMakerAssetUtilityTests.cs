@@ -101,6 +101,35 @@ namespace HubToHome.EditorTools.SkillMaker
         }
 
         [Test]
+        public void CreateCanInitializeCounterTemplateBeforeFirstSave()
+        {
+            bool wasTransientDuringInitialization = false;
+            SkillData skill = SkillMakerAssetUtility.CreateAtPath(_folder + "/Counter.asset", created =>
+            {
+                wasTransientDuringInitialization = !EditorUtility.IsPersistent(created);
+                created.UsageProfile = SkillUsageProfile.EnemyOnly;
+                created.ActionTimeline = EnemyAttackTemplateFactory.CreateCounterableStrike();
+            });
+
+            Assert.That(wasTransientDuringInitialization, Is.True);
+            Assert.That(EditorUtility.IsPersistent(skill), Is.True);
+            Assert.That(skill.UsageProfile, Is.EqualTo(SkillUsageProfile.EnemyOnly));
+            Assert.That(((Action_DefenseWindow)skill.ActionTimeline[1]).Requirement, Is.EqualTo(DefenseRequirement.Counterable));
+            Assert.That(EditorUtility.IsDirty(skill), Is.False);
+        }
+
+        [Test]
+        public void FailedTemplateInitializationDoesNotCreatePartialSkillAsset()
+        {
+            string path = _folder + "/Failed.asset";
+            Assert.Throws<InvalidOperationException>(() => SkillMakerAssetUtility.CreateAtPath(path,
+                _ => throw new InvalidOperationException("template failure")));
+
+            Assert.That(AssetDatabase.LoadAssetAtPath<SkillData>(path), Is.Null);
+            Assert.That(File.Exists(Path.GetFullPath(Path.Combine(Application.dataPath, "..", path))), Is.False);
+        }
+
+        [Test]
         public void DuplicatePreservesManagedReferenceBlocksWithoutSharingNestedLists()
         {
             SkillData source = SkillMakerAssetUtility.CreateAtPath(_folder + "/Source.asset");

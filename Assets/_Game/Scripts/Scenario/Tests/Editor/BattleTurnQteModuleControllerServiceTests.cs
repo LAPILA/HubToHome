@@ -9,6 +9,229 @@ using UnityEngine;
 
 public class BattleTurnQteModuleControllerServiceTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void EnemyCounterInterruption_SkipsRemainingBlocksAndCompletesTurnEvenOnLethalCounter(bool lethal)
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            SkillData skill = ScriptableObject.CreateInstance<SkillData>();
+            try
+            {
+                RecordingSkillActionBlock.Reset();
+                int playerHp = fixture.Player.CurrentHP;
+                int playerAp = fixture.Player.CurrentAP;
+                int playerActions = 0;
+                fixture.Player.OnActionExecuted += () => playerActions++;
+                skill.ActionTimeline.Add(new InterruptingSkillActionBlock
+                {
+                    OnExecute = context =>
+                    {
+                        Assert.That(context.LinkCounterService, Is.Not.Null);
+                        context.AttackInterruptedByCounter = true;
+                        context.CurrentDamageMultiplier = 0f;
+                        if (lethal)
+                            fixture.Enemy.TakePureDamage(fixture.Enemy.CurrentHP);
+                    }
+                });
+                skill.ActionTimeline.Add(new RecordingSkillActionBlock());
+                fixture.Host.QueueEnemyAction(EnemyAction.UseStrongSkill);
+                fixture.Host.ReservedEnemyActions[fixture.Enemy] = new BattleQueuedEnemyAction
+                {
+                    Action = EnemyAction.UseStrongSkill,
+                    Skill = skill,
+                    TurnsRemaining = 1
+                };
+                fixture.Host.Victory = lethal;
+                fixture.Host.ChangeBattleState(BattleState.EnemyAction);
+
+                RunToCompletion(new BattleTurnQteModuleControllerService(fixture.Host).RunEnemyAction());
+
+                Assert.That(RecordingSkillActionBlock.Calls, Is.Zero);
+                Assert.That(fixture.Player.CurrentHP, Is.EqualTo(playerHp));
+                Assert.That(fixture.Player.CurrentAP, Is.EqualTo(playerAp));
+                Assert.That(playerActions, Is.Zero);
+                Assert.That(fixture.Host.FlushCalls, Is.EqualTo(1));
+                Assert.That(fixture.Host.CurrentBattleState,
+                    Is.EqualTo(lethal ? BattleState.BattleEnd : BattleState.TurnCalc));
+                Assert.That(fixture.CameraController.IsFramingTargets, Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(skill);
+            }
+        }
+    }
+
+    [TestCase(DefenseInput.Dodge)]
+    [TestCase(DefenseInput.Counter)]
+    public void SuccessfulDodgeOrCounter_PreventsDamageWithoutPerfectGuardAp(DefenseInput input)
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            fixture.Player.ConsumeAP(fixture.Player.CurrentAP);
+            int hp = fixture.Player.CurrentHP;
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            var result = new DefenseQteResult(DefenseInputReadStatus.Valid, input,
+                QTEManager.QTEGrade.Perfect, DefenseOutcome.Success,
+                DefenseRequirement.Counterable, 0.05f, true, true);
+            InvokePrivateApplyEnemyDefenseDamage(service, fixture.Enemy, fixture.Player, result, true);
+            typeof(BattleTurnQteModuleControllerService)
+                .GetMethod("ApplyPerfectParryReward", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(service, new object[] { fixture.Player, null, result });
+            Assert.That(fixture.Player.CurrentHP, Is.EqualTo(hp));
+            Assert.That(fixture.Player.CurrentAP, Is.Zero);
+            Assert.That(fixture.Host.ApNotifications, Is.Zero);
+        }
+    }
+
+    [TestCase(1)]
+    [TestCase(2)]
+    public void AdvanceTurn_StunSkipsExactlyItsRemainingTurns(int duration)
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            fixture.Player.TryApplyStatusEffect(new StunEffect(duration));
+            fixture.Host.TurnQueue.Add(fixture.Player);
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            for (int turn = 0; turn < duration; turn++)
+            {
+                fixture.Host.CurrentActorIndex = 0;
+                service.AdvanceTurn();
+                Assert.That(fixture.Host.PlayerTurnNotifications, Is.Zero);
+            }
+
+            Assert.That(fixture.Player.IsStunned, Is.False);
+            fixture.Host.CurrentActorIndex = 0;
+            service.AdvanceTurn();
+            Assert.That(fixture.Host.PlayerTurnNotifications, Is.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public void AdvanceTurn_SkippedStunnedTurnExpiresBleedWithoutActionDamage()
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            fixture.Player.TryApplyStatusEffect(new StunEffect(1));
+            fixture.Player.TryApplyStatusEffect(new BleedEffect(1));
+            int previousHp = fixture.Player.CurrentHP;
+            fixture.Host.TurnQueue.Add(fixture.Player);
+            new BattleTurnQteModuleControllerService(fixture.Host).AdvanceTurn();
+
+            Assert.That(fixture.Player.CurrentHP, Is.EqualTo(previousHp));
+            Assert.That(fixture.Player.HasEffect(StatusEffectIds.Bleed), Is.False);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ExecuteSkill_ActionNotificationAndFinalTurnBleedOnlyRunOnCompletion(bool cancelled)
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            SkillData skill = ScriptableObject.CreateInstance<SkillData>();
+            try
+            {
+                skill.SkillID = "bleed_completion";
+                skill.APCost = 0;
+                skill.TargetType = TargetAreaType.EnemyOnly;
+                skill.ActionTimeline.Add(new InterruptingSkillActionBlock
+                {
+                    OnExecute = context => context.StopTimelineExecution = cancelled
+                });
+                fixture.Player.TryApplyStatusEffect(new BleedEffect(1));
+                fixture.Player.ProcessEffects();
+                int previousHp = fixture.Player.CurrentHP;
+                int notifications = 0;
+                fixture.Player.OnActionExecuted += () => notifications++;
+
+                var service = new BattleTurnQteModuleControllerService(fixture.Host);
+                RunToCompletion(InvokePrivateExecuteSkill(service, fixture.Player, 0, skill));
+
+                Assert.That(notifications, Is.EqualTo(cancelled ? 0 : 1));
+                Assert.That(fixture.Player.CurrentHP, Is.EqualTo(cancelled ? previousHp : previousHp - Mathf.Max(1, fixture.Player.MaxHP / 100)));
+                Assert.That(fixture.Player.HasEffect(StatusEffectIds.Bleed), Is.EqualTo(cancelled));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(skill);
+            }
+        }
+    }
+
+    [Test]
+    public void ExecuteSkill_LethalBleedIsAppliedBeforeReserveWaveDecision()
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            SkillData skill = ScriptableObject.CreateInstance<SkillData>();
+            try
+            {
+                skill.SkillID = "lethal_bleed_completion";
+                skill.APCost = 0;
+                skill.TargetType = TargetAreaType.EnemyOnly;
+                skill.ActionTimeline.Add(new RecordingSkillActionBlock());
+                fixture.Player.TakePureDamage(fixture.Player.CurrentHP - 1);
+                fixture.Player.TryApplyStatusEffect(new BleedEffect(1));
+                fixture.Host.EvaluatePartySurvival = true;
+                fixture.Host.CanStartNextPartyWave = true;
+
+                RunToCompletion(InvokePrivateExecuteSkill(new BattleTurnQteModuleControllerService(fixture.Host), fixture.Player, 0, skill));
+
+                Assert.That(fixture.Player.IsAlive, Is.False);
+                Assert.That(fixture.Host.PartyWaveStartCalls, Is.EqualTo(1));
+                Assert.That(fixture.Host.CurrentBattleState, Is.Not.EqualTo(BattleState.BattleEnd));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(skill);
+            }
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void MoveBlock_CancellationStopsOnlyOwnedTweenAndClearsTrail(bool disposeRoutine)
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            CharacterGhostTrail trail = fixture.Enemy.gameObject.AddComponent<CharacterGhostTrail>();
+            bool active = true;
+            var context = new SkillContext
+            {
+                Actor = fixture.Enemy,
+                Targets = new List<CharacterBase> { fixture.Player },
+                IsExecutionActive = () => active
+            };
+            IEnumerator routine = new Action_Move { Destination = Action_Move.MoveDest.Center, Duration = 10f }.Execute(context);
+            Tween unrelated = null;
+            try
+            {
+                Assert.That(routine.MoveNext(), Is.True);
+                Assert.That(trail.enabled, Is.True);
+                unrelated = fixture.Enemy.transform.DOMove(Vector3.up, 20f).SetRecyclable(false);
+                if (disposeRoutine)
+                    (routine as IDisposable)?.Dispose();
+                else
+                {
+                    active = false;
+                    Assert.That(routine.MoveNext(), Is.False);
+                    Assert.That(context.StopTimelineExecution, Is.True);
+                }
+
+                Assert.That(trail.enabled, Is.False);
+                Assert.That(unrelated.IsActive(), Is.True);
+                Assert.That(DOTween.TweensByTarget(fixture.Enemy.transform).Count, Is.EqualTo(1));
+            }
+            finally
+            {
+                (routine as IDisposable)?.Dispose();
+                unrelated?.Kill();
+            }
+        }
+    }
+
     [Test]
     public void SelectPlayerAction_WhenEscapeIsDisabled_RejectsRunWithoutMutatingPendingState()
     {
@@ -583,7 +806,7 @@ public class BattleTurnQteModuleControllerServiceTests
             "ExecuteEnemySequenceSkill",
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.That(method, Is.Not.Null);
-        return (IEnumerator)method.Invoke(service, new object[] { actor, skill });
+        return (IEnumerator)method.Invoke(service, new object[] { actor, skill, null });
     }
 
     private static IEnumerator InvokePrivateExecuteSkill(
@@ -649,6 +872,10 @@ public class BattleTurnQteModuleControllerServiceTests
             typeof(CameraController)
                 .GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.Invoke(_cameraController, null);
+            // 이 fixture는 구형 동적 카메라 소유권/취소 계약을 계속 검사합니다.
+            // 고정 구도 기본값은 CameraPresentationTests에서 별도로 검사합니다.
+            typeof(CameraController).GetField("_staticBattlePresentation", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(_cameraController, false);
             _cameraController.SetDefaultTarget(_positionManagerObject.transform, true);
             _cameraController.ResetCamera(0f);
 
@@ -739,6 +966,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public int FlushCalls { get; private set; }
         public bool Victory { get; set; }
         public bool Defeat { get; set; }
+        public bool EvaluatePartySurvival { get; set; }
         public bool CanStartNextPartyWave { get; set; }
         public bool CanEscape { get; set; } = true;
         public bool ModuleActive { get; set; } = true;
@@ -777,6 +1005,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public CharacterBase LastDamageTarget { get; private set; }
         public int NarrationRequests { get; private set; }
         public int EnemyActionNotifications { get; private set; }
+        public int PlayerTurnNotifications { get; private set; }
         public BattleNarrationMessage LastNarration { get; private set; }
 
         public void QueueEnemyAction(EnemyAction action)
@@ -795,7 +1024,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public void StartTurnQteCombatLoop() { }
         public void ChangeBattleState(BattleState state) => CurrentBattleState = state;
         public bool CheckVictory() => Victory;
-        public bool CheckDefeat() => Defeat;
+        public bool CheckDefeat() => EvaluatePartySurvival ? _players.TrueForAll(player => !player.IsAlive) : Defeat;
         public bool TryStartNextPartyWave()
         {
             PartyWaveStartCalls++;
@@ -806,7 +1035,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public void ResetAllPlayerBattlePoses() { }
         public IEnumerator WaitForNarrationToFinish() { yield break; }
         public void TryRequestFlavorNarration() { }
-        public void NotifyPlayerTurnStarted(PlayerCharacter player) { }
+        public void NotifyPlayerTurnStarted(PlayerCharacter player) { PlayerTurnNotifications++; }
         public void NotifyEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType)
         {
             EnemyActionNotifications++;

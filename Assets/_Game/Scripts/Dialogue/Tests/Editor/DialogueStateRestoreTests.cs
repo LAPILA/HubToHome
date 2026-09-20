@@ -3,6 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using DG.Tweening;
 
 public sealed class DialogueStateRestoreTests
 {
@@ -129,6 +130,37 @@ public sealed class DialogueStateRestoreTests
         Assert.That(_manager.IsPlaying, Is.False);
         Assert.That(completionCount, Is.Zero);
         Assert.That(_state.CurrentState, Is.EqualTo(GameState.Exploration));
+    }
+
+    [Test]
+    public void FinishedPresentationCanBeHiddenOnlyByItsPlaybackGeneration()
+    {
+        SetPrivateField(_panel, "_canvasGroup", _panelObject.AddComponent<CanvasGroup>());
+        _manager.TryStartDialogue(_dialogue, null, null, null, out int generation);
+        _manager.EndDialogue();
+
+        Assert.That(_manager.IsPlaying, Is.False);
+        Assert.That(_manager.IsPresentationVisible, Is.True);
+        _manager.HideFinishedPresentation(generation - 1);
+        Assert.That(_manager.IsPresentationVisible, Is.True);
+        _manager.HideFinishedPresentation(generation);
+        Assert.That(_manager.IsPresentationVisible, Is.False);
+    }
+
+    [Test]
+    public void ReopeningPanelKillsPreviousCloseTween()
+    {
+        SetPrivateField(_panel, "_canvasGroup", _panelObject.AddComponent<CanvasGroup>());
+        _panel.OpenPanel();
+        _panel.ClosePanel();
+        Tween closeTween = (Tween)typeof(DialogueUI)
+            .GetField("_panelTween", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_panel);
+
+        _panel.OpenPanel();
+
+        Assert.That(closeTween.IsActive(), Is.False);
+        Assert.That(_panelObject.activeSelf, Is.True);
+        _panel.HideImmediate();
     }
 
     [Test]
@@ -279,9 +311,9 @@ public sealed class DialogueStateRestoreTests
         }
     }
 
-    private static void SetPrivateField<T>(DialogueManager target, string fieldName, T value)
+    private static void SetPrivateField<T>(object target, string fieldName, T value)
     {
-        FieldInfo field = typeof(DialogueManager).GetField(
+        FieldInfo field = target.GetType().GetField(
             fieldName,
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.That(field, Is.Not.Null, "Missing private field: " + fieldName);

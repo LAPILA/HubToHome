@@ -86,13 +86,13 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [Header("Action Offsets (Hardcoding Removed)")]
     [Tooltip("근접 공격 시 적 앞으로 이동할 오프셋 위치")]
     [SerializeField] private Vector3 _meleeAttackOffset = new Vector3(-1.8f, 0, 0);
-    [Tooltip("근접 공격 직전 뒤로 살짝 당기는 연출 오프셋")]
+    [Tooltip("레거시 호환용 오프셋. 기본 공격은 공격 중 추가 이동을 사용하지 않습니다.")]
     [SerializeField] private Vector3 _meleePullbackOffset = new Vector3(-0.5f, 0, 0);
 
     [Header("Enemy Action Timing")]
     [Tooltip("적이 공격 애니메이션을 시작한 뒤 실제 방어 QTE 판정이 유지되는 시간")]
     [SerializeField] private float _enemyDefenseQTEWindow = 0.8f;
-    [Tooltip("적 공격 애니메이션을 한 번만 보여주고 BattleIdle로 되돌리기까지의 시간")]
+    [Tooltip("적이 공격하기 전 준비 자세를 유지하는 시간. 이때도 Z/X/C 방어 입력을 받습니다.")]
     [SerializeField] private float _enemyAttackVisualDuration = 0.18f;
     [Tooltip("플레이어 기본공격이 실제 데미지를 적용하기까지의 시간")]
     [SerializeField] private float _playerAttackHitDelay = 0.03f;
@@ -161,6 +161,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private IBattleCinematicRunner _battleCinematicRunner;
     private IBattleTweenCinematicService _battleTweenCinematicService;
     private IBattleTurnQteModuleController _turnQteModuleController;
+    private BattleLinkCounterService _linkCounterService;
+    internal BattleLinkCounterService LinkCounterService =>
+        _linkCounterService ?? (_linkCounterService = new BattleLinkCounterService(this));
     private IBattleAimShooterModuleController _aimShooterModuleController;
     #endregion
 
@@ -352,7 +355,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _battleParticipantCommandRunner = new BattleParticipantCommandService(this);
         _battleTweenCinematicService = new BattleTweenCinematicService(this);
         _battleCinematicRunner = new BattleCinematicService(this, _battleTweenCinematicService);
-        _turnQteModuleController = new BattleTurnQteModuleControllerService(this);
+        _turnQteModuleController = new BattleTurnQteModuleControllerService(this, LinkCounterService);
         _aimShooterModuleController = new BattleAimShooterModuleController(BattleUIController.Instance);
         _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(
             scenarioData,
@@ -648,6 +651,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private void OnDestroy()
     {
         CancelPartyWaveTransition();
+        _linkCounterService?.CancelActive();
         _turnQteModuleController?.CancelActiveCameraPresentation();
         ClearBattleParticipantStatusEffects();
         BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
@@ -745,6 +749,21 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         }
 
         ChangeState(BattleState.TurnCalc);
+    }
+
+    public bool CanAcceptRealtimeDefenseInput
+    {
+        get
+        {
+            if (!IsTurnQteCombatInputActive()) return false;
+            if (CurrentState == BattleState.EnemyAction) return true;
+            if (CurrentState != BattleState.ActionExecute) return false;
+            // ActionExecute는 아군 공격에도 사용됩니다. 상태 이름만으로 방어를
+            // 허용하면 X가 아군 공격 이동/애니메이션을 덮어씁니다.
+            return (QTEManager.Instance != null && QTEManager.Instance.IsBattleDefenseActive)
+                || (_currentActorIndex >= 0 && _currentActorIndex < _turnQueue.Count
+                    && _turnQueue[_currentActorIndex] is EnemyCharacter enemy && enemy != null && enemy.IsAlive);
+        }
     }
 
     private bool IsTurnQteCombatInputActive()
@@ -1295,19 +1314,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     }
 private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action)
 {
-    if (enemy == null || enemy.Data == null) return null;
-    if (action == EnemyAction.UseSkill && enemy.Data.SkillList != null && enemy.Data.SkillList.Count > 0)
-    {
-        int rand = UnityEngine.Random.Range(0, enemy.Data.SkillList.Count);
-        return enemy.Data.SkillList[rand];
-    }
-    if (action == EnemyAction.UseStrongSkill && enemy.Data.StrongSkillList != null && enemy.Data.StrongSkillList.Count > 0)
-    {
-        int rand = UnityEngine.Random.Range(0, enemy.Data.StrongSkillList.Count);
-        return enemy.Data.StrongSkillList[rand];
-    }
-
-    return null;
+    return enemy != null ? enemy.SelectSkill(action) : null;
 }
 
     private int ResolveEnemyReturnMoveHash(EnemyCharacter enemy)
@@ -1355,6 +1362,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (enemy.Data.IsLargeEnemy) yield break;
 
         Vector3 centerPos = PositionManager.Instance != null ? PositionManager.Instance.GetCenterPos() : enemy.transform.position;
+        centerPos = PositionManager.HorizontalApproach(enemy, centerPos);
         enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
         
         SetGhostTrail(enemy, true);
@@ -1393,26 +1401,44 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             Actor = enemy,
             Targets = targets,
             CurrentDamageMultiplier = 1.0f,
-            IsPerfectQTE = false
+            IsPerfectQTE = false,
+            IsExecutionActive = IsTurnQteCombatInputActive,
+            LinkCounterService = LinkCounterService
         };
 
-        foreach (var block in skill.ActionTimeline)
+        try
         {
-            context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-            if (context.Targets.Count == 0 || context.StopTimelineExecution) break;
-            yield return StartCoroutine(block.Execute(context));
-            if (context.StopTimelineExecution) break;
-        }
+            foreach (var block in skill.ActionTimeline)
+            {
+                context.Targets.RemoveAll(t => t == null || !t.IsAlive);
+                if (context.Targets.Count == 0 || !context.CanContinueExecution) break;
+                if (block == null || block.Disabled) continue;
+                yield return StartCoroutine(context.ExecuteBlock(block, skill.ActionTimeline));
+                if (!context.CanContinueExecution) break;
+            }
 
-        if (Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
+            if (context.StopTimelineExecution || !IsTurnQteCombatInputActive())
+                yield break;
+            yield return context.WaitForPendingDefenseReaction();
+            yield return context.WaitForPendingDefensePostImpactDelay();
+            yield return context.ReturnDefender();
+            if (context.StopTimelineExecution || !IsTurnQteCombatInputActive())
+                yield break;
+            if (enemy != null && enemy.IsAlive && Vector3.Distance(enemy.transform.position, defaultPos) > 0.05f)
+            {
+                enemy.PlayBattleAnim(ResolveEnemyReturnMoveHash(enemy));
+                SetGhostTrail(enemy, true);
+                yield return enemy.transform.DOMove(defaultPos, 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
+                SetGhostTrail(enemy, false);
+            }
+
+            if (enemy != null && enemy.IsAlive)
+                enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+        }
+        finally
         {
-            enemy.PlayBattleAnim(ResolveEnemyReturnMoveHash(enemy));
-            SetGhostTrail(enemy, true);
-            yield return enemy.transform.DOMove(defaultPos, 0.25f).SetEase(Ease.OutQuad).WaitForCompletion();
-            SetGhostTrail(enemy, false);
+            context.CancelPendingDefenseReaction();
         }
-
-        enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
     }
     #endregion
 
@@ -1791,6 +1817,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (!_allowEscape) yield break;
         if (_isRunInProgress) yield break;
         _isRunInProgress = true;
+        _linkCounterService?.CancelActive();
         _turnQteModuleController?.CancelActiveCameraPresentation();
 
         RequestNarration(new BattleNarrationMessage("도망을 시도했다...", BattleNarrationStyle.Normal, BattleNarrationPriority.High, 0.2f, true));
@@ -1821,6 +1848,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             ? BattleEncounterOutcome.Victory
             : BattleEncounterOutcome.PartyDefeated;
         _isBattleEnding = true;
+        _linkCounterService?.CancelActive();
         _turnQteModuleController?.CancelActiveCameraPresentation();
         QTEManager.Instance?.ForceStop();
         CommitOverworldEncounterResult(outcome);
@@ -2031,6 +2059,10 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         if (outcome == BattleEncounterOutcome.PartyDefeated)
         {
+            // Cleanup clears the source; capture its opt-in policy before notifying it.
+            bool returnToSource = !_isDedicatedBattleScene
+                && _activeEncounterSource is IEncounterDefeatPolicy defeatPolicy
+                && defeatPolicy.ReturnToExplorationOnDefeat;
             if (_isDedicatedBattleScene)
             {
                 GlobalDataManager.Instance?.EndOverworldEnemyEncounterContext();
@@ -2040,6 +2072,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             {
                 CompleteSeamlessBattleCleanup(outcome, true);
             }
+
+            if (returnToSource)
+                yield break;
 
             GameOverUI gameOver = GameOverUI.EnsureGlobal();
             if (gameOver != null)
@@ -2098,6 +2133,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _isAbortCleanupInProgress = true;
         try
         {
+            _linkCounterService?.CancelActive();
             StopAllCoroutines();
             NotifyEncounterAbortedIfSupported(ResolveActiveEncounterPlayer());
             CompleteSeamlessBattleCleanup(BattleEncounterOutcome.Unknown, false);
@@ -2132,6 +2168,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         CancelPartyWaveTransition();
         bool isVictory = outcome == BattleEncounterOutcome.Victory;
+        _linkCounterService?.CancelActive();
         _turnQteModuleController?.CancelActiveCameraPresentation();
         ClearTurnQtePendingActionState();
         ClearBattleParticipantStatusEffects();

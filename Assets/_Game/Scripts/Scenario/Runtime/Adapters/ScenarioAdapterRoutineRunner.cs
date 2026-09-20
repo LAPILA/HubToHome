@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 
 public static class ScenarioAdapterRoutineRunner
 {
@@ -14,29 +15,52 @@ public static class ScenarioAdapterRoutineRunner
         }
 
         ActionExecutionHandle handle = context != null ? context.Handle : null;
-        while (handle == null || (!handle.IsDone && !handle.IsCancellationRequested))
+        var stack = new Stack<IEnumerator>();
+        stack.Push(routine);
+        try
         {
-            bool moved;
-            try
+            while (stack.Count > 0 && (handle == null || (!handle.IsDone && !handle.IsCancellationRequested)))
             {
-                moved = routine.MoveNext();
-            }
-            catch (Exception exception)
-            {
-                if (handle != null)
+                IEnumerator current = stack.Peek();
+                bool moved;
+                try
                 {
-                    handle.Fail(failureMessage, exception);
+                    moved = current.MoveNext();
+                }
+                catch (Exception exception)
+                {
+                    handle?.Fail(failureMessage, exception);
+                    yield break;
                 }
 
-                yield break;
-            }
+                if (!moved)
+                {
+                    Dispose(stack.Pop(), handle, failureMessage);
+                    continue;
+                }
 
-            if (!moved)
-            {
-                yield break;
+                if (current.Current is IEnumerator nested)
+                    stack.Push(nested);
+                else
+                    yield return current.Current;
             }
+        }
+        finally
+        {
+            while (stack.Count > 0)
+                Dispose(stack.Pop(), handle, failureMessage);
+        }
+    }
 
-            yield return routine.Current;
+    private static void Dispose(IEnumerator routine, ActionExecutionHandle handle, string failureMessage)
+    {
+        try
+        {
+            (routine as IDisposable)?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            handle?.Fail(failureMessage, exception);
         }
     }
 }

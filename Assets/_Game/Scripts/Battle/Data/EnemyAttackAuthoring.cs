@@ -208,6 +208,7 @@ public sealed class EnemyAttackAuthoringReport
 public static class EnemyAttackAuthoringAnalyzer
 {
     public const float MaxDefenseFeedbackDuration = 0.35f;
+    public const float RecommendedCounterReactionWindow = 0.35f;
 
     public static EnemyAttackAuthoringReport Analyze(SkillData skill)
     {
@@ -233,6 +234,10 @@ public static class EnemyAttackAuthoringAnalyzer
         }
 
         float cursor = 0f;
+        int pendingDefenseIndex = -1;
+        bool sawDefenseWindow = false;
+        int firstDamageBeforeDefenseIndex = -1;
+        Action_DefenseWindow synchronizedDefense = null;
         for (int i = 0; i < skill.ActionTimeline.Count; i++)
         {
             SkillActionBlock block = skill.ActionTimeline[i];
@@ -257,6 +262,21 @@ public static class EnemyAttackAuthoringAnalyzer
 
             SkillActionAuthoringTiming timing = block.GetAuthoringTiming();
             bool enabled = block.Enabled;
+            if (enabled && block is Action_DefenseWindow linkedDefense
+                && SkillContext.HasSynchronizedImpact(linkedDefense, skill.ActionTimeline))
+            {
+                synchronizedDefense = linkedDefense;
+                timing = SkillActionAuthoringTiming.Variable("다음 타격과 동시 실행", 0f);
+            }
+            else if (enabled && synchronizedDefense != null)
+            {
+                if (block is Action_Projectile projectile)
+                    timing = synchronizedDefense.CopyForImpact(projectile.FlightDuration).GetAuthoringTiming();
+                else if (block is Action_SequentialMelee melee)
+                    timing = SkillActionAuthoringTiming.Variable("대상별 방어·타격",
+                        synchronizedDefense.GetAuthoringTiming().Duration + Mathf.Max(0f, melee.DashSpeed) + 0.2f);
+                synchronizedDefense = null;
+            }
             float duration = enabled && timing.IsSupported ? timing.Duration : 0f;
             report.AddEntry(new EnemyAttackTimelineEntry(
                 i,
@@ -284,12 +304,39 @@ public static class EnemyAttackAuthoringAnalyzer
                 cursor += duration;
             }
 
-            if (block is Action_DefenseWindow)
+            if (block is Action_DefenseWindow defense)
+            {
                 report.DefenseWindowCount++;
+                sawDefenseWindow = true;
+                if (firstDamageBeforeDefenseIndex >= 0)
+                {
+                    AddWarning(report, "skill.enemy_attack.damage.before_defense", firstDamageBeforeDefenseIndex,
+                        "피해 블록이 실시간 방어 대응보다 앞에 있습니다. 방어 대응 → 공격 애니메이션/VFX → 피해 순서로 배치해야 Z/X/C가 타격을 막을 수 있습니다.");
+                    firstDamageBeforeDefenseIndex = -1;
+                }
+                if (defense.PatternMode != EnemyDefensePatternMode.TelegraphThenNextTurnWindow)
+                {
+                    if (pendingDefenseIndex >= 0)
+                        AddWarning(report, "skill.enemy_attack.defense.unconsumed_result", i,
+                            "앞선 방어 대응(" + (pendingDefenseIndex + 1) + "번)의 피해 배율을 소비하기 전에 새 방어창이 열립니다. 방어 대응 → 피해/투사체/연쇄 근접 순서를 사용하세요. 별도 Custom Block에서 소비한다면 의도한 구성인지 확인하세요.");
+                    pendingDefenseIndex = i;
+                }
+            }
             if (block is Action_Damage || block is Action_Projectile || block is Action_SequentialMelee)
+            {
                 report.DamageBlockCount++;
+                if (!sawDefenseWindow && firstDamageBeforeDefenseIndex < 0)
+                    firstDamageBeforeDefenseIndex = i;
+                pendingDefenseIndex = -1;
+            }
 
             ValidateBlock(block, i, report);
+        }
+
+        if (report.DamageBlockCount > 0 && !sawDefenseWindow)
+        {
+            AddWarning(report, "skill.enemy_attack.defense.missing", -1,
+                "피해를 주는 적 스킬에 실시간 방어 대응 블록이 없습니다. 적 공격은 플레이어 전용 QTE가 아니라 방어 대응 → 피해 순서를 사용하세요.");
         }
 
         report.EstimatedDuration = cursor;
@@ -326,6 +373,8 @@ public static class EnemyAttackAuthoringAnalyzer
 
         if (block is Action_QTE qte)
         {
+            AddError(report, "skill.enemy_attack.qte.unsupported", blockIndex,
+                "적 스킬에서는 플레이어 전용 QTE를 사용할 수 없습니다. 적 공격은 방어 대응 블록의 실시간 Z/X/C 판정을 사용하세요.");
             if (qte.TimeLimit <= 0f)
                 AddError(report, "skill.timeline.qte.duration.invalid", blockIndex, "QTE 제한 시간은 0보다 커야 합니다.");
             if (qte.Nodes == null || qte.Nodes.Count == 0)
@@ -374,8 +423,33 @@ public static class EnemyAttackAuthoringAnalyzer
         bool requiresTelegraphTime = defense.UseTelegraph
             && defense.PatternMode != EnemyDefensePatternMode.ImmediateReaction;
 
+        if (defense.Requirement == DefenseRequirement.Counterable)
+        {
+            if (!defense.UseTelegraph || defense.PatternMode == EnemyDefensePatternMode.ImmediateReaction)
+                AddWarning(report, "skill.enemy_attack.counter.telegraph.recommended", blockIndex,
+                    "연계 반격 공격은 가드할 수 없습니다. 전조 사용과 전조 후 판정 모드를 권장합니다. 별도 블록이 전조를 담당한다면 실제 재생 시 확인하세요.");
+            if (opensWindow && defense.TimeWindow > 0f && defense.TimeWindow < RecommendedCounterReactionWindow)
+                AddWarning(report, "skill.enemy_attack.counter.window.short", blockIndex,
+                    "연계 반격 판정창이 0.35초보다 짧습니다. 입력 안내를 읽고 회피/반격을 선택할 시간을 확인하세요.");
+            if (float.IsNaN(defense.CounterDamageMultiplier) || float.IsInfinity(defense.CounterDamageMultiplier)
+                || defense.CounterDamageMultiplier <= 0f)
+                AddError(report, "skill.enemy_attack.counter.damage.invalid", blockIndex,
+                    "연계 반격 피해 배율은 유효한 0 초과 숫자여야 합니다. 전열 생존 아군 각각의 기본 공격에 적용됩니다.");
+        }
+
         if (opensWindow && defense.TimeWindow <= 0f)
             AddError(report, "skill.enemy_attack.defense.window.invalid", blockIndex, "방어 판정 시간은 0보다 커야 합니다.");
+        if (opensWindow && defense.ImpactCuePrefab != null)
+        {
+            if (!defense.ImpactCuePrefab.TryGetComponent<BattleTelegraphCue>(out _))
+                AddError(report, "skill.enemy_attack.cue.component.missing", blockIndex,
+                    "타격 직전 전조 프리팹에는 BattleTelegraphCue가 필요합니다.");
+        }
+        if (opensWindow && (float.IsNaN(defense.AttackAnimationLeadTime)
+            || float.IsInfinity(defense.AttackAnimationLeadTime)
+            || defense.AttackAnimationLeadTime < 0f || defense.AttackAnimationLeadTime > defense.TimeWindow))
+            AddError(report, "skill.enemy_attack.animation.lead.invalid", blockIndex,
+                "공격 모션 시작 → 타격 시간은 0 이상, 방어 판정 시간 이하의 유효한 초여야 합니다.");
         if (defense.DefenseOpenDelay < 0f)
             AddError(report, "skill.enemy_attack.defense.open_delay.invalid", blockIndex, "판정창 직전 대기는 0 이상이어야 합니다.");
         if (defense.DelayAfter < 0f)
@@ -484,6 +558,28 @@ public static class EnemyAttackAuthoringAnalyzer
 
 public static class EnemyAttackTemplateFactory
 {
+    public static List<SkillActionBlock> CreateCounterableStrike()
+    {
+        List<SkillActionBlock> blocks = CreateTelegraphedStrike();
+        var movement = (Action_Move)blocks[0];
+        movement.Destination = Action_Move.MoveDest.Center;
+        movement.DesignerLabel = "전투 중앙으로 이동";
+        movement.EnemyHopHeight = 0.45f;
+        var defense = (Action_DefenseWindow)blocks[1];
+        defense.DesignerLabel = "특수공격: X 회피 / C 연계 반격";
+        defense.Note = "적은 전투 중앙에서 궁극기를 준비합니다. Z 가드 불가. C 성공은 남은 스킬을 중단하고 공격받은 한 명이 접근 → 패링 → 공격 → 양쪽 원위치 복귀합니다. 전조 Animator Trigger는 적의 실제 Trigger에 맞추세요.";
+        defense.Requirement = DefenseRequirement.Counterable;
+        defense.CounterDamageMultiplier = 1.5f;
+        defense.TelegraphDuration = 0.6f;
+        defense.TimeWindow = 0.8f;
+        defense.OverrideTimingProfile = false;
+        defense.FailDamageMultiplier = 1f;
+        var damage = (Action_Damage)blocks[2];
+        damage.DesignerLabel = "특수공격 원래 피해";
+        damage.SkillMultiplier = 1.8f;
+        return blocks;
+    }
+
     public static List<SkillActionBlock> CreateTelegraphedStrike()
     {
         return new List<SkillActionBlock>

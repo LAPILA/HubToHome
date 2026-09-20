@@ -26,6 +26,10 @@ namespace HubToHome.EditorTools.SkillMaker
         private SkillMakerBlockEditor _blockEditor;
         private SerializedObject _serialized;
         private EnemyAttackAuthoringReport _report;
+        private ProjectContentSnapshot _referenceSnapshot;
+        private ContentValidationReport _referenceReport;
+        private string _referenceError;
+        private int _catalogDirtyCount = -1;
         private ListView _skillList, _blockList;
         private ToolbarSearchField _search;
         private DropdownField _profileField;
@@ -311,6 +315,16 @@ namespace HubToHome.EditorTools.SkillMaker
             if (this == null || _skillList == null) return;
             _all.Clear();
             _all.AddRange(SkillMakerAssetUtility.FindSkills());
+            try
+            {
+                _referenceSnapshot = AssetDatabaseContentSource.CaptureSkills();
+                _referenceError = null;
+            }
+            catch (Exception exception)
+            {
+                _referenceSnapshot = null;
+                _referenceError = "스킬 참조 목록을 읽지 못했습니다: " + exception.GetBaseException().Message;
+            }
             FilterLibrary();
         }
 
@@ -378,6 +392,21 @@ namespace HubToHome.EditorTools.SkillMaker
             UpdateButtons();
             if (!exists) return;
             _dirtyCount = EditorUtility.GetDirtyCount(_skill);
+            _referenceReport = null;
+            if (_referenceSnapshot != null)
+            {
+                try
+                {
+                    _referenceReport = ProjectContentValidator.ValidateSkillReferences(_referenceSnapshot, _skill);
+                    _referenceError = null;
+                    _catalogDirtyCount = _referenceSnapshot.Catalog != null
+                        ? EditorUtility.GetDirtyCount(_referenceSnapshot.Catalog) : -1;
+                }
+                catch (Exception exception)
+                {
+                    _referenceError = "스킬 참조 검사에 실패했습니다: " + exception.GetBaseException().Message;
+                }
+            }
             _analysisError = null;
             try { _report = EnemyAttackAuthoringAnalyzer.Analyze(_skill); }
             catch (Exception exception)
@@ -425,13 +454,12 @@ namespace HubToHome.EditorTools.SkillMaker
             _validation.Clear();
             _validation.Add(Text("제작 상태 확인", "sm-detail-title"));
             _validation.Add(new HelpBox("데이터 검사이며 전투 실행 검증은 아닙니다. 가변 시간은 +, 지원하지 않는 블록 시간은 ?로 표시됩니다.", HelpBoxMessageType.Info));
+            DrawReferenceValidation();
             if (_report == null)
             {
                 _validation.Add(new HelpBox(_analysisError, HelpBoxMessageType.Error));
                 return;
             }
-            if (string.IsNullOrWhiteSpace(_skill.SkillID))
-                _validation.Add(new HelpBox("고유 ID가 비어 있습니다. 기본 정보에서 입력하세요.", HelpBoxMessageType.Error));
             if (_skill.APCost < 0)
                 _validation.Add(new HelpBox("AP 소모량은 0 이상이어야 합니다.", HelpBoxMessageType.Error));
             if (_report.Issues.Count == 0)
@@ -456,8 +484,39 @@ namespace HubToHome.EditorTools.SkillMaker
             _validation.Add(new HelpBox("QTE 배율은 다음 피해 블록에서 소비됩니다. 방어창 누락·공통 퍼펙트 구간·상태이상 ID 등의 기존 검사 사각지대는 별도 확인이 필요합니다. 이 창은 스킬 수치를 자동 수정하지 않습니다.", HelpBoxMessageType.Warning));
         }
 
+        private void DrawReferenceValidation()
+        {
+            _validation.Add(Text("ID · 저장 복원용 카탈로그", "sm-detail-title"));
+            _validation.Add(new HelpBox("콘텐츠 검사의 기존 ID·카탈로그 규칙을 사용합니다. 선택한 스킬과 공유 스킬 카탈로그의 문제를 표시하며 자동 수정하지 않습니다.", HelpBoxMessageType.Info));
+            Button("참조 목록 다시 검사", ScheduleRefresh, _validation);
+            Button("프로젝트 콘텐츠 검사 열기", () => GetWindow<ContentValidationWindow>("콘텐츠 검사").Show(), _validation);
+            if (_referenceReport == null)
+            {
+                _validation.Add(new HelpBox(_referenceError ?? "참조 목록을 불러오는 중입니다. 갱신되지 않으면 다시 검사하세요.", HelpBoxMessageType.Warning));
+                return;
+            }
+            if (_referenceReport.Issues.Count == 0)
+                _validation.Add(new HelpBox("선택한 스킬의 ID와 카탈로그 등록을 확인했습니다.", HelpBoxMessageType.Info));
+            foreach (ContentValidationIssue issue in _referenceReport.Issues)
+            {
+                string guidance = issue.Code == "skill.id.duplicate" ? "같은 ID를 사용하는 스킬이 있습니다."
+                    : issue.Code == "skill.id.missing" ? "스킬의 고유 ID를 입력하세요."
+                    : issue.Code == "skill.id.invalid" ? "고유 ID의 형식을 확인하세요."
+                    : issue.Code == "catalog.skill.missing" ? "이 스킬을 저장 복원용 콘텐츠 카탈로그에 등록하세요."
+                    : "공유 스킬 카탈로그를 확인하세요.";
+                _validation.Add(new HelpBox(guidance + "\n" + issue.Message,
+                    issue.Severity == ContentValidationSeverity.Error ? HelpBoxMessageType.Error : HelpBoxMessageType.Warning));
+                if (issue.Context != null)
+                {
+                    UnityEngine.Object target = issue.Context;
+                    Button("해당 자산 위치", () => EditorGUIUtility.PingObject(target), _validation);
+                }
+            }
+        }
+
         private void ShowPage(int page)
         {
+            bool checkReferences = page == 2 && _page != page;
             _page = page;
             if (_panels == null) return;
             for (int i = 0; i < _panels.Length; i++)
@@ -465,6 +524,7 @@ namespace HubToHome.EditorTools.SkillMaker
                 _tabs[i].EnableInClassList("is-selected", i == page);
                 _panels[i].style.display = i == page ? DisplayStyle.Flex : DisplayStyle.None;
             }
+            if (checkReferences) ScheduleDetails();
         }
 
         private void UpdateBlockSelection()
@@ -505,9 +565,34 @@ namespace HubToHome.EditorTools.SkillMaker
         private void CreateSkill()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
-            string path = EditorUtility.SaveFilePanelInProject("새 스킬", "Skill_New", "asset", "콘텐츠 폴더에 새 스킬을 만듭니다.", "Assets/_Game/Content/Skills");
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("빈 스킬"), false, () => CreateSkillAtSelectedPath(false, false));
+            menu.AddItem(new GUIContent("적 공격/일반 공격 (Z · X)"), false, () => CreateSkillAtSelectedPath(true, false));
+            menu.AddItem(new GUIContent("적 공격/연계 반격 공격 (X · C)"), false, () => CreateSkillAtSelectedPath(true, true));
+            menu.ShowAsContext();
+        }
+
+        private void CreateSkillAtSelectedPath(bool enemyTemplate, bool counterable)
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            string name = !enemyTemplate ? "Skill_New" : counterable ? "Skill_Enemy_LinkCounter" : "Skill_Enemy_Strike";
+            string path = EditorUtility.SaveFilePanelInProject("새 스킬", name, "asset", "콘텐츠 폴더에 독립된 새 스킬을 만듭니다. 기존 스킬은 변경하지 않습니다.", "Assets/_Game/Content/Skills");
             if (string.IsNullOrEmpty(path)) return;
-            Run(() => RevealCreated(SkillMakerAssetUtility.CreateAtPath(path)), "새 스킬을 만들었습니다. 기본 정보부터 입력하세요.");
+            Run(() => RevealCreated(SkillMakerAssetUtility.CreateAtPath(path, skill =>
+            {
+                if (!enemyTemplate) return;
+                skill.UsageProfile = SkillUsageProfile.EnemyOnly;
+                skill.APCost = 0;
+                skill.TargetType = TargetAreaType.EnemyOnly;
+                skill.IsAoE = false;
+                skill.SkillName = counterable ? "연계 반격 기회" : "전조 공격";
+                skill.Description = counterable ? "가드 불가. 회피하거나 연계 반격으로 대응합니다." : "가드 또는 회피로 대응합니다.";
+                skill.ActionTimeline = counterable
+                    ? EnemyAttackTemplateFactory.CreateCounterableStrike()
+                    : EnemyAttackTemplateFactory.CreateTelegraphedStrike();
+            })), enemyTemplate
+                ? "새 적 공격 템플릿을 만들었습니다. 방어 대응 블록의 전조·공격 애니메이션 이름을 적 Animator에 맞추고 EnemyData의 스킬 목록에 연결하세요."
+                : "새 스킬을 만들었습니다. 기본 정보부터 입력하세요.");
         }
 
         private void DuplicateSkill()
@@ -607,6 +692,9 @@ namespace HubToHome.EditorTools.SkillMaker
                 ScheduleDetails();
             }
             else if (_skill == null && _serialized != null) SelectSkill(null);
+            if (_skill != null && _referenceSnapshot?.Catalog != null
+                && EditorUtility.GetDirtyCount(_referenceSnapshot.Catalog) != _catalogDirtyCount)
+                ScheduleDetails();
         }
 
         private void ScheduleRefresh()

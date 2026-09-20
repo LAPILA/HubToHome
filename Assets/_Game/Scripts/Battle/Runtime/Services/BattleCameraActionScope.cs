@@ -30,6 +30,7 @@ public sealed class BattleCameraActionScope : IDisposable
     {
         CameraController controller = CameraController.Instance;
         if (controller == null
+            || controller.IsStaticBattlePresentation
             || !controller.TryFrameBattleTargets(targets, out CameraCommandToken token, out _))
         {
             return new BattleCameraActionScope(null, default, resetDuration);

@@ -53,6 +53,17 @@ public sealed class BattleUIControllerAccessibilityTests
         Assert.That(rect.anchoredPosition, Is.EqualTo(origin));
     }
 
+    [Test]
+    public void ScenarioFlashReplacement_KillsPreviousSequenceEvenWithCustomTarget()
+    {
+        BattleUIController controller = _root.AddComponent<BattleUIController>();
+        Sequence first = controller.PlayScenarioUiFlash(Color.white, 1f, 1f, new object());
+        Sequence second = controller.PlayScenarioUiFlash(Color.red, 1f, 1f, new object());
+        Assert.That(first.IsActive(), Is.False);
+        Assert.That(second.IsActive(), Is.True);
+        second.Kill(false);
+    }
+
     private sealed class FixedFlashScaleProvider : IScreenFlashScaleProvider
     {
         public FixedFlashScaleProvider(float scale)

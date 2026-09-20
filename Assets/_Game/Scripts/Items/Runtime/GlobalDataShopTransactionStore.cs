@@ -1,6 +1,6 @@
 using System;
 
-public sealed class GlobalDataShopTransactionStore : IShopTransactionStore
+public sealed class GlobalDataShopTransactionStore : IShopRecoveryStore
 {
     private readonly GlobalDataManager _global;
 
@@ -10,6 +10,16 @@ public sealed class GlobalDataShopTransactionStore : IShopTransactionStore
     }
 
     public int Money => _global.Money;
+
+    public PartyVitalsRestoreEvaluation EvaluatePartyVitalsRestore(bool restoreHp, bool restoreAp)
+    {
+        return _global.EvaluatePartyVitalsRestore(restoreHp, restoreAp);
+    }
+
+    public int RestorePartyVitals(bool restoreHp, bool restoreAp)
+    {
+        return _global.RestorePartyVitals(restoreHp, restoreAp);
+    }
 
     public bool IsItemRegistered(ItemData item)
     {

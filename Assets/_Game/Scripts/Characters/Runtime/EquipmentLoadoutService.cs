@@ -100,7 +100,7 @@ public static class EquipmentLoadoutService
             return Failed(EquipmentChangeStatus.NotRegistered, slot, "장비가 콘텐츠 카탈로그에 등록되지 않았습니다.");
         if (!equipment.CanEquip(character.CharacterDataID))
             return Failed(EquipmentChangeStatus.CharacterRestricted, slot, "이 캐릭터는 해당 장비를 사용할 수 없습니다.");
-        if (global == null || global.GetEquipmentCount(equipmentId) <= CountEquipped(global.Party, equipmentId, character, slot))
+        if (GetAvailableCount(global, character, slot, equipmentId) <= 0)
             return Failed(EquipmentChangeStatus.NotOwned, slot, "사용 가능한 장비 수량이 없습니다.");
 
         NormalizeSlots(character);
@@ -148,15 +148,35 @@ public static class EquipmentLoadoutService
         if (character == null)
             return modifiers;
 
-        NormalizeSlots(character);
-        for (int i = 0; i < SlotCount; i++)
+        // 조회/회복 사전 평가에서도 사용되므로 슬롯 데이터를 정규화하거나 수정하지 않습니다.
+        IReadOnlyList<string> equippedIds = character.EquippedEquipmentIDs;
+        int count = equippedIds != null ? Math.Min(SlotCount, equippedIds.Count) : 0;
+        for (int i = 0; i < count; i++)
         {
-            EquipmentData equipment = EquipmentDatabase.FindById(character.EquippedEquipmentIDs[i]);
+            EquipmentData equipment = EquipmentDatabase.FindById(equippedIds[i]);
             if (equipment != null)
                 equipment.AppendStatModifiers(modifiers);
         }
 
         return modifiers;
+    }
+
+    /// <summary>현재 캐릭터의 대상 슬롯은 반환 가능한 수량에 포함합니다.</summary>
+    public static int GetAvailableCount(
+        GlobalDataManager global,
+        CharacterSaveData character,
+        EquipmentSlot slot,
+        string equipmentId)
+    {
+        if (global == null || character == null || !TryGetSlotIndex(slot, out _))
+            return 0;
+
+        string normalizedId = NormalizeId(equipmentId);
+        if (string.IsNullOrEmpty(normalizedId))
+            return 0;
+
+        return Math.Max(0, global.GetEquipmentCount(normalizedId)
+            - CountEquipped(global.Party, normalizedId, character, slot));
     }
 
     public static bool TryGetSlotIndex(EquipmentSlot slot, out int index)

@@ -5,10 +5,12 @@ using System.Collections.Generic;
 public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
 {
     private readonly BattleManager _battleManager;
+    private readonly BattleLinkCounterService _linkCounterService;
 
     public BattleSkillTimelineRunner(BattleManager battleManager)
     {
         _battleManager = battleManager;
+        _linkCounterService = battleManager != null ? battleManager.LinkCounterService : null;
     }
 
     public IEnumerator PlaySkillTimeline(
@@ -51,82 +53,116 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
             Targets = targets,
             CurrentDamageMultiplier = 1.0f,
             IsPerfectQTE = false,
+            LinkCounterService = _linkCounterService,
             IsExecutionActive = () => handle == null
                 || (!handle.IsDone && !handle.IsCancellationRequested)
         };
 
-        if (skill.ActionTimeline == null)
+        try
         {
-            yield break;
-        }
-
-        for (int i = 0; i < skill.ActionTimeline.Count; i++)
-        {
-            if (handle != null && (handle.IsDone || handle.IsCancellationRequested))
+            if (skill.ActionTimeline == null)
             {
                 yield break;
             }
 
-            skillContext.Targets.RemoveAll(target => target == null || !target.IsAlive);
-            if (skillContext.Targets.Count == 0 || skillContext.StopTimelineExecution)
+            for (int i = 0; i < skill.ActionTimeline.Count; i++)
             {
-                yield break;
-            }
-
-            SkillActionBlock block = skill.ActionTimeline[i];
-            if (block == null)
-            {
-                continue;
-            }
-
-            if (block.Disabled)
-            {
-                continue;
-            }
-
-            IEnumerator routine;
-            try
-            {
-                routine = block.Execute(skillContext);
-            }
-            catch (Exception exception)
-            {
-                Fail(handle, "battle.skill.timeline block failed to start.", exception);
-                yield break;
-            }
-
-            try
-            {
-                while (routine != null)
+                if (handle != null && (handle.IsDone || handle.IsCancellationRequested))
                 {
-                    if (handle != null && (handle.IsDone || handle.IsCancellationRequested))
-                        yield break;
-
-                    bool moved;
-                    try
-                    {
-                        moved = routine.MoveNext();
-                    }
-                    catch (Exception exception)
-                    {
-                        Fail(handle, "battle.skill.timeline block threw.", exception);
-                        yield break;
-                    }
-
-                    if (!moved)
-                        break;
-
-                    yield return routine.Current;
+                    yield break;
                 }
-            }
-            finally
-            {
-                (routine as IDisposable)?.Dispose();
+
+                skillContext.Targets.RemoveAll(target => target == null || !target.IsAlive);
+                if (skillContext.Targets.Count == 0 || !skillContext.CanContinueExecution)
+                {
+                    yield break;
+                }
+
+                SkillActionBlock block = skill.ActionTimeline[i];
+                if (block == null)
+                {
+                    continue;
+                }
+
+                if (block.Disabled)
+                {
+                    continue;
+                }
+
+                IEnumerator routine;
+                try
+                {
+                    routine = skillContext.ExecuteBlock(block, skill.ActionTimeline);
+                }
+                catch (Exception exception)
+                {
+                    Fail(handle, "battle.skill.timeline block failed to start.", exception);
+                    yield break;
+                }
+
+                try
+                {
+                    while (routine != null)
+                    {
+                        if (handle != null && (handle.IsDone || handle.IsCancellationRequested))
+                            yield break;
+
+                        bool moved;
+                        try
+                        {
+                            moved = routine.MoveNext();
+                        }
+                        catch (Exception exception)
+                        {
+                            Fail(handle, "battle.skill.timeline block threw.", exception);
+                            yield break;
+                        }
+
+                        if (!moved)
+                            break;
+
+                        yield return routine.Current;
+                    }
+                }
+                finally
+                {
+                    (routine as IDisposable)?.Dispose();
+                }
+
+                if (skillContext.StopTimelineExecution)
+                {
+                    yield break;
+                }
+                if (skillContext.AttackInterruptedByCounter) break;
             }
 
-            if (skillContext.StopTimelineExecution)
+            // 방어 결과 모션도 피해/상태 소비자 뒤에 끝낸 뒤 포즈를 정리합니다.
+            // 소비자가 없는 시네리오 호출에서는 여기서 안전망으로 소비합니다.
+            yield return skillContext.WaitForPendingDefenseReaction();
+            // 방어창의 정리 시간은 피해/상태 소비자 뒤에 적용됩니다. 소비자가 없는
+            // 시네리오 호출에서도 남은 정리 시간을 버리지 않습니다.
+            yield return skillContext.WaitForPendingDefensePostImpactDelay();
+            yield return skillContext.ReturnDefender();
+        }
+        finally
+        {
+            if (skillContext.ActiveSkillQte != null && !skillContext.ActiveSkillQte.IsDone)
+                QTEManager.Instance?.Cancel(skillContext.ActiveSkillQte);
+            skillContext.CancelPendingDefenseReaction();
+            if (skillContext.Actor is EnemyCharacter)
             {
-                yield break;
+                for (int i = 0; i < skillContext.Targets.Count; i++)
+                {
+                    CharacterBase target = skillContext.Targets[i];
+                    // 씬 전환/사망 정리 중 파괴된 CharacterBase는 C# 참조가
+                    // 남아 있을 수 있으므로 Unity null 판정 후에만 접근합니다.
+                    if (target == null)
+                        continue;
+
+                    PlayerController controller = target.GetComponent<PlayerController>();
+                    if (controller != null)
+                        controller.CloseDefenseInputWindow();
+                }
             }
         }
     }

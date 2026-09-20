@@ -78,6 +78,9 @@ namespace HubToHome.EditorTools.SkillMaker
                 return;
             }
 
+            if (_skill.ActionTimeline[index] is Action_DefenseWindow defense)
+                EditorGUILayout.HelpBox(GetDefenseAuthoringHelp(defense.Requirement), MessageType.Info);
+
             EnsureTree();
             PropertyTree drawingTree = _tree;
             SkillData drawingSkill = _skill;
@@ -226,10 +229,24 @@ namespace HubToHome.EditorTools.SkillMaker
             if (typeof(Action_ApplyStatus).IsAssignableFrom(type)) return "상태이상";
             if (typeof(Action_QTE).IsAssignableFrom(type)) return "QTE";
             if (typeof(Action_VFX).IsAssignableFrom(type)) return "VFX";
-            if (typeof(Action_DefenseWindow).IsAssignableFrom(type)) return "방어/패링";
+            if (typeof(Action_DefenseWindow).IsAssignableFrom(type)) return "방어 대응";
             if (typeof(Action_Projectile).IsAssignableFrom(type)) return "투사체";
             if (typeof(Action_SequentialMelee).IsAssignableFrom(type)) return "연쇄 근접";
             return type.Name.Replace("Action_", string.Empty);
+        }
+
+        internal static string GetDefenseAuthoringHelp(DefenseRequirement requirement)
+        {
+            const string timing = "\n판정 시간은 입력 시작부터 타격까지의 시간입니다. 저스트 구간은 공통 설정 또는 개별 판정 구간의 첫 값, 회피/반격 구간은 QTEManager 공통 설정을 사용합니다. 모든 구간은 난도 배율을 적용합니다.";
+            if (requirement == DefenseRequirement.Counterable)
+                return "연계 반격 공격: Z 가드 불가 / X 회피 / C 연계 반격. 반격 피해 배율은 전열 생존 아군 각각의 기본 공격에 적용됩니다."
+                    + "\n접근 → 전조 포함 방어 대응 → 피해 → 원위치 복귀 순서로 배치하세요. C 성공 시 남은 타임라인을 생략하고 공격받은 한 명이 접근 → 패링 → 공격한 뒤 양쪽 복귀합니다. 다른 아군은 이동하지 않습니다."
+                    + "\n전조와 충분한 판정 시간을 제공하세요. 일반 강공격이 자동으로 반격 공격이 되지는 않습니다." + timing;
+            if (requirement == DefenseRequirement.DodgeOnly || requirement == DefenseRequirement.JumpOnly
+                || requirement == DefenseRequirement.DodgeOrJump)
+                return "현재 방어 모드에서는 X 회피 전용입니다. Z 가드와 C 반격은 불가합니다. 기존 점프 요구 값은 자산 호환을 위해 유지됩니다." + timing;
+            return "일반 공격: Z를 누르고 있으면 가드, 타격 직전 새로 누르면 저스트 가드 / X 회피 / C 반격 불가."
+                + "\nC 반격 기회를 만들려면 공격 대응 방식에서 ‘반격 가능 특수공격 (회피 / 연계 반격)’을 선택하세요. 기존 BAD/Great/Good 설정은 구형 방어 모드용입니다." + timing;
         }
 
         private int Count => _skill != null && _skill.ActionTimeline != null ? _skill.ActionTimeline.Count : 0;

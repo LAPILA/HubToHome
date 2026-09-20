@@ -5,6 +5,42 @@ using UnityEngine;
 
 public class ScenarioSkillTimelineAdapterTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BattleSkillTimeline_CancellationAndDirectorDisposalReleaseNestedRunner(bool disposeDirector)
+    {
+        var registry = new ActionAdapterRegistry();
+        registry.Register(new BattleSkillTimelineActionAdapter());
+        var runner = new FinalizingSkillTimelineRunner();
+        var context = new ActionExecutionContext();
+        context.SetService<ISkillTimelineRunner>(runner);
+        ActionSequenceAsset sequence = MakeSequence(new ScenarioActionData
+        {
+            ActionId = BattleSkillTimelineActionAdapter.Id,
+            ParametersJson = "{\"skill\":\"skill_crosscut\",\"actor\":\"zev\"}"
+        });
+        IEnumerator routine = new ActionDirector(registry).Play(sequence, context);
+        try
+        {
+            Assert.That(routine.MoveNext(), Is.True);
+            Assert.That(runner.Disposals, Is.Zero);
+            if (disposeDirector)
+                (routine as System.IDisposable)?.Dispose();
+            else
+            {
+                context.Handle.Cancel("test cancellation");
+                RunToCompletion(routine);
+            }
+            Assert.That(runner.Disposals, Is.EqualTo(1));
+            Assert.That(runner.NestedDisposals, Is.EqualTo(1));
+        }
+        finally
+        {
+            (routine as System.IDisposable)?.Dispose();
+            Object.DestroyImmediate(sequence);
+        }
+    }
+
     [Test]
     public void BattleSkillTimelineUsesRunnerAndWaitsForCompletion()
     {
@@ -151,6 +187,24 @@ public class ScenarioSkillTimelineAdapterTests
         {
             yield return null;
             _log.Add("skill:" + skillId + "|actor:" + actorId + "|targets:" + string.Join(",", targetIds));
+        }
+    }
+
+    private sealed class FinalizingSkillTimelineRunner : ISkillTimelineRunner
+    {
+        public int Disposals;
+        public int NestedDisposals;
+
+        public IEnumerator PlaySkillTimeline(string skillId, string actorId, IReadOnlyList<string> targets, ActionExecutionContext context)
+        {
+            try { yield return WaitNested(); }
+            finally { Disposals++; }
+        }
+
+        private IEnumerator WaitNested()
+        {
+            try { while (true) yield return null; }
+            finally { NestedDisposals++; }
         }
     }
 }

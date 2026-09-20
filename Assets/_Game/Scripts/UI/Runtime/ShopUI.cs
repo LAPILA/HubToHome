@@ -65,7 +65,7 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
     private bool _closing;
     private bool _restoreStateOnClose;
     private int _ownerSceneHandle;
-    private float _menuResumeAt;
+    private bool _waitingForDialogueClose;
     private DialogueManager _dialogueOwner;
     private int _dialogueGeneration;
     private DialogueData _activeTransientDialogue;
@@ -130,7 +130,7 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
         _restoreStateOnClose = true;
         _ownerSceneHandle = SceneManager.GetActiveScene().handle;
         _submitFrame = Time.frameCount;
-        _menuResumeAt = 0f;
+        _waitingForDialogueClose = false;
         _menuGroup.alpha = 1f;
         _status.text = string.Empty;
         _previousGameState = GameStateManager.Instance != null
@@ -218,9 +218,10 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
             ForceClose();
             return;
         }
+        if (_waitingForDialogueClose
+            && (_dialogueOwner == null || !_dialogueOwner.IsPresentationVisible))
+            ResumeAfterDialogue();
         if (_isOpening || _suspendInput || _submitFrame == Time.frameCount)
-            return;
-        if (Time.unscaledTime < _menuResumeAt)
             return;
         _menuGroup.alpha = 1f;
         if (state != null && state.CurrentState != GameState.Cutscene)
@@ -359,12 +360,10 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
         _status.text = purchaseResult.Succeeded
             ? $"구매 완료: {purchaseResult.ItemAmount}개 / {purchaseResult.TotalPrice}G"
             : purchaseResult.Message;
-        Refresh();
     }
 
     private void ConfirmSale()
     {
-        RebuildSellItems();
         if (_sellItems.Count == 0)
         {
             _status.text = "판매할 수 있는 아이템이 없습니다.";
@@ -377,7 +376,6 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
         _status.text = sellResult.Succeeded
             ? $"판매 완료: {sellResult.TotalPrice}G"
             : sellResult.Message;
-        Refresh();
     }
 
     private void ConfirmService()
@@ -390,33 +388,13 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
         if (service == null)
             return;
 
-        GlobalDataManager global = GlobalDataManager.Instance;
-        if (global == null || global.Party.Count == 0)
-        {
-            _status.text = "회복할 파티원이 없습니다.";
-            return;
-        }
-
-        if (service.Price > 0 && !_session.Store.TrySpendMoneyExact(service.Price))
-        {
-            _status.text = "돈이 부족합니다.";
-            Refresh();
-            return;
-        }
-
-        int changedMembers = global.RestorePartyVitals(service.RestoreHp, service.RestoreAp);
-        if (changedMembers <= 0)
-        {
-            if (service.Price > 0)
-                _session.Store.TryRefundMoneyExact(service.Price);
-            _status.text = "파티원이 이미 모두 회복되어 있습니다.";
-            Refresh();
-            return;
-        }
-
-        string priceText = service.Price > 0 ? $" / {service.Price}G" : " / 무료";
-        _status.text = $"{service.DisplayName} 완료: {changedMembers}명 회복{priceText}";
-        Refresh();
+        ShopServiceResult result = _session.UseService(Mathf.Clamp(_serviceIndex, 0, services.Count - 1));
+        string priceText = result.Price > 0 ? $" / {result.Price}G" : " / 무료";
+        _status.text = result.Succeeded
+            ? $"{service.DisplayName} 완료: {result.RecoveredMembers}명 회복{priceText}"
+            : result.Message;
+        if (result.Status == ShopServiceStatus.RefundFailed)
+            Debug.LogError("[ShopUI] " + result.Message, this);
     }
 
     private void StartSelectedDialogue()
@@ -496,18 +474,23 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
 
     private void EndTransientDialogue()
     {
-        _dialogueGeneration = 0;
-        _dialogueOwner = null;
         DestroyTransientDialogue();
         StopVendorShake();
-        SetVendorPortrait(null);
-        _suspendInput = false;
-        _submitFrame = Time.frameCount;
         if (!_visible || _closing || _canvasGroup == null)
             return;
 
-        // 기존 대화창의 0.2초 닫기 애니메이션 후 메뉴를 다시 표시합니다.
-        _menuResumeAt = Time.unscaledTime + 0.21f;
+        // 대화창의 실제 닫힘을 기다립니다. 페이드 길이와 시간 배율에 의존하지 않습니다.
+        _waitingForDialogueClose = true;
+    }
+
+    private void ResumeAfterDialogue()
+    {
+        _waitingForDialogueClose = false;
+        _dialogueGeneration = 0;
+        _dialogueOwner = null;
+        _suspendInput = false;
+        _submitFrame = Time.frameCount;
+        _menuGroup.alpha = 1f;
         _status.text = string.Empty;
         Refresh();
     }
@@ -760,7 +743,10 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
         StopEntrance();
         RestoreShopMusic();
         if (_dialogueOwner != null && _dialogueGeneration != 0)
+        {
             _dialogueOwner.CancelDialogue(_dialogueGeneration);
+            _dialogueOwner.HideFinishedPresentation(_dialogueGeneration);
+        }
         _dialogueOwner = null;
         _dialogueGeneration = 0;
         ShopSession closedSession = _session;
@@ -790,6 +776,7 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
     {
         _visible = false;
         _suspendInput = false;
+        _waitingForDialogueClose = false;
         _ambienceSilence?.Dispose();
         _ambienceSilence = null;
         StopVendorShake();

@@ -119,6 +119,57 @@ public sealed class ShopSessionTests
 
         Assert.That(session.Sell(item).Status, Is.EqualTo(ShopSellStatus.InvalidSellState));
     }
+
+    [TestCase(PartyVitalsRestoreStatus.AlreadyFull, ShopServiceStatus.AlreadyFull)]
+    [TestCase(PartyVitalsRestoreStatus.Blocked, ShopServiceStatus.Blocked)]
+    [TestCase(PartyVitalsRestoreStatus.PartyMissing, ShopServiceStatus.PartyMissing)]
+    public void UnavailableRecoveryDoesNotCharge(PartyVitalsRestoreStatus state, ShopServiceStatus expected)
+    {
+        var store = new FakeStore(null, 20) { RecoveryStatus = state };
+        var service = new ShopServiceEntry("heal", "회복", "", 10, true, true);
+
+        Assert.That(ShopServiceTransactionService.TryUse(store, service).Status, Is.EqualTo(expected));
+        Assert.That(store.Money, Is.EqualTo(20));
+        Assert.That(store.RecoveryCalls, Is.Zero);
+    }
+
+    [TestCase(false, ShopServiceStatus.RecoveryFailed, 20)]
+    [TestCase(true, ShopServiceStatus.RefundFailed, 10)]
+    public void UnappliedRecoveryRefundsOrReportsRefundFailure(bool refundFails, ShopServiceStatus expected, int money)
+    {
+        var store = new FakeStore(null, 20) { RecoveryCount = 0, RejectRefund = refundFails };
+        var service = new ShopServiceEntry("heal", "회복", "", 10, true, true);
+
+        Assert.That(ShopServiceTransactionService.TryUse(store, service).Status, Is.EqualTo(expected));
+        Assert.That(store.Money, Is.EqualTo(money));
+    }
+
+    [Test]
+    public void RecoveryPublishesOneRefreshAndIsRecordedInSessionResult()
+    {
+        ShopDefinition shop = Shop();
+        var serialized = new SerializedObject(shop);
+        SerializedProperty services = serialized.FindProperty("_services");
+        services.arraySize = 1;
+        SerializedProperty entry = services.GetArrayElementAtIndex(0);
+        entry.FindPropertyRelative("_serviceId").stringValue = "heal";
+        entry.FindPropertyRelative("_price").intValue = 10;
+        entry.FindPropertyRelative("_restoreHp").boolValue = true;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        var store = new FakeStore(null, 20);
+        var session = new ShopSession(shop, store);
+        int changed = 0;
+        session.Changed += () => changed++;
+
+        Assert.That(session.UseService(0).Succeeded, Is.True);
+        Assert.That(changed, Is.EqualTo(1));
+        Assert.That(store.Money, Is.EqualTo(10));
+        session.TryClose(ShopSessionEndReason.Completed, out ShopSessionResult result);
+        Assert.That(result.SuccessfulServiceCount, Is.EqualTo(1));
+        Assert.That(result.HasSuccessfulTransaction, Is.True);
+        Assert.That(result.HasSuccessfulPurchase, Is.False);
+        Assert.That(session.UseService(0).Status, Is.EqualTo(ShopServiceStatus.SessionClosed));
+    }
     [Test]
     public void VendorLauncherAcceptsOneOwnerAndConsumesCloseCallbackOnce()
     {
@@ -257,7 +308,7 @@ public sealed class ShopSessionTests
         }
     }
 
-    private sealed class FakeStore : IShopTransactionStore
+    private sealed class FakeStore : IShopRecoveryStore
     {
         private readonly ItemData _item;
         private readonly Dictionary<string, int> _items = new Dictionary<string, int>();
@@ -270,6 +321,19 @@ public sealed class ShopSessionTests
         }
 
         public int Money { get; private set; }
+        public PartyVitalsRestoreStatus RecoveryStatus = PartyVitalsRestoreStatus.Ready;
+        public int RecoveryCount = 1;
+        public int RecoveryCalls;
+        public bool RejectRefund;
+
+        public PartyVitalsRestoreEvaluation EvaluatePartyVitalsRestore(bool hp, bool ap) =>
+            new PartyVitalsRestoreEvaluation(RecoveryStatus, RecoveryCount);
+
+        public int RestorePartyVitals(bool hp, bool ap)
+        {
+            RecoveryCalls++;
+            return RecoveryCount;
+        }
 
         public void SeedItem(string itemId, int amount)
         {
@@ -291,7 +355,7 @@ public sealed class ShopSessionTests
 
         public bool TryRefundMoneyExact(int amount)
         {
-            if (amount < 0)
+            if (amount < 0 || RejectRefund)
                 return false;
             Money += amount;
             return true;

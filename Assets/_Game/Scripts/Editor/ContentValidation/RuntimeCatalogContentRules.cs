@@ -7,14 +7,7 @@ internal static class RuntimeCatalogContentRules
     {
         ProjectContentSnapshot snapshot = context.Snapshot;
         GameContentCatalog catalog = snapshot.Catalog;
-        if (catalog == null)
-        {
-            context.AddWithoutOwner(
-                "catalog.missing",
-                "Runtime content catalog is missing.",
-                snapshot.CatalogAssetPath);
-            return;
-        }
+        if (!RequireCatalog(context)) return;
 
         if (catalog.DefaultUiFont == null)
             context.Add(catalog, "catalog.default_ui_font.missing", "Default UI font is missing.");
@@ -23,6 +16,20 @@ internal static class RuntimeCatalogContentRules
         ValidateCatalogList(snapshot.Enemies, catalog.Enemies, "enemy", "Enemy", catalog, context);
         ValidateCatalogList(snapshot.Skills, catalog.Skills, "skill", "Skill", catalog, context);
         ValidateCatalogList(snapshot.Items, catalog.Items, "item", "Item", catalog, context);
+    }
+
+    public static void ValidateSkills(ContentValidationRuleContext context)
+    {
+        if (!RequireCatalog(context)) return;
+        ValidateCatalogList(context.Snapshot.Skills, context.Snapshot.Catalog.Skills,
+            "skill", "Skill", context.Snapshot.Catalog, context);
+    }
+
+    private static bool RequireCatalog(ContentValidationRuleContext context)
+    {
+        if (context.Snapshot.Catalog != null) return true;
+        context.AddWithoutOwner("catalog.missing", "Runtime content catalog is missing.", context.Snapshot.CatalogAssetPath);
+        return false;
     }
 
     private static void ValidateCatalogList<T>(

@@ -27,8 +27,22 @@ public static class AssetDatabaseContentSource
         LoadAll(snapshot.Enemies, snapshot, rootPath);
         LoadAll(snapshot.Skills, snapshot, rootPath);
         LoadAll(snapshot.Items, snapshot, rootPath);
+        LoadAll(snapshot.Shops, snapshot, rootPath);
         LoadAll(snapshot.Scenarios, snapshot, rootPath);
         LoadAll(snapshot.ActionCatalogs, snapshot, rootPath);
+        return snapshot;
+    }
+
+    // Skill Maker refreshes this on project changes, not during GUI repaint.
+    public static ProjectContentSnapshot CaptureSkills()
+    {
+        var snapshot = new ProjectContentSnapshot
+        {
+            CatalogAssetPath = DefaultCatalogAssetPath,
+            Catalog = AssetDatabase.LoadAssetAtPath<GameContentCatalog>(DefaultCatalogAssetPath)
+        };
+        if (snapshot.Catalog != null) snapshot.SetAssetPath(snapshot.Catalog, DefaultCatalogAssetPath);
+        LoadAll(snapshot.Skills, snapshot, DefaultRootPath);
         return snapshot;
     }
 

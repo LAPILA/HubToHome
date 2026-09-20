@@ -67,6 +67,27 @@ public sealed class CameraPresentationTests
     }
 
     [Test]
+    public void DefaultBattlePresentation_HoldsCameraButAllowsExplicitCinematicFocus()
+    {
+        _controller.SetDefaultTarget(_centerObject.transform, true);
+        _controller.ResetCamera(0f);
+        float lens = _virtualCamera.Lens.OrthographicSize;
+        _controller.ModePlayerAction(_subjectObject.transform);
+        _controller.PlayHeavySlam(Vector3.right, 1f, true);
+        using (BattleCameraActionScope scope = BattleCameraActionScope.Begin(
+            _centerObject.transform, _subjectObject.transform))
+        {
+            Assert.That(scope.IsActive, Is.False);
+            Assert.That(_virtualCamera.Follow, Is.EqualTo(_centerObject.transform));
+            Assert.That(_virtualCamera.Lens.OrthographicSize, Is.EqualTo(lens));
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+        }
+        Assert.That(_controller.TryFocus(_subjectObject.transform, 4f, CameraShotStyle.Dynamic,
+            0f, CameraControlLease.None, out _, out string error), Is.True, error);
+        Assert.That(_virtualCamera.Follow, Is.EqualTo(_subjectObject.transform));
+    }
+
+    [Test]
     public void ResetReturnsToRegisteredBattleCenter()
     {
         _controller.SetDefaultTarget(_centerObject.transform, true);

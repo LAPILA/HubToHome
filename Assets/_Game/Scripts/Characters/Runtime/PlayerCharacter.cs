@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
@@ -11,6 +12,7 @@ public class PlayerCharacter : CharacterBase
     public static readonly int HashAttack      = Animator.StringToHash("Attack");
     public static readonly int HashHurt        = Animator.StringToHash("Hurt");
     public static readonly int HashDie         = Animator.StringToHash("Die");
+    private static readonly int HashAttackState = Animator.StringToHash("attack");
     #endregion
 
     [Header("Identity & Progression")]
@@ -36,6 +38,26 @@ public class PlayerCharacter : CharacterBase
     private Animator _animator;
     private CharacterVFX _vfx;
     private SpriteRenderer _spriteRenderer;
+    [Header("Hit Reaction")]
+    [SerializeField, Min(0f)] private float _hitPopHeight = 0.35f;
+    [SerializeField, Min(0.01f)] private float _hitPopUpDuration = 0.08f;
+    [SerializeField, Min(0.01f)] private float _hitPopReturnDuration = 0.16f;
+    private Vector3 _hitReactionOrigin;
+    private bool _hitReactionActive;
+
+    /// <summary>
+    /// PlayerCharacter가 TakeDamage에서 시작한 피격 트윈의 생명주기입니다.
+    /// PlayerController의 방어 결과 정리가 이 상태를 기준으로 대기합니다.
+    /// </summary>
+    public bool IsHitReactionActive => _hitReactionActive;
+
+    private void OnDisable()
+    {
+        _hitReactionActive = false;
+        if (_spriteRenderer != null)
+            _spriteRenderer.DOKill();
+        transform.DOKill(false);
+    }
 
     public CharacterData CharacterData => _characterData;
     public Color BattleSymbolColor
@@ -79,12 +101,76 @@ public class PlayerCharacter : CharacterBase
     {
         if (_animator == null || !HasParameter(triggerHash)) return;
         if (!IsAlive && triggerHash != HashDie) return;
+        if (_lastBattleTrigger != 0)
+            _animator.ResetTrigger(_lastBattleTrigger);
         _animator.SetTrigger(triggerHash);
+        _lastBattleTrigger = triggerHash;
+        BattleAnimationVersion++;
+    }
+
+    private int _lastBattleTrigger;
+    public uint BattleAnimationVersion { get; private set; }
+
+    /// <summary>공격 상태가 끝나거나 다른 상태로 중단될 때까지 기다립니다.</summary>
+    public IEnumerator WaitForAttackAnimationComplete(float maxWait = 2f)
+    {
+        if (_animator == null)
+            yield break;
+
+        float startedAt = Time.unscaledTime;
+        float deadline = startedAt + Mathf.Max(0.25f, maxWait);
+        bool attackStateSeen = false;
+
+        while (Time.unscaledTime < deadline)
+        {
+            if (this == null || _animator == null || !_animator.isActiveAndEnabled || !IsAlive)
+                yield break;
+            AnimatorStateInfo current = _animator.GetCurrentAnimatorStateInfo(0);
+            bool isTransitioning = _animator.IsInTransition(0);
+            AnimatorStateInfo next = isTransitioning
+                ? _animator.GetNextAnimatorStateInfo(0)
+                : default;
+            bool currentIsAttack = current.shortNameHash == HashAttackState || current.shortNameHash == HashAttack;
+            bool nextIsAttack = isTransitioning
+                && (next.shortNameHash == HashAttackState || next.shortNameHash == HashAttack);
+
+            if (currentIsAttack || nextIsAttack)
+                attackStateSeen = true;
+
+            if (attackStateSeen)
+            {
+                if (!isTransitioning && !currentIsAttack)
+                    yield break;
+
+                if (currentIsAttack && !isTransitioning && current.normalizedTime >= 1f)
+                    yield break;
+            }
+            // 이미 끝난 짧은 클립이나 중단된 공격 때문에 최대 2초를 기다리지 않습니다.
+            else if (Time.unscaledTime - startedAt >= 0.1f)
+                yield break;
+
+            yield return null;
+        }
     }
 
     public void PlayBasicAttackEffect()
     {
         _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
+    }
+
+    /// <summary>
+    /// 기본 공격 직전 준비 자세를 재생합니다. 기존 캐릭터 Animator에 새 Trigger가
+    /// 없더라도 BattleIdle로 안전하게 대체해 타임라인을 중단하지 않습니다.
+    /// </summary>
+    public void PlayAttackReady()
+    {
+        if (_animator == null)
+            return;
+
+        if (HasParameter(HashBattleReady))
+            PlayBattleAnim(HashBattleReady);
+        else if (HasParameter(HashBattleIdle))
+            PlayBattleAnim(HashBattleIdle);
     }
 
     private bool HasParameter(int paramHash)
@@ -218,11 +304,12 @@ public class PlayerCharacter : CharacterBase
         int savedHp = saveData.HP;
         int savedAp = saveData.AP;
         CharacterGrowthService.EnsureInitialized(saveData, _characterData);
+        if (saveData.HasInitializedEquipment)
+            ApplyEquipmentFromSave(saveData);
         SetProgressedBaseStats(CreateProgressedBaseStats(saveData));
         SetCurrentHPValue(Mathf.Clamp(savedHp, 0, MaxHP));
         SetCurrentAPValue(Mathf.Clamp(savedAp, 0, MaxAP));
-        saveData.HP = CurrentHP;
-        saveData.AP = CurrentAP;
+        // GlobalData의 확정값을 씬에 반영하는 단방향 동기화입니다.
         return true;
     }
 
@@ -357,20 +444,32 @@ public class PlayerCharacter : CharacterBase
         // 무적이면 이펙트/모션 완전 스킵
         if (IsInvincible) return; 
 
+        bool hadHitReaction = _hitReactionActive;
+        Vector3 origin = hadHitReaction ? _hitReactionOrigin : transform.position;
+        transform.DOKill(false);
+        if (!hadHitReaction)
+            origin = transform.position;
+
+        _hitReactionOrigin = origin;
+        _hitReactionActive = IsAlive;
+        transform.position = origin;
+
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
-            _spriteRenderer.DOColor(ResolveFlashColor(Color.red), 0.1f)
+            Color restoreColor = _spriteRenderer.color;
+            _spriteRenderer.DOColor(ResolveFlashColor(Color.white), 0.05f)
+                .SetUpdate(true)
                 .SetLoops(2, LoopType.Yoyo)
                 .OnComplete(() =>
                 {
                     if (_spriteRenderer != null)
-                        _spriteRenderer.color = Color.white;
+                        _spriteRenderer.color = restoreColor;
                 })
                 .OnKill(() =>
                 {
                     if (_spriteRenderer != null)
-                        _spriteRenderer.color = Color.white;
+                        _spriteRenderer.color = restoreColor;
                 });
         }
 
@@ -379,9 +478,31 @@ public class PlayerCharacter : CharacterBase
         if (IsAlive)
         {
             PlayBattleAnim(HashHurt);
-            transform.DOKill(false);
-            transform.DOShakePosition(0.2f, 0.15f * ResolveShakeScale(), 30, 90f);
+
+            float popHeight = Mathf.Max(0f, _hitPopHeight) * ResolveShakeScale();
+            Sequence pop = DOTween.Sequence().SetRecyclable(false).SetUpdate(true);
+            pop.SetTarget(transform);
+            pop.Append(transform.DOMoveX(origin.x - Mathf.Min(0.1875f, popHeight), Mathf.Max(0.01f, _hitPopUpDuration))
+                .SetEase(Ease.OutQuad));
+            pop.Append(transform.DOMoveX(origin.x, Mathf.Max(0.01f, _hitPopReturnDuration))
+                .SetEase(Ease.InQuad));
+            pop.OnComplete(() => CompleteHitReaction(origin));
+            pop.OnKill(() => CompleteHitReaction(origin));
         }
+        else
+        {
+            transform.position = origin;
+            _hitReactionActive = false;
+        }
+    }
+
+    private void CompleteHitReaction(Vector3 origin)
+    {
+        if (this == null)
+            return;
+
+        transform.position = origin;
+        _hitReactionActive = false;
     }
 
     protected override void OnDie()

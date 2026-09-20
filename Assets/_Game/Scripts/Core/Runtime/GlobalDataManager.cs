@@ -11,6 +11,27 @@ public class OverworldEnemyRuntimeState
     public float CooldownAlpha = 0.5f;
 }
 
+public enum PartyVitalsRestoreStatus
+{
+    Ready,
+    InvalidRequest,
+    PartyMissing,
+    Blocked,
+    AlreadyFull
+}
+
+public readonly struct PartyVitalsRestoreEvaluation
+{
+    public PartyVitalsRestoreEvaluation(PartyVitalsRestoreStatus status, int recoverableMemberCount = 0)
+    {
+        Status = status;
+        RecoverableMemberCount = Mathf.Max(0, recoverableMemberCount);
+    }
+
+    public PartyVitalsRestoreStatus Status { get; }
+    public int RecoverableMemberCount { get; }
+}
+
 /// <summary>
 /// 씬 전환 시에도 데이터를 유지하는 전역 싱글톤 매니저.
 /// 세이브 데이터(SSOT)의 런타임 저장소 역할을 합니다.
@@ -453,11 +474,45 @@ public class GlobalDataManager : MonoBehaviour
         if (leader == null || requestedDamage <= 0)
             return false;
 
-        int maxHP = Mathf.Max(1, leader.MaxHP);
+        CharacterStatsProjectionService.ResolveResourceCaps(
+            leader, CharacterDatabase.FindById(leader.CharacterDataID), out int maxHP, out _);
         previousHP = Mathf.Clamp(previousHP, 0, maxHP);
         currentHP = Mathf.Max(0, previousHP - requestedDamage);
         leader.HP = currentHP;
         return true;
+    }
+
+    /// <summary>회복 가능 여부만 평가합니다. 파티 자원과 씬 오브젝트를 변경하지 않습니다.</summary>
+    public PartyVitalsRestoreEvaluation EvaluatePartyVitalsRestore(bool restoreHp, bool restoreAp)
+    {
+        if (!restoreHp && !restoreAp)
+            return new PartyVitalsRestoreEvaluation(PartyVitalsRestoreStatus.InvalidRequest);
+        if (Party == null || Party.Count == 0)
+            return new PartyVitalsRestoreEvaluation(PartyVitalsRestoreStatus.PartyMissing);
+        if ((GameStateManager.Instance != null
+                && GameStateManager.Instance.CurrentState == GameState.Battle)
+            || (BattleManager.Instance != null && BattleManager.Instance.IsSeamlessBattleActive))
+            return new PartyVitalsRestoreEvaluation(PartyVitalsRestoreStatus.Blocked);
+
+        bool hasMember = false;
+        int recoverable = 0;
+        for (int i = 0; i < Party.Count; i++)
+        {
+            CharacterSaveData member = Party[i];
+            if (member == null)
+                continue;
+
+            hasMember = true;
+            CharacterStatsProjectionService.ResolveResourceCaps(
+                member, CharacterDatabase.FindById(member.CharacterDataID), out int maxHp, out int maxAp);
+            if ((restoreHp && member.HP < maxHp) || (restoreAp && member.AP < maxAp))
+                recoverable++;
+        }
+
+        return new PartyVitalsRestoreEvaluation(
+            !hasMember ? PartyVitalsRestoreStatus.PartyMissing
+                : recoverable > 0 ? PartyVitalsRestoreStatus.Ready : PartyVitalsRestoreStatus.AlreadyFull,
+            recoverable);
     }
 
     /// <summary>
@@ -466,52 +521,83 @@ public class GlobalDataManager : MonoBehaviour
     /// </summary>
     public int RestorePartyVitals(bool restoreHp, bool restoreAp)
     {
-        if ((!restoreHp && !restoreAp) || Party == null || Party.Count == 0
-            || (GameStateManager.Instance != null
-                && GameStateManager.Instance.CurrentState == GameState.Battle)
-            || (BattleManager.Instance != null && BattleManager.Instance.IsSeamlessBattleActive))
+        if (EvaluatePartyVitalsRestore(restoreHp, restoreAp).Status != PartyVitalsRestoreStatus.Ready)
             return 0;
 
-        int changedMemberCount = 0;
+        // 먼저 전체 목표치를 계산합니다. 잘못된 데이터가 있어도 일부 파티원만 회복되지 않습니다.
+        var targets = new List<PartyVitalsRestoreTarget>(Party.Count);
         for (int i = 0; i < Party.Count; i++)
         {
             CharacterSaveData member = Party[i];
             if (member == null)
                 continue;
 
-            CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
-            StatBlock resolved = data != null
-                ? CharacterStatsProjectionService.ResolveFromSave(member, data)
-                : null;
-            int restoredHp = restoreHp
-                ? Mathf.Max(1, resolved != null ? resolved.MaxHP : member.MaxHP)
-                : member.HP;
-            int restoredAp = restoreAp
-                ? Mathf.Max(0, resolved != null ? resolved.MaxAP : member.MaxAP)
-                : member.AP;
+            CharacterStatsProjectionService.ResolveResourceCaps(
+                member, CharacterDatabase.FindById(member.CharacterDataID), out int maxHp, out int maxAp);
+            int restoredHp = restoreHp ? Mathf.Max(member.HP, maxHp) : member.HP;
+            int restoredAp = restoreAp ? Mathf.Max(member.AP, maxAp) : member.AP;
             if (member.HP != restoredHp || member.AP != restoredAp)
-                changedMemberCount++;
-
-            member.HP = restoredHp;
-            member.AP = restoredAp;
+                targets.Add(new PartyVitalsRestoreTarget(member, restoredHp, restoredAp));
         }
 
+        for (int i = 0; i < targets.Count; i++)
+        {
+            PartyVitalsRestoreTarget target = targets[i];
+            target.Member.HP = target.Hp;
+            target.Member.AP = target.Ap;
+        }
+
+        SynchronizeRestoredPartyVitals();
+        return targets.Count;
+    }
+
+    private void SynchronizeRestoredPartyVitals()
+    {
         // 서비스 선택 시에만 조회합니다. 리더 이외의 활성 동료도 이전 수치로 덮어쓰지 않게 합니다.
-        PlayerCharacter[] scenePlayers = UnityEngine.Object.FindObjectsByType<PlayerCharacter>(
-            FindObjectsSortMode.None);
+        PlayerCharacter[] scenePlayers;
+        try
+        {
+            scenePlayers = UnityEngine.Object.FindObjectsByType<PlayerCharacter>(FindObjectsSortMode.None);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception, this);
+            return;
+        }
+
         for (int i = 0; i < scenePlayers.Length; i++)
         {
             PlayerCharacter scenePlayer = scenePlayers[i];
-            if (scenePlayer.CharacterData == null)
-                continue;
+            try
+            {
+                if (scenePlayer == null || scenePlayer.CharacterData == null)
+                    continue;
 
-            CharacterSaveData member = FindPartyMember(
-                NormalizeCharacterId(scenePlayer.CharacterData.CharacterID));
-            if (member != null)
-                scenePlayer.SynchronizePersistentVitals(member);
+                CharacterSaveData member = FindPartyMember(
+                    NormalizeCharacterId(scenePlayer.CharacterData.CharacterID));
+                if (member != null)
+                    scenePlayer.SynchronizePersistentVitals(member);
+            }
+            catch (System.Exception exception)
+            {
+                // 저장 자원은 이미 확정되었습니다. 씬 표시 실패로 거래를 다시 환불하지 않습니다.
+                Debug.LogException(exception, scenePlayer);
+            }
+        }
+    }
+
+    private readonly struct PartyVitalsRestoreTarget
+    {
+        public PartyVitalsRestoreTarget(CharacterSaveData member, int hp, int ap)
+        {
+            Member = member;
+            Hp = hp;
+            Ap = ap;
         }
 
-        return changedMemberCount;
+        public CharacterSaveData Member { get; }
+        public int Hp { get; }
+        public int Ap { get; }
     }
 
     #endregion
@@ -1176,11 +1262,9 @@ public class GlobalDataManager : MonoBehaviour
     private static void RestoreResolvedVitals(
         CharacterSaveData member, CharacterData data, int hp, int ap)
     {
-        StatBlock resolved = data != null
-            ? CharacterStatsProjectionService.ResolveFromSave(member, data)
-            : null;
-        member.HP = Mathf.Clamp(hp, 0, Mathf.Max(1, resolved != null ? resolved.MaxHP : member.MaxHP));
-        member.AP = Mathf.Clamp(ap, 0, Mathf.Max(0, resolved != null ? resolved.MaxAP : member.MaxAP));
+        CharacterStatsProjectionService.ResolveResourceCaps(member, data, out int maxHp, out int maxAp);
+        member.HP = Mathf.Clamp(hp, 0, maxHp);
+        member.AP = Mathf.Clamp(ap, 0, maxAp);
     }
 
     private static List<CharacterSaveData> CloneParty(IReadOnlyList<CharacterSaveData> source)

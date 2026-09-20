@@ -34,6 +34,19 @@ public class DialogueManager : MonoBehaviour
 
     public int PlaybackGeneration => _playbackGeneration;
 
+    // 논리적인 대화 완료 이후에도 닫기 연출이 끝날 때까지 표시 중입니다.
+    public bool IsPresentationVisible => _isPlaying
+        || (_overworldPanel != null && _overworldPanel.isActiveAndEnabled)
+        || (_cinematicPanel != null && _cinematicPanel.isActiveAndEnabled);
+
+    public void HideFinishedPresentation(int playbackGeneration)
+    {
+        if (_isPlaying || playbackGeneration != _playbackGeneration)
+            return;
+        _overworldPanel?.HideImmediate();
+        _cinematicPanel?.HideImmediate();
+    }
+
     private void Awake() 
     { 
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }

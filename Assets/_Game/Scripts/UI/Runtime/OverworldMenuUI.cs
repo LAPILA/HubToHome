@@ -815,7 +815,7 @@ public sealed class OverworldMenuUI : UIPanel
             if (equipment != null
                 && equipment.Slot == slot
                 && equipment.CanEquip(member.CharacterDataID)
-                && global.GetEquipmentCount(equipment.ItemID) > 0)
+                && EquipmentLoadoutService.GetAvailableCount(global, member, slot, equipment.ItemID) > 0)
             {
                 candidates.Add(equipment);
             }

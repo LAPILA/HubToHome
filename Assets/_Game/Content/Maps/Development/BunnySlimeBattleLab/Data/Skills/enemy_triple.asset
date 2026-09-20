@@ -1,0 +1,244 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: enemy_triple
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "\uD558\uB098, \uB458, \uB9D0\uB791!"
+  SkillID: lab.bunny.enemy_triple
+  Description: "Z \uC720\uC9C0: \uD53C\uD574 \uAC10\uC18C / Z \uC815\uD655\uD55C
+    \uD0C0\uC774\uBC0D: \uBB34\uD53C\uD574 + AP / X: \uD68C\uD53C. \uAC01 \uD0C0\uACA9\uB9C8\uB2E4
+    \uD310\uC815\uD569\uB2C8\uB2E4."
+  UsageProfile: 2
+  APCost: 0
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 2817657174576595057
+  - rid: 2817657174576595058
+  - rid: 2817657174576595059
+  - rid: 2817657174576595060
+  - rid: 2817657174576595061
+  - rid: 2817657174576595062
+  - rid: 2817657174576595063
+  - rid: 2817657174576595064
+  - rid: 2817657174576595065
+  - rid: 2817657174576595066
+  - rid: 2817657174576595067
+  - rid: 2817657174576595068
+  - rid: 2817657174576595069
+  - rid: 2817657174576595070
+  references:
+    version: 2
+    RefIds:
+    - rid: 2817657174576595057
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        Destination: 5
+        Duration: 0.22
+        MoveEase: 6
+        EnemyHopHeight: 0.25
+    - rid: 2817657174576595058
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "1\uD0C0 \xB7 \uD558\uB098, \uB458, \uB9D0\uB791!"
+        Note: 
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 1
+        TelegraphVisualMode: 1
+        WarningVfxPrefab: {fileID: 0}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: Telegraph
+        TelegraphAttachPivotName: Back
+        TelegraphDuration: 0.65
+        DefenseOpenDelay: 0
+        TimeWindow: 0.65
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 1
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.23
+          GoodWindow: 0.38
+        FailDamageMultiplier: 1
+        ShakeOnFail: 1
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: LabComboStrike
+        AttackAnimationLeadTime: 0.65
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Top
+        AttackAnimDelay: 0
+    - rid: 2817657174576595059
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        VfxPrefab: {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 2817657174576595060
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        SkillMultiplier: 0.65
+        Element: 0
+        ShakeCamera: 0
+    - rid: 2817657174576595061
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        WaitTime: 0.16
+    - rid: 2817657174576595062
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "2\uD0C0 \xB7 \uD558\uB098, \uB458, \uB9D0\uB791!"
+        Note: 
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 1
+        TelegraphVisualMode: 1
+        WarningVfxPrefab: {fileID: 0}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: Telegraph
+        TelegraphAttachPivotName: Back
+        TelegraphDuration: 0.18
+        DefenseOpenDelay: 0
+        TimeWindow: 0.65
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 1
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.23
+          GoodWindow: 0.38
+        FailDamageMultiplier: 1
+        ShakeOnFail: 1
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: LabComboStrike
+        AttackAnimationLeadTime: 0.65
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Top
+        AttackAnimDelay: 0
+    - rid: 2817657174576595063
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        VfxPrefab: {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 2817657174576595064
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        SkillMultiplier: 0.65
+        Element: 0
+        ShakeCamera: 0
+    - rid: 2817657174576595065
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        WaitTime: 0.16
+    - rid: 2817657174576595066
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "3\uD0C0 \xB7 \uD558\uB098, \uB458, \uB9D0\uB791!"
+        Note: 
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 1
+        TelegraphVisualMode: 1
+        WarningVfxPrefab: {fileID: 0}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: Telegraph
+        TelegraphAttachPivotName: Back
+        TelegraphDuration: 0.18
+        DefenseOpenDelay: 0
+        TimeWindow: 0.65
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 1
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.23
+          GoodWindow: 0.38
+        FailDamageMultiplier: 1
+        ShakeOnFail: 1
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: LabComboStrike
+        AttackAnimationLeadTime: 0.65
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Top
+        AttackAnimDelay: 0
+    - rid: 2817657174576595067
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        VfxPrefab: {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 2817657174576595068
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        SkillMultiplier: 0.65
+        Element: 0
+        ShakeCamera: 0
+    - rid: 2817657174576595069
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        WaitTime: 0.18
+    - rid: 2817657174576595070
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 
+        Note: 
+        Destination: 4
+        Duration: 0.25
+        MoveEase: 6

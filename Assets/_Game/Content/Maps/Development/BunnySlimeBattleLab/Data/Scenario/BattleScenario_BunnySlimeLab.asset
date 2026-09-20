@@ -1,0 +1,374 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba44383cc5d14901b9bfb684b07e47c8, type: 3}
+  m_Name: BattleScenario_BunnySlimeLab
+  m_EditorClassIdentifier: Assembly-CSharp::BattleScenarioData
+  ScenarioId: lab.bunny_slime.workshop
+  TitleKo: "\uB9D0\uB791\uD55C \uACF5\uBC29 \uC548\uC804\uC2DC\uD5D8"
+  PrimaryMode: battle
+  OpeningModule: turn_qte
+  MemoryKey: lab.bunny_slime.workshop
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
+    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
+    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+  PartyIds:
+  - lab.wizzel.front
+  - lab.wizzel.support
+  - lab.wizzel.striker
+  - lab.wizzel.reserve1
+  - lab.wizzel.reserve2
+  - lab.wizzel.reserve3
+  EnemyIds:
+  - lab.bunny_slime
+  Rules:
+  - RuleId: lab.bunny_slime.opening
+    EventType: 5
+    Timing: 0
+    Once: 1
+    SubjectId: 
+    OutcomeId: 
+    ThresholdRatio: 0.5
+    SequenceId: lab.bunny_slime.opening
+    Disabled: 0
+  - RuleId: lab.bunny_slime.ending
+    EventType: 2
+    Timing: 1
+    Once: 1
+    SubjectId: lab.bunny_slime
+    OutcomeId: 
+    ThresholdRatio: 0.5
+    SequenceId: lab.bunny_slime.ending
+    Disabled: 0
+  TriggerRules:
+  - RuleId: lab.bunny_slime.phase2
+    DisplayNameKo: "HP 66% \xB7 \uD68C\uD53C \uC2DC\uD5D8"
+    EventId: participant.hp_changed
+    Timing: 1
+    CheckpointId: 
+    Once: 1
+    Disabled: 0
+    Conditions:
+      NodeId: lab.bunny_slime.phase2.conditions
+      Kind: 1
+      GroupMode: 0
+      ConditionId: 
+      ParametersJson: '{}'
+      Negate: 0
+      Children:
+      - rid: 2817657174576595143
+      - rid: 2817657174576595144
+      - rid: 2817657174576595145
+    SequenceId: lab.bunny_slime.phase2
+    TargetInputsJson: '{}'
+  - RuleId: lab.bunny_slime.phase3
+    DisplayNameKo: "HP 33% \xB7 \uC5F0\uACC4 \uBC18\uACA9 \uC2DC\uD5D8"
+    EventId: participant.hp_changed
+    Timing: 1
+    CheckpointId: 
+    Once: 1
+    Disabled: 0
+    Conditions:
+      NodeId: lab.bunny_slime.phase3.conditions
+      Kind: 1
+      GroupMode: 0
+      ConditionId: 
+      ParametersJson: '{}'
+      Negate: 0
+      Children:
+      - rid: 2817657174576595146
+      - rid: 2817657174576595147
+      - rid: 2817657174576595148
+    SequenceId: lab.bunny_slime.phase3
+    TargetInputsJson: '{}'
+  Sequences:
+  - {fileID: 5786310555178424782}
+  - {fileID: 6074063809447696212}
+  - {fileID: 6663139680673879888}
+  - {fileID: 9019681669250037973}
+  Dialogues:
+  - DialogueId: lab.bunny_slime.opening_a
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_OpeningA.asset
+    Dialogue: {fileID: 11400000, guid: 92e4c4490f6371149a59fa991f56916c, type: 2}
+  - DialogueId: lab.bunny_slime.opening_b
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_OpeningB.asset
+    Dialogue: {fileID: 11400000, guid: b69bb241ed2959849ab927b8bbeba7f7, type: 2}
+  - DialogueId: lab.bunny_slime.phase2
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_Phase2.asset
+    Dialogue: {fileID: 11400000, guid: 74a1fd60486e2b047bacbbdafdd4debe, type: 2}
+  - DialogueId: lab.bunny_slime.phase3
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_Phase3.asset
+    Dialogue: {fileID: 11400000, guid: 2d509eebcbf904941b097c5805305e20, type: 2}
+  - DialogueId: lab.bunny_slime.ending
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_BunnyLab_Ending.asset
+    Dialogue: {fileID: 11400000, guid: a8e9a9324c5a14c4480b5e22ca13cc60, type: 2}
+  AudioClips:
+  - AudioId: lab.bunny_slime.music.phase1
+    AudioClipId: Assets/_Game/Content/Audio/PIXABAY/BGM/kaazoom-run-and-catch-x27em-full-version-retro-platform-game-music-442980.mp3
+    Clip: {fileID: 8300000, guid: 2358903c2d2850440a9afe9917fe42d3, type: 3}
+  - AudioId: lab.bunny_slime.music.phase2
+    AudioClipId: Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta_part1.wav
+    Clip: {fileID: 8300000, guid: 861b23652179354408af65bf7ab5a63d, type: 3}
+  - AudioId: lab.bunny_slime.music.phase3
+    AudioClipId: Assets/_Game/Content/Audio/CUSTOM/BGM/BOSS/Zenta_part2.wav
+    Clip: {fileID: 8300000, guid: 6a3158d35a2a6a241bd67bfb8622371e, type: 3}
+  - AudioId: lab.bunny_slime.music.ending
+    AudioClipId: Assets/_Game/Content/Audio/AI/main_loop.wav
+    Clip: {fileID: 8300000, guid: 3a042c53a6c9caf45b7e4048c36825d1, type: 3}
+  TimelineCutsceneCatalog: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 2817657174576595143
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: lab.bunny_slime.phase2.subject
+        Kind: 0
+        GroupMode: 0
+        ConditionId: event.participant
+        ParametersJson: '{"participant":"lab.bunny_slime"}'
+        Negate: 0
+        Children: []
+    - rid: 2817657174576595144
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: lab.bunny_slime.phase2.crossed
+        Kind: 0
+        GroupMode: 0
+        ConditionId: number.crossed_below
+        ParametersJson: '{"previousPath":"event.previousRatio","currentPath":"event.currentRatio","threshold":0.66}'
+        Negate: 0
+        Children: []
+    - rid: 2817657174576595145
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: lab.bunny_slime.phase2.alive
+        Kind: 0
+        GroupMode: 0
+        ConditionId: number.compare
+        ParametersJson: '{"path":"event.currentRatio","operator":"greater","value":0}'
+        Negate: 0
+        Children: []
+    - rid: 2817657174576595146
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: lab.bunny_slime.phase3.subject
+        Kind: 0
+        GroupMode: 0
+        ConditionId: event.participant
+        ParametersJson: '{"participant":"lab.bunny_slime"}'
+        Negate: 0
+        Children: []
+    - rid: 2817657174576595147
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: lab.bunny_slime.phase3.crossed
+        Kind: 0
+        GroupMode: 0
+        ConditionId: number.crossed_below
+        ParametersJson: '{"previousPath":"event.previousRatio","currentPath":"event.currentRatio","threshold":0.33}'
+        Negate: 0
+        Children: []
+    - rid: 2817657174576595148
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: lab.bunny_slime.phase3.alive
+        Kind: 0
+        GroupMode: 0
+        ConditionId: number.compare
+        ParametersJson: '{"path":"event.currentRatio","operator":"greater","value":0}'
+        Negate: 0
+        Children: []
+--- !u!114 &5786310555178424782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.bunny_slime.opening
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.bunny_slime.opening
+  DisplayNameKo: "\uC548\uC804\uC2DC\uD5D8 \uC811\uC218"
+  Contract:
+    DescriptionKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784\uACFC \uC704\uC824\uC774 \uAC00\uBCBC\uC6B4
+      \uC2DC\uBC94\uC744 \uBCF4\uC785\uB2C8\uB2E4. \uC5F0\uCD9C\uC6A9 \uACF5\uACA9\uC740
+      HP\uB97C \uBC14\uAFB8\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    UsageKo: "\uC804\uD22C \uC2DC\uC791 \uC9C1\uD6C4, \uCCAB \uD134 \uC774\uC804"
+    Lifecycle: 1
+    Tags:
+    - battle
+    - tutorial
+    - cinematic
+    AllowedPrimaryModes:
+    - battle
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
+    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
+    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+  Actions:
+  - BlockId: a6c3e726c3eac17d1f714baf8cc3f2ab
+    DesignerLabel: 
+    ActionId: flow.parallel
+    ParametersJson: '{}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &6074063809447696212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.bunny_slime.phase2
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.bunny_slime.phase2
+  DisplayNameKo: "\uB450 \uBC88\uC9F8 \uC2DC\uD5D8 \xB7 \uD0C4\uC131 \uACFC\uB2E4"
+  Contract:
+    DescriptionKo: "\uD589\uB3D9\uC774 \uB05D\uB09C \uB4A4 \uD68C\uD53C \uC704\uC8FC
+      \uB450 \uBC88\uC9F8 \uB2E8\uACC4\uB97C \uC54C\uB9BD\uB2C8\uB2E4."
+    UsageKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784 HP\uAC00 66% \uC774\uD558\uB85C \uB0B4\uB824\uAC00\uACE0
+      \uC0DD\uC874\uD588\uC744 \uB54C"
+    Lifecycle: 1
+    Tags:
+    - battle
+    - phase
+    - dodge
+    AllowedPrimaryModes:
+    - battle
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
+    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
+    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+  Actions:
+  - BlockId: 139213f257e17fde855ba8292f9346a7
+    DesignerLabel: 
+    ActionId: flow.parallel
+    ParametersJson: '{}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &6663139680673879888
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.bunny_slime.phase3
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.bunny_slime.phase3
+  DisplayNameKo: "\uCD5C\uC885 \uC2DC\uD5D8 \xB7 \uB2E4 \uAC19\uC774 \uBC18\uACA9"
+  Contract:
+    DescriptionKo: "\uC548\uC804\uB4F1 \uC810\uBA78 \uB4A4 \uC5F0\uACC4 \uBC18\uACA9
+      \uB2E8\uACC4\uB97C \uC54C\uB9BD\uB2C8\uB2E4. \uC810\uBA78 \uC790\uCCB4\uB294
+      \uD53C\uD574\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4."
+    UsageKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784 HP\uAC00 33% \uC774\uD558\uB85C \uB0B4\uB824\uAC00\uACE0
+      \uC0DD\uC874\uD588\uC744 \uB54C"
+    Lifecycle: 1
+    Tags:
+    - battle
+    - phase
+    - counter
+    AllowedPrimaryModes:
+    - battle
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
+    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
+    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+  Actions:
+  - BlockId: b5300000000000000000000000000001
+    DesignerLabel: "\uACF5\uBC29 \uC548\uC804\uB4F1 \uC9E7\uC740 \uC810\uBA78"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"white","duration":0.06}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: b5300000000000000000000000000002
+    DesignerLabel: 
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"white","duration":0.12}'
+    Note: 
+    Disabled: 0
+    Children: []
+  - BlockId: 43f016c46aeda887454c3893832611be
+    DesignerLabel: 
+    ActionId: flow.parallel
+    ParametersJson: '{}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &9019681669250037973
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.bunny_slime.ending
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.bunny_slime.ending
+  DisplayNameKo: "\uD569\uACA9 \uB3C4\uC7A5"
+  Contract:
+    DescriptionKo: "\uD589\uB3D9 \uB9C8\uAC10 \uC2DC \uC2DC\uD5D8 \uACB0\uACFC \uB300\uD654\uB97C
+      \uD55C \uBC88 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. \uC4F0\uB7EC\uC9C4 \uC801\uC5D0\uAC8C
+      \uCD94\uAC00 \uD3EC\uC988\uB97C \uC694\uAD6C\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    UsageKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784 \uACA9\uD30C \uB4A4 \uAE30\uC874 \uC804\uD22C
+      \uACB0\uACFC \uD654\uBA74 \uC774\uC804"
+    Lifecycle: 1
+    Tags:
+    - battle
+    - ending
+    - dialogue
+    AllowedPrimaryModes:
+    - battle
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
+    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
+    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+  Actions:
+  - BlockId: fa54037718f43a1ee7a3a55801c0c0c3
+    DesignerLabel: 
+    ActionId: flow.parallel
+    ParametersJson: '{}'
+    Note: 
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

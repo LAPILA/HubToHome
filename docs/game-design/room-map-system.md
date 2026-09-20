@@ -1,254 +1,106 @@
-# Room 기반 맵 시스템 1차 사용법
+# Room 기반 맵 시스템
 
-## 목표
+실제 제작 순서는 [콘텐츠 메이커 사용법](../content-maker-guide.md)을 기준으로 합니다. 이 문서는 구성요소와 수동 연결 원칙을 설명합니다. 예전 샘플·마을·던전별 재생성 메뉴는 제거되었으며, 기존 폴더를 삭제하고 재생성하는 방법은 본편 제작에 사용하지 않습니다.
 
-큰 지역은 Unity Scene으로 유지하고, 작은 방/실내/세부 구역은 Room Prefab으로 교체합니다. 문, 계단, 통로는 `DoorTransition`이 이동 요청만 만들고, 실제 처리는 `MapTransitionService`가 통합 관리합니다.
+## Scene과 Room의 역할
 
-## 핵심 구성
+큰 지역은 Unity Scene으로 유지하고, 같은 지역의 방·거리·실내·세부 구역은 Room Prefab으로 교체합니다. 실내만 Room인 것은 아닙니다.
 
-- `MapTransitionService`: 씬/룸 전환 총괄 서비스
-- `RoomContainer`: 현재 활성 Room Prefab을 붙이는 부모
-- `RoomDefinition`: RoomId, Room Prefab, BGM 설정을 담는 ScriptableObject
-- `RoomInstance`: Room Prefab 루트 설정. 카메라 경계와 룸 초기화 지점
-- `SpawnPoint`: ID 기반 도착 지점
-- `DoorTransition`: 문/포탈/통로 컴포넌트
+| 구성 | 역할 |
+| --- | --- |
+| `RegionEntryCoordinator` | 지역 진입 시 등록된 방 중 시작·저장 복원 대상 선택 |
+| `MapTransitionService` | 문에서 받은 Scene/Room 이동 요청 처리 |
+| `RoomContainer` | 현재 Room 생성·교체 및 성공한 진입 뒤 BGM 적용 |
+| `RoomDefinition` | 방 ID, Room Prefab, AreaDefinition, BGM 설정 |
+| `RoomInstance` | Prefab 루트의 방 ID, 카메라 경계, 초기화 지점 |
+| `SpawnPoint` | ID로 연결하는 도착 위치와 방향 |
+| `AreaConnectionMarker` / `DoorTransition` | 문·계단·통로의 이동 요청. 직접 씬을 로딩하지 않음 |
 
-## 씬 세팅 순서
+대사는 `DialogueData`에 쓰고 NPC에는 참조만 연결합니다. 메인 연출은 기존 시나리오의 시퀀스 메이커에서 작성합니다. 맵 생성기가 전투·스토리 규칙을 새로 만들지 않습니다.
 
-1. 큰 지역 씬에 `MapTransitionService` 오브젝트를 배치합니다.
-2. 같은 씬에 빈 오브젝트 `RoomContainer`를 만들고 `RoomContainer` 컴포넌트를 붙입니다.
-3. `MapTransitionService`의 `Room Container` 필드에 연결합니다.
-4. 플레이어와 Cinemachine Camera는 기존 씬 구조를 유지합니다.
+## 제작 시작점
 
-## Room Prefab 제작 순서
+1. `Hub To Home → 제작 → 콘텐츠 메이커`를 엽니다.
+2. 챕터를 선택하고 **방 만들기**로 기본 구조를 만듭니다.
+3. **지형 배치하기**에서 타일·벽·NPC를 꾸미고 Prefab을 저장합니다.
+4. **씬 관리**에서 새 지역 씬 생성 또는 기존 지역 씬 등록을 수행합니다.
+5. **방 검사**, 필요하면 `Hub To Home → 검사 → 맵·마커 검사`로 연결을 확인합니다.
 
-1. 빈 루트 오브젝트를 만들고 `RoomInstance`를 붙입니다.
-2. 하위에 타일맵, 벽 콜리더, NPC, 이벤트 트리거, 문을 배치합니다.
-3. 도착 지점마다 `SpawnPoint`를 배치하고 고유 `SpawnPointId`를 입력합니다.
-4. 룸 카메라 경계가 필요하면 `PolygonCollider2D`를 만들고 `RoomInstance.CameraBounds`에 연결합니다.
-5. 루트 오브젝트를 Prefab으로 저장합니다.
+방 만들기는 장소 이름·크기를 받는 단일 작업입니다. 마을·던전·필드·실내는 지형과 콘텐츠로 구분합니다. 기존 씬 등록은 시작 방과 기존 목록을 유지하며 새 방을 합칩니다. 저장되지 않은 씬은 먼저 직접 저장하거나 되돌려야 합니다.
 
-## RoomDefinition 제작 순서
+## 현재 폴더
 
-1. Project 창에서 `Create > HubToHome > Overworld > Room Definition`을 선택합니다.
-2. `RoomId`를 입력합니다. 예: `town.shop`, `school.classroom_a`.
-3. `RoomPrefab`에 위에서 만든 `RoomInstance` Prefab을 연결합니다.
-4. 방 전용 BGM이 있으면 `BgmOverride`를 연결합니다.
-5. BGM을 유지하려면 `KeepCurrentBgm`을 켭니다.
-
-## 문 만들기
-
-1. 문 위치에 `Collider2D`를 만들고 `Is Trigger`를 켭니다.
-2. `DoorTransition`을 붙입니다.
-3. `ActivationMode`를 선택합니다.
-   - `OnTriggerEnter`: 닿으면 자동 이동
-   - `OnInteract`: 상호작용 키로 이동
-   - `TriggerOrInteract`: 둘 다 허용
-4. `TransitionType`을 선택합니다.
-   - `Room`: 현재 씬 안에서 룸 프리팹 교체
-   - `Scene`: 큰 지역 씬 이동
-5. `TargetRoom` 또는 `TargetSceneName`을 입력합니다.
-6. `TargetSpawnPointId`에 도착할 스폰 포인트 ID를 입력합니다.
-7. `FacingAfterEnter`로 도착 후 바라볼 방향을 지정합니다.
-
-## 권장 이름 규칙
-
-- Scene: `Region_Town`, `Region_Forest`, `Region_School`
-- RoomId: `town.shop`, `town.house_01.living`, `school.classroom_a`
-- SpawnPointId: `from_town`, `from_shop`, `door_left`, `door_right`
-- Door 오브젝트: `Door_To_Shop`, `Door_To_TownStreet`
-
-## 현재 1차 범위
-
-이번 시스템은 맵 전환 뼈대입니다. 컷씬, 적 스폰, 이벤트 시퀀스는 직접 구현하지 않았지만, 모두 `MapTransitionService.RequestTransition()`을 호출하는 방식으로 확장할 수 있게 분리되어 있습니다.
-
-## 샘플 씬 생성
-
-Unity Editor에서 아래 메뉴를 실행하면 테스트용 씬과 룸 프리팹 2개가 생성됩니다.
-
-`Hub To Home > 오버월드 > 맵 생성 > 기본 Room 샘플 생성`
-
-생성되는 에셋:
-
-- `Assets/_Game/Features/Overworld/Generated/RoomMap_WhiteSquare.png`
-- `Assets/_Game/Features/Overworld/Maps/Samples/BasicRoomMap/Scenes/Sample_RoomMap.unity`
-- `Assets/_Game/Features/Overworld/Maps/Samples/BasicRoomMap/Prefabs/Rooms/Room_Sample_A.prefab`
-- `Assets/_Game/Features/Overworld/Maps/Samples/BasicRoomMap/Prefabs/Rooms/Room_Sample_B.prefab`
-- `Assets/_Game/Features/Overworld/Maps/Samples/BasicRoomMap/Data/Rooms/Room_Sample_A_Definition.asset`
-- `Assets/_Game/Features/Overworld/Maps/Samples/BasicRoomMap/Data/Rooms/Room_Sample_B_Definition.asset`
-
-샘플 구조:
-
-- `Room_Sample_A`의 오른쪽 문에 닿으면 `Room_Sample_B`로 이동합니다.
-- `Room_Sample_B`의 오른쪽 문에 닿으면 `Room_Sample_A`로 돌아옵니다.
-- 각 룸은 `SpawnPointId`를 통해 도착 위치를 찾습니다.
-- 씬에는 `MapTransitionService`, `RoomContainer`, `Sample Player`, `Main Camera`가 배치됩니다.
-
-주의점:
-
-- 샘플 플레이어는 구조 검증용 최소 오브젝트입니다. 실제 게임 플레이에서는 프로젝트의 정식 플레이어 프리팹으로 교체하는 것을 권장합니다.
-- 샘플은 맵 전환 구조 확인용이므로 아트, 애니메이터, 대화/전투 연동은 포함하지 않습니다.
-
-## Map Field Starter 맵팩 생성
-
-필드/마을/실내 연결 흐름을 확인하는 Room 기반 맵팩 샘플은 아래 메뉴로 생성합니다.
-
-`Hub To Home > 오버월드 > 맵 생성 > 맵 필드 스타터팩 생성`
-
-생성 위치:
-
-`Assets/_Game/Features/Overworld/Maps/MapFieldStarter/`
-
-생성되는 주요 구성:
-
-- `Assets/_Game/Features/Overworld/Maps/_Shared/Generated/RoomMap_WhiteSquare.png`
-- `Scenes/Region_MapFieldStarter.unity`
-- `Prefabs/Rooms/Room_MapField_Gate.prefab`
-- `Prefabs/Rooms/Room_MapField_Village.prefab`
-- `Prefabs/Rooms/Room_MapField_Inn.prefab`
-- `Data/Rooms/*_Definition.asset`
-- `Notes/MapFieldStarter_README.md`
-
-전환 구조:
-
-- Gate ↔ Village ↔ Inn
-- Village ↔ Shop
-- Village ↔ House
-- Village ↔ ForestPath ↔ DungeonEntrance
-
-이 맵팩은 맵 필드 제작 흐름을 검증하기 위한 오리지널 샘플입니다. 특정 상용 게임의 명칭, 지형, 이벤트를 그대로 복제하지 않고, 필드/마을/실내 연결 구조만 참고하는 것을 기준으로 합니다.
-
-기본 생성 룸 7개:
-
-1. `Room_MapField_Gate`
-2. `Room_MapField_Village`
-3. `Room_MapField_Inn`
-4. `Room_MapField_Shop`
-5. `Room_MapField_House`
-6. `Room_MapField_ForestPath`
-7. `Room_MapField_DungeonEntrance`
-
-## 샘플 제작 메뉴 정리
-
-- `기본 Room 샘플 생성`: A/B 두 룸만 있는 최소 구조 검증용입니다.
-- `맵 필드 스타터팩 생성`: Gate, Village, Inn, Shop, House, ForestPath, DungeonEntrance가 들어 있는 기본 맵팩입니다.
-- `템플릿 > 필드 템플릿 생성`: 필드 단일 룸 템플릿입니다.
-- `템플릿 > 마을 템플릿 생성`: 마을 단일 룸 템플릿입니다.
-- `템플릿 > 실내 템플릿 생성`: 실내 단일 룸 템플릿입니다.
-- `템플릿 > 던전 템플릿 생성`: 던전 단일 룸 템플릿입니다.
-- `템플릿 > 전체 템플릿 생성`: 위 템플릿을 한 번에 생성합니다.
-
-## 권장 폴더 구조
-
-맵 제작자가 한 곳에서 보기 쉽도록, 맵 관련 샘플/템플릿/맵팩은 아래에 모읍니다.
+모든 맵 콘텐츠는 `Assets/_Game/Content/Maps` 아래에 있습니다.
 
 ```text
-Assets/_Game/Features/Overworld/Maps/
-├─ _Shared/
-│  └─ Generated/
-│     └─ RoomMap_WhiteSquare.png
-├─ Samples/
-│  └─ BasicRoomMap/
-│     ├─ Scenes/
-│     ├─ Prefabs/Rooms/
-│     └─ Data/Rooms/
-├─ MapFieldStarter/
-│  ├─ Scenes/
+Maps/
+├─ Regions/Chapter01/
+│  ├─ Scenes/Region_Chapter01_Windmill.unity
 │  ├─ Prefabs/Rooms/
+│  ├─ Prefabs/NPCs/
 │  ├─ Data/Rooms/
-│  ├─ Materials/
-│  └─ Notes/
-└─ Templates/
-   ├─ FieldTemplate/
-   ├─ TownTemplate/
-   ├─ InteriorTemplate/
-   └─ DungeonTemplate/
+│  └─ Data/Dialogue/
+├─ Battle/BattleScene.unity
+├─ Development/
+│  ├─ TestMap/TestMap.unity
+│  ├─ Regions/Title/
+│  └─ Templates/MapFieldStarter/
+└─ Shared/
 ```
 
-모든 게임 씬과 맵 제작 샘플은 `Assets/_Game/Content/Maps`에서 관리합니다. 타이틀·인트로는 `Frontend`, 전투는 `Battle`, 실제 지역은 `Regions`, QA 맵은 `Development`에서 찾습니다.
+본편은 `Regions/<챕터>`, 개발·QA 자료는 `Development`로 구분합니다. `Shared/Generated`는 생성기가 사용하는 공용 자원이며 새 본편 방을 넣는 곳이 아닙니다. 과거 `Features/Overworld/Maps` 경로는 사용하지 않습니다.
 
-샘플을 다시 생성할 때는 기존 생성 폴더를 삭제하거나, 같은 메뉴를 다시 실행해 덮어쓰기 기준으로 확인합니다.
+## 수동 구성 시 확인할 참조
 
-`맵 필드 스타터팩 생성`은 실행 시 기존 `Maps/MapFieldStarter` 폴더를 먼저 삭제하고 7개 기본 룸을 다시 생성합니다. 중간에 생성이 깨진 경우에도 같은 메뉴를 다시 실행하면 맵팩을 재작성할 수 있습니다.
+- Scene에는 Player, 게임 초기화 구성, 공용 카메라 리그와 Map Systems가 필요합니다. 카메라는 `Assets/_Game/Core/Prefabs/Camera/GameplayCameraRig.prefab`을 사용합니다.
+- `MapTransitionService`의 Room Container와 `RegionEntryCoordinator`의 RoomContainer·Player·기본 Room·Room 목록을 같은 지역 구성에 연결합니다. Coordinator가 초기 진입을 소유하면 RoomContainer의 중복 초기 로드를 켜지 않습니다.
+- Room Prefab 루트에는 `RoomInstance`, 하위에는 지형·충돌벽·마커·SpawnPoint·카메라 Bounds를 둡니다. `RoomDefinition.RoomId`와 Prefab의 Room ID를 일치시킵니다.
+- 심리스 전투에는 공용 `SeamlessBattleHost`가 필요합니다. Scene과 Room 양쪽에 중복 배치하지 않습니다.
+- 새 Scene을 실제 빌드에 넣을 때는 Unity Build Profiles의 Scene List에 직접 등록합니다. 메이커는 빌드 목록을 자동 변경하지 않습니다.
 
-샘플 블록은 머티리얼을 만들지 않고 공용 흰색 Sprite 에셋에 `SpriteRenderer.color`를 입히는 방식입니다. 렌더 파이프라인이 바뀌어도 분홍색 머티리얼 오류가 나지 않도록 하기 위한 구조입니다.
+## 문과 도착점
 
-## 전환 직후 재진입 방지
+같은 Scene 안의 방 이동은 `Room`, 다른 지역 이동은 `Scene`을 선택합니다.
 
-룸 이동 직후 플레이어가 새 룸의 문 트리거 근처에 생성되면 바로 되돌아가는 문제가 생길 수 있습니다. 현재 `MapTransitionService`는 도착 `SpawnPoint` 주변의 `DoorTransition`을 짧게 억제해 이 문제를 방지합니다.
+1. 도착할 방에 SpawnPoint를 만들고 저장합니다.
+2. 출발 방에 문을 배치하고 도착 방·SpawnPoint를 선택합니다.
+3. 상호작용, 접촉, 둘 다 허용 중 발동 방식을 정합니다.
+4. 왕복하려면 반대편 문도 따로 만듭니다.
 
-스폰 포인트는 문 트리거와 너무 겹치지 않게 두는 것이 좋습니다.
+Scene 이동은 대상 Scene 이름과 그 지역에 등록된 Room ID·SpawnPoint ID를 맞춥니다. 도착점을 문 트리거와 겹치지 않게 두세요. 전환 직후 재진입 억제는 보조 장치이며 배치 오류를 대신 해결하지 않습니다.
 
-## 맵 연결 검증
+## Room 음악
 
-현재 열려 있는 Scene/Room의 전체 검사 결과를 Console에 남기려면 아래 메뉴를 사용합니다.
+`RoomDefinition`에서 설정하며 성공한 진입 뒤 `RoomContainer.ApplyCurrentRoomAudio()`가 적용합니다.
 
-`Hub To Home > 오버월드 > 맵 검사 > 현재 열린 룸 맵 검사`
+- `BgmOverride` 있음: 해당 곡으로 전환.
+- 곡 없음 + `KeepCurrentBgm` 켬: 현재 곡 유지.
+- 곡 없음 + `KeepCurrentBgm` 끔: 현재 곡 페이드아웃.
 
-마커를 목록과 필터로 탐색하고 문제 위치로 이동하려면 아래 작업창을 사용합니다.
+Room 기반 Scene에서 MapSettings와 RoomDefinition이 같은 BGM을 중복 지시하지 않게 구성합니다. 별도 AudioSource의 PlayOnAwake/Loop로 맵 BGM을 우회 재생하지 마세요. 상점은 공용 AudioManager를 통해 상점 음악으로 전환하고 정상 종료 시 이전 음악을 복원하며, 입장 중 맵 환경음을 억제합니다.
 
-`Hub To Home > 오버월드 > Area 마커 > 마커 작업창`
+## 마커의 현재 동작
 
-Prefab Mode에서는 현재 Room Prefab만 검사하고, 그 외에는 로드된 Scene 범위를 검사합니다. 작업창에서 대상을 선택한 뒤 기존 Odin Inspector에서 세부 값을 편집합니다.
+- `NPCMarker`, `SignMarker`: 연결된 대화 재생. 기본 반복 상호작용을 쓰고 한 번만 필요한 경우에 1회성을 설정합니다.
+- `OverworldEnemyMarker`: EnemyData와 전투 진입 설정을 연결합니다. 단순 외형 배치만으로 전투 구성이 완성되지는 않습니다.
+- `HazardMarker`: 파티 피해·넉백을 적용하며 재피격 간격을 설정합니다.
+- `VendorMarker`: ShopDefinition을 연결해 기존 ShopSession/ShopUI를 엽니다. 상품·판매·대화·회복 서비스와 이미지·BGM을 데이터에서 설정합니다. 더 이상 로그만 남기는 임시 연결점이 아닙니다.
+- `PuzzleMarker`: `IPuzzleRuntime` 구현이 필요합니다. 실제 규칙·완료·저장은 각 퍼즐 Runtime의 책임이며, 마커가 즉시 완료 플래그를 세팅하지 않습니다.
+- `ShortcutDoorMarker`: 잠금 해제 플래그와 목적지, 잠금 안내를 설정합니다.
+- `SublocationMarker`: 별도 공간에 들어갈 때 복귀 주소를 기록하고 돌아올 때 사용합니다.
 
-## Pixel Grid 권장 방식
+마커 라벨·아이콘·Gizmo는 Editor용이며 게임 HUD가 아닙니다.
 
-제 권장안은 **자동 생성은 최소 공통값만**, 세부 Pixel Grid 세팅은 **프리팹/씬에서 직접 조정**입니다.
+## 검사와 저장
 
-이유:
+- 선택 방: 콘텐츠 메이커의 **방 검사**.
+- 열린 Prefab 또는 로드된 Scene 범위: `Hub To Home → 검사 → 맵·마커 검사`.
+- 스킬·아이템·카탈로그·상점 구매 카운터: `Hub To Home → 검사 → 콘텐츠 검사`.
 
-- Pixel Grid는 프로젝트마다 PPU, 카메라 직교 크기, URP 2D Pixel Perfect Camera 사용 여부가 다릅니다.
-- 이를 생성기에서 강제로 고정하면 다른 씬/아트셋과 충돌할 가능성이 큽니다.
-- 반면 `정렬 기준`, `기본 스케일`, `SpriteRenderer` 구조 같은 공통 뼈대는 자동 생성에 잘 맞습니다.
+방 ID/마커 ID, 필수 참조·콜리더, Camera Bounds, SpawnPoint와 이동 대상 등을 확인합니다. Room 대상은 연결된 Prefab까지 검사하지만 로드되지 않은 다른 Scene의 실제 도착점은 별도 확인이 필요합니다. 검사는 읽기 전용이며 플레이 성공을 보장하지 않습니다.
 
-권장 운영:
+방 데이터·Area 데이터와 Prefab 저장은 구분합니다. 챕터·방 삭제는 메이커의 대상 미리보기·연결 검사·확인을 거친 휴지통 이동만 사용하세요. 본편 폴더를 지운 뒤 샘플 생성기로 덮어쓰는 절차는 사용하지 않습니다.
 
-1. 생성기는 **방 구조, 문, 스폰포인트, 기본 콜리더**까지만 자동 생성
-2. Pixel Perfect Camera, PPU, Grid Cell Size는 프로젝트 공통 규칙으로 별도 관리
-3. 실제 타일맵/배경 프리팹에서는 픽셀 맞춤을 수동 확인
+## 픽셀과 카메라
 
-즉, Pixel Grid까지 생성기에서 전부 자동화하기보다, **맵 구조 자동화 + 픽셀 세팅은 공통 규칙 기반 수동 확인**이 더 안전합니다.
-
-원하시면 다음 단계로는 `Pixel Perfect Camera 체크 도구`나 `맵용 공통 카메라 템플릿`을 추가하는 쪽이 좋습니다.
-
-검사 항목:
-
-- 현재 씬에 `MapTransitionService`가 있는지
-- 현재 씬에 `RoomContainer`가 있는지
-- 같은 Room 안의 Marker ID 중복 여부
-- 마커별 필수 ID·참조·Collider 누락 여부
-- Marker가 `RoomInstance`에 속하는지와 Camera Bounds 안에 있는지
-- `SpawnPointId` 누락 여부
-- 현재 로드된 범위 안의 `SpawnPointId` 중복 여부
-- `DoorTransition`의 전환 요청 유효성
-- Room 전환 대상 `RoomDefinition`과 대상 Prefab의 `SpawnPointId` 유효성
-- 현재 로드된 범위 안에서 목적지 `SpawnPointId`를 찾을 수 있는지
-
-주의점:
-
-- Room 전환은 연결된 `RoomDefinition.RoomPrefab` 내부 SpawnPoint까지 확인합니다.
-- 로드되지 않은 다른 Scene 내부의 SpawnPoint는 검사할 수 없으므로 현재 편집 범위에서 찾지 못하면 Warning으로 표시합니다.
-- Scan은 읽기 전용이며 Scene, Prefab, ScriptableObject를 자동 수정하지 않습니다.
-
-## 다음 완성도 로드맵
-
-1. RoomDefinition과 연결 Door를 한 화면에서 직접 수정하는 전용 편집 기능
-2. 샘플팩 확장: 필드-마을-상점-던전 입구-보스룸 템플릿 추가
-3. 전환 연출 강화: 페이드 UI, 문 사운드, 도착 시 한 걸음 전진 연출
-4. 저장/로드 강화: CurrentRoomId 기반으로 저장 파일에서 룸까지 복원
-
-## 제작 원칙
-
-- 문은 직접 로딩하지 않습니다. `MapTransitionService`에 요청만 보냅니다.
-- 좌표보다 `SpawnPointId`를 우선 사용합니다.
-- 큰 지역은 Scene, 작은 방은 Room Prefab으로 관리합니다.
-- 카메라는 새로 만들지 않고 기존 Cinemachine Camera의 Follow/Confiner를 갱신합니다.
-- BGM은 지역 BGM을 기본으로 하고, RoomDefinition에서 필요할 때만 덮어씁니다.
-
-## Area Marker authoring 메모
-
-- `NPCMarker`, `SignMarker`는 기본값을 **반복 상호작용 가능**으로 두는 편이 자연스럽습니다. 1회성 대화/안내문일 때만 `1회성`을 켭니다.
-- `HazardMarker.damage`는 현재 **기획용 수치**입니다. 런타임은 플레이어 넉백만 적용하고 실제 HP 감소는 아직 연결하지 않았습니다.
-- `VendorMarker`는 현재 **상점 UI 연결 지점**입니다. `vendorId`, `shopId` 전달 seam만 제공하며 자동으로 상점 화면을 열지 않습니다.
-- `PuzzleMarker`는 현재 **임시 완료 seam**입니다. 퍼즐 미니게임을 실행하지 않고 `solvedFlag`를 즉시 세팅합니다.
-- Area Marker 아이콘/라벨/Gizmo는 `#if UNITY_EDITOR` 경로에서만 그리므로 인게임 HUD처럼 노출되지 않습니다.
+공용 GameplayCameraRig의 32 PPU / 640×480 기준을 따릅니다. Scene마다 실제 Camera를 복제하지 않고 Player Follow·Bounds 등 씬 소유 참조만 연결합니다. 타일 크기·Sprite PPU·실제 픽셀 맞춤은 사용 아트에 맞춰 확인하고, 임시 바닥은 제작 중 교체합니다.

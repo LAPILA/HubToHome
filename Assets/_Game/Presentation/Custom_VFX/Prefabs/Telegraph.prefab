@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2577592614538765526}
   - component: {fileID: 4513625049491378455}
+  - component: {fileID: 3957712962551152201}
   m_Layer: 0
   m_Name: Telegraph
   m_TagString: Untagged
@@ -91,3 +92,24 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &3957712962551152201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780640615873706099}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d10b4c937614412b9ba0beb5625f105c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _startScale: 0.25
+  _peakScale: 1.2
+  _growDuration: 0.08
+  _settleDuration: 0.06
+  _flashDuration: 0.08
+  _worldOffset: {x: 0, y: 0.25, z: 0}
+  _sortingOrderOffset: 10
+  _pingClip: {fileID: 8300000, guid: 47f3013330ec80c40a7ce847694a9d4a, type: 3}
+  _volume: 0.7

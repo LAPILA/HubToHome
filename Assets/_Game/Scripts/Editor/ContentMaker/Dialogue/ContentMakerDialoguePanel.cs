@@ -224,7 +224,7 @@ namespace HubToHome.EditorTools.ContentMaker
             _workPage = 0;
             context.Select(copy);
             context.RefreshAssets();
-            context.Report("대화만 복제했습니다. 화자와 다른 대화는 기존 공용 참조를 유지합니다.");
+            context.Report("대화를 복제했습니다. 화자·다른 대화와 번역 키를 공유합니다. 다른 문장으로 쓸 줄은 번역 키를 비우고 새 키를 생성하세요.", MessageType.Warning);
         }
 
         private void DrawNodes(ContentMakerContext context, DialogueData dialogue)
@@ -278,6 +278,7 @@ namespace HubToHome.EditorTools.ContentMaker
                         dialogue.Nodes.Insert(_nodeIndex + 1, CloneNode(dialogue.Nodes[_nodeIndex]));
                         _nodeIndex++;
                     });
+                    context.Report("대사를 복제했습니다. 번역 키도 공유하므로 다른 문장으로 쓸 경우 키를 비우고 새 키를 생성하세요.", MessageType.Warning);
                     return;
                 }
                 if (ContentMakerGUI.SecondaryButton("삭제"))
@@ -303,6 +304,9 @@ namespace HubToHome.EditorTools.ContentMaker
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("대사 내용 (여러 줄 가능)", ContentMakerGUI.Body);
             string text = EditorGUILayout.TextArea(node.DefaultText ?? string.Empty, ContentMakerGUI.TextArea, GUILayout.MinHeight(120));
+            if (!string.IsNullOrWhiteSpace(node.LocalizationKey))
+                EditorGUILayout.HelpBox("번역 키: " + node.LocalizationKey
+                    + "\n번역표에 이 키가 있으면 위 본문보다 번역표 문장이 우선합니다. 복제한 줄을 다른 문장으로 쓰려면 아래 ‘번역 키 / 고급 이벤트’에서 키를 비우고 ‘CSV·번역 → 번역 준비’에서 새 키를 생성하세요. 기존 키를 공유하는 다른 대사는 바뀌지 않습니다.", MessageType.Warning);
             EditorGUILayout.Space(4);
             bool isChoice = EditorGUILayout.Toggle("선택지 사용", node.IsChoiceNode);
             if (EditorGUI.EndChangeCheck())

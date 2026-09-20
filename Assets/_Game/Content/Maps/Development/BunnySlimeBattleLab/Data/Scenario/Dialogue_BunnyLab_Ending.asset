@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_BunnyLab_Ending
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: 841e54257c82dc04d8ec10ac181c249c, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.ending.00
+    DefaultText: "\uD569\uACA9\uC785\uB2C8\uB2E4! \uB9C8\uC9C0\uB9C9 \uB3C4\uC7A5\uC740
+      \uC870\uAE08 \uB0A9\uC791\uD558\uAC8C \uCC0D\uD614\uB124\uC694."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.ending.01
+    DefaultText: "\uC2DC\uD5D8\uAD00\uB2D8\uC774 \uB3C4\uC7A5\uC774 \uB41C \uAC83
+      \uAC19\uC740\uB370\uC694."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 841e54257c82dc04d8ec10ac181c249c, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.ending.02
+    DefaultText: "\uBCF5\uC6D0\uB825\uB3C4 \uC778\uC99D\uBC1B\uC558\uC2B5\uB2C8\uB2E4.
+      \uC7A0\uAE50\uB9CC \uB9D0\uB9AC\uBA74 \uB429\uB2C8\uB2E4."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
+    Emotion: 2
+    LocalizationKey: lab.bunny_slime.ending.03
+    DefaultText: "\uC88B\uC544\uC694. \uB2E4\uC74C \uC2DC\uD5D8\uC740 \uC11C\uB958\uB85C
+      \uD569\uC2DC\uB2E4."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []

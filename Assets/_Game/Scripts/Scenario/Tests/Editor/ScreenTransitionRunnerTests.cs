@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
@@ -25,7 +26,7 @@ public class ScreenTransitionRunnerTests
     {
         if (_overlayObject != null)
         {
-            Object.DestroyImmediate(_overlayObject);
+            UnityEngine.Object.DestroyImmediate(_overlayObject);
         }
     }
 
@@ -78,6 +79,53 @@ public class ScreenTransitionRunnerTests
         Assert.That(_canvasGroup.blocksRaycasts, Is.True);
         Assert.That(_image.color, Is.EqualTo(Color.black));
         Assert.That(_overlayObject.activeSelf, Is.True);
+    }
+
+    [Test]
+    public void RestorationScope_CancelDuringFadeInRestoresBeforeFadeOut()
+    {
+        var handle = new ActionExecutionHandle("room");
+        ScreenTransitionOverlay.RestorationScope scope = _overlay.CaptureRestorationScope(handle);
+        RunToCompletion(_overlay.FadeTo(Color.black, 1f, 0f, handle));
+        IEnumerator reveal = _overlay.FadeTo(Color.black, 0f, 10f, handle);
+        Assert.That(reveal.MoveNext(), Is.True);
+
+        handle.Cancel();
+        scope.Dispose();
+        ((IDisposable)reveal).Dispose();
+
+        Assert.That(_canvasGroup.alpha, Is.Zero);
+        Assert.That(_canvasGroup.blocksRaycasts, Is.False);
+        Assert.That(_overlayObject.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void RestorationScope_OldOwnerCannotRestoreOverNewPresentation()
+    {
+        var handle = new ActionExecutionHandle("room");
+        ScreenTransitionOverlay.RestorationScope scope = _overlay.CaptureRestorationScope(handle);
+        RunToCompletion(_overlay.FadeTo(Color.black, 1f, 0f, handle));
+        RunToCompletion(_overlay.FadeTo(Color.white, 0.7f, 0f, new ActionExecutionHandle("new_owner")));
+
+        handle.Cancel();
+        scope.Dispose();
+        scope.Dispose();
+
+        Assert.That(_canvasGroup.alpha, Is.EqualTo(0.7f));
+        Assert.That(_image.color, Is.EqualTo(Color.white));
+        Assert.That(_canvasGroup.blocksRaycasts, Is.True);
+    }
+
+    [Test]
+    public void FadeTo_DisposedRoutineRestoresPriorStateWithoutLaterTick()
+    {
+        IEnumerator routine = _overlay.FadeTo(Color.black, 1f, 10f, new ActionExecutionHandle("disposed"));
+        Assert.That(routine.MoveNext(), Is.True);
+
+        ((IDisposable)routine).Dispose();
+
+        Assert.That(_canvasGroup.alpha, Is.Zero);
+        Assert.That(_overlayObject.activeSelf, Is.False);
     }
 
     private static void RunToCompletion(IEnumerator routine, int maxSteps = 100)

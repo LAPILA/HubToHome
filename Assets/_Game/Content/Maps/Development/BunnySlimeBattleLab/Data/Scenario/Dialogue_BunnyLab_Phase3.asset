@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_BunnyLab_Phase3
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: 841e54257c82dc04d8ec10ac181c249c, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.phase3.00
+    DefaultText: "최종 항목, 대응 안전수칙! 아주 크게 부풀어 보겠습니다."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.phase3.01
+    DefaultText: "\uADF8\uAC74 \uADF8\uB0E5 \uC704\uD5D8\uC218\uCE59 \uC544\uB2CC\uAC00\uC694?"
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 841e54257c82dc04d8ec10ac181c249c, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.phase3.02
+    DefaultText: "반격 표시가 뜨면 C를 누르세요. 공격받는 분이 앞으로 나와 받아치는 겁니다."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 841e54257c82dc04d8ec10ac181c249c, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.phase3.03
+    DefaultText: "\uBD88\uC548\uD558\uBA74 \uD68C\uD53C\uD574\uB3C4 \uB429\uB2C8\uB2E4.
+      \uAC00\uB4DC\uB85C \uBC1B\uB294 \uAC74 \uCD94\uCC9C\uC774 \uC544\uB2C8\uB77C
+      \uAE08\uC9C0\uC785\uB2C8\uB2E4."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.bunny_slime.phase3.04
+    DefaultText: "다들 자리 지켜요. 제가 앞에서 받아칠게요."
+    EventTriggerID: 
+    IsChoiceNode: 0
+    Choices: []

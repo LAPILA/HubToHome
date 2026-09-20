@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 440a59d37d78e346821f01b9e5a27bb6, type: 3}
+  m_Name: BunnySlimeBattleLab
+  m_EditorClassIdentifier: Assembly-CSharp::BunnySlimeBattleLabData
+  Enemy: {fileID: 11400000, guid: d43ee5dcadb816945862fc8c05072aff, type: 2}
+  Scenario: {fileID: 11400000, guid: fb021001d617a0e48b2783a1552f3d04, type: 2}
+  Party:
+  - {fileID: 11400000, guid: acd4abb0fb9a006448893686b7b44871, type: 2}
+  - {fileID: 11400000, guid: c1f7b1f4d8cee284cb9bb47ccd70a939, type: 2}
+  - {fileID: 11400000, guid: 736269c5b6646a64f97189b661f53d13, type: 2}
+  - {fileID: 11400000, guid: 553a20be7def88447bc97d8ede168cac, type: 2}
+  - {fileID: 11400000, guid: 4fc4bba24508ae144a56c4a7d0b39f0e, type: 2}
+  - {fileID: 11400000, guid: 5a043534386e4fa40904cd0b3162ca2d, type: 2}
+  Items:
+  - {fileID: 11400000, guid: 0447a03af94e485d9362f10270dd68bb, type: 2}
+  - {fileID: 11400000, guid: 32f5ce71f1b647a7aea951b0fad8ab75, type: 2}
+  - {fileID: 11400000, guid: 79c7cf7962e74accbfd9aac9bbb524c3, type: 2}
+  - {fileID: 11400000, guid: 08f7c984e543434fb5ba95a8d25436e4, type: 2}
+  - {fileID: 11400000, guid: c11daeaf1f7d4101a7d50992971fd637, type: 2}
+  - {fileID: 11400000, guid: 586a0bc557cf440fa05c1fba8bc51de8, type: 2}
+  - {fileID: 11400000, guid: 44aec8244fa54db59a702571482a4d5b, type: 2}
+  Equipment:
+  - {fileID: 11400000, guid: 76100795bbc1c384e90d0f59bd3c7d36, type: 2}
+  - {fileID: 11400000, guid: b27e18826c8969f4088adef9f3414ae6, type: 2}
+  - {fileID: 11400000, guid: b87f8f3b65230b840a6b236bc8d7b069, type: 2}
+  GuardSkill: {fileID: 11400000, guid: 188683247c08da84fa7c9849f5b4fba3, type: 2}
+  DodgeSkill: {fileID: 11400000, guid: 5223a5b9b500fa649a0b03661843c13b, type: 2}
+  CounterSkill: {fileID: 11400000, guid: f3a8e9ee0cbb67d42815953e00825604, type: 2}
+  WaveSkill: {fileID: 11400000, guid: 0dad42f2786b088429e4e534be47072d, type: 2}
+  ProjectileSkills:
+  - {fileID: 11400000, guid: c517246fb0984e2aaa509cf03ec1df2c, type: 2}
+  - {fileID: 11400000, guid: f42b269d7a674e0a98cb417aef6a58c0, type: 2}
+  - {fileID: 11400000, guid: cda6e4c803164bc5b7c310a93649f81c, type: 2}

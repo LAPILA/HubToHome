@@ -13,6 +13,12 @@ public interface IEncounterOutcomeSource
     void OnEncounterResolved(BattleEncounterOutcome outcome, PlayerController player);
 }
 
+/// <summary>훈련용 심리스 조우 등 패배 뒤 게임 오버 대신 조우 화면으로 돌아가는 선택적 정책입니다.</summary>
+public interface IEncounterDefeatPolicy
+{
+    bool ReturnToExplorationOnDefeat { get; }
+}
+
 /// <summary>
 /// 심리스 전투가 정상 결과 없이 강제 중단될 때 복구가 필요한 조우만 구현합니다.
 /// 기존 IEncounterSource는 중단 콜백을 받지 않는 계약을 그대로 유지합니다.

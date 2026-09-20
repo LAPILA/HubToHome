@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Serialization;
 using DG.Tweening;
 using Sirenix.OdinInspector;
 using Febucci.TextAnimatorForUnity;
@@ -82,6 +81,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private readonly Dictionary<EnemyCharacter, Transform> _enemyTopPivots = new Dictionary<EnemyCharacter, Transform>();
     private string _activeGameModuleId = BattleTurnQteGameModuleRuntime.Id;
     private bool _acceptsTurnQteInput = true;
+    private BattleManager _subscribedBattleManager;
+    private Tween _partyPanelTween;
+    private Sequence _scenarioFlashTween;
+    private Tween _scenarioShakeTween;
     #endregion
 
     #region [ Initialization & Lifecycle ]
@@ -106,7 +109,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (_partySlots != null)
         {
             foreach (var slot in _partySlots)
-                slot.Hide();
+                slot?.Hide();
         }
     }
 
@@ -160,6 +163,24 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             return;
         }
 
+        BindBattleEvents();
+    }
+
+    private void OnEnable() => BindBattleEvents();
+
+    private void OnDisable()
+    {
+        UnbindBattleEvents();
+        ReleasePresentationTweens();
+    }
+
+    private void BindBattleEvents()
+    {
+        BattleManager bm = BattleManager.Instance;
+        if (bm == null || _subscribedBattleManager == bm) return;
+        UnbindBattleEvents();
+        _subscribedBattleManager = bm;
+
         // Observer 구독
         bm.OnBattleStarted          += HandleBattleStarted;
         bm.OnPlayerPartyChanged     += HandlePlayerPartyChanged;
@@ -180,9 +201,15 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (Instance == this)
             Instance = null;
 
-        _damagePopupPresenter?.ReleaseAll();
+        ReleasePresentationTweens();
+        if (_damagePopupPresenter != null) _damagePopupPresenter.ReleaseAll();
+        UnbindBattleEvents();
+    }
 
-        var bm = BattleManager.Instance;
+    private void UnbindBattleEvents()
+    {
+        BattleManager bm = _subscribedBattleManager;
+        _subscribedBattleManager = null;
         if (bm == null) return;
 
         // Observer 해제
@@ -200,6 +227,23 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         bm.OnBattleNarrationRequested -= HandleBattleNarrationRequested;
     }
 
+    private void ReleasePresentationTweens()
+    {
+        if (_partySlots != null)
+            foreach (PartySlotUI slot in _partySlots) slot?.ReleaseTweens();
+        KillOwnedTween(ref _partyPanelTween);
+        KillOwnedTween(ref _scenarioShakeTween);
+        if (_scenarioFlashTween != null && _scenarioFlashTween.IsActive()) _scenarioFlashTween.Kill(false);
+        _scenarioFlashTween = null;
+    }
+
+    private static void KillOwnedTween(ref Tween tween)
+    {
+        Tween owned = tween;
+        tween = null;
+        if (owned != null && owned.IsActive()) owned.Kill(false);
+    }
+
     private void Update()
     {
         UpdateCursorPosition();
@@ -211,17 +255,29 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     /// <summary>서브메뉴가 열릴 때 체력창도 같이 위로 올려줍니다.</summary>
     public void MovePartyPanelUp(float offset = 150f, float duration = 0.3f)
     {
-        if (_partyStatusPanel == null) return;
-        _partyStatusPanel.DOKill();
-        _partyStatusPanel.DOAnchorPosY(_defaultPartyPanelY + offset, duration).SetEase(Ease.OutCubic);
+        MovePartyPanel(_defaultPartyPanelY + offset, duration, Ease.OutCubic);
     }
 
     /// <summary>서브메뉴가 닫히거나 적 턴이 올 때 원래 자리로 내려줍니다.</summary>
     public void ResetPartyPanelPosition(float duration = 0.3f)
     {
+        MovePartyPanel(_defaultPartyPanelY, duration, Ease.InCubic);
+    }
+
+    private void MovePartyPanel(float targetY, float duration, Ease ease)
+    {
+        KillOwnedTween(ref _partyPanelTween);
+        KillOwnedTween(ref _scenarioShakeTween);
         if (_partyStatusPanel == null) return;
-        _partyStatusPanel.DOKill();
-        _partyStatusPanel.DOAnchorPosY(_defaultPartyPanelY, duration).SetEase(Ease.InCubic);
+        if (duration <= 0f || !_partyStatusPanel.gameObject.activeInHierarchy)
+        {
+            Vector2 position = _partyStatusPanel.anchoredPosition;
+            position.y = targetY;
+            _partyStatusPanel.anchoredPosition = position;
+            return;
+        }
+        _partyPanelTween = _partyStatusPanel.DOAnchorPosY(targetY, duration).SetEase(ease)
+            .SetRecyclable(false).SetLink(_partyStatusPanel.gameObject, LinkBehaviour.KillOnDisable);
     }
     #endregion
 
@@ -581,6 +637,18 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
     }
 
+    public void ShowEnemyTarget(CharacterBase target, bool partyWide = false)
+    {
+        if (_partySlots == null) return;
+        for (int i = 0; i < _partySlots.Length; i++)
+        {
+            if (_partySlots[i] == null) continue;
+            bool selected = target != null && _party != null && i < _party.Count
+                && _party[i] != null && _party[i].IsAlive && (partyWide || _party[i] == target);
+            _partySlots[i].SetHighlight(selected);
+        }
+    }
+
     private void HandlePlayerTurnStarted(PlayerCharacter player)
     {
         SetTurnLabel($"{player.DisplayName} 턴");
@@ -593,8 +661,15 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType)
     {
+        bool useActiveDefense = QTEManager.Instance != null && QTEManager.Instance.UseActiveDefense;
         bool useTimedGuard = QTEManager.Instance != null && QTEManager.Instance.UseTimedGuard;
-        string attackName = useTimedGuard ? attackType switch
+        string attackName = useActiveDefense ? attackType switch
+        {
+            EnemyAttackType.DodgeOnly or EnemyAttackType.JumpOnly or EnemyAttackType.DodgeOrJump => "가드 불가 · 회피",
+            EnemyAttackType.RangedAoE => "원거리 공격",
+            EnemyAttackType.AoEAll => "전체 공격",
+            _ => "공격"
+        } : useTimedGuard ? attackType switch
         {
             EnemyAttackType.RangedAoE => "원거리 공격",
             EnemyAttackType.AoEAll => "전체 공격",
@@ -616,6 +691,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void HandleBattleEnded(bool victory)
     {
         _isBattleEnding = true;
+        ReleasePresentationTweens();
         _damagePopupPresenter?.ReleaseAll();
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
@@ -703,6 +779,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     public void SetScenarioCinematicMode(bool active)
     {
+        if (active) ReleasePresentationTweens();
         _isScenarioCinematicMode = active;
         ExitTargetingMode();
 
@@ -767,7 +844,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             return null;
         }
 
-        overlay.DOKill(false);
+        if (_scenarioFlashTween != null && _scenarioFlashTween.IsActive()) _scenarioFlashTween.Kill(false);
+        _scenarioFlashTween = null;
         overlay.gameObject.SetActive(true);
         Color startColor = color;
         startColor.a = 0f;
@@ -779,9 +857,11 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         float clampedDuration = Mathf.Max(0.01f, duration);
         Sequence sequence = DOTween.Sequence()
             .SetUpdate(true)
+            .SetRecyclable(false)
+            .SetLink(overlay.gameObject, LinkBehaviour.KillOnDestroy)
             .SetTarget(tweenTarget ?? overlay)
-            .Append(overlay.DOFade(Mathf.Clamp01(alpha) * flashScale, clampedDuration * 0.5f))
-            .Append(overlay.DOFade(0f, clampedDuration * 0.5f))
+            .Append(TweenOverlayAlpha(overlay, Mathf.Clamp01(alpha) * flashScale, clampedDuration * 0.5f))
+            .Append(TweenOverlayAlpha(overlay, 0f, clampedDuration * 0.5f))
             .OnKill(() =>
             {
                 if (overlay != null)
@@ -793,7 +873,14 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
                 }
             });
 
+        _scenarioFlashTween = sequence;
         return sequence;
+    }
+
+    private static Tween TweenOverlayAlpha(Image overlay, float alpha, float duration)
+    {
+        return DOTween.ToAlpha(() => overlay != null ? overlay.color : Color.clear,
+            value => { if (overlay != null) overlay.color = value; }, alpha, duration);
     }
 
     public Tween PlayScenarioUiShake(
@@ -814,8 +901,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         float shakeScale = GameConfigPolicy.NormalizeUnit(
             _screenShakeScaleProvider?.Scale ?? GameConfigManager.DefaultScreenShake,
             GameConfigManager.DefaultScreenShake);
-        shakeTarget.DOKill(false);
-        return shakeTarget.DOShakeAnchorPos(
+        KillOwnedTween(ref _partyPanelTween);
+        KillOwnedTween(ref _scenarioShakeTween);
+        Vector2 origin = shakeTarget.anchoredPosition;
+        _scenarioShakeTween = shakeTarget.DOShakeAnchorPos(
                 Mathf.Max(0.01f, duration),
                 strength * shakeScale,
                 Mathf.Max(1, vibrato),
@@ -823,11 +912,19 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
                 false,
                 true)
             .SetUpdate(true)
-            .SetTarget(tweenTarget ?? shakeTarget);
+            .SetTarget(tweenTarget ?? shakeTarget)
+            .SetRecyclable(false)
+            .SetLink(shakeTarget.gameObject, LinkBehaviour.KillOnDestroy)
+            .OnKill(() => { if (shakeTarget != null) shakeTarget.anchoredPosition = origin; });
+        return _scenarioShakeTween;
     }
 
     public void ShowDefenseQTE(DefenseQteRequest request) => _defenseQTEUI?.ShowQTE(request);
     public void UpdateDefenseGuard(float remainingSeconds, bool attempted) => _defenseQTEUI?.UpdateDefenseGuard(remainingSeconds, attempted);
+    public void UpdateActiveDefense(bool guardHeld, DefenseInput attemptedInput,
+        DefenseInputReadStatus inputStatus = DefenseInputReadStatus.None) =>
+        _defenseQTEUI?.UpdateActiveDefense(guardHeld, attemptedInput, inputStatus);
+    public void SetDefenseQTEPaused(bool paused) => _defenseQTEUI?.SetDefenseQTEPaused(paused);
     public void ShowDefenseQTEResult(DefenseQteResult result) => _defenseQTEUI?.ShowResult(result);
     public void HideDefenseQTE() => _defenseQTEUI?.Hide();
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
@@ -908,122 +1005,6 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     #endregion
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ── 파티 슬롯 UI 컴포넌트 (가비지 최적화 완비)
-// ═══════════════════════════════════════════════════════════════
-[System.Serializable]
-public class PartySlotUI
-{
-    [HorizontalGroup("Row"),  LabelWidth(60)] public Image                 Portrait;
-    [HorizontalGroup("Row"),  LabelWidth(60)] public TMPro.TextMeshProUGUI NameText;
-    [HorizontalGroup("Row2"), LabelWidth(60)] public Image                 HPFill;
-    [HorizontalGroup("Row2"), LabelWidth(60)] public TMPro.TextMeshProUGUI HPText;
-    [FormerlySerializedAs("MPFill")]
-    [HorizontalGroup("Row3"), LabelWidth(60)] public Image APFill;
-    [FormerlySerializedAs("MPText")]
-    [HorizontalGroup("Row3"), LabelWidth(60)] public TMPro.TextMeshProUGUI APText;
-    [HorizontalGroup("Row4"), LabelWidth(60)] public GameObject            Root;
-
-    private int _displayHP;
-    private int _displayAP;
-
-    public void Init(PlayerCharacter player)
-    {
-        Root?.SetActive(true);
-        if (NameText != null) NameText.text = player.DisplayName;
-        if (Portrait != null)
-        {
-            Portrait.sprite = player.BattlePortrait;
-            Portrait.enabled = Portrait.sprite != null;
-            Portrait.preserveAspect = true;
-            Portrait.color = Color.white;
-        }
-
-        _displayHP = player.CurrentHP;
-        _displayAP = player.CurrentAP;
-
-        RefreshHP(player.CurrentHP, player.MaxHP, 0f, Ease.Linear);
-        RefreshAP(player.CurrentAP, player.MaxAP, 0f, Ease.Linear);
-    }
-
-    public void Hide() => Root?.SetActive(false);
-
-    public void SetHighlight(bool active)
-    {
-        if (Portrait == null) return;
-        Portrait.DOKill();
-        Portrait.DOColor(active ? Color.yellow : Color.white, 0.15f);
-
-        if (active && Root != null)
-            Root.transform.DOPunchPosition(new Vector3(0, 5f, 0), 0.2f, 5, 1f);
-    }
-
-    public void RefreshHP(int current, int max, float duration, Ease ease)
-    {
-        float ratio = max > 0 ? (float)current / max : 0f;
-
-        if (HPFill != null)
-        {
-            HPFill.DOKill();
-            HPFill.DOFillAmount(ratio, duration).SetEase(ease);
-        }
-
-        if (Root != null && duration > 0f)
-        {
-            Root.transform.DOKill(true);
-            if (current < _displayHP)
-            {
-                Root.transform.DOPunchPosition(new Vector3(10f, 0, 0), 0.3f, 15, 1f);
-                if (HPFill != null) HPFill.DOColor(Color.red, 0.1f).SetLoops(2, LoopType.Yoyo).OnComplete(() => HPFill.color = Color.white);
-            }
-            else if (current > _displayHP)
-            {
-                Root.transform.DOPunchScale(new Vector3(0.05f, 0.05f, 0f), 0.3f, 5, 1f);
-                if (HPFill != null) HPFill.DOColor(Color.green, 0.1f).SetLoops(2, LoopType.Yoyo).OnComplete(() => HPFill.color = Color.white);
-            }
-        }
-
-        if (HPText != null)
-        {
-            DOTween.Kill(HPText);
-            DOTween.To(() => _displayHP, x =>
-            {
-                _displayHP = x;
-                HPText.text = $"{_displayHP}/{max}";
-            }, current, duration).SetEase(ease).SetTarget(HPText);
-        }
-    }
-
-    public void RefreshAP(int current, int max, float duration, Ease ease)
-    {
-        float ratio = max > 0 ? (float)current / max : 0f;
-
-        if (APFill != null)
-        {
-            APFill.DOKill();
-            APFill.DOFillAmount(ratio, duration).SetEase(ease);
-        }
-
-        if (Root != null && duration > 0f)
-        {
-            Root.transform.DOKill(true);
-            if (current < _displayAP)
-                Root.transform.DOPunchScale(new Vector3(0.03f, 0.03f, 0f), 0.2f, 5, 1f);
-            else if (current > _displayAP)
-                Root.transform.DOPunchPosition(new Vector3(0, 5f, 0), 0.2f, 5, 1f);
-        }
-
-        if (APText != null)
-        {
-            DOTween.Kill(APText);
-            DOTween.To(() => _displayAP, x =>
-            {
-                _displayAP = x;
-                APText.text = $"{_displayAP}/{max}";
-            }, current, duration).SetEase(ease).SetTarget(APText);
-        }
-    }
-}
 
 public static class UIRuntimeGuard
 {

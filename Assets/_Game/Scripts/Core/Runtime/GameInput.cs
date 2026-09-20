@@ -37,6 +37,9 @@ public static class GameInput
     private static InputAction _qteZ;
     private static InputAction _qteX;
     private static InputAction _qteC;
+    private static double _qteZPressedAt = -1d;
+    private static double _qteXPressedAt = -1d;
+    private static double _qteCPressedAt = -1d;
 
     private static InputAction _dialogueAdvance;
     private static InputAction _choice1;
@@ -108,6 +111,13 @@ public static class GameInput
         _qteZ = battleActions.QTE_Z;
         _qteX = battleActions.QTE_X;
         _qteC = battleActions.QTE_C;
+        _qteZ.performed += context => _qteZPressedAt = context.time;
+        _qteX.performed += context => _qteXPressedAt = context.time;
+        _qteC.performed += context => _qteCPressedAt = context.time;
+        // 생성 파일은 유지하고 공용 QTE 액션에 패드/가상 패드 대응만 추가합니다.
+        _qteZ.AddBinding("<Gamepad>/buttonSouth");
+        _qteX.AddBinding("<Gamepad>/buttonEast");
+        _qteC.AddBinding("<Gamepad>/buttonNorth");
 
         _dialogueAdvance = dialogueActions.Advance;
         _choice1 = dialogueActions.Choice1;
@@ -172,10 +182,12 @@ public static class GameInput
     public static bool BattleRightPressed { get { UpdateCache(); return PressedRight(_prevBattleNavigate, _currBattleNavigate); } }
     public static bool BattleConfirmPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
     public static bool BattleCancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
-    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.WasPressedThisFrame() || KeyboardPressed(Key.Z); } }
-    public static bool QTEZHeld { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.IsPressed() || (Keyboard.current != null && Keyboard.current.zKey.isPressed); } }
-    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteX.WasPressedThisFrame() || KeyboardPressed(Key.X); } }
-    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteC.WasPressedThisFrame() || KeyboardPressed(Key.C); } }
+    // 원본 Z/X/C를 별도 OR 처리하면 키를 서로 교환했을 때 두 액션이 동시에 눌립니다.
+    // 기본 키, 저장된 키 재설정, 패드 입력을 같은 InputAction 판정으로 모읍니다.
+    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.WasPressedThisFrame(); } }
+    public static bool QTEZHeld { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.IsPressed(); } }
+    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteX.WasPressedThisFrame(); } }
+    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteC.WasPressedThisFrame(); } }
 
     public static DefenseInputReadStatus ReadDefenseInputThisFrame(out DefenseInput input)
     {
@@ -183,6 +195,26 @@ public static class GameInput
         bool x = QTEXPressed;
         bool c = QTECPressed;
         return DefenseInputSelectionPolicy.Resolve(z, x, c, out input);
+    }
+
+    public static bool IsDefenseInputBlocked => _configModalActive
+        || (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused);
+
+    /// <summary>프레임 처리 시각 대신 입력 이벤트가 실제 발생한 realtime 시각을 반환합니다.</summary>
+    public static float GetDefensePressTime(DefenseInput input)
+    {
+        EnsureInitialized();
+        double timestamp = input == DefenseInput.Parry ? _qteZPressedAt
+            : input == DefenseInput.Dodge ? _qteXPressedAt : _qteCPressedAt;
+        return timestamp >= 0d ? (float)timestamp : Time.realtimeSinceStartup;
+    }
+
+    public static DefenseInputReadStatus ReadActiveDefenseInputThisFrame(out DefenseInput input)
+    {
+        input = DefenseInput.None;
+        if (IsDefenseInputBlocked)
+            return DefenseInputReadStatus.None;
+        return DefenseInputSelectionPolicy.ResolveActive(QTEZPressed, QTEXPressed, QTECPressed, out input);
     }
 
     public static bool TryReadDefenseInputThisFrame(out DefenseInput input)

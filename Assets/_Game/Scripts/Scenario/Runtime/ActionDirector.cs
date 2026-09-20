@@ -24,9 +24,10 @@ public sealed class ActionDirector
             ParentBlockId = context.ExecutionBlockId
         };
         IEnumerator routine = Play(request, context, session);
-        while (routine.MoveNext())
+        using (routine as IDisposable)
         {
-            yield return routine.Current;
+            while (routine.MoveNext())
+                yield return routine.Current;
         }
     }
 
@@ -93,9 +94,10 @@ public sealed class ActionDirector
                     gate,
                     sequenceId,
                     request.ParentBlockId);
-                while (actionRoutine.MoveNext())
+                using (actionRoutine as IDisposable)
                 {
-                    yield return actionRoutine.Current;
+                    while (actionRoutine.MoveNext())
+                        yield return actionRoutine.Current;
                 }
             }
 
@@ -181,9 +183,10 @@ public sealed class ActionDirector
                 gate,
                 sequenceId,
                 blockId);
-            while (parallelRoutine.MoveNext())
+            using (parallelRoutine as IDisposable)
             {
-                yield return parallelRoutine.Current;
+                while (parallelRoutine.MoveNext())
+                    yield return parallelRoutine.Current;
             }
         }
         else if (!_registry.TryGet(actionId, out IActionAdapter adapter))
@@ -201,39 +204,42 @@ public sealed class ActionDirector
         else
         {
             IEnumerator adapterRoutine = adapter.Execute(resolvedAction, context);
-            while (adapterRoutine != null
-                && !handle.IsDone
-                && !handle.IsCancellationRequested)
+            using (adapterRoutine as IDisposable)
             {
-                while (!handle.IsDone
-                    && !handle.IsCancellationRequested
-                    && !session.CanAdvanceBlock(blockId))
+                while (adapterRoutine != null
+                    && !handle.IsDone
+                    && !handle.IsCancellationRequested)
                 {
-                    yield return null;
-                }
+                    while (!handle.IsDone
+                        && !handle.IsCancellationRequested
+                        && !session.CanAdvanceBlock(blockId))
+                    {
+                        yield return null;
+                    }
 
-                if (handle.IsDone || handle.IsCancellationRequested)
-                {
-                    break;
-                }
+                    if (handle.IsDone || handle.IsCancellationRequested)
+                    {
+                        break;
+                    }
 
-                bool moved;
-                try
-                {
-                    moved = adapterRoutine.MoveNext();
-                }
-                catch (Exception exception)
-                {
-                    handle.Fail("Action adapter threw: " + actionId, exception);
-                    break;
-                }
+                    bool moved;
+                    try
+                    {
+                        moved = adapterRoutine.MoveNext();
+                    }
+                    catch (Exception exception)
+                    {
+                        handle.Fail("Action adapter threw: " + actionId, exception);
+                        break;
+                    }
 
-                if (!moved)
-                {
-                    break;
-                }
+                    if (!moved)
+                    {
+                        break;
+                    }
 
-                yield return adapterRoutine.Current;
+                    yield return adapterRoutine.Current;
+                }
             }
         }
 
@@ -291,94 +297,101 @@ public sealed class ActionDirector
         }
 
         string firstFailure = string.Empty;
-        while (routines.Count > 0 && !parentHandle.IsDone && !parentHandle.IsCancellationRequested)
+        try
         {
-            for (int i = 0; i < routines.Count;)
+            while (routines.Count > 0 && !parentHandle.IsDone && !parentHandle.IsCancellationRequested)
             {
-                ParallelRoutine routine = routines[i];
-                if (routine.MoveNext())
+                for (int i = 0; i < routines.Count;)
                 {
-                    i++;
-                    continue;
-                }
+                    ParallelRoutine routine = routines[i];
+                    if (routine.MoveNext())
+                    {
+                        i++;
+                        continue;
+                    }
 
-                routines.RemoveAt(i);
-                if (routine.WasSkipped)
-                {
-                    continue;
-                }
+                    routines.RemoveAt(i);
+                    if (routine.WasSkipped)
+                    {
+                        continue;
+                    }
 
-                ActionExecutionStatus childStatus = routine.Handle.Status;
-                if (policy == ActionParallelPolicy.All)
-                {
+                    ActionExecutionStatus childStatus = routine.Handle.Status;
+                    if (policy == ActionParallelPolicy.All)
+                    {
+                        if (childStatus == ActionExecutionStatus.Failed)
+                        {
+                            CancelAndDrain(routines, "Parallel sibling failed.");
+                            parentHandle.Fail(
+                                "Parallel child failed: " + routine.Handle.Result.Message,
+                                routine.Handle.Result.Exception);
+                            yield break;
+                        }
+
+                        if (childStatus == ActionExecutionStatus.Canceled)
+                        {
+                            CancelAndDrain(routines, "Parallel sibling canceled.");
+                            parentHandle.Cancel("Parallel child was canceled: " + routine.Handle.Result.Message);
+                            yield break;
+                        }
+
+                        continue;
+                    }
+
+                    if (policy == ActionParallelPolicy.Any)
+                    {
+                        if (childStatus == ActionExecutionStatus.Succeeded)
+                        {
+                            CancelAndDrain(routines, "Parallel any policy completed.");
+                            yield break;
+                        }
+
+                        if (string.IsNullOrEmpty(firstFailure))
+                        {
+                            firstFailure = routine.Handle.Result.Message;
+                        }
+
+                        continue;
+                    }
+
+                    CancelAndDrain(routines, "Parallel race completed.");
                     if (childStatus == ActionExecutionStatus.Failed)
                     {
-                        CancelAndDrain(routines, "Parallel sibling failed.");
                         parentHandle.Fail(
-                            "Parallel child failed: " + routine.Handle.Result.Message,
+                            "Parallel race winner failed: " + routine.Handle.Result.Message,
                             routine.Handle.Result.Exception);
-                        yield break;
                     }
-
-                    if (childStatus == ActionExecutionStatus.Canceled)
+                    else if (childStatus == ActionExecutionStatus.Canceled)
                     {
-                        CancelAndDrain(routines, "Parallel sibling canceled.");
-                        parentHandle.Cancel("Parallel child was canceled: " + routine.Handle.Result.Message);
-                        yield break;
+                        parentHandle.Cancel("Parallel race winner was canceled: " + routine.Handle.Result.Message);
                     }
 
-                    continue;
+                    yield break;
                 }
 
-                if (policy == ActionParallelPolicy.Any)
+                if (routines.Count > 0)
                 {
-                    if (childStatus == ActionExecutionStatus.Succeeded)
-                    {
-                        CancelAndDrain(routines, "Parallel any policy completed.");
-                        yield break;
-                    }
-
-                    if (string.IsNullOrEmpty(firstFailure))
-                    {
-                        firstFailure = routine.Handle.Result.Message;
-                    }
-
-                    continue;
+                    yield return null;
                 }
+            }
 
-                CancelAndDrain(routines, "Parallel race completed.");
-                if (childStatus == ActionExecutionStatus.Failed)
-                {
-                    parentHandle.Fail(
-                        "Parallel race winner failed: " + routine.Handle.Result.Message,
-                        routine.Handle.Result.Exception);
-                }
-                else if (childStatus == ActionExecutionStatus.Canceled)
-                {
-                    parentHandle.Cancel("Parallel race winner was canceled: " + routine.Handle.Result.Message);
-                }
-
+            if (parentHandle.IsDone || parentHandle.IsCancellationRequested)
+            {
+                CancelAndDrain(routines, "Parent parallel action ended.");
                 yield break;
             }
 
-            if (routines.Count > 0)
+            if (policy == ActionParallelPolicy.Any)
             {
-                yield return null;
+                parentHandle.Fail(
+                    string.IsNullOrWhiteSpace(firstFailure)
+                        ? "Parallel any policy had no successful child."
+                        : "Parallel any policy had no successful child: " + firstFailure);
             }
         }
-
-        if (parentHandle.IsDone || parentHandle.IsCancellationRequested)
+        finally
         {
-            CancelAndDrain(routines, "Parent parallel action ended.");
-            yield break;
-        }
-
-        if (policy == ActionParallelPolicy.Any)
-        {
-            parentHandle.Fail(
-                string.IsNullOrWhiteSpace(firstFailure)
-                    ? "Parallel any policy had no successful child."
-                    : "Parallel any policy had no successful child: " + firstFailure);
+            CancelAndDrain(routines, "Parent parallel routine was disposed.");
         }
     }
 
@@ -397,9 +410,10 @@ public sealed class ActionDirector
             gate,
             sequenceId,
             parentBlockId);
-        while (routine.MoveNext())
+        using (routine as IDisposable)
         {
-            yield return routine.Current;
+            while (routine.MoveNext())
+                yield return routine.Current;
         }
 
         if (!context.Handle.IsDone)
@@ -575,15 +589,36 @@ public sealed class ActionDirector
             catch (Exception exception)
             {
                 Handle.Fail("Parallel action child threw.", exception);
+                DisposeRemaining();
                 return false;
             }
         }
 
         public void Drain()
         {
-            int guard = 0;
-            while (MoveNext() && guard++ < 1024)
+            try
             {
+                int guard = 0;
+                while (MoveNext() && guard++ < 1024) { }
+            }
+            finally
+            {
+                DisposeRemaining();
+            }
+        }
+
+        private void DisposeRemaining()
+        {
+            while (_stack.Count > 0)
+            {
+                try
+                {
+                    (_stack.Pop() as IDisposable)?.Dispose();
+                }
+                catch (Exception exception)
+                {
+                    Handle.Fail("Parallel action cleanup threw.", exception);
+                }
             }
         }
 
@@ -594,7 +629,7 @@ public sealed class ActionDirector
                 IEnumerator current = _stack.Peek();
                 if (!current.MoveNext())
                 {
-                    _stack.Pop();
+                    (_stack.Pop() as IDisposable)?.Dispose();
                     continue;
                 }
 

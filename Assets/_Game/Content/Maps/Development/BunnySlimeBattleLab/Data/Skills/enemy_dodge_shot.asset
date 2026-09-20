@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: enemy_dodge_shot
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "과압력탄 · X"
+  SkillID: lab.bunny.enemy_dodge_shot
+  Description: "X 전용 투사체. Z 방어 불가."
+  UsageProfile: 2
+  APCost: 0
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 91001
+  - rid: 91002
+  - rid: 91003
+  references:
+    version: 2
+    RefIds:
+    - rid: 91001
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "1탄 대응"
+        Note:
+        PatternMode: 1
+        Requirement: 4
+        CounterDamageMultiplier: 1.5
+        UseTelegraph: 1
+        TelegraphVisualMode: 1
+        WarningVfxPrefab: {fileID: 0}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: Telegraph
+        TelegraphAttachPivotName: Back
+        TelegraphDuration: 0.35
+        DefenseOpenDelay: 0
+        TimeWindow: 0.65
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 1
+        TimingProfile:
+          PerfectWindow: 0.24
+          GreatWindow: 0.28
+          GoodWindow: 0.38
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: Skill
+        AttackAnimationLeadTime: 0.65
+        AttackReadyDuration: 0.08
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Top
+        AttackAnimDelay: 0
+    - rid: 91002
+      type: {class: Action_Projectile, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel:
+        Note:
+        ProjectilePrefab: {fileID: 4748681987041982144, guid: 2c094461acd8e2a49b2dbc6982bfe8aa, type: 3}
+        ImpactVFXPrefab: {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
+        FlightDuration: 0.65
+        DamageMultiplier: 1.2
+        Element: 0
+    - rid: 91003
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel:
+        Note:
+        WaitTime: 0.18

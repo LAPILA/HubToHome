@@ -37,7 +37,7 @@ namespace HubToHome.EditorTools.SkillMaker
                 || Contains(skill.name, search) || Contains(AssetDatabase.GetAssetPath(skill), search);
         }
 
-        public static SkillData CreateAtPath(string path)
+        public static SkillData CreateAtPath(string path, Action<SkillData> initialize = null)
         {
             EnsureEditMode();
             string targetPath = PrepareNewPath(path);
@@ -47,6 +47,8 @@ namespace HubToHome.EditorTools.SkillMaker
                 skill.name = Path.GetFileNameWithoutExtension(targetPath);
                 skill.SkillName = skill.name;
                 skill.SkillID = CreateUniqueSkillId(skill.name);
+                // 템플릿도 새 자산의 첫 저장 전에 구성합니다. 선택한 기존 스킬은 변경하지 않습니다.
+                initialize?.Invoke(skill);
                 AssetDatabase.CreateAsset(skill, targetPath);
                 if (!EditorUtility.IsPersistent(skill)) throw new IOException("스킬 자산을 생성하지 못했습니다: " + targetPath);
                 AssetDatabase.SaveAssetIfDirty(skill);

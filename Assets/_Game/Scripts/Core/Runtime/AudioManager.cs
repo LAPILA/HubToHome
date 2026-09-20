@@ -38,6 +38,7 @@ public class AudioManager : MonoBehaviour
     public AudioSource VoiceSource => _voiceSource;
     public AudioSource AmbienceSource => _ambienceSource;
     public AudioClip RequestedBgmClip => _requestedBgmClip;
+    public ulong BgmRequestVersion { get; private set; }
     public bool HasRequestedBgm => _requestedBgmShouldPlay && _requestedBgmClip != null;
 
     [Header("Audio Mixer")]
@@ -453,6 +454,7 @@ public class AudioManager : MonoBehaviour
 
     private void SetRequestedBgm(AudioClip clip, float baseVolume)
     {
+        unchecked { BgmRequestVersion++; }
         _requestedBgmClip = clip;
         _requestedBgmBaseVolume = Mathf.Clamp01(baseVolume);
         _requestedBgmShouldPlay = clip != null;
@@ -460,6 +462,7 @@ public class AudioManager : MonoBehaviour
 
     private void ClearRequestedBgm()
     {
+        unchecked { BgmRequestVersion++; }
         _requestedBgmClip = null;
         _requestedBgmBaseVolume = 1f;
         _requestedBgmShouldPlay = false;

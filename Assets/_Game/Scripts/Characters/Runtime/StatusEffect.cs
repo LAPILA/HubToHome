@@ -37,6 +37,8 @@ public abstract class StatusEffect
 
     public virtual void AppendStatModifiers(List<StatModifier> modifiers) { }
 
+    public virtual bool TickAtTurnEnd => false;
+
     public virtual void OnTick() { DurationTurns--; }
 
     public virtual void OnRemove()
@@ -86,6 +88,7 @@ public class FreezeEffect : StatusEffect
 public class BleedEffect : StatusEffect
 {
     public BleedEffect(int duration, int stacks = 1) : base(StatusEffectIds.Bleed, duration, stacks) {}
+    public override bool TickAtTurnEnd => true;
 
     public override void OnApply(CharacterBase target)
     {

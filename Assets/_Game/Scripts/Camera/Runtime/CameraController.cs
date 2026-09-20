@@ -27,6 +27,10 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
     [SerializeField] private float _defaultLensSize = CameraLensDefaults.GameplayOrthographicSize;
     [SerializeField] private float _battleZoomSize = CameraLensDefaults.BattleActionOrthographicSize;
 
+    [SerializeField, Tooltip("일반 전투 자동 추적/줌/흔들림을 끕니다. 명시적 시나리오 카메라는 유지합니다.")]
+    private bool _staticBattlePresentation = true;
+    public bool IsStaticBattlePresentation => _staticBattlePresentation && _useGameplaySafeReset;
+
     [Title("카메라 프리셋")]
     [SerializeField, AssetsOnly] private CameraShotProfile _staticProfile;
     [SerializeField, AssetsOnly] private CameraShotProfile _dynamicProfile;
@@ -358,6 +362,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
     [Button("카메라 완전 리셋")]
     public void ResetCamera(float duration = 0.4f)
     {
+        if (IsStaticBattlePresentation) duration = 0f;
         if (!TryReset(
                 Mathf.Max(0f, duration),
                 ResolveResetStyle(),
@@ -371,6 +376,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
 
     public void ModePlayerAction(Transform playerTarget = null)
     {
+        if (IsStaticBattlePresentation) return;
         ZoomOnTransform(playerTarget != null ? playerTarget : ResolveDefaultTarget(), _battleZoomSize, 0.3f);
     }
 
@@ -378,6 +384,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
 
     public void PlayHeavySlam(Vector3 direction, float intensity = 1.0f, bool lockHorizontal = true)
     {
+        if (IsStaticBattlePresentation) return;
         Vector3 finalDirection = lockHorizontal
             ? new Vector3(direction.x, 0f, 0f)
             : new Vector3(direction.x, direction.y, 0f);

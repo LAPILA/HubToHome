@@ -14,13 +14,18 @@ public class EnemyCharacter : CharacterBase
     public static readonly int HashBattleIdle = Animator.StringToHash("BattleIdle");
     public static readonly int HashBattleMove = Animator.StringToHash("BattleMove");
     public static readonly int HashBattleMoveBack = Animator.StringToHash("BattleMoveBack");
+    public static readonly int HashBattleReady = Animator.StringToHash("BattleReady");
     public static readonly int HashSkill      = Animator.StringToHash("Skill");
     public static readonly int HashCrossCut   = Animator.StringToHash("CrossCut");
+    // ZEV 등 레거시 Animator가 사용하는 공격 준비 트리거입니다.
+    public static readonly int HashCrossCutReady = Animator.StringToHash("CrossCutReady");
+    public static readonly int HashTelegraph  = Animator.StringToHash("Telegraph");
 
     private Animator _animator;
     private SpriteRenderer _spriteRenderer;
     private CharacterVFX _vfx; 
     private Tween _returnToIdleTween;
+    private int _lastBattleTrigger;
 
     public Sprite BattlePortrait => Data != null && Data.Portrait != null
         ? Data.Portrait
@@ -32,13 +37,22 @@ public class EnemyCharacter : CharacterBase
     [Header("Enemy Data")]
     public EnemyData Data;
 
+    [SerializeField, Min(0f), Tooltip("기본 Attack 모션 시작부터 타격까지의 초. 타임라인 스킬은 방어 블록의 시간을 사용합니다.")]
+    private float _basicAttackImpactLeadTime = 0.12f;
+    public float BasicAttackImpactLeadTime => Mathf.Max(0f, _basicAttackImpactLeadTime);
+
     [Header("Animation Mode")]
     [SerializeField] private bool _isBattleMode = true;
 
     [Header("VFX Settings")]
-    [SerializeField] private Color _hurtFlashColor = new Color(1f, 0.3f, 0.3f);
+    [SerializeField] private Color _hurtFlashColor = Color.white;
     [SerializeField] private float _flashDuration = 0.08f;
     [SerializeField] private float _shakeStrength = 0.15f;
+    [SerializeField, Min(0f)] private float _hitPopHeight = 0.35f;
+    [SerializeField, Min(0.01f)] private float _hitPopUpDuration = 0.08f;
+    [SerializeField, Min(0.01f)] private float _hitPopReturnDuration = 0.16f;
+    private Vector3 _hitReactionOrigin;
+    private bool _hitReactionActive;
 
     private void OnDisable()
     {
@@ -68,8 +82,11 @@ public class EnemyCharacter : CharacterBase
         {
             SetOverworldMoving(Vector2.zero, false);
             ResetTriggerIfExists(HashBattleMove);
+            ResetTriggerIfExists(HashBattleReady);
             ResetTriggerIfExists(HashAttack);
             ResetTriggerIfExists(HashSkill);
+            ResetTriggerIfExists(HashCrossCutReady);
+            ResetTriggerIfExists(HashTelegraph);
             if (_animator != null)
             {
                 _animator.Rebind();
@@ -81,6 +98,9 @@ public class EnemyCharacter : CharacterBase
         {
             ResetTriggerIfExists(HashBattleIdle);
             ResetTriggerIfExists(HashBattleMove);
+            ResetTriggerIfExists(HashBattleReady);
+            ResetTriggerIfExists(HashCrossCutReady);
+            ResetTriggerIfExists(HashTelegraph);
         }
     }
 
@@ -124,11 +144,22 @@ public class EnemyCharacter : CharacterBase
         if (!IsAlive && triggerHash != HashDie)
             return;
 
-        if (triggerHash == HashBattleIdle || triggerHash == HashBattleMove || triggerHash == HashBattleMoveBack || triggerHash == HashAttack || triggerHash == HashSkill)
+        if (triggerHash == HashBattleIdle || triggerHash == HashBattleMove || triggerHash == HashBattleMoveBack || triggerHash == HashBattleReady || triggerHash == HashCrossCutReady || triggerHash == HashAttack || triggerHash == HashSkill)
             _isBattleMode = true;
 
         if (_isBattleMode)
-            _animator.SetTrigger(triggerHash);
+            SetBattleTrigger(triggerHash);
+    }
+
+    private void SetBattleTrigger(int triggerHash)
+    {
+        // 이전 피격의 지연 Idle이 새 공격을 끊지 않도록 명령을 교체합니다.
+        _returnToIdleTween?.Kill();
+        _returnToIdleTween = null;
+        if (_lastBattleTrigger != 0)
+            _animator.ResetTrigger(_lastBattleTrigger);
+        _animator.SetTrigger(triggerHash);
+        _lastBattleTrigger = triggerHash;
     }
 
     public void ForceBattleIdle()
@@ -142,6 +173,9 @@ public class EnemyCharacter : CharacterBase
         ResetTriggerIfExists(HashCrossCut);
         ResetTriggerIfExists(HashBattleMove);
         ResetTriggerIfExists(HashBattleMoveBack);
+        ResetTriggerIfExists(HashBattleReady);
+        ResetTriggerIfExists(HashCrossCutReady);
+        ResetTriggerIfExists(HashTelegraph);
 
         _isBattleMode = true;
 
@@ -150,13 +184,33 @@ public class EnemyCharacter : CharacterBase
             _animator.CrossFade(HashBattleIdle, 0.05f, 0);
         }
 
-        _animator.SetTrigger(HashBattleIdle);
+        SetBattleTrigger(HashBattleIdle);
     }
 
     public void PlayBasicAttackEffect()
     {
         if (_isBattleMode)
             _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
+    }
+
+    /// <summary>
+    /// 공격 직전 준비 자세를 한 번 재생합니다. BattleReady가 없는 기존 Animator는
+    /// CrossCutReady/Telegraph를 우선 사용하고, 둘 다 없으면 BattleIdle을 유지합니다.
+    /// Skill은 실제 공격 애니메이션인 경우가 많아 준비 자세의 대체 트리거로 사용하지 않습니다.
+    /// </summary>
+    public void PlayAttackReady()
+    {
+        if (_animator == null)
+            return;
+
+        if (HasParameter(HashBattleReady))
+            PlayBattleAnim(HashBattleReady);
+        else if (HasParameter(HashCrossCutReady))
+            PlayBattleAnim(HashCrossCutReady);
+        else if (HasParameter(HashTelegraph))
+            PlayBattleAnim(HashTelegraph);
+        else
+            PlayBattleAnim(HashBattleIdle);
     }
 
     public void PlaySkillAnim(string triggerName, int fallbackTriggerHash)
@@ -167,7 +221,7 @@ public class EnemyCharacter : CharacterBase
         if (HasParameter(preferredHash))
         {
             _isBattleMode = true;
-            _animator.SetTrigger(preferredHash);
+            SetBattleTrigger(preferredHash);
             return;
         }
 
@@ -195,39 +249,79 @@ public class EnemyCharacter : CharacterBase
 
     protected override void OnDamageTaken(int damage)
     {
+        _returnToIdleTween?.Kill();
+        _returnToIdleTween = null;
+
+        bool hadHitReaction = _hitReactionActive;
+        Vector3 origin = hadHitReaction ? _hitReactionOrigin : transform.position;
+        transform.DOKill(false);
+        if (!hadHitReaction)
+            origin = transform.position;
+
+        _hitReactionOrigin = origin;
+        _hitReactionActive = IsAlive;
+        transform.position = origin;
+
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
-            _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), _flashDuration)
+            Color restoreColor = _spriteRenderer.color;
+            _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), Mathf.Max(0.01f, _flashDuration))
+                .SetUpdate(true)
                 .SetLoops(2, LoopType.Yoyo)
                 .OnComplete(() =>
                 {
                     if (_spriteRenderer != null)
-                        _spriteRenderer.color = Color.white;
+                        _spriteRenderer.color = restoreColor;
                 })
                 .OnKill(() =>
                 {
                     if (_spriteRenderer != null)
-                        _spriteRenderer.color = Color.white;
+                        _spriteRenderer.color = restoreColor;
                 });
         }
-
-        transform.DOKill(false); 
-        transform.DOShakePosition(0.2f, _shakeStrength * ResolveShakeScale(), 30, 90f);
 
         _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
         if (IsAlive)
         {
             PlayBattleAnim(HashHurt);
-            _returnToIdleTween?.Kill();
+            float popHeight = ResolveHitPopHeight() * ResolveShakeScale();
+            Sequence pop = DOTween.Sequence().SetRecyclable(false).SetUpdate(true);
+            pop.SetTarget(transform);
+            pop.Append(transform.DOMoveY(origin.y + popHeight, Mathf.Max(0.01f, _hitPopUpDuration))
+                .SetEase(Ease.OutQuad));
+            pop.Append(transform.DOMoveY(origin.y, Mathf.Max(0.01f, _hitPopReturnDuration))
+                .SetEase(Ease.InQuad));
+            pop.OnComplete(() => CompleteHitReaction(origin));
+            pop.OnKill(() => CompleteHitReaction(origin));
+
             _returnToIdleTween = DOVirtual.DelayedCall(0.35f, () =>
             {
                 if (this != null && isActiveAndEnabled && IsAlive)
                     ForceBattleIdle();
             }).SetId(this);
         }
-        else         OnDie();
+        else
+        {
+            transform.position = origin;
+            _hitReactionActive = false;
+            OnDie();
+        }
+    }
+
+    private void CompleteHitReaction(Vector3 origin)
+    {
+        if (this == null)
+            return;
+
+        transform.position = origin;
+        _hitReactionActive = false;
+    }
+
+    private float ResolveHitPopHeight()
+    {
+        return _hitPopHeight > 0f ? _hitPopHeight : Mathf.Max(0f, _shakeStrength);
     }
 
     protected override void OnDie()
@@ -237,10 +331,13 @@ public class EnemyCharacter : CharacterBase
         ResetTriggerIfExists(HashBattleIdle);
         ResetTriggerIfExists(HashBattleMove);
         ResetTriggerIfExists(HashBattleMoveBack);
+        ResetTriggerIfExists(HashBattleReady);
+        ResetTriggerIfExists(HashCrossCutReady);
         ResetTriggerIfExists(HashAttack);
         ResetTriggerIfExists(HashSkill);
         ResetTriggerIfExists(HashCrossCut);
         ResetTriggerIfExists(HashHurt);
+        ResetTriggerIfExists(HashTelegraph);
         if (_animator != null && HasParameter(HashDie))
             _animator.SetTrigger(HashDie);
         if (_spriteRenderer != null)
@@ -280,12 +377,26 @@ public class EnemyCharacter : CharacterBase
         return EnemyAction.BasicAttack;
     }
 
+    /// <summary>AI가 선택한 행동에 사용할 스킬입니다. 일반 적의 기존 무작위 선택을 유지합니다.</summary>
+    public virtual SkillData SelectSkill(EnemyAction action)
+    {
+        if (Data == null) return null;
+
+        List<SkillData> skills = action == EnemyAction.UseSkill
+            ? Data.SkillList
+            : action == EnemyAction.UseStrongSkill ? Data.StrongSkillList : null;
+        return skills != null && skills.Count > 0
+            ? skills[Random.Range(0, skills.Count)]
+            : null;
+    }
+
     private void KillVisualTweens()
     {
         _returnToIdleTween?.Kill();
         _returnToIdleTween = null;
         if (_spriteRenderer != null) _spriteRenderer.DOKill();
         transform.DOKill(false);
+        _hitReactionActive = false;
     }
 }
 

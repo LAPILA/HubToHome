@@ -39,20 +39,22 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     [SerializeField] private float _hurtFlashDuration  = 0.05f;
     [SerializeField] private float _hurtShakeDuration  = 0.3f;
     [SerializeField] private float _hurtShakeStrength  = 0.15f;
-    [SerializeField] private Color _hurtFlashColor     = Color.red;
+    [SerializeField] private Color _hurtFlashColor     = Color.white;
+    [SerializeField, Min(0f)] private float _hurtPopHeight = 0.35f;
+    [SerializeField, Min(0.01f)] private float _hurtPopUpDuration = 0.08f;
+    [SerializeField, Min(0.01f)] private float _hurtPopReturnDuration = 0.16f;
     [SerializeField] private float _dieFlashDuration   = 0.12f;
     [SerializeField] private Color _dieFlashColor      = Color.white;
-    [SerializeField] private float _defenseAttemptCooldown = 0.20f;
-
     // ── 컴포넌트 캐싱 ─────────────────────────────────────────
     private Rigidbody2D    _rb;
     private Animator       _anim;
+    private PlayerCharacter _battleCharacter;
+    private uint _battleAnimationVersion;
     private CharacterVFX   _vfx;
     private SpriteRenderer _spriteRenderer;
     private Collider2D[] _colliders;
     private Vector3        _originalLocalPos;
     private Vector3        _originalLocalScale;
-    private float _lastDefenseAttemptTime = -999f;
     private Vector3 _battleDefenseAnchorPosition;
     private int _baseSortingOrder;
     private bool _hasSortingBase;
@@ -61,7 +63,12 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     private DefenseInput _bufferedDefenseInput = DefenseInput.None;
     private float _bufferedDefenseInputTime = -999f;
     private const float DefenseInputBufferWindow = 1.25f;
-    private bool _defenseInputWindowOpen;
+    private DefenseInput _lastPreviewedDefenseInput = DefenseInput.None;
+    private DefensePresentationGate _defensePresentationGate;
+    private float _lastPreviewedDefenseInputTime = float.NegativeInfinity;
+    private const float DefensePreviewDuplicateWindow = 0.05f;
+    private Vector3 _hurtReactionOrigin;
+    private bool _hurtReactionActive;
     private bool _preemptiveAttackInProgress;
     private bool _preemptiveAttackHitResolved;
     private bool _preemptiveAttackStartedEncounter;
@@ -103,12 +110,15 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     public static readonly int HashHurt       = Animator.StringToHash("Hurt");
     public static readonly int HashDie        = Animator.StringToHash("Die");
     public static readonly int HashVictory    = Animator.StringToHash("Victory");
+    private static readonly int HashParryState = Animator.StringToHash("parry");
+    private static readonly int HashHurtState  = Animator.StringToHash("hurt");
 
     // ─────────────────────────────────────────────────────────
     private void Awake()
     {
         _rb             = GetComponent<Rigidbody2D>();
         _anim           = GetComponent<Animator>();
+        _battleCharacter = GetComponent<PlayerCharacter>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
         _vfx            = GetComponent<CharacterVFX>();
         _colliders      = GetComponents<Collider2D>();
@@ -139,18 +149,19 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void Update()
     {
-        // 🚨 1차 방어: 대화 중이거나 UI가 열려있을 때 입력을 완전 차단
+        // 전투 중에는 GameState가 Cutscene으로 잠겨 있어도 Z/X/C 방어 입력은
+        // 먼저 읽어야 합니다. 이동/상호작용은 아래와 같이 완전히 차단합니다.
+        if (State == PlayerState.InBattle)
+        {
+            HandleBattleDefenseInput();
+            return;
+        }
+
+        // 대화 중이거나 UI가 열려있을 때 오버월드 입력을 완전히 차단합니다.
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove)
         {
             _moveInput = Vector2.zero;
             UpdateAnimator(false);
-            return;
-        }
-
-        // 🚨 2차 방어: 전투 중일 때 이동 차단 (AreaTrigger를 통한 심리스 전투 시)
-        if (State == PlayerState.InBattle)
-        {
-            HandleBattleDefenseInput();
             return;
         }
 
@@ -175,44 +186,51 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         UpdateSortingOrder();
     }
 
+    private void OnDisable()
+    {
+        ActiveDefensePresentation?.Dispose();
+        _defensePresentationGate.Close();
+        _bufferedDefenseInput = DefenseInput.None;
+        _bufferedDefenseInputTime = -999f;
+        _lastPreviewedDefenseInput = DefenseInput.None;
+        _lastPreviewedDefenseInputTime = float.NegativeInfinity;
+        KillDefenseVisualTween();
+        DOTween.Kill(transform);
+        if (_spriteRenderer != null)
+            _spriteRenderer.DOKill();
+        _hurtReactionActive = false;
+    }
+
     private void HandleBattleDefenseInput()
     {
-        // 통합 방어의 입력/유지 시간은 QTEManager 한 곳에서만 판정합니다.
-        if (QTEManager.Instance != null && QTEManager.Instance.UseTimedGuard)
+        if (BattleManager.Instance == null)
             return;
 
-        if (BattleManager.Instance == null || BattleManager.Instance.CurrentState != BattleState.EnemyAction)
+        // 플레이어 스킬의 실시간 QTE는 QTEManager가 직접 Z/X/C를 소비합니다.
+        // 이때 전투 방어 버퍼까지 채우면 같은 입력이 회피/패링 미리보기와
+        // 스킬 노드에 동시에 적용되므로, 적 방어 입력 수집을 잠시 양보합니다.
+        if (QTEManager.Instance != null && QTEManager.Instance.IsSkillQteActive)
             return;
 
-        if (!_defenseInputWindowOpen)
+        if (!BattleManager.Instance.CanAcceptRealtimeDefenseInput)
             return;
 
-        if (GameInput.TryReadDefenseInputThisFrame(out DefenseInput input))
+        // 적의 접근·전조·공격·정리 구간 전체에서 입력을 받아 둡니다.
+        // 실제 성공/실패는 QTEManager가 충돌 시각에만 판정하므로, 이 버퍼는
+        // 조작 유실을 막을 뿐 판정 시간을 앞당기지 않습니다.
+        // 적 공격 대응에서는 C를 점프가 아니라 연계 반격으로 보존합니다.
+        // 플레이어 스킬 QTE는 위에서 분리했으므로 이 경로는 방어 전용입니다.
+        if (GameInput.ReadActiveDefenseInputThisFrame(out DefenseInput input)
+            == DefenseInputReadStatus.Valid)
             AttemptDefenseInput(input);
     }
 
     private void AttemptDefenseInput(DefenseInput input)
     {
-        float now = Time.realtimeSinceStartup;
-        if (now < _lastDefenseAttemptTime + _defenseAttemptCooldown)
-            return;
-
-        _lastDefenseAttemptTime = now;
+        float now = GameInput.GetDefensePressTime(input);
         _bufferedDefenseInput = input;
         _bufferedDefenseInputTime = now;
-
-        switch (input)
-        {
-            case DefenseInput.Parry:
-                ExecuteParry(true);
-                break;
-            case DefenseInput.Dodge:
-                ExecuteDodge(true);
-                break;
-            case DefenseInput.Jump:
-                ExecuteJump(true);
-                break;
-        }
+        PreviewDefenseInputInternal(input, now);
     }
 
     public bool TryConsumeBufferedDefenseInput(out DefenseInput input)
@@ -244,6 +262,39 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public void PreviewDefenseInput(DefenseInput input)
     {
+        PreviewDefenseInputInternal(input, Time.realtimeSinceStartup);
+    }
+
+    public void CommitDefenseAttempt(DefenseInput input)
+    {
+        // Update 순서와 관계없이 한 번만 미리보기. 버퍼는 이후에도 수집하지만 모션은 잠급니다.
+        bool hurtBusy = _hurtReactionActive || (_battleCharacter != null
+            && (!_battleCharacter.IsAlive || _battleCharacter.IsHitReactionActive));
+        // 조기 Z 대기 중 유효한 X를 누른 경우에는 확정된 X가 한 번만 모션을 인계받습니다.
+        if (_lastPreviewedDefenseInput != input && _defensePresentationGate.CanPreview(hurtBusy))
+            ResetDefenseVisualStateOnly();
+        PreviewDefenseInput(input);
+        _defensePresentationGate.Commit();
+    }
+
+    private void PreviewDefenseInputInternal(DefenseInput input, float timestamp)
+    {
+        if (input == DefenseInput.None
+            || !_defensePresentationGate.CanPreview(HasActiveDefenseVisualTween() || _hurtReactionActive
+                || (_battleCharacter != null && (!_battleCharacter.IsAlive || _battleCharacter.IsHitReactionActive))))
+            return;
+
+        // PlayerController.Update와 QTEManager가 같은 프레임의 입력을 모두
+        // 관찰할 수 있습니다. 동일 입력의 미리보기는 한 번만 실행해 회피/점프
+        // 트윈이 재시작되거나 패링 준비 모션이 깜빡이지 않도록 합니다.
+        if (_lastPreviewedDefenseInput == input
+            && Mathf.Abs(timestamp - _lastPreviewedDefenseInputTime) <= DefensePreviewDuplicateWindow)
+        {
+            return;
+        }
+
+        _lastPreviewedDefenseInput = input;
+        _lastPreviewedDefenseInputTime = timestamp;
         switch (input)
         {
             case DefenseInput.Parry:
@@ -254,6 +305,10 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
                 break;
             case DefenseInput.Jump:
                 ExecuteJump(true);
+                break;
+            case DefenseInput.Counter:
+                // 반격 대기에는 점프 이동을 사용하지 않습니다. 성공 공격은 전투 모듈이 소유합니다.
+                ExecuteParry(true);
                 break;
         }
     }
@@ -611,7 +666,9 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
         if (active)
         {
-            _lastDefenseAttemptTime = -999f;
+            // 이전 전투/오버월드에서 남은 입력이 새 전투의 첫 방어로
+            // 재사용되지 않도록 전투 진입 시 버퍼를 초기화합니다.
+            CloseDefenseInputWindow();
             _battleDefenseAnchorPosition = transform.position;
             _moveInput = Vector2.zero;
             _prevLeft = _prevRight = _prevUp = _prevDown = false;
@@ -624,10 +681,11 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         }
         else
         {
+            CloseDefenseInputWindow();
+            ActiveDefensePresentation?.Dispose();
             _preemptiveAttackInProgress = false;
             _preemptiveAttackHitResolved = false;
             _preemptiveAttackStartedEncounter = false;
-            _lastDefenseAttemptTime = -999f;
             _moveInput = Vector2.zero;
             _prevLeft = _prevRight = _prevUp = _prevDown = false;
             State = PlayerState.Idle;
@@ -681,7 +739,12 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     public void PlayBattleAnim(int triggerHash)
     {
         if (_anim == null) return;
-        _anim.SetTrigger(triggerHash);
+        _battleAnimationVersion++;
+        // 같은 Animator를 사용하는 두 컴포넌트의 요청을 한 경로로 모읍니다.
+        if (_battleCharacter != null)
+            _battleCharacter.PlayBattleAnim(triggerHash);
+        else
+            _anim.SetTrigger(triggerHash);
 
         if      (triggerHash == HashParry)   PlayParryEffect();
         else if (triggerHash == HashHurt)    PlayHurtEffect();
@@ -728,8 +791,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     public void ExecuteParry(bool ignoreCooldown = false)
     {
         ResetDefenseVisualStateOnly();
-        TriggerParryAttemptAnim();
-        _defenseVisualTween = DOTween.Sequence().SetUpdate(true).AppendInterval(0.22f);
+        // 판정 전에는 패링 성공 모션을 재생하지 않습니다. 결과 확정 시에만 재생합니다.
+        _defenseVisualTween = DOTween.Sequence().SetRecyclable(false).SetUpdate(true).AppendInterval(0.22f);
     }
 
     public void ExecuteDodge(bool ignoreCooldown = false)
@@ -746,16 +809,25 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public void ConfirmDefenseSuccess(DefenseInput input)
     {
+        // 회피/점프는 입력 직후 시작한 이동 연출을 끝까지 보여줍니다. 패링/반격만
+        // 미리보기 트윈을 끊고 결과 모션으로 전환해, 성공 모션이 자리 복귀 뒤에
+        // 늦게 재생되거나 같은 프레임에 잘리는 일을 막습니다.
+        if (input != DefenseInput.Dodge && input != DefenseInput.Jump)
+            KillDefenseVisualTween();
+
         switch (input)
         {
             case DefenseInput.Parry:
-                PlayParryEffect();
+                PlayBattleAnim(HashParry);
                 break;
             case DefenseInput.Dodge:
                 _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
                 break;
             case DefenseInput.Jump:
                 _vfx?.Play(CharacterVFX.VFXAction.Jump_Dust);
+                break;
+            case DefenseInput.Counter:
+                PlayParryEffect();
                 break;
         }
     }
@@ -764,25 +836,71 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public void ConfirmGuardSuccess()
     {
-        // 일반 방어에는 퍼펙트 전용 섬광/반격 연출을 재사용하지 않습니다.
-        _defenseVisualTween?.Kill();
-        TriggerParryAttemptAnim();
-        _defenseVisualTween = DOTween.Sequence().SetUpdate(true).AppendInterval(0.1f);
+        // 부분 방어도 TakeDamage가 재생한 Hurt를 덮어쓰지 않아야 합니다.
+        KillDefenseVisualTween();
     }
 
     public IEnumerator WaitForDefenseVisualComplete(float fallbackSeconds = 0.45f)
     {
         float started = Time.unscaledTime;
-        while (_defenseVisualTween != null && _defenseVisualTween.IsActive() && Time.unscaledTime < started + fallbackSeconds)
+        while (HasActiveDefenseVisualTween()
+            && Time.unscaledTime < started + Mathf.Max(0.05f, fallbackSeconds))
             yield return null;
+    }
+
+    /// <summary>
+    /// 방어 결과의 연출이 끝날 때까지 기다립니다. 입력 판정과 시각 연출의 생명주기를 분리해
+    /// 다음 턴의 Idle 리셋이 Parry/BattleMove를 끊지 않도록 합니다.
+    /// </summary>
+    public IEnumerator WaitForDefenseReactionComplete(
+        DefenseInput input,
+        bool tookDamage,
+        float fallbackSeconds = 1.25f)
+    {
+        float deadline = Time.unscaledTime + Mathf.Max(0.05f, fallbackSeconds);
+        int stateHash = tookDamage
+            ? HashHurtState
+            : input == DefenseInput.Parry ? HashParryState : 0;
+        bool canObserveAnimatorState = stateHash != 0
+            && _anim != null
+            && _anim.HasState(0, stateHash);
+        bool animatorStateSeen = false;
+        bool defenseTweenSeen = false;
+        float observationGraceUntil = Time.unscaledTime + (canObserveAnimatorState ? 0.05f : 0f);
+        PlayerCharacter playerCharacter = tookDamage ? GetComponent<PlayerCharacter>() : null;
+
+        while (Time.unscaledTime < deadline)
+        {
+            if (this == null || !isActiveAndEnabled || State != PlayerState.InBattle)
+                yield break;
+            bool defenseTweenActive = HasActiveDefenseVisualTween();
+            if (defenseTweenActive)
+                defenseTweenSeen = true;
+
+            bool hurtReactionActive = tookDamage && _hurtReactionActive;
+            bool characterHitReactionActive = playerCharacter != null
+                && playerCharacter.IsHitReactionActive;
+
+            bool animatorStateActive = canObserveAnimatorState
+                && IsAnimatorStateActive(stateHash, ref animatorStateSeen);
+            bool reactionSeen = defenseTweenSeen || animatorStateSeen
+                || hurtReactionActive || characterHitReactionActive;
+
+            if (reactionSeen && !defenseTweenActive && !animatorStateActive
+                && (!tookDamage || (!_hurtReactionActive && !characterHitReactionActive)))
+                yield break;
+
+            // Trigger가 아직 Animator 업데이트에 반영되지 않은 한 프레임은 관찰합니다.
+            if (!reactionSeen && Time.unscaledTime >= observationGraceUntil)
+                yield break;
+
+            yield return null;
+        }
     }
 
     private void ResetDefenseVisualStateOnly()
     {
-
-        _defenseVisualTween?.Kill();
-        _defenseVisualTween = null;
-        if (_rb != null) DOTween.Kill(_rb);
+        KillDefenseVisualTween();
 
         if (State == PlayerState.InBattle)
         {
@@ -793,34 +911,81 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         }
     }
 
-    private void TriggerParryAttemptAnim()
+    private void KillDefenseVisualTween()
     {
-        if (_anim == null) return;
-        _anim.SetTrigger(HashParry);
+        Tween ownedTween = _defenseVisualTween;
+        _defenseVisualTween = null;
+        ownedTween?.Kill();
+    }
+
+    private bool HasActiveDefenseVisualTween()
+    {
+        return _defenseVisualTween != null
+            && _defenseVisualTween.IsActive()
+            && !_defenseVisualTween.IsComplete();
+    }
+
+    private bool IsAnimatorStateActive(int stateHash, ref bool stateSeen)
+    {
+        if (_anim == null)
+            return false;
+
+        AnimatorStateInfo current = _anim.GetCurrentAnimatorStateInfo(0);
+        bool isTransitioning = _anim.IsInTransition(0);
+        bool currentMatches = current.shortNameHash == stateHash
+            || current.fullPathHash == stateHash;
+        bool nextMatches = false;
+        if (isTransitioning)
+        {
+            AnimatorStateInfo next = _anim.GetNextAnimatorStateInfo(0);
+            nextMatches = next.shortNameHash == stateHash
+                || next.fullPathHash == stateHash;
+        }
+
+        if (currentMatches || nextMatches)
+            stateSeen = true;
+
+        if (currentMatches && !isTransitioning && current.normalizedTime >= 1f)
+            return false;
+
+        return currentMatches || nextMatches;
     }
 
     private void PlayDodgeAttempt()
     {
         Vector3 anchor = _battleDefenseAnchorPosition;
-        Vector3 dodgeDir = -GetFacingVector(); // 뒤로 빠지기
+        Vector3 dodgeDir = Vector3.left; // 전열 자리는 유지하며 짧게 수평 회피
+        PlayBattleAnim(HashBattleMove);
+        uint animationVersion = _battleCharacter != null
+            ? _battleCharacter.BattleAnimationVersion : _battleAnimationVersion;
         _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
 
-        float backDistance = 2.2f;
+        float backDistance = 0.375f; // 32 PPU 기준 12픽셀
         Vector3 overshoot = anchor + dodgeDir * backDistance;
-        Vector3 rebound = anchor + dodgeDir * 0.35f;
 
-        Sequence seq = DOTween.Sequence();
-        seq.Append(transform.DOMove(overshoot, 0.16f).SetEase(Ease.OutCubic));
-        seq.Append(transform.DOMove(rebound, 0.12f).SetEase(Ease.InOutSine));
-        seq.Append(transform.DOMove(anchor, 0.10f).SetEase(Ease.OutBack));
+        // Character의 기존 피격 취소 경로도 이 이동을 중단할 수 있게 타깃을 지정합니다.
+        Sequence seq = DOTween.Sequence().SetTarget(transform).SetRecyclable(false);
+        seq.Append(transform.DOMove(overshoot, 0.10f).SetEase(Ease.OutQuad));
+        seq.AppendInterval(0.10f);
+        seq.Append(transform.DOMove(anchor, 0.12f).SetEase(Ease.InOutSine));
         seq.SetUpdate(true);
         seq.OnComplete(() =>
         {
+            if (this == null) return;
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
+            // 정상 복귀는 즉시 Idle. 피격/반격/다른 공격이 포즈를 가져갔다면
+            // 오래된 회피 완료 콜백이 그 새 동작을 덮어쓰면 안 됩니다.
+            uint currentVersion = _battleCharacter != null
+                ? _battleCharacter.BattleAnimationVersion : _battleAnimationVersion;
+            if (State == PlayerState.InBattle && animationVersion == currentVersion
+                && !_hurtReactionActive
+                && (_battleCharacter == null || (_battleCharacter.IsAlive && !_battleCharacter.IsHitReactionActive)))
+                PlayBattleAnim(HashBattleIdle);
         });
         seq.OnKill(() =>
         {
+            if (this == null) return;
             if (_rb != null) _rb.position = anchor;
             transform.position = anchor;
         });
@@ -836,7 +1001,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         Vector3 apex = anchor + Vector3.up * 2.8f;
         Vector3 squash = anchor + Vector3.down * 0.12f;
 
-        Sequence seq = DOTween.Sequence();
+        Sequence seq = DOTween.Sequence().SetRecyclable(false);
         seq.Append(transform.DOMove(apex, 0.18f).SetEase(Ease.OutCubic));
         seq.Join(transform.DOScale(new Vector3(baseScale.x * 0.92f, baseScale.y * 1.08f, baseScale.z), 0.12f).SetEase(Ease.OutSine));
         seq.Append(transform.DOMove(squash, 0.18f).SetEase(Ease.InCubic));
@@ -861,13 +1026,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public void ResetDefenseReactionLock()
     {
-        _lastDefenseAttemptTime = -999f;
-        _bufferedDefenseInput = DefenseInput.None;
-        _bufferedDefenseInputTime = -999f;
-        _defenseInputWindowOpen = false;
-        _defenseVisualTween?.Kill();
-        _defenseVisualTween = null;
-        if (_rb != null) DOTween.Kill(_rb);
+        CloseDefenseInputWindow();
+        KillDefenseVisualTween();
         if (State == PlayerState.InBattle)
         {
             if (_rb != null) _rb.position = _battleDefenseAnchorPosition;
@@ -878,21 +1038,42 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         }
     }
 
-    public void PrepareDefenseWindow()
+    /// <summary>
+    /// 적 타격의 입력 창만 닫습니다. 저스트가드/회피 모션은 즉시 Idle로 되돌리지 않아
+    /// 피해 적용 및 후속 연출과 같은 프레임에 시작된 상태를 유지합니다.
+    /// </summary>
+    public void CloseDefenseInputWindow()
     {
-        _battleDefenseAnchorPosition = transform.position;
+        _defensePresentationGate.Close();
         _bufferedDefenseInput = DefenseInput.None;
         _bufferedDefenseInputTime = -999f;
-        _lastDefenseAttemptTime = -999f;
-        _defenseInputWindowOpen = true;
+        _lastPreviewedDefenseInput = DefenseInput.None;
+        _lastPreviewedDefenseInputTime = float.NegativeInfinity;
     }
+
+    public void PrepareDefenseWindow()
+    {
+        _defensePresentationGate.Open();
+        // 회피 이동 중인 좌표를 복귀 지점으로 채택하지 않습니다.
+        // 기준 위치는 전투 배치/명시적 SnapToBattleAnchor에서만 갱신합니다.
+        // 적 행동 시작 전에 이미 누른 입력은 버리지 않습니다. 이전 창의
+        // CloseDefenseInputWindow가 오래된 입력을 비우며, 버퍼 자체도 만료
+        // 시각을 검사하므로 새 공격으로 입력이 새지 않습니다.
+        // 준비 단계와 실제 판정 시작이 연달아 호출돼도 진행 중인 회피의 종류를 잊지 않습니다.
+        if (!HasActiveDefenseVisualTween())
+        {
+            _lastPreviewedDefenseInput = DefenseInput.None;
+            _lastPreviewedDefenseInputTime = float.NegativeInfinity;
+        }
+    }
+
+    public Vector3 BattleDefenseAnchorPosition => _battleDefenseAnchorPosition;
+    internal BattleDefenderPresentationScope ActiveDefensePresentation { get; set; }
 
     public void SnapToBattleAnchor(Vector3 worldPosition, bool playIdle = true)
     {
         _battleDefenseAnchorPosition = worldPosition;
-        _lastDefenseAttemptTime = -999f;
-        _defenseVisualTween?.Kill();
-        _defenseVisualTween = null;
+        KillDefenseVisualTween();
 
         if (_rb != null)
         {
@@ -955,42 +1136,128 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     {
         if (_spriteRenderer == null) return;
 
+        KillDefenseVisualTween();
         _spriteRenderer.DOKill(true);
         transform.DOKill(true);
 
         _vfx?.Play(CharacterVFX.VFXAction.Parry_Success);
 
-        _spriteRenderer.DOColor(ResolveFlashColor(_parryFlashColor), _parryFlashDuration)
-            .SetLoops(2, LoopType.Yoyo)
-            .OnComplete(() => _spriteRenderer.color = Color.white)
-            .OnKill(()    => _spriteRenderer.color = Color.white);
-
-        transform.DOPunchPosition(GetFacingVector() * 0.3f, 0.2f, 10, 1f);
+        Color restoreColor = _spriteRenderer.color;
+        Sequence feedback = DOTween.Sequence()
+            .SetUpdate(true)
+            .SetRecyclable(false)
+            .SetTarget(transform);
+        feedback.Join(_spriteRenderer.DOColor(
+                ResolveFlashColor(_parryFlashColor),
+                Mathf.Max(0.01f, _parryFlashDuration))
+            .SetLoops(2, LoopType.Yoyo));
+        feedback.OnComplete(() =>
+        {
+            if (_spriteRenderer != null)
+                _spriteRenderer.color = restoreColor;
+            if (ReferenceEquals(_defenseVisualTween, feedback))
+                _defenseVisualTween = null;
+        });
+        feedback.OnKill(() =>
+        {
+            if (_spriteRenderer != null)
+                _spriteRenderer.color = restoreColor;
+            if (State == PlayerState.InBattle)
+            {
+                if (_rb != null) _rb.position = _battleDefenseAnchorPosition;
+                transform.position = _battleDefenseAnchorPosition;
+            }
+            if (ReferenceEquals(_defenseVisualTween, feedback))
+                _defenseVisualTween = null;
+        });
+        _defenseVisualTween = feedback;
     }
 
     private void PlayAttackEffect()
     {
-        DOTween.Kill(transform);
+        // 일반 공격은 타겟 앞에 도착한 뒤 제자리에서 처리합니다. 공격 이펙트가
+        // transform을 펀치해 다시 돌진하는 것처럼 보이지 않도록 위치 트윈을 만들지 않습니다.
         _vfx?.Play(CharacterVFX.VFXAction.Attack_Normal);
-        transform.DOPunchPosition(GetFacingVector() * 0.3f, 0.15f, 1, 0.3f);
     }
 
     public void PlayHurtEffect()
     {
         if (_spriteRenderer == null) return;
 
-        _spriteRenderer.DOKill();
-        DOTween.Kill(transform);
+        bool hadHitReaction = _hurtReactionActive;
+        Vector3 origin = hadHitReaction
+            ? _hurtReactionOrigin
+            : State == PlayerState.InBattle ? _battleDefenseAnchorPosition : transform.position;
 
-        _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), _hurtFlashDuration)
+        KillDefenseVisualTween();
+        transform.DOKill(false);
+        if (!hadHitReaction && State == PlayerState.InBattle)
+            origin = _battleDefenseAnchorPosition;
+
+        _hurtReactionOrigin = origin;
+        _hurtReactionActive = true;
+        transform.position = origin;
+        if (State == PlayerState.InBattle && _rb != null)
+        {
+            _rb.position = origin;
+            _rb.linearVelocity = Vector2.zero;
+        }
+
+        _spriteRenderer.DOKill();
+        Color restoreColor = _spriteRenderer.color;
+
+        _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), Mathf.Max(0.01f, _hurtFlashDuration))
+            .SetUpdate(true)
             .SetLoops(4, LoopType.Yoyo)
-            .OnComplete(() => _spriteRenderer.color = Color.white)
-            .OnKill(() => _spriteRenderer.color = Color.white);
-        transform.DOShakePosition(
-            _hurtShakeDuration,
-            _hurtShakeStrength * ResolveShakeScale(),
-            30,
-            90f);
+            .OnComplete(() => _spriteRenderer.color = restoreColor)
+            .OnKill(() => _spriteRenderer.color = restoreColor);
+
+        float popHeight = ResolveHurtPopHeight() * ResolveShakeScale();
+        Sequence pop = DOTween.Sequence().SetRecyclable(false).SetUpdate(true);
+        pop.SetTarget(transform);
+        Vector3 recoil = State == PlayerState.InBattle
+            ? origin + Vector3.left * Mathf.Min(0.1875f, popHeight)
+            : origin + Vector3.up * popHeight;
+        pop.Append(transform.DOMove(recoil, ResolveHurtPopUpDuration())
+            .SetEase(Ease.OutQuad));
+        pop.Append(transform.DOMove(origin, ResolveHurtPopReturnDuration())
+            .SetEase(Ease.InQuad));
+        pop.OnComplete(() => CompleteHurtReaction(origin));
+        pop.OnKill(() => CompleteHurtReaction(origin));
+    }
+
+    private void CompleteHurtReaction(Vector3 origin)
+    {
+        if (this == null)
+            return;
+
+        transform.position = origin;
+        if (State == PlayerState.InBattle && _rb != null)
+        {
+            _rb.position = origin;
+            _rb.linearVelocity = Vector2.zero;
+        }
+
+        _hurtReactionActive = false;
+    }
+
+    private float ResolveHurtPopHeight()
+    {
+        return _hurtPopHeight > 0f ? _hurtPopHeight : Mathf.Max(0f, _hurtShakeStrength);
+    }
+
+    private float ResolveHurtPopUpDuration()
+    {
+        return _hurtPopUpDuration > 0.01f
+            ? _hurtPopUpDuration
+            : Mathf.Max(0.01f, _hurtShakeDuration * 0.3f);
+    }
+
+    private float ResolveHurtPopReturnDuration()
+    {
+        return _hurtPopReturnDuration > 0.01f
+            ? _hurtPopReturnDuration
+            : Mathf.Max(0.01f, _hurtShakeDuration * 0.7f);
     }
 
     public void PlayDieEffect()

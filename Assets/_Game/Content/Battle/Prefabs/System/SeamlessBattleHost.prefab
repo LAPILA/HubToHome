@@ -5975,6 +5975,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03e2b5499ab97c944a2c93e91a9cc20b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QTEManager
+  _battleImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
   _perfectWindow: 0.12
   _greatWindow: 0.22
   _goodWindow: 0.4

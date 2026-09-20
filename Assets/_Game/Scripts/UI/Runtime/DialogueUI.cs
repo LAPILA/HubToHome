@@ -46,6 +46,7 @@ public class DialogueUI : MonoBehaviour
     private System.Action<ChoiceData> _onChoiceSelected;
     private int _selectedChoiceIndex;
     private Coroutine _cameraRebindRoutine;
+    private Tween _panelTween;
 
     private void Awake()
     {
@@ -65,7 +66,11 @@ public class DialogueUI : MonoBehaviour
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
+        StopPanelTween();
+        HideChoices();
         StopTypingWork();
+        if (_canvasGroup != null)
+            _canvasGroup.alpha = 0f;
         if (_cameraRebindRoutine != null)
         {
             StopCoroutine(_cameraRebindRoutine);
@@ -81,6 +86,7 @@ public class DialogueUI : MonoBehaviour
 
     public void OpenPanel()
     {
+        StopPanelTween();
         gameObject.SetActive(true);
         // 비활성 상태에서 처음 표시되는 UI도 공통 Canvas 정책을 통과시킨다.
         UIRuntimeGuard.NormalizeCanvas(gameObject);
@@ -89,25 +95,31 @@ public class DialogueUI : MonoBehaviour
         ApplyConfiguredTextSpeed();
         if (_canvasGroup != null)
         {
-            _canvasGroup.DOKill();
             _canvasGroup.alpha = 0f;
-            _canvasGroup.DOFade(1f, 0.2f).SetUpdate(true);
+            _panelTween = _canvasGroup.DOFade(1f, 0.2f).SetUpdate(true)
+                .OnComplete(() => _panelTween = null);
         }
     }
 
     public void ClosePanel()
     {
+        StopPanelTween();
         HideChoices();
         StopTypingWork();
-        if (_canvasGroup != null)
+        if (_canvasGroup != null && isActiveAndEnabled)
         {
-            _canvasGroup.DOFade(0f, 0.2f).OnComplete(() => gameObject.SetActive(false));
+            _panelTween = _canvasGroup.DOFade(0f, 0.2f).SetUpdate(true).OnComplete(() =>
+            {
+                _panelTween = null;
+                gameObject.SetActive(false);
+            });
         }
         else gameObject.SetActive(false);
     }
 
     public void HideImmediate()
     {
+        StopPanelTween();
         HideChoices();
         StopTypingWork();
         StopAllCoroutines();
@@ -116,11 +128,16 @@ public class DialogueUI : MonoBehaviour
 
         if (_canvasGroup != null)
         {
-            _canvasGroup.DOKill(false);
             _canvasGroup.alpha = 0f;
         }
 
         gameObject.SetActive(false);
+    }
+
+    private void StopPanelTween()
+    {
+        _panelTween?.Kill(false);
+        _panelTween = null;
     }
 
     public void DisplayNode(SpeakerData speaker, EmotionType emotion, string text)

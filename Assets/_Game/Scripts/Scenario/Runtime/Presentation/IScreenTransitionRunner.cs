@@ -17,6 +17,12 @@ public sealed class ScreenTransitionRunner : IScreenTransitionRunner
         _overlay = overlay;
     }
 
+    public ScreenTransitionOverlay.RestorationScope CaptureRestorationScope(ActionExecutionHandle owner)
+    {
+        ScreenTransitionOverlay overlay = _overlay != null ? _overlay : ScreenTransitionOverlay.GetOrCreate();
+        return overlay.CaptureRestorationScope(owner);
+    }
+
     public IEnumerator Fade(string mode, string color, float duration, ActionExecutionHandle handle)
     {
         if (!TryResolveTargetAlpha(mode, out float targetAlpha))
@@ -87,6 +93,7 @@ public sealed class ScreenTransitionOverlay : MonoBehaviour
     private CanvasGroup _canvasGroup;
     private Image _image;
     private int _requestGeneration;
+    private ActionExecutionHandle _ownerHandle;
 
     public static ScreenTransitionOverlay GetOrCreate()
     {
@@ -117,6 +124,7 @@ public sealed class ScreenTransitionOverlay : MonoBehaviour
         EnsureInitialized();
 
         int generation = ++_requestGeneration;
+        _ownerHandle = handle;
         var prior = new OverlayState(
             _canvasGroup.alpha,
             _canvasGroup.blocksRaycasts,
@@ -127,51 +135,87 @@ public sealed class ScreenTransitionOverlay : MonoBehaviour
         cancellation = _ =>
         {
             handle.CancellationRequested -= cancellation;
-            if (generation == _requestGeneration)
+            if (this != null && generation == _requestGeneration)
                 Restore(prior);
         };
         handle.CancellationRequested += cancellation;
 
-        color.a = 1f;
-        gameObject.SetActive(true);
-        _image.color = color;
-        _canvasGroup.blocksRaycasts = targetAlpha > 0.001f;
+        bool completed = false;
+        try
+        {
+            if (handle.IsCancellationRequested)
+                yield break;
 
-        float clampedDuration = Mathf.Max(0f, duration);
-        float startAlpha = _canvasGroup.alpha;
-        if (clampedDuration <= 0f)
+            color.a = 1f;
+            gameObject.SetActive(true);
+            _image.color = color;
+            _canvasGroup.blocksRaycasts = targetAlpha > 0.001f;
+
+            float clampedDuration = Mathf.Max(0f, duration);
+            float startAlpha = _canvasGroup.alpha;
+            float elapsed = 0f;
+            while (elapsed < clampedDuration)
+            {
+                if (generation != _requestGeneration || handle.IsCancellationRequested)
+                    yield break;
+
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / clampedDuration);
+                ApplyAlpha(Mathf.Lerp(startAlpha, targetAlpha, t));
+                yield return null;
+            }
+
+            if (generation == _requestGeneration && !handle.IsCancellationRequested)
+            {
+                ApplyAlpha(targetAlpha);
+                completed = true;
+            }
+        }
+        finally
         {
             handle.CancellationRequested -= cancellation;
-            if (generation == _requestGeneration && !handle.IsCancellationRequested)
-                ApplyAlpha(targetAlpha);
-            yield break;
-        }
-
-        float elapsed = 0f;
-        while (elapsed < clampedDuration)
-        {
-            if (generation != _requestGeneration)
-            {
-                handle.CancellationRequested -= cancellation;
-                yield break;
-            }
-
-            if (handle.IsCancellationRequested)
-            {
-                handle.CancellationRequested -= cancellation;
+            if (!completed && this != null && generation == _requestGeneration)
                 Restore(prior);
-                yield break;
-            }
+        }
+    }
 
-            elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / clampedDuration);
-            ApplyAlpha(Mathf.Lerp(startAlpha, targetAlpha, t));
-            yield return null;
+    /// <summary>여러 페이드를 묶는 소유자가 종료할 때 최초 화면으로 되돌리는 범위입니다.</summary>
+    public RestorationScope CaptureRestorationScope(ActionExecutionHandle owner)
+    {
+        if (owner == null)
+            throw new ArgumentNullException(nameof(owner));
+        EnsureInitialized();
+        return new RestorationScope(this, owner);
+    }
+
+    public sealed class RestorationScope : IDisposable
+    {
+        private ScreenTransitionOverlay _overlay;
+        private readonly ActionExecutionHandle _owner;
+        private readonly OverlayState _baseline;
+
+        internal RestorationScope(ScreenTransitionOverlay overlay, ActionExecutionHandle owner)
+        {
+            _overlay = overlay;
+            _owner = owner;
+            _baseline = new OverlayState(overlay._canvasGroup.alpha, overlay._canvasGroup.blocksRaycasts,
+                overlay._image.color, overlay.gameObject.activeSelf);
         }
 
-        handle.CancellationRequested -= cancellation;
-        if (generation == _requestGeneration)
-            ApplyAlpha(targetAlpha);
+        public bool IsCurrent => _overlay != null && ReferenceEquals(_overlay._ownerHandle, _owner);
+
+        public void Dispose()
+        {
+            ScreenTransitionOverlay overlay = _overlay;
+            _overlay = null;
+            if (overlay == null || !ReferenceEquals(overlay._ownerHandle, _owner))
+                return;
+
+            // 다음 프레임에 재개되는 이전 routine도 최신 화면을 덮어쓰지 못하게 합니다.
+            overlay._requestGeneration++;
+            overlay._ownerHandle = null;
+            overlay.Restore(_baseline);
+        }
     }
 
     private void Awake()

@@ -31,9 +31,10 @@ public enum PlayerMenuAction
 public enum DefenseInput
 {
     None,
-    Parry,  // Z — 패링 (타이밍 맞출 시 데미지 무효화 + AP 회복)
-    Dodge,  // C — 회피 (무적 프레임)
-    Jump,   // Space — 점프 (하단 판정 공격 회피)
+    Parry,  // Z — 유지 가드 / 새 입력의 저스트 가드
+    Dodge,  // X — 회피
+    Jump,   // 기존 점프 방어 및 공격 QTE C 입력의 직렬화 값 보존
+    Counter = 4, // C — 반격 가능한 특수 공격의 연계 반격
 }
 
 /// <summary>

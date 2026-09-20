@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3eba3bde5818ed94ba397256558aaa34, type: 3}
+  m_Name: BunnySlime_Lab
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  Portrait: {fileID: -6824762552784436292, guid: 7832616a81da7ba4cb3cb9576410818c, type: 3}
+  TurnOrderPortrait: {fileID: -6824762552784436292, guid: 7832616a81da7ba4cb3cb9576410818c, type: 3}
+  EnemyId: lab.bunny_slime
+  EnemyName: "\uB9D0\uB791 \uC548\uC804\uAC10\uB3C5\uAD00"
+  BattleBGM: {fileID: 8300000, guid: 2358903c2d2850440a9afe9917fe42d3, type: 3}
+  Prefab: {fileID: 5456176941106326503, guid: f615c9e035a93a5429f4a61c5b109895, type: 3}
+  ReturnMoveTrigger: BattleMoveBack
+  BaseStats:
+    MaxHP: 1800
+    MaxAP: 100
+    ATK: 26
+    DEF: 4
+    SPD: 14
+    PhysicalResistance: 1
+    FireResistance: 1
+    IceResistance: 1
+    ElectricResistance: 1
+    CorrosionResistance: 1
+    IncomingDamageMultiplier: 1
+    OutgoingDamageMultiplier: 1
+  ThreatLevel: 1
+  AllowInstantKillAfterDefeat: 0
+  InstantKillLevelGap: 5
+  SkillUseChance: 1
+  StrongSkillUseChance: 0
+  TelegraphStrongSkill: 1
+  TelegraphTurns: 1
+  HasEnragedPattern: 0
+  IsLargeEnemy: 0
+  SkillList:
+  - {fileID: 11400000, guid: 188683247c08da84fa7c9849f5b4fba3, type: 2}
+  - {fileID: 11400000, guid: c517246fb0984e2aaa509cf03ec1df2c, type: 2}
+  - {fileID: 11400000, guid: 5223a5b9b500fa649a0b03661843c13b, type: 2}
+  - {fileID: 11400000, guid: f42b269d7a674e0a98cb417aef6a58c0, type: 2}
+  - {fileID: 11400000, guid: 69cac96e5deefd94b9a1bb8dfd70e75e, type: 2}
+  - {fileID: 11400000, guid: b71bbe0ff53279945874d8c6edcb4a14, type: 2}
+  - {fileID: 11400000, guid: 6b42182f177f0dc4796ec17d725564c7, type: 2}
+  - {fileID: 11400000, guid: 6571caebf3fd2824487bb3f143f110d6, type: 2}
+  - {fileID: 11400000, guid: cda6e4c803164bc5b7c310a93649f81c, type: 2}
+  - {fileID: 11400000, guid: f3a8e9ee0cbb67d42815953e00825604, type: 2}
+  StrongSkillList: []
+  Drops:
+  - ItemId: tests_consumable.emergency_bandage
+    MinAmount: 1
+    MaxAmount: 1
+    DropChance: 1
+  DropItemIDs: []
+  EXPReward: 30
+  GoldReward: 20

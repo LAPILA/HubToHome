@@ -11,6 +11,7 @@ public sealed class ProjectContentSnapshot
     public List<EnemyData> Enemies { get; } = new List<EnemyData>();
     public List<SkillData> Skills { get; } = new List<SkillData>();
     public List<ItemData> Items { get; } = new List<ItemData>();
+    public List<ShopDefinition> Shops { get; } = new List<ShopDefinition>();
     public List<BattleScenarioData> Scenarios { get; } = new List<BattleScenarioData>();
     public List<ActionCatalogAsset> ActionCatalogs { get; } = new List<ActionCatalogAsset>();
     public GameContentCatalog Catalog { get; set; }

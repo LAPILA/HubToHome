@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f682703ce8674d3418fe56840ddb3a79, type: 3}
+  m_Name: apron
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentData
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  Icon: {fileID: 0}
+  ItemName: "\uB9D0\uB791 \uC791\uC5C5\uBCF5"
+  ItemID: lab.equipment.apron
+  Slot: 4
+  Description: "\uC2E4\uC2B5\uC6A9 \uC218\uCE58 \uC7A5\uBE44. \uACF5\uACA9 +0 / \uBC29\uC5B4
+    +2 / \uCD5C\uB300 AP +0"
+  AllowedCharacterIDs: []
+  StatBonuses:
+    MaxHP: 0
+    MaxAP: 0
+    ATK: 0
+    DEF: 2
+    SPD: 0
+    PhysicalResistance: 0
+    FireResistance: 0
+    IceResistance: 0
+    ElectricResistance: 0
+    CorrosionResistance: 0
+    IncomingDamageMultiplier: 0
+    OutgoingDamageMultiplier: 0
+  PassiveEffectID: 
+  EquipReactionDialogueID: 

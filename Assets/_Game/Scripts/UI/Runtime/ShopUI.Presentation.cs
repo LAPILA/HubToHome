@@ -14,6 +14,7 @@ public sealed partial class ShopUI
     private bool _isOpening;
     private AudioManager _shopAudio;
     private AudioClip _shopMusic;
+    private ulong _shopMusicRequestVersion;
     private BgmPlaybackSnapshot _previousMusic;
     private float _musicFadeDuration;
     private IDisposable _ambienceSilence;
@@ -139,12 +140,14 @@ public sealed partial class ShopUI
         _previousMusic = audio.CaptureBgmPlayback();
         _musicFadeDuration = _activeShop.MusicFadeDuration;
         audio.CrossFadeBGM(clip, _musicFadeDuration);
+        _shopMusicRequestVersion = audio.BgmRequestVersion;
     }
 
     private void RestoreShopMusic(bool restorePrevious = true)
     {
         // 다른 연출/새 맵이 음악을 바꿨다면 이전 맵 음악으로 덮어쓰지 않습니다.
         if (_shopAudio != null && _shopAudio == AudioManager.Instance
+            && _shopAudio.BgmRequestVersion == _shopMusicRequestVersion
             && _shopAudio.RequestedBgmClip == _shopMusic && _shopMusic != null)
         {
             if (restorePrevious)
@@ -154,6 +157,7 @@ public sealed partial class ShopUI
         }
         _shopAudio = null;
         _shopMusic = null;
+        _shopMusicRequestVersion = 0;
         _previousMusic = BgmPlaybackSnapshot.Stopped;
     }
 }
