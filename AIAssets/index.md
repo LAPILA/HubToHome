@@ -4,6 +4,12 @@
 
 ## 먼저 볼 문서
 
+최신 판정 수정: [2026-09-26 근접 첫 전조부터 패링·즉시 입력 반응](yjlim/feedback/2026-09-26-melee-parry-cue.md).
+
+최신 스킬: [2026-09-26 압력 난무 독립 QTE·공중 회전 베기](yjlim/feedback/2026-09-26-independent-barrage-aerial-skill.md). 난무는 0.1초 간격 50타, Z/X/C는 독립 주기입니다. 360도 회전은 별도 공중 스킬의 카메라에만 적용하며 캐릭터 자체는 회전시키지 않습니다.
+
+교전 연출: [짧은 카메라 전환·고정 HUD](yjlim/feedback/2026-09-26-battle-camera-beats-rapid-skill.md). 상시 드리프트/호흡 줌 없음. [앞선 동적 연출](yjlim/feedback/2026-09-26-dynamic-battle-presentation.md)의 대사/UI 반응/C 후퇴 반격과 [중앙 교전](yjlim/feedback/2026-09-26-central-duel-presentation.md)의 캐릭터 배치는 유지합니다.
+
 최근 전투 작업: [2026-09-20 중앙 궁극기·피격 대상 전진·지상 복귀](2026-09-20-update.md) · [사용자 확인 및 미결정 사항](yjlim/feedback/2026-09-20-battle-timing.md) · [실험실 사용법](../docs/bunny-slime-battle-lab.md).
 
 최신 UI 수정: [2026-09-26 목업 기준 전투 HUD 개편](yjlim/feedback/2026-09-26-battle-hud.md) · [작업/검증 기록](2026-09-26-update.md). 이전: [파괴된 Image 트윈 수명 정리](yjlim/feedback/2026-09-20-battle-ui-lifetime.md).

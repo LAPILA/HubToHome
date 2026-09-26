@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: aerial_cross_slash
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  SkillName: "공중 회전 베기"
+  SkillID: lab.bunny.aerial_cross_slash
+  Description: "적 앞으로 접근해 도약하면 카메라가 한 바퀴 회전한다. X 입력 성공 시 강화되어, 적 뒤로 급습한 뒤 앞뒤로 두 번 더 베어낸다."
+  UsageProfile: 1
+  APCost: 14
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 926000002
+  references:
+    version: 2
+    RefIds:
+    - rid: 926000002
+      type: {class: Action_AerialCrossSlash, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "상승 · 카메라 360도 · X QTE · 뒤/앞/뒤"
+        Note: "카메라만 회전. 캐릭터 자체 회전 없음. HUD/QTE는 정방향 유지."
+        Height: 1.8
+        CrossingDistance: 1.1
+        ApproachDuration: 0.18
+        RiseDuration: 0.22
+        SpinDuration: 0.36
+        QteDuration: 0.6
+        InputWindow: 0.45
+        DashDuration: 0.13
+        ReturnDuration: 0.2
+        DamagePerStrike: 0.8
+        SuccessMultiplier: 1.5
+        Element: 0

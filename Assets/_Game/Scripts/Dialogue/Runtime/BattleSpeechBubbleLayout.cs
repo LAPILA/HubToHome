@@ -31,6 +31,16 @@ public readonly struct BattleSpeechBubbleLayoutResult
 
 public static class BattleSpeechBubbleLayout
 {
+    public static Vector2 ClampScreenOffset(Rect bubble, Rect safe)
+    {
+        float x = bubble.width > safe.width ? safe.center.x - bubble.center.x
+            : bubble.xMin < safe.xMin ? safe.xMin - bubble.xMin
+            : bubble.xMax > safe.xMax ? safe.xMax - bubble.xMax : 0f;
+        float y = bubble.height > safe.height ? safe.center.y - bubble.center.y
+            : bubble.yMin < safe.yMin ? safe.yMin - bubble.yMin
+            : bubble.yMax > safe.yMax ? safe.yMax - bubble.yMax : 0f;
+        return new Vector2(x, y);
+    }
     private static readonly Vector2 SideTailScale = new Vector2(2f, 2.5f);
     private static readonly Vector2 UpTailScale = new Vector2(4f, 2f);
     private const float SideTailBodyOverlap = 32f;

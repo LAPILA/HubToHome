@@ -10,6 +10,53 @@ public class QTEManagerDefensePipelineTests
 {
     private const string TelegraphPath = "Assets/_Game/Presentation/Custom_VFX/Prefabs/Telegraph.prefab";
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void CentralDuel_UsesSymmetricStagingAndRestoresBothHomes(bool destroyEnemy)
+    {
+        var positionObject = new GameObject("DuelPositions");
+        var playerObject = new GameObject("DuelPlayer");
+        var enemyObject = new GameObject("DuelEnemy");
+        positionObject.SetActive(false);
+        playerObject.SetActive(false);
+        enemyObject.SetActive(false);
+        FieldInfo instance = typeof(PositionManager).GetField("<Instance>k__BackingField",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        PositionManager previous = PositionManager.Instance;
+        BattleDefenderPresentationScope scope = null;
+        try
+        {
+            var positions = positionObject.AddComponent<PositionManager>();
+            instance.SetValue(null, positions);
+            SetPrivateField(positions, "_centerPos", positionObject.transform);
+            positionObject.transform.position = new Vector3(10f, 4f, 0f);
+            var player = playerObject.AddComponent<PlayerCharacter>();
+            var enemy = enemyObject.AddComponent<EnemyCharacter>();
+            Vector3 playerHome = new Vector3(-5f, 2f, -1f);
+            Vector3 enemyHome = new Vector3(18f, 6f, -2f);
+            player.transform.position = playerHome;
+            enemy.transform.position = enemyHome;
+            Assert.That(positions.GetDuelStagingPos(player), Is.EqualTo(new Vector3(8.75f, 4f, -1f)));
+            Assert.That(positions.GetDuelStagingPos(enemy), Is.EqualTo(new Vector3(11.25f, 4f, -2f)));
+            scope = new BattleDefenderPresentationScope(player, () => true, enemy);
+            Assert.That(scope.IsPaired, Is.True);
+            player.transform.position = positions.GetDuelStagingPos(player);
+            enemy.transform.position = positions.GetDuelStagingPos(enemy);
+            if (destroyEnemy) Object.DestroyImmediate(enemyObject);
+            Assert.DoesNotThrow(() => { scope.Dispose(); scope.Dispose(); });
+            Assert.That(player.transform.position, Is.EqualTo(playerHome));
+            if (!destroyEnemy) Assert.That(enemy.transform.position, Is.EqualTo(enemyHome));
+        }
+        finally
+        {
+            scope?.Dispose();
+            Object.DestroyImmediate(playerObject);
+            if (enemyObject != null) Object.DestroyImmediate(enemyObject);
+            Object.DestroyImmediate(positionObject);
+            instance.SetValue(null, previous);
+        }
+    }
+
     [Test]
     public void TelegraphAsset_StartStateAnimatesThePrefabRenderer()
     {
@@ -184,6 +231,43 @@ public class QTEManagerDefensePipelineTests
         Assert.That(request.TimingProfile.PerfectWindow, Is.EqualTo(0.12f));
         Assert.That(request.Requirement, Is.EqualTo(DefenseRequirement.JumpOnly),
             "Timed guard must preserve authored requirement data for the legacy path.");
+    }
+
+    [TestCase(true, 1)]
+    [TestCase(false, 0)]
+    public void BattleMeleeCue_FirstFrameAcceptsParryWithoutResolvingImpactEarly(bool melee, int expected)
+    {
+        var input = new FreshParryInput();
+        int cueCount = 0, resultCount = 0, panelCount = 0;
+        _manager.DefenseWindowOpened += _ => panelCount++;
+        var request = _manager.CreateDefenseRequest(0.3f, 1f, DefenseRequirement.Any);
+        QteExecution execution = _manager.StartBattleDefenseWindow(request, input, _ => resultCount++,
+            onImpactCue: _ => cueCount++, useMeleeParryAssistance: melee);
+        try
+        {
+            Assert.That(input.PreviewCount, Is.EqualTo(expected), "근접만 첫 전조 프레임부터 Z를 수락합니다.");
+            Assert.That(cueCount, Is.EqualTo(expected), "입력 시작점과 강조 신호가 같아야 합니다.");
+            Assert.That(resultCount, Is.Zero, "피해/보상/성공 모션은 타격 프레임까지 기다립니다.");
+            Assert.That(panelCount, Is.Zero);
+            Assert.That(execution.IsDone, Is.False);
+        }
+        finally { _manager.Cancel(execution); }
+    }
+
+    private sealed class FreshParryInput : ITimedGuardInputSource
+    {
+        public bool IsGuardHeld => false;
+        public int PreviewCount;
+        private bool _consumed;
+        public bool TryConsumeBufferedDefenseInput(out DefenseInput input, out float inputTime)
+        {
+            input = DefenseInput.Parry;
+            inputTime = Time.realtimeSinceStartup;
+            if (_consumed) return false;
+            _consumed = true;
+            return true;
+        }
+        public void PreviewDefenseInput(DefenseInput input) => PreviewCount++;
     }
 
     [Test]

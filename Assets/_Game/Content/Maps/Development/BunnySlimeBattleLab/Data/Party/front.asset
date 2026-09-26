@@ -56,4 +56,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1d778d5fcac64e52922116330e51cc23, type: 2}
   - {fileID: 11400000, guid: 3f3574652473478aa8fb9998e801191f, type: 2}
   - {fileID: 11400000, guid: d036bcc5ff804720aa5b3ba96373a42b, type: 2}
+  - {fileID: 11400000, guid: 3ddbc773f361457e89da8110dbe5c54e, type: 2}
+  - {fileID: 11400000, guid: 5f6c4dbb867e4973a5d9211e93cb76dd, type: 2}
   PowerUnlocks: []

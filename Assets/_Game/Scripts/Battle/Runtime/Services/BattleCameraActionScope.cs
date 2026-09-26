@@ -26,9 +26,25 @@ public sealed class BattleCameraActionScope : IDisposable
 
     public static BattleCameraActionScope Begin(
         IReadOnlyList<Transform> targets,
-        float resetDuration = 0.4f)
+        float resetDuration = 0.18f)
     {
         CameraController controller = CameraController.Instance;
+        PositionManager positions = PositionManager.Instance;
+        if (controller != null && !controller.IsStaticBattlePresentation && HasOpposingCombatants(targets))
+        {
+            if (controller.TryStartBattleShot(targets, out CameraCommandToken actionToken, out _))
+                return new BattleCameraActionScope(controller, actionToken, resetDuration);
+            return new BattleCameraActionScope(null, default, resetDuration);
+        }
+        if (controller != null && positions != null && positions.CenterTransform != null
+            && HasOpposingCombatants(targets))
+        {
+            // 캐릭터의 회피/공격 이동을 추적하지 않고 고정된 중앙을 부드럽게 확대합니다.
+            // 명시적 Timeline 카메라 lease가 있으면 TryFocus가 거절하므로 빼앗지 않습니다.
+            if (controller.TryFocusBattleCenter(positions.CenterTransform, out CameraCommandToken centerToken, out _))
+                return new BattleCameraActionScope(controller, centerToken, resetDuration);
+            return new BattleCameraActionScope(null, default, resetDuration);
+        }
         if (controller == null
             || controller.IsStaticBattlePresentation
             || !controller.TryFrameBattleTargets(targets, out CameraCommandToken token, out _))
@@ -39,10 +55,24 @@ public sealed class BattleCameraActionScope : IDisposable
         return new BattleCameraActionScope(controller, token, resetDuration);
     }
 
+    private static bool HasOpposingCombatants(IReadOnlyList<Transform> targets)
+    {
+        bool player = false, enemy = false;
+        for (int i = 0; targets != null && i < targets.Count; i++)
+        {
+            Transform target = targets[i];
+            if (target == null || !target.gameObject.activeInHierarchy) continue;
+            player |= target.TryGetComponent<PlayerCharacter>(out _);
+            enemy |= target.TryGetComponent<EnemyCharacter>(out _);
+            if (player && enemy) return true;
+        }
+        return false;
+    }
+
     public static BattleCameraActionScope Begin(
         Transform first,
         Transform second,
-        float resetDuration = 0.4f)
+        float resetDuration = 0.18f)
     {
         return Begin(new[] { first, second }, resetDuration);
     }

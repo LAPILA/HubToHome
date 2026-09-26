@@ -63,4 +63,57 @@ public class QTEManagerCancellationTests
         Assert.That(execution.Termination, Is.EqualTo(QteTermination.Failed));
         Assert.That(_manager.IsActive, Is.False);
     }
+
+    [Test]
+    public void SkillStream_CancelsThroughExistingOwner_WithoutInvokingResult()
+    {
+        int impacts = 0;
+        QteExecution execution = _manager.StartSkillInputStream(5f, .65f, .45f,
+            _ => impacts++, () => true);
+        Assert.That(_manager.IsSkillQteActive, Is.True);
+        _manager.ForceStop();
+        Assert.That(execution.Termination, Is.EqualTo(QteTermination.Cancelled));
+        Assert.That(impacts, Is.Zero);
+        Assert.That(_manager.IsActive, Is.False);
+    }
+
+    [Test]
+    public void SkillStream_ReplacementInvalidatesOnlyThePreviousHandle()
+    {
+        QteExecution first = _manager.StartSkillInputStream(5f, .65f, .45f, null, () => true);
+        QteExecution second = _manager.StartDefenseQTEWithResult(10f, 1f, null);
+        Assert.That(first.Termination, Is.EqualTo(QteTermination.Cancelled));
+        Assert.That(_manager.Cancel(first), Is.False);
+        Assert.That(second.IsDone, Is.False);
+        _manager.ForceStop();
+    }
+
+    [Test]
+    public void RapidStrikes_FiftyDeadlinesFitWithinFiveSeconds_IndependentOfInputCadence()
+    {
+        for (int i = 1; i <= 50; i++)
+        {
+            Assert.That(Action_RapidStrikes.CountDueHits(i * .1f, 5f, .1f), Is.EqualTo(i));
+        }
+        Assert.That(Action_RapidStrikes.CountDueHits(.35f, 5f, .1f), Is.EqualTo(3));
+        Assert.That(Action_RapidStrikes.CountDueHits(6f, 5f, .1f), Is.EqualTo(50));
+        Assert.That(Action_RapidStrikes.CountDueHits(0f, 5f, .1f), Is.Zero);
+    }
+
+    [Test]
+    public void SkillStream_RejectsNonFiniteTime()
+    {
+        QteExecution execution = _manager.StartSkillInputStream(float.NaN, .65f, .45f, null, () => true);
+        Assert.That(execution.Termination, Is.EqualTo(QteTermination.Failed));
+        Assert.That(_manager.IsActive, Is.False);
+    }
+
+    [Test]
+    public void SkillStream_UsesThreeInputKeys()
+    {
+        Assert.That(QTEManager.SkillPromptInput(0), Is.EqualTo(DefenseInput.Parry));
+        Assert.That(QTEManager.SkillPromptInput(1), Is.EqualTo(DefenseInput.Dodge));
+        Assert.That(QTEManager.SkillPromptInput(2), Is.EqualTo(DefenseInput.Jump));
+        Assert.That(QTEManager.SkillPromptInput(3), Is.EqualTo(DefenseInput.Parry));
+    }
 }

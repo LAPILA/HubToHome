@@ -60,6 +60,143 @@ public sealed class CameraFramingTests
     }
 
     [Test]
+    public void CenterDuelZoom_UsesAuthoredOverviewAndKeepsFixedTarget()
+    {
+        float overview = _virtualCamera.Lens.OrthographicSize;
+        Assert.That(_controller.TryFocusBattleCenter(_centerObject.transform, out var token, out string error),
+            Is.True, error);
+        DOTween.Complete("CameraZoom");
+        Assert.That(_controller.IsCurrent(token), Is.True);
+        Assert.That(_virtualCamera.Follow, Is.SameAs(_centerObject.transform));
+        Assert.That(_controller.IsFramingTargets, Is.False, "회피 이동을 그룹 프레이밍으로 추적하지 않습니다.");
+        Assert.That(_virtualCamera.Lens.OrthographicSize, Is.EqualTo(overview * 0.82f).Within(0.001f));
+        _controller.ResetCamera(0f);
+        Assert.That(_virtualCamera.Lens.OrthographicSize, Is.EqualTo(overview).Within(0.001f));
+    }
+
+    [Test]
+    public void BattleShot_PreservesContinuousLensThroughPixelPerfectPipelineAndRestoresExtension()
+    {
+        var outputObject = new GameObject("PixelPerfectOutput");
+        var texture = new RenderTexture(640, 480, 0);
+        try
+        {
+            Camera output = outputObject.AddComponent<Camera>();
+            output.orthographic = true;
+            output.targetTexture = texture;
+            var pixel = outputObject.AddComponent<UnityEngine.Rendering.Universal.PixelPerfectCamera>();
+            pixel.assetsPPU = 32; pixel.refResolutionX = 640; pixel.refResolutionY = 480;
+            pixel.runInEditMode = true;
+            typeof(UnityEngine.Rendering.Universal.PixelPerfectCamera)
+                .GetMethod("UpdateCameraProperties", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(pixel, null);
+            var extension = _cameraObject.AddComponent<CinemachinePixelPerfect>();
+            var brain = outputObject.AddComponent<CinemachineBrain>();
+            brain.ManualUpdate();
+            Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+                out _, out string error), Is.True, error);
+            Assert.That(extension.enabled, Is.False);
+            Assert.That(pixel.enabled, Is.True, "출력 PixelPerfectCamera는 계속 활성 상태여야 합니다.");
+            const float authoredLens = 5.37f;
+            _virtualCamera.Lens.OrthographicSize = authoredLens;
+            _virtualCamera.UpdateCameraState(Vector3.up, -1f);
+            Assert.That(_virtualCamera.State.Lens.OrthographicSize, Is.EqualTo(authoredLens).Within(0.001f));
+            output.orthographicSize = _virtualCamera.State.Lens.OrthographicSize;
+            typeof(UnityEngine.Rendering.Universal.PixelPerfectCamera)
+                .GetMethod("OnBeginCameraRendering", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(pixel, new object[] { default(UnityEngine.Rendering.ScriptableRenderContext), output });
+            Assert.That(output.orthographicSize, Is.EqualTo(authoredLens).Within(0.001f),
+                "URP 렌더 시작 단계에서도 줌을 다시 덮으면 안 됩니다.");
+            _controller.ResetCamera(0f);
+            Assert.That(extension.enabled, Is.True);
+            Assert.That(pixel.enabled, Is.True);
+        }
+        finally
+        {
+            _controller.ResetCamera(0f);
+            Object.DestroyImmediate(outputObject);
+            Object.DestroyImmediate(texture);
+        }
+    }
+
+    [Test]
+    public void BattleShot_UsesOwnedTargetAndOldDefenseHoldCannotAffectNewTimeline()
+    {
+        Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+            out var token, out string error), Is.True, error);
+        Assert.That(_virtualCamera.Follow, Is.Not.SameAs(_centerObject.transform));
+        var hold = _controller.StabilizeBattleDefense();
+        Assert.That(hold, Is.Not.Null);
+        float timeScale = Time.timeScale;
+        _controller.PlayHeavySlam(Vector3.right);
+        Assert.That(Time.timeScale, Is.EqualTo(timeScale), "방어 중 타격 카메라/히트스톱은 억제합니다.");
+        Assert.That(_controller.TryAcquireTimelineControl(this, out var lease, out _), Is.True);
+        hold.Dispose(); hold.Dispose();
+        Assert.That(_controller.IsCurrent(token), Is.False);
+        Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+            out _, out _), Is.False);
+        _controller.ReleaseTimelineControl(lease);
+    }
+
+    [Test]
+    public void BattleShot_NoIdleDriftOrAutomaticRoll_AndStaleSkillCannotChangeNewShot()
+    {
+        _controller.SetScreenShakeScaleProvider(new EnabledCameraEffects());
+        Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+            out var first, out _), Is.True);
+        GetBattleTween("_battlePositionTween").Complete();
+        GetBattleTween("_battleLensTween").Complete();
+        Vector3 position = _virtualCamera.Follow.position;
+        float lens = _virtualCamera.Lens.OrthographicSize;
+        for (int i = 0; i < 5; i++)
+            typeof(CameraController).GetMethod("UpdateBattleMotion", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(_controller, null);
+        Assert.That(_virtualCamera.Follow.position, Is.EqualTo(position));
+        Assert.That(_virtualCamera.Lens.OrthographicSize, Is.EqualTo(lens));
+        _controller.PlayBattleSkillBeat(first, 1f, 360f, .2f);
+        GetBattleTween("_battleRollTween").Complete();
+        Assert.That(_virtualCamera.Lens.Dutch, Is.EqualTo(360f));
+        Assert.That(_controller.IsCurrent(first), Is.True, "스킬 구도는 루트 토큰을 교체하지 않습니다.");
+        Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+            out var second, out _), Is.True);
+        _controller.PlayBattleSkillBeat(first, .8f, 180f);
+        _controller.EndBattleSkillBeats(first);
+        Assert.That(_controller.IsCurrent(second), Is.True);
+        Assert.That(_virtualCamera.Lens.Dutch, Is.Zero);
+        _controller.Cancel(second, true);
+        Assert.That(_virtualCamera.Lens.Dutch, Is.Zero);
+    }
+
+    private Tween GetBattleTween(string field) => (Tween)typeof(CameraController)
+        .GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_controller);
+
+    [TestCase(360f)]
+    [TestCase(-360f)]
+    public void BattleSkillFullRoll_ThenUprightBeatDoesNotRewindActorsOrCamera(float degrees)
+    {
+        _controller.SetScreenShakeScaleProvider(new EnabledCameraEffects());
+        Quaternion actorRotation = _leftObject.transform.localRotation;
+        Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+            out var token, out _), Is.True);
+        _controller.PlayBattleSkillBeat(token, 1.08f, degrees, .36f);
+        GetBattleTween("_battleRollTween").Complete();
+        Assert.That(_virtualCamera.Lens.Dutch, Is.EqualTo(degrees));
+        Assert.That(_leftObject.transform.localRotation, Is.EqualTo(actorRotation));
+        _controller.PlayBattleSkillBeat(token, .92f, 0f, .1f);
+        Assert.That(_virtualCamera.Lens.Dutch, Is.Zero.Within(.001f));
+        GetBattleTween("_battleRollTween").Goto(.05f, false);
+        Assert.That(_virtualCamera.Lens.Dutch, Is.Zero.Within(.001f));
+    }
+    private sealed class EnabledCameraEffects : IScreenShakeScaleProvider { public float Scale => 1f; }
+
+    [Test]
+    public void CenterDuelZoom_DoesNotOverrideTimelineLease()
+    {
+        Assert.That(_controller.TryAcquireTimelineControl(this, out var lease, out _), Is.True);
+        Assert.That(_controller.TryFocusBattleCenter(_centerObject.transform, out _, out _), Is.False);
+        _controller.ReleaseTimelineControl(lease);
+    }
+
+    [Test]
     public void DistantTargetsExpandFinalOrthographicLensWithinConfiguredRange()
     {
         CameraFramingSettings settings = CameraFramingSettings.CreateBattleDefault();

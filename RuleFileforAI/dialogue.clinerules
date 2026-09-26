@@ -29,6 +29,10 @@
 - If choice behavior changes, inspect `DialogueManager`, `DialogueData`, and any encounter context code.
 - Document new event trigger IDs and their owners.
 
+## Battle Speech Presentation (2026-09-26)
+
+Battle speech presentation (2026-09-26): shared Player/Enemy bubble prefabs use a wider 1080-local-unit line box and 64-unit source font. `BattleSpeechBubble` maintains a 14px nominal font at the 640×480 reference size, follows the cached actor pivot after Cinemachine, and clamps to `BattleUIController.TryGetSpeechSafeArea` between the live turn queue and bottom HUD. This is world speech, not dialogue modal/layout behavior. Long text expands box height instead of clipping; oversized boxes fit the available area. Visible bubbles only do cached, allocation-free projection work. Preserve SmartTextWrapper, authored text, typewriter and rule triggers. No new scenario grammar or localization keys.
+
 ## Content Maker Authoring (2026-09-07)
 
 - Author through `Hub To Home → 제작 → 콘텐츠 메이커 → 대사 · 화자`. The task pages are `대사 / 화자·표정 / 조건·NPC / CSV·번역 / 문서`; do not add another dialogue editor or duplicate the existing Sequence Maker.

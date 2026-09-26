@@ -38,6 +38,20 @@ public static class BunnySlimeLabContentBuilder
             items[i] = Require<ItemData>(SampleItems + itemNames[i] + ".asset");
 
         string skills = root + "/Data/Skills";
+        SkillData rapid = Skill(skills, "rapid_slash", "압력 난무 · 5초", SkillUsageProfile.PlayerOnly, false, false, value =>
+        {
+            value.Icon = originals[0].Icon;
+            value.APCost = 12;
+            value.Description = "5초 동안 0.1초 간격으로 50회 베기. 공격과 별도로 이어지는 Z/X/C 안내에 맞춰 누르면 다음 QTE 결과까지 피해가 강화된다. 입력을 놓쳐도 공격은 계속된다.";
+            value.ActionTimeline.Add(new Action_RapidStrikes { DesignerLabel = "0.1초 연격 · 독립 Z/X/C QTE" });
+        });
+        SkillData aerial = Skill(skills, "aerial_cross_slash", "공중 회전 베기", SkillUsageProfile.PlayerOnly, false, false, value =>
+        {
+            value.Icon = originals[0].Icon;
+            value.APCost = 14;
+            value.Description = "적 앞으로 접근해 도약하면 카메라가 한 바퀴 회전한다. X 입력 성공 시 강화되어, 적 뒤로 급습한 뒤 앞뒤로 두 번 더 베어낸다.";
+            value.ActionTimeline.Add(new Action_AerialCrossSlash { DesignerLabel = "상승 · 카메라 360도 · X QTE · 뒤/앞/뒤" });
+        });
         SkillData guard = EnemyStrike(skills, "guard", "말랑 내려찍기", DefenseRequirement.Any, 1f, 1, false, sparks);
         SkillData dodge = EnemyStrike(skills, "dodge", "쓸어 담기 · X", DefenseRequirement.DodgeOnly, 1.1f, 1, false, sparks);
         SkillData triple = EnemyStrike(skills, "triple", "하나, 둘, 말랑!", DefenseRequirement.Any, .65f, 3, false, sparks);
@@ -100,7 +114,7 @@ public static class BunnySlimeLabContentBuilder
             new Color(.98f,.46f,.27f), new Color(.45f,.75f,1f), new Color(.75f,.58f,1f) };
         SkillData[][] loadouts =
         {
-            new[] { originals[0], originals[1], originals[2], originals[3] },
+            new[] { originals[0], originals[1], originals[2], originals[3], rapid, aerial },
             new[] { status[7], status[8], status[6], originals[5] },
             new[] { originals[4], originals[6], originals[7], originals[8] },
             new[] { fireShot, status[0], status[2], originals[9] },

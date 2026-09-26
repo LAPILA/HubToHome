@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: rapid_slash
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  SkillName: "압력 난무 · 5초"
+  SkillID: lab.bunny.rapid_slash
+  Description: "5초 동안 0.1초 간격으로 50회 베기. 공격과 별도로 이어지는 Z/X/C 안내에 맞춰 누르면 다음 QTE 결과까지 피해가 강화된다. 입력을 놓쳐도 공격은 계속된다."
+  UsageProfile: 1
+  APCost: 12
+  TargetType: 1
+  IsAoE: 0
+  ActionTimeline:
+  - rid: 926000001
+  references:
+    version: 2
+    RefIds:
+    - rid: 926000001
+      type: {class: Action_RapidStrikes, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "0.1초 연격 · 독립 Z/X/C QTE"
+        Note: "타격 0.1초 / QTE 0.65초 독립 주기. 회전은 공중 회전 베기 스킬로 분리."
+        Duration: 5
+        HitInterval: 0.1
+        PromptInterval: 0.65
+        StrikeCount: 10
+        QteEvery: 2
+        InputWindow: 0.45
+        DamagePerStrike: 0.12
+        SuccessMultiplier: 1.6
+        Element: 0
+        CameraRoll: 0
+        SlashTravel: 0.15

@@ -74,6 +74,7 @@ public class BattleSpeechRule
 }
 
 [DisallowMultipleComponent]
+[DefaultExecutionOrder(100)]
 public class BattleSpeechBubble : MonoBehaviour
 {
     private const int TailStencilRef = 13;
@@ -119,6 +120,11 @@ public class BattleSpeechBubble : MonoBehaviour
     [BoxGroup("Timing"), SerializeField] private float _popScale = 1.08f;
     [BoxGroup("Timing"), SerializeField] private bool _allowConfirmSkip = true;
 
+    [BoxGroup("화면 가독성"), SerializeField, LabelText("줌과 무관하게 크기 유지")]
+    private bool _keepScreenSize = true;
+    [BoxGroup("화면 가독성"), SerializeField, Range(10f, 24f), LabelText("640×480 기준 글자 크기")]
+    private float _screenFontSize = 14f;
+
     [BoxGroup("Rules"), ListDrawerSettings(ShowIndexLabels = true)]
     [SerializeField] private BattleSpeechConfig _config;
     [BoxGroup("Rules"), ListDrawerSettings(ShowIndexLabels = true)]
@@ -134,6 +140,12 @@ public class BattleSpeechBubble : MonoBehaviour
     private Material _bodyStencilMaterial;
     private Material _tailStencilWriteMaterial;
     private Material _tailStencilClearMaterial;
+    private Camera _speechCamera;
+    private Transform _speakerPivot;
+    private Vector3 _speakerOffset;
+    private readonly Vector3[] _screenCorners = new Vector3[4];
+    private float _presentationScale = 1f;
+    private Tween _scaleTween;
 
     public bool IsShowing => _isShowing;
 
@@ -244,6 +256,9 @@ public class BattleSpeechBubble : MonoBehaviour
 
     private void KillPresentationTweens()
     {
+        if (_scaleTween != null && _scaleTween.IsActive()) _scaleTween.Kill(false);
+        _scaleTween = null;
+        _presentationScale = 1f;
         if (_canvasGroup != null)
             _canvasGroup.DOKill(false);
         if (_bubbleRoot != null)
@@ -376,6 +391,8 @@ public class BattleSpeechBubble : MonoBehaviour
             preferred + extraSize,
             _minSize,
             _maxSize);
+        // 긴 문장을 잘라 숨기지 않습니다. 필요하면 전체 박스를 안전 영역에 맞춰 축소합니다.
+        size.y = Mathf.Max(size.y, preferred.y + extraSize.y);
         BattleSpeechBubbleLayoutResult layout = GetLayout(direction, size);
 
         if (_layoutElement != null)
@@ -648,6 +665,8 @@ public class BattleSpeechBubble : MonoBehaviour
 
     private void PositionForActor(CharacterBase actor, BattleSpeechBubbleDirection direction)
     {
+        _speakerPivot = null;
+        _speechCamera = BattleUIController.Instance != null ? BattleUIController.Instance.WorldCamera : Camera.main;
         if (actor == null || _bubbleRoot == null) return;
 
         Transform pivot = direction == BattleSpeechBubbleDirection.Up
@@ -657,7 +676,57 @@ public class BattleSpeechBubble : MonoBehaviour
         if (pivot == null) return;
 
         Vector3 offset = GetWorldOffset(direction);
+        _speakerPivot = pivot;
+        _speakerOffset = offset;
         _bubbleRoot.position = pivot.position + offset;
+    }
+
+    private void LateUpdate()
+    {
+        if (!_isShowing || _bubbleRoot == null || _boxRoot == null || _speechCamera == null) return;
+        if (_speakerPivot != null) _bubbleRoot.position = _speakerPivot.position + _speakerOffset;
+        Rect safe = _speechCamera.pixelRect;
+        if (BattleUIController.Instance != null
+            && BattleUIController.Instance.TryGetSpeechSafeArea(out Camera camera, out Rect hudSafe))
+        {
+            _speechCamera = camera;
+            safe = hudSafe;
+        }
+        if (safe.width <= 0f || safe.height <= 0f) return;
+        if (_keepScreenSize && _speechCamera.orthographic && _speechText != null)
+        {
+            // 로컬 UI 단위를 월드 단위로 환산. 캐릭터/부모 프리팹의 배율도 상쇄합니다.
+            float unitsPerLocalUnit = 2f * _speechCamera.orthographicSize / 480f
+                * _screenFontSize / Mathf.Max(1f, _speechText.fontSize);
+            Vector3 parentScale = _bubbleRoot.parent != null ? _bubbleRoot.parent.lossyScale : Vector3.one;
+            _bubbleRoot.localScale = new Vector3(
+                unitsPerLocalUnit / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
+                unitsPerLocalUnit / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)), _baseScale.z) * _presentationScale;
+        }
+        else _bubbleRoot.localScale = _baseScale * _presentationScale;
+
+        Rect bounds = GetScreenBounds();
+        float fit = Mathf.Min(1f, Mathf.Min(safe.width / Mathf.Max(1f, bounds.width), safe.height / Mathf.Max(1f, bounds.height)));
+        if (fit < 1f) { _bubbleRoot.localScale *= fit; bounds = GetScreenBounds(); }
+        Vector2 shift = BattleSpeechBubbleLayout.ClampScreenOffset(bounds, safe);
+        if (shift.sqrMagnitude < 0.01f) return;
+        Vector3 screen = _speechCamera.WorldToScreenPoint(_bubbleRoot.position);
+        screen.x += shift.x;
+        screen.y += shift.y;
+        _bubbleRoot.position = _speechCamera.ScreenToWorldPoint(screen);
+    }
+
+    private Rect GetScreenBounds()
+    {
+        _boxRoot.GetWorldCorners(_screenCorners);
+        Vector2 min = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+        Vector2 max = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+        for (int i = 0; i < 4; i++)
+        {
+            Vector2 p = _speechCamera.WorldToScreenPoint(_screenCorners[i]);
+            min = Vector2.Min(min, p); max = Vector2.Max(max, p);
+        }
+        return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
     }
 
     private Vector3 GetWorldOffset(BattleSpeechBubbleDirection direction)
@@ -685,9 +754,13 @@ public class BattleSpeechBubble : MonoBehaviour
         if (_bubbleRoot != null)
         {
             _bubbleRoot.DOKill();
-            _bubbleRoot.localScale = _baseScale * 0.88f;
-            _bubbleRoot.DOScale(_baseScale * _popScale, _fadeDuration).SetEase(Ease.OutBack).SetUpdate(true)
-                .OnComplete(() => _bubbleRoot.DOScale(_baseScale, 0.08f).SetEase(Ease.OutQuad).SetUpdate(true));
+            if (_scaleTween != null && _scaleTween.IsActive()) _scaleTween.Kill(false);
+            float intensity = BattleUIController.JuiceIntensity;
+            _presentationScale = 1f + Mathf.Clamp(_popScale - 1f, 0f, 0.12f) * intensity;
+            _scaleTween = DOTween.To(() => _presentationScale, value => _presentationScale = value,
+                    1f, Mathf.Max(0.01f, _fadeDuration * BattleUIController.JuiceDurationScale))
+                .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false)
+                .SetLink(gameObject, LinkBehaviour.KillOnDisable);
         }
     }
 

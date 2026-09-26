@@ -92,6 +92,28 @@ public sealed class BattleLinkCounterServiceTests
         Assert.That(_host.DamageAmounts, Is.EqualTo(new[] { 40 }));
     }
 
+    [Test]
+    public void Execute_ParryRecoilsOnlyDefenderThenLungesWithoutEarlyDamage()
+    {
+        PlayerCharacter defender = CreatePlayer("Recoil Defender", 20);
+        Vector3 enemyPosition = _enemy.transform.position;
+        IEnumerator routine = Start(defender);
+        Assert.That(routine.MoveNext(), Is.True);
+        GetOnlyTween(defender.transform).Complete(false);
+        float recoilX = defender.transform.position.x;
+        Assert.That(recoilX, Is.LessThan(StartPosition.x));
+        Assert.That(_enemy.transform.position, Is.EqualTo(enemyPosition));
+        Assert.That(_host.DamageSources, Is.Empty);
+        Assert.That(routine.MoveNext(), Is.True);
+        GetOnlyTween(defender.transform).Complete(false);
+        Assert.That(defender.transform.position.x, Is.GreaterThan(recoilX));
+        Assert.That(_enemy.transform.position, Is.EqualTo(enemyPosition));
+        Assert.That(_host.DamageSources, Is.Empty);
+        Drain(routine);
+        Assert.That(_host.DamageSources, Is.EqualTo(new[] { defender }));
+        Assert.That(defender.transform.position, Is.EqualTo(StartPosition));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void Execute_PairedReturnRestoresBothActorsEvenWhenCancelled(bool cancel)

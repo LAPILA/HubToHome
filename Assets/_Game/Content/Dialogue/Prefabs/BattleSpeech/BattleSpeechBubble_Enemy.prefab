@@ -106,7 +106,7 @@ MonoBehaviour:
   _sideTailSize: 32
   _topTailSize: 32
   _minSize: {x: 120, y: 56}
-  _maxSize: {x: 480, y: 240}
+  _maxSize: {x: 1080, y: 320}
   _sidePivotName: FrontMiddle
   _topPivotName: Top
   _sideGap: -0.4
@@ -115,7 +115,7 @@ MonoBehaviour:
   _topOffset: {x: 0, y: 0, z: 0}
   _defaultHoldDuration: 1.7
   _fadeDuration: 0.16
-  _popScale: 1.08
+  _popScale: 1.04
   _allowConfirmSkip: 1
   _config: {fileID: 11400000, guid: 2f94647476d54b989656384d82324d8c, type: 2}
   _rules:
@@ -317,8 +317,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4278190080
-  m_fontSize: 92
-  m_fontSizeBase: 92
+  m_fontSize: 64
+  m_fontSizeBase: 64
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18

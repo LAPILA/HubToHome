@@ -24,6 +24,22 @@ public sealed class BattleHudPresentationTests
             Is.EqualTo("Assets/_Game/Content/Audio/CUSTOM/SFX/Cancle.wav"));
     }
 
+    [Test]
+    public void SkillPromptPosition_StaysInsideSafeAreaAndDoesNotRepeatNearby()
+    {
+        Rect area = Rect.MinMaxRect(.14f, .44f, .86f, .78f);
+        Vector2 previous = new Vector2(.3f, .6f);
+        for (int i = 0; i < 21; i++)
+        {
+            Vector2 next = BattleUIController.SelectSkillPromptPosition(area, previous,
+                new Vector2(i / 20f, 1f - i / 20f));
+            Assert.That(next.x, Is.InRange(area.xMin, area.xMax));
+            Assert.That(next.y, Is.InRange(area.yMin, area.yMax));
+            Assert.That(Vector2.Distance(next, previous), Is.GreaterThanOrEqualTo(.18f));
+            previous = next;
+        }
+    }
+
     [TearDown]
     public void TearDown()
     {
@@ -112,6 +128,45 @@ public sealed class BattleHudPresentationTests
         icon.Bind(null, "CROW", false);
         Assert.That(border.color, Is.Not.EqualTo(first));
         Assert.That(portrait.color, Is.EqualTo(Color.white));
+    }
+
+    [Test]
+    public void OptionSelection_PreservesRowScaleAndCursorHomeAfterReuse()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/_Game/Presentation/UI/Prefabs/Battle/OptionRow.prefab");
+        OptionRowUI row = Own(Object.Instantiate(prefab)).GetComponent<OptionRowUI>();
+        Vector2 cursorHome = row.CursorText.rectTransform.anchoredPosition;
+        for (int i = 0; i < 5; i++)
+        {
+            row.SetEntry(new BattleCommandPreviewEntry("ATTACK", ""), true, Color.yellow, Color.white, 1.5f);
+            row.SetEntry(new BattleCommandPreviewEntry("SKILL", ""), false, Color.yellow, Color.white, 1.5f);
+            row.SetEmpty();
+        }
+        Assert.That(row.transform.localScale, Is.EqualTo(Vector3.one));
+        Assert.That(row.CursorText.rectTransform.anchoredPosition, Is.EqualTo(cursorHome));
+    }
+
+    [Test]
+    public void ReleasingResourceFeedback_SnapsToLatestValueAndKeepsIdentityColor()
+    {
+        GameObject root = Own(new GameObject("ResourceRow", typeof(RectTransform)));
+        var slot = new PartySlotUI { Root = root, HPFill = Image(root, "HP"), APFill = Image(root, "AP"),
+            RowBackground = Image(root, "Background"), TargetBorder = Image(root, "Target"), SolidColorBars = true };
+        slot.HPFill.color = Color.magenta;
+        slot.APFill.color = Color.yellow;
+        slot.RefreshHP(100, 100, 0f, DG.Tweening.Ease.Linear);
+        slot.RefreshAP(20, 100, 0f, DG.Tweening.Ease.Linear);
+        slot.RefreshHP(30, 100, 0.2f, DG.Tweening.Ease.OutQuad);
+        slot.RefreshHP(30, 100, 0.2f, DG.Tweening.Ease.OutQuad);
+        slot.RefreshAP(10, 100, 0.2f, DG.Tweening.Ease.OutQuad);
+        slot.ReleaseTweens();
+        Assert.That(slot.HPFill.fillAmount, Is.EqualTo(0.3f).Within(0.001f));
+        Assert.That(slot.APFill.fillAmount, Is.EqualTo(0.1f).Within(0.001f));
+        Assert.That(slot.HPFill.color, Is.EqualTo(Color.magenta));
+        Assert.That(slot.APFill.color, Is.EqualTo(Color.yellow));
+        Assert.That(slot.TargetBorder.enabled, Is.False);
+        Assert.That(root.transform.localScale, Is.EqualTo(Vector3.one));
     }
 
     [Test]

@@ -249,11 +249,19 @@ public static class DefenseJudgementPolicy
 {
     public const float BattleLateGrace = 0.06f;
     // 실시간 적 대응에는 난이도 보정 후에도 확보되는 최소 여유를 둡니다.
-    public static DefenseQteRequest WithBattleAssistance(DefenseQteRequest request, float duration)
+    public static DefenseQteRequest WithBattleAssistance(DefenseQteRequest request, float duration,
+        bool parryFromPreparation = false)
     {
         float difficulty = request.DifficultyMultiplier;
         DefenseTimingProfile profile = request.TimingProfile;
         profile.PerfectWindow = Mathf.Max(profile.PerfectWindow, 0.24f * difficulty);
+        if (parryFromPreparation && MatchesActive(request.Requirement, DefenseInput.Parry))
+        {
+            // 근접은 흐린 준비 전조까지 포함해 보이는 순간부터 Z를 허용합니다.
+            // 더 후한 기존 패링/X 구간은 줄이지 않고 표시·핑도 같은 시작점을 사용합니다.
+            profile.PerfectWindow = Mathf.Max(profile.PerfectWindow,
+                Mathf.Max(0.4f * difficulty, request.DodgeWindow));
+        }
         profile.GreatWindow = Mathf.Max(profile.GreatWindow, profile.PerfectWindow);
         profile.GoodWindow = Mathf.Max(profile.GoodWindow, profile.GreatWindow);
         return new DefenseQteRequest(duration, difficulty, request.Requirement, profile,
@@ -291,7 +299,7 @@ public static class DefenseJudgementPolicy
         return Mathf.Clamp(window, 0f, request.Duration);
     }
 
-    /// <summary>보이는 동안에는 그 공격에 허용된 모든 대응이 성공하는 공통 구간.</summary>
+    /// <summary>강조 전조/핑 동안 그 공격에 허용된 모든 대응이 성공하는 공통 구간.</summary>
     public static float GetActiveCueWindow(DefenseQteRequest request)
     {
         if (MatchesActive(request.Requirement, DefenseInput.Parry))

@@ -282,6 +282,8 @@ public class DefenseQTEUI : UIPanel
             if (_qteRoot != null && _parentCanvas != null)
             {
                 RectTransform canvasRect = _parentCanvas.GetComponent<RectTransform>();
+                if (_parentCanvas.TryGetComponent(out BattleHudViewport viewport) && viewport.ContentRect != null)
+                    canvasRect = viewport.ContentRect;
                 float targetX = (relativePos.x - 0.5f) * canvasRect.rect.width;
                 float targetY = (relativePos.y - 0.5f) * canvasRect.rect.height;
                 _qteRoot.anchoredPosition = new Vector2(Mathf.Round(targetX), Mathf.Round(targetY));
@@ -306,6 +308,12 @@ public class DefenseQTEUI : UIPanel
                     .SetRecyclable(false);
             }
         }
+    }
+
+    /// <summary>고정 시간 연격 QTE는 별도 Tween 대신 공격 시계의 진행도를 표시합니다.</summary>
+    public void SetSkillProgress(float remaining)
+    {
+        if (_barFill != null) _barFill.fillAmount = Mathf.Clamp01(remaining);
     }
 
     public void ShowSkillResult(bool isHit)

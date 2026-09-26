@@ -127,7 +127,7 @@ MonoBehaviour:
   _centerTarget: {fileID: 0}
   _defaultLensSize: 8
   _battleZoomSize: 8
-  _staticBattlePresentation: 1
+  _staticBattlePresentation: 0
   _staticProfile: {fileID: 0}
   _dynamicProfile: {fileID: 0}
   _gameplaySafeProfile: {fileID: 0}

@@ -17,6 +17,8 @@ public sealed class QteExecution
 {
     public QteTermination Termination { get; private set; } = QteTermination.Running;
     public bool IsDone => Termination != QteTermination.Running;
+    /// <summary>연속 스킬 입력 스트림의 활성 시간. 일반 방어/단발 QTE에는 사용하지 않습니다.</summary>
+    public float ElapsedSeconds { get; internal set; }
 
     internal void Complete(QteTermination termination)
     {
@@ -30,7 +32,7 @@ public sealed class QteExecution
 /// <summary>
 /// 방어 및 스킬 QTE의 단일 실행 소유자입니다.
 /// </summary>
-public class QTEManager : MonoBehaviour
+public partial class QTEManager : MonoBehaviour
 {
     public static QTEManager Instance { get; private set; }
 
@@ -101,6 +103,7 @@ public class QTEManager : MonoBehaviour
     private GameObject _battleImpactCuePrefab;
     private BattleAttackMotionScope _activeAttackMotion;
     private BattleTelegraphCue _activeBattleCue;
+    private IDisposable _activeCameraStability;
 
     private void Awake()
     {
@@ -177,6 +180,7 @@ public class QTEManager : MonoBehaviour
     /// DefenseWindow 이벤트를 발생시키지 않습니다. Z/X/C 입력은 PlayerController가
     /// 적 행동 페이즈 동안 직접 버퍼링하고, 이 실행이 충돌 시점에 결과를 확정합니다.
     /// 전조 시점은 실제 성공 구간에서 계산합니다. impactCueLeadTime은 호출 호환용이며 사용하지 않습니다.
+    /// 근접은 첫 표시부터 Z를 허용합니다. 투사체/원거리 호환 호출은 useMeleeParryAssistance를 끕니다.
     /// </summary>
     public QteExecution StartBattleDefenseWindow(
         DefenseQteRequest request,
@@ -189,7 +193,8 @@ public class QTEManager : MonoBehaviour
         EnemyCharacter attacker = null,
         GameObject cuePrefab = null,
         string cuePivot = CharacterPivotId.Center,
-        Action<float> onAttackProgress = null)
+        Action<float> onAttackProgress = null,
+        bool useMeleeParryAssistance = true)
     {
         return StartDefenseExecution(
             request,
@@ -200,7 +205,8 @@ public class QTEManager : MonoBehaviour
             forceRealtimeBattleDefense: true,
             onAttackAnimationStart,
             attackAnimationLeadTime,
-            onImpactCue, attacker, cuePrefab, cuePivot, onAttackProgress);
+            onImpactCue, attacker, cuePrefab, cuePivot, onAttackProgress,
+            parryFromPreparation: useMeleeParryAssistance);
     }
 
     private QteExecution StartDefenseExecution(
@@ -216,7 +222,8 @@ public class QTEManager : MonoBehaviour
         EnemyCharacter attacker = null,
         GameObject cuePrefab = null,
         string cuePivot = CharacterPivotId.Center,
-        Action<float> onAttackProgress = null)
+        Action<float> onAttackProgress = null,
+        bool parryFromPreparation = false)
     {
         uint version = ++_executionVersion;
         CancelCurrentExecution();
@@ -256,11 +263,11 @@ public class QTEManager : MonoBehaviour
                 _dodgeWindow,
                 _counterWindow);
         if (forceRealtimeBattleDefense)
-            request = DefenseJudgementPolicy.WithBattleAssistance(request, request.Duration);
+            request = DefenseJudgementPolicy.WithBattleAssistance(request, request.Duration, parryFromPreparation);
         var impactTiming = new BattleImpactTiming(request.Duration,
             DefenseJudgementPolicy.GetActiveCueWindow(request), forceRealtimeBattleDefense);
         if (forceRealtimeBattleDefense)
-            request = DefenseJudgementPolicy.WithBattleAssistance(request, impactTiming.Duration);
+            request = DefenseJudgementPolicy.WithBattleAssistance(request, impactTiming.Duration, parryFromPreparation);
         _activeExecution = execution;
         _activeAttackMotion = forceRealtimeBattleDefense ? new BattleAttackMotionScope(attacker) : null;
         _activeIsSequence = false;
@@ -287,7 +294,8 @@ public class QTEManager : MonoBehaviour
             onAttackAnimationStart,
             attackAnimationLeadTime,
             onImpactCue, impactTiming, forceRealtimeBattleDefense, attacker,
-            cuePrefab != null ? cuePrefab : _battleImpactCuePrefab, cuePivot, onAttackProgress));
+            cuePrefab != null ? cuePrefab : _battleImpactCuePrefab, cuePivot, onAttackProgress,
+            parryFromPreparation));
         if (ReferenceEquals(execution, _activeExecution) && !execution.IsDone)
             _activeCoroutine = coroutine;
 
@@ -309,7 +317,8 @@ public class QTEManager : MonoBehaviour
         EnemyCharacter attacker,
         GameObject cuePrefab,
         string cuePivot,
-        Action<float> onAttackProgress)
+        Action<float> onAttackProgress,
+        bool parryFromPreparation)
     {
         IsActive = true;
         float startedAt = Time.realtimeSinceStartup;
@@ -409,6 +418,8 @@ public class QTEManager : MonoBehaviour
             if (battleDefense && !preparationStarted && now >= impactAt - preparationLead)
             {
                 preparationStarted = true;
+                if (CameraController.Instance != null)
+                    _activeCameraStability = CameraController.Instance.StabilizeBattleDefense();
                 if (now < impactAt && attacker != null && cuePrefab != null)
                     _activeBattleCue = BattleTelegraphCue.Spawn(cuePrefab,
                         attacker.GetPivot(cuePivot), impactAt - now,
@@ -490,7 +501,8 @@ public class QTEManager : MonoBehaviour
                             if (input == DefenseInput.Parry)
                                 guardHeld = sampledHeld;
                             if (controller is PlayerController playerController)
-                                playerController.CommitDefenseAttempt(input);
+                                playerController.CommitDefenseAttempt(input,
+                                    acceptedParryFeedback: battleDefense && parryFromPreparation);
                             else
                                 controller?.PreviewDefenseInput(input);
                         }
@@ -816,6 +828,9 @@ public class QTEManager : MonoBehaviour
         BattleTelegraphCue cue = _activeBattleCue;
         _activeBattleCue = null;
         if (cue != null) cue.Release();
+        IDisposable cameraStability = _activeCameraStability;
+        _activeCameraStability = null;
+        cameraStability?.Dispose();
 
         _activeExecution = null;
         _activeCoroutine = null;

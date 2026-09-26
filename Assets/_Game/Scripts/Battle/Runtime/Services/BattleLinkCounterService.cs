@@ -7,7 +7,6 @@ using UnityEngine;
 /// <summary>C 성공 시 공격받은 전열 한 명만 반격합니다. 턴/AP는 소비하지 않습니다.</summary>
 public sealed class BattleLinkCounterService
 {
-    private const float LungeDuration = 0.14f;
     private const float RecoverDuration = 0.20f;
     private readonly IBattleTurnQteHost _host;
     private CounterPresentation _activePresentation;
@@ -43,11 +42,16 @@ public sealed class BattleLinkCounterService
         {
             _host.SetActorForeground(defender, true);
             presentation.ForegroundApplied = true;
-            defender.PlayBattleAnim(PlayerCharacter.HashBattleMove);
-            Vector3 destination = PositionManager.Instance != null
-                ? PositionManager.Instance.GetAttackStagingPos(defender, attacker)
-                : PositionManager.HorizontalApproach(defender, attacker.GetPivot(CharacterPivotId.Front).position);
-            presentation.Movement = defender.transform.DOMove(destination, LungeDuration)
+            PositionManager positions = PositionManager.Instance;
+            presentation.CameraStability = CameraController.Instance != null
+                ? CameraController.Instance.StabilizeBattleDefense() : null;
+            presentation.ResumeAttackMotion();
+            if (controller != null) controller.PlayCounterParry();
+            else defender.PlayBattleAnim(PlayerController.HashParry);
+            Vector3 recoil = defender.transform.position + Vector3.left
+                * (positions != null ? positions.CounterRecoilDistance : 0.85f);
+            presentation.Movement = MoveSafely(defender, recoil,
+                    positions != null ? positions.CounterRecoilDuration : 0.13f)
                 .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false).SetAutoKill(false);
             while (presentation.IsMoving)
             {
@@ -56,23 +60,24 @@ public sealed class BattleLinkCounterService
             }
             if (!Active() || !presentation.CompletedMovement) yield break;
             presentation.ClearMovement();
+            presentation.ReleaseCameraStability();
+            if (CameraController.Instance != null) CameraController.Instance.TrackBattleCounter(defender);
 
-            // 접근이 끝난 뒤 패링을 보여줍니다. 입력 연타는 닫힌 모션 게이트를 통과하지 못합니다.
-            presentation.ResumeAttackMotion();
-            if (controller != null) controller.PlayBattleAnim(PlayerController.HashParry);
-            else defender.PlayBattleAnim(PlayerController.HashParry);
-            IEnumerator parry = controller != null
-                ? controller.WaitForDefenseReactionComplete(DefenseInput.Parry, false) : null;
-            try
+            // 패링 클립 전체가 끝나기를 기다리지 않고 후퇴 직후 재접근합니다.
+            defender.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+            Vector3 destination = PositionManager.Instance != null
+                ? PositionManager.Instance.GetAttackStagingPos(defender, attacker)
+                : PositionManager.HorizontalApproach(defender, attacker.GetPivot(CharacterPivotId.Front).position);
+            presentation.Movement = MoveSafely(defender, destination,
+                    positions != null ? positions.CounterLungeDuration : 0.16f)
+                .SetEase(Ease.InQuad).SetUpdate(true).SetRecyclable(false).SetAutoKill(false);
+            while (presentation.IsMoving)
             {
-                while (parry != null && parry.MoveNext())
-                {
-                    if (!Active()) yield break;
-                    yield return parry.Current;
-                }
+                if (!Active()) yield break;
+                yield return null;
             }
-            finally { (parry as IDisposable)?.Dispose(); }
-            if (!Active()) yield break;
+            if (!Active() || !presentation.CompletedMovement) yield break;
+            presentation.ClearMovement();
 
             defender.PlayAttackReady();
             presentation.Movement = DOTween.Sequence().AppendInterval(0.08f)
@@ -112,9 +117,9 @@ public sealed class BattleLinkCounterService
             defender.PlayBattleAnim(PlayerCharacter.HashBattleMove);
             attacker.PlayBattleAnim(_host.ResolveEnemyReturnMoveHash(attacker));
             Sequence recovery = DOTween.Sequence()
-                .Append(defender.transform.DOMove(presentation.StartPosition, RecoverDuration).SetEase(Ease.OutQuad));
+                .Append(MoveSafely(defender, presentation.StartPosition, RecoverDuration).SetEase(Ease.OutQuad));
             if (attackerReturnPosition.HasValue)
-                recovery.Join(attacker.transform.DOMove(attackerReturnPosition.Value, RecoverDuration).SetEase(Ease.OutQuad));
+                recovery.Join(MoveSafely(attacker, attackerReturnPosition.Value, RecoverDuration).SetEase(Ease.OutQuad));
             presentation.Movement = recovery.SetTarget(defender.transform).SetUpdate(true).SetRecyclable(false).SetAutoKill(false);
             while (presentation.IsMoving)
             {
@@ -127,6 +132,14 @@ public sealed class BattleLinkCounterService
             if (ReferenceEquals(_activePresentation, presentation)) _activePresentation = null;
             presentation.Dispose();
         }
+    }
+
+    private static Tween MoveSafely(CharacterBase actor, Vector3 destination, float duration)
+    {
+        Vector3 last = actor.transform.position;
+        return DOTween.To(() => actor != null ? actor.transform.position : last,
+            value => { last = value; if (actor != null) actor.transform.position = value; },
+            destination, duration).SetTarget(actor.transform);
     }
 
     private bool CanContinue(EnemyCharacter attacker, Func<bool> isExecutionActive)
@@ -161,6 +174,7 @@ public sealed class BattleLinkCounterService
         public readonly Vector3 StartPosition;
         public Tween Movement;
         public bool ForegroundApplied;
+        public IDisposable CameraStability;
         public bool IsMoving => Movement != null && Movement.IsActive() && !Movement.IsComplete();
         public bool CompletedMovement => Movement != null && Movement.IsActive() && Movement.IsComplete();
 
@@ -171,10 +185,16 @@ public sealed class BattleLinkCounterService
             StartPosition = playerReturnPosition ?? player.transform.position;
             _enemyReturnPosition = enemyReturnPosition;
             _attackMotion = new BattleAttackMotionScope(enemy);
-            _attackMotion.SetRate(0f); // 피격 프레임을 붙들고 아군 접근 후 합을 맞춥니다.
+            _attackMotion.SetRate(0f); // 패링이 시작될 때까지 타격 프레임을 보존합니다.
         }
 
         public void ResumeAttackMotion() => _attackMotion.SetRate(1f);
+
+        public void ReleaseCameraStability()
+        {
+            CameraStability?.Dispose();
+            CameraStability = null;
+        }
 
         public void ClearMovement()
         {
@@ -187,6 +207,7 @@ public sealed class BattleLinkCounterService
             if (_disposed) return;
             _disposed = true;
             ClearMovement();
+            ReleaseCameraStability();
             _attackMotion.Dispose();
             if (_enemy != null && _enemyReturnPosition.HasValue)
             {

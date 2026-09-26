@@ -5,6 +5,58 @@ public class DefenseJudgementPolicyTests
     [TestCase(0.5f)]
     [TestCase(1f)]
     [TestCase(2f)]
+    public void MeleeParry_FirstVisibleCueAcceptsFreshZ(float difficulty)
+    {
+        var original = new DefenseQteRequest(1f, difficulty, DefenseRequirement.Any,
+            new DefenseTimingProfile(0.12f, 0.22f, 0.4f), useActiveDefense: true);
+        var request = DefenseJudgementPolicy.WithBattleAssistance(original, 1f, parryFromPreparation: true);
+        float cue = DefenseJudgementPolicy.GetPreparationWindow(request);
+        Assert.That(cue, Is.GreaterThanOrEqualTo(0.4f));
+        Assert.That(DefenseJudgementPolicy.GetActiveCueWindow(request), Is.EqualTo(cue));
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry), Is.EqualTo(cue));
+        foreach (float impact in new[] { 0f, 10f, 1000f })
+        {
+            var attempt = new ActiveDefenseAttempt();
+            Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
+                DefenseInputReadStatus.Valid, DefenseInput.Parry, impact - cue - 0.01f, impact), Is.False);
+            Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
+                DefenseInputReadStatus.Valid, DefenseInput.Parry, impact - cue, impact), Is.True);
+            Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, attempt, false, impact).IsPerfectParry, Is.True);
+            Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(impact - 0.01f, impact, attempt), Is.False);
+        }
+        Assert.That(original.TimingProfile.PerfectWindow, Is.EqualTo(0.12f));
+    }
+
+    [TestCase(0.15f, 0.22f, 0.15f)]
+    [TestCase(1f, 0.22f, 0.4f)]
+    [TestCase(1f, 0.6f, 0.6f)]
+    public void MeleeParry_ClampsShortAttacksAndPreservesWiderCue(float duration, float dodge, float expected)
+    {
+        var original = new DefenseQteRequest(duration, 1f, DefenseRequirement.Any,
+            new DefenseTimingProfile(0.12f, 0.22f, 0.4f), useActiveDefense: true, dodgeWindow: dodge);
+        var request = DefenseJudgementPolicy.WithBattleAssistance(original, duration, parryFromPreparation: true);
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry), Is.EqualTo(expected));
+        Assert.That(DefenseJudgementPolicy.GetPreparationWindow(request), Is.EqualTo(expected));
+        Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, default, true, duration).IsGuard, Is.True);
+    }
+
+    [TestCase(DefenseRequirement.Counterable)]
+    [TestCase(DefenseRequirement.DodgeOnly)]
+    public void MeleeAssistance_DoesNotEnableForbiddenZOrWidenSpecialCounters(DefenseRequirement requirement)
+    {
+        var original = CreateActiveRequest(requirement);
+        var baseline = DefenseJudgementPolicy.WithBattleAssistance(original, 1f);
+        var request = DefenseJudgementPolicy.WithBattleAssistance(original, 1f, parryFromPreparation: true);
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry), Is.Zero);
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Counter),
+            Is.EqualTo(DefenseJudgementPolicy.GetActiveSuccessWindow(baseline, DefenseInput.Counter)));
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Dodge),
+            Is.EqualTo(DefenseJudgementPolicy.GetActiveSuccessWindow(baseline, DefenseInput.Dodge)));
+    }
+
+    [TestCase(0.5f)]
+    [TestCase(1f)]
+    [TestCase(2f)]
     public void BattleAssistance_ProvidesRealTimeMinimumWindows(float difficulty)
     {
         var original = new DefenseQteRequest(1f, difficulty, DefenseRequirement.Any,

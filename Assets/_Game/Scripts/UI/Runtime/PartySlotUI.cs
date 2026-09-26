@@ -39,8 +39,11 @@ public class PartySlotUI
     private Tween _hpColorTween;
     private Tween _hpTextTween;
     private Tween _apFillTween;
+    private Tween _apColorTween;
     private Tween _apTextTween;
     private Tween _feedbackTween;
+    private Tween _targetTween;
+    private bool _targeted;
 
     public void Init(PlayerCharacter player)
     {
@@ -103,7 +106,14 @@ public class PartySlotUI
 
     public void SetTargeted(bool active)
     {
-        if (TargetBorder != null) TargetBorder.enabled = active;
+        bool changed = _targeted != active;
+        _targeted = active;
+        if (TargetBorder == null) return;
+        TargetBorder.enabled = active;
+        if (!changed) return;
+        Kill(ref _targetTween);
+        if (active && Application.isPlaying && CanAnimate(TargetBorder, 0.2f))
+            _targetTween = PulseColor(TargetBorder, Color.white, 0.2f);
     }
 
     public void ReleaseTweens()
@@ -113,8 +123,12 @@ public class PartySlotUI
         Kill(ref _hpColorTween);
         Kill(ref _hpTextTween);
         Kill(ref _apFillTween);
+        Kill(ref _apColorTween);
         Kill(ref _apTextTween);
         Kill(ref _feedbackTween);
+        Kill(ref _targetTween);
+        _targeted = false;
+        if (TargetBorder != null) TargetBorder.enabled = false;
         _hasHighlight = false;
         if (_hasHP) RefreshHP(_targetHP, _maxHP, 0f, Ease.Linear);
         if (_hasAP) RefreshAP(_targetAP, _maxAP, 0f, Ease.Linear);
@@ -147,6 +161,10 @@ public class PartySlotUI
 
     public void RefreshHP(int current, int max, float duration, Ease ease)
     {
+        // 캐릭터 알림과 전투 이벤트에서 같은 값이 와도 표시 전환을 재시작하지 않습니다.
+        if (duration > 0f && _hasHP && current == _targetHP && max == _maxHP) return;
+        bool changed = _hasHP && current != _targetHP;
+        bool lostHealth = _hasHP && current < _targetHP;
         _targetHP = current; _maxHP = max; _hasHP = true;
         Kill(ref _hpFillTween);
         Kill(ref _hpColorTween);
@@ -154,6 +172,12 @@ public class PartySlotUI
         bool decreased = current < _displayHP;
         bool increased = current > _displayHP;
         _hpFillTween = RefreshFill(HPFill, current, max, duration, ease);
+        if (RowBackground != null && changed && Application.isPlaying && CanAnimate(HPFill, duration))
+        {
+            _hpColorTween = PulseColor(HPFill,
+                lostHealth ? new Color(1f, 0.48f, 0.48f) : new Color(0.65f, 1f, 0.75f), 0.22f);
+            if (lostHealth) TapPortrait();
+        }
         if (RowBackground == null && CanAnimate(HPFill, duration) && (decreased || increased))
         {
             Image image = HPFill;
@@ -181,10 +205,15 @@ public class PartySlotUI
 
     public void RefreshAP(int current, int max, float duration, Ease ease)
     {
+        if (duration > 0f && _hasAP && current == _targetAP && max == _maxAP) return;
+        bool changed = _hasAP && current != _targetAP;
         _targetAP = current; _maxAP = max; _hasAP = true;
         Kill(ref _apFillTween);
+        Kill(ref _apColorTween);
         Kill(ref _apTextTween);
         _apFillTween = RefreshFill(APFill, current, max, duration, ease);
+        if (RowBackground != null && changed && Application.isPlaying && CanAnimate(APFill, duration))
+            _apColorTween = PulseColor(APFill, Color.white, 0.18f);
         if (RowBackground == null && duration > 0f && current != _displayAP)
             Punch(current < _displayAP ? new Vector3(0.03f, 0.03f, 0f) : new Vector3(0f, 5f, 0f),
                 current < _displayAP, 0.2f, 5, 1f);
@@ -229,6 +258,30 @@ public class PartySlotUI
             value => { if (image != null) image.color = value; }, color, duration)
             .SetTarget(image).SetRecyclable(false)
             .SetLink(image.gameObject, LinkBehaviour.KillOnDisable);
+    }
+
+    private static Tween PulseColor(Image image, Color accent, float duration)
+    {
+        if (BattleUIController.JuiceIntensity <= 0f) return null;
+        Color baseline = image.color;
+        image.color = Color.Lerp(baseline, accent, 0.7f * BattleUIController.JuiceIntensity);
+        return TweenColor(image, baseline, duration * BattleUIController.JuiceDurationScale).SetEase(Ease.OutQuad).SetUpdate(true)
+            .OnKill(() => { if (image != null) image.color = baseline; });
+    }
+
+    private void TapPortrait()
+    {
+        Kill(ref _feedbackTween);
+        if (Portrait == null || !Portrait.gameObject.activeInHierarchy || BattleUIController.JuiceIntensity <= 0f) return;
+        RectTransform portrait = Portrait.rectTransform;
+        Vector2 home = portrait.anchoredPosition;
+        float intensity = BattleUIController.JuiceIntensity;
+        _feedbackTween = DOTween.To(() => -2f * intensity, offset =>
+            {
+                if (portrait != null) portrait.anchoredPosition = home + Vector2.right * Mathf.Round(offset);
+            }, 0f, 0.18f * BattleUIController.JuiceDurationScale).SetEase(Ease.OutQuad).SetUpdate(true).SetRecyclable(false)
+            .SetLink(portrait.gameObject, LinkBehaviour.KillOnDisable)
+            .OnKill(() => { if (portrait != null) portrait.anchoredPosition = home; });
     }
 
     private void Punch(Vector3 strength, bool scale, float duration, int vibrato, float elasticity)

@@ -52,6 +52,7 @@ public partial class CameraController
             return false;
         }
 
+        StopBattleMotion();
         EnsureFramingRig();
         if (_framingTargetGroup == null || _groupFraming == null)
         {
@@ -211,6 +212,7 @@ public partial class CameraController
 
     private void PrepareForTimelineControl()
     {
+        StopBattleMotion();
         KillCameraTweens();
         StopTargetFraming();
         _commandVersion++;
@@ -246,6 +248,7 @@ public partial class CameraController
 
     private void LateUpdate()
     {
+        UpdateBattleMotion();
         if (!_isFramingTargets || _framingTargetGroup == null)
         {
             return;

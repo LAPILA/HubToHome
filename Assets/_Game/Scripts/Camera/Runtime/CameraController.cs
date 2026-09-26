@@ -27,9 +27,15 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
     [SerializeField] private float _defaultLensSize = CameraLensDefaults.GameplayOrthographicSize;
     [SerializeField] private float _battleZoomSize = CameraLensDefaults.BattleActionOrthographicSize;
 
-    [SerializeField, Tooltip("일반 전투 자동 추적/줌/흔들림을 끕니다. 명시적 시나리오 카메라는 유지합니다.")]
-    private bool _staticBattlePresentation = true;
+    [SerializeField, Tooltip("회피 추적/타격 흔들림/전역 히트스톱을 끕니다. 중앙 교전 줌과 명시적 시나리오 카메라는 유지합니다.")]
+    private bool _staticBattlePresentation = false;
     public bool IsStaticBattlePresentation => _staticBattlePresentation && _useGameplaySafeReset;
+
+    [Title("중앙 교전 줌")]
+    [SerializeField, Range(0.6f, 1f), LabelText("기본 크기 대비 줌 비율"), Tooltip("작을수록 확대됩니다. 1이면 크기를 유지합니다.")]
+    private float _duelZoomRatio = 0.82f;
+    [SerializeField, Min(0.05f), LabelText("줌 전환 시간")]
+    private float _duelZoomDuration = 0.34f;
 
     [Title("카메라 프리셋")]
     [SerializeField, AssetsOnly] private CameraShotProfile _staticProfile;
@@ -82,6 +88,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
 
     private void OnDisable()
     {
+        StopBattleMotion();
         ReleaseOwnedHitStop();
         ReleaseFramingStateOnDisable();
         KillCameraTweens();
@@ -98,6 +105,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
 
     private void OnDestroy()
     {
+        DisposeBattleMotion();
         ReleaseOwnedHitStop();
         KillCameraTweens();
         DisposeFramingRuntime();
@@ -177,6 +185,14 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         _timelineLease = CameraControlLease.None;
     }
 
+    public bool TryFocusBattleCenter(Transform center, out CameraCommandToken token, out string error)
+    {
+        float overview = ResolveSettings(ResolveResetStyle(), _defaultLensSize, true).OrthographicSize;
+        return TryFocus(center, Mathf.Max(0.5f, overview * Mathf.Clamp(_duelZoomRatio, 0.6f, 1f)),
+            CameraShotStyle.GameplaySafe, Mathf.Max(0.05f, _duelZoomDuration),
+            CameraControlLease.None, out token, out error);
+    }
+
     public bool TryFocus(
         Transform target,
         float zoom,
@@ -193,6 +209,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         }
 
         CameraShotSettings settings = ResolveSettings(style, zoom);
+        StopBattleMotion();
         StopTargetFraming();
         ApplyTrackingTarget(target);
         ApplySettings(settings);
@@ -242,13 +259,41 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         }
 
         CameraShotSettings settings = ResolveSettings(style, _defaultLensSize, true);
+        bool returnFromBattle = _battleShotActive && _battleShotTarget != null && duration > 0f;
+        Vector3 battlePosition = returnFromBattle ? _battleShotTarget.position : Vector3.zero;
+        StopBattleMotion(false);
         StopTargetFraming();
         ApplyTrackingTarget(target);
         ApplySettings(settings);
-        TweenLens(settings.OrthographicSize, duration);
-        TweenDutch(0f, duration);
-
         token = new CameraCommandToken(++_commandVersion);
+        int resetVersion = _commandVersion;
+        if (returnFromBattle)
+        {
+            // 복귀도 추가 감쇠 없이 지정한 시간 안에 종료합니다.
+            CameraShotSettings returningSettings = settings;
+            returningSettings.Damping = Vector3.zero;
+            ApplySettings(returningSettings);
+            _battleReturnTarget = target;
+            _battleShotTarget.position = battlePosition;
+            ApplyTrackingTarget(_battleShotTarget);
+            _battlePositionTween = _battleShotTarget.DOMove(target.position, duration)
+                .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false).SetLink(gameObject)
+                .OnComplete(() =>
+                {
+                    if (this == null || _commandVersion != resetVersion) return;
+                    ApplyTrackingTarget(target);
+                    ApplySettings(settings);
+                    _battleReturnTarget = null;
+                });
+        }
+        float restingSize = _continuousPixelZoom != null
+            ? _continuousPixelZoom.RestingSize(settings.OrthographicSize) : settings.OrthographicSize;
+        TweenLens(restingSize, duration, () =>
+        {
+            if (this != null && _commandVersion == resetVersion && _continuousPixelZoom != null)
+                _continuousPixelZoom.Release();
+        });
+        TweenDutch(0f, duration);
         return true;
     }
 
@@ -260,6 +305,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         out string error)
     {
         error = string.Empty;
+        if (IsDefenseCameraStable) return true;
         if (!EnsureReady(out error))
         {
             return false;
@@ -319,6 +365,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         }
 
         KillCameraTweens();
+        StopBattleMotion();
         StopTargetFraming();
         if (restoreDefault)
         {
@@ -339,6 +386,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
             return;
         }
 
+        StopBattleMotion();
         StopTargetFraming();
         ApplyTrackingTarget(newTarget);
         _commandVersion++;
@@ -376,7 +424,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
 
     public void ModePlayerAction(Transform playerTarget = null)
     {
-        if (IsStaticBattlePresentation) return;
+        if (IsStaticBattlePresentation || _battleShotActive) return;
         ZoomOnTransform(playerTarget != null ? playerTarget : ResolveDefaultTarget(), _battleZoomSize, 0.3f);
     }
 
@@ -384,7 +432,8 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
 
     public void PlayHeavySlam(Vector3 direction, float intensity = 1.0f, bool lockHorizontal = true)
     {
-        if (IsStaticBattlePresentation) return;
+        if (IsStaticBattlePresentation || IsDefenseCameraStable) return;
+        if (_battleShotActive) { PlayBattleImpactBeat(intensity); return; }
         Vector3 finalDirection = lockHorizontal
             ? new Vector3(direction.x, 0f, 0f)
             : new Vector3(direction.x, direction.y, 0f);
@@ -403,13 +452,15 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
 
     public void PlayDashThroughImpact(float intensity = 1.0f)
     {
+        if (IsStaticBattlePresentation || IsDefenseCameraStable) return;
+        if (_battleShotActive) { PlayBattleImpactBeat(intensity); return; }
         if (!EnsureReady(out string error))
         {
             WarnLegacy(error);
             return;
         }
 
-        if (CanUseCamera(CameraControlLease.None, out _))
+        if (!_battleShotActive && CanUseCamera(CameraControlLease.None, out _))
         {
             float impactZoom = _defaultLensSize + 0.8f;
             DOTween.Kill(CameraZoomTweenId);
@@ -663,6 +714,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
             return;
         }
 
+        StopBattleMotion();
         StopTargetFraming();
         ApplyTrackingTarget(ResolveDefaultTarget());
         CameraShotSettings settings = style == CameraShotStyle.Static && !_useGameplaySafeReset && _staticProfile == null
@@ -674,7 +726,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         _commandVersion++;
     }
 
-    private void TweenLens(float target, float duration)
+    private void TweenLens(float target, float duration, System.Action completed = null)
     {
         DOTween.Kill(CameraZoomTweenId);
         if (_vCam == null)
@@ -685,6 +737,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         if (duration <= 0f)
         {
             _vCam.Lens.OrthographicSize = target;
+            completed?.Invoke();
             return;
         }
 
@@ -695,7 +748,8 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
                 duration)
             .SetEase(Ease.InOutSine)
             .SetUpdate(UpdateType.Late, true)
-            .SetId(CameraZoomTweenId);
+            .SetId(CameraZoomTweenId)
+            .OnComplete(() => completed?.Invoke());
     }
 
     private void TweenDutch(float target, float duration)

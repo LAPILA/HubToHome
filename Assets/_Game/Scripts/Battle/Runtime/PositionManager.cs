@@ -24,6 +24,24 @@ public class PositionManager : MonoBehaviour
     [Tooltip("광역기 연출, 보스 등장, 시네머신 기본 추적에 사용되는 화면 중앙 위치")]
     [SerializeField] private Transform _centerPos;
 
+    [Title("중앙 교전")]
+    [SerializeField, Min(0.5f), LabelText("중앙 기준 좌우 간격"), Tooltip("CenterPos에서 아군/적을 좌우로 띄우는 거리입니다.")]
+    private float _duelHalfSpacing = 1.25f;
+    [SerializeField, Min(0.05f), LabelText("중앙 이동 시간")]
+    private float _duelMoveDuration = 0.28f;
+    public float DuelMoveDuration => Mathf.Max(0.05f, _duelMoveDuration);
+
+    [Title("C 반격 연출")]
+    [SerializeField, Min(0f), LabelText("패링 후퇴 거리")]
+    private float _counterRecoilDistance = 0.85f;
+    [SerializeField, Min(0.01f), LabelText("패링 후퇴 시간")]
+    private float _counterRecoilDuration = 0.13f;
+    [SerializeField, Min(0.01f), LabelText("반격 재접근 시간")]
+    private float _counterLungeDuration = 0.16f;
+    public float CounterRecoilDistance => Mathf.Max(0f, _counterRecoilDistance);
+    public float CounterRecoilDuration => Mathf.Max(0.01f, _counterRecoilDuration);
+    public float CounterLungeDuration => Mathf.Max(0.01f, _counterLungeDuration);
+
     [Tooltip("적이 근접 공격(MeleeClose)을 할 때 아군 코앞으로 달려오는 목표 위치")]
     [ListDrawerSettings(ShowIndexLabels = true)]
     [SerializeField] private List<Transform> _enemyAttackPos = new List<Transform>();
@@ -95,6 +113,14 @@ public class PositionManager : MonoBehaviour
     public Vector3 GetPlayerDefaultPos(int index) => GetSafePosition(_playerDefaultPos, index, "PlayerDefaultPos");
     public Vector3 GetEnemyDefaultPos(int index)  => GetSafePosition(_enemyDefaultPos, index, "EnemyDefaultPos");
     public Vector3 GetCenterPos()                 => _centerPos != null ? _centerPos.position : Vector3.zero;
+
+    public Vector3 GetDuelStagingPos(CharacterBase actor)
+    {
+        Vector3 center = GetCenterPos();
+        center.x += (actor is PlayerCharacter ? -1f : 1f) * Mathf.Max(0.5f, _duelHalfSpacing);
+        if (actor != null) center.z = actor.transform.position.z;
+        return center;
+    }
     
     /// <summary>
     /// 적이 특정 플레이어를 공격하기 위해 달려올 때 멈출 위치를 반환합니다.

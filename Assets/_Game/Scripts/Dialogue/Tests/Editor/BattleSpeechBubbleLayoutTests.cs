@@ -4,6 +4,29 @@ using UnityEngine;
 public class BattleSpeechBubbleLayoutTests
 {
     [Test]
+    public void ScreenClampKeepsSpeechBetweenTurnQueueAndBottomHud()
+    {
+        var safe = new Rect(8f, 160f, 624f, 258f);
+        var speech = new Rect(520f, 400f, 236f, 72f);
+        Vector2 shift = BattleSpeechBubbleLayout.ClampScreenOffset(speech, safe);
+        speech.position += shift;
+        Assert.That(speech.xMin, Is.GreaterThanOrEqualTo(safe.xMin));
+        Assert.That(speech.xMax, Is.LessThanOrEqualTo(safe.xMax));
+        Assert.That(speech.yMax, Is.LessThanOrEqualTo(safe.yMax));
+        speech.position = new Vector2(4f, 90f);
+        speech.position += BattleSpeechBubbleLayout.ClampScreenOffset(speech, safe);
+        Assert.That(speech.yMin, Is.EqualTo(safe.yMin));
+        Assert.That(speech.xMin, Is.EqualTo(safe.xMin));
+    }
+
+    [Test]
+    public void ScreenClampDoesNotMoveAlreadyReadableSpeech()
+    {
+        Assert.That(BattleSpeechBubbleLayout.ClampScreenOffset(new Rect(100, 200, 200, 80),
+            new Rect(8, 160, 624, 258)), Is.EqualTo(Vector2.zero));
+    }
+
+    [Test]
     public void RightBubbleKeepsTailSeparateFromBodyAndTextMargins()
     {
         BattleSpeechBubbleLayoutResult result = BattleSpeechBubbleLayout.Calculate(

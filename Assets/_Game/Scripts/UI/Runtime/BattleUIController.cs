@@ -20,6 +20,16 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 {
     public static BattleUIController Instance { get; private set; }
 
+    [BoxGroup("전투 UI 반응"), Range(0f, 2f), LabelText("반응 강도 (0: 끔)")]
+    [SerializeField] private float _juiceIntensity = 1f;
+    [BoxGroup("전투 UI 반응"), Range(0.5f, 2f), LabelText("반응 시간 배율")]
+    [SerializeField] private float _juiceDurationScale = 1f;
+    [BoxGroup("전투 UI 반응"), Range(0f, 20f), LabelText("초상 진입 거리")]
+    [SerializeField] private float _portraitSlidePixels = 8f;
+    public static float JuiceIntensity => Instance != null ? Mathf.Clamp(Instance._juiceIntensity, 0f, 2f) : 1f;
+    public static float JuiceDurationScale => Instance != null ? Mathf.Clamp(Instance._juiceDurationScale, 0.5f, 2f) : 1f;
+    public Camera WorldCamera => _worldCamera;
+
     #region [ UI Components ]
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private Transform _turnQueueContainer;
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private GameObject _turnIconPrefab;
@@ -100,6 +110,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private Tween _partyPanelTween;
     private Sequence _scenarioFlashTween;
     private Tween _scenarioShakeTween;
+    private Tween _portraitTransition;
+    private Canvas _partyStatusCanvas;
+    private Canvas _turnQueueCanvas;
+    private readonly Vector3[] _safeAreaCorners = new Vector3[4];
     #endregion
 
     #region [ Initialization & Lifecycle ]
@@ -107,6 +121,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        _partyStatusCanvas = _partyStatusPanel != null ? _partyStatusPanel.GetComponentInParent<Canvas>() : null;
+        _turnQueueCanvas = _turnQueueContainer != null ? _turnQueueContainer.GetComponentInParent<Canvas>() : null;
         TryResolveWorldCamera();
         NormalizeForCurrentResolution();
         EnsureDamagePopupPresenter();
@@ -252,6 +268,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void ReleasePresentationTweens()
     {
+        KillOwnedTween(ref _portraitTransition);
         if (_partySlots != null)
             foreach (PartySlotUI slot in _partySlots) slot?.ReleaseTweens();
         KillOwnedTween(ref _partyPanelTween);
@@ -397,12 +414,17 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void BindCameraToCanvases(Camera worldCamera)
     {
+        Canvas parentCanvas = GetComponentInParent<Canvas>(true);
+        if (parentCanvas != null && parentCanvas.TryGetComponent(out BattleHudViewport parentViewport))
+            parentViewport.Configure(worldCamera);
         Canvas[] canvases = GetComponentsInChildren<Canvas>(true);
         for (int i = 0; i < canvases.Length; i++)
         {
             Canvas canvas = canvases[i];
-            if (canvas != null)
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
                 canvas.worldCamera = worldCamera;
+            if (canvas != null && canvas.TryGetComponent(out BattleHudViewport viewport))
+                viewport.Configure(worldCamera);
         }
     }
 
@@ -568,14 +590,72 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void SetPortraitActor(PlayerCharacter actor)
     {
+        bool changed = _portraitActor != actor;
         _portraitActor = actor;
         if (_largePortrait == null) return;
+        KillOwnedTween(ref _portraitTransition);
         CharacterData data = actor != null ? actor.CharacterData : null;
         _largePortrait.sprite = data != null && data.BattleLargePortrait != null
             ? data.BattleLargePortrait : actor != null ? actor.BattlePortrait : null;
         _largePortrait.enabled = _largePortrait.sprite != null;
         _largePortrait.preserveAspect = true;
         _largePortrait.color = Color.white;
+        if (!changed || !Application.isPlaying || !isActiveAndEnabled || !_largePortrait.enabled
+            || JuiceIntensity <= 0f) return;
+        Image portrait = _largePortrait;
+        RectTransform rect = portrait.rectTransform;
+        Vector2 home = rect.anchoredPosition;
+        float distance = _portraitSlidePixels * JuiceIntensity;
+        _portraitTransition = DOTween.To(() => 0f, progress =>
+            {
+                if (portrait == null || rect == null) return;
+                rect.anchoredPosition = home + Vector2.right * (distance * (1f - progress));
+                portrait.color = new Color(1f, 1f, 1f, progress);
+            }, 1f, 0.20f * JuiceDurationScale)
+            .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false)
+            .SetLink(portrait.gameObject, LinkBehaviour.KillOnDisable)
+            .OnKill(() =>
+            {
+                if (rect != null) rect.anchoredPosition = home;
+                if (portrait != null) portrait.color = Color.white;
+            });
+    }
+
+    public bool TryGetSpeechSafeArea(out Camera worldCamera, out Rect area)
+    {
+        worldCamera = _worldCamera;
+        area = worldCamera != null ? worldCamera.pixelRect : default;
+        if (worldCamera == null || area.width <= 0f || area.height <= 0f) return false;
+        Rect screenSafe = Screen.safeArea;
+        area = Rect.MinMaxRect(Mathf.Max(area.xMin, screenSafe.xMin), Mathf.Max(area.yMin, screenSafe.yMin),
+            Mathf.Min(area.xMax, screenSafe.xMax), Mathf.Min(area.yMax, screenSafe.yMax));
+        float margin = area.height / 480f * 8f;
+        float bottom = area.yMin + margin;
+        float top = area.yMax - margin;
+        if (_partyStatusPanel != null && _partyStatusPanel.gameObject.activeInHierarchy)
+        {
+            Camera uiCamera = ResolveCanvasCamera(_partyStatusCanvas, worldCamera);
+            _partyStatusPanel.GetWorldCorners(_safeAreaCorners);
+            for (int i = 0; i < 4; i++)
+                bottom = Mathf.Max(bottom, RectTransformUtility.WorldToScreenPoint(uiCamera, _safeAreaCorners[i]).y + margin);
+        }
+        if (_turnQueueContainer is RectTransform queue && queue.gameObject.activeInHierarchy)
+        {
+            Camera uiCamera = ResolveCanvasCamera(_turnQueueCanvas, worldCamera);
+            queue.GetWorldCorners(_safeAreaCorners);
+            for (int i = 0; i < 4; i++)
+                top = Mathf.Min(top, RectTransformUtility.WorldToScreenPoint(uiCamera, _safeAreaCorners[i]).y - margin);
+        }
+        // 미연결/레이아웃 구성 중에는 뒤집힌 영역을 반환하지 않습니다.
+        if (top - bottom < area.height * 0.15f) return false;
+        area = Rect.MinMaxRect(area.xMin + margin, bottom, area.xMax - margin, top);
+        return true;
+    }
+
+    private static Camera ResolveCanvasCamera(Canvas canvas, Camera fallback)
+    {
+        if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay) return null;
+        return canvas != null && canvas.worldCamera != null ? canvas.worldCamera : fallback;
     }
 
     private void RefreshAllyTargetHighlight()
@@ -994,12 +1074,57 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     public void SetDefenseQTEPaused(bool paused) => _defenseQTEUI?.SetDefenseQTEPaused(paused);
     public void ShowDefenseQTEResult(DefenseQteResult result) => _defenseQTEUI?.ShowResult(result);
     public void HideDefenseQTE() => _defenseQTEUI?.Hide();
+    // 연출 난수가 적 패턴/드롭 등 UnityEngine.Random의 게임 규칙에 영향을 주지 않게 분리합니다.
+    private readonly System.Random _skillPromptRandom = new System.Random();
+    private Vector2? _previousSkillPromptPosition;
+
+    public void ShowRandomSkillQTE(string targetKey, float duration)
+    {
+        Rect area = Rect.MinMaxRect(0.14f, 0.44f, 0.86f, 0.78f);
+        if (TryGetSpeechSafeArea(out Camera camera, out Rect safe))
+        {
+            Rect viewport = camera.pixelRect;
+            // 키/결과 팝 연출 여백까지 남기며 실제 상단 턴 큐와 하단 파티 패널을 피합니다.
+            float bottom = Mathf.Max(area.yMin, (safe.yMin - viewport.yMin) / viewport.height + 0.1f);
+            float top = Mathf.Min(area.yMax, (safe.yMax - viewport.yMin) / viewport.height - 0.1f);
+            float left = Mathf.Max(area.xMin, (safe.xMin - viewport.xMin) / viewport.width + 0.1f);
+            float right = Mathf.Min(area.xMax, (safe.xMax - viewport.xMin) / viewport.width - 0.1f);
+            if (right > left && top > bottom) area = Rect.MinMaxRect(left, bottom, right, top);
+        }
+        Vector2 position = SelectSkillPromptPosition(area, _previousSkillPromptPosition,
+            new Vector2((float)_skillPromptRandom.NextDouble(), (float)_skillPromptRandom.NextDouble()));
+        _previousSkillPromptPosition = position;
+        ShowSkillQTE(position, targetKey, duration);
+    }
+
+    public static Vector2 SelectSkillPromptPosition(Rect area, Vector2? previous, Vector2 randomSample)
+    {
+        Vector2 position = new Vector2(Mathf.Lerp(area.xMin, area.xMax, Mathf.Clamp01(randomSample.x)),
+            Mathf.Lerp(area.yMin, area.yMax, Mathf.Clamp01(randomSample.y)));
+        // 연속 안내가 같은 자리에 겹치면 반대 반쪽으로 보냅니다. 한 안내가 떠 있는 중에는 움직이지 않습니다.
+        if (previous.HasValue && Vector2.Distance(position, previous.Value) < 0.18f)
+            position.x = previous.Value.x < area.center.x
+                ? Mathf.Lerp(area.center.x, area.xMax, 0.75f)
+                : Mathf.Lerp(area.xMin, area.center.x, 0.25f);
+        return position;
+    }
+
     public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
+    public void SetSkillQTEProgress(float remaining) => _defenseQTEUI?.SetSkillProgress(remaining);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();
     public bool IsNarrationBlockingInput() => _narrationUI != null && _narrationUI.IsBusy;
     public void ClearNarrationLog() => _narrationUI?.Clear();
-    public void NormalizeForCurrentResolution() => UIRuntimeGuard.NormalizeCanvas(gameObject);
+    public void NormalizeForCurrentResolution()
+    {
+        if (Application.isPlaying)
+        {
+            Canvas canvas = GetComponent<Canvas>() ?? GetComponentInParent<Canvas>(true)
+                ?? GetComponentInChildren<Canvas>(true);
+            BattleHudViewport.Ensure(canvas, _worldCamera);
+        }
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
+    }
 
     private void SetTurnLabel(string text)
     {

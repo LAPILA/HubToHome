@@ -78,18 +78,33 @@ public class SkillContext
     // 비행/연쇄 공격은 방어창을 먼저 끝내지 않고 실제 충돌 소비자가 함께 실행합니다.
     private Action_DefenseWindow _deferredDefenseWindow;
     private BattleDefenderPresentationScope _defenderPresentation;
-    private bool? _hasEnemyImpact;
+    private bool? _hasCombatImpact;
 
     public IEnumerator StageDefender(PlayerCharacter target)
     {
-        if (!(Actor is EnemyCharacter) || target == null || !target.IsAlive) yield break;
-        if (_defenderPresentation != null && _defenderPresentation.Player == target) yield break;
+        if (Actor is EnemyCharacter) yield return StageCombatants(target);
+    }
+
+    public IEnumerator StageCombatants(CharacterBase target)
+    {
+        PlayerCharacter player = Actor as PlayerCharacter ?? target as PlayerCharacter;
+        EnemyCharacter enemy = Actor as EnemyCharacter ?? target as EnemyCharacter;
+        if (player == null || enemy == null || !player.IsAlive || !enemy.IsAlive) yield break;
+        if (_defenderPresentation != null && _defenderPresentation.Player == player
+            && _defenderPresentation.Enemy == enemy) yield break;
         yield return ReturnDefender();
-        if (!CanContinueExecution || target == null || !target.IsAlive) yield break;
-        _defenderPresentation = new BattleDefenderPresentationScope(target, IsExecutionActive);
+        if (!CanContinueExecution || player == null || !player.IsAlive || enemy == null || !enemy.IsAlive) yield break;
+        _defenderPresentation = new BattleDefenderPresentationScope(player, IsExecutionActive, enemy);
         yield return _defenderPresentation.Enter();
         if (_defenderPresentation == null || !_defenderPresentation.IsStaged)
             StopTimelineExecution = true;
+    }
+
+    public bool TryGetActorStagingPosition(out Vector3 position)
+    {
+        position = Vector3.zero;
+        return _defenderPresentation != null
+            && _defenderPresentation.TryGetStagingPosition(Actor, out position);
     }
 
     public IEnumerator ReturnDefender()
@@ -114,22 +129,23 @@ public class SkillContext
 
     public IEnumerator ExecuteBlock(SkillActionBlock block, IReadOnlyList<SkillActionBlock> timeline)
     {
-        if (Actor is EnemyCharacter)
+        if (Actor is EnemyCharacter || Actor is PlayerCharacter)
         {
-            if (!_hasEnemyImpact.HasValue)
+            if (!_hasCombatImpact.HasValue)
             {
-                _hasEnemyImpact = false;
+                _hasCombatImpact = false;
                 for (int i = 0; timeline != null && i < timeline.Count; i++)
                 {
                     SkillActionBlock candidate = timeline[i];
                     if (candidate != null && !candidate.Disabled
-                        && (candidate is Action_Damage || candidate is Action_Projectile))
-                    { _hasEnemyImpact = true; break; }
+                        && (candidate is Action_Damage || candidate is Action_Projectile || candidate is Action_SequentialMelee
+                            || candidate is Action_RapidStrikes || candidate is Action_AerialCrossSlash))
+                    { _hasCombatImpact = true; break; }
                 }
             }
-            // 이동/투사체가 목표 좌표를 잡기 전에 전진을 완료합니다. 연쇄 공격은 각 대상마다 처리합니다.
-            if (_hasEnemyImpact == true && !(block is Action_SequentialMelee))
-                yield return StageDefender(MainTarget as PlayerCharacter);
+            // 이동/투사체가 목표 좌표를 잡기 전에 양측 중앙 배치를 완료합니다.
+            if (_hasCombatImpact == true && !(block is Action_SequentialMelee))
+                yield return StageCombatants(MainTarget);
             if (!CanContinueExecution) yield break;
         }
         if (Actor is EnemyCharacter && block is Action_DefenseWindow defense
@@ -366,6 +382,8 @@ public abstract class SkillActionBlock
         if (this is Action_DefenseWindow) return "방어 대응";
         if (this is Action_Projectile) return "투사체";
         if (this is Action_SequentialMelee) return "연쇄 근접";
+        if (this is Action_RapidStrikes) return "고속 연격 · 독립 QTE";
+        if (this is Action_AerialCrossSlash) return "공중 회전 · 교차 베기";
         return GetType().Name.Replace("Action_", string.Empty);
     }
 
@@ -374,7 +392,8 @@ public abstract class SkillActionBlock
         if (this is Action_Wait) return "흐름";
         if (this is Action_Move) return "이동";
         if (this is Action_PlayAnim) return "애니메이션";
-        if (this is Action_Damage || this is Action_Projectile || this is Action_SequentialMelee) return "데미지";
+        if (this is Action_Damage || this is Action_Projectile || this is Action_SequentialMelee
+            || this is Action_RapidStrikes || this is Action_AerialCrossSlash) return "데미지";
         if (this is Action_VFX) return "VFX";
         if (this is Action_QTE) return "QTE";
         if (this is Action_DefenseWindow) return "방어";
@@ -498,6 +517,12 @@ public class Action_Move : SkillActionBlock
                 ? PositionManager.HorizontalApproach(context.Actor, pm.GetCenterPos()) : pm.GetCenterPos();
         else if (Destination == MoveDest.OriginalPos)
             targetPos = GetActorDefaultBattlePos(context.Actor);
+
+        // 중앙 교전 중에는 기본 접근/복귀가 두 캐릭터를 다시 원래 파티 자리로 흩뜨리지 않습니다.
+        // Top/Back/Center 같은 명시적인 특수 이동은 그대로 유지합니다.
+        if ((Destination == MoveDest.AttackStaging || Destination == MoveDest.TargetFront
+            || Destination == MoveDest.OriginalPos) && context.TryGetActorStagingPosition(out Vector3 staged))
+            targetPos = staged;
 
         PlayActorBattleAnim(context.Actor, context.Actor is EnemyCharacter ? EnemyCharacter.HashBattleMove : PlayerCharacter.HashBattleMove);
 
@@ -1066,7 +1091,7 @@ public class Action_DefenseWindow : SkillActionBlock
     public override IEnumerator Execute(SkillContext context) => ExecuteImpact(context);
 
     public IEnumerator ExecuteImpact(SkillContext context, System.Action<float> advanceAttack = null,
-        System.Action onImpactResolved = null)
+        System.Action onImpactResolved = null, bool isProjectile = false)
     {
         if (!(context.Actor is EnemyCharacter enemy)
             || context.Targets == null
@@ -1191,7 +1216,7 @@ public class Action_DefenseWindow : SkillActionBlock
                 },
                 AttackAnimationLeadTime,
                 attacker: enemy, cuePrefab: ImpactCuePrefab, cuePivot: ImpactCuePivotName,
-                onAttackProgress: advanceAttack);
+                onAttackProgress: advanceAttack, useMeleeParryAssistance: !isProjectile);
             context.ActiveDefenseWindow = execution;
 
             yield return new WaitUntil(() => execution.IsDone);
@@ -1396,7 +1421,7 @@ public class Action_Projectile : SkillActionBlock
                         else GameObject.Destroy(proj);
                         proj = null;
                     }
-                });
+                }, isProjectile: true);
             }
             else
             {
@@ -1524,12 +1549,12 @@ public class Action_SequentialMelee : SkillActionBlock
             }
             if (target == null || !target.IsAlive) continue;
 
-            if (enemyAttack)
-                yield return context.StageDefender(target as PlayerCharacter);
+            yield return context.StageCombatants(target);
             if (!context.CanContinueExecution || target == null || !target.IsAlive) yield break;
 
             Vector3 targetPos = PositionManager.HorizontalApproach(context.Actor,
                 target.GetPivot(CharacterPivotId.Front).position);
+            if (context.TryGetActorStagingPosition(out Vector3 staged)) targetPos = staged;
 
             Tween movement = null;
             try

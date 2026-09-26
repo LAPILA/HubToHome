@@ -45,6 +45,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     [SerializeField, Min(0.01f)] private float _hurtPopReturnDuration = 0.16f;
     [SerializeField] private float _dieFlashDuration   = 0.12f;
     [SerializeField] private Color _dieFlashColor      = Color.white;
+    [SerializeField, Min(0.1f), LabelText("전투 회피 후퇴 거리"), Tooltip("전투 회피 시 월드 왼쪽으로 물러나는 거리. 1.5 = 32 PPU에서 48픽셀.")]
+    private float _battleDodgeDistance = 1.5f;
     // ── 컴포넌트 캐싱 ─────────────────────────────────────────
     private Rigidbody2D    _rb;
     private Animator       _anim;
@@ -265,7 +267,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         PreviewDefenseInputInternal(input, Time.realtimeSinceStartup);
     }
 
-    public void CommitDefenseAttempt(DefenseInput input)
+    public void CommitDefenseAttempt(DefenseInput input, bool acceptedParryFeedback = false)
     {
         // Update 순서와 관계없이 한 번만 미리보기. 버퍼는 이후에도 수집하지만 모션은 잠급니다.
         bool hurtBusy = _hurtReactionActive || (_battleCharacter != null
@@ -274,7 +276,29 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         if (_lastPreviewedDefenseInput != input && _defensePresentationGate.CanPreview(hurtBusy))
             ResetDefenseVisualStateOnly();
         PreviewDefenseInput(input);
+        if (acceptedParryFeedback && input == DefenseInput.Parry && !hurtBusy)
+            PlayAcceptedParryFeedback();
         _defensePresentationGate.Commit();
+    }
+
+    private void PlayAcceptedParryFeedback()
+    {
+        // 성공 입력 수락만 즉시 표시합니다. 패링 모션/VFX/보상은 실제 충돌에서 실행합니다.
+        KillDefenseVisualTween();
+        SpriteRenderer sprite = _spriteRenderer;
+        if (sprite == null) return;
+        Color baseline = sprite.color;
+        sprite.color = Color.Lerp(baseline, ResolveFlashColor(_parryFlashColor), 0.45f);
+        Tween feedback = DOTween.To(() => sprite != null ? sprite.color : baseline,
+                color => { if (sprite != null) sprite.color = color; }, baseline, 0.12f)
+            .SetEase(Ease.OutQuad).SetUpdate(true).SetRecyclable(false)
+            .SetLink(gameObject, LinkBehaviour.KillOnDisable);
+        _defenseVisualTween = feedback;
+        feedback.OnKill(() =>
+        {
+            if (sprite != null) sprite.color = baseline;
+            if (ReferenceEquals(_defenseVisualTween, feedback)) _defenseVisualTween = null;
+        });
     }
 
     private void PreviewDefenseInputInternal(DefenseInput input, float timestamp)
@@ -954,20 +978,20 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     private void PlayDodgeAttempt()
     {
         Vector3 anchor = _battleDefenseAnchorPosition;
-        Vector3 dodgeDir = Vector3.left; // 전열 자리는 유지하며 짧게 수평 회피
+        Vector3 dodgeDir = Vector3.left; // 바라보는 방향/스케일과 무관하게 화면 왼쪽으로 후퇴
         PlayBattleAnim(HashBattleMove);
         uint animationVersion = _battleCharacter != null
             ? _battleCharacter.BattleAnimationVersion : _battleAnimationVersion;
         _vfx?.Play(CharacterVFX.VFXAction.Dodge_Dust);
 
-        float backDistance = 0.375f; // 32 PPU 기준 12픽셀
+        float backDistance = Mathf.Max(0.1f, _battleDodgeDistance);
         Vector3 overshoot = anchor + dodgeDir * backDistance;
 
         // Character의 기존 피격 취소 경로도 이 이동을 중단할 수 있게 타깃을 지정합니다.
         Sequence seq = DOTween.Sequence().SetTarget(transform).SetRecyclable(false);
-        seq.Append(transform.DOMove(overshoot, 0.10f).SetEase(Ease.OutQuad));
-        seq.AppendInterval(0.10f);
-        seq.Append(transform.DOMove(anchor, 0.12f).SetEase(Ease.InOutSine));
+        seq.Append(transform.DOMove(overshoot, 0.12f).SetEase(Ease.OutCubic));
+        seq.AppendInterval(0.12f);
+        seq.Append(transform.DOMove(anchor, 0.18f).SetEase(Ease.InOutSine));
         seq.SetUpdate(true);
         seq.OnComplete(() =>
         {
@@ -1134,6 +1158,21 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     // ── DOTween 이펙트 ────────────────────────────────────────
     public void PlayParryEffect()
     {
+        PlayParryEffect(true);
+    }
+
+    public void PlayCounterParry()
+    {
+        if (_anim == null) return;
+        _battleAnimationVersion++;
+        if (_battleCharacter != null) _battleCharacter.PlayBattleAnim(HashParry);
+        else _anim.SetTrigger(HashParry);
+        // 반격 서비스가 후퇴/재접근 위치를 소유하므로 색상 트윈은 위치를 복원하지 않습니다.
+        PlayParryEffect(false);
+    }
+
+    private void PlayParryEffect(bool restoreDefenseAnchor)
+    {
         if (_spriteRenderer == null) return;
 
         KillDefenseVisualTween();
@@ -1162,7 +1201,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         {
             if (_spriteRenderer != null)
                 _spriteRenderer.color = restoreColor;
-            if (State == PlayerState.InBattle)
+            if (restoreDefenseAnchor && this != null && State == PlayerState.InBattle)
             {
                 if (_rb != null) _rb.position = _battleDefenseAnchorPosition;
                 transform.position = _battleDefenseAnchorPosition;

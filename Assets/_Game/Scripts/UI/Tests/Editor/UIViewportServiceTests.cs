@@ -48,6 +48,43 @@ public sealed class UIViewportServiceTests
     }
 
     [Test]
+    public void BattleHud_RemainsOverlayAfterNormalization_AndKeepsReferenceAnchors()
+    {
+        _cameraObject = new GameObject("Rotating Output", typeof(Camera));
+        Camera camera = _cameraObject.GetComponent<Camera>();
+        _canvasObject = new GameObject("Battle HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+        Canvas canvas = _canvasObject.GetComponent<Canvas>();
+        var first = new GameObject("First", typeof(RectTransform)).GetComponent<RectTransform>();
+        var second = new GameObject("Second", typeof(RectTransform)).GetComponent<RectTransform>();
+        first.SetParent(canvas.transform, false); second.SetParent(canvas.transform, false);
+        first.anchoredPosition = new Vector2(20f, 30f);
+        BattleHudViewport.Ensure(canvas, camera);
+        UIViewportService.ConfigureFixedViewport(canvas, camera);
+        RectTransform viewport = canvas.GetComponent<BattleHudViewport>().ContentRect;
+        Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+        Assert.That(canvas.worldCamera, Is.Null);
+        Assert.That(canvas.sortingOrder, Is.LessThan(0), "시스템 팝업/결과/페이드보다 뒤여야 합니다.");
+        Assert.That(viewport.sizeDelta, Is.EqualTo(new Vector2(640f, 480f)));
+        Assert.That(first.anchoredPosition, Is.EqualTo(new Vector2(20f, 30f)));
+        Assert.That(viewport.GetChild(0), Is.SameAs(first));
+        Assert.That(viewport.GetChild(1), Is.SameAs(second));
+        camera.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
+        camera.orthographicSize = 2f;
+        UIViewportService.ConfigureFixedViewport(canvas, camera);
+        Assert.That(viewport.localRotation, Is.EqualTo(Quaternion.identity));
+        Assert.That(first.anchoredPosition, Is.EqualTo(new Vector2(20f, 30f)));
+        Assert.That(viewport.childCount, Is.EqualTo(2), "재등록 시 루트를 중첩하면 안 됩니다.");
+    }
+
+    [TestCase(640f, 480f, 1f)]
+    [TestCase(1280f, 960f, 2f)]
+    [TestCase(1920f, 1080f, 2.25f)]
+    public void BattleHud_ReferenceScaleFitsInsideViewport(float width, float height, float scale)
+    {
+        Assert.That(BattleHudViewport.ReferenceScale(new Rect(0f, 0f, width, height)), Is.EqualTo(scale));
+    }
+
+    [Test]
     public void CameraReplacementAtSameResolutionRebindsHiddenRegisteredCanvas()
     {
         UIViewportService service = CreateInactiveService();

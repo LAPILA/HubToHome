@@ -331,6 +331,31 @@ public static class EnemyAttackAuthoringAnalyzer
             }
 
             ValidateBlock(block, i, report);
+            if (block is Action_RapidStrikes rapid)
+            {
+                if (skill.UsageProfile != SkillUsageProfile.PlayerOnly)
+                    AddError(report, "skill.rapid.player_only", i, "실시간 연격은 사용 범위를 아군 전용으로 지정하세요.");
+                if (float.IsNaN(rapid.Duration) || float.IsInfinity(rapid.Duration) || rapid.Duration < 0.5f
+                    || float.IsNaN(rapid.HitInterval) || float.IsInfinity(rapid.HitInterval)
+                    || rapid.HitInterval < 0.05f || rapid.HitInterval > rapid.Duration || rapid.Duration / rapid.HitInterval > 200f)
+                    AddError(report, "skill.rapid.timing.invalid", i, "연격은 0.5초 이상, 타격 간격 0.05초 이상, 총 1~200타여야 합니다.");
+                if (float.IsNaN(rapid.InputWindow) || float.IsInfinity(rapid.InputWindow) || rapid.InputWindow <= 0f
+                    || float.IsNaN(rapid.PromptInterval) || float.IsInfinity(rapid.PromptInterval)
+                    || rapid.PromptInterval < 0.2f || rapid.InputWindow > rapid.PromptInterval)
+                    AddError(report, "skill.rapid.input.invalid", i, "독립 QTE 주기는 0.2초 이상, 입력 시간은 0초 초과이며 표시 간격 이하여야 합니다.");
+                if (float.IsNaN(rapid.DamagePerStrike) || float.IsInfinity(rapid.DamagePerStrike) || rapid.DamagePerStrike < 0f
+                    || float.IsNaN(rapid.SuccessMultiplier) || float.IsInfinity(rapid.SuccessMultiplier) || rapid.SuccessMultiplier < 1f)
+                    AddError(report, "skill.rapid.damage.invalid", i, "한 타 피해 배율은 0 이상, 성공 배율은 1 이상의 유효한 숫자여야 합니다.");
+                if (float.IsNaN(rapid.SlashTravel) || float.IsInfinity(rapid.SlashTravel) || rapid.SlashTravel < 0f)
+                    AddError(report, "skill.rapid.travel.invalid", i, "타격 좌우 이동 폭은 0 이상의 유효한 숫자여야 합니다.");
+            }
+            if (block is Action_AerialCrossSlash aerial)
+            {
+                if (skill.UsageProfile != SkillUsageProfile.PlayerOnly)
+                    AddError(report, "skill.aerial.player_only", i, "공중 회전 베기는 아군 전용입니다.");
+                if (!aerial.HasValidSettings)
+                    AddError(report, "skill.aerial.settings.invalid", i, "공중 회전의 거리/시간은 양수, QTE 시간은 0.2초 이상이며 입력 시간 이상, 피해는 0 이상, 성공 배율은 1 이상이어야 합니다.");
+            }
         }
 
         if (report.DamageBlockCount > 0 && !sawDefenseWindow)

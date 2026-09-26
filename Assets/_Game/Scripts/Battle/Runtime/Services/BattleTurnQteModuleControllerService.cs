@@ -273,10 +273,10 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 BattleUIController.Instance?.ShowEnemyTarget(target);
                 PlayerController targetCtrl = target != null ? target.GetComponent<PlayerController>() : null;
                 QteExecution qteExecution = null;
-                var defenderPresentation = new BattleDefenderPresentationScope(target, _host.IsTurnQteCombatInputActive);
+                var defenderPresentation = new BattleDefenderPresentationScope(target, _host.IsTurnQteCombatInputActive, enemy);
                 try
                 {
-                    bool movedToCenter = enemy.Data == null || !enemy.Data.IsLargeEnemy;
+                    bool movedToCenter = !defenderPresentation.IsPaired && (enemy.Data == null || !enemy.Data.IsLargeEnemy);
 
                     yield return defenderPresentation.Enter();
                     if (!defenderPresentation.IsStaged || !_host.IsTurnQteCombatInputActive() || target == null || !target.IsAlive)
@@ -284,7 +284,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                     // 방어 입력은 적의 접근/준비 단계부터 받을 수 있어야 합니다.
                     // 창을 이동 뒤에 열면 선입력한 Z/X가 유실됩니다.
                     targetCtrl?.PrepareDefenseWindow();
-                    yield return _host.StartManagedCoroutine(_host.MoveEnemyToCenterIfNeeded(enemy));
+                    if (!defenderPresentation.IsPaired)
+                        yield return _host.StartManagedCoroutine(_host.MoveEnemyToCenterIfNeeded(enemy));
                     if (!_host.IsTurnQteCombatInputActive() || enemy == null || !enemy.IsAlive)
                         yield break;
                     _host.SetActorForeground(enemy, true);
@@ -443,7 +444,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 PlayerCharacter representative = _host.PlayerParty[representativeIndex];
                 BattleUIController.Instance?.ShowEnemyTarget(representative, true);
                 representativeController = representative.GetComponent<PlayerController>();
-                defenderPresentation = new BattleDefenderPresentationScope(representative, _host.IsTurnQteCombatInputActive);
+                defenderPresentation = new BattleDefenderPresentationScope(representative, _host.IsTurnQteCombatInputActive, enemy);
                 yield return defenderPresentation.Enter();
                 if (!defenderPresentation.IsStaged || !_host.IsTurnQteCombatInputActive() || representative == null || !representative.IsAlive)
                     yield break;
@@ -503,7 +504,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                      },
                      onAttackAnimationStart: () => enemy.PlayBattleAnim(EnemyCharacter.HashAttack),
                      attackAnimationLeadTime: enemy.BasicAttackImpactLeadTime,
-                     attacker: enemy);
+                     attacker: enemy, useMeleeParryAssistance: false);
 
                 if (qteExecution == null)
                 {
@@ -842,7 +843,6 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         // 넘어가지 않도록 턴 경계에서 모든 전열 버퍼를 비웁니다.
         ClearDefenseInputBuffers();
         _host.ResetAllPlayerBattlePoses();
-        CameraController.Instance?.ResetCamera(0.4f);
         CancelActiveCameraPresentation();
         _host.BroadcastVisibleTurnQueue();
 
@@ -879,25 +879,31 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         }
 
         BattleCameraActionScope cameraScope = BeginActiveCameraScope(actor.transform, target.transform);
+        var duelPresentation = new BattleDefenderPresentationScope(actor, _host.IsTurnQteCombatInputActive, target);
         try
         {
+            yield return duelPresentation.Enter();
+            if (!duelPresentation.IsStaged || !_host.IsTurnQteCombatInputActive()
+                || actor == null || !actor.IsAlive || target == null || !target.IsAlive) yield break;
             PositionManager pm = PositionManager.Instance;
-            // 공격 위치는 고정 오프셋이 아니라 대상의 Front 피벗을 기준으로
-            // 계산합니다. 캐릭터 크기/방향이 달라도 타겟 앞에 정확히 멈추며,
-            // 도착 뒤에는 별도 돌진 없이 제자리 공격만 재생합니다.
+            // 중앙 교전 좌표를 우선 사용하고, CenterPos가 없는 기존 호스트만 Front로 접근합니다.
             Vector3 frontPos = pm != null
                 ? pm.GetAttackStagingPos(actor, target)
                 : target.GetPivot(CharacterPivotId.Front).position;
+            if (duelPresentation.TryGetStagingPosition(actor, out Vector3 staged)) frontPos = staged;
 
             actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
             _host.SetActorForeground(actor, true);
             BattleManager.SetGhostTrail(actor, true);
-            yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
+            if (!duelPresentation.IsPaired)
+                yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
 
             // 타겟 앞에서 준비 자세를 한 번 보여준 뒤 제자리에서 공격합니다.
             // 공격 중 추가 돌진/뒤쪽 이동은 제거해 피격 프레임과 모션을 일치시킵니다.
             actor.PlayAttackReady();
             yield return new WaitForSecondsRealtime(PlayerAttackReadyDuration);
+            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
+            if (target == null || !target.IsAlive) { CompleteAction(actor); yield break; }
 
             actor.PlayBasicAttackEffect();
             actor.PlayBattleAnim(PlayerCharacter.HashAttack);
@@ -906,6 +912,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             // 슬로모션이나 히트스톱이 남아 있어도 공격 모션만 먼저 진행되어
             // 피격/피해가 뒤늦게 발생하지 않도록 unscaled 대기를 사용합니다.
             yield return new WaitForSecondsRealtime(Mathf.Max(0f, _host.PlayerAttackHitDelay));
+            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
+            if (target == null || !target.IsAlive) { CompleteAction(actor); yield break; }
 
             int previousHp = target.CurrentHP;
             DamageResult damageResult = target.TakeDamage(
@@ -914,24 +922,26 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 actor);
             int dmg = damageResult.FinalDamage;
             CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.75f, true);
-            _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
-            _host.EmitDamageNotificationOnly(actor, target, dmg, false);
-            _host.PublishEnemyDefeatedScenarioEvent(target, actor);
+            if (target != null)
+            {
+                _host.PublishEnemyHpScenarioEvent(target, previousHp, target.CurrentHP, target.MaxHP, BattleRuleTiming.AfterCurrentAction);
+                _host.EmitDamageNotificationOnly(actor, target, dmg, false);
+                _host.PublishEnemyDefeatedScenarioEvent(target, actor);
+            }
 
             yield return new WaitForSecondsRealtime(Mathf.Max(0f, _host.PlayerAttackRecoverDelay));
+            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
             yield return _host.StartManagedCoroutine(actor.WaitForAttackAnimationComplete());
+            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
             BattleManager.SetGhostTrail(actor, false);
             _host.SetActorForeground(actor, false);
 
-            int idx = FindPlayerIndex(actor);
-            actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
-            BattleManager.SetGhostTrail(actor, true);
-            Vector3 returnPos = pm != null ? pm.GetPlayerDefaultPos(idx) : actor.transform.position;
-            yield return actor.transform.DOMove(returnPos, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
+            yield return duelPresentation.Return();
+            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
             BattleManager.SetGhostTrail(actor, false);
 
             actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-            CameraController.Instance?.ResetCamera(0.4f);
+            EndActiveCameraScope(cameraScope);
 
             yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
             yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentAction));
@@ -939,6 +949,12 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         }
         finally
         {
+            duelPresentation.Dispose();
+            if (actor != null)
+            {
+                BattleManager.SetGhostTrail(actor, false);
+                _host.SetActorForeground(actor, false);
+            }
             EndActiveCameraScope(cameraScope);
         }
     }
@@ -1043,12 +1059,14 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             if (!context.CanContinueExecution)
                 yield break;
 
+            yield return context.ReturnDefender();
+            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
             if (Vector3.Distance(actor.transform.position, originalPos) > 0.1f)
             {
                 actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
                 _host.SetActorForeground(actor, true);
                 BattleManager.SetGhostTrail(actor, true);
-                yield return actor.transform.DOMove(originalPos, 0.3f).SetEase(Ease.OutBack).WaitForCompletion();
+                yield return actor.transform.DOMove(originalPos, 0.3f).SetEase(Ease.OutQuad).WaitForCompletion();
                 BattleManager.SetGhostTrail(actor, false);
                 _host.SetActorForeground(actor, false);
             }
@@ -1058,7 +1076,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
             _host.PublishSkillCompletedScenarioEvent(skill, actor);
             actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-            CameraController.Instance?.ResetCamera(0.4f);
+            EndActiveCameraScope(cameraScope);
             yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
             yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentSkill));
             CompleteAction(actor);
@@ -1070,6 +1088,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             {
                 QTEManager.Instance?.Cancel(context.ActiveSkillQte);
             }
+            context?.CancelPendingDefenseReaction();
             EndActiveCameraScope(cameraScope);
         }
     }

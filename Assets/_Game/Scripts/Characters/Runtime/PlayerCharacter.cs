@@ -53,6 +53,7 @@ public class PlayerCharacter : CharacterBase
 
     private void OnDisable()
     {
+        EndRapidAttack();
         _hitReactionActive = false;
         if (_spriteRenderer != null)
             _spriteRenderer.DOKill();
@@ -101,6 +102,7 @@ public class PlayerCharacter : CharacterBase
     {
         if (_animator == null || !HasParameter(triggerHash)) return;
         if (!IsAlive && triggerHash != HashDie) return;
+        EndRapidAttack();
         if (_lastBattleTrigger != 0)
             _animator.ResetTrigger(_lastBattleTrigger);
         _animator.SetTrigger(triggerHash);
@@ -110,6 +112,52 @@ public class PlayerCharacter : CharacterBase
 
     private int _lastBattleTrigger;
     public uint BattleAnimationVersion { get; private set; }
+
+    private bool _rapidAttackActive;
+    private float _rapidAttackOriginalSpeed;
+    private float _rapidAttackCycleSpeed;
+    private float _rapidAttackOwnedSpeed;
+
+    // 고속 연격은 Trigger를 쌓지 않고 기존 attack 상태를 재생합니다.
+    // 다른 전투 애니메이션(피격/사망 포함)이 요청되면 즉시 원래 속도를 돌려줍니다.
+    public void BeginRapidAttack(float cycleDuration)
+    {
+        EndRapidAttack();
+        if (_animator == null || !_animator.isActiveAndEnabled || !IsAlive
+            || !_animator.HasState(0, HashAttackState)) return;
+        _rapidAttackOriginalSpeed = _animator.speed;
+        if (_lastBattleTrigger != 0) _animator.ResetTrigger(_lastBattleTrigger);
+        _lastBattleTrigger = 0;
+        _animator.Play(HashAttackState, 0, 0f);
+        _animator.Update(0f);
+        _rapidAttackCycleSpeed = Mathf.Clamp(_animator.GetCurrentAnimatorStateInfo(0).length
+            / Mathf.Max(0.05f, cycleDuration), 0.1f, 30f);
+        _animator.speed = _rapidAttackOwnedSpeed = _rapidAttackCycleSpeed;
+        _rapidAttackActive = true;
+        BattleAnimationVersion++;
+    }
+
+    public void RestartRapidAttack()
+    {
+        if (!_rapidAttackActive || _animator == null || !IsAlive) return;
+        _animator.Play(HashAttackState, 0, 0f);
+    }
+
+    public void SetRapidAttackPaused(bool paused)
+    {
+        if (!_rapidAttackActive || _animator == null) return;
+        // 외부 시스템이 속도를 소유한 경우 덮어쓰지 않습니다.
+        if (!Mathf.Approximately(_animator.speed, _rapidAttackOwnedSpeed)) return;
+        _animator.speed = _rapidAttackOwnedSpeed = paused ? 0f : _rapidAttackCycleSpeed;
+    }
+
+    public void EndRapidAttack()
+    {
+        if (!_rapidAttackActive) return;
+        if (_animator != null && Mathf.Approximately(_animator.speed, _rapidAttackOwnedSpeed))
+            _animator.speed = _rapidAttackOriginalSpeed;
+        _rapidAttackActive = false;
+    }
 
     /// <summary>공격 상태가 끝나거나 다른 상태로 중단될 때까지 기다립니다.</summary>
     public IEnumerator WaitForAttackAnimationComplete(float maxWait = 2f)
