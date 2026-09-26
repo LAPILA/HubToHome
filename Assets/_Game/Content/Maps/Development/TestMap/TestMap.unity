@@ -4943,12 +4943,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 689544152693972139, guid: 63b9df99ac0555b4c8b5838f6cc9d0a6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 6860375591436671199, guid: 63b9df99ac0555b4c8b5838f6cc9d0a6, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 0}
-    - targetCorrespondingSourceObject: {fileID: 2110312895392213562, guid: 63b9df99ac0555b4c8b5838f6cc9d0a6, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 63b9df99ac0555b4c8b5838f6cc9d0a6, type: 3}
 --- !u!4 &521670347 stripped
 Transform:
@@ -8431,6 +8425,18 @@ PrefabInstance:
     - target: {fileID: 2820754610113687333, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: orthographic size
       value: 3.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 2820754610113687333, guid: c0515653d43070348953a475e02fc95f, type: 3}
+      propertyPath: m_NormalizedViewPortRect.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2820754610113687333, guid: c0515653d43070348953a475e02fc95f, type: 3}
+      propertyPath: m_NormalizedViewPortRect.width
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2820754610113687333, guid: c0515653d43070348953a475e02fc95f, type: 3}
+      propertyPath: m_NormalizedViewPortRect.height
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5271908229650173906, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: m_LocalPosition.x
