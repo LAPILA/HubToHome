@@ -65,7 +65,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("우측 상단에 표시될 턴 대기열 아이콘의 최대 개수")]
     [SerializeField] private int _maxTurnQueueSize = 8;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("실제로 UI에 노출할 턴 대기열 아이콘 수")]
-    [SerializeField] private int _visibleTurnQueueSize = 4;
+    [SerializeField] private int _visibleTurnQueueSize = 6;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("도망 기본 성공 확률")]
     [SerializeField, Range(0f, 1f)] private float _runSuccessChance = 0.6f;
 

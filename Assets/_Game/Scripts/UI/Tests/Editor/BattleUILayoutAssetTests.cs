@@ -9,7 +9,7 @@ public sealed class BattleUILayoutAssetTests
         "Assets/_Game/Content/Battle/Prefabs/System/SeamlessBattleHost.prefab";
 
     [Test]
-    public void TurnQueueMaskKeepsPortraitsInsideExpandedClipBounds()
+    public void TurnQueueMaskMatchesSixPixelAlignedSlots()
     {
         GameObject host = LoadPrefab(SharedHostPath);
         Transform panel = FindDescendant(host.transform, "TurnQueuePanel");
@@ -18,8 +18,14 @@ public sealed class BattleUILayoutAssetTests
 
         RectMask2D mask = panel.GetComponent<RectMask2D>();
         Assert.That(mask, Is.Not.Null, "TurnQueuePanel에 RectMask2D가 필요합니다.");
-        Assert.That(mask.padding, Is.EqualTo(new Vector4(-100f, -130f, 0f, -100f)));
-        Assert.That(mask.softness, Is.EqualTo(new Vector2Int(10, 10)));
+        Assert.That(mask.padding, Is.EqualTo(Vector4.zero));
+        Assert.That(mask.softness, Is.EqualTo(Vector2Int.zero));
+        Assert.That(((RectTransform)panel).sizeDelta, Is.EqualTo(new Vector2(246f, 36f)));
+        GridLayoutGroup layout = panel.GetComponent<GridLayoutGroup>();
+        Assert.That(layout, Is.Not.Null);
+        Assert.That(layout.spacing, Is.EqualTo(new Vector2(6f, 0f)));
+        Assert.That(layout.cellSize, Is.EqualTo(new Vector2(36f, 36f)));
+        Assert.That(layout.constraintCount, Is.EqualTo(6));
     }
 
     [TestCase("Assets/_Game/Content/Characters/Prefabs/Player/Player_Base.prefab")]

@@ -84,7 +84,7 @@ MonoBehaviour:
         AttackAnimationLeadTime: 0.65
         ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
         ImpactCueLeadTime: 0.3
-        ImpactCuePivotName: Top
+        ImpactCuePivotName: Center
         AttackAnimDelay: 0
     - rid: 2817657174576595059
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
@@ -145,7 +145,7 @@ MonoBehaviour:
         AttackAnimationLeadTime: 0.65
         ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
         ImpactCueLeadTime: 0.3
-        ImpactCuePivotName: Top
+        ImpactCuePivotName: Center
         AttackAnimDelay: 0
     - rid: 2817657174576595063
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
@@ -206,7 +206,7 @@ MonoBehaviour:
         AttackAnimationLeadTime: 0.65
         ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
         ImpactCueLeadTime: 0.3
-        ImpactCuePivotName: Top
+        ImpactCuePivotName: Center
         AttackAnimDelay: 0
     - rid: 2817657174576595067
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}

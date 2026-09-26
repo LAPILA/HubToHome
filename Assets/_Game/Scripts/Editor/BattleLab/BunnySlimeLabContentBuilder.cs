@@ -8,7 +8,7 @@ using UnityEngine;
 public static class BunnySlimeLabContentBuilder
 {
     public const string SourceEnemyPath = "Assets/_Game/Content/Characters/EnemyDB/tests_BunnySlime/tests_Enemy_BunnySlime.asset";
-    private const string PlayerPath = "Assets/_Game/Content/Characters/AllyDB/PlayerDB.asset";
+    private const string PlayerPath = "Assets/_Game/Content/Characters/AllyDB/WizzelDB.asset";
     private const string CatalogPath = "Assets/_Game/Resources/HubToHome/GameContentCatalog.asset";
     private const string AllySkills = "Assets/_Game/Content/Skills/Ally/tests_Player/tests_Skill_";
     private const string SampleItems = "Assets/_Game/Content/Items/Consumables/tests_Samples/tests_";
@@ -119,6 +119,7 @@ public static class BunnySlimeLabContentBuilder
                 value.DisplayNameMode = CharacterDisplayNameMode.StaticData;
                 value.Portrait = player.Portrait;
                 value.TurnOrderPortrait = player.TurnOrderPortrait;
+                value.BattleLargePortrait = player.BattleLargePortrait;
                 value.BattlePrefab = player.BattlePrefab;
                 value.BattleSymbolColor = colors[index];
                 value.GrowthProfile = player.GrowthProfile;
@@ -207,7 +208,7 @@ public static class BunnySlimeLabContentBuilder
                     AttackAnimTriggerName = hits > 1 ? "LabComboStrike" : aoe ? "LabBurst" : "LabStrike",
                     AttackAnimationLeadTime = window,
                     ImpactCuePrefab = Require<GameObject>("Assets/_Game/Presentation/Custom_VFX/Prefabs/Telegraph.prefab"),
-                    ImpactCuePivotName = CharacterPivotId.Top,
+                    ImpactCuePivotName = CharacterPivotId.Center,
                     AttackAnimDelay = 0,
                     DelayAfter = 0,
                     OverrideTimingProfile = true,
@@ -244,7 +245,7 @@ public static class BunnySlimeLabContentBuilder
                     TelegraphAnimatorTriggerName = "Telegraph", TelegraphDuration = i == 0 ? .35f : .10f,
                     TimeWindow = flight, AttackAnimTriggerName = "Skill", AttackAnimationLeadTime = flight,
                     ImpactCuePrefab = Require<GameObject>("Assets/_Game/Presentation/Custom_VFX/Prefabs/Telegraph.prefab"),
-                    ImpactCuePivotName = CharacterPivotId.Top, AttackAnimDelay = 0, DelayAfter = 0,
+                    ImpactCuePivotName = CharacterPivotId.Center, AttackAnimDelay = 0, DelayAfter = 0,
                     OverrideTimingProfile = true, TimingProfile = new DefenseTimingProfile(.24f, .28f, .38f),
                     ShakeOnFail = false
                 });

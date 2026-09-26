@@ -24,7 +24,17 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private Transform _turnQueueContainer;
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private GameObject _turnIconPrefab;
 
-    // 🚨 체력창 패널 본체를 제어하기 위한 변수 추가
+    [BoxGroup("HUD")] [SerializeField] private GameObject _hudDecoration;
+    [BoxGroup("HUD")] [SerializeField] private Image _largePortrait;
+    [BoxGroup("HUD")] [SerializeField] private GameObject _turnQueueTitle;
+    [BoxGroup("HUD")] [SerializeField] private BattleInputHintView _inputHints;
+    [BoxGroup("HUD")] [SerializeField] private BattleStatusIconDefinition[] _statusIcons;
+    [BoxGroup("HUD"), Tooltip("표시 순서만 앞에 놓습니다. 실제 편성과 대상 인덱스는 변경하지 않습니다.")]
+    [SerializeField] private string _leadCharacterId = "player_001";
+    [BoxGroup("HUD"), Tooltip("우선 표시할 캐릭터 DB. 연결하면 이름/ID가 바뀌어도 같은 자산을 기준으로 표시합니다.")]
+    [SerializeField] private CharacterData _leadCharacterData;
+
+    // 고정 하단 파티 영역
     [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private RectTransform _partyStatusPanel;
     [BoxGroup("Party Status"), LabelWidth(120)] [SerializeField] private PartySlotUI[] _partySlots;
 
@@ -78,6 +88,11 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
+    private readonly List<PlayerCharacter> _displayParty = new List<PlayerCharacter>(3);
+    private readonly List<BattleTurnQueueIcon> _turnIcons = new List<BattleTurnQueueIcon>(6);
+    private PlayerCharacter _portraitActor;
+    private int _targetingStartedFrame = -1;
+    private bool _enemyTurn;
     private readonly Dictionary<EnemyCharacter, Transform> _enemyTopPivots = new Dictionary<EnemyCharacter, Transform>();
     private string _activeGameModuleId = BattleTurnQteGameModuleRuntime.Id;
     private bool _acceptsTurnQteInput = true;
@@ -166,12 +181,18 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         BindBattleEvents();
     }
 
-    private void OnEnable() => BindBattleEvents();
+    private void OnEnable()
+    {
+        BindBattleEvents();
+        if (_party != null) BindPartySlots(_party);
+    }
 
     private void OnDisable()
     {
         UnbindBattleEvents();
         ReleasePresentationTweens();
+        if (_partySlots != null)
+            foreach (PartySlotUI slot in _partySlots) slot?.Unbind();
     }
 
     private void BindBattleEvents()
@@ -202,6 +223,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             Instance = null;
 
         ReleasePresentationTweens();
+        if (_partySlots != null)
+            foreach (PartySlotUI slot in _partySlots) slot?.Unbind();
         if (_damagePopupPresenter != null) _damagePopupPresenter.ReleaseAll();
         UnbindBattleEvents();
     }
@@ -284,7 +307,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     #region [ Targeting System ]
     private void HandleTargetingInput()
     {
-        if (!_isTargetingMode) return;
+        if (!_isTargetingMode || Time.frameCount <= _targetingStartedFrame || GameInput.BattleUIInputConsumed) return;
         if (!_acceptsTurnQteInput) return;
         if (IsNarrationBlockingInput()) return;
 
@@ -300,11 +323,15 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             NavigateTarget(1);
         else if (confirm)
         {
+            GameInput.ConsumeBattleUIInput();
+            _battleMenuUI?.PlayConfirmSfx();
             ExitTargetingMode();
             BattleManager.Instance.ConfirmTargetAndExecute(_selectedTargetIndex);
         }
         else if (cancel)
         {
+            GameInput.ConsumeBattleUIInput();
+            _battleMenuUI?.PlayCancelSfx();
             ExitTargetingMode();
             BattleManager.Instance.CancelActionSelection(); // 타겟팅 취소 시
         }
@@ -314,6 +341,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         int maxTargets = _isAllyTargeting ? _party.Count : _enemies.Count;
         if (maxTargets == 0) return;
+        int previous = _selectedTargetIndex;
 
         int loopCount = 0;
         do
@@ -321,10 +349,14 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             _selectedTargetIndex = (_selectedTargetIndex + direction + maxTargets) % maxTargets;
             loopCount++;
 
-            bool isAlive = _isAllyTargeting ? _party[_selectedTargetIndex].IsAlive : _enemies[_selectedTargetIndex].IsAlive;
+            bool isAlive = _isAllyTargeting
+                ? _party[_selectedTargetIndex] != null && _party[_selectedTargetIndex].IsAlive
+                : _enemies[_selectedTargetIndex] != null && _enemies[_selectedTargetIndex].IsAlive;
             if (isAlive) break;
 
         } while (loopCount < maxTargets);
+        if (_selectedTargetIndex != previous) _battleMenuUI?.PlayMoveSfx();
+        RefreshAllyTargetHighlight();
     }
 
     public void BindWorldCamera(Camera worldCamera)
@@ -425,6 +457,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void ExitTargetingMode()
     {
         _isTargetingMode = false;
+        ShowEnemyTarget(null);
         if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
     }
 
@@ -450,6 +483,12 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _narrationUI?.Clear();
         _battleMenuUI?.SetRunEnabled(BattleManager.Instance == null || BattleManager.Instance.AllowEscape);
         BindPartySlots(party);
+        _enemyTurn = false;
+        SetPortraitActor(_displayParty.Count > 0 ? _displayParty[0] : null);
+        _battleMenuUI?.SetActor(_portraitActor);
+        _battleMenuUI?.SetDetailsVisible(true);
+        _battleMenuUI?.SetCommandInputEnabled(false);
+        if (_hudDecoration != null) _hudDecoration.SetActive(true);
 
         _enemyTopPivots.Clear();
         foreach (var enemy in enemies)
@@ -462,72 +501,98 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         ExitTargetingMode();
         _selectedTargetIndex = 0;
-        _battleMenuUI?.HideImmediate();
+        _battleMenuUI?.SetCommandInputEnabled(false);
         ResetPartyPanelPosition(0f);
         BindPartySlots(party);
+        SetPortraitActor(_displayParty.Count > 0 ? _displayParty[0] : null);
+        _battleMenuUI?.SetActor(_portraitActor);
     }
 
     private void BindPartySlots(List<PlayerCharacter> party)
     {
         _party = party;
-        if (_partySlots == null)
-            return;
-
-        int partyCount = party != null ? party.Count : 0;
+        _displayParty.Clear();
+        if (party != null)
+        {
+            for (int i = 0; i < party.Count; i++)
+                if (party[i] != null && party[i].CharacterData != null
+                    && (_leadCharacterData != null ? party[i].CharacterData == _leadCharacterData
+                        : party[i].CharacterData.CharacterID == _leadCharacterId))
+                { _displayParty.Add(party[i]); break; }
+            for (int i = 0; i < party.Count && _displayParty.Count < 3; i++)
+                if (party[i] != null && !_displayParty.Contains(party[i])) _displayParty.Add(party[i]);
+        }
+        if (_partySlots == null) return;
         for (int i = 0; i < _partySlots.Length; i++)
         {
             PartySlotUI slot = _partySlots[i];
-            if (slot == null)
-                continue;
-
-            slot.SetHighlight(false);
-            if (i < partyCount && party[i] != null)
-                slot.Init(party[i]);
-            else
-                slot.Hide();
+            if (slot == null) continue;
+            slot.SetStatusDefinitions(_statusIcons);
+            if (i < _displayParty.Count) slot.Init(_displayParty[i]);
+            else slot.Hide();
         }
     }
 
     private void HandleStateChanged(BattleState state)
     {
-        if (!_acceptsTurnQteInput && state != BattleState.Init)
+        if (state == BattleState.BattleEnd)
         {
             _battleMenuUI?.HideImmediate();
+            _battleMenuUI?.SetDetailsVisible(false);
+            if (_hudDecoration != null) _hudDecoration.SetActive(false);
             ExitTargetingMode();
-            ResetPartyPanelPosition(0f);
+            return;
+        }
+        if (!_acceptsTurnQteInput || _isScenarioCinematicMode)
+        {
+            _battleMenuUI?.HideImmediate();
+            _battleMenuUI?.SetDetailsVisible(false);
+            ExitTargetingMode();
             return;
         }
 
-        switch (state)
-        {
-            case BattleState.Init:
-                SetTurnLabel("<wave>전투 시작!</wave>");
-                ExitTargetingMode();
-                _battleMenuUI?.HideImmediate();
-                ResetPartyPanelPosition(0f); // 🚨 초기화 시 즉시 원래 자리로
-                break;
+        if (state == BattleState.EnemyAction) _enemyTurn = true;
+        else if (state == BattleState.PlayerActionSelect || state == BattleState.Init) _enemyTurn = false;
+        bool command = state == BattleState.PlayerActionSelect && !_isTargetingMode;
+        if (state != BattleState.PlayerActionSelect) ExitTargetingMode();
+        _battleMenuUI?.SetCommandInputEnabled(command);
+        _battleMenuUI?.SetDetailsVisible(true);
+        if (_hudDecoration != null) _hudDecoration.SetActive(true);
+        if (_inputHints != null)
+            _inputHints.SetContext(_enemyTurn ? BattleHintContext.Defense
+                : _isTargetingMode ? BattleHintContext.Target : BattleHintContext.Menu);
+        if (_enemyTurn && _partySlots != null)
+            foreach (PartySlotUI slot in _partySlots) slot?.SetHighlight(false);
+        if (state == BattleState.Init) SetTurnLabel("전투 시작!");
+    }
 
-            case BattleState.PlayerActionSelect:
-                if (_battleMenuUI != null)
-                {
-                    _battleMenuUI.gameObject.SetActive(true);
-                    _battleMenuUI.Show();
-                }
-                break;
+    private void SetPortraitActor(PlayerCharacter actor)
+    {
+        _portraitActor = actor;
+        if (_largePortrait == null) return;
+        CharacterData data = actor != null ? actor.CharacterData : null;
+        _largePortrait.sprite = data != null && data.BattleLargePortrait != null
+            ? data.BattleLargePortrait : actor != null ? actor.BattlePortrait : null;
+        _largePortrait.enabled = _largePortrait.sprite != null;
+        _largePortrait.preserveAspect = true;
+        _largePortrait.color = Color.white;
+    }
 
-            case BattleState.ActionExecute:
-            case BattleState.EnemyAction:
-                _battleMenuUI?.Hide();
-                ExitTargetingMode();
-                ResetPartyPanelPosition(); // 🚨 적 턴이거나 공격 실행 시 체력창 원상복구!
-                break;
-        }
+    private void RefreshAllyTargetHighlight()
+    {
+        CharacterBase selected = _isTargetingMode && _isAllyTargeting && _party != null
+            && _selectedTargetIndex >= 0 && _selectedTargetIndex < _party.Count
+            ? _party[_selectedTargetIndex] : null;
+        ShowEnemyTarget(selected);
     }
 
     private void HandleTargetSelectionStarted(PlayerMenuAction action)
     {
         _isTargetingMode = true;
+        _targetingStartedFrame = Time.frameCount;
         _isAllyTargeting = false;
+        _battleMenuUI?.SetCommandInputEnabled(false);
+        if (_inputHints != null) _inputHints.SetContext(BattleHintContext.Target);
 
         var bm = BattleManager.Instance;
 
@@ -537,6 +602,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             _isAllyTargeting = (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly);
 
         _selectedTargetIndex = GetFirstAliveTargetIndex();
+        RefreshAllyTargetHighlight();
 
         if (_targetCursor != null)
         {
@@ -564,8 +630,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
         if (target is PlayerCharacter pc)
         {
-            int idx = _party?.IndexOf(pc) ?? -1;
-            if (idx >= 0 && idx < _partySlots.Length)
+            int idx = _displayParty.IndexOf(pc);
+            if (_partySlots != null && idx >= 0 && idx < _partySlots.Length)
                 _partySlots[idx].RefreshHP(pc.CurrentHP, pc.MaxHP, _barTweenDuration, Ease.OutQuad);
 
             if (pc.MaxHP > 0 && pc.CurrentHP > 0 && (float)pc.CurrentHP / pc.MaxHP <= 0.25f)
@@ -586,55 +652,37 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleAPChanged(PlayerCharacter player, int newAP)
     {
-        int idx = _party?.IndexOf(player) ?? -1;
-        if (idx >= 0 && idx < _partySlots.Length)
+        int idx = _displayParty.IndexOf(player);
+        if (_partySlots != null && idx >= 0 && idx < _partySlots.Length)
             _partySlots[idx].RefreshAP(newAP, player.MaxAP, _barTweenDuration, Ease.OutQuad);
     }
 
     private void HandleTurnQueueUpdated(List<CharacterBase> queue)
     {
-        foreach (Transform child in _turnQueueContainer)
+        if (_turnQueueContainer == null || _turnIconPrefab == null) return;
+        int displayed = 0;
+        if (queue != null)
         {
-            if (child != null)
+            for (int i = 0; i < queue.Count && displayed < 6; i++)
             {
-                child.DOKill();
-                Destroy(child.gameObject);
+                CharacterBase actor = queue[i];
+                if (actor == null) continue;
+                if (displayed >= _turnIcons.Count)
+                {
+                    GameObject go = Instantiate(_turnIconPrefab, _turnQueueContainer);
+                    _turnIcons.Add(go.GetComponent<BattleTurnQueueIcon>());
+                }
+                BattleTurnQueueIcon icon = _turnIcons[displayed];
+                if (icon != null)
+                {
+                    icon.gameObject.SetActive(true);
+                    icon.Bind(GetTurnOrderPortrait(actor), GetActorDisplayName(actor), displayed == 0);
+                }
+                displayed++;
             }
         }
-
-        foreach (var actor in queue)
-        {
-            if (actor == null) continue;
-            var go = Instantiate(_turnIconPrefab, _turnQueueContainer);
-
-            UnityEngine.UI.Image img = go.GetComponentInChildren<UnityEngine.UI.Image>(true);
-            if (img != null)
-            {
-                Sprite portrait = GetTurnOrderPortrait(actor);
-                if (portrait != null)
-                {
-                    img.sprite = portrait;
-                    img.color = Color.white;
-                    img.preserveAspect = true;
-                    img.enabled = true;
-                }
-                else
-                {
-                    img.color = actor is PlayerCharacter ? Color.cyan : Color.red;
-                    img.enabled = true;
-                }
-            }
-
-            if (go.GetComponentInChildren<TMPro.TextMeshProUGUI>() is var txt && txt != null)
-                txt.text = GetActorDisplayName(actor);
-
-            if (go != null)
-            {
-                go.transform.DOKill();
-                go.transform.localScale = Vector3.zero;
-                go.transform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack).SetLink(go);
-            }
-        }
+        for (int i = displayed; i < _turnIcons.Count; i++)
+            if (_turnIcons[i] != null) _turnIcons[i].gameObject.SetActive(false);
     }
 
     public void ShowEnemyTarget(CharacterBase target, bool partyWide = false)
@@ -642,25 +690,35 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (_partySlots == null) return;
         for (int i = 0; i < _partySlots.Length; i++)
         {
-            if (_partySlots[i] == null) continue;
-            bool selected = target != null && _party != null && i < _party.Count
-                && _party[i] != null && _party[i].IsAlive && (partyWide || _party[i] == target);
-            _partySlots[i].SetHighlight(selected);
+            bool selected = target != null && i < _displayParty.Count
+                && _displayParty[i] != null && _displayParty[i].IsAlive
+                && (partyWide || _displayParty[i] == target);
+            _partySlots[i]?.SetTargeted(selected);
         }
     }
 
     private void HandlePlayerTurnStarted(PlayerCharacter player)
     {
+        _enemyTurn = false;
         SetTurnLabel($"{player.DisplayName} 턴");
+        SetPortraitActor(player);
         _battleMenuUI?.SetActor(player);
         _battleMenuUI?.SetRunEnabled(BattleManager.Instance == null || BattleManager.Instance.AllowEscape);
-
-        for (int i = 0; i < _partySlots.Length; i++)
-            _partySlots[i].SetHighlight(_party != null && i < _party.Count && _party[i] == player);
+        if (_partySlots != null)
+            for (int i = 0; i < _partySlots.Length; i++)
+            {
+                _partySlots[i]?.SetHighlight(i < _displayParty.Count && _displayParty[i] == player);
+                _partySlots[i]?.SetTargeted(false);
+            }
     }
 
     private void HandleEnemyActionStarted(EnemyCharacter enemy, EnemyAttackType attackType)
     {
+        _enemyTurn = true;
+        _battleMenuUI?.SetCommandInputEnabled(false);
+        if (_inputHints != null) _inputHints.SetContext(BattleHintContext.Defense);
+        if (_partySlots != null)
+            foreach (PartySlotUI slot in _partySlots) slot?.SetHighlight(false);
         bool useActiveDefense = QTEManager.Instance != null && QTEManager.Instance.UseActiveDefense;
         bool useTimedGuard = QTEManager.Instance != null && QTEManager.Instance.UseTimedGuard;
         string attackName = useActiveDefense ? attackType switch
@@ -696,6 +754,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
         _battleMenuUI?.HideImmediate();
+        _battleMenuUI?.SetDetailsVisible(false);
+        if (_hudDecoration != null) _hudDecoration.SetActive(false);
         ResetPartyPanelPosition();
         if (victory) _narrationUI?.Clear();
     }
@@ -734,6 +794,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _activeGameModuleId = BattleTurnQteGameModuleRuntime.Id;
         _acceptsTurnQteInput = true;
         _battleMenuUI?.ResumeAfterModuleSwitch();
+        if (BattleManager.Instance != null) HandleStateChanged(BattleManager.Instance.CurrentState);
         NormalizeForCurrentResolution();
     }
 
@@ -749,6 +810,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (acceptsTurnQteInput)
         {
             _battleMenuUI?.ResumeAfterModuleSwitch();
+            if (BattleManager.Instance != null) HandleStateChanged(BattleManager.Instance.CurrentState);
         }
         else
         {
@@ -782,6 +844,9 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (active) ReleasePresentationTweens();
         _isScenarioCinematicMode = active;
         ExitTargetingMode();
+        if (_hudDecoration != null) _hudDecoration.SetActive(!active);
+        if (_turnQueueTitle != null) _turnQueueTitle.SetActive(!active);
+        _battleMenuUI?.SetDetailsVisible(!active);
 
         if (_battleMenuUI != null)
         {
@@ -834,6 +899,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
                 _narrationUI.gameObject.SetActive(true);
             }
         }
+        if (!active && BattleManager.Instance != null)
+            HandleStateChanged(BattleManager.Instance.CurrentState);
     }
 
     public Sequence PlayScenarioUiFlash(Color color, float alpha, float duration, object tweenTarget = null)

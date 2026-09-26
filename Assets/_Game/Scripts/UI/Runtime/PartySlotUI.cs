@@ -19,6 +19,15 @@ public class PartySlotUI
     [HorizontalGroup("Row3"), LabelWidth(60)] public TextMeshProUGUI APText;
     [HorizontalGroup("Row4"), LabelWidth(60)] public GameObject Root;
 
+    public Image RowBackground;
+    public Image IdentityStrip;
+    public Image TargetBorder;
+    public BattleStatusIconStrip StatusIcons;
+    [Tooltip("텍스처 틴트 없이 대표색을 그대로 사용합니다. 막대 RectTransform의 왼쪽 피벗을 유지하세요.")]
+    public bool SolidColorBars;
+
+    private PlayerCharacter _player;
+    private BattleStatusIconDefinition[] _statusDefinitions;
     private int _displayHP;
     private int _displayAP;
     private int _targetHP, _maxHP, _targetAP, _maxAP;
@@ -35,8 +44,13 @@ public class PartySlotUI
 
     public void Init(PlayerCharacter player)
     {
+        Unbind();
         ReleaseTweens();
         if (player == null) { Hide(); return; }
+        _player = player;
+        _player.OnHPChanged += HandleHPChanged;
+        _player.OnAPChanged += HandleAPChanged;
+        _player.OnStatusEffectsChanged += HandleStatusChanged;
         if (Root != null) Root.SetActive(true);
         if (NameText != null) NameText.text = player.DisplayName;
         if (Portrait != null)
@@ -46,14 +60,50 @@ public class PartySlotUI
             Portrait.preserveAspect = true;
             Portrait.color = Color.white;
         }
+        if (HPFill != null) HPFill.color = player.BattleSymbolColor;
+        if (IdentityStrip != null) IdentityStrip.color = player.BattleSymbolColor;
+        if (APFill != null) APFill.color = new Color(1f, 0.87f, 0.35f);
+        SetHighlight(false);
+        SetTargeted(false);
+        RefreshStatus();
         RefreshHP(player.CurrentHP, player.MaxHP, 0f, Ease.Linear);
         RefreshAP(player.CurrentAP, player.MaxAP, 0f, Ease.Linear);
     }
 
     public void Hide()
     {
+        Unbind();
         ReleaseTweens();
         if (Root != null) Root.SetActive(false);
+    }
+
+    public void SetStatusDefinitions(BattleStatusIconDefinition[] definitions)
+    {
+        _statusDefinitions = definitions;
+        RefreshStatus();
+    }
+
+    public void Unbind()
+    {
+        // ReferenceEquals: 이미 파괴된 Unity 객체에도 C# 이벤트 구독을 해제합니다.
+        if (ReferenceEquals(_player, null)) return;
+        _player.OnHPChanged -= HandleHPChanged;
+        _player.OnAPChanged -= HandleAPChanged;
+        _player.OnStatusEffectsChanged -= HandleStatusChanged;
+        _player = null;
+    }
+
+    private void HandleHPChanged(CharacterBase actor, int value, int max) => RefreshHP(value, max, 0.2f, Ease.OutQuad);
+    private void HandleAPChanged(CharacterBase actor, int value, int max) => RefreshAP(value, max, 0.2f, Ease.OutQuad);
+    private void HandleStatusChanged(CharacterBase actor) => RefreshStatus();
+    private void RefreshStatus()
+    {
+        if (StatusIcons != null) StatusIcons.Refresh(_player != null ? _player.ActiveStatusEffects : null, _statusDefinitions);
+    }
+
+    public void SetTargeted(bool active)
+    {
+        if (TargetBorder != null) TargetBorder.enabled = active;
     }
 
     public void ReleaseTweens()
@@ -72,7 +122,19 @@ public class PartySlotUI
 
     public void SetHighlight(bool active)
     {
-        if (Portrait == null || (_hasHighlight && _highlighted == active)) return;
+        if (_hasHighlight && _highlighted == active) return;
+        if (RowBackground != null)
+        {
+            _hasHighlight = true;
+            _highlighted = active;
+            RowBackground.color = active ? new Color(1f, 0.87f, 0.35f) : Color.black;
+            Color foreground = active ? Color.black : Color.white;
+            if (NameText != null) NameText.color = foreground;
+            if (HPText != null) HPText.color = foreground;
+            if (APText != null) APText.color = foreground;
+            return;
+        }
+        if (Portrait == null) return;
         _hasHighlight = true;
         _highlighted = active;
         Kill(ref _portraitTween);
@@ -92,7 +154,7 @@ public class PartySlotUI
         bool decreased = current < _displayHP;
         bool increased = current > _displayHP;
         _hpFillTween = RefreshFill(HPFill, current, max, duration, ease);
-        if (CanAnimate(HPFill, duration) && (decreased || increased))
+        if (RowBackground == null && CanAnimate(HPFill, duration) && (decreased || increased))
         {
             Image image = HPFill;
             Color original = image.color;
@@ -106,13 +168,13 @@ public class PartySlotUI
         if (!CanAnimate(text, duration))
         {
             _displayHP = current;
-            if (text != null) text.SetText("{0}/{1}", current, max);
+            if (text != null) text.SetText("HP {0}/{1}", current, max);
             return;
         }
         _hpTextTween = DOTween.To(() => _displayHP, value =>
         {
             _displayHP = value;
-            if (text != null) text.SetText("{0}/{1}", value, max);
+            if (text != null) text.SetText("HP {0}/{1}", value, max);
         }, current, duration).SetEase(ease).SetTarget(text).SetRecyclable(false)
             .SetLink(text.gameObject, LinkBehaviour.KillOnDisable);
     }
@@ -123,20 +185,20 @@ public class PartySlotUI
         Kill(ref _apFillTween);
         Kill(ref _apTextTween);
         _apFillTween = RefreshFill(APFill, current, max, duration, ease);
-        if (duration > 0f && current != _displayAP)
+        if (RowBackground == null && duration > 0f && current != _displayAP)
             Punch(current < _displayAP ? new Vector3(0.03f, 0.03f, 0f) : new Vector3(0f, 5f, 0f),
                 current < _displayAP, 0.2f, 5, 1f);
         TextMeshProUGUI text = APText;
         if (!CanAnimate(text, duration))
         {
             _displayAP = current;
-            if (text != null) text.SetText("{0}/{1}", current, max);
+            if (text != null) text.SetText("AP {0}/{1}", current, max);
             return;
         }
         _apTextTween = DOTween.To(() => _displayAP, value =>
         {
             _displayAP = value;
-            if (text != null) text.SetText("{0}/{1}", value, max);
+            if (text != null) text.SetText("AP {0}/{1}", value, max);
         }, current, duration).SetEase(ease).SetTarget(text).SetRecyclable(false)
             .SetLink(text.gameObject, LinkBehaviour.KillOnDisable);
     }
@@ -145,11 +207,19 @@ public class PartySlotUI
     {
         if (image == null) return null;
         float ratio = max > 0 ? Mathf.Clamp01((float)current / max) : 0f;
-        if (!CanAnimate(image, duration)) { image.fillAmount = ratio; return null; }
+        if (!CanAnimate(image, duration)) { SetFill(image, ratio); return null; }
         return DOTween.To(() => image != null ? image.fillAmount : ratio,
-            value => { if (image != null) image.fillAmount = value; }, ratio, duration)
+            value => { if (image != null) SetFill(image, value); }, ratio, duration)
             .SetEase(ease).SetTarget(image).SetRecyclable(false)
             .SetLink(image.gameObject, LinkBehaviour.KillOnDisable);
+    }
+
+    private void SetFill(Image image, float ratio)
+    {
+        image.fillAmount = ratio;
+        // Sprite 없는 Image는 Filled 메쉬가 만들어지지 않습니다. 순색 막대만 폭 배율로 표시합니다.
+        if (SolidColorBars)
+            image.rectTransform.localScale = new Vector3(ratio, 1f, 1f);
     }
 
     private static Tween TweenColor(Image image, Color color, float duration)

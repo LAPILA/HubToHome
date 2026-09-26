@@ -118,6 +118,8 @@ public abstract class CharacterBase : MonoBehaviour
     public event Action<CharacterBase, int, int> OnAPChanged;
 
     protected readonly List<StatusEffect> _activeEffects = new List<StatusEffect>();
+    public IReadOnlyList<StatusEffect> ActiveStatusEffects => _activeEffects;
+    public event Action<CharacterBase> OnStatusEffectsChanged;
     private readonly Dictionary<string, GameObject> _activeLoopVFX = new Dictionary<string, GameObject>();
     private readonly Dictionary<string, Transform> _pivotCache =
         new Dictionary<string, Transform>(StringComparer.Ordinal);
@@ -440,6 +442,7 @@ public abstract class CharacterBase : MonoBehaviour
             {
                 _activeEffects[i].AddStack(effect.DurationTurns);
                 MarkCharacterStatsDirty();
+                OnStatusEffectsChanged?.Invoke(this);
                 return new StatusApplicationResult(
                     StatusApplicationStatus.Applied,
                     effect.EffectID,
@@ -450,6 +453,7 @@ public abstract class CharacterBase : MonoBehaviour
         _activeEffects.Add(effect);
         effect.OnApply(this); 
         MarkCharacterStatsDirty();
+        OnStatusEffectsChanged?.Invoke(this);
         return new StatusApplicationResult(
             StatusApplicationStatus.Applied,
             effect.EffectID,
@@ -462,6 +466,7 @@ public abstract class CharacterBase : MonoBehaviour
         {
             effect.OnRemove();
             MarkCharacterStatsDirty();
+            OnStatusEffectsChanged?.Invoke(this);
         }
     }
 
@@ -506,6 +511,7 @@ public abstract class CharacterBase : MonoBehaviour
 
         if (_characterStats.IsInitialized)
             EnsureCharacterStats();
+        OnStatusEffectsChanged?.Invoke(this);
     }
     
     // LINQ Any 제거
@@ -534,6 +540,7 @@ public abstract class CharacterBase : MonoBehaviour
         }
 
         MarkCharacterStatsDirty();
+        OnStatusEffectsChanged?.Invoke(this);
     }
 
     public void AddLoopVFX(string buffId, GameObject vfxPrefab, string pivotName = "Bottom")

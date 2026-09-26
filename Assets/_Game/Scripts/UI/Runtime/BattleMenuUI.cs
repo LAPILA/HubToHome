@@ -7,7 +7,7 @@ using Sirenix.OdinInspector;
 
 /// <summary>
 /// 플레이어 턴에 표시되는 주 메뉴(Attack, Act, Item, Run)를 제어합니다.
-/// 서브메뉴(스킬/아이템 목록) 등장 시 체력창(Party Status)과 함께 부드럽게 슬라이드됩니다.
+/// 메뉴/상세 영역은 고정 표시하고, 입력 가능 여부만 전투 상태에 따라 바꿉니다.
 /// </summary>
 public class BattleMenuUI : UIPanel 
 {
@@ -18,6 +18,9 @@ public class BattleMenuUI : UIPanel
     [BoxGroup("Buttons"), LabelWidth(100)] [SerializeField] private Button _runBtn;
 
     [BoxGroup("Sub Menu"), LabelWidth(100)] [SerializeField] private BattleSubMenu _subMenu;
+    [BoxGroup("효과음")] [SerializeField] private AudioClip _moveSfx;
+    [BoxGroup("효과음")] [SerializeField] private AudioClip _confirmSfx;
+    [BoxGroup("효과음")] [SerializeField] private AudioClip _cancelSfx;
     #endregion
 
     #region [ Animation & Style Settings ]
@@ -31,7 +34,6 @@ public class BattleMenuUI : UIPanel
     [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private Color _selectedColor = new Color(1f, 0.95f, 0.3f);
     [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private Color _normalColor = Color.white;
     [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private Color _disabledColor = new Color(0.4f, 0.4f, 0.4f, 1f); 
-    [FoldoutGroup("Style"), LabelWidth(140)] [SerializeField] private float _bouncePunch = 0.22f;
     #endregion
 
     #region [ Example / Default Data ]
@@ -43,12 +45,17 @@ public class BattleMenuUI : UIPanel
 
     #region [ Internal State ]
     private int _selectedIndex = 0;
+    private readonly int[] _selectionByMenu = new int[4];
     private PlayerCharacter _currentActor;
     private bool _inputEnabled = false;
     private bool _isExternallySuspended = false;
     
     private Button[] _buttons;
     private PlayerMenuAction[] _mappedActions;
+    private TMPro.TMP_Text[] _buttonLabels;
+    private int _inputEnabledFrame = -1;
+    private bool _initialized;
+    public bool CommandsEnabled => _inputEnabled && !_isExternallySuspended;
 
     private RectTransform _rectTransform;
     private float _baseMenuY;
@@ -62,12 +69,15 @@ public class BattleMenuUI : UIPanel
     #region [ Initialization ]
     protected override void Awake()
     {
+        if (_initialized) return;
+        _initialized = true;
         base.Awake();
         _rectTransform = GetComponent<RectTransform>();
         _baseMenuY = _rectTransform.anchoredPosition.y;
 
         _buttons = new[] { _attackBtn, _actBtn, _itemBtn, _runBtn };
         _buttonImages = new Image[_buttons.Length];
+        _buttonLabels = new TMPro.TMP_Text[_buttons.Length];
         _buttonColorTweens = new Tween[_buttons.Length];
         _buttonPunchTweens = new Tween[_buttons.Length];
         _mappedActions = new[] { 
@@ -84,6 +94,9 @@ public class BattleMenuUI : UIPanel
             if (_buttons[i] != null)
             {
                 _buttonImages[i] = _buttons[i].GetComponent<Image>();
+                _buttonLabels[i] = _buttons[i].GetComponentInChildren<TMPro.TMP_Text>(true);
+                // 이동/확정은 GameInput이 단독 소유합니다. EventSystem 중복 확정을 차단합니다.
+                _buttons[i].navigation = new Navigation { mode = Navigation.Mode.None };
                 _buttons[i].onClick.AddListener(() => Confirm(index));
             }
         }
@@ -93,12 +106,14 @@ public class BattleMenuUI : UIPanel
     #region [ Lifecycle & State ]
     public override void Hide()
     {
+        SetDetailsVisible(false);
         StopOwnedAnimations();
         base.Hide();
     }
 
     public override void HideImmediate()
     {
+        SetDetailsVisible(false);
         StopOwnedAnimations();
         base.HideImmediate();
     }
@@ -118,6 +133,7 @@ public class BattleMenuUI : UIPanel
     private void StopOwnedAnimations()
     {
         _inputEnabled = false;
+        _subMenu?.ForceCloseImmediate();
         Kill(ref _menuMoveTween);
         Kill(ref _resumeInputTween);
         if (_rectTransform != null)
@@ -146,7 +162,7 @@ public class BattleMenuUI : UIPanel
         
         if (_buttons != null && _buttons.Length > 0)
         {
-            if (_buttons[_selectedIndex] == null || !_buttons[_selectedIndex].interactable) Navigate(1);
+            if (_buttons[_selectedIndex] == null || !_buttons[_selectedIndex].interactable) NavigateToAvailableButton(1, false);
             else HighlightButton(_selectedIndex);
         }
     }
@@ -156,8 +172,34 @@ public class BattleMenuUI : UIPanel
         if (_currentActor != actor)
         {
             _selectedIndex = 0;
+            Array.Clear(_selectionByMenu, 0, _selectionByMenu.Length);
         }
         _currentActor = actor;
+        RefreshPreview();
+    }
+
+    public override void Show() => SetCommandInputEnabled(true);
+
+    public void SetCommandInputEnabled(bool enabled)
+    {
+        if (_isExternallySuspended) return;
+        // 비활성 프리팹에 대한 첫 호출도 UIPanel.Awake의 자동 숨김 이후에 표시합니다.
+        if (!_initialized) Awake();
+        Kill(ref _resumeInputTween);
+        ShowImmediate();
+        _canvasGroup.interactable = false;
+        _canvasGroup.blocksRaycasts = false;
+        _inputEnabled = enabled;
+        _inputEnabledFrame = Time.frameCount;
+        if (!enabled) _subMenu?.ForceCloseImmediate();
+        else RefreshPreview();
+        HighlightButton(_selectedIndex);
+    }
+
+    public void SetDetailsVisible(bool visible)
+    {
+        if (!visible) _subMenu?.ForceCloseImmediate();
+        if (_subMenu != null) _subMenu.gameObject.SetActive(visible);
     }
 
     public void SetRunEnabled(bool isEnabled)
@@ -197,21 +239,44 @@ public class BattleMenuUI : UIPanel
     private void Update()
     {
         if (_isExternallySuspended) return;
-        if (!_inputEnabled || !IsVisible) return;
-        if (_subMenu != null && _subMenu.IsActive) return;
+        if (!_inputEnabled || !IsVisible || Time.frameCount <= _inputEnabledFrame || GameInput.BattleUIInputConsumed) return;
         if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
 
         if (GameInput.BattleLeftPressed)
             Navigate(-1);
         else if (GameInput.BattleRightPressed)
             Navigate(1);
+        else if (GameInput.BattleUpPressed)
+            MoveItemSelection(-1);
+        else if (GameInput.BattleDownPressed)
+            MoveItemSelection(1);
         else if (GameInput.BattleConfirmPressed)
             Confirm(_selectedIndex);
+        else if (GameInput.BattleCancelPressed)
+        {
+            GameInput.ConsumeBattleUIInput();
+            if (_selectedIndex != 0) PlayCancelSfx();
+            _selectedIndex = 0;
+            HighlightButton(_selectedIndex);
+            RefreshPreview();
+        }
     }
 
-    private void Navigate(int dir)
+    private void MoveItemSelection(int direction)
+    {
+        if (_subMenu == null) return;
+        int previous = _subMenu.SelectedIndex;
+        _subMenu.MoveSelection(direction);
+        if (_subMenu.SelectedIndex != previous) PlayMoveSfx();
+        _selectionByMenu[_selectedIndex] = _subMenu.SelectedIndex;
+    }
+
+    private void Navigate(int dir) => NavigateToAvailableButton(dir, true);
+
+    private void NavigateToAvailableButton(int dir, bool playSound)
     {
         if (_buttons == null || _buttons.Length == 0) return;
+        int previous = _selectedIndex;
 
         for (int i = 0; i < _buttons.Length; i++)
         {
@@ -220,6 +285,8 @@ public class BattleMenuUI : UIPanel
         }
 
         HighlightButton(_selectedIndex);
+        RefreshPreview();
+        if (playSound && _selectedIndex != previous) PlayMoveSfx();
     }
 
     private void Confirm(int index)
@@ -230,46 +297,52 @@ public class BattleMenuUI : UIPanel
         if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
         if (!_buttons[index].interactable) return; 
 
+        GameInput.ConsumeBattleUIInput();
+        _selectedIndex = index;
+        HighlightButton(index);
         var action = _mappedActions[index]; 
 
-        // 🚨 즉각 반응: 도망(Run)을 제외한 모든 액션 클릭 시 즉시 BattleReady 애니메이션 재생
+        IMenuEntry entry = null;
+        if ((action == PlayerMenuAction.Skill || action == PlayerMenuAction.Item)
+            && (_subMenu == null || !_subMenu.TryGetSelectedEntry(out entry)))
+            return;
+        if (_subMenu != null) _selectionByMenu[index] = _subMenu.SelectedIndex;
+        PlayConfirmSfx();
+
+        // 목록에서 Z를 누르면 기존 대상 선택으로 바로 전달합니다.
         if (action != PlayerMenuAction.Run)
         {
             if (_currentActor != null) _currentActor.PlayBattleAnim(PlayerCharacter.HashBattleReady);
         }
 
-        if (action == PlayerMenuAction.Skill) 
-            OpenSkillSubMenu();
-        else if (action == PlayerMenuAction.Item) 
-            OpenItemSubMenu();
-        else 
-        {
-            _inputEnabled = false;
+        _inputEnabled = false;
+        if (action == PlayerMenuAction.Skill)
+            OnSkillSelected(entry);
+        else if (action == PlayerMenuAction.Item)
+            OnItemSelected(entry);
+        else
             ExecuteDirectAction(index, action);
-        }
     }
     #endregion
 
+    // 대상 선택도 같은 음원을 사용합니다. 입력 수신 경로에서만 호출해 자동 갱신 소리를 막습니다.
+    public void PlayMoveSfx() => AudioManager.Instance?.PlayUISFX(_moveSfx);
+    public void PlayConfirmSfx() => AudioManager.Instance?.PlayUISFX(_confirmSfx);
+    public void PlayCancelSfx() => AudioManager.Instance?.PlayUISFX(_cancelSfx);
+
     #region [ Sub Menu Controls ]
-    private void OpenSkillSubMenu()
+    private List<IMenuEntry> BuildSkillEntries()
     {
         var entries = new List<IMenuEntry>();
-        var sourceSkills = (_currentActor != null && _currentActor.Skills?.Count > 0) ? _currentActor.Skills : _exampleSkills;
-        
-        foreach (var skill in sourceSkills) 
-        {
+        var source = (_currentActor != null && _currentActor.Skills?.Count > 0)
+            ? _currentActor.Skills : _exampleSkills;
+        foreach (SkillData skill in source)
             if (skill != null) entries.Add(new SkillMenuEntry(skill));
-        }
-
-        if (entries.Count == 0)
-            entries.Add(new EmptyMenuEntry("NO SKILL", "등록된 스킬이 없습니다."));
-
-        _inputEnabled = false; 
-        SlideMenuUp();
-        _subMenu?.Open("SKILL", entries, OnSkillSelected, OnSubMenuCancelled);
+        if (entries.Count == 0) entries.Add(new EmptyMenuEntry("NO SKILL", "등록된 스킬이 없습니다."));
+        return entries;
     }
 
-    private void OpenItemSubMenu()
+    private List<IMenuEntry> BuildItemEntries()
     {
         var entries = new List<IMenuEntry>();
         GlobalDataManager global = GlobalDataManager.Instance;
@@ -283,13 +356,28 @@ public class BattleMenuUI : UIPanel
                 entries.Add(new ItemMenuEntry(item, pair.Value));
             }
         }
+        if (entries.Count == 0) entries.Add(new EmptyMenuEntry("NO ITEM", "사용 가능한 아이템이 없습니다."));
+        return entries;
+    }
 
-        if (entries.Count == 0)
-            entries.Add(new EmptyMenuEntry("NO ITEM", "사용 가능한 아이템이 없습니다."));
-
-        _inputEnabled = false;
-        SlideMenuUp();
-        _subMenu?.Open("ITEM", entries, OnItemSelected, OnSubMenuCancelled);
+    private void RefreshPreview()
+    {
+        if (_subMenu == null || _isExternallySuspended) return;
+        switch (_selectedIndex)
+        {
+            case 1: _subMenu.Preview("SKILL", BuildSkillEntries(), _currentActor); break;
+            case 2: _subMenu.Preview("ITEM", BuildItemEntries(), _currentActor); break;
+            case 3:
+                _subMenu.Preview("RUN", new List<IMenuEntry> {
+                    new BattleCommandPreviewEntry("RUN", _runBtn != null && !_runBtn.interactable
+                        ? "이 전투에서는 도망칠 수 없습니다." : "전투에서 도망치기를 시도합니다.") }, _currentActor);
+                break;
+            default:
+                _subMenu.Preview("ATTACK", new List<IMenuEntry> {
+                    new BattleCommandPreviewEntry("ATTACK", "적에게 접근해 일반 공격을 합니다.\n\n적 1명\nAP 소모 없음") }, _currentActor);
+                break;
+        }
+        _subMenu.SelectIndex(_selectionByMenu[_selectedIndex]);
     }
 
     private void OnSkillSelected(IMenuEntry entry)
@@ -320,16 +408,6 @@ public class BattleMenuUI : UIPanel
             manager.OnSubMenuActionSelected(_currentActor, PlayerMenuAction.Item, null, itemEntry.Data);
     }
 
-    private void OnSubMenuCancelled()
-    {
-        if (!CanReceiveSubMenuCallback()) return;
-        SlideMenuDown();
-        BattleManager manager = BattleManager.Instance;
-        if (manager != null) manager.CancelActionSelection();
-
-        ResumeInputAfterSlide();
-    }
-
     private bool CanReceiveSubMenuCallback() => this != null && isActiveAndEnabled && !_isExternallySuspended;
 
     private void ResumeInputAfterSlide()
@@ -345,34 +423,16 @@ public class BattleMenuUI : UIPanel
 
     private void ExecuteDirectAction(int index, PlayerMenuAction action)
     {
-        if (_buttons[index] == null) return;
-        Kill(ref _buttonPunchTweens[index]);
-        _buttons[index].transform.localScale = Vector3.one;
-        PlayerCharacter actor = _currentActor;
-        _buttonPunchTweens[index] = _buttons[index].transform.DOPunchScale(Vector3.one * 0.35f, 0.25f, 8, 0.5f)
-            .SetRecyclable(false).SetLink(_buttons[index].gameObject, LinkBehaviour.KillOnDisable)
-            .OnComplete(() => {
-                if (this == null || !isActiveAndEnabled || _isExternallySuspended || actor == null || _currentActor != actor) return;
-                BattleManager manager = BattleManager.Instance;
-                if (manager != null) manager.OnPlayerActionSelected(actor, action);
-            });
+        if (_currentActor == null) return;
+        BattleManager manager = BattleManager.Instance;
+        if (manager != null) manager.OnPlayerActionSelected(_currentActor, action);
     }
     #endregion
 
     #region [ UI Animations (Slide & Sync) ]
-    private void SlideMenuUp()
-    {
-        float slideOffsetY = ResolveMenuSlideOffsetY();
-
-        SlideMenu(_baseMenuY + slideOffsetY, Ease.OutCubic);
-        BattleUIController.Instance?.MovePartyPanelUp(slideOffsetY, _menuSlideDuration);
-    }
-
-    private void SlideMenuDown()
-    {
-        SlideMenu(_baseMenuY, Ease.InCubic);
-        BattleUIController.Instance?.ResetPartyPanelPosition(_menuSlideDuration);
-    }
+    // 기존 외부 호출/직렬화 호환. 고정 HUD는 하위 목록을 열어도 이동하지 않습니다.
+    private void SlideMenuUp() { }
+    private void SlideMenuDown() { }
 
     private void HighlightButton(int index)
     {
@@ -385,6 +445,9 @@ public class BattleMenuUI : UIPanel
             Kill(ref _buttonColorTweens[i]);
             Kill(ref _buttonPunchTweens[i]);
             _buttons[i].transform.localScale = Vector3.one;
+            if (_buttonLabels != null && _buttonLabels[i] != null)
+                _buttonLabels[i].color = !_buttons[i].interactable ? _disabledColor
+                    : i == index ? _selectedColor : Color.white;
             if (img == null) continue;
 
             if (!_buttons[i].interactable)
@@ -394,8 +457,7 @@ public class BattleMenuUI : UIPanel
             else if (i == index)
             {
                 _buttonColorTweens[i] = TweenButtonColor(img, _selectedColor);
-                _buttonPunchTweens[i] = _buttons[i].transform.DOPunchScale(Vector3.one * _bouncePunch, 0.3f, 8, 0.5f)
-                    .SetRecyclable(false).SetLink(_buttons[i].gameObject, LinkBehaviour.KillOnDisable);
+                // 고정 크기: 선택/취소 때 버튼이 커졌다 작아지지 않습니다.
             }
             else
             {

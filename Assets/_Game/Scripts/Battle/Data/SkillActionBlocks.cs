@@ -926,7 +926,7 @@ public class Action_DefenseWindow : SkillActionBlock
     [HideInInspector]
     public float ImpactCueLeadTime = 0.3f;
     [ShowIf(nameof(ImpactCuePrefab)), LabelText("전조 표시 피벗")]
-    public string ImpactCuePivotName = CharacterPivotId.Top;
+    public string ImpactCuePivotName = CharacterPivotId.Center;
     [LabelText("공격 준비 자세 시간")]
     [MinValue(0f)]
     [Tooltip("적이 실제 공격을 시작하기 전에 준비 자세를 유지하는 시간입니다. 이 시간에도 Z/X/C 입력을 버퍼링합니다.")]

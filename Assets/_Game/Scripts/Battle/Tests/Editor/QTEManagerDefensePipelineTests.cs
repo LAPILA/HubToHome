@@ -8,6 +8,123 @@ using UnityEngine.TestTools;
 
 public class QTEManagerDefensePipelineTests
 {
+    private const string TelegraphPath = "Assets/_Game/Presentation/Custom_VFX/Prefabs/Telegraph.prefab";
+
+    [Test]
+    public void TelegraphAsset_StartStateAnimatesThePrefabRenderer()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(TelegraphPath);
+        Assert.That(prefab, Is.Not.Null);
+        var controller = prefab.GetComponent<Animator>().runtimeAnimatorController as UnityEditor.Animations.AnimatorController;
+        Assert.That(controller, Is.Not.Null);
+        Assert.That(AssetDatabase.GetAssetPath(controller), Does.EndWith("Telegraph.aseprite"));
+        var state = controller.layers[0].stateMachine.defaultState;
+        Assert.That(state.name, Is.EqualTo("START"));
+        var clip = state.motion as AnimationClip;
+        Assert.That(clip, Is.Not.Null);
+        Assert.That(clip.length, Is.InRange(0.22f, 0.25f));
+        var bindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
+        Assert.That(bindings.Length, Is.GreaterThan(0));
+        foreach (EditorCurveBinding binding in bindings)
+        {
+            Assert.That(binding.path, Is.Empty, "단일 레이어 전조는 루트 SpriteRenderer를 사용합니다.");
+            Assert.That(binding.type, Is.EqualTo(typeof(SpriteRenderer)));
+            var frames = AnimationUtility.GetObjectReferenceCurve(clip, binding);
+            Assert.That(frames.Length, Is.GreaterThanOrEqualTo(5));
+            foreach (ObjectReferenceKeyframe frame in frames)
+                Assert.That(frame.value, Is.Not.Null);
+        }
+        var settings = new SerializedObject(prefab.GetComponent<BattleTelegraphCue>());
+        Assert.That(settings.FindProperty("_animationState").stringValue, Is.EqualTo("START"));
+        Assert.That(settings.FindProperty("_worldOffset").vector3Value, Is.EqualTo(Vector3.zero));
+        Assert.That(prefab.transform.localScale, Is.EqualTo(Vector3.one * 3f));
+        Assert.That(settings.FindProperty("_sortingOrderOffset").intValue, Is.EqualTo(-1));
+        Assert.That(settings.FindProperty("_pingClip").objectReferenceValue, Is.Not.Null);
+    }
+
+    [TestCase(0.10f)]
+    [TestCase(0.30f)]
+    public void TelegraphPlayback_UsesDefenseClockAndRestartsWithoutExtraScaling(float window)
+    {
+        GameObject instance = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(TelegraphPath));
+        var target = new GameObject("TelegraphTarget", typeof(SpriteRenderer));
+        try
+        {
+            BattleTelegraphCue cue = instance.GetComponent<BattleTelegraphCue>();
+            cue.SendMessage("Awake");
+            // 정지된 Animator의 state 길이에 의존하지 않고 클립을 평가해야 합니다.
+            instance.GetComponent<Animator>().speed = 0f;
+            SetPrivateField(cue, "_pingClip", null);
+            SetPrivateField(cue, "_leased", true);
+            var play = typeof(BattleTelegraphCue).GetMethod("Play", BindingFlags.Instance | BindingFlags.NonPublic);
+            target.transform.position = new Vector3(4f, 7f, 0f);
+            play.Invoke(cue, new object[] { target.transform, window, true, true });
+            Assert.That(instance.transform.position, Is.EqualTo(target.transform.position));
+            SpriteRenderer renderer = instance.GetComponent<SpriteRenderer>();
+            Sprite firstFrame = renderer.sprite;
+            cue.Emphasize(window);
+            cue.SynchronizeToImpact(window * 0.5f);
+            Sprite middleFrame = renderer.sprite;
+            Assert.That(middleFrame, Is.Not.EqualTo(firstFrame));
+            cue.SynchronizeToImpact(window * 0.5f);
+            Assert.That(renderer.sprite, Is.EqualTo(middleFrame), "방어 시계가 멈추면 전조도 멈춥니다.");
+            cue.Emphasize(window);
+            Assert.That(renderer.sprite, Is.EqualTo(middleFrame), "중복 호출은 다시 재생하지 않습니다.");
+            cue.SynchronizeToImpact(0f);
+            Sprite finalFrame = renderer.sprite;
+            cue.SynchronizeToImpact(-1f);
+            Assert.That(renderer.sprite, Is.EqualTo(finalFrame));
+            Assert.That(instance.transform.localScale, Is.EqualTo(Vector3.one * 3f));
+            Assert.That(instance.transform.localRotation, Is.EqualTo(Quaternion.identity));
+            Assert.That(renderer.sortingOrder, Is.EqualTo(target.GetComponent<SpriteRenderer>().sortingOrder - 1));
+            instance.SetActive(false);
+            Assert.That(instance.GetComponent<Animator>().enabled, Is.True);
+            instance.SetActive(true);
+            SetPrivateField(cue, "_leased", true);
+            play.Invoke(cue, new object[] { target.transform, window, false, false });
+            Assert.That(renderer.sprite, Is.EqualTo(firstFrame), "풀에서 재사용할 때 첫 프레임으로 복원합니다.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+            Object.DestroyImmediate(target);
+        }
+    }
+
+    [Test]
+    public void TelegraphStandalone_AwakeDoesNotFreezeAnimator()
+    {
+        GameObject instance = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(TelegraphPath));
+        try
+        {
+            instance.GetComponent<BattleTelegraphCue>().SendMessage("Awake");
+            Assert.That(instance.GetComponent<Animator>().enabled, Is.True);
+            Assert.That(instance.GetComponent<Animator>().speed, Is.EqualTo(1f));
+        }
+        finally { Object.DestroyImmediate(instance); }
+    }
+
+    [Test]
+    public void TelegraphSkillDefaultsAndLabAssets_UseCenter()
+    {
+        Assert.That(new Action_DefenseWindow().ImpactCuePivotName, Is.EqualTo(CharacterPivotId.Center));
+        string[] guids = AssetDatabase.FindAssets("t:SkillData", new[] {
+            "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Skills" });
+        int checkedCues = 0;
+        foreach (string guid in guids)
+        {
+            SkillData skill = AssetDatabase.LoadAssetAtPath<SkillData>(AssetDatabase.GUIDToAssetPath(guid));
+            if (skill.ActionTimeline == null) continue;
+            foreach (var block in skill.ActionTimeline)
+                if (block is Action_DefenseWindow defense && defense.ImpactCuePrefab != null)
+                {
+                    Assert.That(defense.ImpactCuePivotName, Is.EqualTo(CharacterPivotId.Center), skill.name);
+                    checkedCues++;
+                }
+        }
+        Assert.That(checkedCues, Is.GreaterThanOrEqualTo(12));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void AttackMotionScope_RestoresBaselineWithoutOverwritingNewSpeedOwner(bool externalChange)

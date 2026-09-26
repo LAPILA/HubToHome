@@ -1,43 +1,41 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using DG.Tweening;
 
-[System.Serializable]
 public class OptionRowUI : MonoBehaviour
 {
     public Image IconImage;
     public TextMeshProUGUI NameText;
+    public TextMeshProUGUI ValueText;
+    public TextMeshProUGUI CursorText;
+    public Image SelectionBorder;
 
-    private Vector3 _baseScale = Vector3.zero;
-
-    private void Awake()
+    public void SetEntry(IMenuEntry entry, bool selected, Color selColor, Color normalColor,
+        float selScale, bool available = true)
     {
-        _baseScale = transform.localScale;
-        if (_baseScale == Vector3.zero) _baseScale = Vector3.one;
-    }
-
-    public void SetEntry(IMenuEntry entry, bool selected, Color selColor, Color normalColor, float selScale)
-    {
-        if (_baseScale == Vector3.zero) _baseScale = Vector3.one;
-
         gameObject.SetActive(true);
-
+        transform.localScale = Vector3.one;
+        Color textColor = available ? (selected ? selColor : normalColor) : new Color(0.48f, 0.48f, 0.54f);
         if (IconImage != null)
         {
-            IconImage.gameObject.SetActive(entry.Icon != null);
             IconImage.sprite = entry.Icon;
+            IconImage.enabled = entry.Icon != null;
+            IconImage.preserveAspect = true;
+            IconImage.color = available ? Color.white : textColor;
         }
-
         if (NameText != null)
         {
-            NameText.text = entry.DisplayName;
-            NameText.DOKill();
-            NameText.DOColor(selected ? selColor : normalColor, 0.15f);
+            NameText.text = entry is ItemMenuEntry item ? item.Data.ItemName : entry.DisplayName;
+            NameText.color = textColor;
         }
-
-        transform.DOKill();
-        transform.DOScale(selected ? _baseScale * selScale : _baseScale, 0.15f).SetEase(Ease.OutQuad);
+        if (ValueText != null)
+        {
+            ValueText.text = entry is SkillMenuEntry skill ? skill.Data.APCost.ToString()
+                : entry is ItemMenuEntry item ? $"×{item.Count}" : string.Empty;
+            ValueText.color = textColor;
+        }
+        if (CursorText != null) { CursorText.text = selected ? "›" : ""; CursorText.color = selColor; }
+        if (SelectionBorder != null) { SelectionBorder.enabled = selected; SelectionBorder.color = selColor; }
     }
 
     public void SetEmpty() => gameObject.SetActive(false);

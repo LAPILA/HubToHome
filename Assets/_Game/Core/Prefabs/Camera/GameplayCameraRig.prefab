@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3330139295875524663}
   - component: {fileID: 219799598360949425}
-  - component: {fileID: 6949840549799656513}
+  - component: {fileID: 1956492168708202746}
   - component: {fileID: 7247873684365012718}
   - component: {fileID: 8874290163352846131}
   - component: {fileID: 8992544064542405447}
@@ -61,7 +61,7 @@ MonoBehaviour:
     CustomLookAtTarget: 1
   Lens:
     FieldOfView: 60
-    OrthographicSize: 4
+    OrthographicSize: 10
     NearClipPlane: 0.3
     FarClipPlane: 1000
     Dutch: 0
@@ -79,7 +79,7 @@ MonoBehaviour:
       BarrelClipping: 0.25
       Anamorphism: 0
   BlendHint: 0
---- !u!114 &6949840549799656513
+--- !u!114 &1956492168708202746
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -93,11 +93,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineFollow
   TrackerSettings:
     BindingMode: 4
-    PositionDamping: {x: 0, y: 0, z: 0}
+    PositionDamping: {x: 1, y: 1, z: 1}
     AngularDampingMode: 0
     RotationDamping: {x: 1, y: 1, z: 1}
     QuaternionDamping: 1
-  FollowOffset: {x: 0, y: 0, z: -1}
+  FollowOffset: {x: 0, y: 0, z: -10}
 --- !u!114 &7247873684365012718
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -125,8 +125,9 @@ MonoBehaviour:
   _vCam: {fileID: 219799598360949425}
   _impulseSource: {fileID: 5552389201969558713}
   _centerTarget: {fileID: 0}
-  _defaultLensSize: 4
-  _battleZoomSize: 3.5
+  _defaultLensSize: 8
+  _battleZoomSize: 8
+  _staticBattlePresentation: 1
   _staticProfile: {fileID: 0}
   _dynamicProfile: {fileID: 0}
   _gameplaySafeProfile: {fileID: 0}
@@ -208,7 +209,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
+  m_BackGroundColor: {r: 0.5283019, g: 0, b: 0, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -225,15 +226,15 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0
+    x: -0.28593752
     y: 0
     width: 1
-    height: 1
+    height: 1.0500001
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 4
+  orthographic size: 7.5
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -293,7 +294,7 @@ MonoBehaviour:
   m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 4294967295
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
   m_RenderPostProcessing: 1

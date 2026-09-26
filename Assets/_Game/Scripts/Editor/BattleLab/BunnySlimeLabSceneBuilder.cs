@@ -15,6 +15,11 @@ public static class BunnySlimeLabSceneBuilder
     private const string CameraPath = "Assets/_Game/Core/Prefabs/Camera/GameplayCameraRig.prefab";
     private const string HostPath = "Assets/_Game/Content/Battle/Prefabs/System/SeamlessBattleHost.prefab";
     private const string ArtRoot = "Assets/_Game/Content/Maps/Development/Shared/Art/";
+    private const string LightingRoot = "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/";
+    private const string LightingPath = LightingRoot + "Prefabs/BunnySlimeLab_Lighting.prefab";
+    private const string RendererPath = LightingRoot + "Presentation/BunnySlimeLab_Renderer2D.asset";
+    private const int LabRendererIndex = 1;
+    private const string SpriteLitMaterialGuid = "a97c105638bdf8b4a8650670310a4cd3";
 
     public static string Build(string root, BunnySlimeBattleLabData data)
     {
@@ -34,6 +39,9 @@ public static class BunnySlimeLabSceneBuilder
         GameObject camera = RequirePrefab(CameraPath);
         GameObject player = RequirePrefab(PlayerPath);
         GameObject host = RequirePrefab(HostPath);
+        GameObject lighting = RequirePrefab(LightingPath);
+        ValidateLabRenderer("Assets/RenderSettings/PC_RPAsset.asset");
+        ValidateLabRenderer("Assets/RenderSettings/Mobile_RPAsset.asset");
         EnsureFolder(normalized + "/Scenes");
         Scene previousActive = SceneManager.GetActiveScene();
         Scene created = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
@@ -45,8 +53,13 @@ public static class BunnySlimeLabSceneBuilder
             Camera realCamera = cameraObject.GetComponentInChildren<Camera>(true);
             if (realCamera != null)
             {
-                realCamera.backgroundColor = new Color(0.06f, 0.11f, 0.16f);
+                realCamera.backgroundColor = new Color(0.035f, 0.045f, 0.09f);
                 realCamera.clearFlags = CameraClearFlags.SolidColor;
+                UniversalAdditionalCameraData cameraData = realCamera.GetUniversalAdditionalCameraData();
+                cameraData.SetRenderer(LabRendererIndex);
+                cameraData.renderPostProcessing = true;
+                cameraData.requiresDepthTexture = false;
+                cameraData.requiresColorTexture = false;
             }
             Instantiate(host, created);
             GameObject playerObject = Instantiate(player, created);
@@ -62,6 +75,7 @@ public static class BunnySlimeLabSceneBuilder
             SceneManager.MoveGameObjectToScene(sessionObject, created);
             sessionObject.AddComponent<BunnySlimeBattleLabSession>().Configure(data, playerObject.GetComponent<PlayerController>());
             BuildBackdrop(created);
+            Instantiate(lighting, created);
             if (!EditorSceneManager.SaveScene(created, scenePath))
                 throw new IOException("새 실험 씬을 저장하지 못했습니다: " + scenePath);
         }
@@ -81,12 +95,22 @@ public static class BunnySlimeLabSceneBuilder
         SceneManager.MoveGameObjectToScene(art, scene);
         AddSprite(art.transform, "Distant Stage", ArtRoot + "EXBG_Far.png", new Vector3(0f, 4f, 5f), 34f, -120);
         AddSprite(art.transform, "Floor", ArtRoot + "EXBG_Floor.png", new Vector3(0f, -3.5f, 4f), 34f, -100);
-        var lightObject = new GameObject("Lab Global Light", typeof(Light2D));
-        SceneManager.MoveGameObjectToScene(lightObject, scene);
-        Light2D light = lightObject.GetComponent<Light2D>();
-        light.lightType = Light2D.LightType.Global;
-        light.intensity = 1f;
-        light.color = Color.white;
+    }
+
+    // Rendering is opt-in on this scene's real camera. Never change the shared default renderer.
+    private static void ValidateLabRenderer(string pipelinePath)
+    {
+        var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(pipelinePath);
+        var renderer = AssetDatabase.LoadAssetAtPath<Renderer2DData>(RendererPath);
+        if (pipeline == null || renderer == null)
+            throw new InvalidOperationException("실험실 전용 2D Renderer 또는 렌더 파이프라인이 없습니다.");
+
+        var serialized = new SerializedObject(pipeline);
+        SerializedProperty renderers = serialized.FindProperty("m_RendererDataList");
+        if (renderers == null || renderers.arraySize <= LabRendererIndex
+            || renderers.GetArrayElementAtIndex(LabRendererIndex).objectReferenceValue != renderer)
+            throw new InvalidOperationException(
+                pipelinePath + "의 Renderer List [1]에 BunnySlimeLab_Renderer2D를 연결해 주세요. 기본 Renderer [0]은 유지합니다.");
     }
 
     private static void AddSprite(Transform parent, string name, string path, Vector3 position, float width, int order)
@@ -105,7 +129,10 @@ public static class BunnySlimeLabSceneBuilder
         root.transform.localScale = Vector3.one * (width / Mathf.Max(0.01f, sprite.bounds.size.x));
         SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
         renderer.sprite = sprite;
+        renderer.sortingLayerName = "Background";
         renderer.sortingOrder = order;
+        renderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+            AssetDatabase.GUIDToAssetPath(SpriteLitMaterialGuid));
     }
 
     private static GameObject RequirePrefab(string path)

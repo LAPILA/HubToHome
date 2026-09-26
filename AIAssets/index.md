@@ -6,7 +6,11 @@
 
 최근 전투 작업: [2026-09-20 중앙 궁극기·피격 대상 전진·지상 복귀](2026-09-20-update.md) · [사용자 확인 및 미결정 사항](yjlim/feedback/2026-09-20-battle-timing.md) · [실험실 사용법](../docs/bunny-slime-battle-lab.md).
 
-최신 UI 수정: [파괴된 Image 트윈 정리·전투 UI 리팩토링](yjlim/feedback/2026-09-20-battle-ui-lifetime.md).
+최신 UI 수정: [2026-09-26 목업 기준 전투 HUD 개편](yjlim/feedback/2026-09-26-battle-hud.md) · [작업/검증 기록](2026-09-26-update.md). 이전: [파괴된 Image 트윈 수명 정리](yjlim/feedback/2026-09-20-battle-ui-lifetime.md).
+
+최신 전조 연결: [2026-09-26 Telegraph Aseprite 애니메이션·전투 메뉴 SFX](yjlim/feedback/2026-09-26-telegraph-animation.md).
+
+최신 화면 샘플: [2026-09-26 토끼 실험실 2D 조명·Volume 조절법](yjlim/feedback/2026-09-26-bunny-lab-lighting.md).
 
 1. `yjlim/README.md` - 현재 문서 구조와 읽는 순서
 2. `yjlim/feedback/2026-06-19-work-summary.md` - 지금까지 한 것 / 안 한 것 / 더 해야 할 것 종합 정리

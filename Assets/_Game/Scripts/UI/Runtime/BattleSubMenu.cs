@@ -1,150 +1,121 @@
+using System;
 using System.Collections.Generic;
-using UnityEngine;
-using DG.Tweening;
 using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
-/// <summary>
-/// 서브 메뉴 UI 컨트롤러.
-/// JRPG 스타일의 상하 스크롤 그리드 및 콜백 메모리 릭 방지를 적용했습니다.
-/// </summary>
+/// <summary>고정된 상세 영역. 표시 수명과 목록 입력 수명을 분리합니다.</summary>
 public class BattleSubMenu : MonoBehaviour
 {
-    [Header("UI References")]
     [SerializeField] private RectTransform _rectTransform;
-    
-    [Header("Dynamic Grid Settings")]
-    [SerializeField] private OptionRowUI _rowPrefab;       
-    [SerializeField] private RectTransform _container;     
-    [SerializeField] private float _rowHeight = 50f;       
-    [SerializeField] private int _visibleRows = 3;         
-
-    [Header("Text References")]
+    [SerializeField] private OptionRowUI _rowPrefab;
+    [SerializeField] private RectTransform _container;
+    [SerializeField] private RectTransform _viewport;
+    [SerializeField] private float _rowHeight = 23f;
+    [SerializeField] private int _visibleRows = 4;
     [SerializeField] private TextMeshProUGUI _titleText;
     [SerializeField] private TextMeshProUGUI _descriptionText;
-
-    [Header("Animation Settings")]
-    [SerializeField] private float _showOffsetY = 130f;
-    [SerializeField, HideInInspector] private float _showY = 150f;
-    [SerializeField, HideInInspector] private float _hideY = -200f;
-    [SerializeField] private float _slideDuration = 0.25f;
-
-    [Header("Style Settings")]
-    [SerializeField] private Color _selectedColor = new Color(1f, 0.95f, 0.3f);
+    [SerializeField] private TextMeshProUGUI _scrollHint;
+    [SerializeField] private Color _selectedColor = new Color(1f, 0.87f, 0.35f);
     [SerializeField] private Color _normalColor = Color.white;
-    [SerializeField] private float _selectedScale = 1.1f;
 
     private readonly List<IMenuEntry> _entries = new List<IMenuEntry>();
-    private readonly List<OptionRowUI> _spawnedRows = new List<OptionRowUI>(); 
-    
-    private int _currentIndex = 0;
-    private int _topVisibleRow = 0; 
-    
-    private System.Action<IMenuEntry> _onConfirmCallback;
-    private System.Action _onCancelCallback;
-
+    private readonly List<OptionRowUI> _spawnedRows = new List<OptionRowUI>();
+    private int _currentIndex;
+    private int _topVisibleRow;
+    private int _openedFrame = -1;
+    private PlayerCharacter _actor;
+    private Action<IMenuEntry> _onConfirmCallback;
+    private Action _onCancelCallback;
+    private GridLayoutGroup _grid;
     public bool IsActive { get; private set; }
-    private bool _isAnimating = false;
-    private float _hiddenY;
-    private float _shownY;
+    public int SelectedIndex => _currentIndex;
+
+    // 고정 HUD에서는 BattleMenuUI 한 곳이 좌우/상하/확정을 소유합니다.
+    public void MoveSelection(int offset) => ChangeIndex(offset);
+    public void SelectIndex(int index)
+    {
+        _currentIndex = Mathf.Clamp(index, 0, Mathf.Max(0, _entries.Count - 1));
+        RefreshRows();
+        AutoScroll();
+    }
+    public bool TryGetSelectedEntry(out IMenuEntry entry)
+    {
+        entry = _entries.Count > 0 ? _entries[_currentIndex] : null;
+        return BattleMenuEntryPresentation.CanUse(entry, _actor);
+    }
 
     private void Awake()
     {
-        if (_rectTransform == null) _rectTransform = GetComponent<RectTransform>();
-
-        _hiddenY = _rectTransform.anchoredPosition.y;
-        _shownY = _hiddenY + ResolveShowOffsetY();
-        _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _hiddenY);
+        if (_rectTransform == null) _rectTransform = transform as RectTransform;
+        if (_viewport == null && _container != null) _viewport = _container.parent as RectTransform;
+        if (_container != null) _grid = _container.GetComponent<GridLayoutGroup>();
     }
 
     private void Update()
     {
-        if (!IsActive || _isAnimating) return;
+        if (!IsActive || Time.frameCount <= _openedFrame || GameInput.BattleUIInputConsumed) return;
         if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
-
-        // 상하좌우 그리드 이동
-        if (GameInput.BattleUpPressed) ChangeIndex(-2);
-        else if (GameInput.BattleDownPressed) ChangeIndex(2);
-        else if (GameInput.BattleLeftPressed) ChangeIndex(-1);
-        else if (GameInput.BattleRightPressed) ChangeIndex(1);
-
+        if (GameInput.BattleUpPressed) ChangeIndex(-1);
+        else if (GameInput.BattleDownPressed) ChangeIndex(1);
         if (GameInput.BattleConfirmPressed) ConfirmSelection();
         else if (GameInput.BattleCancelPressed) Close();
     }
 
-    public void Open(string title, List<IMenuEntry> entries, System.Action<IMenuEntry> onConfirm, System.Action onCancel)
+    public void Preview(string title, List<IMenuEntry> entries, PlayerCharacter actor)
     {
-        if (_isAnimating) return;
-
+        IsActive = false;
+        ClearCallbacks();
+        _actor = actor;
         _entries.Clear();
         if (entries != null) _entries.AddRange(entries);
-
         _currentIndex = 0;
-        _topVisibleRow = 0; 
-        
+        _topVisibleRow = 0;
+        if (_titleText != null) _titleText.text = title;
+        gameObject.SetActive(true);
+        RefreshRows();
+        AutoScroll();
+    }
+
+    public void Open(string title, List<IMenuEntry> entries, Action<IMenuEntry> onConfirm,
+        Action onCancel, PlayerCharacter actor = null)
+    {
+        Preview(title, entries, actor);
         _onConfirmCallback = onConfirm;
         _onCancelCallback = onCancel;
-        
         IsActive = true;
-
-        if (_titleText != null) _titleText.text = title;
-        
-        SpawnAndRefreshRows();
-        
-        _container.anchoredPosition = new Vector2(_container.anchoredPosition.x, 0);
-        PlaySlideIn();
+        _openedFrame = Time.frameCount;
     }
 
     public void Close()
     {
-        if (!IsActive || _isAnimating) return;
+        if (!IsActive) return;
+        GameInput.ConsumeBattleUIInput();
         IsActive = false;
-        
-        var tempCancel = _onCancelCallback;
+        var callback = _onCancelCallback;
         ClearCallbacks();
-        tempCancel?.Invoke();
-        
-        PlaySlideOut(null); 
+        callback?.Invoke();
     }
 
+    // 상세 내용은 남기고 입력/콜백만 정리합니다. 숨김은 소유자가 명시합니다.
     public void ForceCloseImmediate()
     {
         IsActive = false;
-        _isAnimating = false;
         ClearCallbacks();
-
-        if (_rectTransform != null)
-        {
-            _rectTransform.DOKill();
-            _rectTransform.anchoredPosition = new Vector2(_rectTransform.anchoredPosition.x, _hiddenY);
-        }
-
-        if (_container != null)
-        {
-            _container.DOKill();
-            _container.anchoredPosition = new Vector2(_container.anchoredPosition.x, 0f);
-        }
-
-        foreach (var row in _spawnedRows)
-        {
-            if (row != null)
-                row.transform.DOKill();
-        }
     }
+
+    private void OnDisable() => ForceCloseImmediate();
 
     private void ConfirmSelection()
     {
-        if (_entries.Count == 0 || _isAnimating) return;
-        
-        var selected = _entries[_currentIndex];
+        if (!IsActive || _entries.Count == 0) return;
+        GameInput.ConsumeBattleUIInput();
+        IMenuEntry selected = _entries[_currentIndex];
+        if (!BattleMenuEntryPresentation.CanUse(selected, _actor)) return;
         IsActive = false;
-        _isAnimating = true; 
-        
-        _spawnedRows[_currentIndex].transform.DOPunchScale(Vector3.one * 0.2f, 0.15f).OnComplete(() => {
-            var tempConfirm = _onConfirmCallback;
-            ClearCallbacks();
-            tempConfirm?.Invoke(selected);
-            PlaySlideOut(null);
-        });
+        var callback = _onConfirmCallback;
+        ClearCallbacks();
+        callback?.Invoke(selected);
     }
 
     private void ClearCallbacks()
@@ -153,87 +124,55 @@ public class BattleSubMenu : MonoBehaviour
         _onCancelCallback = null;
     }
 
-    private void SpawnAndRefreshRows()
+    private void RefreshRows()
     {
-        int needed = _entries.Count;
-        while (_spawnedRows.Count < needed)
-        {
-            var newRow = Instantiate(_rowPrefab, _container);
-            _spawnedRows.Add(newRow);
-        }
-
+        if (_rowPrefab == null || _container == null) return;
+        while (_spawnedRows.Count < _entries.Count)
+            _spawnedRows.Add(Instantiate(_rowPrefab, _container));
         for (int i = 0; i < _spawnedRows.Count; i++)
         {
-            if (i < needed)
-            {
-                bool isSelected = (i == _currentIndex);
-                _spawnedRows[i].SetEntry(_entries[i], isSelected, _selectedColor, _normalColor, _selectedScale);
-            }
-            else _spawnedRows[i].SetEmpty();
+            if (i >= _entries.Count) _spawnedRows[i].SetEmpty();
+            else _spawnedRows[i].SetEntry(_entries[i], i == _currentIndex,
+                _selectedColor, _normalColor, 1f, BattleMenuEntryPresentation.CanUse(_entries[i], _actor));
         }
+        float step = RowStep;
+        float height = _entries.Count * step - (_grid != null && _entries.Count > 0 ? _grid.spacing.y : 0f);
+        _container.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(0f, height));
         UpdateDescription();
     }
+
+    private float RowStep => _grid != null ? _grid.cellSize.y + _grid.spacing.y : Mathf.Max(1f, _rowHeight);
 
     private void ChangeIndex(int offset)
     {
         if (_entries.Count == 0) return;
-
-        int prevIndex = _currentIndex;
-        int targetIndex = _currentIndex + offset;
-
-        // 🚨 클램핑 방식: 배열 범위를 넘어가면 무시 (좌우/상하 리스트 꼬임 방지)
-        if (targetIndex < 0 || targetIndex >= _entries.Count) return;
-
-        _currentIndex = targetIndex;
-
-        _spawnedRows[prevIndex].SetEntry(_entries[prevIndex], false, _selectedColor, _normalColor, _selectedScale);
-        _spawnedRows[_currentIndex].SetEntry(_entries[_currentIndex], true, _selectedColor, _normalColor, _selectedScale);
-
-        UpdateDescription();
+        int next = Mathf.Clamp(_currentIndex + offset, 0, _entries.Count - 1);
+        if (next == _currentIndex) return;
+        _currentIndex = next;
+        RefreshRows();
         AutoScroll();
     }
 
     private void AutoScroll()
     {
-        // 2열 그리드 기준 스크롤 수학 계산
-        int currentRow = _currentIndex / 2;
-        if (currentRow < _topVisibleRow) _topVisibleRow = currentRow;
-        else if (currentRow >= _topVisibleRow + _visibleRows) _topVisibleRow = currentRow - _visibleRows + 1;
-
-        float targetY = _topVisibleRow * _rowHeight;
-        _container.DOKill();
-        _container.DOAnchorPosY(targetY, 0.15f).SetEase(Ease.OutQuad);
+        if (_container == null) return;
+        float step = RowStep;
+        float viewportHeight = _viewport != null ? _viewport.rect.height : _visibleRows * step;
+        int visible = Mathf.Max(1, Mathf.FloorToInt((viewportHeight + (_grid != null ? _grid.spacing.y : 0f)) / step));
+        if (_currentIndex < _topVisibleRow) _topVisibleRow = _currentIndex;
+        else if (_currentIndex >= _topVisibleRow + visible) _topVisibleRow = _currentIndex - visible + 1;
+        float maxY = Mathf.Max(0f, _container.rect.height - viewportHeight);
+        _container.anchoredPosition = new Vector2(_container.anchoredPosition.x,
+            Mathf.Clamp(_topVisibleRow * step, 0f, maxY));
+        if (_scrollHint != null)
+            _scrollHint.text = _entries.Count > visible
+                ? $"{_currentIndex + 1}/{_entries.Count}  ↑↓" : string.Empty;
     }
 
     private void UpdateDescription()
     {
-        if (_descriptionText != null && _entries.Count > 0)
-            _descriptionText.text = _entries[_currentIndex].Description;
-    }
-
-    private void PlaySlideIn()
-    {
-        _isAnimating = true;
-        _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_shownY, _slideDuration).SetEase(Ease.OutCubic).OnComplete(() => _isAnimating = false);
-    }
-
-    private void PlaySlideOut(System.Action onComplete)
-    {
-        _isAnimating = true;
-        _rectTransform.DOKill();
-        _rectTransform.DOAnchorPosY(_hiddenY, _slideDuration).SetEase(Ease.InCubic).OnComplete(() => {
-            _isAnimating = false;
-            onComplete?.Invoke();
-        });
-    }
-
-    private float ResolveShowOffsetY()
-    {
-        if (Mathf.Abs(_showOffsetY) > 0.01f)
-            return _showOffsetY;
-
-        float legacyOffset = _showY - _hideY;
-        return Mathf.Abs(legacyOffset) > 0.01f ? legacyOffset : 130f;
+        if (_descriptionText == null) return;
+        _descriptionText.text = _entries.Count > 0
+            ? BattleMenuEntryPresentation.Describe(_entries[_currentIndex], _actor) : string.Empty;
     }
 }

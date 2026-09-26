@@ -188,7 +188,7 @@ public class QTEManager : MonoBehaviour
         float impactCueLeadTime = 0.3f,
         EnemyCharacter attacker = null,
         GameObject cuePrefab = null,
-        string cuePivot = CharacterPivotId.Top,
+        string cuePivot = CharacterPivotId.Center,
         Action<float> onAttackProgress = null)
     {
         return StartDefenseExecution(
@@ -215,7 +215,7 @@ public class QTEManager : MonoBehaviour
         Action<float> onImpactCue = null,
         EnemyCharacter attacker = null,
         GameObject cuePrefab = null,
-        string cuePivot = CharacterPivotId.Top,
+        string cuePivot = CharacterPivotId.Center,
         Action<float> onAttackProgress = null)
     {
         uint version = ++_executionVersion;
@@ -427,6 +427,8 @@ public class QTEManager : MonoBehaviour
                     if (execution.IsDone) yield break;
                 }
             }
+            // 전조도 이 시계로 평가하여 일시정지/슬로모션/풀 재사용 시 판정과 어긋나지 않습니다.
+            if (_activeBattleCue != null) _activeBattleCue.SynchronizeToImpact(impactAt - now);
             // 모션의 선행 프레임과 방어 판정은 동일한 시계를 사용합니다.
             // 결과가 나온 뒤 공격을 재생하면 클립의 타격 프레임만큼 피해보다 늦어집니다.
             if (!animationStarted && onAttackAnimationStart != null

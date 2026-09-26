@@ -40,6 +40,8 @@ public static class GameInput
     private static double _qteZPressedAt = -1d;
     private static double _qteXPressedAt = -1d;
     private static double _qteCPressedAt = -1d;
+    private static double _consumedZAt = -2d, _consumedXAt = -2d, _consumedCAt = -2d;
+    private static int _consumedBattleUIFrame = -1;
 
     private static InputAction _dialogueAdvance;
     private static InputAction _choice1;
@@ -180,14 +182,27 @@ public static class GameInput
     public static bool BattleDownPressed  { get { UpdateCache(); return PressedDown(_prevBattleNavigate, _currBattleNavigate); } }
     public static bool BattleLeftPressed  { get { UpdateCache(); return PressedLeft(_prevBattleNavigate, _currBattleNavigate); } }
     public static bool BattleRightPressed { get { UpdateCache(); return PressedRight(_prevBattleNavigate, _currBattleNavigate); } }
-    public static bool BattleConfirmPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
-    public static bool BattleCancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
+    public static bool BattleConfirmPressed { get { if (_configModalActive || BattleUIInputConsumed) return false; EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
+    public static bool BattleCancelPressed  { get { if (_configModalActive || BattleUIInputConsumed) return false; EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
     // 원본 Z/X/C를 별도 OR 처리하면 키를 서로 교환했을 때 두 액션이 동시에 눌립니다.
     // 기본 키, 저장된 키 재설정, 패드 입력을 같은 InputAction 판정으로 모읍니다.
-    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.WasPressedThisFrame(); } }
-    public static bool QTEZHeld { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZ.IsPressed(); } }
-    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteX.WasPressedThisFrame(); } }
-    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteC.WasPressedThisFrame(); } }
+    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZPressedAt > _consumedZAt && _qteZ.WasPressedThisFrame(); } }
+    public static bool QTEZHeld { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZPressedAt > _consumedZAt && _qteZ.IsPressed(); } }
+    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteXPressedAt > _consumedXAt && _qteX.WasPressedThisFrame(); } }
+    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteCPressedAt > _consumedCAt && _qteC.WasPressedThisFrame(); } }
+
+    public static bool BattleUIInputConsumed => _consumedBattleUIFrame == Time.frameCount;
+
+    /// <summary>전환 입력은 같은 프레임의 다음 메뉴/QTE로 전달하지 않습니다.
+    /// Z 유지도 새 press까지 차단해 메뉴 확정이 자동 방어가 되지 않게 합니다.</summary>
+    public static void ConsumeBattleUIInput()
+    {
+        EnsureInitialized();
+        _consumedBattleUIFrame = Time.frameCount;
+        if (_qteZ.IsPressed() || _qteZ.WasPressedThisFrame()) _consumedZAt = _qteZPressedAt;
+        if (_qteX.IsPressed() || _qteX.WasPressedThisFrame()) _consumedXAt = _qteXPressedAt;
+        if (_qteC.IsPressed() || _qteC.WasPressedThisFrame()) _consumedCAt = _qteCPressedAt;
+    }
 
     public static DefenseInputReadStatus ReadDefenseInputThisFrame(out DefenseInput input)
     {
@@ -339,6 +354,7 @@ public static class GameInput
 
         ApplyButtonBinding(_playerCancel, config.GetKey(ConfigurableAction.Cancel));
         ApplyButtonBinding(_uiCancel, config.GetKey(ConfigurableAction.Cancel));
+        // 전투 메뉴/대상 선택도 공용 취소 키(X)를 사용합니다.
         ApplyButtonBinding(_battleCancel, config.GetKey(ConfigurableAction.Cancel));
         ApplyButtonBinding(_choice2, config.GetKey(ConfigurableAction.Cancel));
         ApplyButtonBinding(_qteX, config.GetKey(ConfigurableAction.Cancel));
