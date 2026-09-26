@@ -27,13 +27,18 @@ public class BattleNarrationUI : MonoBehaviour
     private bool _awaitingConfirm;
     private readonly List<string> _rollingLines = new List<string>();
     private readonly StringBuilder _sb = new StringBuilder(512);
-    private bool _confirmWasDown;
+    private bool _initialized;
+    private int _lastConfirmFrame = -1;
 
     public bool IsBusy => _routine != null || _isShowing;
     public bool IsAwaitingConfirm => _awaitingConfirm;
 
-    private void Awake()
+    private void Awake() => EnsureInitialized();
+
+    private void EnsureInitialized()
     {
+        if (_initialized) return;
+        _initialized = true;
         _canvasGroup = GetComponent<CanvasGroup>();
         if (_messageText == null) _messageText = GetComponentInChildren<TextMeshProUGUI>(true);
         if (_bubbleBackground == null) _bubbleBackground = FindChildRect("Backg");
@@ -43,43 +48,63 @@ public class BattleNarrationUI : MonoBehaviour
 
     public void Enqueue(BattleNarrationMessage message)
     {
-        if (!gameObject.activeInHierarchy) gameObject.SetActive(true);
-        if (string.IsNullOrWhiteSpace(message.Text) || _messageText == null) return;
+        // 비어 있는 템플릿/효과 안내는 창 자체를 열지 않습니다.
+        if (string.IsNullOrWhiteSpace(message.Text)) return;
+        EnsureInitialized();
+        if (_messageText == null) return;
 
-        while (_queue.Count >= _maxQueueCount)
+        while (_queue.Count >= Mathf.Max(1, _maxQueueCount))
             _queue.Dequeue();
 
         _queue.Enqueue(message);
+        if (!gameObject.activeSelf) gameObject.SetActive(true);
         if (_routine == null && isActiveAndEnabled)
             _routine = StartCoroutine(ProcessQueue());
     }
 
     private void OnEnable()
     {
-        if (_routine == null && _queue.Count > 0)
+        EnsureInitialized();
+        if (_routine == null && _queue.Count > 0 && isActiveAndEnabled)
             _routine = StartCoroutine(ProcessQueue());
     }
 
     public void Clear()
     {
-        _queue.Clear();
-        if (_routine != null) StopCoroutine(_routine);
-        _routine = null;
+        StopProcessing();
         HideImmediate();
+    }
+
+    private void OnDisable()
+    {
+        // GameObject 비활성화로 멈춘 코루틴 핸들을 다음 표시까지 남기지 않습니다.
+        StopProcessing();
+        ResetHiddenState();
+    }
+
+    private void StopProcessing()
+    {
+        _queue.Clear();
+        Coroutine routine = _routine;
+        _routine = null;
+        if (routine != null) StopCoroutine(routine);
     }
 
     private IEnumerator ProcessQueue()
     {
-        while (_queue.Count > 0)
+        try
         {
-            BattleNarrationMessage msg = _queue.Dequeue();
-            yield return ShowMessage(msg);
+            while (_queue.Count > 0)
+            {
+                BattleNarrationMessage msg = _queue.Dequeue();
+                yield return ShowMessage(msg);
+            }
         }
-
-        _routine = null;
-        _isShowing = false;
-        if (_queue.Count == 0)
-            HideImmediate();
+        finally
+        {
+            _routine = null;
+            if (this != null) HideImmediate();
+        }
     }
 
     private IEnumerator ShowMessage(BattleNarrationMessage msg)
@@ -133,16 +158,31 @@ public class BattleNarrationUI : MonoBehaviour
 
     private bool ConsumeConfirmPress()
     {
-        bool isDown = GameInput.BattleConfirmPressed || GameInput.DialogueAdvancePressed || GameInput.ConfirmPressed;
-        bool pressedThisFrame = isDown && !_confirmWasDown;
-        _confirmWasDown = isDown;
-        return pressedThisFrame;
+        if (_lastConfirmFrame == Time.frameCount || GameInput.BattleUIInputConsumed) return false;
+        // WasPressedThisFrame은 이미 새 입력입니다. 코루틴 사이에서 release를 놓쳐도 다음 press를 받습니다.
+        if (!GameInput.BattleConfirmPressed && !GameInput.DialogueAdvancePressed && !GameInput.ConfirmPressed)
+            return false;
+        _lastConfirmFrame = Time.frameCount;
+        GameInput.ConsumeBattleUIInput();
+        GameInput.SuppressPlayerConfirmForCurrentFrame();
+        return true;
     }
 
     private void HideImmediate()
     {
+        ResetHiddenState();
+        gameObject.SetActive(false);
+    }
+
+    private void ResetHiddenState()
+    {
         if (_canvasGroup == null) _canvasGroup = GetComponent<CanvasGroup>();
-        _canvasGroup.alpha = 1f;
+        if (_canvasGroup != null)
+        {
+            _canvasGroup.alpha = 0f;
+            _canvasGroup.interactable = false;
+            _canvasGroup.blocksRaycasts = false;
+        }
         if (_messageText != null)
         {
             _rollingLines.Clear();
@@ -151,8 +191,6 @@ public class BattleNarrationUI : MonoBehaviour
         }
         _isShowing = false;
         _awaitingConfirm = false;
-        _confirmWasDown = false;
-        gameObject.SetActive(false);
     }
 
     private void AppendRollingLine(string text)

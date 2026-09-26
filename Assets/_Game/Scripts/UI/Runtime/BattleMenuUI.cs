@@ -291,6 +291,9 @@ public class BattleMenuUI : UIPanel
 
     private void Confirm(int index)
     {
+        // 버튼 onClick도 Update와 동일한 입력 경계를 통과해야 합니다.
+        // 대상 확정 후 같은 프레임에 다시 열린 메뉴로 Submit이 재진입하는 것을 막습니다.
+        if (Time.frameCount <= _inputEnabledFrame || GameInput.BattleUIInputConsumed) return;
         if (!_inputEnabled || _isExternallySuspended || !isActiveAndEnabled || !IsVisible
             || _buttons == null || index < 0 || index >= _buttons.Length || _buttons[index] == null)
             return;
@@ -307,6 +310,7 @@ public class BattleMenuUI : UIPanel
             && (_subMenu == null || !_subMenu.TryGetSelectedEntry(out entry)))
             return;
         if (_subMenu != null) _selectionByMenu[index] = _subMenu.SelectedIndex;
+        _inputEnabled = false;
         PlayConfirmSfx();
 
         // 목록에서 Z를 누르면 기존 대상 선택으로 바로 전달합니다.
@@ -315,7 +319,6 @@ public class BattleMenuUI : UIPanel
             if (_currentActor != null) _currentActor.PlayBattleAnim(PlayerCharacter.HashBattleReady);
         }
 
-        _inputEnabled = false;
         if (action == PlayerMenuAction.Skill)
             OnSkillSelected(entry);
         else if (action == PlayerMenuAction.Item)

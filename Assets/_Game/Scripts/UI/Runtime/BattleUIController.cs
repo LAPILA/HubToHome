@@ -842,6 +842,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleBattleNarrationRequested(BattleNarrationMessage message)
     {
+        if (string.IsNullOrWhiteSpace(message.Text)) return;
         if (_narrationUI == null)
             _narrationUI = BattleNarrationUI.FindInActiveScene();
 
@@ -851,9 +852,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             return;
         }
 
-        if (!_narrationUI.gameObject.activeSelf)
-            _narrationUI.gameObject.SetActive(true);
-
+        // 표시/숨김은 큐 소유자에게 맡깁니다. 요청 전에 켜면 빈 프레임만 남을 수 있습니다.
         _narrationUI.Enqueue(message);
     }
 

@@ -11,6 +11,102 @@ public sealed class BattleHudPresentationTests
     private const string HostPath = "Assets/_Game/Content/Battle/Prefabs/System/SeamlessBattleHost.prefab";
     private readonly List<Object> _owned = new List<Object>();
 
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase(" \n\t ")]
+    public void EmptyNarration_DoesNotOpenAnEmptyFrame(string message)
+    {
+        BattleNarrationUI narration = Narration();
+        narration.Enqueue(new BattleNarrationMessage(message));
+        Assert.That(narration.gameObject.activeSelf, Is.False);
+        Assert.That(narration.IsBusy, Is.False);
+        Assert.That(narration.GetComponent<CanvasGroup>().alpha, Is.Zero);
+
+        GameObject root = Own(new GameObject("HUD", typeof(RectTransform)));
+        root.SetActive(false);
+        BattleUIController controller = root.AddComponent<BattleUIController>();
+        Set(controller, "_narrationUI", narration);
+        Invoke(controller, "HandleBattleNarrationRequested", new BattleNarrationMessage(message));
+        Assert.That(narration.gameObject.activeSelf, Is.False, "호출자도 빈 창을 먼저 켜면 안 됩니다.");
+        Assert.That(narration.IsBusy, Is.False);
+    }
+
+    [Test]
+    public void EmptyNarration_DoesNotEraseAnExistingMessage()
+    {
+        BattleNarrationUI narration = Narration();
+        narration.gameObject.SetActive(true);
+        Set(narration, "_isShowing", true);
+        TextMeshProUGUI label = Get<TextMeshProUGUI>(narration, "_messageText");
+        label.text = "existing message";
+        narration.GetComponent<CanvasGroup>().alpha = 1f;
+
+        narration.Enqueue(new BattleNarrationMessage(" "));
+        Assert.That(label.text, Is.EqualTo("existing message"));
+        Assert.That(narration.IsBusy, Is.True);
+        Assert.That(narration.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
+
+        narration.Clear();
+        Assert.That(narration.gameObject.activeSelf, Is.False);
+        Assert.That(narration.IsBusy, Is.False);
+    }
+
+    [Test]
+    public void NarrationDisable_ClearsPendingMessagesAndVisibleFrame()
+    {
+        BattleNarrationUI narration = Narration();
+        var queue = Get<Queue<BattleNarrationMessage>>(narration, "_queue");
+        queue.Enqueue(new BattleNarrationMessage("pending"));
+        Set(narration, "_isShowing", true);
+        Set(narration, "_awaitingConfirm", true);
+        Get<TextMeshProUGUI>(narration, "_messageText").text = "old message";
+        narration.GetComponent<CanvasGroup>().alpha = 1f;
+        Invoke(narration, "OnDisable");
+
+        Assert.That(queue, Is.Empty);
+        Assert.That(narration.IsBusy, Is.False);
+        Assert.That(narration.IsAwaitingConfirm, Is.False);
+        Assert.That(Get<TextMeshProUGUI>(narration, "_messageText").text, Is.Empty);
+        Assert.That(narration.GetComponent<CanvasGroup>().alpha, Is.Zero);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void ButtonSubmit_RejectsConsumedOrNewlyEnabledFrame(bool consumed)
+    {
+        GameObject root = Own(new GameObject("Menu", typeof(RectTransform), typeof(CanvasGroup)));
+        root.SetActive(false);
+        BattleMenuUI menu = root.AddComponent<BattleMenuUI>();
+        var buttonObject = new GameObject("Attack", typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(root.transform, false);
+        Button button = buttonObject.GetComponent<Button>();
+        Set(menu, "_attackBtn", button);
+        menu.SetCommandInputEnabled(true);
+
+        FieldInfo consumedFrame = typeof(GameInput).GetField("_consumedBattleUIFrame", BindingFlags.Static | BindingFlags.NonPublic);
+        int previousFrame = (int)consumedFrame.GetValue(null);
+        try
+        {
+            consumedFrame.SetValue(null, consumed ? Time.frameCount : -1);
+            Set(menu, "_inputEnabledFrame", consumed ? Time.frameCount - 1 : Time.frameCount);
+            button.onClick.Invoke(); // Update와 다른 EventSystem/버튼 콜백 진입점
+            Assert.That(menu.CommandsEnabled, Is.True, "무시된 입력이 명령 실행/확인음까지 도달하면 안 됩니다.");
+        }
+        finally { consumedFrame.SetValue(null, previousFrame); }
+    }
+
+    private BattleNarrationUI Narration()
+    {
+        GameObject root = Own(new GameObject("Narration", typeof(RectTransform), typeof(CanvasGroup)));
+        root.SetActive(false);
+        var labelObject = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(root.transform, false);
+        BattleNarrationUI narration = root.AddComponent<BattleNarrationUI>();
+        Set(narration, "_messageText", labelObject.GetComponent<TextMeshProUGUI>());
+        Invoke(narration, "Awake");
+        return narration;
+    }
+
     [Test]
     public void SharedBattleMenu_UsesCustomNavigationAudio()
     {
