@@ -38,6 +38,93 @@ public sealed class BunnySlimeShowcaseEnemyTests
         Assert.That(ai.Phase2StartIndex, Is.EqualTo(5));
         Assert.That(ai.Phase3StartIndex, Is.EqualTo(9));
         Assert.That(data.CounterSkill.ActionTimeline[0], Is.TypeOf<Action_Move>());
+        Assert.That(data.Enemy.UseOrderedSkills, Is.True);
+        Assert.That(data.Enemy.SkillList[2], Is.SameAs(data.CounterSkill));
+    }
+
+    [Test]
+    public void LabEncounters_UseTwoBattlesAndPreservedReserveExercise()
+    {
+        const string root = "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/";
+        var data = AssetDatabase.LoadAssetAtPath<BunnySlimeBattleLabData>(root + "Data/BunnySlimeBattleLab.asset");
+        Assert.That(data.Encounters, Has.Length.EqualTo(3));
+        Assert.That(data.Encounters[0].Enemy, Is.SameAs(data.Enemy));
+        Assert.That(data.Encounters[1].Enemy.EnemyId, Is.EqualTo("lab.zev"));
+        Assert.That(data.Encounters[1].Scenario, Is.Not.Null);
+        Assert.That(data.Encounters[0].WeakenFrontLine, Is.False);
+        Assert.That(data.Encounters[1].WeakenFrontLine, Is.False);
+        Assert.That(data.Encounters[2].WeakenFrontLine, Is.True);
+        Assert.That(data.Encounters[2].Scenario, Is.Null);
+        Assert.That(data.Encounters[2].Enemy.SkillList, Is.EqualTo(new[] { data.WaveSkill }));
+        Assert.That(data.Encounters[1].Enemy.SkillList, Has.Count.EqualTo(5));
+        foreach (SkillData skill in data.Encounters[1].Enemy.SkillList)
+        {
+            Assert.That(AssetDatabase.GetAssetPath(skill), Does.StartWith("Assets/_Game/Content/Skills/Enemy/ZEV/"));
+            Assert.That(skill.UsageProfile, Is.EqualTo(SkillUsageProfile.EnemyOnly));
+            Assert.That(EnemyAttackAuthoringAnalyzer.Analyze(skill).HasErrors, Is.False, skill.name);
+            Assert.That(skill.ActionTimeline.Exists(block => block is Action_EnemyWindup), Is.True);
+            Assert.That(skill.ActionTimeline.Exists(block => block is Action_QTE), Is.False);
+            Assert.That(skill.ActionTimeline.Exists(block => block is Action_Projectile), Is.False,
+                "ZEV is melee-only; ranged patterns belong to the bunny lab.");
+        }
+    }
+
+    [Test]
+    public void ZevOriginalSkills_EachHitHasOneCenterCueBeforeItsEffects()
+    {
+        const string folder = "Assets/_Game/Content/Skills/Enemy/ZEV/";
+        string[] names = { "Skill_ComboSlash", "Skil_Zev", "Skill_Crash", "Skill_BlinkSlash", "Skill_PhantomArc" };
+        int[] hits = { 3, 1, 1, 1, 2 };
+        for (int i = 0; i < names.Length; i++)
+        {
+            SkillData skill = AssetDatabase.LoadAssetAtPath<SkillData>(folder + names[i] + ".asset");
+            Assert.That(skill, Is.Not.Null, names[i]);
+            int damageCount = 0, windowCount = 0;
+            bool windowOpen = false;
+            foreach (SkillActionBlock block in skill.ActionTimeline)
+            {
+                Assert.That(block, Is.Not.Null, skill.name);
+                if (block.Disabled) continue;
+                if (block is Action_DefenseWindow defense)
+                {
+                    Assert.That(windowOpen, Is.False, "Do not stack windows before a single hit.");
+                    windowOpen = true;
+                    windowCount++;
+                    Assert.That(defense.ImpactCuePrefab, Is.Not.Null, skill.name);
+                    Assert.That(defense.ImpactCuePivotName, Is.EqualTo(CharacterPivotId.Center));
+                    Assert.That(defense.UseTelegraph, Is.False, "Only the impact clock owns the visible cue.");
+                    Assert.That(defense.TimeWindow, Is.GreaterThanOrEqualTo(.4f));
+                    Assert.That(defense.Requirement, Is.EqualTo(i == 1 ? DefenseRequirement.Counterable : DefenseRequirement.Any));
+                }
+                if (block is Action_VFX)
+                    Assert.That(windowOpen, Is.True, "Slash effects must follow the defense window.");
+                if (block is Action_Damage)
+                {
+                    Assert.That(windowOpen, Is.True, "Every melee impact needs its own defense window.");
+                    windowOpen = false;
+                    damageCount++;
+                }
+            }
+            Assert.That(windowOpen, Is.False);
+            Assert.That(windowCount, Is.EqualTo(hits[i]), skill.name);
+            Assert.That(damageCount, Is.EqualTo(hits[i]), skill.name);
+        }
+    }
+
+    [Test]
+    public void OrderedStandardEnemy_SkipsNullWrapsAndResetsOnSetup()
+    {
+        EnemyCharacter enemy = CreateEnemy<EnemyCharacter>();
+        SkillData first = CreateSkill(), second = CreateSkill();
+        enemy.Data.UseOrderedSkills = true;
+        enemy.Data.SkillUseChance = 0f;
+        enemy.Data.SkillList.AddRange(new[] { first, null, second });
+        Assert.That(enemy.DecideAction(), Is.EqualTo(EnemyAction.UseSkill));
+        Assert.That(enemy.SelectSkill(EnemyAction.UseSkill), Is.SameAs(first));
+        Assert.That(enemy.SelectSkill(EnemyAction.UseSkill), Is.SameAs(second));
+        Assert.That(enemy.SelectSkill(EnemyAction.UseSkill), Is.SameAs(first));
+        enemy.Setup(enemy.Data);
+        Assert.That(enemy.SelectSkill(EnemyAction.UseSkill), Is.SameAs(first));
     }
 
     private readonly List<Object> _objects = new List<Object>();

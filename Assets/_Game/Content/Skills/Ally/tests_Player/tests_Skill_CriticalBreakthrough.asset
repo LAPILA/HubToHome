@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: tests_Skill_CriticalBreakthrough
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "임계압 돌파"
   SkillID: tests_player.critical_breakthrough
   Description: "세 단계로 압력을 해방해 방어선을 밀어내고 마지막 타격으로 돌파한다."

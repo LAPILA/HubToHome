@@ -43,6 +43,13 @@ public class SkillData : ScriptableObject
     [BoxGroup("Targeting")]
     public bool IsAoE = false;
 
+    [BoxGroup("고유 자원"), LabelText("조건부 강화 / 획득")]
+    [Tooltip("자원 부족은 사용을 막지 않습니다. 시작 시 충족하면 지정량만 소모하고 스킬 전체 피해를 강화합니다.")]
+    [ValidateInput(nameof(HasValidResourceEffect), "자원 필요량/소모량/배율 설정을 확인하세요.")]
+    public SkillResourceEffect ResourceEffect = new SkillResourceEffect();
+
+    private bool HasValidResourceEffect(SkillResourceEffect effect) => effect == null || effect.IsValid;
+
     [InfoBox("SkillData는 전투 스킬 전용입니다. 스토리 대화, 지역 이동, 시나리오 플래그, 컷신 분기, Timeline 전체 컷신 호출은 넣지 마세요.")]
     [Title("전투 스킬 블록")]
     [LabelText("Combat Skill Blocks")]

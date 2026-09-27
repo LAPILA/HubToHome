@@ -1,5 +1,11 @@
 # Characters Rules
 
+## Battle-only resources
+
+- CharacterData.BattleResource references immutable authoring data. PlayerCharacter.BattleResource owns independent current steps. Reset at battle setup/end/abort, never merely OnDisable (reserve members are inactive).
+- ActorLargePortrait is the resource Image; keep existing serialized references and party/turn portraits intact. A character without a definition has no resource image. Do not fall back to BattleLargePortrait.
+- WizelPressure uses step0..4 from Aseprite; imported SpriteRenderer clip frames are baked for Image playback through the definition Inspector. No runtime AssetDatabase or RenderTexture.
+
 ## Current Structure
 
 - `CharacterBase`: common stats, HP/MP, damage, healing, status effects, loop VFX.
@@ -33,3 +39,7 @@
 - New player/ally data should preserve save compatibility.
 - Item and status-effect changes must stay aligned with `ItemData`, `InventoryManager`, `BattleManager.ExecuteItemEffect()`, and any future status factory.
 - If adding a new status effect, document creation path and application path.
+- `EnemyData.UseOrderedSkills` is opt-in (legacy default false). When enabled, EnemyCharacter selects non-null normal skills cyclically instead of probability/strong-telegraph selection. Reset the cursor in Setup; do not store the cursor in the asset. Empty lists fall back to basic attack.
+- BunnySlimeShowcaseEnemy delegates to the common ordered policy when enabled; old HP-index showcase behavior is compatibility-only. New lab HP phase changes belong to authored scenario rules, not the AI skill index.
+- `EnemyData.UseOrderedSkills` is opt-in (legacy default false). When enabled, EnemyCharacter selects non-null normal skills cyclically instead of probability/strong-telegraph selection. Reset the cursor in Setup; do not store the cursor in the asset. Empty lists fall back to basic attack.
+- BunnySlimeShowcaseEnemy delegates to the common ordered policy when enabled; old HP-index showcase behavior is compatibility-only. New lab HP phase changes belong to authored scenario rules, not the AI skill index.

@@ -64,9 +64,11 @@ public sealed class BattleHudViewport : MonoBehaviour
         // 게임 오브젝트를 비활성화하지 않으므로 QTE/행동 코루틴 수명은 그대로입니다.
         if (_canvas != null)
         {
-            if (GameInput.IsDefenseInputBlocked && _canvas.enabled)
+            bool modalVisible = GameInput.IsDefenseInputBlocked
+                || (DialogueManager.Instance != null && DialogueManager.Instance.IsPresentationVisible);
+            if (modalVisible && _canvas.enabled)
             { _canvas.enabled = false; _hiddenForModal = true; }
-            else if (!GameInput.IsDefenseInputBlocked && _hiddenForModal)
+            else if (!modalVisible && _hiddenForModal)
             { _canvas.enabled = true; _hiddenForModal = false; }
         }
         Rect rect = OutputRect;

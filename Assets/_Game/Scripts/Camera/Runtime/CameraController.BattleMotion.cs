@@ -201,7 +201,26 @@ public partial class CameraController
             .SetEase(Ease.InOutCubic).SetUpdate(true).SetRecyclable(false).SetLink(gameObject);
     }
 
-    public void EndBattleSkillBeats(CameraCommandToken token)
+    /// <summary>동일 행동의 토큰 안에서 공격 준비 대상을 확대합니다. 방어/Timeline 소유권은 빼앗지 않습니다.</summary>
+    public bool TryFocusBattleAttacker(CameraCommandToken token, CharacterBase attacker, float zoomRatio, float duration)
+    {
+        if (attacker == null || !IsCurrent(token) || !_battleShotActive || _vCam == null
+            || _battleShotVersion != _commandVersion || IsDefenseCameraStable) return false;
+        _authoredBattleBeat = true;
+        _battlePositionTween?.Kill();
+        _battleLensTween?.Kill();
+        Vector3 point = attacker.GetPivot(CharacterPivotId.Center).position;
+        point.y += _actionHeightOffset;
+        _battlePositionTween = _battleShotTarget.DOMove(point, duration)
+            .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false).SetLink(gameObject);
+        float lens = Mathf.Max(1f, _battleShotLens * Mathf.Clamp(zoomRatio, 0.5f, 1f));
+        _battleLensTween = DOTween.To(() => _vCam.Lens.OrthographicSize,
+                value => { if (_vCam != null) _vCam.Lens.OrthographicSize = value; }, lens, duration)
+            .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false).SetLink(gameObject);
+        return true;
+    }
+
+    public void EndBattleSkillBeats(CameraCommandToken token, float returnDuration = 0.16f)
     {
         if (!IsCurrent(token) || !_battleShotActive || !_authoredBattleBeat || _vCam == null) return;
         _authoredBattleBeat = false;
@@ -211,7 +230,7 @@ public partial class CameraController
         _battleRollTween = DOTween.To(() => _vCam.Lens.Dutch,
                 value => { if (_vCam != null) _vCam.Lens.Dutch = value; }, 0f, 0.14f)
             .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false).SetLink(gameObject);
-        ReframeBattleShot(0.16f);
+        ReframeBattleShot(Mathf.Max(0.05f, returnDuration));
     }
 
     private void PlayBattleImpactBeat(float intensity)

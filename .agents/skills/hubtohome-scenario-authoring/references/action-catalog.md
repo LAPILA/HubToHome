@@ -1,5 +1,9 @@
 # Action Catalog
 
+## Skill-local resource contract (2026-09-27)
+
+`battle.skill.timeline` uses the same `SkillContext.BeginSkillResources` / `CompleteSkillResources` lifecycle as normal turns. Resource conditions, configured consumption, damage bonus and completion gain belong to `SkillData.ResourceEffect`, not new Scenario Source parameters or global actions. Insufficient resource keeps base skill behavior; cancellation grants no completion resource and does not refund a committed cast. Killing the final target counts as normal completion. Preserve QTE-independent `EffectiveDamageMultiplier` for every skill damage path.
+
 The Action Catalog is the discoverable contract for actions. It is for both AI generation and human editor search.
 
 ## Entry Shape
@@ -658,6 +662,7 @@ runtimeBinding: "`BattleSessionState`의 battle-scoped flag store를 갱신합�
 Existing `SkillActionBlock` classes are not the global grammar, but they are useful migration references:
 
 - `Action_Wait` -> `flow.wait`
+- `Action_EnemyWindup` stays a local EnemyOnly SkillActionBlock; it is not a registered global Action ID. CameraController uses the current battle action token for attacker closeup, then the shared ready pose and a completed zoom-out before the next defense block. Tune ratio/focus/hold/release in SkillData, not scenario parameter JSON or lab mode-index branches.
 - `Action_Move` -> `actor.move`
 - `Action_PlayAnim` -> `actor.animation`
 - `Action_Damage` -> `battle.participant.damage` for scenario-level participant damage; legacy skill timelines may still keep local `Action_Damage` blocks behind `battle.skill.timeline`.

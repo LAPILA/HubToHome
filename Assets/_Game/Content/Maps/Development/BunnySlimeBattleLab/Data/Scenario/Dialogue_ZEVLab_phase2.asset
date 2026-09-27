@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_ZEVLab_phase2
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.zev.phase2.00
+    DefaultText: "칼끝보다 어깨를 보고 계시는군요. 나쁘지 않습니다."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.zev.phase2.01
+    DefaultText: "그렇게 확대해서 보여 주시는데 못 보면 억울하잖아요."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.zev.phase2.02
+    DefaultText: "다음 공격은 두 번입니다. 첫 번째를 막았다고 끝이 아닙니다."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
+    Emotion: 1
+    LocalizationKey: lab.zev.phase2.03
+    DefaultText: "친절한 설명이 제일 불안하네요."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

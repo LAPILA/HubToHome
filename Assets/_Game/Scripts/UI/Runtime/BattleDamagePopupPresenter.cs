@@ -29,6 +29,8 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
     [SerializeField] private float _fadeDuration = 0.24f;
     [BoxGroup("Motion"), LabelText("기준 위치 보정")]
     [SerializeField] private Vector2 _originOffset = new Vector2(0f, 12f);
+    [BoxGroup("Motion"), MinValue(0f), LabelText("캐릭터 바깥쪽 간격")]
+    [SerializeField] private float _characterSideOffset = 32f;
     [BoxGroup("Motion"), LabelText("튀어오름 위치")]
     [SerializeField] private Vector2 _launchOffset = new Vector2(18f, 30f);
     [BoxGroup("Motion"), LabelText("착지 위치")]
@@ -109,11 +111,16 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
         string content = feedback.Kind == BattleDamageFeedbackKind.Miss
             ? "MISS"
             : Mathf.Max(0, feedback.Amount).ToString();
-        return TryShowAtLocalPosition(
+        // 화면 기준으로 아군은 왼쪽, 적은 오른쪽에 표시합니다. 카메라 줌과
+        // 캐릭터 방향에 관계없이 동일한 UI 간격을 유지합니다.
+        float direction = feedback.Target is PlayerCharacter ? -1f : 1f;
+        localPosition.x += direction * Mathf.Max(0f, _characterSideOffset);
+        return TryShowDirected(
             content,
             feedback.ResolveColor(),
             feedback.IsCritical,
             localPosition,
+            direction,
             out view);
     }
 
@@ -124,12 +131,24 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
         Vector2 localPosition,
         out BattleDamagePopupView view)
     {
+        // 캐릭터가 없는 범용 팝업 호출은 기존 좌우 교대 연출을 유지합니다.
+        float direction = (_spawnSequence++ & 1) == 0 ? 1f : -1f;
+        return TryShowDirected(content, color, isCritical, localPosition, direction, out view);
+    }
+
+    private bool TryShowDirected(
+        string content,
+        Color color,
+        bool isCritical,
+        Vector2 localPosition,
+        float direction,
+        out BattleDamagePopupView view)
+    {
         view = null;
         if (!_initialized || _popupRoot == null)
             return false;
 
         view = Acquire();
-        float direction = (_spawnSequence++ & 1) == 0 ? 1f : -1f;
         view.Play(
             content,
             color,

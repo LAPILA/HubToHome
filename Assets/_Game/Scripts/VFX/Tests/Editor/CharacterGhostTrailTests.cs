@@ -55,6 +55,89 @@ public sealed class CharacterGhostTrailTests
     }
 
     [Test]
+    public void EnabledButStationary_DoesNotCreateAttackAfterimages()
+    {
+        _trail.SetTrailActive(true);
+        InvokePrivate(_trail, "UpdateTrail", 1f);
+        InvokePrivate(_trail, "UpdateTrail", 1f);
+
+        Assert.That(GetPrivateField<List<SpriteRenderer>>(_trail, "_ghostPool"), Is.Empty);
+    }
+
+    [Test]
+    public void MovementCreatesGhost_StoppingClearsIt_AndResumingReusesPool()
+    {
+        _trail.SetTrailActive(true);
+        _character.transform.position = Vector3.right;
+        InvokePrivate(_trail, "UpdateTrail", 0.05f);
+        var pool = GetPrivateField<List<SpriteRenderer>>(_trail, "_ghostPool");
+        Assert.That(pool, Has.Count.EqualTo(1));
+        SpriteRenderer ghost = pool[0];
+        Assert.That(ghost.gameObject.activeSelf, Is.True);
+
+        InvokePrivate(_trail, "UpdateTrail", 0.05f);
+        Assert.That(ghost.gameObject.activeSelf, Is.False);
+        Assert.That(DOTween.IsTweening(ghost), Is.False);
+
+        _character.transform.position = Vector3.right * 2f;
+        InvokePrivate(_trail, "UpdateTrail", 0.05f);
+        Assert.That(pool, Has.Count.EqualTo(1));
+        Assert.That(ghost.gameObject.activeSelf, Is.True);
+    }
+
+    [Test]
+    public void EndingMovementClearsGhostsBeforeAttackPoseInSameFrame()
+    {
+        _trail.SetTrailActive(true);
+        _character.transform.position = Vector3.right;
+        InvokePrivate(_trail, "UpdateTrail", 0.05f);
+        var pool = GetPrivateField<List<SpriteRenderer>>(_trail, "_ghostPool");
+
+        _trail.SetTrailActive(false);
+
+        Assert.That(pool[0].gameObject.activeSelf, Is.False);
+        Assert.That(DOTween.IsTweening(pool[0]), Is.False);
+        Assert.That(_trail.enabled, Is.False);
+    }
+
+    [Test]
+    public void AnimatedVisualOffset_DoesNotCountAsCharacterMovement()
+    {
+        var actor = new GameObject("Actor Root");
+        actor.SetActive(false);
+        actor.AddComponent<PlayerCharacter>();
+        var visual = new GameObject("Animated Visual", typeof(SpriteRenderer));
+        visual.transform.SetParent(actor.transform, false);
+        var trail = visual.AddComponent<CharacterGhostTrail>();
+        EnsureAwake(trail);
+        try
+        {
+            trail.SetTrailActive(true);
+            visual.transform.localPosition = Vector3.right;
+            InvokePrivate(trail, "UpdateTrail", 0.05f);
+            Assert.That(GetPrivateField<List<SpriteRenderer>>(trail, "_ghostPool"), Is.Empty);
+            actor.transform.position = Vector3.right;
+            InvokePrivate(trail, "UpdateTrail", 0.05f);
+            Assert.That(GetPrivateField<List<SpriteRenderer>>(trail, "_ghostPool"), Has.Count.EqualTo(1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(actor);
+        }
+    }
+
+    [Test]
+    public void RepeatedEnable_DoesNotErasePendingMovement()
+    {
+        _trail.SetTrailActive(true);
+        _character.transform.position = Vector3.right;
+        _trail.SetTrailActive(true);
+        InvokePrivate(_trail, "UpdateTrail", 0.05f);
+
+        Assert.That(GetPrivateField<List<SpriteRenderer>>(_trail, "_ghostPool"), Has.Count.EqualTo(1));
+    }
+
+    [Test]
     public void SpawnGhost_ReusesOldestSlotAtConfiguredLimit()
     {
         SetPrivateField(_trail, "_maxGhostCount", 3);

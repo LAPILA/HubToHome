@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3eba3bde5818ed94ba397256558aaa34, type: 3}
+  m_Name: ZEV_Lab
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  serializationData:
+    SerializedFormat: 0
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  Portrait: {fileID: -3831865716268829567, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
+  TurnOrderPortrait: {fileID: -3831865716268829567, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
+  EnemyId: lab.zev
+  EnemyName: ZEV · 계약 실습
+  BattleBGM: {fileID: 8300000, guid: 715eb49a792787c48b2dcaf68b3512c0, type: 3}
+  Prefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
+  ReturnMoveTrigger: BattleMove
+  BaseStats:
+    MaxHP: 2200
+    MaxAP: 100
+    ATK: 28
+    DEF: 6
+    SPD: 15
+    PhysicalResistance: 1
+    FireResistance: 1
+    IceResistance: 1
+    ElectricResistance: 1
+    CorrosionResistance: 1
+    IncomingDamageMultiplier: 1
+    OutgoingDamageMultiplier: 1
+  ThreatLevel: 1
+  AllowInstantKillAfterDefeat: 0
+  InstantKillLevelGap: 5
+  SkillUseChance: 1
+  UseOrderedSkills: 1
+  StrongSkillUseChance: 0
+  TelegraphStrongSkill: 0
+  TelegraphTurns: 1
+  HasEnragedPattern: 0
+  IsLargeEnemy: 0
+  SkillList:
+  - {fileID: 11400000, guid: d91f2fcf42c2672489df5cbefd7c1f51, type: 2}
+  - {fileID: 11400000, guid: f11cc42b1b06a2f4da055533977747a4, type: 2}
+  - {fileID: 11400000, guid: 57277bc7847637343b5b2fb2c1d54910, type: 2}
+  - {fileID: 11400000, guid: a4d8f5d1c8b34f2aa19c44d8a0a3b771, type: 2}
+  - {fileID: 11400000, guid: c2f49c6e1b8d45f4a2a9a671ec8db913, type: 2}
+  StrongSkillList: []
+  Drops: []
+  DropItemIDs: []
+  EXPReward: 30
+  GoldReward: 20

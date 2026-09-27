@@ -1,0 +1,381 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba44383cc5d14901b9bfb684b07e47c8, type: 3}
+  m_Name: BattleScenario_ZEVLab
+  m_EditorClassIdentifier: Assembly-CSharp::BattleScenarioData
+  ScenarioId: lab.zev.contract
+  TitleKo: "ZEV · 계약 실습"
+  PrimaryMode: battle
+  OpeningModule: turn_qte
+  MemoryKey: lab.zev.contract
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
+    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
+  PartyIds:
+  - lab.wizzel.front
+  - lab.wizzel.support
+  - lab.wizzel.striker
+  - lab.wizzel.reserve1
+  - lab.wizzel.reserve2
+  - lab.wizzel.reserve3
+  EnemyIds:
+  - lab.zev
+  Rules: []
+  TriggerRules:
+  - RuleId: lab.zev.opening
+    DisplayNameKo: ""
+    EventId: battle.started
+    Timing: 0
+    CheckpointId: ""
+    Once: 1
+    Disabled: 0
+    Conditions:
+      NodeId: "b429459ec0a66f5232aefa55e27e4bd6"
+      Kind: 1
+      GroupMode: 0
+      ConditionId: ""
+      ParametersJson: "{}"
+      Negate: 0
+      Children: []
+    SequenceId: lab.zev.opening
+    TargetInputsJson: "{}"
+  - RuleId: lab.zev.phase2
+    DisplayNameKo: "HP 65% · 대화"
+    EventId: participant.hp_changed
+    Timing: 1
+    CheckpointId: ""
+    Once: 1
+    Disabled: 0
+    Conditions:
+      NodeId: "lab.zev.phase2.root"
+      Kind: 1
+      GroupMode: 0
+      ConditionId: ""
+      ParametersJson: "{}"
+      Negate: 0
+      Children:
+      - rid: 60000
+      - rid: 60001
+      - rid: 60002
+    SequenceId: lab.zev.phase2
+    TargetInputsJson: "{}"
+  - RuleId: lab.zev.phase3
+    DisplayNameKo: "HP 30% · 대화"
+    EventId: participant.hp_changed
+    Timing: 1
+    CheckpointId: ""
+    Once: 1
+    Disabled: 0
+    Conditions:
+      NodeId: "lab.zev.phase3.root"
+      Kind: 1
+      GroupMode: 0
+      ConditionId: ""
+      ParametersJson: "{}"
+      Negate: 0
+      Children:
+      - rid: 60003
+      - rid: 60004
+      - rid: 60005
+    SequenceId: lab.zev.phase3
+    TargetInputsJson: "{}"
+  - RuleId: lab.zev.ending
+    DisplayNameKo: ""
+    EventId: participant.defeated
+    Timing: 1
+    CheckpointId: ""
+    Once: 1
+    Disabled: 0
+    Conditions:
+      NodeId: "lab.zev.ending.subject"
+      Kind: 0
+      GroupMode: 0
+      ConditionId: "event.participant"
+      ParametersJson: "{\"participant\":\"lab.zev\"}"
+      Negate: 0
+      Children: []
+    SequenceId: lab.zev.ending
+    TargetInputsJson: "{}"
+  Sequences:
+  - {fileID: 11500001}
+  - {fileID: 11500002}
+  - {fileID: 11500003}
+  - {fileID: 11500004}
+  Dialogues:
+  - DialogueId: lab.zev.opening
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_opening.asset
+    Dialogue: {fileID: 11400000, guid: c7523a779cc7a24f8f48ee85b07e7789, type: 2}
+  - DialogueId: lab.zev.phase2
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_phase2.asset
+    Dialogue: {fileID: 11400000, guid: 970e367803a5d94f7a1a1ab847d5ff5c, type: 2}
+  - DialogueId: lab.zev.phase3
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_phase3.asset
+    Dialogue: {fileID: 11400000, guid: 5bdc963351896b79b5922ab09f1e2330, type: 2}
+  - DialogueId: lab.zev.ending
+    DialogueDataId: Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_ending.asset
+    Dialogue: {fileID: 11400000, guid: b4094f2c9e2d94e1659d5857a06c1bb8, type: 2}
+  AudioClips: []
+  TimelineCutsceneCatalog: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 60000
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: "lab.zev.phase2.subject"
+        Kind: 0
+        GroupMode: 0
+        ConditionId: "event.participant"
+        ParametersJson: "{\"participant\":\"lab.zev\"}"
+        Negate: 0
+        Children: []
+    - rid: 60001
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: "lab.zev.phase2.threshold"
+        Kind: 0
+        GroupMode: 0
+        ConditionId: "number.crossed_below"
+        ParametersJson: "{\"previousPath\":\"event.previousRatio\",\"currentPath\":\"event.currentRatio\",\"threshold\":0.65}"
+        Negate: 0
+        Children: []
+    - rid: 60002
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: "lab.zev.phase2.alive"
+        Kind: 0
+        GroupMode: 0
+        ConditionId: "number.compare"
+        ParametersJson: "{\"path\":\"event.currentRatio\",\"operator\":\"greater\",\"value\":0}"
+        Negate: 0
+        Children: []
+    - rid: 60003
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: "lab.zev.phase3.subject"
+        Kind: 0
+        GroupMode: 0
+        ConditionId: "event.participant"
+        ParametersJson: "{\"participant\":\"lab.zev\"}"
+        Negate: 0
+        Children: []
+    - rid: 60004
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: "lab.zev.phase3.threshold"
+        Kind: 0
+        GroupMode: 0
+        ConditionId: "number.crossed_below"
+        ParametersJson: "{\"previousPath\":\"event.previousRatio\",\"currentPath\":\"event.currentRatio\",\"threshold\":0.3}"
+        Negate: 0
+        Children: []
+    - rid: 60005
+      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
+      data:
+        NodeId: "lab.zev.phase3.alive"
+        Kind: 0
+        GroupMode: 0
+        ConditionId: "number.compare"
+        ParametersJson: "{\"path\":\"event.currentRatio\",\"operator\":\"greater\",\"value\":0}"
+        Negate: 0
+        Children: []
+--- !u!114 &11500001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.zev.opening
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.zev.opening
+  DisplayNameKo: "계약서보다 먼저"
+  Contract:
+    DescriptionKo: "기존 오버월드 대화창과 준비 자세를 사용한 전투 도입."
+    UsageKo: ""
+    Lifecycle: 1
+    Tags: []
+    AllowedPrimaryModes:
+    - "battle"
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
+    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
+  Actions:
+  - BlockId: "zev.opening.focus"
+    DesignerLabel: ""
+    ActionId: battle.camera.focus
+    ParametersJson: "{\"subject\":\"lab.zev\",\"zoom\":4.2,\"duration\":0.2,\"style\":\"gameplay_safe\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "zev.opening.dialogue"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.zev.opening\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "zev.opening.ready"
+    DesignerLabel: ""
+    ActionId: battle.actor.pose
+    ParametersJson: "{\"actor\":\"lab.zev\",\"pose\":\"ready\",\"duration\":0.3}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "zev.opening.slots"
+    DesignerLabel: ""
+    ActionId: battle.actor.return_slots
+    ParametersJson: "{\"duration\":0.15}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "zev.opening.reset"
+    DesignerLabel: ""
+    ActionId: battle.camera.reset
+    ParametersJson: "{\"duration\":0.18,\"style\":\"gameplay_safe\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &11500002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.zev.phase2
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.zev.phase2
+  DisplayNameKo: "두 번째 칼끝"
+  Contract:
+    DescriptionKo: "행동 종료 뒤 잠시 대화하고 전투를 재개합니다."
+    UsageKo: ""
+    Lifecycle: 1
+    Tags: []
+    AllowedPrimaryModes:
+    - "battle"
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
+    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
+  Actions:
+  - BlockId: "zev.phase2.focus"
+    DesignerLabel: ""
+    ActionId: battle.camera.focus
+    ParametersJson: "{\"subject\":\"lab.zev\",\"zoom\":4.5,\"duration\":0.18,\"style\":\"gameplay_safe\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "zev.phase2.dialogue"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.zev.phase2\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "zev.phase2.reset"
+    DesignerLabel: ""
+    ActionId: battle.camera.reset
+    ParametersJson: "{\"duration\":0.18,\"style\":\"gameplay_safe\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &11500003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.zev.phase3
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.zev.phase3
+  DisplayNameKo: "마지막 조항"
+  Contract:
+    DescriptionKo: "저체력 생존 시 한 번만 대화. 피해 처리와 방어창 도중에는 끼어들지 않습니다."
+    UsageKo: ""
+    Lifecycle: 1
+    Tags: []
+    AllowedPrimaryModes:
+    - "battle"
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
+    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
+  Actions:
+  - BlockId: "zev.phase3.dialogue"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.zev.phase3\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &11500004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: lab.zev.ending
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: lab.zev.ending
+  DisplayNameKo: "교육 목적이었다고"
+  Contract:
+    DescriptionKo: "전투 결과 화면 전에 대화. 쓰러진 적의 포즈나 카메라 포커스를 요구하지 않습니다."
+    UsageKo: ""
+    Lifecycle: 1
+    Tags: []
+    AllowedPrimaryModes:
+    - "battle"
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
+    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
+  Actions:
+  - BlockId: "zev.ending.dialogue"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.zev.ending\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

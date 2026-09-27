@@ -81,6 +81,36 @@ public class ScenarioPresentationAdapterTests
         UnityEngine.Object.DestroyImmediate(sequence);
     }
 
+    [Test]
+    public void DialogueWaitIncludesClosingAnimation()
+    {
+        var runner = new ManualDialogueRunner();
+        var context = new ActionExecutionContext();
+        context.SetService<IDialogueRunner>(runner);
+        IEnumerator routine = new DialogueWaitActionAdapter().Execute(new ScenarioActionData
+        { ParametersJson = "{\"id\":\"closing\"}" }, context);
+        Assert.That(routine.MoveNext(), Is.True);
+        runner.Complete(keepVisible: true);
+        Assert.That(routine.MoveNext(), Is.True, "Completion callback must not skip panel fade-out.");
+        runner.Close();
+        Assert.That(routine.MoveNext(), Is.False);
+    }
+
+    [Test]
+    public void DialogueWaitCancellationClosesOwnedDialogue()
+    {
+        var runner = new ManualDialogueRunner();
+        var context = new ActionExecutionContext();
+        context.SetService<IDialogueRunner>(runner);
+        IEnumerator routine = new DialogueWaitActionAdapter().Execute(new ScenarioActionData
+        { ParametersJson = "{\"id\":\"cancel\"}" }, context);
+        Assert.That(routine.MoveNext(), Is.True);
+        context.Handle.Cancel();
+        Assert.That(routine.MoveNext(), Is.False);
+        Assert.That(runner.CancelCount, Is.EqualTo(1));
+        Assert.That(runner.IsBusy, Is.False);
+    }
+
     private static ActionSequenceAsset MakeSequence(ScenarioActionData action)
     {
         ActionSequenceAsset sequence = ScriptableObject.CreateInstance<ActionSequenceAsset>();
@@ -113,11 +143,12 @@ public class ScenarioPresentationAdapterTests
         public float DeltaTime { get; }
     }
 
-    private sealed class ManualDialogueRunner : IDialogueRunner
+    private sealed class ManualDialogueRunner : IDialogueRunner, ICancellableDialogueRunner
     {
         private Action _onComplete;
 
         public bool IsBusy { get; private set; }
+        public int CancelCount { get; private set; }
         public readonly List<string> RequestedDialogueIds = new List<string>();
 
         public void ShowAndWait(string dialogueId, Action onComplete)
@@ -127,12 +158,20 @@ public class ScenarioPresentationAdapterTests
             _onComplete = onComplete;
         }
 
-        public void Complete()
+        public void Complete(bool keepVisible = false)
         {
-            IsBusy = false;
+            IsBusy = keepVisible;
             Action onComplete = _onComplete;
             _onComplete = null;
             onComplete?.Invoke();
+        }
+
+        public void Close() => IsBusy = false;
+        public void Cancel()
+        {
+            CancelCount++;
+            IsBusy = false;
+            _onComplete = null;
         }
     }
 

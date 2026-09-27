@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Enemy_ZEV
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   serializationData:
-    SerializedFormat: 0
+    SerializedFormat: 2
     SerializedBytes: 
     ReferencedUnityObjects: []
     SerializedBytesString: 
@@ -33,7 +33,7 @@ MonoBehaviour:
     MaxAP: 100
     ATK: 20
     DEF: 25
-    SPD: 8
+    SPD: 20
     PhysicalResistance: 1
     FireResistance: 1
     IceResistance: 1
@@ -45,6 +45,7 @@ MonoBehaviour:
   AllowInstantKillAfterDefeat: 0
   InstantKillLevelGap: 5
   SkillUseChance: 0.8
+  UseOrderedSkills: 0
   StrongSkillUseChance: 0.1
   TelegraphStrongSkill: 1
   TelegraphTurns: 1

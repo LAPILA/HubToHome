@@ -32,6 +32,7 @@ public sealed class BattleLinkCounterService
 
         CancelActive();
         int version = _reactionVersion;
+        defender.BattleResource.RewardCounter();
         bool Active() => version == _reactionVersion && CanContinue(attacker, isExecutionActive)
             && IsActiveFrontMember(defender);
         var controller = defender.GetComponent<PlayerController>();

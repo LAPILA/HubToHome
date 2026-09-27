@@ -396,13 +396,13 @@ public sealed class BattleHudPresentationTests
     }
 
     [Test]
-    public void WizelPortraits_AreReadFromTheBoundCharacterDb()
+    public void WizelPortraitsAndResource_AreReadFromTheBoundCharacterDb()
     {
         CharacterData data = AssetDatabase.LoadAssetAtPath<CharacterData>(
             "Assets/_Game/Content/Characters/AllyDB/WizzelDB.asset");
         Assert.That(data, Is.Not.Null);
         PlayerCharacter player = Player("portrait-test");
-        Set(player, "_characterData", data);
+        player.SetCharacterData(data);
         Assert.That(player.BattlePortrait, Is.SameAs(data.Portrait));
         Assert.That(player.TurnOrderPortrait, Is.SameAs(data.TurnOrderPortrait));
         GameObject root = Own(new GameObject("HUD", typeof(RectTransform)));
@@ -411,7 +411,8 @@ public sealed class BattleHudPresentationTests
         Image portrait = Image(root, "LargePortrait");
         Set(ui, "_largePortrait", portrait);
         Invoke(ui, "SetPortraitActor", player);
-        Assert.That(portrait.sprite, Is.SameAs(data.BattleLargePortrait));
+        Assert.That(data.BattleResource, Is.Not.Null);
+        Assert.That(portrait.sprite, Is.SameAs(data.BattleResource.GetStage(0).Frames[0].Sprite));
     }
 
     private PlayerCharacter Player(string id)

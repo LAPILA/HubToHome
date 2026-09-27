@@ -85,6 +85,54 @@ public sealed class UIViewportServiceTests
     }
 
     [Test]
+    public void DialogueViewport_PreservesBottomAnchorsAndOrderAcrossFirstOpenAndCameraChanges()
+    {
+        _cameraObject = new GameObject("Dialogue Output", typeof(Camera));
+        Camera camera = _cameraObject.GetComponent<Camera>();
+        camera.pixelRect = new Rect(40f, 30f, 640f, 480f);
+        _canvasObject = new GameObject("Dialogue Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+        Canvas canvas = _canvasObject.GetComponent<Canvas>();
+        canvas.sortingOrder = 998;
+        var canvasRect = (RectTransform)canvas.transform;
+        canvasRect.pivot = Vector2.zero;
+        canvasRect.sizeDelta = new Vector2(1000f, 700f);
+        var panel = new GameObject("OverworldPanel", typeof(RectTransform)).GetComponent<RectTransform>();
+        panel.SetParent(canvas.transform, false);
+        panel.anchorMin = Vector2.zero;
+        panel.anchorMax = Vector2.right;
+        panel.anchoredPosition = new Vector2(0f, 72f);
+        panel.sizeDelta = new Vector2(-64f, 144f);
+        var sibling = new GameObject("CinematicPanel", typeof(RectTransform)).GetComponent<RectTransform>();
+        sibling.SetParent(canvas.transform, false);
+        sibling.gameObject.SetActive(false);
+
+        DialogueCanvasViewport.Ensure(canvas, camera);
+        var viewport = canvas.GetComponent<DialogueCanvasViewport>();
+        camera.transform.SetPositionAndRotation(new Vector3(12f, -4f, -10f), Quaternion.Euler(0f, 0f, 35f));
+        camera.orthographicSize = 2f;
+        UIViewportService.ConfigureFixedViewport(canvas, camera);
+        DialogueCanvasViewport.Ensure(canvas, camera);
+
+        Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+        Assert.That(canvas.worldCamera, Is.Null);
+        Assert.That(canvas.overrideSorting, Is.True);
+        Assert.That(canvas.sortingLayerID, Is.Zero);
+        Assert.That(canvas.sortingOrder, Is.EqualTo(CinematicLetterboxOverlay.CanvasSortingOrder + 1),
+            "대사창은 상하 레터박스 앞에 표시되어야 합니다.");
+        Assert.That(canvas.sortingOrder, Is.LessThan(short.MaxValue),
+            "전체 화면 전환 페이드는 대사창까지 가려야 합니다.");
+        Assert.That(viewport.ContentRect.sizeDelta, Is.EqualTo(new Vector2(640f, 480f)));
+        Assert.That(viewport.ContentRect.GetChild(0), Is.SameAs(panel));
+        Assert.That(viewport.ContentRect.GetChild(1), Is.SameAs(sibling));
+        Assert.That(viewport.ContentRect.childCount, Is.EqualTo(2));
+        Assert.That(panel.anchorMin, Is.EqualTo(Vector2.zero));
+        Assert.That(panel.anchorMax, Is.EqualTo(Vector2.right));
+        Assert.That(panel.anchoredPosition, Is.EqualTo(new Vector2(0f, 72f)));
+        Assert.That(panel.sizeDelta, Is.EqualTo(new Vector2(-64f, 144f)));
+        Assert.That(sibling.gameObject.activeSelf, Is.False);
+    }
+
+    [Test]
     public void CameraReplacementAtSameResolutionRebindsHiddenRegisteredCanvas()
     {
         UIViewportService service = CreateInactiveService();

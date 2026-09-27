@@ -9,7 +9,7 @@ public static class BunnySlimeBattleLabBuilder
 {
     public const string Root = "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab";
 
-    [MenuItem("Hub To Home/테스트/토끼 슬라임 종합 전투 열기", false, 140)]
+    [MenuItem("Hub To Home/테스트/전투 실험실 열기", false, 140)]
     public static void Open()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -28,10 +28,12 @@ public static class BunnySlimeBattleLabBuilder
                 EditorUtility.SetDirty(data);
                 AssetDatabase.SaveAssetIfDirty(data);
             }
+            if (data.Encounters == null || data.Encounters.Length == 0)
+                throw new InvalidOperationException("BunnySlimeBattleLab 데이터의 전투 목록이 비어 있습니다. 저장소에 포함된 통합 실험실 데이터를 복구하거나 Inspector에서 전투를 연결해 주세요. 런타임에 임의의 스킬 목록을 만들지 않습니다.");
             string path = BunnySlimeLabSceneBuilder.Build(Root, data);
             EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
             Selection.activeObject = data;
-            Debug.Log("토끼 슬라임 전투 실험실 준비 완료. Play → ↑↓ 선택 → Z 시작. 기존 생성 자산은 덮어쓰지 않습니다.", data);
+            Debug.Log("전투 실험실 준비 완료. Play → ↑↓ 선택 → Z 시작. 전투 목록/적/스킬/대사는 데이터에서 편집합니다.", data);
         }
         catch (Exception exception)
         {

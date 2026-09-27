@@ -1782,7 +1782,13 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
             if (action.ActionId == ActionDirector.ParallelActionId)
             {
                 bool hasChildrenSection = false;
-                while (index < lines.Count && lines[index].Indent == indent + 2)
+                // 일반 액션과 동일하게 2칸/4칸 속성 들여쓰기를 받습니다.
+                // 고정 indent+2는 문서 예시의 4칸 parallel 본문과 이후 형제 액션을 조용히 잃었습니다.
+                int bodyIndent = index < lines.Count && lines[index].Indent > indent
+                    ? lines[index].Indent : indent + 2;
+                var parallelParameters = new JObject();
+                while (index < lines.Count && lines[index].Indent == bodyIndent
+                    && !lines[index].Trimmed.StartsWith("- "))
                 {
                     if (!TryReadKeyValue(lines[index].Trimmed, out string metadataKey, out string metadataValue))
                     {
@@ -1792,14 +1798,16 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
                     if (metadataKey == "children")
                     {
                         index++;
-                        action.Children = ParseActions(lines, ref index, indent + 4, validation, ownerId);
+                        int childIndent = index < lines.Count && lines[index].Indent > bodyIndent
+                            ? lines[index].Indent : bodyIndent + 2;
+                        action.Children = ParseActions(lines, ref index, childIndent, validation, ownerId);
                         hasChildrenSection = true;
                         break;
                     }
 
                     if (!TryApplyActionMetadata(action, metadataKey, metadataValue))
                     {
-                        break;
+                        parallelParameters[metadataKey] = ParseYamlValue(metadataValue);
                     }
 
                     index++;
@@ -1807,8 +1815,13 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
 
                 if (!hasChildrenSection)
                 {
-                    action.Children = ParseActions(lines, ref index, indent + 2, validation, ownerId);
+                    action.Children = ParseActions(lines, ref index, bodyIndent, validation, ownerId);
                 }
+
+                action.ParametersJson = parallelParameters.ToString(Newtonsoft.Json.Formatting.None);
+                if (action.Children.Count == 0)
+                    validation.AddError("scenario.yaml.parallel.children.empty",
+                        "Parallel requires an indented child action list.", ownerId);
 
                 actions.Add(action);
                 continue;
@@ -1838,6 +1851,9 @@ public sealed class ScenarioSourceYamlParser : IScenarioSourceParser
             actions.Add(action);
         }
 
+        if (index < lines.Count && lines[index].Indent > indent)
+            validation.AddError("scenario.yaml.action.indent.invalid",
+                "Unconsumed action content. Check action/children indentation.", ownerId);
         return actions;
     }
 

@@ -271,6 +271,25 @@ namespace HubToHome.EditorTools.SkillMaker
                 }
                 using (ContentMakerGUI.Card())
                 {
+                    ContentMakerGUI.Header("고유 자원", "조건 미달이어도 사용 가능하며 기본 성능으로 실행됩니다.");
+                    const string resourcePath = nameof(SkillData.ResourceEffect) + ".";
+                    Field(resourcePath + nameof(SkillResourceEffect.Resource), "사용 자원");
+                    using (new EditorGUI.DisabledScope(_serialized.FindProperty(resourcePath + nameof(SkillResourceEffect.Resource)).objectReferenceValue == null))
+                    {
+                        Field(resourcePath + nameof(SkillResourceEffect.GainOnCompletion), "완료 시 획득 단계");
+                        Field(resourcePath + nameof(SkillResourceEffect.EnableBoost), "조건부 강화 사용");
+                        if (_serialized.FindProperty(resourcePath + nameof(SkillResourceEffect.EnableBoost)).boolValue)
+                        {
+                            Field(resourcePath + nameof(SkillResourceEffect.RequiredStep), "강화 필요 단계");
+                            Field(resourcePath + nameof(SkillResourceEffect.ConsumeStep), "강화 시 소모 단계");
+                            Field(resourcePath + nameof(SkillResourceEffect.DamageMultiplier), "강화 피해 배율");
+                        }
+                    }
+                    if (_skill.ResourceEffect != null && !_skill.ResourceEffect.IsValid)
+                        EditorGUILayout.HelpBox("필요 단계는 최대치 이하, 소모량은 필요 단계 이하, 강화 배율은 1 이상이어야 합니다.", MessageType.Error);
+                }
+                using (ContentMakerGUI.Card())
+                {
                     ContentMakerGUI.Header("참조 정보", "이미 사용 중인 ID를 바꾸면 저장 데이터·카탈로그 연결을 확인해야 합니다.");
                     Field(nameof(SkillData.SkillID), "고유 ID");
                     EditorGUILayout.HelpBox("새 스킬은 캐릭터의 초기 스킬 또는 스킬 트리에 연결하고, 저장 복원용 콘텐츠 카탈로그에도 등록하세요. 이 창은 자동 등록하지 않습니다.", MessageType.Info);

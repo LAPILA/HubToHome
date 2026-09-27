@@ -45,6 +45,7 @@ MonoBehaviour:
   AllowInstantKillAfterDefeat: 0
   InstantKillLevelGap: 5
   SkillUseChance: 1
+  UseOrderedSkills: 1
   StrongSkillUseChance: 0
   TelegraphStrongSkill: 1
   TelegraphTurns: 1
@@ -53,6 +54,7 @@ MonoBehaviour:
   SkillList:
   - {fileID: 11400000, guid: 188683247c08da84fa7c9849f5b4fba3, type: 2}
   - {fileID: 11400000, guid: c517246fb0984e2aaa509cf03ec1df2c, type: 2}
+  - {fileID: 11400000, guid: f3a8e9ee0cbb67d42815953e00825604, type: 2}
   - {fileID: 11400000, guid: 5223a5b9b500fa649a0b03661843c13b, type: 2}
   - {fileID: 11400000, guid: f42b269d7a674e0a98cb417aef6a58c0, type: 2}
   - {fileID: 11400000, guid: 69cac96e5deefd94b9a1bb8dfd70e75e, type: 2}
@@ -60,7 +62,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6b42182f177f0dc4796ec17d725564c7, type: 2}
   - {fileID: 11400000, guid: 6571caebf3fd2824487bb3f143f110d6, type: 2}
   - {fileID: 11400000, guid: cda6e4c803164bc5b7c310a93649f81c, type: 2}
-  - {fileID: 11400000, guid: f3a8e9ee0cbb67d42815953e00825604, type: 2}
   StrongSkillList: []
   Drops:
   - ItemId: tests_consumable.emergency_bandage

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: tests_Skill_TurbineRush
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "터빈 연격"
   SkillID: tests_player.turbine_rush
   Description: "검의 터빈을 가속해 한 대상의 앞뒤를 두 차례 가로지른다."

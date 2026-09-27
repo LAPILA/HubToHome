@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: Skill_ComboSlash
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "\uCF64\uBCF4\uC2AC\uB798\uC26C"
   SkillID: player.combo_slash
   Description: "\uAC00\uB85C \uC138\uB85C \uB9C8\uBB34\uB9AC!"
@@ -20,6 +20,13 @@ MonoBehaviour:
   APCost: 10
   TargetType: 1
   IsAoE: 0
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 1
+    RequiredStep: 2
+    ConsumeStep: 2
+    DamageMultiplier: 1.5
+    GainOnCompletion: 0
   ActionTimeline:
   - rid: 8456611228188409963
   - rid: 8456611228188409969

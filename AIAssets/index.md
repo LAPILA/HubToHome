@@ -1,12 +1,16 @@
 # AIAssets Index
 
+고유 자원 및 표시: [위젤 압력 — 데이터·스킬 메이커·단계 애니메이션 수정 위치](yjlim/feedback/2026-09-27-wizel-pressure.md). 오른쪽 ActorLargePortrait는 선택 아군의 자원 표시입니다. 후속: [ZEV 스킬 이동 데이터 미세 조정](yjlim/feedback/2026-09-27-zev-movement-tuning.md) · [C 압력·피해 숫자·대사 위치 및 레터박스 앞 표시](yjlim/feedback/2026-09-27-counter-popups-dialogue.md).
+
 `AIAssets` 루트의 오래된 개별 정리 문서는 `AIAssets/yjlim/` 스타일로 재정리했습니다.
 
 ## 먼저 볼 문서
 
+최신 통합: [2026-09-27 토끼 슬라임·ZEV 전투 실험실](yjlim/feedback/2026-09-27-battle-lab-consolidation.md) · [당일 검증/변경 기록](2026-09-27-update.md). 종합/가드·회피/C 입구를 통합했고, ZEV 원본 5스킬·전조를 연결했습니다. 임시 스킬도 Content/Skills로 통합했으며 3+3 전멸 실습은 별도로 유지합니다.
+
 최신 버그 수정: [빈 공격 안내 프레임·확인 입력 중복](yjlim/feedback/2026-09-26-battle-narration-input-fix.md). 빈 내레이션은 창을 켜지 않으며, 버튼 콜백에도 입력 소비/활성화 프레임 가드를 적용합니다.
 
-최신 판정 수정: [2026-09-26 근접 첫 전조부터 패링·즉시 입력 반응](yjlim/feedback/2026-09-26-melee-parry-cue.md).
+전투 시인성: [이동 중에만 잔상 표시](yjlim/feedback/2026-09-27-movement-only-ghosts.md). 판정: [2026-09-26 근접 첫 전조부터 패링·즉시 입력 반응](yjlim/feedback/2026-09-26-melee-parry-cue.md).
 
 최신 스킬: [2026-09-26 압력 난무 독립 QTE·공중 회전 베기](yjlim/feedback/2026-09-26-independent-barrage-aerial-skill.md). 난무는 0.1초 간격 50타, Z/X/C는 독립 주기입니다. 360도 회전은 별도 공중 스킬의 카메라에만 적용하며 캐릭터 자체는 회전시키지 않습니다.
 

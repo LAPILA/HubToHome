@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: aerial_cross_slash
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "공중 회전 베기"
   SkillID: lab.bunny.aerial_cross_slash
   Description: "적 앞으로 접근해 도약하면 카메라가 한 바퀴 회전한다. X 입력 성공 시 강화되어, 적 뒤로 급습한 뒤 앞뒤로 두 번 더 베어낸다."
@@ -20,6 +20,13 @@ MonoBehaviour:
   APCost: 14
   TargetType: 1
   IsAoE: 0
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 1
+    RequiredStep: 3
+    ConsumeStep: 3
+    DamageMultiplier: 1.5
+    GainOnCompletion: 0
   ActionTimeline:
   - rid: 926000002
   references:

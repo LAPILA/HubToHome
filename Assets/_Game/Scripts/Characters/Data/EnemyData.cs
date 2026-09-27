@@ -58,6 +58,9 @@ public class EnemyData : SerializedScriptableObject
 
     [BoxGroup("AI & Pattern")]
     [Range(0f, 1f)] public float SkillUseChance = 0.3f;
+    [BoxGroup("AI & Pattern"), LabelText("스킬 목록 순서대로 사용")]
+    [Tooltip("켜면 일반 스킬 목록을 처음부터 반복합니다. 확률/강한 스킬 예고보다 우선하며 빈 칸은 건너뜁니다. 꺼진 기존 적의 AI는 유지합니다.")]
+    public bool UseOrderedSkills;
     [BoxGroup("AI & Pattern")]
     [Range(0f, 1f), Tooltip("강한 공격 후보를 고를 확률입니다. 선택되면 TelegraphStrongSkill 규칙에 따라 예고 후 실행됩니다.")]
     public float StrongSkillUseChance = 0.25f;

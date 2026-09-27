@@ -19,8 +19,8 @@ MonoBehaviour:
   MemoryKey: lab.bunny_slime.workshop
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
-    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   PartyIds:
   - lab.wizzel.front
   - lab.wizzel.support
@@ -201,35 +201,130 @@ MonoBehaviour:
   m_Name: lab.bunny_slime.opening
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: lab.bunny_slime.opening
-  DisplayNameKo: "\uC548\uC804\uC2DC\uD5D8 \uC811\uC218"
+  DisplayNameKo: "안전시험 접수"
   Contract:
-    DescriptionKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784\uACFC \uC704\uC824\uC774 \uAC00\uBCBC\uC6B4
-      \uC2DC\uBC94\uC744 \uBCF4\uC785\uB2C8\uB2E4. \uC5F0\uCD9C\uC6A9 \uACF5\uACA9\uC740
-      HP\uB97C \uBC14\uAFB8\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
-    UsageKo: "\uC804\uD22C \uC2DC\uC791 \uC9C1\uD6C4, \uCCAB \uD134 \uC774\uC804"
+    DescriptionKo: "버니슬라임과 위젤이 가벼운 시범을 보입니다. 연출용 공격은 HP를 바꾸지 않습니다."
+    UsageKo: "전투 시작 직후, 첫 턴 이전"
     Lifecycle: 1
     Tags:
-    - battle
-    - tutorial
-    - cinematic
+    - "battle"
+    - "tutorial"
+    - "cinematic"
     AllowedPrimaryModes:
-    - battle
+    - "battle"
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
-    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
-  - BlockId: a6c3e726c3eac17d1f714baf8cc3f2ab
-    DesignerLabel: 
+  - BlockId: "b5100000000000000000000000000001"
+    DesignerLabel: "시험장 카메라와 음악"
     ActionId: flow.parallel
-    ParametersJson: '{}'
-    Note: 
+    ParametersJson: "{}"
+    Note: ""
+    Disabled: 0
+    Children:
+    - rid: 50000
+    - rid: 50001
+    - rid: 50002
+  - BlockId: "b5100000000000000000000000000005"
+    DesignerLabel: "담당 시험관은 말랑합니다"
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.bunny_slime.opening_a\"}"
+    Note: ""
     Disabled: 0
     Children: []
+  - BlockId: "b5100000000000000000000000000006"
+    DesignerLabel: ""
+    ActionId: battle.actor.pose
+    ParametersJson: "{\"actor\":\"lab.wizzel.front\",\"pose\":\"ready\",\"duration\":0.18}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "b5100000000000000000000000000007"
+    DesignerLabel: "고무 도장 시범 · 실제 피해 없음"
+    ActionId: battle.actor.fake_attack
+    ParametersJson: "{\"actor\":\"lab.bunny_slime\",\"target\":\"lab.wizzel.front\",\"targetPose\":\"guard\",\"approach\":0.65,\"lunge\":0.18,\"hold\":0.06,\"recover\":0.22,\"impact\":0.25}"
+    Note: "연출용 공격입니다. HP/AP 피해를 추가하지 않습니다."
+    Disabled: 0
+    Children: []
+  - BlockId: "b5100000000000000000000000000008"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.bunny_slime.opening_b\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "b5100000000000000000000000000009"
+    DesignerLabel: ""
+    ActionId: battle.actor.return_slots
+    ParametersJson: "{\"duration\":0.25}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "b510000000000000000000000000000a"
+    DesignerLabel: "첫 시험 시작"
+    ActionId: flow.parallel
+    ParametersJson: "{}"
+    Note: ""
+    Disabled: 0
+    Children:
+    - rid: 50003
+    - rid: 50004
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 50000
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5100000000000000000000000000002"
+        DesignerLabel: ""
+        ActionId: cinematic.letterbox
+        ParametersJson: "{\"mode\":\"show\",\"thickness\":0.1,\"duration\":0.2}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50001
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5100000000000000000000000000003"
+        DesignerLabel: ""
+        ActionId: battle.camera.focus
+        ParametersJson: "{\"subject\":\"lab.bunny_slime\",\"zoom\":5.2,\"duration\":0.3,\"style\":\"gameplay_safe\"}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50002
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5100000000000000000000000000004"
+        DesignerLabel: ""
+        ActionId: bgm.crossfade
+        ParametersJson: "{\"clip\":\"lab.bunny_slime.music.phase1\",\"duration\":0.4}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50003
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b510000000000000000000000000000b"
+        DesignerLabel: ""
+        ActionId: battle.camera.reset
+        ParametersJson: "{\"duration\":0.3,\"style\":\"gameplay_safe\"}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50004
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b510000000000000000000000000000c"
+        DesignerLabel: ""
+        ActionId: cinematic.letterbox
+        ParametersJson: "{\"mode\":\"hide\",\"duration\":0.2}"
+        Note: ""
+        Disabled: 0
+        Children: []
 --- !u!114 &6074063809447696212
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -243,35 +338,102 @@ MonoBehaviour:
   m_Name: lab.bunny_slime.phase2
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: lab.bunny_slime.phase2
-  DisplayNameKo: "\uB450 \uBC88\uC9F8 \uC2DC\uD5D8 \xB7 \uD0C4\uC131 \uACFC\uB2E4"
+  DisplayNameKo: "두 번째 시험 · 탄성 과다"
   Contract:
-    DescriptionKo: "\uD589\uB3D9\uC774 \uB05D\uB09C \uB4A4 \uD68C\uD53C \uC704\uC8FC
-      \uB450 \uBC88\uC9F8 \uB2E8\uACC4\uB97C \uC54C\uB9BD\uB2C8\uB2E4."
-    UsageKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784 HP\uAC00 66% \uC774\uD558\uB85C \uB0B4\uB824\uAC00\uACE0
-      \uC0DD\uC874\uD588\uC744 \uB54C"
+    DescriptionKo: "행동이 끝난 뒤 회피 위주 두 번째 단계를 알립니다."
+    UsageKo: "버니슬라임 HP가 66% 이하로 내려가고 생존했을 때"
     Lifecycle: 1
     Tags:
-    - battle
-    - phase
-    - dodge
+    - "battle"
+    - "phase"
+    - "dodge"
     AllowedPrimaryModes:
-    - battle
+    - "battle"
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
-    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
-  - BlockId: 139213f257e17fde855ba8292f9346a7
-    DesignerLabel: 
+  - BlockId: "b5200000000000000000000000000001"
+    DesignerLabel: ""
     ActionId: flow.parallel
-    ParametersJson: '{}'
-    Note: 
+    ParametersJson: "{}"
+    Note: ""
+    Disabled: 0
+    Children:
+    - rid: 50000
+    - rid: 50001
+    - rid: 50002
+  - BlockId: "b5200000000000000000000000000005"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.bunny_slime.phase2\"}"
+    Note: ""
     Disabled: 0
     Children: []
+  - BlockId: "b5200000000000000000000000000006"
+    DesignerLabel: ""
+    ActionId: flow.parallel
+    ParametersJson: "{}"
+    Note: ""
+    Disabled: 0
+    Children:
+    - rid: 50003
+    - rid: 50004
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 50000
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5200000000000000000000000000002"
+        DesignerLabel: ""
+        ActionId: cinematic.letterbox
+        ParametersJson: "{\"mode\":\"show\",\"thickness\":0.08,\"duration\":0.15}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50001
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5200000000000000000000000000003"
+        DesignerLabel: ""
+        ActionId: bgm.crossfade
+        ParametersJson: "{\"clip\":\"lab.bunny_slime.music.phase2\",\"duration\":0.45}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50002
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5200000000000000000000000000004"
+        DesignerLabel: ""
+        ActionId: battle.camera.focus
+        ParametersJson: "{\"subject\":\"lab.bunny_slime\",\"zoom\":5.5,\"duration\":0.25,\"style\":\"gameplay_safe\"}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50003
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5200000000000000000000000000007"
+        DesignerLabel: ""
+        ActionId: cinematic.letterbox
+        ParametersJson: "{\"mode\":\"hide\",\"duration\":0.15}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50004
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5200000000000000000000000000008"
+        DesignerLabel: ""
+        ActionId: battle.camera.reset
+        ParametersJson: "{\"duration\":0.25,\"style\":\"gameplay_safe\"}"
+        Note: ""
+        Disabled: 0
+        Children: []
 --- !u!114 &6663139680673879888
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -285,50 +447,116 @@ MonoBehaviour:
   m_Name: lab.bunny_slime.phase3
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: lab.bunny_slime.phase3
-  DisplayNameKo: "\uCD5C\uC885 \uC2DC\uD5D8 \xB7 \uB2E4 \uAC19\uC774 \uBC18\uACA9"
+  DisplayNameKo: "최종 시험 · 다 같이 반격"
   Contract:
-    DescriptionKo: "\uC548\uC804\uB4F1 \uC810\uBA78 \uB4A4 \uC5F0\uACC4 \uBC18\uACA9
-      \uB2E8\uACC4\uB97C \uC54C\uB9BD\uB2C8\uB2E4. \uC810\uBA78 \uC790\uCCB4\uB294
-      \uD53C\uD574\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4."
-    UsageKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784 HP\uAC00 33% \uC774\uD558\uB85C \uB0B4\uB824\uAC00\uACE0
-      \uC0DD\uC874\uD588\uC744 \uB54C"
+    DescriptionKo: "안전등 점멸 뒤 연계 반격 단계를 알립니다. 점멸 자체는 피해가 없습니다."
+    UsageKo: "버니슬라임 HP가 33% 이하로 내려가고 생존했을 때"
     Lifecycle: 1
     Tags:
-    - battle
-    - phase
-    - counter
+    - "battle"
+    - "phase"
+    - "counter"
     AllowedPrimaryModes:
-    - battle
+    - "battle"
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
-    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
-  - BlockId: b5300000000000000000000000000001
-    DesignerLabel: "\uACF5\uBC29 \uC548\uC804\uB4F1 \uC9E7\uC740 \uC810\uBA78"
+  - BlockId: "b5300000000000000000000000000001"
+    DesignerLabel: "공방 안전등 짧은 점멸"
     ActionId: screen.fade
-    ParametersJson: '{"mode":"out","color":"white","duration":0.06}'
-    Note: 
+    ParametersJson: "{\"mode\":\"out\",\"color\":\"white\",\"duration\":0.06}"
+    Note: ""
     Disabled: 0
     Children: []
-  - BlockId: b5300000000000000000000000000002
-    DesignerLabel: 
+  - BlockId: "b5300000000000000000000000000002"
+    DesignerLabel: ""
     ActionId: screen.fade
-    ParametersJson: '{"mode":"in","color":"white","duration":0.12}'
-    Note: 
+    ParametersJson: "{\"mode\":\"in\",\"color\":\"white\",\"duration\":0.12}"
+    Note: ""
     Disabled: 0
     Children: []
-  - BlockId: 43f016c46aeda887454c3893832611be
-    DesignerLabel: 
+  - BlockId: "b5300000000000000000000000000003"
+    DesignerLabel: ""
     ActionId: flow.parallel
-    ParametersJson: '{}'
-    Note: 
+    ParametersJson: "{}"
+    Note: ""
+    Disabled: 0
+    Children:
+    - rid: 50000
+    - rid: 50001
+    - rid: 50002
+  - BlockId: "b5300000000000000000000000000007"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.bunny_slime.phase3\"}"
+    Note: ""
     Disabled: 0
     Children: []
+  - BlockId: "b5300000000000000000000000000008"
+    DesignerLabel: ""
+    ActionId: flow.parallel
+    ParametersJson: "{}"
+    Note: ""
+    Disabled: 0
+    Children:
+    - rid: 50003
+    - rid: 50004
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 50000
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5300000000000000000000000000004"
+        DesignerLabel: ""
+        ActionId: cinematic.letterbox
+        ParametersJson: "{\"mode\":\"show\",\"thickness\":0.1,\"duration\":0.15}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50001
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5300000000000000000000000000005"
+        DesignerLabel: ""
+        ActionId: bgm.crossfade
+        ParametersJson: "{\"clip\":\"lab.bunny_slime.music.phase3\",\"duration\":0.45}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50002
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5300000000000000000000000000006"
+        DesignerLabel: ""
+        ActionId: battle.camera.focus
+        ParametersJson: "{\"subject\":\"lab.bunny_slime\",\"zoom\":5,\"duration\":0.25,\"style\":\"gameplay_safe\"}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50003
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5300000000000000000000000000009"
+        DesignerLabel: ""
+        ActionId: cinematic.letterbox
+        ParametersJson: "{\"mode\":\"hide\",\"duration\":0.15}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50004
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b530000000000000000000000000000a"
+        DesignerLabel: ""
+        ActionId: battle.camera.reset
+        ParametersJson: "{\"duration\":0.25,\"style\":\"gameplay_safe\"}"
+        Note: ""
+        Disabled: 0
+        Children: []
 --- !u!114 &9019681669250037973
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -342,33 +570,77 @@ MonoBehaviour:
   m_Name: lab.bunny_slime.ending
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: lab.bunny_slime.ending
-  DisplayNameKo: "\uD569\uACA9 \uB3C4\uC7A5"
+  DisplayNameKo: "합격 도장"
   Contract:
-    DescriptionKo: "\uD589\uB3D9 \uB9C8\uAC10 \uC2DC \uC2DC\uD5D8 \uACB0\uACFC \uB300\uD654\uB97C
-      \uD55C \uBC88 \uBCF4\uC5EC \uC90D\uB2C8\uB2E4. \uC4F0\uB7EC\uC9C4 \uC801\uC5D0\uAC8C
-      \uCD94\uAC00 \uD3EC\uC988\uB97C \uC694\uAD6C\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
-    UsageKo: "\uBC84\uB2C8\uC2AC\uB77C\uC784 \uACA9\uD30C \uB4A4 \uAE30\uC874 \uC804\uD22C
-      \uACB0\uACFC \uD654\uBA74 \uC774\uC804"
+    DescriptionKo: "행동 마감 시 시험 결과 대화를 한 번 보여 줍니다. 쓰러진 적에게 추가 포즈를 요구하지 않습니다."
+    UsageKo: "버니슬라임 격파 뒤 기존 전투 결과 화면 이전"
     Lifecycle: 1
     Tags:
-    - battle
-    - ending
-    - dialogue
+    - "battle"
+    - "ending"
+    - "dialogue"
     AllowedPrimaryModes:
-    - battle
+    - "battle"
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: 7378e3a5c1ac79d48e10adefe51cf78881ae517f32f2049a94cd97b8688df2fc
-    ImportedAtIso8601: 2026-09-13T04:56:28.4626224Z
+    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
-  - BlockId: fa54037718f43a1ee7a3a55801c0c0c3
-    DesignerLabel: 
+  - BlockId: "b5400000000000000000000000000001"
+    DesignerLabel: ""
     ActionId: flow.parallel
-    ParametersJson: '{}'
-    Note: 
+    ParametersJson: "{}"
+    Note: ""
+    Disabled: 0
+    Children:
+    - rid: 50000
+    - rid: 50001
+    - rid: 50002
+  - BlockId: "b5400000000000000000000000000005"
+    DesignerLabel: ""
+    ActionId: dialogue.wait
+    ParametersJson: "{\"id\":\"lab.bunny_slime.ending\"}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "b5400000000000000000000000000006"
+    DesignerLabel: ""
+    ActionId: cinematic.letterbox
+    ParametersJson: "{\"mode\":\"hide\",\"duration\":0.15}"
+    Note: ""
     Disabled: 0
     Children: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 50000
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5400000000000000000000000000002"
+        DesignerLabel: ""
+        ActionId: battle.camera.reset
+        ParametersJson: "{\"duration\":0.25,\"style\":\"gameplay_safe\"}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50001
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5400000000000000000000000000003"
+        DesignerLabel: ""
+        ActionId: bgm.crossfade
+        ParametersJson: "{\"clip\":\"lab.bunny_slime.music.ending\",\"duration\":0.5}"
+        Note: ""
+        Disabled: 0
+        Children: []
+    - rid: 50002
+      type: {class: ScenarioActionData, ns: , asm: Assembly-CSharp}
+      data:
+        BlockId: "b5400000000000000000000000000004"
+        DesignerLabel: ""
+        ActionId: cinematic.letterbox
+        ParametersJson: "{\"mode\":\"show\",\"thickness\":0.08,\"duration\":0.15}"
+        Note: ""
+        Disabled: 0
+        Children: []

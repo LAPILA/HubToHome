@@ -20,7 +20,7 @@ public sealed class DialogueManagerRunner : IDialogueRunner, ICancellableDialogu
         get
         {
             DialogueManager manager = ResolveManager();
-            return _isBusy || (manager != null && manager.IsPlaying);
+            return _isBusy || (manager != null && manager.IsPresentationVisible);
         }
     }
 

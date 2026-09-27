@@ -1,5 +1,9 @@
 # HubToHome
 
+**Character Battle Resource**:
+`BattleResourceDefinition` is shared authoring data; `CharacterBattleResource` owns one actor's battle-only steps. `SkillResourceEffect` is an optional bonus, not a skill availability gate. SkillContext snapshots/spends once at start and grants completion gain only on normal finish. Resource and QTE damage multipliers remain separate. ActorLargePortrait now displays the selected actor's resource stages, not a large portrait. Wizel pressure is the first authored resource; other companions' unique rules are not implemented yet.
+_Avoid_: shared/static current steps, save-file pressure, character-name checks, per-hit spending, resetting on reserve disable, or mutating the definition in combat.
+
 HubToHome is a Unity RPG project whose player-facing flow moves between overworld exploration, battle presentation, dialogue, and menu-driven actions.
 
 **Overworld Menu Shell**:
@@ -257,3 +261,19 @@ _Avoid_: unconditional global camera resets in action cleanup or allowing an old
 **Overworld Camera Binding**:
 The shared Room/Map binding that registers the Player as `CameraController`'s default target and configures the Confiner on that same Virtual Camera.
 _Avoid_: assigning Follow or Confiner to whichever Cinemachine Camera happens to be found first, because a Cinematic Stage camera may also be present.
+
+**Authored Battle Lab Entry**:
+`BattleLabEncounterEntry` stores the menu text, stable encounter ID, EnemyData, optional BattleScenarioData, and front-line weakening flag. The lab session only seeds its isolated party and starts/returns through the existing encounter service; it does not clone enemies or replace skill lists according to a menu index. Bunny integrated combat, ZEV presentation combat, and the separate reserve-wave exercise share this path.
+_Avoid_: enemy-name checks, mode-index combat overrides, or embedding dialogue/camera choreography in the lab session.
+
+**Enemy Windup Beat**:
+`Action_EnemyWindup` is an EnemyOnly local SkillActionBlock: attacker closeup → shared attack-ready pose → return to the action's opposing-combatant frame. CameraController retains the existing action token; the following defense block owns the input/impact clock and freezes the camera. This is not a new global Scenario Action ID.
+_Avoid_: stealing camera ownership from Timeline, using global Time.timeScale for the preparation, or starting defense during the zoom-out transition.
+
+**Authored Battle Lab Entry**:
+`BattleLabEncounterEntry` stores the menu text, stable encounter ID, EnemyData, optional BattleScenarioData, and front-line weakening flag. The lab session only seeds its isolated party and starts/returns through the existing encounter service; it does not clone enemies or replace skill lists according to a menu index. Bunny integrated combat, ZEV presentation combat, and the separate reserve-wave exercise share this path.
+_Avoid_: enemy-name checks, mode-index combat overrides, or embedding dialogue/camera choreography in the lab session.
+
+**Enemy Windup Beat**:
+`Action_EnemyWindup` is an EnemyOnly local SkillActionBlock: attacker closeup → shared attack-ready pose → return to the action's opposing-combatant frame. CameraController retains the existing action token; the following defense block owns the input/impact clock and freezes the camera. This is not a new global Scenario Action ID.
+_Avoid_: stealing camera ownership from Timeline, using global Time.timeScale for the preparation, or starting defense during the zoom-out transition.

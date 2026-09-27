@@ -65,6 +65,7 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
                 yield break;
             }
 
+            skillContext.BeginSkillResources(skill);
             for (int i = 0; i < skill.ActionTimeline.Count; i++)
             {
                 if (handle != null && (handle.IsDone || handle.IsCancellationRequested))
@@ -73,10 +74,12 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
                 }
 
                 skillContext.Targets.RemoveAll(target => target == null || !target.IsAlive);
-                if (skillContext.Targets.Count == 0 || !skillContext.CanContinueExecution)
+                if (!skillContext.CanContinueExecution)
                 {
                     yield break;
                 }
+                // Killing the last target is a successful finish, not cancellation.
+                if (skillContext.Targets.Count == 0) break;
 
                 SkillActionBlock block = skill.ActionTimeline[i];
                 if (block == null)
@@ -136,6 +139,8 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
                 if (skillContext.AttackInterruptedByCounter) break;
             }
 
+            yield return skillContext.WaitForActiveSkillQte();
+            if (!skillContext.CanContinueExecution) yield break;
             // 방어 결과 모션도 피해/상태 소비자 뒤에 끝낸 뒤 포즈를 정리합니다.
             // 소비자가 없는 시네리오 호출에서는 여기서 안전망으로 소비합니다.
             yield return skillContext.WaitForPendingDefenseReaction();
@@ -143,6 +148,7 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
             // 시네리오 호출에서도 남은 정리 시간을 버리지 않습니다.
             yield return skillContext.WaitForPendingDefensePostImpactDelay();
             yield return skillContext.ReturnDefender();
+            skillContext.CompleteSkillResources();
         }
         finally
         {

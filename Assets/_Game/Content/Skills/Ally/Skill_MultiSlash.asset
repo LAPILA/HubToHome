@@ -19,6 +19,13 @@ MonoBehaviour:
   APCost: 10
   TargetType: 1
   IsAoE: 1
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 0
+    RequiredStep: 1
+    ConsumeStep: 1
+    DamageMultiplier: 1.5
+    GainOnCompletion: 1
   ActionTimeline:
   - rid: 8456611228188409982
   - rid: 8456611228188409983

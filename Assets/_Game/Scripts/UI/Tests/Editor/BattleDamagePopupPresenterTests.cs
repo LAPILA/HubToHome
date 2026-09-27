@@ -80,6 +80,42 @@ public sealed class BattleDamagePopupPresenterTests
         Assert.That(view.gameObject.layer, Is.EqualTo(_root.layer));
     }
 
+    [TestCase(true, -1f)]
+    [TestCase(false, 1f)]
+    public void CharacterFeedbackAlwaysStartsAndTravelsOutward(bool ally, float direction)
+    {
+        var cameraObject = new GameObject("Damage Popup Camera", typeof(Camera));
+        var targetObject = new GameObject("Damage Popup Target");
+        targetObject.SetActive(false);
+        try
+        {
+            Camera camera = cameraObject.GetComponent<Camera>();
+            camera.orthographic = true;
+            camera.orthographicSize = 5f;
+            camera.transform.position = new Vector3(0f, 0f, -10f);
+            CharacterBase target = ally
+                ? (CharacterBase)targetObject.AddComponent<PlayerCharacter>()
+                : targetObject.AddComponent<EnemyCharacter>();
+            _presenter.BindWorldCamera(camera);
+            Vector3 screen = camera.WorldToScreenPoint(target.GetPivot(CharacterPivotId.Center).position);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_presenter.PopupRoot, screen, null, out Vector2 center);
+            var feedback = new BattleDamageFeedback(null, target, 33, false, BattleDamageFeedbackKind.Damage);
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.That(_presenter.TryShow(feedback, out BattleDamagePopupView view), Is.True);
+                float startX = view.PopupRect.anchoredPosition.x;
+                Assert.That((startX - center.x) * direction, Is.EqualTo(32f).Within(0.51f));
+                view.ActiveSequence.Goto(BattleDamagePopupAnimationSettings.Default.LaunchDuration, false);
+                Assert.That((view.PopupRect.anchoredPosition.x - startX) * direction, Is.GreaterThan(0f));
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(targetObject);
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
     [Test]
     public void FeedbackUsesTargetWorldPositionThroughBoundCamera()
     {

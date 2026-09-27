@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: tests_Skill_BoilerBurst
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "보일러 파열"
   SkillID: tests_player.boiler_burst
   Description: "전장 중앙에서 증기를 폭발시켜 모든 적을 두 차례 휩쓴다."

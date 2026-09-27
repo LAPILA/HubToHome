@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8191188a3afb37602e306acea419b38, type: 3}
+  m_Name: WizelPressure
+  m_EditorClassIdentifier: Assembly-CSharp::BattleResourceDefinition
+  DisplayName: 압력
+  MaxStep: 4
+  InitialStep: 0
+  PerfectParryGain: 1
+  CounterGain: 1
+  Stages:
+  - SourceClip: {fileID: 9131542569881820608, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+    Loop: 1
+    Frames:
+    - Sprite: {fileID: -2904282693144412184, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+      Duration: 0.1
+  - SourceClip: {fileID: -1531967826016350553, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+    Loop: 1
+    Frames:
+    - Sprite: {fileID: 4314393026978505698, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+      Duration: 0.1
+  - SourceClip: {fileID: -8706296477368616740, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+    Loop: 1
+    Frames:
+    - Sprite: {fileID: 6717930008769862774, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+      Duration: 0.1
+  - SourceClip: {fileID: -1240030203683210334, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+    Loop: 1
+    Frames:
+    - Sprite: {fileID: -5510958811034102063, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+      Duration: 0.1
+  - SourceClip: {fileID: 614465556564758888, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+    Loop: 1
+    Frames:
+    - Sprite: {fileID: -1070215606922658284, guid: b440bf9ad68b84d4d85868944e8bb2a6, type: 3}
+      Duration: 0.1

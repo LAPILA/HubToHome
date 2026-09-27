@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: tests_Skill_SteamThrust
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "증기 찌르기"
   SkillID: tests_player.steam_thrust
   Description: "상대 뒤로 압력을 흘린 뒤 정면으로 되받아치는 고속 찌르기."
@@ -20,6 +20,13 @@ MonoBehaviour:
   APCost: 14
   TargetType: 1
   IsAoE: 0
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 0
+    RequiredStep: 1
+    ConsumeStep: 1
+    DamageMultiplier: 1.5
+    GainOnCompletion: 1
   ActionTimeline:
   - rid: 910000000012078201
   - rid: 910000000012078202

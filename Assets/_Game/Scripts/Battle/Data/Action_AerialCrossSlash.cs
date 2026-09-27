@@ -98,7 +98,7 @@ public sealed class Action_AerialCrossSlash : SkillActionBlock
                     player.PlayBasicAttackEffect();
                     CharacterBase target = context.MainTarget;
                     int hp = target.CurrentHP;
-                    float multiplier = DamagePerStrike * (success ? SuccessMultiplier : 1f) * context.CurrentDamageMultiplier;
+                    float multiplier = DamagePerStrike * (success ? SuccessMultiplier : 1f) * context.EffectiveDamageMultiplier;
                     DamageResult result = target.TakeDamage(Mathf.RoundToInt(player.ATK * Mathf.Max(0f, multiplier)), Element, player);
                     if (BattleManager.Instance != null)
                         BattleManager.Instance.InvokeDamageEvent(player, target, result.FinalDamage, success, hp);

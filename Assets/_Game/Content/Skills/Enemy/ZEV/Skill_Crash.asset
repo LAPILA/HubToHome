@@ -23,58 +23,118 @@ MonoBehaviour:
   IsAoE: 0
   ActionTimeline:
   - rid: 8456611228188409976
+  - rid: 9001
   - rid: 8456611491438133252
   - rid: 8456611228188409979
   - rid: 9223372036854775807
   - rid: 8456611228188409980
   - rid: 8456611228188409978
+  - rid: 2817657493982281856
   references:
     version: 2
     RefIds:
+    - rid: 9001
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "\uACF5\uACA9 \uC900\uBE44 \xB7 \uAE30\uC874 \uD074\uB85C\uC988\uC5C5"
+        Note: "\uBC29\uC5B4\uCC3D\uC774 \uC5F4\uB9AC\uAE30 \uC804\uC5D0 \uCE74\uBA54\uB77C
+          \uBCF5\uADC0\uB97C \uC644\uB8CC\uD569\uB2C8\uB2E4."
+        ZoomRatio: 0.65
+        FocusDuration: 0.16
+        HoldDuration: 0.2
+        ReleaseDuration: 0.14
+    - rid: 2817657493982281856
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 1
+        DesignerLabel: 복귀 뒤 재접근 비활성
+        Note:
+        Destination: 0
+        Duration: 0.2
+        MoveEase: 6
+        EnemyHopHeight: 0
     - rid: 8456611228188409976
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
-        Destination: 2
-        Duration: 0.2
+        Disabled: 0
+        DesignerLabel: 방어창 전에 공격 위치 정렬
+        Note:
+        Destination: 5
+        Duration: 0.16
         MoveEase: 6
+        EnemyHopHeight: 0
     - rid: 8456611228188409978
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 1
+        DesignerLabel: 공통 복귀 사용 · 중복 복귀 비활성
+        Note:
         Destination: 4
         Duration: 0.14
         MoveEase: 17
+        EnemyHopHeight: 0
     - rid: 8456611228188409979
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel:
+        Note:
         AnimTriggerName: Attack
-        DelayAfter: 0.05
+        DelayAfter: 0
     - rid: 8456611228188409980
       type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel:
+        Note:
         SkillMultiplier: 2.2
+        Element: 0
         ShakeCamera: 1
     - rid: 8456611491438133252
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
-        PatternMode: 0
-        Requirement: 0
-        UseTelegraph: 1
+        Disabled: 0
+        DesignerLabel: "\uD0C0\uACA9 \uB300\uC751 \xB7 Z \uBC29\uC5B4 / X \uD68C\uD53C"
+        Note: "\uC804\uC870\uB294 \uC2E4\uC81C \uC785\uB825 \uC131\uACF5 \uAD6C\uAC04\uC5D0\uC11C
+          Center\uC5D0 \uD55C \uBC88\uB9CC \uD45C\uC2DC\uD569\uB2C8\uB2E4."
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
         TelegraphVisualMode: 2
-        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningVfxPrefab: {fileID: 0}
         WarningSprite: {fileID: 0}
-        TelegraphAnimatorTriggerName: 
-        TelegraphAttachPivotName: Back
-        TelegraphDuration: 0.2
-        DefenseOpenDelay: 0.2
-        TimeWindow: 0.2
+        TelegraphAnimatorTriggerName:
+        TelegraphAttachPivotName: Center
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.5
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.22
+          GoodWindow: 0.4
         FailDamageMultiplier: 1
-        ShakeOnFail: 1
-        DelayAfter: 0.1
-        AttackAnimTriggerName: 
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: Attack
+        AttackAnimationLeadTime: 0.05
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.08
         AttackAnimDelay: 0
     - rid: 9223372036854775807
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
+        Disabled: 0
+        DesignerLabel:
+        Note:
         VfxPrefab: {fileID: 4748681987041982144, guid: a92d3e7dae3e14040994a16acae887e0, type: 3}
         Pivot: 0
         UseActorRotation: 0

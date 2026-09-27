@@ -82,6 +82,24 @@ public sealed class BattleLinkCounterServiceTests
     }
 
     [Test]
+    public void Execute_AwardsCounterResourceOnceToDefender()
+    {
+        PlayerCharacter defender = CreatePlayer("Defender", 20);
+        PlayerCharacter other = CreatePlayer("Other", 20);
+        var definition = ScriptableObject.CreateInstance<BattleResourceDefinition>();
+        _ownedObjects.Add(definition);
+        definition.CounterGain = 1;
+        defender.BattleResource.Configure(definition);
+        other.BattleResource.Configure(definition);
+        IEnumerator routine = Start(defender);
+        Assert.That(routine.MoveNext(), Is.True);
+        Assert.That(defender.BattleResource.Step, Is.EqualTo(1));
+        Drain(routine);
+        Assert.That(defender.BattleResource.Step, Is.EqualTo(1));
+        Assert.That(other.BattleResource.Step, Is.Zero);
+    }
+
+    [Test]
     public void Execute_SoloMemberStillCounters()
     {
         PlayerCharacter defender = CreatePlayer("Solo", 20);

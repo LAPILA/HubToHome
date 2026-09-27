@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: rapid_slash
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "압력 난무 · 5초"
   SkillID: lab.bunny.rapid_slash
   Description: "5초 동안 0.1초 간격으로 50회 베기. 공격과 별도로 이어지는 Z/X/C 안내에 맞춰 누르면 다음 QTE 결과까지 피해가 강화된다. 입력을 놓쳐도 공격은 계속된다."
@@ -20,6 +20,13 @@ MonoBehaviour:
   APCost: 12
   TargetType: 1
   IsAoE: 0
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 1
+    RequiredStep: 4
+    ConsumeStep: 4
+    DamageMultiplier: 1.5
+    GainOnCompletion: 0
   ActionTimeline:
   - rid: 926000001
   references:

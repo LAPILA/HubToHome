@@ -24,9 +24,12 @@ public class CharacterData : SerializedScriptableObject
     [BoxGroup("Identity"), PreviewField(60, ObjectFieldAlignment.Left)]
     public Sprite TurnOrderPortrait;
 
-    [BoxGroup("Battle Presentation"), PreviewField(80), LabelText("전투 대형 초상")]
-    [Tooltip("하단 오른쪽 초상. 비워 두면 파티용 Portrait를 사용합니다.")]
+    [HideInInspector] // Serialized legacy reference retained for old prefabs and editor builders.
     public Sprite BattleLargePortrait;
+
+    [BoxGroup("Battle Presentation"), LabelText("전투 고유 자원"), AssetsOnly]
+    [Tooltip("오른쪽 ActorLargePortrait는 이 자원의 단계 표시로 사용합니다. 비워 두면 숨깁니다.")]
+    public BattleResourceDefinition BattleResource;
 
     [BoxGroup("Battle Presentation"), AssetsOnly]
     [Tooltip("Character-specific prefab instantiated in battle. BattleManager fallback is used when empty.")]

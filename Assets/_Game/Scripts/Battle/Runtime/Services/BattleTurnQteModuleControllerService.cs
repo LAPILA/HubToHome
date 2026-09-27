@@ -654,6 +654,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             return;
 
         target.RestoreAP(_host.ApOnParryPerfect);
+        target.BattleResource.RewardPerfectParry();
         _host.EmitApChanged(target, target.CurrentAP);
     }
 
@@ -894,9 +895,12 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
             actor.PlayBattleAnim(PlayerCharacter.HashBattleMove);
             _host.SetActorForeground(actor, true);
-            BattleManager.SetGhostTrail(actor, true);
             if (!duelPresentation.IsPaired)
+            {
+                BattleManager.SetGhostTrail(actor, true);
                 yield return actor.transform.DOMove(frontPos, 0.2f).SetEase(Ease.OutCubic).WaitForCompletion();
+            }
+            BattleManager.SetGhostTrail(actor, false);
 
             // 타겟 앞에서 준비 자세를 한 번 보여준 뒤 제자리에서 공격합니다.
             // 공격 중 추가 돌진/뒤쪽 이동은 제거해 피격 프레임과 모션을 일치시킵니다.
@@ -1020,6 +1024,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             IsExecutionActive = _host.IsTurnQteCombatInputActive
         };
 
+        context.BeginSkillResources(skill);
         BattleCameraActionScope cameraScope = BeginActiveCameraScope(actor.transform, targets);
         try
         {
@@ -1074,6 +1079,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             for (int i = 0; i < scenarioTargets.Count; i++)
                 _host.PublishEnemyDefeatedScenarioEvent(scenarioTargets[i], actor);
 
+            context.CompleteSkillResources();
             _host.PublishSkillCompletedScenarioEvent(skill, actor);
             actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
             EndActiveCameraScope(cameraScope);

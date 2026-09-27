@@ -45,13 +45,13 @@ public class DialogueUI : MonoBehaviour
     private List<ChoiceData> _activeChoices;
     private System.Action<ChoiceData> _onChoiceSelected;
     private int _selectedChoiceIndex;
-    private Coroutine _cameraRebindRoutine;
     private Tween _panelTween;
 
     private void Awake()
     {
-        UIRuntimeGuard.NormalizeCanvas(gameObject);
         if (_rootCanvas == null) _rootCanvas = GetComponentInParent<Canvas>(true);
+        DialogueCanvasViewport.Ensure(_rootCanvas, _rootCanvas != null ? _rootCanvas.worldCamera : null);
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
         if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
         if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
         DialogueTextAnimationPolicy.UsePlainTypewriter(_typewriter);
@@ -71,11 +71,6 @@ public class DialogueUI : MonoBehaviour
         StopTypingWork();
         if (_canvasGroup != null)
             _canvasGroup.alpha = 0f;
-        if (_cameraRebindRoutine != null)
-        {
-            StopCoroutine(_cameraRebindRoutine);
-            _cameraRebindRoutine = null;
-        }
     }
 
     private void Update()
@@ -91,7 +86,6 @@ public class DialogueUI : MonoBehaviour
         // 비활성 상태에서 처음 표시되는 UI도 공통 Canvas 정책을 통과시킨다.
         UIRuntimeGuard.NormalizeCanvas(gameObject);
         RebindCanvasCameraImmediate();
-        StartCameraRebindRetry();
         ApplyConfiguredTextSpeed();
         if (_canvasGroup != null)
         {
@@ -124,7 +118,6 @@ public class DialogueUI : MonoBehaviour
         StopTypingWork();
         StopAllCoroutines();
         _applySpeedRoutine = null;
-        _cameraRebindRoutine = null;
 
         if (_canvasGroup != null)
         {
@@ -227,25 +220,14 @@ public class DialogueUI : MonoBehaviour
 
     private void ResolveCanvasCamera()
     {
+        if (_rootCanvas == null) _rootCanvas = GetComponentInParent<Canvas>(true);
         if (_rootCanvas == null) return;
-        if (_rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay) return;
-
-        Camera target = Camera.main;
-        if (target == null)
-        {
-            Camera[] cams = Camera.allCameras;
-            for (int i = 0; i < cams.Length; i++)
-            {
-                if (cams[i] != null && cams[i].isActiveAndEnabled)
-                {
-                    target = cams[i];
-                    break;
-                }
-            }
-        }
-
-        // 씬 전환/카메라 교체 시에도 항상 최신 월드 카메라로 강제 동기화
-        _rootCanvas.worldCamera = target;
+        Camera output = Application.isPlaying
+            ? UIViewportService.GetOrCreate().ResolveSharedCamera()
+            : _rootCanvas.worldCamera;
+        DialogueCanvasViewport.Ensure(_rootCanvas, output);
+        if (Application.isPlaying)
+            UIViewportService.GetOrCreate().RegisterFixedViewport(_rootCanvas);
     }
 
     public void RebindCanvasCameraImmediate()
@@ -255,32 +237,8 @@ public class DialogueUI : MonoBehaviour
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // 카메라 지연 생성/교체 재시도는 공통 UIViewportService가 담당합니다.
         RebindCanvasCameraImmediate();
-        StartCameraRebindRetry();
-    }
-
-    private void StartCameraRebindRetry()
-    {
-        if (!isActiveAndEnabled) return;
-        if (_cameraRebindRoutine != null)
-            StopCoroutine(_cameraRebindRoutine);
-        _cameraRebindRoutine = StartCoroutine(CoRebindCanvasCameraRetry());
-    }
-
-    private IEnumerator CoRebindCanvasCameraRetry()
-    {
-        for (int i = 0; i < 20; i++)
-        {
-            ResolveCanvasCamera();
-            if (_rootCanvas != null && (_rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay || _rootCanvas.worldCamera != null))
-            {
-                _cameraRebindRoutine = null;
-                yield break;
-            }
-            yield return null;
-        }
-
-        _cameraRebindRoutine = null;
     }
 
     private IEnumerator CoReapplyTypewriterSpeed()

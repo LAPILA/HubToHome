@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: tests_Skill_SteamTraverse
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "증기 횡단"
   SkillID: tests_player.steam_traverse
   Description: "전장을 두 차례 횡단하며 모든 적에게 연속 타격을 남긴다."

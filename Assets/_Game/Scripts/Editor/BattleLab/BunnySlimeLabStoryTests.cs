@@ -114,6 +114,69 @@ public sealed class BunnySlimeLabStoryTests
         return source;
     }
 
+    [TestCase("bunny_slime_lab", "BattleScenario_BunnySlimeLab", 36)]
+    [TestCase("zev_lab", "BattleScenario_ZEVLab", 10)]
+    public void SavedScenarioMatchesSourceIncludingNestedActions(string sourceName, string assetName, int expectedCount)
+    {
+        string sourcePath = "Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/" + sourceName + ".scenario.yaml";
+        string source = File.ReadAllText(sourcePath, new UTF8Encoding(false, true));
+        var parsed = new ScenarioSourceYamlParser().Parse(source, sourcePath);
+        Assert.That(parsed.Success, Is.True, Format(parsed.Validation));
+        BattleScenarioData saved = AssetDatabase.LoadAssetAtPath<BattleScenarioData>(
+            BunnySlimeBattleLabBuilder.Root + "/Data/Scenario/" + assetName + ".asset");
+        Assert.That(saved, Is.Not.Null);
+        Assert.That(saved.Source.SourceHash, Is.EqualTo(ScenarioSourceHash.Compute(source)));
+        Assert.That(saved.Sequences.Count, Is.EqualTo(parsed.Document.Sequences.Count));
+        int actionCount = 0;
+        foreach (var sourceSequence in parsed.Document.Sequences)
+        {
+            ActionSequenceAsset sequence = saved.Sequences.Find(item => item.SequenceId == sourceSequence.SequenceId);
+            Assert.That(sequence, Is.Not.Null);
+            AssertActionsMatch(sourceSequence.Actions, sequence.Actions);
+            foreach (ScenarioActionData unused in Enumerate(sequence.Actions)) actionCount++;
+        }
+        Assert.That(actionCount, Is.EqualTo(expectedCount));
+        var catalog = AssetDatabase.LoadAssetAtPath<ActionCatalogAsset>(ProductionActionLibraryBuildCommand.GeneratedAssetPath);
+        ScenarioValidationResult validation = ScenarioCatalogValidator.ValidateBattleScenario(saved, catalog);
+        Assert.That(validation.HasErrors, Is.False, Format(validation));
+        foreach (var mapping in saved.Dialogues) Assert.That(mapping.Dialogue, Is.Not.Null);
+    }
+
+    private static void AssertActionsMatch(List<ScenarioActionData> expected, List<ScenarioActionData> actual)
+    {
+        Assert.That(actual, Has.Count.EqualTo(expected.Count));
+        for (int i = 0; i < expected.Count; i++)
+        {
+            Assert.That(actual[i].BlockId, Is.EqualTo(expected[i].BlockId));
+            Assert.That(actual[i].ActionId, Is.EqualTo(expected[i].ActionId));
+            Assert.That(JToken.DeepEquals(JToken.Parse(actual[i].ParametersJson), JToken.Parse(expected[i].ParametersJson)), Is.True);
+            AssertActionsMatch(expected[i].Children, actual[i].Children);
+        }
+    }
+
+    [TestCase("BattleScenario_BunnySlimeLab")]
+    [TestCase("BattleScenario_ZEVLab")]
+    public void LabDialoguesUseSharedBluePanelAndPortraits(string assetName)
+    {
+        var scenario = AssetDatabase.LoadAssetAtPath<BattleScenarioData>(
+            BunnySlimeBattleLabBuilder.Root + "/Data/Scenario/" + assetName + ".asset");
+        Assert.That(scenario, Is.Not.Null);
+        foreach (var mapping in scenario.Dialogues)
+        {
+            DialogueData dialogue = mapping.Dialogue;
+            Assert.That(dialogue, Is.Not.Null);
+            Assert.That(dialogue.Style, Is.EqualTo(DialogueStyle.Overworld),
+                dialogue.name + " must use the existing blue panel, not the background-free cinematic subtitles.");
+            foreach (DialogueNode node in dialogue.Nodes)
+            {
+                Assert.That(node.Speaker, Is.Not.Null, dialogue.name);
+                Assert.That(node.Speaker.GetPortrait(node.Emotion), Is.Not.Null,
+                    dialogue.name + ": " + node.Speaker.name + "/" + node.Emotion);
+            }
+        }
+    }
+
+
     private static ScenarioEventData HpEvent(string subject, float previous, float current)
     {
         var value = new ScenarioEventData(BuiltInScenarioEventIds.ParticipantHpChanged);

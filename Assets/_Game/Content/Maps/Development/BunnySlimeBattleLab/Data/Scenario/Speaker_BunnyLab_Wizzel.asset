@@ -14,11 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpeakerData
   serializationData:
     SerializedFormat: 2
-    SerializedBytes: 
+    SerializedBytes:
     ReferencedUnityObjects:
     - {fileID: 21300000, guid: e5e360a1b0e1a2446922682844e871aa, type: 3}
     - {fileID: 21300000, guid: 343abe3010bbb3e4c9836410a452ea1e, type: 3}
-    SerializedBytesString: 
+    - {fileID: 21300000, guid: 749e55c0e2fabb041b01e0bcc10b7e46, type: 3}
+    - {fileID: 21300000, guid: df1fb8cbf709d5340942cdd4909f8cd4, type: 3}
+    SerializedBytesString:
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
@@ -31,48 +33,72 @@ MonoBehaviour:
       Entry: 7
       Data: 1|System.Collections.Generic.EnumEqualityComparer`1[[EmotionType, Assembly-CSharp]],
         mscorlib
-    - Name: 
+    - Name:
       Entry: 12
       Data: 0
-    - Name: 
+    - Name:
       Entry: 13
-      Data: 
-    - Name: 
+      Data:
+    - Name:
       Entry: 8
-      Data: 
-    - Name: 
+      Data:
+    - Name:
       Entry: 12
-      Data: 2
-    - Name: 
+      Data: 4
+    - Name:
       Entry: 7
-      Data: 
+      Data:
     - Name: $k
       Entry: 3
       Data: 1
     - Name: $v
       Entry: 10
       Data: 0
-    - Name: 
+    - Name:
       Entry: 8
-      Data: 
-    - Name: 
+      Data:
+    - Name:
       Entry: 7
-      Data: 
+      Data:
     - Name: $k
       Entry: 3
       Data: 2
     - Name: $v
       Entry: 10
       Data: 1
-    - Name: 
+    - Name:
       Entry: 8
-      Data: 
-    - Name: 
+      Data:
+    - Name:
+      Entry: 7
+      Data:
+    - Name: $k
+      Entry: 3
+      Data: 6
+    - Name: $v
+      Entry: 10
+      Data: 2
+    - Name:
+      Entry: 8
+      Data:
+    - Name:
+      Entry: 7
+      Data:
+    - Name: $k
+      Entry: 3
+      Data: 4
+    - Name: $v
+      Entry: 10
+      Data: 3
+    - Name:
+      Entry: 8
+      Data:
+    - Name:
       Entry: 13
-      Data: 
-    - Name: 
+      Data:
+    - Name:
       Entry: 8
-      Data: 
+      Data:
   SpeakerID: lab.bunny_slime.speaker.wizzel
   DisplayName: "\uC704\uC824"
   VoiceSounds: []

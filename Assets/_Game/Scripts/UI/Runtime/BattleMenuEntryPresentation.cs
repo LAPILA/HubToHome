@@ -16,7 +16,8 @@ public static class BattleMenuEntryPresentation
         {
             SkillData data = skill.Data;
             string insufficient = actor != null && actor.CurrentAP < data.APCost ? " · AP 부족" : "";
-            return $"{data.Description}\n\n<color=#FFDE59>AP {data.APCost}{insufficient}</color>\n{Target(data.TargetType, data.IsAoE)}";
+            string resource = data.ResourceEffect?.Describe(actor != null ? actor.BattleResource : null) ?? "";
+            return $"{data.Description}\n\n<color=#FFDE59>AP {data.APCost}{insufficient}</color>\n{Target(data.TargetType, data.IsAoE)}{resource}";
         }
         if (entry is ItemMenuEntry item && item.Data != null)
             return $"{item.Data.Description}\n\n{Target(item.Data.TargetType, item.Data.IsAoE)}\n보유 {item.Count}개";

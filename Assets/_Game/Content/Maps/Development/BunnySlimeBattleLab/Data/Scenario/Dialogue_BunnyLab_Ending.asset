@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
   m_Name: Dialogue_BunnyLab_Ending
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
-  Style: 1
+  Style: 0
   Nodes:
   - Speaker: {fileID: 11400000, guid: 841e54257c82dc04d8ec10ac181c249c, type: 2}
     Emotion: 1

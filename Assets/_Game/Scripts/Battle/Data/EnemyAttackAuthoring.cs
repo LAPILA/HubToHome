@@ -331,6 +331,13 @@ public static class EnemyAttackAuthoringAnalyzer
             }
 
             ValidateBlock(block, i, report);
+            if (block is Action_EnemyWindup windup)
+            {
+                if (skill.UsageProfile != SkillUsageProfile.EnemyOnly)
+                    AddError(report, "skill.windup.enemy_only", i, "적 공격 준비는 적 전용 스킬에서 사용하세요.");
+                if (!windup.HasValidSettings)
+                    AddError(report, "skill.windup.settings.invalid", i, "준비 줌은 0.5~1, 확대/복귀는 0.05초 이상, 유지는 0초 이상이어야 합니다.");
+            }
             if (block is Action_RapidStrikes rapid)
             {
                 if (skill.UsageProfile != SkillUsageProfile.PlayerOnly)

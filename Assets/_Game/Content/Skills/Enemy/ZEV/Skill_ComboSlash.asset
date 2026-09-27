@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: Skill_ComboSlash
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "\uC5F0\uCC38"
   SkillID: zev.combo_slash
   Description: "\uAC00\uB85C \uC138\uB85C \uB9C8\uBB34\uB9AC!"
@@ -22,18 +22,19 @@ MonoBehaviour:
   IsAoE: 0
   ActionTimeline:
   - rid: 8456611228188409963
+  - rid: 9001
+  - rid: 9223372036854775807
   - rid: 8456611228188409967
   - rid: 8456611228188409951
-  - rid: 9223372036854775807
   - rid: 8456611228188409973
-  - rid: 8456611228188409954
   - rid: 8456611486798184541
+  - rid: 8456611228188409954
   - rid: 8456611228188409974
   - rid: 8456611228188409968
   - rid: 8456611395573645414
   - rid: 8456611228188409971
-  - rid: 8456611228188409958
   - rid: 8456611486798184542
+  - rid: 8456611228188409958
   - rid: 8456611228188409975
   references:
     version: 2
@@ -70,8 +71,9 @@ MonoBehaviour:
     - rid: 8456611228188409968
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
+        DesignerLabel: 2타 뒤 측면 이동
         Destination: 1
-        Duration: 0.01
+        Duration: 0.12
         MoveEase: 6
     - rid: 8456611228188409971
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
@@ -97,61 +99,126 @@ MonoBehaviour:
     - rid: 8456611395573645414
       type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
       data:
-        WaitTime: 0.2
+        DesignerLabel: 마무리 전 짧은 간격
+        WaitTime: 0.1
     - rid: 8456611486798184541
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
-        PatternMode: 0
-        Requirement: 0
-        UseTelegraph: 1
+        Disabled: 0
+        DesignerLabel: 타격 대응 · Z 방어 / X 회피
+        Note: 전조는 실제 입력 성공 구간에서 Center에 한 번만 표시합니다.
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
         TelegraphVisualMode: 2
-        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningVfxPrefab: {fileID: 0}
         WarningSprite: {fileID: 0}
-        TelegraphAnimatorTriggerName: 
+        TelegraphAnimatorTriggerName:
         TelegraphAttachPivotName: Center
-        TelegraphDuration: 0.1
-        DefenseOpenDelay: 0.1
-        TimeWindow: 0.1
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.45
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.22
+          GoodWindow: 0.4
         FailDamageMultiplier: 1
-        ShakeOnFail: 1
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
         DelayAfter: 0
-        AttackAnimTriggerName: 
-        AttackAnimDelay: 0.1
+        AttackAnimTriggerName: Attack
+        AttackAnimationLeadTime: 0
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
     - rid: 8456611486798184542
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
-        PatternMode: 0
-        Requirement: 0
-        UseTelegraph: 1
+        Disabled: 0
+        DesignerLabel: 타격 대응 · Z 방어 / X 회피
+        Note: 전조는 실제 입력 성공 구간에서 Center에 한 번만 표시합니다.
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
         TelegraphVisualMode: 2
-        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningVfxPrefab: {fileID: 0}
         WarningSprite: {fileID: 0}
-        TelegraphAnimatorTriggerName: 
+        TelegraphAnimatorTriggerName:
         TelegraphAttachPivotName: Center
-        TelegraphDuration: 0.1
-        DefenseOpenDelay: 0.1
-        TimeWindow: 0.1
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.45
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.22
+          GoodWindow: 0.4
         FailDamageMultiplier: 1
-        ShakeOnFail: 1
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
         DelayAfter: 0
-        AttackAnimTriggerName: 
-        AttackAnimDelay: 0.1
+        AttackAnimTriggerName: Attack
+        AttackAnimationLeadTime: 0
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
     - rid: 9223372036854775807
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
-        PatternMode: 0
-        Requirement: 0
-        UseTelegraph: 1
+        Disabled: 0
+        DesignerLabel: 타격 대응 · Z 방어 / X 회피
+        Note: 전조는 실제 입력 성공 구간에서 Center에 한 번만 표시합니다.
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
         TelegraphVisualMode: 2
-        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        WarningVfxPrefab: {fileID: 0}
         WarningSprite: {fileID: 0}
-        TelegraphAnimatorTriggerName: 
+        TelegraphAnimatorTriggerName:
         TelegraphAttachPivotName: Center
-        TelegraphDuration: 0.1
-        DefenseOpenDelay: 0.1
-        TimeWindow: 0.1
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.45
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.22
+          GoodWindow: 0.4
         FailDamageMultiplier: 1
-        ShakeOnFail: 1
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
         DelayAfter: 0
-        AttackAnimTriggerName: 
-        AttackAnimDelay: 0.1
+        AttackAnimTriggerName: Attack
+        AttackAnimationLeadTime: 0
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
+    - rid: 9001
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 공격 준비 · 기존 클로즈업
+        Note: 방어창이 열리기 전에 카메라 복귀를 완료합니다.
+        ZoomRatio: 0.65
+        FocusDuration: 0.16
+        HoldDuration: 0.2
+        ReleaseDuration: 0.14

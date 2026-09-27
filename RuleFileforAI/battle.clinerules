@@ -1,5 +1,11 @@
 # Battle Rules
 
+## Conditional resource boosts
+
+- SkillResourceEffect never blocks an otherwise usable skill. BeginSkillResources checks the same definition and snapshots/consumes once. CompleteSkillResources grants once only while execution is valid. Cancelled casts do not refund committed cost or grant completion gain.
+- Every hit uses SkillContext.EffectiveDamageMultiplier = QTE/current multiplier × resource multiplier. Resetting CurrentDamageMultiplier must not reset the cast's resource bonus.
+- Both the ordinary turn runner and BattleSkillTimelineRunner call the same lifecycle. A final-target kill completes; cancellation/death/empty timelines do not grant rewards. Perfect-parry gain shares the existing once-per-defense-window reward path.
+
 ## Current Structure
 
 - `BattleEncounterService`: common battle entry from overworld, dialogue, and triggers.
@@ -122,9 +128,21 @@
 - Before saving an enemy attack, resolve every Error in the SkillData Inspector; warnings document optional or readability-sensitive choices.
 - Preserve existing serialized enum numbers. Append new values unless an explicit asset migration is included.
 - Do not rename animation triggers without checking `PlayerCharacter`, `EnemyCharacter`, animators, and existing assets.
-- Document battle behavior changes in `AIAssets/YYYY-MM-DD-update.md`.
+- Record battle behavior changes in `AIAssets/YYYY-MM-DD-update.md`.
+- Ghost trails are movement-only. Enable only around approach/dash/dodge/return movement and disable before stationary ready/attack poses. CharacterGhostTrail checks cached CharacterBase root displacement after normal DOTween movement; visual-child animation and camera motion do not qualify. Stopping/ending/disabling clears existing ghosts into the bounded pool without completing their Tweens. Do not re-enable trails for an entire attack animation.
 
-## Migration Guidance
+## Authored Battle Lab / Enemy Windup (2026-09-27)
+
+- Lab entries live in `BunnySlimeBattleLabData.Encounters`. Keep stable entry IDs, EnemyData/Scenario references, and menu text in data. Do not reconstruct runtime enemies/skills based on the selected menu index.
+- Preserve the separate weak-front-line 3+3 exercise. Both main lab battles use the existing party/encounter/defense/result paths; no extra Game Module is introduced.
+- `Action_EnemyWindup` is an EnemyOnly skill block, not Scenario Source grammar. Use CameraController with the current BattleCameraActionScope token; perform ready once via SkillContext, release the authored camera beat and await zoom-out before the defense window.
+- The block's finally cleanup must not reset a newer shot/Timeline. Existing scene/module/action cleanup remains responsible for ending the outer camera scope.
+- Full details: `docs/bunny-slime-battle-lab.md` and `AIAssets/yjlim/feedback/2026-09-27-battle-lab-consolidation.md`.
+
+- All SkillData, including temporary lab samples, belong under `Content/Skills`. Lab ally skills use `Ally/BattleLab`; bunny enemy skills use `Enemy/BunnySlime`. Keep skill IDs and asset/meta GUIDs when moving them. Builders must not recreate the former map-local `Data/Skills` folder.
+- ZEV lab reuses the five canonical `Enemy/ZEV` skills, not copies. Shared changes also affect the main-game ZEV. Every melee hit gets one `Action_DefenseWindow` before slash VFX/damage; use `ImpactCuePrefab` at `Center` and disable legacy `UseTelegraph` to avoid duplicate/premature cues. The strong slash is X/C-counterable; the other four use Z/X. No projectiles or player `Action_QTE` in ZEV skills.
+
+## Migration Sequence
 
 Preferred sequence:
 

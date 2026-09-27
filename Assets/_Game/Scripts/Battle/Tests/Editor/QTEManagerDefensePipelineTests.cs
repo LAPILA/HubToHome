@@ -156,7 +156,8 @@ public class QTEManagerDefensePipelineTests
     {
         Assert.That(new Action_DefenseWindow().ImpactCuePivotName, Is.EqualTo(CharacterPivotId.Center));
         string[] guids = AssetDatabase.FindAssets("t:SkillData", new[] {
-            "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Skills" });
+            "Assets/_Game/Content/Skills/Enemy/BunnySlime",
+            "Assets/_Game/Content/Skills/Enemy/ZEV" });
         int checkedCues = 0;
         foreach (string guid in guids)
         {

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
   m_Name: tests_Skill_PressureRelease
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  Icon: {fileID: 21300000, guid: f54a5a327ade0b843944119647f877e1, type: 3}
+  Icon: {fileID: 0}
   SkillName: "압력 해방"
   SkillID: tests_player.pressure_release
   Description: "축적한 모든 증기압을 한 점에 집중해 거대한 충격으로 방출하는 시험용 필살기."

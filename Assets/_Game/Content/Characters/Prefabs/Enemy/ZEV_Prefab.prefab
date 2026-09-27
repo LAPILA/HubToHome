@@ -133,8 +133,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 7956502023596653724}
   - {fileID: 1622603325046787}
@@ -408,10 +408,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyCharacter
   Data: {fileID: 11400000, guid: 2ecad76fe6f59d642b2989116b593269, type: 2}
+  _basicAttackImpactLeadTime: 0.12
   _isBattleMode: 1
   _hurtFlashColor: {r: 1, g: 1, b: 1, a: 1}
   _flashDuration: 0.08
   _shakeStrength: 0.15
+  _hitPopHeight: 0.35
+  _hitPopUpDuration: 0.08
+  _hitPopReturnDuration: 0.16
 --- !u!114 &8575338402871891709
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -436,6 +440,15 @@ MonoBehaviour:
   _useDedicatedBattleScene: 0
   _battleSceneName: BattleScene
   _battleSceneFadeDuration: 0.08
+  _encounterIdOverride: 
+  _defeatOnVictory: 0
+  _allowEscape: 1
+  _useStagedEncounter: 0
+  _postClashDialogue: {fileID: 0}
+  _stagedApproachStopDistance: 1.1
+  _stagedApproachDuration: 0.45
+  _stagedAttackHoldDuration: 0.45
+  _requireSeamlessBattleHost: 1
   _disableSiblingOverworldEnemy: 1
 --- !u!114 &247497032874776338
 MonoBehaviour:
@@ -452,6 +465,7 @@ MonoBehaviour:
   _spawnInterval: 0.03
   _ghostLifetime: 0.4
   _ghostStartColor: {r: 0, g: 1, b: 0.7775214, a: 1}
+  _maxGhostCount: 16
 --- !u!1 &5941587637502663154
 GameObject:
   m_ObjectHideFlags: 0

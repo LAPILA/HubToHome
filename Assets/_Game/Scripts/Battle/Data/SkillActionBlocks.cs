@@ -51,6 +51,41 @@ public class SkillContext
     public List<CharacterBase> Targets;
     
     public float CurrentDamageMultiplier = 1.0f;
+    public float ResourceDamageMultiplier { get; private set; } = 1f;
+    public float EffectiveDamageMultiplier => CurrentDamageMultiplier * ResourceDamageMultiplier;
+    private bool _resourceStarted, _resourceCompleted;
+    private CharacterBattleResource _skillResource;
+    private BattleResourceDefinition _skillResourceDefinition;
+    private int _resourceGainOnCompletion;
+
+    public void BeginSkillResources(SkillData skill)
+    {
+        if (_resourceStarted || !CanContinueExecution) return;
+        bool hasEnabledBlock = false;
+        if (skill != null && skill.ActionTimeline != null)
+            for (int i = 0; i < skill.ActionTimeline.Count; i++)
+                if (skill.ActionTimeline[i] != null && !skill.ActionTimeline[i].Disabled)
+                { hasEnabledBlock = true; break; }
+        if (!hasEnabledBlock) return;
+        _resourceStarted = true;
+        SkillResourceEffect effect = skill != null ? skill.ResourceEffect : null;
+        if (!(Actor is PlayerCharacter player) || effect?.Resource == null || !effect.IsValid) return;
+        _skillResource = player.BattleResource;
+        _skillResourceDefinition = effect.Resource;
+        if (_skillResource.Definition != effect.Resource) return;
+        _resourceGainOnCompletion = effect.GainOnCompletion;
+        if (effect.CanBoost(_skillResource)
+            && _skillResource.TrySpend(effect.Resource, effect.RequiredStep, effect.ConsumeStep))
+            ResourceDamageMultiplier = effect.DamageMultiplier;
+    }
+
+    public void CompleteSkillResources()
+    {
+        if (!_resourceStarted || _resourceCompleted || !CanContinueExecution) return;
+        _resourceCompleted = true;
+        if (_skillResource != null && _skillResource.Definition == _skillResourceDefinition)
+            _skillResource.Gain(_resourceGainOnCompletion);
+    }
     public bool IsPerfectQTE = false;
     public bool StopTimelineExecution = false;
     public System.Func<bool> IsExecutionActive;
@@ -384,6 +419,7 @@ public abstract class SkillActionBlock
         if (this is Action_SequentialMelee) return "연쇄 근접";
         if (this is Action_RapidStrikes) return "고속 연격 · 독립 QTE";
         if (this is Action_AerialCrossSlash) return "공중 회전 · 교차 베기";
+        if (this is Action_EnemyWindup) return "적 공격 준비 · 클로즈업";
         return GetType().Name.Replace("Action_", string.Empty);
     }
 
@@ -392,6 +428,7 @@ public abstract class SkillActionBlock
         if (this is Action_Wait) return "흐름";
         if (this is Action_Move) return "이동";
         if (this is Action_PlayAnim) return "애니메이션";
+        if (this is Action_EnemyWindup) return "카메라";
         if (this is Action_Damage || this is Action_Projectile || this is Action_SequentialMelee
             || this is Action_RapidStrikes || this is Action_AerialCrossSlash) return "데미지";
         if (this is Action_VFX) return "VFX";
@@ -677,7 +714,7 @@ public class Action_Damage : SkillActionBlock
             yield break;
         }
 
-        float finalMultiplier = SkillMultiplier * context.CurrentDamageMultiplier;
+        float finalMultiplier = SkillMultiplier * context.EffectiveDamageMultiplier;
         if (finalMultiplier <= 0f)
         {
             context.CurrentDamageMultiplier = 1.0f;
@@ -1266,6 +1303,9 @@ public class Action_DefenseWindow : SkillActionBlock
             {
                 context.CurrentDamageMultiplier = 0f;
 
+                if (target is PlayerCharacter resourceOwner && resourceOwner.IsAlive)
+                    resourceOwner.BattleResource.RewardPerfectParry();
+
                 if (target is PlayerCharacter playerTarget
                     && BattleManager.Instance != null)
                 {
@@ -1464,7 +1504,7 @@ public class Action_Projectile : SkillActionBlock
             CharacterVFX.ApplyRuntimeAudioNormalization(impactVfx);
         }
         
-        float effectiveDamageMultiplier = DamageMultiplier * context.CurrentDamageMultiplier;
+        float effectiveDamageMultiplier = DamageMultiplier * context.EffectiveDamageMultiplier;
         if (effectiveDamageMultiplier <= 0f)
         {
             context.CurrentDamageMultiplier = 1.0f;
@@ -1619,7 +1659,7 @@ public class Action_SequentialMelee : SkillActionBlock
             
             if (context.CurrentDamageMultiplier > 0f)
             {
-                int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.CurrentDamageMultiplier);
+                int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.EffectiveDamageMultiplier);
                 int previousHp = target.CurrentHP;
                 DamageResult damageResult = target.TakeDamage(dmg, Element, context.Actor);
                 int dealt = damageResult.FinalDamage;

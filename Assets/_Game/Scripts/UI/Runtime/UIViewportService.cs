@@ -7,8 +7,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Central runtime policy for UI that belongs inside the Pixel Perfect gameplay viewport.
-/// FixedViewport UI normally uses the gameplay camera. BattleHudViewport opts battle HUD
-/// into a camera-independent overlay while retaining the same gameplay viewport bounds.
+/// FixedViewport UI normally uses the gameplay camera. Battle HUD and modal dialogue
+/// opt into camera-independent overlays while retaining the gameplay viewport bounds.
 /// </summary>
 public sealed class UIViewportService : MonoBehaviour
 {
@@ -125,6 +125,11 @@ public sealed class UIViewportService : MonoBehaviour
 
     public static void ConfigureFixedViewport(Canvas canvas, Camera sharedCamera)
     {
+        if (canvas != null && canvas.TryGetComponent(out DialogueCanvasViewport dialogueViewport))
+        {
+            dialogueViewport.Configure(sharedCamera);
+            return;
+        }
         if (canvas != null && canvas.TryGetComponent(out BattleHudViewport battleHud))
         {
             battleHud.Configure(sharedCamera);

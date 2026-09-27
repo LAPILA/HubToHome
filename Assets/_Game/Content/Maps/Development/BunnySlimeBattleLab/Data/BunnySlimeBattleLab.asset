@@ -12,6 +12,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 440a59d37d78e346821f01b9e5a27bb6, type: 3}
   m_Name: BunnySlimeBattleLab
   m_EditorClassIdentifier: Assembly-CSharp::BunnySlimeBattleLabData
+  Encounters:
+  - Id: "lab.bunny.integrated"
+    Title: "토끼 슬라임 · 통합"
+    Summary: "Z / X / C · 투사체 · 상태 · 대사"
+    Description: "근접 → 단발탄 → C 특수 공격부터\n전체 패턴을 순서대로 확인합니다.\n\nHP 단계에 맞춰 대사·BGM 전환.\n아군 스킬, QTE와 회복 아이템도\n이 전투에서 함께 확인하세요."
+    Enemy: {fileID: 11400000, guid: d43ee5dcadb816945862fc8c05072aff, type: 2}
+    Scenario: {fileID: 11400000, guid: fb021001d617a0e48b2783a1552f3d04, type: 2}
+    WeakenFrontLine: 0
+  - Id: "lab.zev.presentation"
+    Title: "ZEV · 연출 전투"
+    Summary: "준비 클로즈업 · 공방 · 대화"
+    Description: "적 확대 → 준비 자세 → 줌아웃\n전조부터 Z 방어 / X 회피.\n\n연참 → 강한 참격(C) → 내려치기\n→ 고속참 → 환영호참 순서.\n기존 ZEV 스킬 5개를 사용합니다.\n전투 중 위젤과 ZEV가 대화합니다."
+    Enemy: {fileID: 11400000, guid: 63475f0e774412d26756a073b7af14d2, type: 2}
+    Scenario: {fileID: 11400000, guid: fa7be0677f66a47a694a9ed79ef5dbe5, type: 2}
+    WeakenFrontLine: 0
+  - Id: "lab.bunny.wave"
+    Title: "3 + 3 · 후열 확인"
+    Summary: "기존 전멸 확인 · 별도 유지"
+    Description: "전열 3명은 HP 1로 시작합니다.\n첫 광역기를 막지 않고\n후열 자동 등장을 확인하세요.\n\n수동 교대는 없습니다.\n종료하면 HP/AP와 아이템이\n복구되고 메뉴로 돌아옵니다."
+    Enemy: {fileID: 11400000, guid: d5020efba7a86cf1e6c0124099b41bbf, type: 2}
+    Scenario: {fileID: 0}
+    WeakenFrontLine: 1
   Enemy: {fileID: 11400000, guid: d43ee5dcadb816945862fc8c05072aff, type: 2}
   Scenario: {fileID: 11400000, guid: fb021001d617a0e48b2783a1552f3d04, type: 2}
   Party:

@@ -99,7 +99,7 @@ public sealed class Action_RapidStrikes : SkillActionBlock
                         struck = true;
                         CharacterBase target = context.MainTarget;
                         float multiplier = DamagePerStrike * (successfulPrompt ? SuccessMultiplier : 1f)
-                            * context.CurrentDamageMultiplier;
+                            * context.EffectiveDamageMultiplier;
                         int previousHp = target.CurrentHP;
                         DamageResult result = target.TakeDamage(Mathf.RoundToInt(player.ATK * Mathf.Max(0f, multiplier)), Element, player);
                         if (BattleManager.Instance != null)

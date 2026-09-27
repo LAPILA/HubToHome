@@ -26,6 +26,7 @@ public class EnemyCharacter : CharacterBase
     private CharacterVFX _vfx; 
     private Tween _returnToIdleTween;
     private int _lastBattleTrigger;
+    private int _nextOrderedSkill;
 
     public Sprite BattlePortrait => Data != null && Data.Portrait != null
         ? Data.Portrait
@@ -128,6 +129,7 @@ public class EnemyCharacter : CharacterBase
     public void Setup(EnemyData data)
     {
         Data = data;
+        _nextOrderedSkill = 0;
         if (Data != null)
         {
             // EnemyData도 Player와 동일하게 BaseStats를 CharacterStats에 주입한다.
@@ -351,6 +353,12 @@ public class EnemyCharacter : CharacterBase
     public virtual EnemyAction DecideAction()
     {
         if (Data == null) return EnemyAction.BasicAttack;
+        if (Data.UseOrderedSkills)
+        {
+            for (int i = 0; Data.SkillList != null && i < Data.SkillList.Count; i++)
+                if (Data.SkillList[i] != null) return EnemyAction.UseSkill;
+            return EnemyAction.BasicAttack;
+        }
 
         float hpRatio = (float)CurrentHP / MaxHP;
         if (hpRatio <= 0.5f && Data.HasEnragedPattern)
@@ -381,6 +389,18 @@ public class EnemyCharacter : CharacterBase
     public virtual SkillData SelectSkill(EnemyAction action)
     {
         if (Data == null) return null;
+
+        if (Data.UseOrderedSkills && action == EnemyAction.UseSkill)
+        {
+            int count = Data.SkillList != null ? Data.SkillList.Count : 0;
+            for (int i = 0; i < count; i++)
+            {
+                int index = _nextOrderedSkill % count;
+                _nextOrderedSkill = (index + 1) % count;
+                if (Data.SkillList[index] != null) return Data.SkillList[index];
+            }
+            return null;
+        }
 
         List<SkillData> skills = action == EnemyAction.UseSkill
             ? Data.SkillList

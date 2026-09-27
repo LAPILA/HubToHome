@@ -1250,6 +1250,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             return false;
 
         _battlePartyRoster.Add(player);
+        player.BattleResource.Reset();
         if (_playerParty.Count < ActivePartyLimit)
         {
             int slotIndex = _playerParty.Count;
@@ -2241,7 +2242,10 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         for (int i = 0; i < players.Count; i++)
         {
             if (players[i] != null)
+            {
+                players[i].BattleResource.Reset();
                 players[i].ClearBattleStatusEffects();
+            }
         }
 
         // Also cover incomplete setup/legacy callers whose reserve list has no roster yet.
@@ -2249,7 +2253,10 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         {
             PlayerCharacter reserve = _reserveParty[i];
             if (reserve != null && !players.Contains(reserve))
+            {
+                reserve.BattleResource.Reset();
                 reserve.ClearBattleStatusEffects();
+            }
         }
 
         for (int i = 0; i < _enemies.Count; i++)

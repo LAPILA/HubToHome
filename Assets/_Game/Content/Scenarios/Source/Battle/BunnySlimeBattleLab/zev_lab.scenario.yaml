@@ -1,0 +1,152 @@
+id: lab.zev.contract
+title: "ZEV · 계약 실습"
+primaryMode: battle
+openingModule: turn_qte
+memoryKey: lab.zev.contract
+participants:
+  party: [lab.wizzel.front, lab.wizzel.support, lab.wizzel.striker, lab.wizzel.reserve1, lab.wizzel.reserve2, lab.wizzel.reserve3]
+  enemies: [lab.zev]
+dialogues:
+  - id: lab.zev.opening
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_opening.asset"
+  - id: lab.zev.phase2
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_phase2.asset"
+  - id: lab.zev.phase3
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_phase3.asset"
+  - id: lab.zev.ending
+    dialogueData: "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data/Scenario/Dialogue_ZEVLab_ending.asset"
+rules:
+  - id: lab.zev.opening
+    when:
+      eventId: battle.started
+      timing: immediate
+      once: session
+    do:
+      sequence: lab.zev.opening
+  - id: lab.zev.phase2
+    name: "HP 65% · 대화"
+    when:
+      eventId: participant.hp_changed
+      timing: after_current_action
+      once: session
+      conditions:
+        id: lab.zev.phase2.root
+        all:
+          - id: lab.zev.phase2.subject
+            condition: event.participant
+            params:
+              participant: lab.zev
+          - id: lab.zev.phase2.threshold
+            condition: number.crossed_below
+            params:
+              previousPath: event.previousRatio
+              currentPath: event.currentRatio
+              threshold: 0.65
+          - id: lab.zev.phase2.alive
+            condition: number.compare
+            params:
+              path: event.currentRatio
+              operator: greater
+              value: 0
+    do:
+      sequence: lab.zev.phase2
+  - id: lab.zev.phase3
+    name: "HP 30% · 대화"
+    when:
+      eventId: participant.hp_changed
+      timing: after_current_action
+      once: session
+      conditions:
+        id: lab.zev.phase3.root
+        all:
+          - id: lab.zev.phase3.subject
+            condition: event.participant
+            params:
+              participant: lab.zev
+          - id: lab.zev.phase3.threshold
+            condition: number.crossed_below
+            params:
+              previousPath: event.previousRatio
+              currentPath: event.currentRatio
+              threshold: 0.3
+          - id: lab.zev.phase3.alive
+            condition: number.compare
+            params:
+              path: event.currentRatio
+              operator: greater
+              value: 0
+    do:
+      sequence: lab.zev.phase3
+  - id: lab.zev.ending
+    when:
+      eventId: participant.defeated
+      timing: after_current_action
+      once: session
+      conditions:
+        id: lab.zev.ending.subject
+        condition: event.participant
+        params:
+          participant: lab.zev
+    do:
+      sequence: lab.zev.ending
+sequences:
+  lab.zev.opening:
+    title: "계약서보다 먼저"
+    description: "기존 오버월드 대화창과 준비 자세를 사용한 전투 도입."
+    status: ready
+    allowedPrimaryModes: [battle]
+    - battle.camera.focus:
+        blockId: zev.opening.focus
+        subject: lab.zev
+        zoom: 4.2
+        duration: 0.2
+        style: gameplay_safe
+    - dialogue.wait:
+        blockId: zev.opening.dialogue
+        id: lab.zev.opening
+    - battle.actor.pose:
+        blockId: zev.opening.ready
+        actor: lab.zev
+        pose: ready
+        duration: 0.3
+    - battle.actor.return_slots:
+        blockId: zev.opening.slots
+        duration: 0.15
+    - battle.camera.reset:
+        blockId: zev.opening.reset
+        duration: 0.18
+        style: gameplay_safe
+  lab.zev.phase2:
+    title: "두 번째 칼끝"
+    description: "행동 종료 뒤 잠시 대화하고 전투를 재개합니다."
+    status: ready
+    allowedPrimaryModes: [battle]
+    - battle.camera.focus:
+        blockId: zev.phase2.focus
+        subject: lab.zev
+        zoom: 4.5
+        duration: 0.18
+        style: gameplay_safe
+    - dialogue.wait:
+        blockId: zev.phase2.dialogue
+        id: lab.zev.phase2
+    - battle.camera.reset:
+        blockId: zev.phase2.reset
+        duration: 0.18
+        style: gameplay_safe
+  lab.zev.phase3:
+    title: "마지막 조항"
+    description: "저체력 생존 시 한 번만 대화. 피해 처리와 방어창 도중에는 끼어들지 않습니다."
+    status: ready
+    allowedPrimaryModes: [battle]
+    - dialogue.wait:
+        blockId: zev.phase3.dialogue
+        id: lab.zev.phase3
+  lab.zev.ending:
+    title: "교육 목적이었다고"
+    description: "전투 결과 화면 전에 대화. 쓰러진 적의 포즈나 카메라 포커스를 요구하지 않습니다."
+    status: ready
+    allowedPrimaryModes: [battle]
+    - dialogue.wait:
+        blockId: zev.ending.dialogue
+        id: lab.zev.ending

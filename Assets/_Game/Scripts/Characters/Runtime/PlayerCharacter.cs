@@ -61,6 +61,7 @@ public class PlayerCharacter : CharacterBase
     }
 
     public CharacterData CharacterData => _characterData;
+    public CharacterBattleResource BattleResource { get; } = new CharacterBattleResource();
     public Color BattleSymbolColor
     {
         get
@@ -254,6 +255,7 @@ public class PlayerCharacter : CharacterBase
 
     private void ApplyCharacterData()
     {
+        BattleResource.Configure(_characterData != null ? _characterData.BattleResource : null);
         CharacterID = _characterData != null && !string.IsNullOrWhiteSpace(_characterData.CharacterID)
             ? _characterData.CharacterID
             : _fallbackCharacterID;

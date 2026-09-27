@@ -18,7 +18,8 @@ namespace HubToHome.EditorTools.SkillMaker
             typeof(Action_Wait), typeof(Action_Move), typeof(Action_PlayAnim),
             typeof(Action_Damage), typeof(Action_ApplyStatus), typeof(Action_QTE),
             typeof(Action_VFX), typeof(Action_DefenseWindow), typeof(Action_Projectile),
-            typeof(Action_SequentialMelee), typeof(Action_RapidStrikes), typeof(Action_AerialCrossSlash)
+            typeof(Action_SequentialMelee), typeof(Action_RapidStrikes), typeof(Action_AerialCrossSlash),
+            typeof(Action_EnemyWindup)
         };
 
         private static readonly IReadOnlyList<Type> CachedBlockTypes = DiscoverBlockTypes();
@@ -234,6 +235,7 @@ namespace HubToHome.EditorTools.SkillMaker
             if (typeof(Action_SequentialMelee).IsAssignableFrom(type)) return "연쇄 근접";
             if (typeof(Action_RapidStrikes).IsAssignableFrom(type)) return "고속 연격 · 독립 QTE";
             if (typeof(Action_AerialCrossSlash).IsAssignableFrom(type)) return "공중 회전 · 교차 베기";
+            if (typeof(Action_EnemyWindup).IsAssignableFrom(type)) return "적 공격 준비 · 클로즈업";
             return type.Name.Replace("Action_", string.Empty);
         }
 

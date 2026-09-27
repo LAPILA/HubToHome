@@ -23,11 +23,13 @@ MonoBehaviour:
   IsAoE: 0
   ActionTimeline:
   - rid: 2001
+  - rid: 8456611491438133248
+  - rid: 9001
+  - rid: 9101
   - rid: 2002
   - rid: 2003
   - rid: 8456611491438133250
   - rid: 8456611491438133249
-  - rid: 8456611491438133248
   - rid: 2004
   - rid: 2005
   references:
@@ -36,8 +38,9 @@ MonoBehaviour:
     - rid: 2001
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
+        DesignerLabel: 지상 고속 접근
         Destination: 0
-        Duration: 0.08
+        Duration: 0.12
         MoveEase: 6
     - rid: 2002
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
@@ -58,23 +61,78 @@ MonoBehaviour:
     - rid: 2005
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
+        DesignerLabel: 공통 복귀 사용 · 뒤로 이탈 비활성
+        Disabled: 1
         Destination: 1
         Duration: 0.12
         MoveEase: 17
     - rid: 8456611491438133248
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
+        DesignerLabel: 지상 참격 · 머리 위 이동 비활성
+        Disabled: 1
         Destination: 2
         Duration: 0.2
         MoveEase: 6
     - rid: 8456611491438133249
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
       data:
+        DesignerLabel: 방어창 공격 트리거 사용
+        Disabled: 1
         AnimTriggerName: CrossCutAttack
         DelayAfter: 0
     - rid: 8456611491438133250
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
+        DesignerLabel: 한 타격 · 중복 참격 VFX 비활성
+        Disabled: 1
         VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
         Pivot: 0
         UseActorRotation: 0
+    - rid: 9101
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 타격 대응 · Z 방어 / X 회피
+        Note: 전조는 실제 입력 성공 구간에서 Center에 한 번만 표시합니다.
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
+        TelegraphVisualMode: 2
+        WarningVfxPrefab: {fileID: 0}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName:
+        TelegraphAttachPivotName: Center
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.45
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        TimingProfile:
+          PerfectWindow: 0.12
+          GreatWindow: 0.22
+          GoodWindow: 0.4
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
+        FailShakeSafety: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: CrossCutAttack
+        AttackAnimationLeadTime: 0
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
+    - rid: 9001
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 공격 준비 · 기존 클로즈업
+        Note: 방어창이 열리기 전에 카메라 복귀를 완료합니다.
+        ZoomRatio: 0.65
+        FocusDuration: 0.16
+        HoldDuration: 0.2
+        ReleaseDuration: 0.14

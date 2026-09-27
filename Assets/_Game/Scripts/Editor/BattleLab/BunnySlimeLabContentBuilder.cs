@@ -37,32 +37,37 @@ public static class BunnySlimeLabContentBuilder
         for (int i = 0; i < items.Length; i++)
             items[i] = Require<ItemData>(SampleItems + itemNames[i] + ".asset");
 
-        string skills = root + "/Data/Skills";
-        SkillData rapid = Skill(skills, "rapid_slash", "압력 난무 · 5초", SkillUsageProfile.PlayerOnly, false, false, value =>
+        const string allySkills = "Assets/_Game/Content/Skills/Ally/BattleLab";
+        const string enemySkills = "Assets/_Game/Content/Skills/Enemy/BunnySlime";
+        SkillData rapid = Skill(allySkills, "rapid_slash", "압력 난무 · 5초", SkillUsageProfile.PlayerOnly, false, false, value =>
         {
             value.Icon = originals[0].Icon;
             value.APCost = 12;
+            value.ResourceEffect = new SkillResourceEffect { Resource = player.BattleResource,
+                EnableBoost = true, RequiredStep = 4, ConsumeStep = 4, DamageMultiplier = 1.5f };
             value.Description = "5초 동안 0.1초 간격으로 50회 베기. 공격과 별도로 이어지는 Z/X/C 안내에 맞춰 누르면 다음 QTE 결과까지 피해가 강화된다. 입력을 놓쳐도 공격은 계속된다.";
             value.ActionTimeline.Add(new Action_RapidStrikes { DesignerLabel = "0.1초 연격 · 독립 Z/X/C QTE" });
         });
-        SkillData aerial = Skill(skills, "aerial_cross_slash", "공중 회전 베기", SkillUsageProfile.PlayerOnly, false, false, value =>
+        SkillData aerial = Skill(allySkills, "aerial_cross_slash", "공중 회전 베기", SkillUsageProfile.PlayerOnly, false, false, value =>
         {
             value.Icon = originals[0].Icon;
             value.APCost = 14;
+            value.ResourceEffect = new SkillResourceEffect { Resource = player.BattleResource,
+                EnableBoost = true, RequiredStep = 3, ConsumeStep = 3, DamageMultiplier = 1.5f };
             value.Description = "적 앞으로 접근해 도약하면 카메라가 한 바퀴 회전한다. X 입력 성공 시 강화되어, 적 뒤로 급습한 뒤 앞뒤로 두 번 더 베어낸다.";
             value.ActionTimeline.Add(new Action_AerialCrossSlash { DesignerLabel = "상승 · 카메라 360도 · X QTE · 뒤/앞/뒤" });
         });
-        SkillData guard = EnemyStrike(skills, "guard", "말랑 내려찍기", DefenseRequirement.Any, 1f, 1, false, sparks);
-        SkillData dodge = EnemyStrike(skills, "dodge", "쓸어 담기 · X", DefenseRequirement.DodgeOnly, 1.1f, 1, false, sparks);
-        SkillData triple = EnemyStrike(skills, "triple", "하나, 둘, 말랑!", DefenseRequirement.Any, .65f, 3, false, sparks);
-        SkillData splash = EnemyStrike(skills, "splash", "공방 대청소", DefenseRequirement.Any, .9f, 1, true, ice);
-        SkillData counter = EnemyStrike(skills, "counter", "최종 안전검사 · C", DefenseRequirement.Counterable, 2f, 1, true, sparks);
-        SkillData wave = EnemyStrike(skills, "wave", "후열 호출 시험", DefenseRequirement.Any, 1f, 1, true, sparks);
-        SkillData shot = EnemyProjectileSkill(skills, "shot", "말랑 압축탄", false, false, fire, sparks);
-        SkillData doubleShot = EnemyProjectileSkill(skills, "double_shot", "엇박자 두 발", true, false, fire, sparks);
-        SkillData dodgeShot = EnemyProjectileSkill(skills, "dodge_shot", "과압력탄 · X", false, true, fire, sparks);
-        SkillData wet = StatusSkill(skills, "enemy_wet", "분무기 오작동", StatusEffectIds.Wet, false, true, ice, SkillUsageProfile.EnemyOnly);
-        SkillData poison = StatusSkill(skills, "enemy_poison", "시약 누출 주의", StatusEffectIds.Poison, false, false, sparks, SkillUsageProfile.EnemyOnly);
+        SkillData guard = EnemyStrike(enemySkills, "guard", "말랑 내려찍기", DefenseRequirement.Any, 1f, 1, false, sparks);
+        SkillData dodge = EnemyStrike(enemySkills, "dodge", "쓸어 담기 · X", DefenseRequirement.DodgeOnly, 1.1f, 1, false, sparks);
+        SkillData triple = EnemyStrike(enemySkills, "triple", "하나, 둘, 말랑!", DefenseRequirement.Any, .65f, 3, false, sparks);
+        SkillData splash = EnemyStrike(enemySkills, "splash", "공방 대청소", DefenseRequirement.Any, .9f, 1, true, ice);
+        SkillData counter = EnemyStrike(enemySkills, "counter", "최종 안전검사 · C", DefenseRequirement.Counterable, 2f, 1, true, sparks);
+        SkillData wave = EnemyStrike(enemySkills, "wave", "후열 호출 시험", DefenseRequirement.Any, 1f, 1, true, sparks);
+        SkillData shot = EnemyProjectileSkill(enemySkills, "shot", "말랑 압축탄", false, false, fire, sparks);
+        SkillData doubleShot = EnemyProjectileSkill(enemySkills, "double_shot", "엇박자 두 발", true, false, fire, sparks);
+        SkillData dodgeShot = EnemyProjectileSkill(enemySkills, "dodge_shot", "과압력탄 · X", false, true, fire, sparks);
+        SkillData wet = StatusSkill(enemySkills, "enemy_wet", "분무기 오작동", StatusEffectIds.Wet, false, true, ice, SkillUsageProfile.EnemyOnly);
+        SkillData poison = StatusSkill(enemySkills, "enemy_poison", "시약 누출 주의", StatusEffectIds.Poison, false, false, sparks, SkillUsageProfile.EnemyOnly);
 
         var status = new SkillData[StatusEffectFactory.KnownIds.Count];
         string[] statusNames = { "불씨 실험", "냉각 실험", "날붙이 실험", "부식 시약", "고정 장치", "충격 시험", "과출력 시동", "냉각 보호막", "분무 노즐" };
@@ -70,13 +75,13 @@ public static class BunnySlimeLabContentBuilder
         {
             string id = StatusEffectFactory.KnownIds[i];
             bool friendly = id == StatusEffectIds.IceShield || id == StatusEffectIds.Berserk;
-            status[i] = StatusSkill(skills, "status_" + id.ToLowerInvariant(), statusNames[i], id,
+            status[i] = StatusSkill(allySkills, "status_" + id.ToLowerInvariant(), statusNames[i], id,
                 friendly, false, friendly ? ice : sparks, SkillUsageProfile.PlayerOnly);
         }
-        SkillData fireShot = ProjectileSkill(skills, "fire", "휴대 화염 노즐", DamageElement.Fire, fire, sparks);
-        SkillData electric = ProjectileSkill(skills, "electric", "휴대 방전기", DamageElement.Electric, fire, sparks);
-        SkillData corrosion = ProjectileSkill(skills, "corrosion", "부식액 발사", DamageElement.Corrosion, fire, sparks);
-        SkillData iceShot = ProjectileSkill(skills, "ice", "냉각탄 발사", DamageElement.Ice, fire, ice);
+        SkillData fireShot = ProjectileSkill(allySkills, "fire", "휴대 화염 노즐", DamageElement.Fire, fire, sparks);
+        SkillData electric = ProjectileSkill(allySkills, "electric", "휴대 방전기", DamageElement.Electric, fire, sparks);
+        SkillData corrosion = ProjectileSkill(allySkills, "corrosion", "부식액 발사", DamageElement.Corrosion, fire, sparks);
+        SkillData iceShot = ProjectileSkill(allySkills, "ice", "냉각탄 발사", DamageElement.Ice, fire, ice);
 
         EnemyData enemy = Asset<EnemyData>(root + "/Data/Enemy/BunnySlime_Lab.asset", value =>
         {
@@ -87,10 +92,11 @@ public static class BunnySlimeLabContentBuilder
             value.BaseStats = new StatBlock { MaxHP = 1800, MaxAP = 100, ATK = 26, DEF = 4, SPD = 14 };
             value.BattleBGM = bgm;
             value.SkillUseChance = 1;
+            value.UseOrderedSkills = true;
             value.StrongSkillUseChance = 0;
             value.HasEnragedPattern = false;
             value.AllowInstantKillAfterDefeat = false;
-            value.SkillList = new List<SkillData> { guard, shot, dodge, doubleShot, triple, wet, poison, splash, dodgeShot, counter };
+            value.SkillList = new List<SkillData> { guard, shot, counter, dodge, doubleShot, triple, wet, poison, splash, dodgeShot };
             value.StrongSkillList = new List<SkillData>();
             value.EXPReward = 30;
             value.GoldReward = 20;
@@ -109,7 +115,7 @@ public static class BunnySlimeLabContentBuilder
 
         // 같은 원본 외형을 쓰되 식별자와 전투 역할/색은 분리합니다. 신규 동료 디자인으로 간주하지 않습니다.
         string[] ids = { "front", "support", "striker", "reserve1", "reserve2", "reserve3" };
-        string[] names = { "위젤 · 압력", "위젤 · 지원", "위젤 · 돌격", "위젤 · 열기", "위젤 · 냉각", "위젤 · 방전" };
+        string[] names = { "위젤", "위젤 · 지원", "위젤 · 돌격", "위젤 · 열기", "위젤 · 냉각", "위젤 · 방전" };
         Color[] colors = { new Color(.95f,.72f,.3f), new Color(.3f,.8f,.68f), new Color(.88f,.5f,.56f),
             new Color(.98f,.46f,.27f), new Color(.45f,.75f,1f), new Color(.75f,.58f,1f) };
         SkillData[][] loadouts =
@@ -134,6 +140,7 @@ public static class BunnySlimeLabContentBuilder
                 value.Portrait = player.Portrait;
                 value.TurnOrderPortrait = player.TurnOrderPortrait;
                 value.BattleLargePortrait = player.BattleLargePortrait;
+                value.BattleResource = player.BattleResource;
                 value.BattlePrefab = player.BattlePrefab;
                 value.BattleSymbolColor = colors[index];
                 value.GrowthProfile = player.GrowthProfile;
@@ -175,6 +182,15 @@ public static class BunnySlimeLabContentBuilder
             foreach (SkillData skill in member.DefaultSkills) changed |= Register(registeredSkills, skill, x => x.SkillID);
         foreach (SkillData skill in data.Enemy.SkillList) changed |= Register(registeredSkills, skill, x => x.SkillID);
         changed |= Register(registeredSkills, data.WaveSkill, x => x.SkillID);
+        if (data.Encounters != null)
+            foreach (BattleLabEncounterEntry entry in data.Encounters)
+            {
+                if (entry?.Enemy == null) continue;
+                changed |= Register(enemies, entry.Enemy, x => x.EnemyId);
+                if (entry.Enemy.SkillList != null)
+                    foreach (SkillData skill in entry.Enemy.SkillList)
+                        changed |= Register(registeredSkills, skill, x => x.SkillID);
+            }
         if (changed)
         {
             catalog.Characters = characters;

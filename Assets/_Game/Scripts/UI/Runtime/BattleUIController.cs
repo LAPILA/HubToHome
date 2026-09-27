@@ -101,6 +101,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private readonly List<PlayerCharacter> _displayParty = new List<PlayerCharacter>(3);
     private readonly List<BattleTurnQueueIcon> _turnIcons = new List<BattleTurnQueueIcon>(6);
     private PlayerCharacter _portraitActor;
+    private BattleResourceView _resourceView;
     private int _targetingStartedFrame = -1;
     private bool _enemyTurn;
     private readonly Dictionary<EnemyCharacter, Transform> _enemyTopPivots = new Dictionary<EnemyCharacter, Transform>();
@@ -201,12 +202,14 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         BindBattleEvents();
         if (_party != null) BindPartySlots(_party);
+        if (_portraitActor != null) SetPortraitActor(_portraitActor);
     }
 
     private void OnDisable()
     {
         UnbindBattleEvents();
         ReleasePresentationTweens();
+        if (_resourceView != null) _resourceView.Bind(_largePortrait, null);
         if (_partySlots != null)
             foreach (PartySlotUI slot in _partySlots) slot?.Unbind();
     }
@@ -594,11 +597,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _portraitActor = actor;
         if (_largePortrait == null) return;
         KillOwnedTween(ref _portraitTransition);
-        CharacterData data = actor != null ? actor.CharacterData : null;
-        _largePortrait.sprite = data != null && data.BattleLargePortrait != null
-            ? data.BattleLargePortrait : actor != null ? actor.BattlePortrait : null;
-        _largePortrait.enabled = _largePortrait.sprite != null;
-        _largePortrait.preserveAspect = true;
+        if (_resourceView == null)
+            _resourceView = _largePortrait.GetComponent<BattleResourceView>()
+                ?? _largePortrait.gameObject.AddComponent<BattleResourceView>();
+        _resourceView.Bind(_largePortrait, actor != null ? actor.BattleResource : null);
         _largePortrait.color = Color.white;
         if (!changed || !Application.isPlaying || !isActiveAndEnabled || !_largePortrait.enabled
             || JuiceIntensity <= 0f) return;

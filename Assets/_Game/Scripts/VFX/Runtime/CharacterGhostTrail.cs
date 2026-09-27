@@ -5,6 +5,7 @@ using DG.Tweening; // DOTween 필수
 [RequireComponent(typeof(SpriteRenderer))]
 public class CharacterGhostTrail : MonoBehaviour
 {
+    private const float MovementEpsilonSqr = 0.000001f;
     [Header("잔상 설정")]
     [Tooltip("잔상을 남길 간격 (초 단위)")]
     [SerializeField] private float _spawnInterval = 0.05f; 
@@ -19,6 +20,9 @@ public class CharacterGhostTrail : MonoBehaviour
     [SerializeField, Min(1)] private int _maxGhostCount = 16;
 
     private SpriteRenderer _sourceRenderer;
+    private Transform _movementRoot;
+    private Vector3 _lastMovementPosition;
+    private bool _hasVisibleGhosts;
     private bool _isTrailActive = false;
     private float _spawnTimer = 0f;
 
@@ -30,6 +34,9 @@ public class CharacterGhostTrail : MonoBehaviour
     private void Awake()
     {
         _sourceRenderer = GetComponent<SpriteRenderer>();
+        CharacterBase owner = GetComponentInParent<CharacterBase>();
+        _movementRoot = owner != null ? owner.transform : transform;
+        _lastMovementPosition = _movementRoot.position;
 
         // 하이어라키가 지저분해지는 걸 막기 위해 잔상들을 모아둘 빈 부모 객체 생성
         _poolContainer = new GameObject($"{gameObject.name}_GhostPool").transform;
@@ -39,12 +46,28 @@ public class CharacterGhostTrail : MonoBehaviour
         enabled = _isTrailActive;
     }
 
-    private void Update()
+    private void LateUpdate()
+    {
+        UpdateTrail(Time.deltaTime);
+    }
+
+    private void UpdateTrail(float deltaTime)
     {
         if (!_isTrailActive) return;
 
-        // 쿨타임이 찰 때마다 잔상을 하나씩 바닥에 찍음
-        _spawnTimer += Time.deltaTime;
+        // DOTween 이동 후 실제 캐릭터 루트의 변위만 확인합니다.
+        // 스프라이트 애니메이션/카메라 이동은 잔상 생성 조건이 아닙니다.
+        Vector3 position = _movementRoot.position;
+        bool moved = (position - _lastMovementPosition).sqrMagnitude > MovementEpsilonSqr;
+        _lastMovementPosition = position;
+        if (!moved)
+        {
+            ClearGhosts();
+            _spawnTimer = _spawnInterval;
+            return;
+        }
+
+        _spawnTimer += deltaTime;
         if (_spawnTimer >= _spawnInterval)
         {
             _spawnTimer = 0f;
@@ -57,9 +80,22 @@ public class CharacterGhostTrail : MonoBehaviour
     /// </summary>
     public void SetTrailActive(bool active)
     {
+        if (_isTrailActive == active)
+        {
+            enabled = active;
+            return;
+        }
         _isTrailActive = active;
+        if (active)
+        {
+            _lastMovementPosition = _movementRoot.position;
+            _spawnTimer = _spawnInterval;
+        }
+        else
+        {
+            ClearGhosts();
+        }
         enabled = active;
-        if (active) _spawnTimer = _spawnInterval; // 켜지자마자 즉시 첫 잔상 생성
     }
 
     private void SpawnGhost()
@@ -83,6 +119,7 @@ public class CharacterGhostTrail : MonoBehaviour
         
         ghost.color = _ghostStartColor;
         ghost.gameObject.SetActive(true);
+        _hasVisibleGhosts = true;
 
         // 3. DOTween으로 부드럽게 투명도를 0으로 깎고, 완료되면 다시 풀에 반납
         ghost.DOFade(0f, _ghostLifetime)
@@ -132,6 +169,27 @@ public class CharacterGhostTrail : MonoBehaviour
         ghost.gameObject.SetActive(false);
         if (_poolContainer != null)
             ghost.transform.SetParent(_poolContainer, false);
+    }
+
+    private void ClearGhosts()
+    {
+        if (!_hasVisibleGhosts) return;
+        for (int i = 0; i < _ghostPool.Count; i++)
+        {
+            SpriteRenderer ghost = _ghostPool[i];
+            if (ghost == null || !ghost.gameObject.activeSelf) continue;
+            ghost.DOKill(false);
+            ReturnToPool(ghost);
+        }
+        _hasVisibleGhosts = false;
+    }
+
+    private void OnDisable()
+    {
+        _isTrailActive = false;
+        _spawnTimer = 0f;
+        ClearGhosts();
+        enabled = false;
     }
 
     private void OnDestroy()

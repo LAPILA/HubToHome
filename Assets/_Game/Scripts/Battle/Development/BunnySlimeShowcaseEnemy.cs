@@ -23,6 +23,7 @@ public sealed class BunnySlimeShowcaseEnemy : EnemyCharacter
 
     public override EnemyAction DecideAction()
     {
+        if (Data != null && Data.UseOrderedSkills) return base.DecideAction();
         int count = GetAvailableSkillCount(out _, out _);
         if (Data != null && Data.SkillList != null)
         {
@@ -38,6 +39,7 @@ public sealed class BunnySlimeShowcaseEnemy : EnemyCharacter
 
     public override SkillData SelectSkill(EnemyAction action)
     {
+        if (Data != null && Data.UseOrderedSkills) return base.SelectSkill(action);
         if (action != EnemyAction.UseSkill || Data == null || Data.SkillList == null)
             return null;
 

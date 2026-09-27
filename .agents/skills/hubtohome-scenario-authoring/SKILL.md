@@ -149,7 +149,8 @@ Treat scenario YAML as the source of truth and ScriptableObject assets as the Un
 - `BattleSkillTimelineRunner` only runs the legacy skill timeline blocks. Post-skill actor reset, camera reset, narration waits, turn ending, and phase/module transition policy must remain in the surrounding battle or Action Sequence flow.
 - Scenario validation must use `ScenarioCatalogValidator.ValidateBattleScenario(...)` for full battle scenarios, not only `ValidateSequence(...)`, so `dialogue.wait` IDs are checked against `BattleScenarioData.Dialogues` before runtime.
 - Disabled actions are skipped at execution time but should still stay visible in authoring tools.
-- Unknown action IDs must fail the current handle instead of silently continuing.
+- Fail the current handle on unknown action IDs; never silently continue.
+- Presentation overlay order uses the Default sorting layer: full ScreenTransitionOverlay fade 32767 > modal DialogueCanvasViewport 32766 > CinematicLetterboxOverlay 32765. Letterbox bars must not cover modal dialogue. Keep this in runtime canvas policy; do not change scenario YAML grammar, per-dialogue assets, or individual sequence order to fix a draw-order issue.
 
 ## Output Expectations
 

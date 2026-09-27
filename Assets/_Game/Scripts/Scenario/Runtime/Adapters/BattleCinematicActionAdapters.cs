@@ -718,6 +718,7 @@ internal static class BattleCinematicActionAdapterSafety
 
 public sealed class CinematicLetterboxOverlay : MonoBehaviour
 {
+    public const int CanvasSortingOrder = short.MaxValue - 2;
     private const string OverlayName = "ScenarioCinematicLetterboxOverlay";
     private static CinematicLetterboxOverlay _instance;
 
@@ -741,7 +742,7 @@ public sealed class CinematicLetterboxOverlay : MonoBehaviour
         DontDestroyOnLoad(root);
         Canvas canvas = root.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = short.MaxValue - 1;
+        canvas.sortingOrder = CanvasSortingOrder;
         root.AddComponent<CanvasScaler>();
         root.AddComponent<GraphicRaycaster>();
         _instance = root.AddComponent<CinematicLetterboxOverlay>();

@@ -42,3 +42,10 @@ Battle speech presentation (2026-09-26): shared Player/Enemy bubble prefabs use 
 - Missing body keys may be generated explicitly without changing existing keys or translation rows. Copies preserve keys; independent text needs independent keys.
 - Current limitations: choice text and speaker display names are not localized; the LocalizationTable loader does not handle quoted physical multiline cells. Do not document these as complete.
 - Usage: `docs/content-maker-guide.md`. Code-grounded study index: `docs/learning/README.md`.
+
+## Battle dialogue lifecycle and fixed layout (2026-09-27)
+
+- BattleScenarioData dialogue mappings may use existing Overworld-style DialogueData. Do not create another battle dialogue manager or embed conversation text in enemy AI.
+- `DialogueManagerRunner.IsBusy` includes `IsPresentationVisible` so `dialogue.wait` waits through panel close animation, not only text completion. External interruption without completion is failure; owned root cancellation calls ICancellableDialogueRunner.Cancel, respecting dialogue generation ownership.
+- BattleHudViewport hides only the HUD Canvas while dialogue presentation is visible; do not deactivate HUD GameObjects or stop battle coroutines just to avoid modal overlap.
+- `DialogueCanvasViewport` owns the modal Canvas's camera-independent 640x480 overlay. `UIViewportService` supplies output bounds and scene rebinds, never ScreenSpaceCamera projection for this Canvas. Preserve authored panel anchors, anchoredPosition, sizeDelta and sibling order. Do not move the modal toward the speaker, alter the blue background, or apply this policy to WorldTracked speech bubbles. Sorting uses Default layer with overrideSorting: ScreenTransitionOverlay 32767 > dialogue 32766 > CinematicLetterboxOverlay 32765, so letterbox bars never hide dialogue while a full transition still covers it.

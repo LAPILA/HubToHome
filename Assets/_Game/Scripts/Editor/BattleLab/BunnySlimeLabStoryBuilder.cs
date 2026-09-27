@@ -55,14 +55,20 @@ public static class BunnySlimeLabStoryBuilder
                 "Assets/_Game/Content/Art/Characters/Player/Wizzel/대화얼굴/wizzel_normal.png");
             Sprite happy = AssetDatabase.LoadAssetAtPath<Sprite>(
                 "Assets/_Game/Content/Art/Characters/Player/Wizzel/대화얼굴/wizzel_happy.png");
+            Sprite confused = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/_Game/Content/Art/Characters/Player/Wizzel/대화얼굴/wizzel_confuse.png");
+            Sprite angry = AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/_Game/Content/Art/Characters/Player/Wizzel/대화얼굴/wizzel_angry.png");
             if (normal != null) speaker.Portraits[EmotionType.Normal] = normal;
             if (happy != null) speaker.Portraits[EmotionType.Happy] = happy;
+            if (confused != null) speaker.Portraits[EmotionType.Confused] = confused;
+            if (angry != null) speaker.Portraits[EmotionType.Angry] = angry;
             ConfigureVoice(speaker);
         });
         SpeakerData bunny = GetOrCreate<SpeakerData>(folder + "/Speaker_BunnyLab_Bunny.asset", speaker =>
         {
             speaker.SpeakerID = "lab.bunny_slime.speaker.examiner";
-            speaker.DisplayName = "버니슬라임 시험관";
+            speaker.DisplayName = "말랑 감독관";
             if (enemy.Portrait != null) speaker.Portraits[EmotionType.Normal] = enemy.Portrait;
             ConfigureVoice(speaker);
             speaker.VoicePitch = 1.2f;
@@ -152,7 +158,8 @@ public static class BunnySlimeLabStoryBuilder
     {
         GetOrCreate<DialogueData>(folder + "/Dialogue_BunnyLab_" + suffix + ".asset", dialogue =>
         {
-            dialogue.Style = DialogueStyle.Cinematic;
+            // 배경/초상이 없는 자막 전용 Cinematic 패널 대신 공용 파란 대화창 사용.
+            dialogue.Style = DialogueStyle.Overworld;
             for (int i = 0; i < lines.Length; i++)
             {
                 lines[i].LocalizationKey = "lab.bunny_slime." + id + "." + i.ToString("00");

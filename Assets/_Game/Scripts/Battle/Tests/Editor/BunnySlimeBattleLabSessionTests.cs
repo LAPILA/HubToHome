@@ -59,6 +59,10 @@ public sealed class BunnySlimeBattleLabSessionTests
             _catalog.Characters.Add(data);
         }
         _data.GuardSkill = _data.DodgeSkill = _data.CounterSkill = _data.WaveSkill = MakeAsset<SkillData>();
+        _data.Encounters = new[]
+        {
+            new BattleLabEncounterEntry { Id = "lab.test", Title = "전투", Enemy = _data.Enemy }
+        };
         _session = MakeComponent<BunnySlimeBattleLabSession>("Lab Tests Session");
         _session.Configure(_data, playerController);
         SetField("_global", _global);
@@ -101,9 +105,9 @@ public sealed class BunnySlimeBattleLabSessionTests
     public void Validation_RejectsMissingEnemyAndWrongPartySize()
     {
         EnemyData enemy = _data.Enemy;
-        _data.Enemy = null;
+        _data.Encounters[0].Enemy = null;
         Assert.That(Validate(), Is.False);
-        _data.Enemy = enemy;
+        _data.Encounters[0].Enemy = enemy;
         _data.Party = new CharacterData[5];
         Assert.That(Validate(), Is.False);
         Assert.That(_global.Party, Is.Empty);
@@ -128,6 +132,21 @@ public sealed class BunnySlimeBattleLabSessionTests
         _catalog.Characters.Add(_data.Party[5]);
         _data.Party[5].CharacterID = _data.Party[0].CharacterID;
         CharacterDatabase.InvalidateCache();
+        Assert.That(Validate(), Is.False);
+    }
+
+    [Test]
+    public void Validation_AcceptsStandardEnemyWithoutBunnySpecificAi()
+    {
+        Object.DestroyImmediate(_data.Enemy.Prefab.GetComponent<BunnySlimeShowcaseEnemy>());
+        _data.Enemy.Prefab.AddComponent<EnemyCharacter>();
+        Assert.That(Validate(), Is.True);
+    }
+
+    [Test]
+    public void Validation_RejectsDuplicateEncounterIds()
+    {
+        _data.Encounters = new[] { _data.Encounters[0], _data.Encounters[0] };
         Assert.That(Validate(), Is.False);
     }
 

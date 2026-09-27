@@ -90,6 +90,36 @@ public class ActionSequenceSourceSyncTests
         UnityEngine.Object.DestroyImmediate(result.Sequence);
     }
 
+    [TestCase(6)]
+    [TestCase(8)]
+    public void Parser_ParallelMetadataKeepsChildrenAndFollowingActions(int indent)
+    {
+        string pad = new string(' ', indent);
+        string source = "id: sample\nsequences:\n  sample:\n    - parallel:\n"
+            + pad + "blockId: group\n" + pad + "policy: all\n" + pad + "children:\n"
+            + pad + "  - flow.wait:\n" + pad + "      blockId: wait\n" + pad + "      duration: 0.2\n"
+            + "    - dialogue.wait:\n        blockId: line\n        id: intro\n";
+        ScenarioSourceParseResult parsed = new ScenarioSourceYamlParser().Parse(source, "sample.scenario.yaml");
+        Assert.That(parsed.Success, Is.True);
+        Assert.That(parsed.Document.Sequences[0].Actions, Has.Count.EqualTo(2));
+        ScenarioActionData group = parsed.Document.Sequences[0].Actions[0];
+        Assert.That(group.BlockId, Is.EqualTo("group"));
+        Assert.That(group.Children, Has.Count.EqualTo(1));
+        Assert.That(group.Children[0].BlockId, Is.EqualTo("wait"));
+        Assert.That(group.ParametersJson, Does.Contain("all"));
+        Assert.That(parsed.Document.Sequences[0].Actions[1].ActionId, Is.EqualTo("dialogue.wait"));
+    }
+
+    [Test]
+    public void Parser_EmptyParallelFailsInsteadOfSilentlyDroppingContent()
+    {
+        var result = new ScenarioSourceYamlParser().Parse(
+            "id: sample\nsequences:\n  sample:\n    - parallel:\n        children:\n    - flow.wait:\n        duration: 0.1\n",
+            "sample.scenario.yaml");
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Validation.Messages.Exists(message => message.Code == "scenario.yaml.parallel.children.empty"), Is.True);
+    }
+
     [Test]
     public void ExportThenImport_RoundTripsStandaloneSequenceIncludingParallelMetadata()
     {

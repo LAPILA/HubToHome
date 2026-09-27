@@ -15,17 +15,18 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "\uAC15\uD55C\uCC38\uACA9"
   SkillID: zev.basic
-  Description: "\uC810\uD504\uB85C\uD53C\uD558\uB294 \uCC38\uACA9"
+  Description: "강한 참격. X로 회피하거나 C 타이밍 성공으로 반격합니다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1
   IsAoE: 0
   ActionTimeline:
   - rid: 8456611354123173968
+  - rid: 9001
   - rid: 8456611354123173969
   - rid: 8456611482560888833
-  - rid: 8456611354123173971
   - rid: 8456611354123173970
+  - rid: 8456611354123173971
   references:
     version: 2
     RefIds:
@@ -42,10 +43,10 @@ MonoBehaviour:
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: 
+        DesignerLabel: 강한 참격 · 짧은 추가 준비
         Note: 
         AnimTriggerName: CrossCutReady
-        DelayAfter: 0.65
+        DelayAfter: 0.22
     - rid: 8456611354123173970
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
@@ -68,19 +69,20 @@ MonoBehaviour:
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: 
-        Note: 
-        PatternMode: 0
-        Requirement: 1
-        UseTelegraph: 1
+        DesignerLabel: 강한 참격 · X 회피 / C 반격
+        Note: 전조는 실제 입력 성공 구간에서 Center에 한 번만 표시합니다.
+        PatternMode: 1
+        Requirement: 6
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
         TelegraphVisualMode: 2
-        WarningVfxPrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
-        WarningSprite: {fileID: 21300000, guid: 7194ed99d6493444eaa980bd9daa6525, type: 3}
-        TelegraphAnimatorTriggerName: 
+        WarningVfxPrefab: {fileID: 0}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName:
         TelegraphAttachPivotName: Center
-        TelegraphDuration: 0.2
-        DefenseOpenDelay: 0.1
-        TimeWindow: 0.2
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.55
         AllowNearSuccess: 1
         OverrideTimingProfile: 0
         TimingProfile:
@@ -88,10 +90,25 @@ MonoBehaviour:
           GreatWindow: 0.22
           GoodWindow: 0.4
         FailDamageMultiplier: 1
-        ShakeOnFail: 1
-        FailShakeIntensity: 0.35
-        FailShakeDuration: 0.2
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.15
+        FailShakeDuration: 0.12
         FailShakeSafety: 0
         DelayAfter: 0
         AttackAnimTriggerName: CrossCutAttack
+        AttackAnimationLeadTime: 0
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.08
         AttackAnimDelay: 0
+    - rid: 9001
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: 공격 준비 · 기존 클로즈업
+        Note: 방어창이 열리기 전에 카메라 복귀를 완료합니다.
+        ZoomRatio: 0.65
+        FocusDuration: 0.16
+        HoldDuration: 0.2
+        ReleaseDuration: 0.14
