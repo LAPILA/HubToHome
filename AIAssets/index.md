@@ -1,5 +1,9 @@
 # AIAssets Index
 
+환경 연출: [픽셀 풀 바람 — UV 픽셀 변형·실험실 적용·미동작 원인 수정](yjlim/feedback/2026-09-27-pixel-wind.md). 기존 PixelWind/밝기 파동은 삭제했습니다. 혼합 텍스처 검사로 꺼지던 원인을 수정해 BunnySlimeBattleLab의 Grid/Tilemap(잔디 252칸·바람)과 Tilemap_Walls(벽 168칸·정적)를 분리했습니다.
+
+바람 제작 편의: [7가지 시작값·위/아래 고정·엇박자 조절·아트 분리 기준](../Assets/_Game/Presentation/PixelFoliage/README.md). 프리셋은 명시적으로 적용할 때만 기존 값을 바꿉니다.
+
 고유 자원 및 표시: [위젤 압력 — 데이터·스킬 메이커·단계 애니메이션 수정 위치](yjlim/feedback/2026-09-27-wizel-pressure.md). 오른쪽 ActorLargePortrait는 선택 아군의 자원 표시입니다. 후속: [ZEV 스킬 이동 데이터 미세 조정](yjlim/feedback/2026-09-27-zev-movement-tuning.md) · [C 압력·피해 숫자·대사 위치 및 레터박스 앞 표시](yjlim/feedback/2026-09-27-counter-popups-dialogue.md).
 
 `AIAssets` 루트의 오래된 개별 정리 문서는 `AIAssets/yjlim/` 스타일로 재정리했습니다.
