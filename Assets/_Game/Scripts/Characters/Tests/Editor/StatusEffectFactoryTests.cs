@@ -11,6 +11,7 @@ public class StatusEffectFactoryTests
     [TestCase(StatusEffectIds.Berserk, typeof(BerserkEffect))]
     [TestCase(StatusEffectIds.IceShield, typeof(IceShieldEffect))]
     [TestCase(StatusEffectIds.Wet, typeof(WetEffect))]
+    [TestCase(StatusEffectIds.Haste, typeof(HasteEffect))]
     public void TryCreateReturnsRegisteredEffect(string effectId, System.Type expectedType)
     {
         bool created = StatusEffectFactory.TryCreate(effectId, 3, out StatusEffect effect);

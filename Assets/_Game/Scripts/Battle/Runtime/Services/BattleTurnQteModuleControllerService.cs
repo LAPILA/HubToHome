@@ -3,18 +3,30 @@ using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 
-public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleController
+public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleController, System.IDisposable
 {
     private const float PlayerAttackReadyDuration = 0.08f;
 
     private readonly IBattleTurnQteHost _host;
     private readonly BattleLinkCounterService _linkCounterService;
     private BattleCameraActionScope _activeCameraScope;
+    private readonly BattleSpeedTurnScheduler<CharacterBase> _turnSchedule = new BattleSpeedTurnScheduler<CharacterBase>();
+    private readonly List<CharacterBase> _scheduledActors = new List<CharacterBase>();
+    private readonly List<CharacterBase> _forecastQueue = new List<CharacterBase>();
+    private static readonly System.Func<CharacterBase, int> ReadTurnSpeed = actor => actor.SPD;
+    private readonly System.Func<CharacterBase, int, int> _readForecastSpeed;
+    private bool _hasActiveTurn;
+    private CharacterBase _activeTurnActor;
+    private bool _processingTurnBoundary;
+    private bool _disposed;
+    private readonly HashSet<CharacterBase> _observedActors = new HashSet<CharacterBase>();
+    private readonly List<CharacterBase> _unsubscribedActors = new List<CharacterBase>();
 
     public BattleTurnQteModuleControllerService(IBattleTurnQteHost host, BattleLinkCounterService linkCounterService = null)
     {
         _host = host;
         _linkCounterService = linkCounterService ?? new BattleLinkCounterService(host);
+        _readForecastSpeed = ReadForecastSpeed;
     }
 
     public IEnumerator EnterTurnQteModule(GameModuleRuntimeContext context)
@@ -30,6 +42,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         QTEManager.Instance?.ForceStop();
         ClearDefenseInputBuffers();
         _host?.ClearTurnQtePendingActionState();
+        ReleaseTurnSubscriptions();
         BattleUIController.Instance?.SuspendBattleModuleInput();
         yield break;
     }
@@ -43,13 +56,13 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     public IEnumerator RunTurnCalculation()
     {
-        if (_host == null || !_host.IsTurnQteCombatInputActive())
+        if (_disposed || _host == null || !_host.IsTurnQteCombatInputActive() || _hasActiveTurn)
         {
             yield break;
         }
 
         yield return null;
-        _host.TurnQueue.Clear();
+        if (_disposed || !_host.IsTurnQteCombatInputActive() || _hasActiveTurn) yield break;
 
         if (_host.Enemies == null || _host.Enemies.Count == 0)
         {
@@ -57,25 +70,24 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
-        var aliveChars = new List<CharacterBase>();
-        AddAlivePlayers(aliveChars);
-        AddAliveEnemies(aliveChars);
+        SynchronizeTurnSchedule();
 
-        if (aliveChars.Count == 0 || _host.CheckVictory() || _host.CheckDefeat())
+        if (_turnSchedule.Count == 0 || _host.CheckVictory() || _host.CheckDefeat())
         {
             CompleteAction();
             yield break;
         }
 
-        aliveChars.Sort((a, b) => b.SPD.CompareTo(a.SPD));
-        for (int i = 0; i < _host.MaxTurnQueueSize; i++)
-            _host.TurnQueue.Add(aliveChars[i % aliveChars.Count]);
-
         if (_host.ConsumePlayerPreemptiveAttack())
-            BattleTurnQueuePolicy.PromoteFirstPlayer(_host.TurnQueue);
+        {
+            PlayerCharacter first = null;
+            for (int i = 0; i < _scheduledActors.Count; i++)
+                if (_scheduledActors[i] is PlayerCharacter player && (first == null || player.SPD > first.SPD))
+                    first = player;
+            if (first != null) _turnSchedule.GrantOpeningTurn(first);
+        }
 
-        _host.CurrentActorIndex = 0;
-        _host.BroadcastVisibleTurnQueue();
+        UpdateTurnQueue(null);
         yield return _host.WaitShort;
 
         AdvanceTurn();
@@ -83,34 +95,38 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     public void AdvanceTurn()
     {
-        if (_host == null || !_host.IsTurnQteCombatInputActive())
+        if (_disposed || _host == null || !_host.IsTurnQteCombatInputActive() || _hasActiveTurn)
         {
             return;
         }
 
-        if (_host.CurrentActorIndex >= _host.TurnQueue.Count)
+        SynchronizeTurnSchedule();
+        if (!_turnSchedule.TryTakeNext(out CharacterBase actor))
         {
-            _host.ChangeBattleState(BattleState.TurnCalc);
-            return;
-        }
-
-        CharacterBase actor = _host.TurnQueue[_host.CurrentActorIndex++];
-        if (actor == null || !actor.IsAlive)
-        {
-            _host.BroadcastVisibleTurnQueue();
-            AdvanceTurn();
-            return;
-        }
-
-        // Remember the restriction before ticking: a one-turn stun still skips this turn.
-        bool canTakeTurn = actor.CanTakeTurn();
-        actor.ProcessEffects();
-        if (!actor.IsAlive || !canTakeTurn || !actor.CanTakeTurn())
-        {
-            _host.BroadcastVisibleTurnQueue();
             CompleteAction();
             return;
         }
+
+        _hasActiveTurn = true;
+        _activeTurnActor = actor;
+        actor.BeginBattleTurn();
+        _host.TurnQueue.Clear();
+        _host.TurnQueue.Add(actor);
+        _host.CurrentActorIndex = 1;
+
+        // Remember the restriction before ticking: a one-turn stun still skips this turn.
+        bool canTakeTurn = actor.CanTakeTurn();
+        _processingTurnBoundary = true;
+        try { actor.ProcessEffects(); }
+        finally { _processingTurnBoundary = false; }
+        if (!actor.IsAlive || !canTakeTurn || !actor.CanTakeTurn())
+        {
+            CompleteAction();
+            return;
+        }
+
+        // Start-of-turn effects can change SPD; preview uses the same remaining work.
+        UpdateTurnQueue(actor);
 
         if (actor is PlayerCharacter player)
         {
@@ -121,6 +137,88 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         {
             _host.StartManagedCoroutine(BeginEnemyTurn());
         }
+    }
+
+    private void SynchronizeTurnSchedule()
+    {
+        _scheduledActors.Clear();
+        AddAlivePlayers(_scheduledActors);
+        AddAliveEnemies(_scheduledActors);
+        _turnSchedule.Synchronize(_scheduledActors, ReadTurnSpeed);
+        SynchronizeSpeedSubscriptions();
+    }
+
+    private void SynchronizeSpeedSubscriptions()
+    {
+        _unsubscribedActors.Clear();
+        foreach (CharacterBase actor in _observedActors)
+            if (!_scheduledActors.Contains(actor)) _unsubscribedActors.Add(actor);
+        foreach (CharacterBase actor in _unsubscribedActors)
+        {
+            // C# event removal remains safe on Unity's destroyed-object wrapper.
+            actor.OnStatusEffectsChanged -= HandleStatusEffectsChanged;
+            _observedActors.Remove(actor);
+        }
+        foreach (CharacterBase actor in _scheduledActors)
+        {
+            if (_observedActors.Add(actor)) actor.OnStatusEffectsChanged += HandleStatusEffectsChanged;
+        }
+    }
+
+    private void HandleStatusEffectsChanged(CharacterBase actor)
+    {
+        if (actor == null || _processingTurnBoundary || _host == null || !_host.IsTurnQteCombatInputActive()) return;
+        if (!_observedActors.Contains(actor)) return;
+        // Never take a turn here: preserve current action and every participant's remaining work.
+        // Equal SPD can still mean a changed future order when Haste duration is refreshed.
+        UpdateTurnQueue(_hasActiveTurn ? _activeTurnActor : null, onlyIfChanged: true);
+    }
+
+    private void ReleaseTurnSubscriptions()
+    {
+        foreach (CharacterBase actor in _observedActors)
+            actor.OnStatusEffectsChanged -= HandleStatusEffectsChanged;
+        _observedActors.Clear();
+        _unsubscribedActors.Clear();
+        _forecastQueue.Clear();
+        if (_activeTurnActor != null) _activeTurnActor.EndBattleTurn();
+        _activeTurnActor = null;
+        _hasActiveTurn = false;
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        ReleaseTurnSubscriptions();
+    }
+
+    private int ReadForecastSpeed(CharacterBase actor, int completedFutureTurns)
+    {
+        return actor.GetForecastSpeed(completedFutureTurns,
+            _hasActiveTurn && actor == _activeTurnActor);
+    }
+
+    private void UpdateTurnQueue(CharacterBase currentActor, bool onlyIfChanged = false)
+    {
+        if (_disposed) return;
+        SynchronizeTurnSchedule();
+        _forecastQueue.Clear();
+        if (currentActor != null) _forecastQueue.Add(currentActor);
+        int actorIndex = currentActor != null ? 1 : 0;
+        _turnSchedule.AppendPreview(_forecastQueue,
+            Mathf.Max(1, _host.MaxTurnQueueSize) - _forecastQueue.Count, _readForecastSpeed);
+        if (onlyIfChanged && _host.CurrentActorIndex == actorIndex
+            && _host.TurnQueue.Count == _forecastQueue.Count)
+        {
+            bool matches = true;
+            for (int i = 0; i < _forecastQueue.Count; i++)
+                if (!ReferenceEquals(_host.TurnQueue[i], _forecastQueue[i])) { matches = false; break; }
+            if (matches) return;
+        }
+        _host.TurnQueue.Clear();
+        for (int i = 0; i < _forecastQueue.Count; i++) _host.TurnQueue.Add(_forecastQueue[i]);
+        _host.CurrentActorIndex = actorIndex;
+        _host.BroadcastVisibleTurnQueue();
     }
 
     public IEnumerator BeginPlayerTurn(PlayerCharacter player)
@@ -807,7 +905,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private void CompleteAction(CharacterBase executedActor)
     {
-        if (_host == null)
+        if (_disposed || _host == null)
         {
             return;
         }
@@ -835,8 +933,12 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             // A skipped turn spends duration without firing an action notification.
             // Unity의 파괴된 MonoBehaviour는 C# 참조 자체가 null이 아닐 수 있으므로
             // null 조건부 연산자(?..) 대신 Unity null 판정을 먼저 사용합니다.
-            if (turnActor != null)
-                turnActor.ProcessEffects(endOfTurn: true);
+            _processingTurnBoundary = true;
+            try
+            {
+                if (turnActor != null) turnActor.ProcessEffects(endOfTurn: true);
+            }
+            finally { _processingTurnBoundary = false; }
         }
 
         _host.ClearTurnQtePendingActionState();
@@ -845,12 +947,16 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         ClearDefenseInputBuffers();
         _host.ResetAllPlayerBattlePoses();
         CancelActiveCameraPresentation();
-        _host.BroadcastVisibleTurnQueue();
+        _hasActiveTurn = false;
+        if (_activeTurnActor != null) _activeTurnActor.EndBattleTurn();
+        _activeTurnActor = null;
 
         if (!_host.IsTurnQteCombatInputActive())
         {
             return;
         }
+
+        UpdateTurnQueue(null);
 
         if (_host.CheckVictory())
         {
@@ -866,7 +972,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         }
         else
         {
-            AdvanceTurn();
+            // Yield through TurnCalc even for skipped turns: do not recurse through a stun chain.
+            _host.ChangeBattleState(BattleState.TurnCalc);
         }
     }
 
@@ -1303,6 +1410,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private void AddAlivePlayers(List<CharacterBase> targets)
     {
+        if (_host.PlayerParty == null) return;
         for (int i = 0; i < _host.PlayerParty.Count; i++)
         {
             PlayerCharacter player = _host.PlayerParty[i];
@@ -1357,6 +1465,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private void AddAliveEnemies(List<CharacterBase> targets)
     {
+        if (_host.Enemies == null) return;
         for (int i = 0; i < _host.Enemies.Count; i++)
         {
             EnemyCharacter enemy = _host.Enemies[i];

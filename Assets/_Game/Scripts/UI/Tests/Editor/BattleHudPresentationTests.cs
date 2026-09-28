@@ -415,6 +415,42 @@ public sealed class BattleHudPresentationTests
         Assert.That(portrait.sprite, Is.SameAs(data.BattleResource.GetStage(0).Frames[0].Sprite));
     }
 
+    [Test]
+    public void TurnQueue_ReorderReusesEveryOccurrenceAndKeepsLayoutRootsSeparate()
+    {
+        GameObject root = Own(new GameObject("TurnQueue", typeof(RectTransform), typeof(GridLayoutGroup)));
+        var rect = (RectTransform)root.transform;
+        rect.sizeDelta = new Vector2(246f, 36f);
+        var grid = root.GetComponent<GridLayoutGroup>();
+        grid.cellSize = new Vector2(36f, 36f);
+        grid.spacing = new Vector2(6f, 0f);
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 6;
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/_Game/Presentation/UI/Prefabs/Battle/TurnPfp_Prefab.prefab");
+        var view = new BattleTurnQueueView(rect, prefab, _ => null, actor => actor.name);
+        PlayerCharacter a = Player("a"), b = Player("b"), c = Player("c");
+        view.Refresh(new CharacterBase[] { a, b, a, c, b, c }, 0.24f, 1.06f, false);
+        var old = new Transform[6];
+        for (int i = 0; i < 6; i++) old[i] = rect.GetChild(i);
+        view.Refresh(new CharacterBase[] { a, c, b, a, c, b }, 0.24f, 1.06f, false);
+        int[] mapping = { 0, 3, 1, 2, 5, 4 };
+        for (int i = 0; i < mapping.Length; i++)
+        {
+            Assert.That(rect.GetChild(i), Is.SameAs(old[mapping[i]]));
+            var icon = rect.GetChild(i).GetComponentInChildren<BattleTurnQueueIcon>();
+            Assert.That(icon.transform, Is.Not.SameAs(rect.GetChild(i)));
+            Assert.That(icon.Rect.anchoredPosition, Is.EqualTo(Vector2.zero));
+            Assert.That(icon.Rect.localScale, Is.EqualTo(Vector3.one));
+        }
+        view.Clear();
+        view.Refresh(new CharacterBase[] { a, a, a, a, a, a, a }, 0.24f, 1.06f, false);
+        Assert.That(rect.childCount, Is.EqualTo(6));
+        view.Refresh(new CharacterBase[] { c }, 0.24f, 1.06f, false);
+        Assert.That(root.GetComponentsInChildren<BattleTurnQueueIcon>(), Has.Length.EqualTo(1));
+        Assert.That(rect.childCount, Is.EqualTo(6));
+    }
+
     private PlayerCharacter Player(string id)
     {
         GameObject go = Own(new GameObject(id));

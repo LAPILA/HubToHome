@@ -62,7 +62,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [BoxGroup("System Rules"), LabelWidth(140)]
     [Tooltip("퍼펙트 패링 성공 시 회복되는 AP입니다.")]
     public int _apOnParryPerfect = 20;
-    [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("우측 상단에 표시될 턴 대기열 아이콘의 최대 개수")]
+    [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("미리 계산할 턴 수. 표시 수 이상으로 자동 보정하며 실제 턴 빈도에는 영향을 주지 않습니다.")]
     [SerializeField] private int _maxTurnQueueSize = 8;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("실제로 UI에 노출할 턴 대기열 아이콘 수")]
     [SerializeField] private int _visibleTurnQueueSize = 6;
@@ -235,10 +235,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     {
         List<CharacterBase> visibleQueue = BattleTurnQueueProjection.BuildVisible(
             _turnQueue,
-            _currentActorIndex,
-            _visibleTurnQueueSize,
-            _playerParty,
-            _enemies);
+            Mathf.Max(0, _currentActorIndex - 1),
+            _visibleTurnQueueSize);
         OnTurnQueueUpdated?.Invoke(visibleQueue);
     }
 
@@ -355,6 +353,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _battleParticipantCommandRunner = new BattleParticipantCommandService(this);
         _battleTweenCinematicService = new BattleTweenCinematicService(this);
         _battleCinematicRunner = new BattleCinematicService(this, _battleTweenCinematicService);
+        (_turnQteModuleController as System.IDisposable)?.Dispose();
         _turnQteModuleController = new BattleTurnQteModuleControllerService(this, LinkCounterService);
         _aimShooterModuleController = new BattleAimShooterModuleController(BattleUIController.Instance);
         _battleGameModuleActionRunner = CreateBattleGameModuleActionRunner(
@@ -650,6 +649,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void OnDestroy()
     {
+        (_turnQteModuleController as System.IDisposable)?.Dispose();
         CancelPartyWaveTransition();
         _linkCounterService?.CancelActive();
         _turnQteModuleController?.CancelActiveCameraPresentation();
@@ -761,8 +761,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             // ActionExecute는 아군 공격에도 사용됩니다. 상태 이름만으로 방어를
             // 허용하면 X가 아군 공격 이동/애니메이션을 덮어씁니다.
             return (QTEManager.Instance != null && QTEManager.Instance.IsBattleDefenseActive)
-                || (_currentActorIndex >= 0 && _currentActorIndex < _turnQueue.Count
-                    && _turnQueue[_currentActorIndex] is EnemyCharacter enemy && enemy != null && enemy.IsAlive);
+                || (_currentActorIndex > 0 && _currentActorIndex - 1 < _turnQueue.Count
+                    && _turnQueue[_currentActorIndex - 1] is EnemyCharacter enemy && enemy != null && enemy.IsAlive);
         }
     }
 
@@ -1553,7 +1553,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     IList<CharacterBase> IBattleTurnQteHost.TurnQueue => _turnQueue;
     IDictionary<EnemyCharacter, BattleQueuedEnemyAction> IBattleTurnQteHost.ReservedEnemyActions => _reservedEnemyActionByActor;
     WaitForSeconds IBattleTurnQteHost.WaitShort => _waitShort;
-    int IBattleTurnQteHost.MaxTurnQueueSize => _maxTurnQueueSize;
+    int IBattleTurnQteHost.MaxTurnQueueSize => Mathf.Max(1, Mathf.Max(_maxTurnQueueSize, _visibleTurnQueueSize));
     int IBattleTurnQteHost.ApPerTurn => _apPerTurn;
     int IBattleTurnQteHost.ApOnParryPerfect => _apOnParryPerfect;
     float IBattleTurnQteHost.EnemyDefenseQteWindow => _enemyDefenseQTEWindow;
@@ -2370,6 +2370,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _battleParticipantCommandRunner = null;
         _battleCinematicRunner = null;
         _battleTweenCinematicService = null;
+        (_turnQteModuleController as System.IDisposable)?.Dispose();
         _turnQteModuleController = null;
         _aimShooterModuleController = null;
         _scenarioDefeatPublished.Clear();

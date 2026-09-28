@@ -26,6 +26,7 @@
 - Player save/restore uses `CharacterSaveData` and `GlobalDataManager.Party`.
 - `CharacterGrowthService.EnsureInitialized` normalizes growth/base stats without changing current HP/AP. Use `CharacterStatsProjectionService.ResolveResourceCaps` for equipment-inclusive persistent resource caps; actual growth investment/refund preserves deficits against the old/new projected caps.
 - `ProcessEffects()` ticks turn-start effects; `ProcessEffects(endOfTurn: true)` ticks end-of-turn effects such as bleed. The turn controller checks stun before the start tick and notifies `NotifyActionExecuted` exactly once only after a completed action, before bleed expiry and outcome/wave checks.
+- `GetForecastSpeed(completedFutureTurns, finishCurrentTurn)` projects deterministic stat-effect expiry without ticking live effects. Full future turns include one start/end each; the already-active actor contributes only its pending end. Haste's skipped granting end is respected by `IsActiveAfterTurnBoundaries`. Keep the normal and single-stat calculation on shared layer/rounding math. New effects with custom lifetime semantics must override the read-only lifetime query as needed; do not execute damage, RNG or future actions during forecasting.
 
 ## Work Rules
 

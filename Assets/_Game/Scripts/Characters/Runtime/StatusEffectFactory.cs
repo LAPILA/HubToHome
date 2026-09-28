@@ -12,6 +12,7 @@ public static class StatusEffectIds
     public const string Berserk = "Berserk";
     public const string IceShield = "IceShield";
     public const string Wet = "Wet";
+    public const string Haste = "Haste";
 }
 
 public static class StatusEffectFactory
@@ -26,7 +27,8 @@ public static class StatusEffectFactory
         StatusEffectIds.Stun,
         StatusEffectIds.Berserk,
         StatusEffectIds.IceShield,
-        StatusEffectIds.Wet
+        StatusEffectIds.Wet,
+        StatusEffectIds.Haste
     };
 
     public static IReadOnlyList<string> KnownIds => SupportedIds;
@@ -49,7 +51,8 @@ public static class StatusEffectFactory
         return false;
     }
 
-    public static bool TryCreate(string effectId, int durationTurns, out StatusEffect effect)
+    public static bool TryCreate(string effectId, int durationTurns, out StatusEffect effect,
+        float hasteSpeedBonus = HasteEffect.DefaultSpeedBonus)
     {
         int duration = Math.Max(0, durationTurns);
         effect = effectId switch
@@ -63,6 +66,7 @@ public static class StatusEffectFactory
             StatusEffectIds.Berserk => new BerserkEffect(duration),
             StatusEffectIds.IceShield => new IceShieldEffect(duration),
             StatusEffectIds.Wet => new WetEffect(duration),
+            StatusEffectIds.Haste => new HasteEffect(duration, hasteSpeedBonus),
             _ => null
         };
 

@@ -33,6 +33,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     #region [ UI Components ]
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private Transform _turnQueueContainer;
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private GameObject _turnIconPrefab;
+    [BoxGroup("Turn Queue"), Range(0.05f, 0.6f), LabelText("재정렬 시간")]
+    [SerializeField] private float _turnQueueMoveDuration = 0.24f;
+    [BoxGroup("Turn Queue"), Range(1f, 1.12f), LabelText("동시 확대 배율")]
+    [SerializeField] private float _turnQueuePulseScale = 1.06f;
 
     [BoxGroup("HUD")] [SerializeField] private GameObject _hudDecoration;
     [BoxGroup("HUD")] [SerializeField] private Image _largePortrait;
@@ -99,7 +103,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private List<PlayerCharacter> _party;
     private List<EnemyCharacter>  _enemies;
     private readonly List<PlayerCharacter> _displayParty = new List<PlayerCharacter>(3);
-    private readonly List<BattleTurnQueueIcon> _turnIcons = new List<BattleTurnQueueIcon>(6);
+    private BattleTurnQueueView _turnQueueView;
     private PlayerCharacter _portraitActor;
     private BattleResourceView _resourceView;
     private int _targetingStartedFrame = -1;
@@ -271,6 +275,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void ReleasePresentationTweens()
     {
+        _turnQueueView?.ReleaseTweens();
         KillOwnedTween(ref _portraitTransition);
         if (_partySlots != null)
             foreach (PartySlotUI slot in _partySlots) slot?.ReleaseTweens();
@@ -497,6 +502,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     #region [ Event Handlers (View Rendering) ]
     private void HandleBattleStarted(List<PlayerCharacter> party, List<EnemyCharacter> enemies)
     {
+        _turnQueueView?.Clear();
         if (_narrationUI == null)
             _narrationUI = BattleNarrationUI.FindInActiveScene();
 
@@ -741,30 +747,12 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleTurnQueueUpdated(List<CharacterBase> queue)
     {
-        if (_turnQueueContainer == null || _turnIconPrefab == null) return;
-        int displayed = 0;
-        if (queue != null)
-        {
-            for (int i = 0; i < queue.Count && displayed < 6; i++)
-            {
-                CharacterBase actor = queue[i];
-                if (actor == null) continue;
-                if (displayed >= _turnIcons.Count)
-                {
-                    GameObject go = Instantiate(_turnIconPrefab, _turnQueueContainer);
-                    _turnIcons.Add(go.GetComponent<BattleTurnQueueIcon>());
-                }
-                BattleTurnQueueIcon icon = _turnIcons[displayed];
-                if (icon != null)
-                {
-                    icon.gameObject.SetActive(true);
-                    icon.Bind(GetTurnOrderPortrait(actor), GetActorDisplayName(actor), displayed == 0);
-                }
-                displayed++;
-            }
-        }
-        for (int i = displayed; i < _turnIcons.Count; i++)
-            if (_turnIcons[i] != null) _turnIcons[i].gameObject.SetActive(false);
+        if (!(_turnQueueContainer is RectTransform container) || _turnIconPrefab == null) return;
+        if (_turnQueueView == null)
+            _turnQueueView = new BattleTurnQueueView(container, _turnIconPrefab, GetTurnOrderPortrait, GetActorDisplayName);
+        _turnQueueView.Refresh(queue, _turnQueueMoveDuration * JuiceDurationScale,
+            1f + (_turnQueuePulseScale - 1f) * JuiceIntensity,
+            Application.isPlaying && isActiveAndEnabled && JuiceIntensity > 0f);
     }
 
     public void ShowEnemyTarget(CharacterBase target, bool partyWide = false)
@@ -830,6 +818,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleBattleEnded(bool victory)
     {
+        _turnQueueView?.Clear();
         _isBattleEnding = true;
         ReleasePresentationTweens();
         _damagePopupPresenter?.ReleaseAll();

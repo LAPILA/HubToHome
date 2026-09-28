@@ -69,6 +69,7 @@ public abstract class CharacterBase : MonoBehaviour
 {
     private readonly CharacterStats _characterStats = new CharacterStats();
     private readonly List<StatModifier> _battleStatModifiers = new List<StatModifier>();
+    private readonly List<StatModifier> _forecastStatModifiers = new List<StatModifier>();
     private bool _characterStatsDirty = true;
     private bool _isClearingBattleStatusEffects;
     // CurrentHP/AP는 레이어 계산값이 아니라 전투 대상 인스턴스의 런타임 자원이다.
@@ -261,6 +262,38 @@ public abstract class CharacterBase : MonoBehaviour
         return _characterStats.ResolvedStats.GetPrimaryStat(type);
     }
 
+    /// <summary>
+    /// Predict only deterministic stat-effect expiry. Does not tick damage, HP/AP, flags or live duration.
+    /// Future turns are complete start/end pairs; the active turn has already processed its start.
+    /// </summary>
+    public int GetForecastSpeed(int completedFutureTurns, bool finishCurrentTurn)
+    {
+        EnsureCharacterStats();
+        int starts = Mathf.Max(0, completedFutureTurns);
+        int ends = starts + (finishCurrentTurn ? 1 : 0);
+        bool hasExpiry = false;
+        for (int i = 0; i < _activeEffects.Count; i++)
+        {
+            if (!_activeEffects[i].IsActiveAfterTurnBoundaries(starts, ends))
+            {
+                hasExpiry = true;
+                break;
+            }
+        }
+        if (!hasExpiry) return _characterStats.ResolvedStats.SPD;
+
+        _forecastStatModifiers.Clear();
+        for (int i = 0; i < _activeEffects.Count; i++)
+            if (_activeEffects[i].IsActiveAfterTurnBoundaries(starts, ends))
+                _activeEffects[i].AppendStatModifiers(_forecastStatModifiers);
+
+        int speed = CharacterStatsCalculator.ApplyPrimaryStatLayer(
+            _characterStats.ProgressedBaseStats.SPD, StatType.SPD, StatLayer.Equipment,
+            _characterStats.EquipmentModifiers);
+        return CharacterStatsCalculator.ApplyPrimaryStatLayer(
+            speed, StatType.SPD, StatLayer.Battle, _forecastStatModifiers);
+    }
+
     protected void SetBaseStats(StatBlock baseStats)
     {
         _characterStats.SetBaseStats(baseStats);
@@ -440,7 +473,7 @@ public abstract class CharacterBase : MonoBehaviour
         {
             if (_activeEffects[i].EffectID == effect.EffectID)
             {
-                _activeEffects[i].AddStack(effect.DurationTurns);
+                _activeEffects[i].RefreshFrom(effect);
                 MarkCharacterStatsDirty();
                 OnStatusEffectsChanged?.Invoke(this);
                 return new StatusApplicationResult(
@@ -476,6 +509,7 @@ public abstract class CharacterBase : MonoBehaviour
     /// </summary>
     public void ClearBattleStatusEffects()
     {
+        IsTakingBattleTurn = false;
         if (_isClearingBattleStatusEffects)
             return;
 
@@ -522,6 +556,11 @@ public abstract class CharacterBase : MonoBehaviour
         return false;
     }
     
+    /// <summary>턴 서비스만 변경합니다. 자신의 행동 도중 부여된 버프의 즉시 차감을 방지합니다.</summary>
+    public bool IsTakingBattleTurn { get; private set; }
+    public void BeginBattleTurn() => IsTakingBattleTurn = true;
+    public void EndBattleTurn() => IsTakingBattleTurn = false;
+
     public void ProcessEffects() => ProcessEffects(false);
 
     public void ProcessEffects(bool endOfTurn)

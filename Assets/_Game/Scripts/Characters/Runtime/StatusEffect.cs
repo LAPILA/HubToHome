@@ -37,7 +37,16 @@ public abstract class StatusEffect
 
     public virtual void AppendStatModifiers(List<StatModifier> modifiers) { }
 
+    public virtual void RefreshFrom(StatusEffect effect) => AddStack(effect.DurationTurns);
+
     public virtual bool TickAtTurnEnd => false;
+
+    /// <summary>Read-only lifetime projection. Never call OnTick/OnRemove to draw a turn forecast.</summary>
+    public virtual bool IsActiveAfterTurnBoundaries(int turnStarts, int turnEnds)
+    {
+        int ticks = Mathf.Max(0, TickAtTurnEnd ? turnEnds : turnStarts);
+        return ticks == 0 || DurationTurns > ticks;
+    }
 
     public virtual void OnTick() { DurationTurns--; }
 
@@ -159,6 +168,62 @@ public class BerserkEffect : StatusEffect
     }
 
     public override void OnRemove() { if (Target != null) Target.IsBerserk = false; base.OnRemove(); }
+}
+
+/// <summary>중첩하지 않는 가속. 부여 중인 현재 턴을 제외한 대상의 턴 종료에 차감합니다.</summary>
+public sealed class HasteEffect : StatusEffect
+{
+    public const float DefaultSpeedBonus = 0.3f;
+    public float SpeedBonus { get; private set; }
+    private bool _skipCurrentTurnEnd;
+
+    public HasteEffect(int duration, float speedBonus = DefaultSpeedBonus)
+        : base(StatusEffectIds.Haste, duration)
+    {
+        SpeedBonus = Mathf.Clamp(speedBonus, 0f, 3f);
+    }
+
+    public override bool TickAtTurnEnd => true;
+
+    public override void OnApply(CharacterBase target)
+    {
+        base.OnApply(target);
+        _skipCurrentTurnEnd = target.IsTakingBattleTurn;
+    }
+
+    public override void AddStack(int turns, int stackAmount = 1)
+    {
+        Stacks = 1;
+        DurationTurns = Mathf.Max(DurationTurns, turns);
+        _skipCurrentTurnEnd = Target != null && Target.IsTakingBattleTurn;
+    }
+
+    public override void RefreshFrom(StatusEffect effect)
+    {
+        AddStack(effect.DurationTurns);
+        // 약한 가속으로 강한 가속을 덮어쓰지 않습니다.
+        if (effect is HasteEffect haste) SpeedBonus = Mathf.Max(SpeedBonus, haste.SpeedBonus);
+    }
+
+    public override void OnTick()
+    {
+        if (_skipCurrentTurnEnd) { _skipCurrentTurnEnd = false; return; }
+        base.OnTick();
+    }
+
+    public override bool IsActiveAfterTurnBoundaries(int turnStarts, int turnEnds)
+    {
+        int ends = Mathf.Max(0, turnEnds);
+        if (ends == 0) return true;
+        int ticks = Mathf.Max(0, ends - (_skipCurrentTurnEnd ? 1 : 0));
+        return DurationTurns > ticks;
+    }
+
+    public override void AppendStatModifiers(List<StatModifier> modifiers)
+    {
+        modifiers?.Add(StatModifier.ForPrimary(StatLayer.Battle, StatType.SPD,
+            additivePercent: SpeedBonus, sourceId: EffectID));
+    }
 }
 
 // ── 8. 스탯 커스텀 버프 ──

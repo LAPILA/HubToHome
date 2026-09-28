@@ -3,6 +3,30 @@ using NUnit.Framework;
 
 public sealed class CharacterStatsTests
 {
+    [TestCase(3f, 0.5f)]
+    [TestCase(-30f, -1.2f)]
+    [TestCase(0f, 0f)]
+    public void SinglePrimaryProjectionMatchesFullLayerCalculation(float flat, float percent)
+    {
+        var input = new StatBlock { MaxHP = 101, MaxAP = 0, ATK = 11, DEF = 0, SPD = 13 };
+        var modifiers = new List<StatModifier>
+        {
+            StatModifier.ForPrimary(StatLayer.Battle, StatType.SPD, flat, percent),
+            StatModifier.ForPrimary(StatLayer.Battle, StatType.ATK, 2f, 0.1f),
+            StatModifier.ForPrimary(StatLayer.Equipment, StatType.SPD, 5f, 0.25f),
+            StatModifier.ForIncomingDamageMultiplier(StatLayer.Battle, -0.2f),
+        };
+        foreach (StatLayer layer in new[] { StatLayer.Equipment, StatLayer.Battle })
+        {
+            StatBlock full = CharacterStatsCalculator.ApplyLayer(input, layer, modifiers);
+            foreach (StatType stat in new[] { StatType.MaxHP, StatType.MaxAP, StatType.ATK, StatType.DEF, StatType.SPD })
+                Assert.That(CharacterStatsCalculator.ApplyPrimaryStatLayer(input.GetPrimaryStat(stat), stat, layer, modifiers),
+                    Is.EqualTo(full.GetPrimaryStat(stat)));
+            input = full;
+        }
+        Assert.That(CharacterStatsCalculator.ApplyPrimaryStatLayer(0, StatType.DEF, StatLayer.Battle, null), Is.Zero);
+    }
+
     // 계산 순서와 런타임 자원 분리는 이 테스트를 기준 계약으로 유지한다.
     [Test]
     public void Resolve_AppliesFlatThenAdditivePercentPerLayer()

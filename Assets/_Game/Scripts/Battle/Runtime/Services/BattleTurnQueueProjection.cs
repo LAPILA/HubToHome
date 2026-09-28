@@ -5,9 +5,7 @@ public static class BattleTurnQueueProjection
     public static List<CharacterBase> BuildVisible(
         IReadOnlyList<CharacterBase> turnQueue,
         int currentActorIndex,
-        int visibleCount,
-        IReadOnlyList<PlayerCharacter> players,
-        IReadOnlyList<EnemyCharacter> enemies)
+        int visibleCount)
     {
         int safeVisibleCount = visibleCount > 0 ? visibleCount : 0;
         var visible = new List<CharacterBase>(safeVisibleCount);
@@ -26,47 +24,8 @@ public static class BattleTurnQueueProjection
             }
         }
 
-        if (visible.Count >= safeVisibleCount)
-        {
-            return visible;
-        }
-
-        var aliveActors = new List<CharacterBase>();
-        AddAlive(players, aliveActors);
-        AddAlive(enemies, aliveActors);
-        aliveActors.Sort(CompareSpeedDescending);
-
-        int refillIndex = 0;
-        while (visible.Count < safeVisibleCount && aliveActors.Count > 0)
-        {
-            visible.Add(aliveActors[refillIndex % aliveActors.Count]);
-            refillIndex++;
-        }
-
+        // The turn scheduler owns all future entries. Never invent a round-robin fallback here.
         return visible;
-    }
-
-    private static void AddAlive<T>(IReadOnlyList<T> source, List<CharacterBase> destination)
-        where T : CharacterBase
-    {
-        if (source == null)
-        {
-            return;
-        }
-
-        for (int i = 0; i < source.Count; i++)
-        {
-            T actor = source[i];
-            if (actor != null && actor.IsAlive)
-            {
-                destination.Add(actor);
-            }
-        }
-    }
-
-    private static int CompareSpeedDescending(CharacterBase left, CharacterBase right)
-    {
-        return right.SPD.CompareTo(left.SPD);
     }
 }
 

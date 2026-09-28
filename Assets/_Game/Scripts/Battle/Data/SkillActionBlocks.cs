@@ -762,6 +762,9 @@ public class Action_ApplyStatus : SkillActionBlock
 {
     [LabelText("부여할 상태이상 ID")] public string StatusID = "Sleep";
     [LabelText("지속 턴 수")] public int DurationTurns = 2;
+    [ShowIf(nameof(IsHaste)), Range(0f, 3f), LabelText("가속 SPD 증가율 (0.3 = 30%)")]
+    public float HasteSpeedBonus = HasteEffect.DefaultSpeedBonus;
+    private bool IsHaste => StatusID == StatusEffectIds.Haste;
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
     {
@@ -789,9 +792,9 @@ public class Action_ApplyStatus : SkillActionBlock
 
         foreach (var target in context.Targets)
         {
-            if (!target.IsAlive) continue;
+            if (target == null || !target.IsAlive) continue;
 
-            if (StatusEffectFactory.TryCreate(StatusID, DurationTurns, out StatusEffect effect))
+            if (StatusEffectFactory.TryCreate(StatusID, DurationTurns, out StatusEffect effect, HasteSpeedBonus))
             {
                 target.TryApplyStatusEffect(effect);
             }

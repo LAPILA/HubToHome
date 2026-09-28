@@ -7188,6 +7188,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleUIController
   _turnQueueContainer: {fileID: 8167969155494188831}
+  _turnQueueMoveDuration: 0.24
+  _turnQueuePulseScale: 1.06
   _turnIconPrefab: {fileID: 8000740056522085333, guid: 2e786e0cda64d3844b799083e2c614c3, type: 3}
   _hudDecoration: {fileID: 900926000000000000}
   _largePortrait: {fileID: 900926000000000019}
@@ -7230,6 +7232,10 @@ MonoBehaviour:
     Icon: {fileID: 0}
     ShortLabel: "\uC2B5"
     Color: {r: 0.3, g: 0.6, b: 1, a: 1}
+  - EffectId: Haste
+    Icon: {fileID: 0}
+    ShortLabel: "가"
+    Color: {r: 0.3, g: 1, b: 0.85, a: 1}
   _leadCharacterId: Wizzel_ally
   _leadCharacterData: {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
   _partyStatusPanel: {fileID: 3579867621759222459}
@@ -9135,7 +9141,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3312d7739989d2b4e91e6319e9a96d76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RectMask2D
-  m_Padding: {x: 0, y: 0, z: 0, w: 0}
+  m_Padding: {x: -4, y: -4, z: -4, w: -4}
   m_Softness: {x: 0, y: 0}
 --- !u!114 &8209746447054355752
 MonoBehaviour:

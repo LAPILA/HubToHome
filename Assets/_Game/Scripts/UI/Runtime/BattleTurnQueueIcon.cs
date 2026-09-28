@@ -12,16 +12,11 @@ public sealed class BattleTurnQueueIcon : MonoBehaviour
     [SerializeField] private Color _normalColor = new Color(0.52f, 0.46f, 0.66f);
     [SerializeField] private Color _firstColor = new Color(1f, 0.92f, 0.35f);
     private Tween _feedback;
-    private Sprite _lastPortrait;
-    private string _lastName;
-    private bool _lastFirst;
-    private bool _bound;
+    private RectTransform _rect;
+    public RectTransform Rect => _rect != null ? _rect : _rect = (RectTransform)transform;
 
     public void Bind(Sprite portrait, string actorName, bool first)
     {
-        bool changed = !_bound || _lastPortrait != portrait || _lastName != actorName || _lastFirst != first;
-        if (changed) ReleaseFeedback();
-        _bound = true; _lastPortrait = portrait; _lastName = actorName; _lastFirst = first;
         if (_border != null) _border.color = first ? _firstColor : _normalColor;
         if (_portrait != null)
         {
@@ -32,24 +27,38 @@ public sealed class BattleTurnQueueIcon : MonoBehaviour
         }
         if (_fallbackName != null)
             _fallbackName.text = portrait == null ? actorName : string.Empty;
-        if (!changed || !Application.isPlaying || !isActiveAndEnabled || BattleUIController.JuiceIntensity <= 0f) return;
-        Image image = _portrait;
-        Image border = _border;
-        RectTransform rect = image != null ? image.rectTransform : null;
-        Vector2 home = rect != null ? rect.anchoredPosition : Vector2.zero;
-        Color color = first ? _firstColor : _normalColor;
-        float intensity = BattleUIController.JuiceIntensity;
-        _feedback = DOTween.To(() => 0f, progress =>
-            {
-                if (rect != null) rect.anchoredPosition = home + Vector2.up * Mathf.Round(3f * intensity * (1f - progress));
-                if (border != null) border.color = Color.Lerp(color, Color.white, (1f - progress) * 0.5f * intensity);
-            }, 1f, 0.18f * BattleUIController.JuiceDurationScale)
-            .SetEase(Ease.OutCubic).SetUpdate(true).SetRecyclable(false)
-            .SetLink(gameObject, LinkBehaviour.KillOnDisable)
-            .OnKill(() => { if (rect != null) rect.anchoredPosition = home; if (border != null) border.color = color; });
     }
 
-    private void ReleaseFeedback() { if (_feedback != null && _feedback.IsActive()) _feedback.Kill(false); _feedback = null; }
-    private void OnDisable() { ReleaseFeedback(); _bound = false; }
+    /// <summary>부모의 레이아웃은 그대로 두고 표시 루트만 이동합니다.</summary>
+    public void AnimateFrom(Vector3 worldPosition, float duration, float pulseScale, bool animate)
+    {
+        ReleaseFeedback();
+        if (!animate || !isActiveAndEnabled) return;
+        Rect.position = worldPosition;
+        duration = Mathf.Max(0.05f, duration);
+        _feedback = DOTween.Sequence()
+            .Join(Rect.DOAnchorPos(Vector2.zero, duration).SetEase(Ease.OutCubic))
+            .Join(Rect.DOScale(pulseScale, duration * 0.4f).SetEase(Ease.OutQuad))
+            .Insert(duration * 0.4f, Rect.DOScale(1f, duration * 0.6f).SetEase(Ease.OutQuad))
+            .SetUpdate(true).SetRecyclable(false)
+            .SetLink(gameObject, LinkBehaviour.KillOnDisable)
+            .OnKill(RestoreBaseline);
+    }
+
+    private void RestoreBaseline()
+    {
+        if (_rect == null) return;
+        _rect.anchoredPosition = Vector2.zero;
+        _rect.localScale = Vector3.one;
+    }
+
+    public void ReleaseFeedback()
+    {
+        Tween owned = _feedback;
+        _feedback = null;
+        if (owned != null && owned.IsActive()) owned.Kill(false);
+        RestoreBaseline();
+    }
+    private void OnDisable() => ReleaseFeedback();
     private void OnDestroy() => ReleaseFeedback();
 }

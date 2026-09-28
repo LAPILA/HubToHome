@@ -9,6 +9,241 @@ using UnityEngine;
 
 public class BattleTurnQteModuleControllerServiceTests
 {
+    [Test]
+    public void SpeedEffect_RefreshesFutureQueueImmediatelyWithoutInterruptingCurrentActor()
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 20 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 10 }))
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            service.AdvanceTurn();
+            Assert.That(fixture.Host.TurnQueue[1], Is.SameAs(fixture.Player));
+            int broadcasts = fixture.Host.QueueNotifications;
+            var haste = new HasteEffect(3, 1f);
+            fixture.Enemy.TryApplyStatusEffect(haste);
+            Assert.That(fixture.Host.QueueNotifications, Is.EqualTo(broadcasts + 1));
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Player));
+            Assert.That(fixture.Host.CurrentActorIndex, Is.EqualTo(1));
+            Assert.That(fixture.Host.TurnQueue[1], Is.SameAs(fixture.Enemy));
+            fixture.Enemy.TryApplyStatusEffect(new BurnEffect(3));
+            Assert.That(fixture.Host.QueueNotifications, Is.EqualTo(broadcasts + 1));
+            fixture.Enemy.RemoveEffect(haste);
+            Assert.That(fixture.Host.TurnQueue[1], Is.SameAs(fixture.Player));
+            Assert.That(fixture.Host.QueueNotifications, Is.EqualTo(broadcasts + 2));
+        }
+    }
+
+    [Test]
+    public void SpeedEffect_TurnEndRefreshesOnceAndDisposeDetachesObservers()
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 20 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 10 }))
+        {
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            fixture.Player.TryApplyStatusEffect(new HasteEffect(1));
+            service.AdvanceTurn();
+            int broadcasts = fixture.Host.QueueNotifications;
+            service.CompleteAction();
+            Assert.That(fixture.Player.SPD, Is.EqualTo(20));
+            Assert.That(fixture.Player.IsTakingBattleTurn, Is.False);
+            Assert.That(fixture.Host.QueueNotifications, Is.EqualTo(broadcasts + 1));
+            service.AdvanceTurn();
+            service.Dispose();
+            service.Dispose();
+            broadcasts = fixture.Host.QueueNotifications;
+            fixture.Player.TryApplyStatusEffect(new HasteEffect(3));
+            Assert.That(fixture.Host.QueueNotifications, Is.EqualTo(broadcasts));
+            Assert.That(fixture.Player.IsTakingBattleTurn, Is.False);
+        }
+    }
+
+    [Test]
+    public void SpeedSchedule_ActualTurnsMatchPreviewBeyondFormerEightSlotBoundary()
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 20 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 10 }))
+        {
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            var observed = new List<CharacterBase>();
+            CharacterBase predicted = null;
+            for (int i = 0; i < 18; i++)
+            {
+                service.AdvanceTurn();
+                CharacterBase actual = fixture.Host.TurnQueue[fixture.Host.CurrentActorIndex - 1];
+                if (predicted != null) Assert.That(actual, Is.SameAs(predicted));
+                observed.Add(actual);
+                predicted = fixture.Host.TurnQueue[1];
+                service.CompleteAction();
+            }
+            Assert.That(observed.FindAll(actor => actor == fixture.Player), Has.Count.EqualTo(12));
+            Assert.That(observed.FindAll(actor => actor == fixture.Enemy), Has.Count.EqualTo(6));
+        }
+    }
+
+    [TestCase(1)]
+    [TestCase(3)]
+    public void HasteForecast_NaturalExpiryKeepsTheAlreadyShownSuffix(int duration)
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 10 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 12 }))
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            fixture.Player.TryApplyStatusEffect(new HasteEffect(duration, 1f));
+            service.AdvanceTurn();
+            var promised = new List<CharacterBase>(fixture.Host.TurnQueue);
+            for (int turn = 0; turn < promised.Count; turn++)
+            {
+                Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(promised[turn]), "turn " + turn);
+                var beforeEnd = new List<CharacterBase>(fixture.Host.TurnQueue);
+                service.CompleteAction();
+                for (int slot = 1; slot < beforeEnd.Count; slot++)
+                    Assert.That(fixture.Host.TurnQueue[slot - 1], Is.SameAs(beforeEnd[slot]),
+                        "natural end changed turn " + turn + ", slot " + slot);
+                if (turn + 1 < promised.Count) service.AdvanceTurn();
+            }
+            Assert.That(fixture.Player.HasEffect(StatusEffectIds.Haste), Is.False);
+            Assert.That(fixture.Player.SPD, Is.EqualTo(10));
+        }
+    }
+
+    [Test]
+    public void HasteRefresh_EqualCurrentSpeedStillUpdatesFutureExpiryOrder()
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 10 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 12 }))
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            fixture.Player.TryApplyStatusEffect(new HasteEffect(1, 1f));
+            service.AdvanceTurn();
+            var beforeRefresh = new List<CharacterBase>(fixture.Host.TurnQueue);
+            int notifications = fixture.Host.QueueNotifications;
+            int previousSpeed = fixture.Player.SPD;
+            fixture.Player.TryApplyStatusEffect(new HasteEffect(3, 1f));
+
+            Assert.That(fixture.Player.SPD, Is.EqualTo(previousSpeed));
+            Assert.That(fixture.Host.QueueNotifications, Is.EqualTo(notifications + 1));
+            Assert.That(fixture.Host.TurnQueue, Is.Not.EqualTo(beforeRefresh));
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Player));
+            Assert.That(fixture.Host.CurrentActorIndex, Is.EqualTo(1));
+            Assert.That(fixture.Player.IsTakingBattleTurn, Is.True);
+        }
+    }
+
+    [Test]
+    public void SelfHaste_KeepsCurrentActionThenExpiresAfterThreeFuturePlayerTurns()
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 13 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 25 }))
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            service.AdvanceTurn(); // Enemy acts first at 25 SPD.
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Enemy));
+            service.CompleteAction();
+            service.AdvanceTurn();
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Player));
+
+            int notifications = fixture.Host.PlayerTurnNotifications;
+            var haste = new HasteEffect(3, 1f);
+            fixture.Player.TryApplyStatusEffect(haste);
+            Assert.That(fixture.Player.SPD, Is.EqualTo(26));
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Player));
+            Assert.That(fixture.Host.PlayerTurnNotifications, Is.EqualTo(notifications));
+            service.AdvanceTurn(); // A forecast update cannot unlock a second concurrent turn.
+            Assert.That(fixture.Host.PlayerTurnNotifications, Is.EqualTo(notifications));
+            service.CompleteAction();
+            Assert.That(haste.DurationTurns, Is.EqualTo(3));
+
+            int acceleratedTurns = 0;
+            for (int i = 0; i < 20 && acceleratedTurns < 3; i++)
+            {
+                CharacterBase predicted = fixture.Host.TurnQueue[0];
+                service.AdvanceTurn();
+                Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(predicted));
+                if (predicted == fixture.Player)
+                {
+                    Assert.That(fixture.Player.SPD, Is.EqualTo(26));
+                    acceleratedTurns++;
+                }
+                service.CompleteAction();
+            }
+
+            Assert.That(acceleratedTurns, Is.EqualTo(3));
+            Assert.That(fixture.Player.HasEffect(StatusEffectIds.Haste), Is.False);
+            Assert.That(fixture.Player.SPD, Is.EqualTo(13));
+            var afterExpiry = new List<CharacterBase>(fixture.Host.TurnQueue);
+            for (int i = 0; i < afterExpiry.Count; i++)
+            {
+                service.AdvanceTurn();
+                Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(afterExpiry[i]));
+                service.CompleteAction();
+            }
+        }
+    }
+
+    [Test]
+    public void SpeedSchedule_ModuleReentryResynchronizesChangedSpeedWithoutResettingProgress()
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 20 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 10 }))
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            service.AdvanceTurn();
+            service.CompleteAction(); // Enemy retains half of its readiness.
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Player));
+            RunToCompletion(service.ExitTurnQteModule(null));
+            fixture.Host.ModuleActive = false;
+            int notifications = fixture.Host.QueueNotifications;
+            fixture.Enemy.TryApplyStatusEffect(new HasteEffect(3, 1f));
+            service.AdvanceTurn();
+            Assert.That(fixture.Host.QueueNotifications, Is.EqualTo(notifications));
+
+            fixture.Host.ModuleActive = true;
+            RunToCompletion(service.EnterTurnQteModule(null));
+            service.AdvanceTurn();
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Enemy));
+        }
+    }
+
+    [Test]
+    public void SpeedSchedule_DuplicateAdvanceCannotStartAnotherActorDuringCurrentTurn()
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            service.AdvanceTurn();
+            var queue = new List<CharacterBase>(fixture.Host.TurnQueue);
+            int playerTurns = fixture.Host.PlayerTurnNotifications;
+            service.AdvanceTurn();
+            Assert.That(fixture.Host.TurnQueue, Is.EqualTo(queue));
+            Assert.That(fixture.Host.PlayerTurnNotifications, Is.EqualTo(playerTurns));
+        }
+    }
+
+    [Test]
+    public void SpeedSchedule_PreemptiveActorAndForecastUseSameOpeningTurn()
+    {
+        using (var fixture = new TurnQteFixture(
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 5 },
+            new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 20 }))
+        {
+            fixture.Host.PreemptiveAvailable = true;
+            var service = new BattleTurnQteModuleControllerService(fixture.Host);
+            RunToCompletion(service.RunTurnCalculation());
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Player));
+            Assert.That(fixture.Host.TurnQueue[1], Is.SameAs(fixture.Enemy));
+            service.CompleteAction();
+            RunToCompletion(service.RunTurnCalculation());
+            Assert.That(fixture.Host.TurnQueue[0], Is.SameAs(fixture.Enemy));
+        }
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void EnemyCounterInterruption_SkipsRemainingBlocksAndCompletesTurnEvenOnLethalCounter(bool lethal)
@@ -92,6 +327,7 @@ public class BattleTurnQteModuleControllerServiceTests
         using (var fixture = new TurnQteFixture())
         {
             fixture.Player.TryApplyStatusEffect(new StunEffect(duration));
+            fixture.Enemy.TakePureDamage(fixture.Enemy.MaxHP); // Isolate this actor's scheduled turns.
             fixture.Host.TurnQueue.Add(fixture.Player);
             var service = new BattleTurnQteModuleControllerService(fixture.Host);
             for (int turn = 0; turn < duration; turn++)
@@ -114,6 +350,7 @@ public class BattleTurnQteModuleControllerServiceTests
         using (var fixture = new TurnQteFixture())
         {
             fixture.Player.TryApplyStatusEffect(new StunEffect(1));
+            fixture.Enemy.TakePureDamage(fixture.Enemy.MaxHP);
             fixture.Player.TryApplyStatusEffect(new BleedEffect(1));
             int previousHp = fixture.Player.CurrentHP;
             fixture.Host.TurnQueue.Add(fixture.Player);
@@ -970,6 +1207,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public bool CanStartNextPartyWave { get; set; }
         public bool CanEscape { get; set; } = true;
         public bool ModuleActive { get; set; } = true;
+        public bool PreemptiveAvailable { get; set; }
         public int PartyWaveStartCalls { get; private set; }
         public int RunAwayCalls { get; private set; }
         public IReadOnlyList<PlayerCharacter> PlayerParty => _players;
@@ -1030,8 +1268,14 @@ public class BattleTurnQteModuleControllerServiceTests
             PartyWaveStartCalls++;
             return CanStartNextPartyWave;
         }
-        public bool ConsumePlayerPreemptiveAttack() => false;
-        public void BroadcastVisibleTurnQueue() { }
+        public bool ConsumePlayerPreemptiveAttack()
+        {
+            bool available = PreemptiveAvailable;
+            PreemptiveAvailable = false;
+            return available;
+        }
+        public int QueueNotifications { get; private set; }
+        public void BroadcastVisibleTurnQueue() { QueueNotifications++; }
         public void ResetAllPlayerBattlePoses() { }
         public IEnumerator WaitForNarrationToFinish() { yield break; }
         public void TryRequestFlavorNarration() { }

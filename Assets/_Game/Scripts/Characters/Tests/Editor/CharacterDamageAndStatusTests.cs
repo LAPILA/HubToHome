@@ -41,6 +41,121 @@ public sealed class CharacterDamageAndStatusTests
         Assert.That(_target.CurrentHP, Is.EqualTo(50));
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Haste_PreservesThreeFutureTurnsAndRestoresSpeed(bool appliedOnOwnTurn)
+    {
+        _target.SetStats(new StatBlock { MaxHP = 100, SPD = 20 });
+        _target.ResetResources();
+        if (appliedOnOwnTurn) _target.BeginBattleTurn();
+        _target.TryApplyStatusEffect(new HasteEffect(3));
+        Assert.That(_target.SPD, Is.EqualTo(26));
+        if (appliedOnOwnTurn)
+        {
+            _target.ProcessEffects(endOfTurn: true);
+            _target.EndBattleTurn();
+            Assert.That(_target.ActiveStatusEffects[0].DurationTurns, Is.EqualTo(3));
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            _target.BeginBattleTurn();
+            _target.ProcessEffects();
+            Assert.That(_target.SPD, Is.EqualTo(26));
+            _target.ProcessEffects(endOfTurn: true);
+            _target.EndBattleTurn();
+        }
+        Assert.That(_target.HasEffect(StatusEffectIds.Haste), Is.False);
+        Assert.That(_target.SPD, Is.EqualTo(20));
+    }
+
+    [Test]
+    public void Haste_RefreshDoesNotStackOrReplaceStrongerBuffAndCleanupRemovesIt()
+    {
+        _target.SetStats(new StatBlock { MaxHP = 100, SPD = 20 });
+        _target.ResetResources();
+        _target.TryApplyStatusEffect(new HasteEffect(3));
+        _target.ProcessEffects(endOfTurn: true);
+        _target.BeginBattleTurn();
+        _target.TryApplyStatusEffect(new HasteEffect(3));
+        Assert.That(_target.SPD, Is.EqualTo(26));
+        Assert.That(_target.ActiveStatusEffects[0].Stacks, Is.EqualTo(1));
+        _target.ProcessEffects(endOfTurn: true);
+        Assert.That(_target.ActiveStatusEffects[0].DurationTurns, Is.EqualTo(3));
+        _target.TryApplyStatusEffect(new HasteEffect(3, 0.5f));
+        _target.TryApplyStatusEffect(new HasteEffect(3, 0.1f));
+        Assert.That(_target.SPD, Is.EqualTo(30));
+        _target.ClearBattleStatusEffects();
+        Assert.That(_target.SPD, Is.EqualTo(20));
+        Assert.That(_target.IsTakingBattleTurn, Is.False);
+    }
+
+    [Test]
+    public void Forecast_CurrentHasteExpiryDoesNotMutateDurationHpApOrTurnFlag()
+    {
+        _target.SetStats(new StatBlock { MaxHP = 100, MaxAP = 50, SPD = 10 });
+        _target.ResetResources();
+        var haste = new HasteEffect(1, 1f);
+        var poison = new PoisonEffect(2);
+        _target.TryApplyStatusEffect(haste);
+        _target.TryApplyStatusEffect(poison);
+        _target.BeginBattleTurn();
+        int hp = _target.CurrentHP;
+        int ap = _target.CurrentAP;
+        for (int i = 0; i < 8; i++)
+            Assert.That(_target.GetForecastSpeed(i, finishCurrentTurn: true), Is.EqualTo(10));
+        Assert.That(_target.SPD, Is.EqualTo(20));
+        Assert.That(haste.DurationTurns, Is.EqualTo(1));
+        Assert.That(poison.DurationTurns, Is.EqualTo(2));
+        Assert.That(_target.CurrentHP, Is.EqualTo(hp));
+        Assert.That(_target.CurrentAP, Is.EqualTo(ap));
+        Assert.That(_target.IsTakingBattleTurn, Is.True);
+    }
+
+    [Test]
+    public void Forecast_OwnTurnHasteIncludesSkippedGrantingTurnEnd()
+    {
+        _target.SetStats(new StatBlock { MaxHP = 100, SPD = 10 });
+        _target.ResetResources();
+        _target.BeginBattleTurn();
+        var haste = new HasteEffect(3, 1f);
+        _target.TryApplyStatusEffect(haste);
+        Assert.That(_target.GetForecastSpeed(0, true), Is.EqualTo(20));
+        Assert.That(_target.GetForecastSpeed(2, true), Is.EqualTo(20));
+        Assert.That(_target.GetForecastSpeed(3, true), Is.EqualTo(10));
+        Assert.That(haste.DurationTurns, Is.EqualTo(3));
+
+        _target.ProcessEffects(endOfTurn: true);
+        _target.EndBattleTurn();
+        Assert.That(haste.DurationTurns, Is.EqualTo(3));
+        Assert.That(_target.GetForecastSpeed(2, false), Is.EqualTo(20));
+        Assert.That(_target.GetForecastSpeed(3, false), Is.EqualTo(10));
+    }
+
+    [Test]
+    public void Forecast_MixedStartAndEndExpiryMatchesActualStatLayerRounding()
+    {
+        _target.SetStats(new StatBlock { MaxHP = 100, SPD = 10 });
+        _target.ResetResources();
+        _target.TryApplyStatusEffect(new FreezeEffect(2, stacks: 2));
+        _target.TryApplyStatusEffect(new StatModifierEffect("flat.speed", 1, StatType.SPD, flatMod: 3));
+        _target.TryApplyStatusEffect(new HasteEffect(2, 0.5f));
+        Assert.That(_target.SPD, Is.EqualTo(17));
+        int afterOne = _target.GetForecastSpeed(1, false);
+        int afterTwo = _target.GetForecastSpeed(2, false);
+        Assert.That(afterOne, Is.EqualTo(13));
+        Assert.That(afterTwo, Is.EqualTo(10));
+        Assert.That(_target.SPD, Is.EqualTo(17));
+
+        for (int turn = 1; turn <= 2; turn++)
+        {
+            _target.BeginBattleTurn();
+            _target.ProcessEffects();
+            _target.ProcessEffects(endOfTurn: true);
+            _target.EndBattleTurn();
+            Assert.That(_target.SPD, Is.EqualTo(turn == 1 ? afterOne : afterTwo));
+        }
+    }
+
     [Test]
     public void AttributeDamageUsesResistanceWithoutDefence()
     {

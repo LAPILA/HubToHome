@@ -447,11 +447,8 @@ public static class CharacterStatsCalculator
         for (int i = 0; i < flat.Length; i++)
         {
             var type = (StatType)i;
-            float value = output.GetPrimaryStat(type);
-            float resolved = (value + flat[i]) * (1f + additivePercent[i]);
-            float minimum = type == StatType.MaxAP ? 0f : 1f;
-            // Unity RoundToInt는 .5를 짝수로 보내므로, 스탯은 일반적인 반올림 규칙을 사용한다.
-            output.SetPrimaryStat(type, Mathf.FloorToInt(Mathf.Max(minimum, resolved) + 0.5f));
+            output.SetPrimaryStat(type, ResolvePrimaryValue(
+                output.GetPrimaryStat(type), type, flat[i], additivePercent[i]));
         }
 
         for (int i = 0; i < resistanceFlat.Length; i++)
@@ -487,6 +484,32 @@ public static class CharacterStatsCalculator
             (output.OutgoingDamageMultiplier + outgoingFlat) * (1f + outgoingPercent));
 
         return output;
+    }
+
+    /// <summary>Same layer math as ApplyLayer, without cloning a full StatBlock for each forecast slot.</summary>
+    public static int ApplyPrimaryStatLayer(int input, StatType type, StatLayer layer,
+        IReadOnlyList<StatModifier> modifiers)
+    {
+        if (modifiers == null || modifiers.Count == 0) return input;
+        float flat = 0f;
+        float percent = 0f;
+        for (int i = 0; i < modifiers.Count; i++)
+        {
+            StatModifier modifier = modifiers[i];
+            if (modifier == null || modifier.Layer != layer
+                || modifier.Target != StatModifierTarget.Primary || modifier.StatType != type) continue;
+            flat += modifier.FlatValue;
+            percent += modifier.AdditivePercent;
+        }
+        return ResolvePrimaryValue(input, type, flat, percent);
+    }
+
+    private static int ResolvePrimaryValue(int input, StatType type, float flat, float percent)
+    {
+        float resolved = (input + flat) * (1f + percent);
+        float minimum = type == StatType.MaxAP ? 0f : 1f;
+        // Unity RoundToInt는 .5를 짝수로 보내므로, 스탯은 일반적인 반올림 규칙을 사용한다.
+        return Mathf.FloorToInt(Mathf.Max(minimum, resolved) + 0.5f);
     }
 
     // 성장 결과를 시작점으로 장비와 전투 보정을 순서대로 합성한다.

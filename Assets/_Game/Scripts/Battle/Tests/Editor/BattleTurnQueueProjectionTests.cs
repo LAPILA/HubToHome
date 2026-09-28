@@ -30,27 +30,31 @@ public class BattleTurnQueueProjectionTests
         List<CharacterBase> result = BattleTurnQueueProjection.BuildVisible(
             queue,
             1,
-            2,
-            new[] { first, defeated },
-            new[] { current, next });
+            2);
 
         Assert.That(result, Is.EqualTo(new CharacterBase[] { current, next }));
     }
 
     [Test]
-    public void BuildVisibleRefillsFutureRoundsBySpeed()
+    public void BuildVisiblePreservesRepeatedActorsFromRealSchedule()
     {
         PlayerCharacter slow = CreatePlayer("Slow", 5);
         EnemyCharacter fast = CreateEnemy("Fast", 20);
 
         List<CharacterBase> result = BattleTurnQueueProjection.BuildVisible(
-            new CharacterBase[] { slow },
+            new CharacterBase[] { fast, fast, fast, slow },
             0,
-            4,
-            new[] { slow },
-            new[] { fast });
+            4);
 
-        Assert.That(result, Is.EqualTo(new CharacterBase[] { slow, fast, slow, fast }));
+        Assert.That(result, Is.EqualTo(new CharacterBase[] { fast, fast, fast, slow }));
+    }
+
+    [Test]
+    public void BuildVisibleNeverInventsFutureTurnsWhenScheduleIsShort()
+    {
+        PlayerCharacter actor = CreatePlayer("Only", 10);
+        Assert.That(BattleTurnQueueProjection.BuildVisible(new[] { actor }, 0, 6),
+            Is.EqualTo(new[] { actor }));
     }
 
     [Test]
@@ -59,9 +63,7 @@ public class BattleTurnQueueProjectionTests
         List<CharacterBase> result = BattleTurnQueueProjection.BuildVisible(
             new CharacterBase[0],
             0,
-            0,
-            new PlayerCharacter[0],
-            new EnemyCharacter[0]);
+            0);
 
         Assert.That(result, Is.Empty);
     }
