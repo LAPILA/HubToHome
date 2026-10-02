@@ -8588,6 +8588,21 @@ MonoBehaviour:
   _positionManager: {fileID: 8283044680222642774}
   _battleUiRoot: {fileID: 1999422152517759065}
   _battleUiController: {fileID: 9179951654838455135}
+  _entryPresentation:
+    Enabled: 1
+    WarningDuration: 0.2
+    ZoomDuration: 0.5
+    SlashDuration: 0.2
+    BlackDuration: 0.35
+    RevealDuration: 0.55
+    HudDelay: 0.45
+    HudDuration: 0.3
+    ZoomRatio: 0.9
+    HudDistance: 24
+    SlashColor: {r: 0.82, g: 1, b: 1, a: 1}
+    WarningColor: {r: 1, g: 0.9, b: 0.4, a: 1}
+    WarningSfx: {fileID: 0}
+    SlashSfx: {fileID: 0}
 --- !u!1 &4126832852911504159
 GameObject:
   m_ObjectHideFlags: 0

@@ -9,13 +9,13 @@ public sealed class Action_AerialCrossSlash : SkillActionBlock
 {
     [LabelText("공중 높이"), MinValue(0.1f)] public float Height = 1.8f;
     [LabelText("적 앞뒤 거리"), MinValue(0.1f)] public float CrossingDistance = 1.1f;
-    [LabelText("접근 시간"), MinValue(0.05f)] public float ApproachDuration = 0.18f;
-    [LabelText("상승 시간"), MinValue(0.05f)] public float RiseDuration = 0.22f;
-    [LabelText("카메라 360도 회전 시간"), MinValue(0.1f)] public float SpinDuration = 0.36f;
-    [LabelText("공중 QTE 시간"), MinValue(0.2f)] public float QteDuration = 0.6f;
-    [LabelText("QTE 입력 허용 시간"), MinValue(0.1f)] public float InputWindow = 0.45f;
-    [LabelText("한 번 베는 시간"), MinValue(0.05f)] public float DashDuration = 0.13f;
-    [LabelText("복귀 시간"), MinValue(0.05f)] public float ReturnDuration = 0.2f;
+    [LabelText("접근 시간 (초)"), MinValue(0.05f)] public float ApproachDuration = 0.18f;
+    [LabelText("상승 시간 (초)"), MinValue(0.05f)] public float RiseDuration = 0.22f;
+    [LabelText("카메라 360도 회전 시간 (초)"), MinValue(0.1f)] public float SpinDuration = 0.36f;
+    [LabelText("공중 QTE 시간 (초)"), MinValue(0.2f)] public float QteDuration = 0.6f;
+    [LabelText("QTE 입력 허용 시간 (초)"), MinValue(0.1f)] public float InputWindow = 0.45f;
+    [LabelText("한 번 베는 시간 (초)"), MinValue(0.05f)] public float DashDuration = 0.13f;
+    [LabelText("복귀 시간 (초)"), MinValue(0.05f)] public float ReturnDuration = 0.2f;
     [LabelText("한 타 피해 배율"), MinValue(0f)] public float DamagePerStrike = 0.8f;
     [LabelText("QTE 성공 배율"), MinValue(1f)] public float SuccessMultiplier = 1.5f;
     [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;

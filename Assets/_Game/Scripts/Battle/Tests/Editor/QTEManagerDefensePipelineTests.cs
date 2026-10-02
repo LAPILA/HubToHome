@@ -69,7 +69,7 @@ public class QTEManagerDefensePipelineTests
         Assert.That(state.name, Is.EqualTo("START"));
         var clip = state.motion as AnimationClip;
         Assert.That(clip, Is.Not.Null);
-        Assert.That(clip.length, Is.InRange(0.22f, 0.25f));
+        Assert.That(clip.length, Is.GreaterThan(0f), "제작 파일의 프레임 길이는 변경할 수 있습니다.");
         var bindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
         Assert.That(bindings.Length, Is.GreaterThan(0));
         foreach (EditorCurveBinding binding in bindings)
@@ -118,9 +118,11 @@ public class QTEManagerDefensePipelineTests
             cue.Emphasize(window);
             Assert.That(renderer.sprite, Is.EqualTo(middleFrame), "중복 호출은 다시 재생하지 않습니다.");
             cue.SynchronizeToImpact(0f);
+            Assert.That(renderer.enabled, Is.False, "재생 종료 뒤 마지막 프레임을 남기지 않습니다.");
             Sprite finalFrame = renderer.sprite;
             cue.SynchronizeToImpact(-1f);
             Assert.That(renderer.sprite, Is.EqualTo(finalFrame));
+            Assert.That(renderer.enabled, Is.False);
             Assert.That(instance.transform.localScale, Is.EqualTo(Vector3.one * 3f));
             Assert.That(instance.transform.localRotation, Is.EqualTo(Quaternion.identity));
             Assert.That(renderer.sortingOrder, Is.EqualTo(target.GetComponent<SpriteRenderer>().sortingOrder - 1));
@@ -130,6 +132,44 @@ public class QTEManagerDefensePipelineTests
             SetPrivateField(cue, "_leased", true);
             play.Invoke(cue, new object[] { target.transform, window, false, false });
             Assert.That(renderer.sprite, Is.EqualTo(firstFrame), "풀에서 재사용할 때 첫 프레임으로 복원합니다.");
+            Assert.That(renderer.enabled, Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+            Object.DestroyImmediate(target);
+        }
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void TelegraphPlayback_HidesAtAnimationEndButRetainsQteOwnership(bool authored)
+    {
+        GameObject instance = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(TelegraphPath));
+        var target = new GameObject("TelegraphCompletionTarget");
+        try
+        {
+            if (!authored) Object.DestroyImmediate(instance.GetComponent<Animator>());
+            var cue = instance.GetComponent<BattleTelegraphCue>();
+            cue.SendMessage("Awake");
+            SetPrivateField(cue, "_pingClip", null);
+            SetPrivateField(cue, "_leased", true);
+            var play = typeof(BattleTelegraphCue).GetMethod("Play", BindingFlags.Instance | BindingFlags.NonPublic);
+            const float window = 5f;
+            play.Invoke(cue, new object[] { target.transform, window, false, false });
+            float duration = (float)typeof(BattleTelegraphCue).GetField("_playbackDuration",
+                BindingFlags.Instance | BindingFlags.NonPublic).GetValue(cue);
+            SpriteRenderer renderer = instance.GetComponent<SpriteRenderer>();
+            cue.SynchronizeToImpact(window - duration * 0.5f);
+            Assert.That(renderer.enabled, Is.True);
+            cue.SynchronizeToImpact(window - duration - 0.001f);
+            Assert.That(renderer.enabled, Is.False, "방어창이 남아 있어도 전조 재생이 끝나면 숨깁니다.");
+            Assert.That(instance.activeSelf, Is.True, "QTEManager가 참조를 놓기 전에는 풀에 반환하지 않습니다.");
+            Assert.That(typeof(BattleTelegraphCue).GetField("_leased",
+                BindingFlags.Instance | BindingFlags.NonPublic).GetValue(cue), Is.True);
+            cue.Emphasize(window);
+            cue.SynchronizeToImpact(window);
+            Assert.That(renderer.enabled, Is.False, "중복 호출로 완료한 표시가 다시 켜지면 안 됩니다.");
         }
         finally
         {

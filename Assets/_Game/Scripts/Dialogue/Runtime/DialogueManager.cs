@@ -305,7 +305,8 @@ public class DialogueManager : MonoBehaviour
             null,
             battleScenarioData,
             false,
-            allowEscape);
+            allowEscape,
+            encounterContext == null || encounterContext.PlayEntryPresentation);
     }
 
     private void StartNamingProcess()

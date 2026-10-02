@@ -31,6 +31,7 @@ public sealed class BattleTelegraphCue : MonoBehaviour
     private float _authoredDuration;
     private bool _usesAuthoredAnimation;
     private bool _emphasized;
+    private bool _visualCompleted;
     private float _secondsUntilImpactAtStart;
     private float _playbackDuration;
     private Vector3 _originalScale;
@@ -98,6 +99,7 @@ public sealed class BattleTelegraphCue : MonoBehaviour
         StopAnimation();
         _followTarget = target;
         _emphasized = false;
+        _visualCompleted = false;
         _usesAuthoredAnimation = ResetAuthoredAnimation();
         // 적에게 parent하지 않아 늘어남/뒤집기 모션이 전조 크기와 방향을 바꾸지 않습니다.
         transform.SetPositionAndRotation(target.position + _worldOffset, Quaternion.identity);
@@ -126,7 +128,7 @@ public sealed class BattleTelegraphCue : MonoBehaviour
 
     public void Emphasize(float secondsUntilImpact)
     {
-        if (!_leased || _emphasized) return;
+        if (!_leased || _emphasized || _visualCompleted) return;
         StopAnimation();
         _emphasized = true;
         _sprite.color = _cueColor;
@@ -142,6 +144,7 @@ public sealed class BattleTelegraphCue : MonoBehaviour
         else
         {
             PlayLegacyAnimation(available);
+            _playbackDuration = _animation.Duration();
         }
 
         // 풀 예열/OnEnable에는 소리를 내지 않고, 실제 전조 시작에만 한 번 재생합니다.
@@ -168,7 +171,7 @@ public sealed class BattleTelegraphCue : MonoBehaviour
     private void SampleAuthoredAnimation(float progress)
     {
         if (_authoredClip == null) return;
-        // 마지막 프레임에서 유지합니다. 가져온 클립이 loop여도 처음으로 되감기지 않습니다.
+        // 재생 중에만 평가합니다. 완료 시 표시는 닫고, loop 클립의 처음으로 되감지 않습니다.
         _authoredClip.SampleAnimation(gameObject, _authoredDuration * Mathf.Clamp(progress, 0f, 0.999999f));
     }
 
@@ -190,21 +193,35 @@ public sealed class BattleTelegraphCue : MonoBehaviour
     /// <summary>방어 판정과 같은 남은 시간으로 재생합니다. 호출이 없으면 정지 상태를 유지합니다.</summary>
     public void SynchronizeToImpact(float secondsUntilImpact)
     {
-        if (!_leased || !_emphasized || _followTarget == null
+        if (!_leased || !_emphasized || _visualCompleted || _followTarget == null
             || float.IsNaN(secondsUntilImpact) || float.IsInfinity(secondsUntilImpact)) return;
         float elapsed = Mathf.Max(0f, _secondsUntilImpactAtStart - secondsUntilImpact);
+        if (elapsed >= _playbackDuration)
+        {
+            CompleteVisual();
+            return;
+        }
         if (_usesAuthoredAnimation)
             SampleAuthoredAnimation(elapsed / _playbackDuration);
         else if (_animation != null && _animation.IsActive())
             _animation.Goto(Mathf.Min(elapsed, _animation.Duration()), false);
     }
 
+    private void CompleteVisual()
+    {
+        _visualCompleted = true;
+        StopAnimation();
+        if (_sprite != null) _sprite.enabled = false;
+        // QTEManager가 아직 이 참조를 소유하므로 여기서 풀에 반환하지 않습니다.
+        // 방어창 종료/취소의 Release에서만 반환해야 다음 대여를 잘못 해제하지 않습니다.
+    }
+
     private void LateUpdate()
     {
-        if (!_leased || _sprite == null) return;
+        if (!_leased || _visualCompleted || _sprite == null) return;
         if (_followTarget == null)
         {
-            _sprite.enabled = false;
+            CompleteVisual();
             return;
         }
         transform.position = _followTarget.position + _worldOffset;
@@ -214,6 +231,7 @@ public sealed class BattleTelegraphCue : MonoBehaviour
     {
         if (!_leased) return;
         _leased = false;
+        CompleteVisual();
         ObjectPoolManager pool = _ownerPool;
         _ownerPool = null;
         if (pool != null) pool.Despawn(gameObject);
@@ -235,6 +253,7 @@ public sealed class BattleTelegraphCue : MonoBehaviour
         _leased = false;
         _ownerPool = null;
         _emphasized = false;
+        _visualCompleted = false;
         _usesAuthoredAnimation = false;
         _followTarget = null;
         if (_sprite == null) return;

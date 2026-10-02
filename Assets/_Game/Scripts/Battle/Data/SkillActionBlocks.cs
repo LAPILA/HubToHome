@@ -23,11 +23,11 @@ public enum DefenseRequirement
 }
 public enum TelegraphVisualMode
 {
-    [InspectorName("Sprite")]
+    [InspectorName("스프라이트")]
     Sprite,
-    [InspectorName("Animator Trigger")]
+    [InspectorName("애니메이션 트리거")]
     AnimatorTrigger,
-    [InspectorName("Prefab VFX")]
+    [InspectorName("이펙트 프리팹")]
     PrefabVFX
 }
 
@@ -377,12 +377,12 @@ public abstract class SkillActionBlock
     public bool Disabled;
 
     [PropertyOrder(-49)]
-    [LabelText("디자이너 라벨")]
+    [LabelText("목록 표시 이름")]
     public string DesignerLabel = string.Empty;
 
     [PropertyOrder(-48)]
     [TextArea(1, 3)]
-    [LabelText("메모")]
+    [LabelText("제작 메모")]
     public string Note = string.Empty;
 
     [PropertyOrder(-60)]
@@ -410,10 +410,10 @@ public abstract class SkillActionBlock
         if (this is Action_Wait) return "대기";
         if (this is Action_Move) return "이동";
         if (this is Action_PlayAnim) return "애니메이션";
-        if (this is Action_Damage) return "데미지";
-        if (this is Action_ApplyStatus) return "상태이상";
-        if (this is Action_QTE) return "QTE";
-        if (this is Action_VFX) return "VFX";
+        if (this is Action_Damage) return "피해 적용";
+        if (this is Action_ApplyStatus) return "상태 효과 부여";
+        if (this is Action_QTE) return "실시간 입력 (QTE)";
+        if (this is Action_VFX) return "이펙트 재생";
         if (this is Action_DefenseWindow) return "방어 대응";
         if (this is Action_Projectile) return "투사체";
         if (this is Action_SequentialMelee) return "연쇄 근접";
@@ -430,9 +430,9 @@ public abstract class SkillActionBlock
         if (this is Action_PlayAnim) return "애니메이션";
         if (this is Action_EnemyWindup) return "카메라";
         if (this is Action_Damage || this is Action_Projectile || this is Action_SequentialMelee
-            || this is Action_RapidStrikes || this is Action_AerialCrossSlash) return "데미지";
-        if (this is Action_VFX) return "VFX";
-        if (this is Action_QTE) return "QTE";
+            || this is Action_RapidStrikes || this is Action_AerialCrossSlash) return "피해";
+        if (this is Action_VFX) return "이펙트";
+        if (this is Action_QTE) return "입력";
         if (this is Action_DefenseWindow) return "방어";
         if (this is Action_ApplyStatus) return "상태이상";
         return "기타";
@@ -504,17 +504,22 @@ public class Action_Move : SkillActionBlock
 {
     public enum MoveDest
     {
+        [InspectorName("대상 앞")]
         TargetFront = 0,
+        [InspectorName("대상 뒤")]
         TargetBack = 1,
+        [InspectorName("대상 위")]
         TargetTop = 2,
+        [InspectorName("전투 중앙")]
         Center = 3,
+        [InspectorName("원래 자리")]
         OriginalPos = 4,
-        [InspectorName("타겟 앞 자동 공격 위치")]
+        [InspectorName("자동 공격 위치")]
         AttackStaging = 5
     }
     
     [LabelText("목적지")] public MoveDest Destination;
-    [LabelText("이동 시간")] public float Duration = 0.2f;
+    [LabelText("이동 시간 (초)")] public float Duration = 0.2f;
     [LabelText("이동 방식")] public Ease MoveEase = Ease.OutQuad;
     [LabelText("적 이동 높이 (0 = 지상)"), MinValue(0)] public float EnemyHopHeight;
 
@@ -602,7 +607,7 @@ public class Action_PlayAnim : SkillActionBlock
     private const float EnemyAttackReadyDuration = 0.08f;
 
     [LabelText("애니메이션 이름 (Trigger)")] public string AnimTriggerName = "Attack";
-    [LabelText("애니메이션 후 대기시간")]
+    [LabelText("애니메이션 후 대기 (초)")]
     [InfoBox("애니메이션과 VFX를 같은 박자에 맞추고 싶으면 0으로 두고, 필요한 경우에만 Wait 블록 또는 DelayAfter를 사용하세요.")]
     public float DelayAfter = 0f;
 
@@ -686,7 +691,7 @@ public class Action_PlayAnim : SkillActionBlock
 [TypeInfoBox("데미지를 입힙니다. 이전 QTE 블록의 배율이 적용됩니다.")]
 public class Action_Damage : SkillActionBlock
 {
-    [LabelText("기본 스킬 배율")] public float SkillMultiplier = 1.0f;
+    [LabelText("피해 배율 (1 = 기본값)")] public float SkillMultiplier = 1.0f;
     [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
     [LabelText("카메라 흔들림")] public bool ShakeCamera = true;
 
@@ -760,7 +765,7 @@ public class Action_Damage : SkillActionBlock
 [TypeInfoBox("지정된 대상에게 상태이상을 부여합니다.")]
 public class Action_ApplyStatus : SkillActionBlock
 {
-    [LabelText("부여할 상태이상 ID")] public string StatusID = "Sleep";
+    [LabelText("상태 효과 ID")] public string StatusID = "Sleep";
     [LabelText("지속 턴 수")] public int DurationTurns = 2;
     [ShowIf(nameof(IsHaste)), Range(0f, 3f), LabelText("가속 SPD 증가율 (0.3 = 30%)")]
     public float HasteSpeedBonus = HasteEffect.DefaultSpeedBonus;
@@ -814,7 +819,7 @@ public class Action_ApplyStatus : SkillActionBlock
 [TypeInfoBox("플레이어 스킬 전용 실시간 QTE입니다. 스킬 애니메이션/이동과 동시에 진행되고, 적 스킬에서는 무시됩니다.")]
 public class Action_QTE : SkillActionBlock
 {
-    [LabelText("제한 시간")]
+    [LabelText("제한 시간 (초)")]
     public float TimeLimit = 1.0f;
     [LabelText("성공 배율")]
     public float SuccessMultiplier = 1.5f;
@@ -876,11 +881,18 @@ public class Action_QTE : SkillActionBlock
 [TypeInfoBox("이펙트(VFX)를 재생합니다. ObjectPoolManager를 지원합니다.")]
 public class Action_VFX : SkillActionBlock
 {
-    public enum VfxPivot { ActorCenter, ActorFront, TargetCenter, TargetBottom, TargetTop }
+    public enum VfxPivot
+    {
+        [InspectorName("시전자 중심")] ActorCenter,
+        [InspectorName("시전자 앞")] ActorFront,
+        [InspectorName("대상 중심")] TargetCenter,
+        [InspectorName("대상 발밑")] TargetBottom,
+        [InspectorName("대상 머리 위")] TargetTop
+    }
     
-    [AssetsOnly, Required, LabelText("VFX 프리팹")] public GameObject VfxPrefab;
+    [AssetsOnly, Required, LabelText("이펙트 프리팹")] public GameObject VfxPrefab;
     [LabelText("소환 위치")] public VfxPivot Pivot;
-    [LabelText("Actor 회전 사용")] public bool UseActorRotation = false;
+    [LabelText("시전자 회전 사용")] public bool UseActorRotation = false;
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
     {
@@ -926,77 +938,104 @@ public class Action_DefenseWindow : SkillActionBlock
 {
     private const float LegacyDefaultAttackReadyDuration = 0.08f;
 
+    [FoldoutGroup("추가 전조 · 예약 공격", false, 40)]
     [LabelText("방어 패턴 모드")]
     public EnemyDefensePatternMode PatternMode = EnemyDefensePatternMode.TelegraphThenWindow;
 
+    [BoxGroup("대응 · 판정", order: 0)]
     [LabelText("공격 대응 방식")] public DefenseRequirement Requirement = DefenseRequirement.Any;
+    [BoxGroup("대응 · 판정")]
     [ShowIf(nameof(IsCounterable)), LabelText("반격: 피격 대상 ATK 배율"), MinValue(0.01f)]
     public float CounterDamageMultiplier = 1.5f;
     private bool IsCounterable => Requirement == DefenseRequirement.Counterable;
-    [LabelText("전조 사용")]
+    [FoldoutGroup("추가 전조 · 예약 공격")]
+    [LabelText("추가 전조 사용")]
     public bool UseTelegraph = true;
+    [FoldoutGroup("추가 전조 · 예약 공격")]
     [LabelText("전조 표현 방식")]
     [ShowIf(nameof(UseTelegraph))]
     public TelegraphVisualMode TelegraphVisualMode = TelegraphVisualMode.PrefabVFX;
-    [AssetsOnly]
+    [FoldoutGroup("추가 전조 · 예약 공격")]
+    [AssetsOnly, LabelText("전조 이펙트 프리팹")]
     [ShowIf(nameof(UseTelegraph))]
     [ValidateInput(nameof(HasRequiredWarningVfx), "Prefab VFX 전조에는 VFX Prefab이 필요합니다.")]
     public GameObject WarningVfxPrefab;
-    [ShowIf(nameof(UseTelegraph))]
-    [ValidateInput(nameof(HasRequiredWarningSprite), "Sprite 전조에는 Sprite가 필요합니다.")]
+    [FoldoutGroup("추가 전조 · 예약 공격")]
+    [LabelText("전조 스프라이트"), ShowIf(nameof(UseTelegraph))]
+    [ValidateInput(nameof(HasRequiredWarningSprite), "스프라이트 전조에는 이미지가 필요합니다.")]
     public Sprite WarningSprite;
-    [ShowIf(nameof(UseTelegraph))]
-    [ValidateInput(nameof(HasRequiredTelegraphTrigger), "Animator Trigger 전조에는 Trigger 이름이 필요합니다.")]
+    [FoldoutGroup("추가 전조 · 예약 공격")]
+    [LabelText("전조 애니메이션 트리거"), ShowIf(nameof(UseTelegraph))]
+    [ValidateInput(nameof(HasRequiredTelegraphTrigger), "애니메이션 전조에는 트리거 이름이 필요합니다.")]
     public string TelegraphAnimatorTriggerName = "";
-    [ShowIf(nameof(UseTelegraph))]
+    [FoldoutGroup("추가 전조 · 예약 공격")]
+    [LabelText("추가 전조 부착 피벗"), ShowIf(nameof(UseTelegraph))]
     public string TelegraphAttachPivotName = CharacterPivotId.Back;
-    [LabelText("전조 지속 시간")]
+    [FoldoutGroup("추가 전조 · 예약 공격")]
+    [LabelText("전조 지속 시간 (초)")]
     [MinValue(0f)]
     [ValidateInput(nameof(HasValidTelegraphDuration), "전조 후 판정 모드는 0보다 긴 전조 시간이 필요합니다.")]
     public float TelegraphDuration = 0.8f;
-    [LabelText("전조 후 준비 시간")]
+    [FoldoutGroup("추가 전조 · 예약 공격")]
+    [LabelText("전조 후 준비 시간 (초)")]
     [MinValue(0f)] public float DefenseOpenDelay = 0f;
-    [LabelText("판정 시간")]
+    [BoxGroup("대응 · 판정")]
+    [LabelText("판정 시간 (초)")]
     [ValidateInput(nameof(HasValidTimeWindow), "방어 판정 시간은 0보다 커야 합니다.")]
     public float TimeWindow = 0.8f;
+    [FoldoutGroup("구형 호환 설정", false, 50)]
     [LabelText("구형 모드: BAD도 피해 방지")]
     public bool AllowNearSuccess = true;
+    [FoldoutGroup("고급 · 개별 판정", false, 30)]
     [LabelText("개별 판정 구간 사용")]
     public bool OverrideTimingProfile;
+    [FoldoutGroup("고급 · 개별 판정")]
     [ShowIf(nameof(OverrideTimingProfile))]
     [LabelText("저스트 / 구 Great / 구 Good (초)")]
     [Tooltip("Z/X/C 모드에서는 첫 값이 저스트 가드 구간입니다. 회피/연계 반격 구간은 QTEManager의 공통 설정을 사용합니다. Great/Good는 구형 방어 모드에만 사용됩니다.")]
     [ValidateInput(nameof(HasValidTimingProfile), "판정 구간은 0 이상, Perfect ≤ Great ≤ Good ≤ 판정 시간 순서여야 합니다.")]
     public DefenseTimingProfile TimingProfile = new DefenseTimingProfile(0.12f, 0.22f, 0.40f);
-    [LabelText("실패 데미지 배율")] public float FailDamageMultiplier = 1f;
+    [BoxGroup("대응 · 판정")]
+    [LabelText("실패 피해 배율 (1 = 기본값)")] public float FailDamageMultiplier = 1f;
+    [FoldoutGroup("실패 연출", false, 20)]
     [LabelText("실패 시 카메라 흔들기")] public bool ShakeOnFail = true;
+    [FoldoutGroup("실패 연출")]
     [ShowIf(nameof(ShakeOnFail)), LabelText("실패 흔들림 강도"), MinValue(0f)]
     [ValidateInput(nameof(HasValidFailShakeIntensity), "실패 흔들림 강도는 0보다 커야 합니다.")]
     public float FailShakeIntensity = 0.35f;
-    [ShowIf(nameof(ShakeOnFail)), LabelText("실패 흔들림 시간"), MinValue(0f)]
+    [FoldoutGroup("실패 연출")]
+    [ShowIf(nameof(ShakeOnFail)), LabelText("실패 흔들림 시간 (초)"), MinValue(0f)]
     [ValidateInput(nameof(HasValidFailShakeDuration), "실패 흔들림 시간은 0보다 커야 합니다.")]
     public float FailShakeDuration = 0.2f;
+    [FoldoutGroup("실패 연출")]
     [ShowIf(nameof(ShakeOnFail)), LabelText("카메라 안전 등급")]
     public CameraShakeSafety FailShakeSafety = CameraShakeSafety.GameplaySafe;
-    [LabelText("판정 후 딜레이")] public float DelayAfter = 0.1f;
+    [BoxGroup("공격 모션 · 전조", order: 10)]
+    [LabelText("판정 후 대기 (초)")] public float DelayAfter = 0.1f;
+    [BoxGroup("공격 모션 · 전조")]
     [LabelText("전조 후 공격 애니메이션 트리거")]
     public string AttackAnimTriggerName = "";
-    [LabelText("공격 모션 시작 → 타격 시간"), MinValue(0f)]
+    [BoxGroup("공격 모션 · 전조")]
+    [LabelText("공격 시작 → 타격 시간 (초)"), MinValue(0f)]
     [Tooltip("클립 시작부터 실제 타격 프레임까지의 초입니다. 방어 판정 시간 이하여야 합니다. 0은 기존처럼 판정 시점에 모션을 시작합니다.")]
     public float AttackAnimationLeadTime;
+    [BoxGroup("공격 모션 · 전조")]
     [AssetsOnly, LabelText("타격 직전 전조 프리팹")]
     [Tooltip("BattleTelegraphCue가 붙은 프리팹. 실제 대응 성공 구간이 열릴 때 표시합니다. 일반 공격은 패링, 회피 전용은 회피, 특수공격은 반격 구간을 사용합니다.")]
     public GameObject ImpactCuePrefab;
     // 기존 자산 호환용. 전조 시작은 이제 판정 정책에서 계산하므로 사용하지 않습니다.
     [HideInInspector]
     public float ImpactCueLeadTime = 0.3f;
+    [BoxGroup("공격 모션 · 전조")]
     [ShowIf(nameof(ImpactCuePrefab)), LabelText("전조 표시 피벗")]
     public string ImpactCuePivotName = CharacterPivotId.Center;
-    [LabelText("공격 준비 자세 시간")]
+    [BoxGroup("공격 모션 · 전조")]
+    [LabelText("공격 준비 자세 시간 (초)")]
     [MinValue(0f)]
     [Tooltip("적이 실제 공격을 시작하기 전에 준비 자세를 유지하는 시간입니다. 이 시간에도 Z/X/C 입력을 버퍼링합니다.")]
     public float AttackReadyDuration = 0.08f;
-    [LabelText("구형 공격 애니메이션 후 대기")]
+    [FoldoutGroup("구형 호환 설정")]
+    [LabelText("구형 공격 애니메이션 후 대기 (초)")]
     [MinValue(0f)]
     [Tooltip("레거시 데이터 호환용입니다. 별도 대기는 적용하지 않습니다. 클립의 타격 시점은 '공격 모션 시작 → 타격 시간'으로 맞춥니다.")]
     public float AttackAnimDelay = 0f;
@@ -1408,9 +1447,9 @@ public class Action_DefenseWindow : SkillActionBlock
 public class Action_Projectile : SkillActionBlock
 {
     [AssetsOnly, Required, LabelText("투사체 프리팹")] public GameObject ProjectilePrefab;
-    [AssetsOnly, LabelText("충돌 VFX 프리팹")] public GameObject ImpactVFXPrefab;
-    [LabelText("비행 시간")] public float FlightDuration = 0.3f;
-    [LabelText("데미지 배율")] public float DamageMultiplier = 1.0f;
+    [AssetsOnly, LabelText("명중 이펙트 프리팹")] public GameObject ImpactVFXPrefab;
+    [LabelText("비행 시간 (초)")] public float FlightDuration = 0.3f;
+    [LabelText("피해 배율 (1 = 기본값)")] public float DamageMultiplier = 1.0f;
     [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
@@ -1540,10 +1579,10 @@ public class Action_Projectile : SkillActionBlock
 public class Action_SequentialMelee : SkillActionBlock
 {
     [LabelText("공격 애니메이션 트리거"), Required] public string AttackAnimTrigger = "Attack";
-    [LabelText("데미지 배율")] public float DamageMultiplier = 0.8f;
+    [LabelText("피해 배율 (1 = 기본값)")] public float DamageMultiplier = 0.8f;
     [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
-    [LabelText("대시 속도")] public float DashSpeed = 0.15f;
-    [AssetsOnly, LabelText("히트 VFX 프리팹")] public GameObject HitVfxPrefab;
+    [LabelText("대상 간 이동 시간 (초)")] public float DashSpeed = 0.15f;
+    [AssetsOnly, LabelText("명중 이펙트 프리팹")] public GameObject HitVfxPrefab;
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
     {

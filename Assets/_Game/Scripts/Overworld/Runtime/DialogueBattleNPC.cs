@@ -15,7 +15,9 @@ public class DialogueBattleNPC : InteractableBase,
     IPreemptiveAttackTarget,
     IEncounterSource,
     IEncounterOutcomeSource,
-    IEncounterAbortSource
+    IEncounterAbortSource,
+    IEncounterEntryPresentationPolicy,
+    IEncounterPreparationSource
 {
     private const string AttackTriggerName = "Attack";
     private const float MinimumApproachDistance = 0.1f;
@@ -33,6 +35,9 @@ public class DialogueBattleNPC : InteractableBase,
     [SerializeField] private BattleScenarioData _fallbackBattleScenarioData;
     [BoxGroup("Battle Encounter")]
     [SerializeField] private bool _useDedicatedBattleScene;
+    [BoxGroup("Battle Encounter"), LabelText("심리스 진입 절단 연출")]
+    [SerializeField] private bool _playBattleEntryPresentation = true;
+    public bool PlayBattleEntryPresentation => _playBattleEntryPresentation;
     [BoxGroup("Battle Encounter"), ShowIf(nameof(_useDedicatedBattleScene))]
     [SerializeField] private string _battleSceneName = "BattleScene";
     [BoxGroup("Battle Encounter"), ShowIf(nameof(_useDedicatedBattleScene))]
@@ -189,7 +194,8 @@ public class DialogueBattleNPC : InteractableBase,
                 ? null
                 : _encounterIdOverride.Trim(),
             DefeatEnemyOnVictory = _defeatOnVictory,
-            AllowEscape = _allowEscape
+            AllowEscape = _allowEscape,
+            PlayEntryPresentation = _playBattleEntryPresentation
         };
 
         DialogueManager.Instance?.StartDialogue(_dialogue, null, encounterContext);
@@ -479,7 +485,6 @@ public class DialogueBattleNPC : InteractableBase,
         }
 
         CaptureNpcPresentation();
-        HideNpcPresentation();
 
         bool started = BattleEncounterService.StartEncounter(
             _stagedPlayer,
@@ -715,6 +720,8 @@ public class DialogueBattleNPC : InteractableBase,
         _highlightWasActive = _highlightIndicator != null && _highlightIndicator.activeSelf;
         _presentationCaptured = true;
     }
+
+    public void OnEncounterPreparing() => HideNpcPresentation();
 
     private void HideNpcPresentation()
     {

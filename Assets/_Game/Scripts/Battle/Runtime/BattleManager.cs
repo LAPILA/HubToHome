@@ -78,6 +78,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [SerializeField] private float _postRunEnemyAlpha = 0.5f;
     [Tooltip("심리스 전투 종료 후 이전 맵 BGM으로 돌아가는 페이드 시간")]
     [SerializeField, Min(0f)] private float _seamlessBgmRestoreFadeDuration = 0.6f;
+    private SeamlessBattleEntryPresentation _seamlessEntryPresentation;
+    private int _seamlessEntryVersion;
     
     [SerializeField] private GameObject _battleUICanvas;
     [SerializeField] private GameObject _enemyBasePrefab;
@@ -649,6 +651,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void OnDestroy()
     {
+        _seamlessEntryPresentation?.Cancel();
         (_turnQteModuleController as System.IDisposable)?.Dispose();
         CancelPartyWaveTransition();
         _linkCounterService?.CancelActive();
@@ -872,7 +875,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         List<EnemyData> encounterEnemies,
         PlayerController playerCtrl,
         IEncounterSource encounterSource,
-        out string error)
+        out string error,
+        bool playEntryPresentation = true)
     {
         if (!CanStartSeamlessBattle(encounterEnemies, playerCtrl, out error))
             return false;
@@ -885,10 +889,50 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _isBattleActive = true;
         _activeEncounterSource = encounterSource;
         _activeEncounterPlayer = playerCtrl;
-        StartCoroutine(StartSeamlessBattleRoutine(new List<EnemyData>(encounterEnemies), playerCtrl));
+        StartCoroutine(StartSeamlessBattleRoutine(new List<EnemyData>(encounterEnemies), playerCtrl, playEntryPresentation));
         return true;
     }
-    private IEnumerator StartSeamlessBattleRoutine(List<EnemyData> encounterEnemies, PlayerController playerCtrl)
+    private IEnumerator StartSeamlessBattleRoutine(List<EnemyData> encounterEnemies, PlayerController playerCtrl, bool playEntryPresentation)
+    {
+        int version = ++_seamlessEntryVersion;
+        SeamlessBattleEntryPresentation entry = null;
+        bool completed = false;
+        try
+        {
+            playerCtrl.HoldForBattleEntry();
+            GameStateManager.Instance?.ChangeState(GameState.Cutscene);
+            SeamlessBattleHost host = SeamlessBattleHost.Instance;
+            if (playEntryPresentation && host != null && host.BattleManager == this)
+                entry = host.BeginEntryPresentation(playerCtrl);
+            _seamlessEntryPresentation = entry;
+            bool hasEntryPresentation = entry != null;
+            if (entry != null) yield return entry.Cover();
+            if (!_isBattleActive || playerCtrl == null || version != _seamlessEntryVersion
+                || (hasEntryPresentation && (entry == null || !entry.IsCovered))) yield break;
+            // 참가자·BattleIdle·UI·전투 카메라 전환은 완전 암전 이후에만 수행합니다.
+            if (_activeEncounterSource is IEncounterPreparationSource preparationSource)
+                preparationSource.OnEncounterPreparing();
+            playerCtrl.SetBattleMode(true);
+            GameStateManager.Instance?.ChangeState(GameState.Battle);
+            yield return PrepareSeamlessBattleRoutine(encounterEnemies, playerCtrl);
+            if (!_isBattleActive || playerCtrl == null || version != _seamlessEntryVersion
+                || (hasEntryPresentation && (entry == null || !entry.IsPlaying))) yield break;
+            yield return SeamlessIntroRoutine(playerCtrl, entry, version);
+            completed = entry == null || entry.WasCompleted;
+        }
+        finally
+        {
+            if (version == _seamlessEntryVersion)
+            {
+                if (entry != null) entry.Cancel();
+                _seamlessEntryPresentation = null;
+                if (!completed && _isBattleActive && !_isAbortCleanupInProgress)
+                    AbortSeamlessBattle();
+            }
+        }
+    }
+
+    private IEnumerator PrepareSeamlessBattleRoutine(List<EnemyData> encounterEnemies, PlayerController playerCtrl)
     {
         Debug.Log("<color=cyan>[BattleManager] 심리스 전투 연출 시작!</color>");
 
@@ -898,6 +942,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             GlobalDataManager.Instance.PendingBattleBGM = null;
 
         yield return StartCoroutine(WarmupBattlePresentation());
+
+        if (!_isBattleActive || playerCtrl == null) yield break;
 
         ResetBattlePartyCollections();
         PlayerCharacter playerChar = playerCtrl.GetComponent<PlayerCharacter>();
@@ -992,20 +1038,25 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         }
 
         globalData?.PendingEnemies.Clear();
-        StartCoroutine(SeamlessIntroRoutine(playerCtrl));
     }
 
-    private IEnumerator SeamlessIntroRoutine(PlayerController playerCtrl)
+    private IEnumerator SeamlessIntroRoutine(PlayerController playerCtrl, SeamlessBattleEntryPresentation entry, int entryVersion)
     {
         var pm = PositionManager.Instance;
         if (pm != null && playerCtrl != null)
         {
             Vector3 battlePos = pm.GetPlayerDefaultPos(0);
-            playerCtrl.PlayBattleAnim(PlayerCharacter.HashBattleMove);
-            
-            SetGhostTrail(playerCtrl.GetComponent<CharacterBase>(), true);
-            yield return playerCtrl.transform.DOMove(battlePos, 0.5f).SetEase(Ease.OutExpo).WaitForCompletion();
-            SetGhostTrail(playerCtrl.GetComponent<CharacterBase>(), false);
+            if (entry != null)
+            {
+                playerCtrl.transform.position = battlePos;
+            }
+            else
+            {
+                playerCtrl.PlayBattleAnim(PlayerCharacter.HashBattleMove);
+                SetGhostTrail(playerCtrl.GetComponent<CharacterBase>(), true);
+                yield return playerCtrl.transform.DOMove(battlePos, 0.5f).SetEase(Ease.OutExpo).WaitForCompletion();
+                SetGhostTrail(playerCtrl.GetComponent<CharacterBase>(), false);
+            }
             
             playerCtrl.SetFacingDirection(3);
             playerCtrl.SetBattleMode(true);
@@ -1028,6 +1079,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _lastRewardResult = null;
         _playerPreemptiveAttackAvailable = GlobalDataManager.Instance != null
             && GlobalDataManager.Instance.CurrentEncounterPlayerPreemptiveAttack;
+        if (entry != null)
+        {
+            yield return entry.Reveal(BattleUIController.Instance);
+            if (!_isBattleActive || playerCtrl == null || entryVersion != _seamlessEntryVersion
+                || !entry.WasCompleted) yield break;
+        }
         yield return StartCoroutine(PlayBattleStartedScenarioSequence());
         if (!HasImmediateBattleStartScenario())
         {
@@ -2134,6 +2191,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _isAbortCleanupInProgress = true;
         try
         {
+            _seamlessEntryVersion++;
+            _seamlessEntryPresentation?.Cancel();
             _linkCounterService?.CancelActive();
             StopAllCoroutines();
             NotifyEncounterAbortedIfSupported(ResolveActiveEncounterPlayer());
@@ -2167,6 +2226,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (_isDedicatedBattleScene)
             return;
 
+        _seamlessEntryPresentation?.Cancel();
+        _seamlessEntryPresentation = null;
+        _seamlessEntryVersion++;
         CancelPartyWaveTransition();
         bool isVictory = outcome == BattleEncounterOutcome.Victory;
         _linkCounterService?.CancelActive();

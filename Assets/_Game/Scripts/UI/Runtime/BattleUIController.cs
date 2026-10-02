@@ -30,6 +30,23 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     public static float JuiceDurationScale => Instance != null ? Mathf.Clamp(Instance._juiceDurationScale, 0.5f, 2f) : 1f;
     public Camera WorldCamera => _worldCamera;
 
+    /// <summary>OnBattleStarted에서 데이터/레이아웃을 준비한 뒤에만 호출합니다.</summary>
+    public BattleHudEntryMotion BeginEntryPresentation(float distance)
+    {
+        _partyPanelTween?.Kill(false);
+        _partyPanelTween = null;
+        _portraitTransition?.Kill(false);
+        _portraitTransition = null;
+        Canvas.ForceUpdateCanvases();
+        return new BattleHudEntryMotion(distance,
+            _hudDecoration != null ? _hudDecoration.transform as RectTransform : null,
+            _partyStatusPanel,
+            _battleMenuUI != null ? _battleMenuUI.transform as RectTransform : null,
+            _battleMenuUI != null ? _battleMenuUI.SubMenuRoot : null,
+            _largePortrait != null ? _largePortrait.rectTransform : null,
+            _inputHints != null ? _inputHints.transform as RectTransform : null);
+    }
+
     #region [ UI Components ]
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private Transform _turnQueueContainer;
     [BoxGroup("Turn Queue"), LabelWidth(120)] [SerializeField] private GameObject _turnIconPrefab;

@@ -8,6 +8,18 @@ public interface IEncounterSource
     void OnEncounterResolved(bool victory, PlayerController player);
 }
 
+/// <summary>개별 조우에서 일반 심리스 진입 연출을 생략할 수 있습니다.</summary>
+public interface IEncounterEntryPresentationPolicy
+{
+    bool PlayBattleEntryPresentation { get; }
+}
+
+/// <summary>심리스 진입 덮개가 준비된 뒤 원본 NPC 등 필드 표시를 전환합니다.</summary>
+public interface IEncounterPreparationSource
+{
+    void OnEncounterPreparing();
+}
+
 public interface IEncounterOutcomeSource
 {
     void OnEncounterResolved(BattleEncounterOutcome outcome, PlayerController player);
@@ -124,7 +136,8 @@ public static class BattleEncounterService
         IEncounterSource encounterSource = null,
         BattleScenarioData battleScenarioData = null,
         bool playerPreemptiveAttack = false,
-        bool allowEscape = true)
+        bool allowEscape = true,
+        bool playEntryPresentation = true)
     {
         if (player == null)
         {
@@ -193,12 +206,15 @@ public static class BattleEncounterService
                 defeatsOnVictory,
                 battleScenarioData,
                 playerPreemptiveAttack,
-                allowEscape);
+                allowEscape,
+                deferBattlePresentation: useSeamlessBattle);
 
             if (useSeamlessBattle)
             {
                 seamlessManager.SetBattleScenarioData(battleScenarioData);
-                if (seamlessManager.TryStartSeamlessBattle(encounterEnemies, player, encounterSource, out string startError))
+                if (encounterSource is IEncounterEntryPresentationPolicy entryPolicy)
+                    playEntryPresentation &= entryPolicy.PlayBattleEntryPresentation;
+                if (seamlessManager.TryStartSeamlessBattle(encounterEnemies, player, encounterSource, out string startError, playEntryPresentation))
                 {
                     transaction.Commit();
                     return true;
@@ -298,7 +314,8 @@ public static class BattleEncounterService
         bool defeatsOnVictory,
         BattleScenarioData battleScenarioData,
         bool playerPreemptiveAttack,
-        bool allowEscape)
+        bool allowEscape,
+        bool deferBattlePresentation)
     {
         global.LastOverworldScene = SceneManager.GetActiveScene().name;
         global.PendingEnemies = new List<EnemyData>(encounterEnemies);
@@ -311,9 +328,17 @@ public static class BattleEncounterService
             playerPreemptiveAttack,
             allowEscape);
 
-        player.SetBattleMode(true);
         player.SavePositionToGlobal();
-        gameStateManager?.ChangeState(GameState.Battle);
+        if (deferBattlePresentation)
+        {
+            player.HoldForBattleEntry();
+            gameStateManager?.ChangeState(GameState.Cutscene);
+        }
+        else
+        {
+            player.SetBattleMode(true);
+            gameStateManager?.ChangeState(GameState.Battle);
+        }
     }
 
     private sealed class EncounterStartTransaction

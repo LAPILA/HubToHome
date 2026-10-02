@@ -203,10 +203,13 @@ namespace HubToHome.EditorTools.SkillMaker
             _addBlock = Button("＋ 블록 추가", ShowBlockMenu, _blockTools, "sm-primary");
             _up = Button("↑", () => EditBlock(() => _blockEditor.Move(_blockIndex, _blockIndex - 1)), _blockTools);
             _down = Button("↓", () => EditBlock(() => _blockEditor.Move(_blockIndex, _blockIndex + 1)), _blockTools);
+            _up.tooltip = "선택 블록을 한 칸 위로 이동 · 위에서 아래로 실행됩니다.";
+            _down.tooltip = "선택 블록을 한 칸 아래로 이동 · Ctrl+Z로 되돌릴 수 있습니다.";
             _copyBlock = Button("복제", () => EditBlock(() => _blockEditor.Duplicate(_blockIndex)), _blockTools);
             _removeBlock = Button("삭제", () => EditBlock(() => _blockEditor.Remove(_blockIndex)), _blockTools);
             _removeBlock.tooltip = "선택 블록 삭제 · Ctrl+Z로 복구할 수 있습니다.";
             blocks.Add(_blockTools);
+            blocks.Add(Text("위 → 아래 순서로 실행  ·  블록 선택 → 아래에서 설정  ·  Ctrl+Z 되돌리기", "sm-block-guide"));
             _blockList = new ListView(_blocks, 46, MakeBlockRow, BindBlockRow)
             { selectionType = SelectionType.Single };
             _blockList.AddToClassList("cm-list");
@@ -446,7 +449,7 @@ namespace HubToHome.EditorTools.SkillMaker
             foreach (EnemyAttackTimelineEntry entry in _report.Entries)
             {
                 string timing = !entry.Enabled ? "비활성" : !entry.TimingSupported ? "시간 미지원"
-                    : entry.StartTime.ToString("0.00") + "–" + entry.EndTime.ToString("0.00") + "s" + (entry.IsVariable ? "+" : "");
+                    : entry.StartTime.ToString("0.00") + "–" + entry.EndTime.ToString("0.00") + "초" + (entry.IsVariable ? " + 가변" : "");
                 _blocks.Add(new BlockRow { Title = entry.Label, Category = entry.PhaseLabel, Timing = timing, Enabled = entry.Enabled });
             }
             if (_report == null && _skill.ActionTimeline != null)
@@ -561,7 +564,7 @@ namespace HubToHome.EditorTools.SkillMaker
             foreach (Type type in SkillMakerBlockEditor.BlockTypes)
             {
                 Type captured = type;
-                menu.AddItem(new GUIContent(SkillMakerBlockEditor.GetBlockName(type)), false,
+                menu.AddItem(new GUIContent(SkillMakerBlockEditor.GetBlockMenuPath(type), SkillMakerBlockEditor.GetBlockHelp(type)), false,
                     () => EditBlock(() => _blockEditor.Insert(_blockIndex >= 0 ? _blockIndex + 1 : 0, captured)));
             }
             menu.ShowAsContext();
@@ -781,6 +784,7 @@ namespace HubToHome.EditorTools.SkillMaker
             row.Q<Label>("number").text = (index + 1).ToString("00");
             row.Q<Label>("title").text = block.Title;
             row.Q<Label>("detail").text = block.Category + "   ·   " + block.Timing;
+            row.tooltip = block.Title + "\n" + block.Category + " · " + block.Timing;
             row.EnableInClassList("sm-disabled", !block.Enabled);
         }
 

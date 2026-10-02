@@ -48,6 +48,10 @@ Developer: "Choosing a category opens its Category Window; CONFIG may show setti
 The shared scene-local composition root used by both Room-based seamless Battle and the dedicated BattleScene. Its prefab is the single source for one BattleManager, PositionManager, battle UI root, duplicate-root prevention, and emergency abort delegation; the dedicated scene keeps only scene presentation objects and explicit dedicated-mode overrides. BattleManager still owns combat rules and the shared seamless cleanup boundary.
 _Avoid_: copying BattleManager, PositionManager, or battle UI into the dedicated scene, putting encounter result policy in the Host, leaving multiple Host roots active, or destroying individual child singletons as duplicate cleanup
 
+**Seamless Entry Presentation**:
+Default timing is 2s with 0.5s zoom. Input/movement is held without changing the overworld pose or camera composition until a black frame is displayed; only then enter Battle mode, notify IEncounterPreparationSource to hide the original NPC, and prepare the battle. Preparation overlaps the minimum black hold.
+Ordinary seamless encounter entry uses Host-owned `BattleEntrySettings` and a reusable `SeamlessBattleEntryPresentation`: warning/zoom/diagonal cover → existing preparation under black → HUD reveal → existing scenario/module start. Dedicated BattleScene entry is unchanged. `IEncounterEntryPresentationPolicy`/DialogueEncounterContext allow opt-out. CameraController owns zoom tokens; BattleManager owns abort cleanup; the presenter owns only unscaled visuals and HUD restoration. See [entry handoff](AIAssets/yjlim/feedback/2026-10-02-battle-entry-reference.md).
+
 **Primary Mode**:
 The top-level playable space. Current planning treats only `Overworld` and `Battle` as Primary Modes.
 _Avoid_: treating QTE, shooter, boxing, dialogue, cinematic, menu, or minigame variants as Primary Modes.

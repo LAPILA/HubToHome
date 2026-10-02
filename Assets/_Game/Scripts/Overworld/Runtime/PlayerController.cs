@@ -16,6 +16,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     // ── 플레이어 상태 ─────────────────────────────────────────
     public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
     public PlayerState State { get; private set; } = PlayerState.Idle;
+    public bool IsBattleEntryHeld { get; private set; }
 
     // ── 이동 설정 ─────────────────────────────────────────────
     [Header("Movement")]
@@ -151,6 +152,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void Update()
     {
+        if (IsBattleEntryHeld) return;
         // 전투 중에는 GameState가 Cutscene으로 잠겨 있어도 Z/X/C 방어 입력은
         // 먼저 읽어야 합니다. 이동/상호작용은 아래와 같이 완전히 차단합니다.
         if (State == PlayerState.InBattle)
@@ -190,6 +192,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void OnDisable()
     {
+        IsBattleEntryHeld = false;
         ActiveDefensePresentation?.Dispose();
         _defensePresentationGate.Close();
         _bufferedDefenseInput = DefenseInput.None;
@@ -339,6 +342,11 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void FixedUpdate()
     {
+        if (IsBattleEntryHeld)
+        {
+            _rb.linearVelocity = Vector2.zero;
+            return;
+        }
         // 상태 잠금 시 물리 이동 즉시 정지 (미끄러짐 방지)
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove)
         {
@@ -492,6 +500,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     public bool TryStartPreemptiveAttack()
     {
         if (!isActiveAndEnabled) return false;
+        if (IsBattleEntryHeld) return false;
         if (_preemptiveAttackInProgress) return false;
         if (State == PlayerState.InBattle) return false;
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) return false;
@@ -682,10 +691,19 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         SyncOverworldAttackDirection();
     }
 
+    /// <summary>암전 전에는 필드 모습/구도를 유지하고 이동·입력만 잠급니다.</summary>
+    public void HoldForBattleEntry()
+    {
+        IsBattleEntryHeld = true;
+        CloseDefenseInputWindow();
+        StopOverworldMovement();
+    }
+
     // ── 전투 모드 전환 ────────────────────────────────────────
     /// <summary>전투 씬에서 이동/상호작용 입력을 완전히 잠급니다.</summary>
     public void SetBattleMode(bool active)
     {
+        IsBattleEntryHeld = false;
         if (_rb == null) _rb = GetComponent<Rigidbody2D>();
 
         if (active)

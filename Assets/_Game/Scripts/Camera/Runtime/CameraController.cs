@@ -185,6 +185,24 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         _timelineLease = CameraControlLease.None;
     }
 
+    /// <summary>진입 확대도 기존 명령 소유권과 연속 픽셀 줌의 복구 경계를 사용합니다.</summary>
+    public bool TryFocusEncounter(Transform target, float sizeRatio, float duration,
+        out CameraCommandToken token, out string error)
+    {
+        token = default;
+        if (!EnsureReady(out error)) return false;
+        float size = _vCam.Lens.OrthographicSize * Mathf.Clamp(sizeRatio, 0.8f, 1f);
+        if (!ValidateCommand(target, size, duration, CameraControlLease.None, out error)) return false;
+        StopBattleMotion();
+        StopTargetFraming();
+        KillCameraTweens();
+        // 필드 Follow/화면 구도를 보존합니다. 전투 구도는 암전 이후에 설정합니다.
+        BeginContinuousBattleZoom();
+        TweenLens(Mathf.Max(0.5f, size), duration);
+        token = new CameraCommandToken(++_commandVersion);
+        return true;
+    }
+
     public bool TryFocusBattleCenter(Transform center, out CameraCommandToken token, out string error)
     {
         float overview = ResolveSettings(ResolveResetStyle(), _defaultLensSize, true).OrthographicSize;

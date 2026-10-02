@@ -81,6 +81,8 @@ namespace HubToHome.EditorTools.SkillMaker
 
             if (_skill.ActionTimeline[index] is Action_DefenseWindow defense)
                 EditorGUILayout.HelpBox(GetDefenseAuthoringHelp(defense.Requirement), MessageType.Info);
+            else
+                EditorGUILayout.HelpBox(GetBlockHelp(_skill.ActionTimeline[index].GetType()), MessageType.Info);
 
             EnsureTree();
             PropertyTree drawingTree = _tree;
@@ -226,10 +228,10 @@ namespace HubToHome.EditorTools.SkillMaker
             if (typeof(Action_Wait).IsAssignableFrom(type)) return "대기";
             if (typeof(Action_Move).IsAssignableFrom(type)) return "이동";
             if (typeof(Action_PlayAnim).IsAssignableFrom(type)) return "애니메이션";
-            if (typeof(Action_Damage).IsAssignableFrom(type)) return "데미지";
-            if (typeof(Action_ApplyStatus).IsAssignableFrom(type)) return "상태이상";
-            if (typeof(Action_QTE).IsAssignableFrom(type)) return "QTE";
-            if (typeof(Action_VFX).IsAssignableFrom(type)) return "VFX";
+            if (typeof(Action_Damage).IsAssignableFrom(type)) return "피해 적용";
+            if (typeof(Action_ApplyStatus).IsAssignableFrom(type)) return "상태 효과 부여";
+            if (typeof(Action_QTE).IsAssignableFrom(type)) return "실시간 입력 (QTE)";
+            if (typeof(Action_VFX).IsAssignableFrom(type)) return "이펙트 재생";
             if (typeof(Action_DefenseWindow).IsAssignableFrom(type)) return "방어 대응";
             if (typeof(Action_Projectile).IsAssignableFrom(type)) return "투사체";
             if (typeof(Action_SequentialMelee).IsAssignableFrom(type)) return "연쇄 근접";
@@ -239,11 +241,45 @@ namespace HubToHome.EditorTools.SkillMaker
             return type.Name.Replace("Action_", string.Empty);
         }
 
+        internal static string GetBlockMenuPath(Type type)
+        {
+            string category = typeof(Action_QTE).IsAssignableFrom(type)
+                || typeof(Action_RapidStrikes).IsAssignableFrom(type)
+                || typeof(Action_AerialCrossSlash).IsAssignableFrom(type) ? "아군 전용"
+                : typeof(Action_DefenseWindow).IsAssignableFrom(type)
+                    || typeof(Action_EnemyWindup).IsAssignableFrom(type) ? "적 공격"
+                : typeof(Action_Damage).IsAssignableFrom(type) || typeof(Action_ApplyStatus).IsAssignableFrom(type)
+                    || typeof(Action_Projectile).IsAssignableFrom(type) || typeof(Action_SequentialMelee).IsAssignableFrom(type)
+                    ? "공통 · 피해와 효과"
+                : typeof(Action_Wait).IsAssignableFrom(type) || typeof(Action_Move).IsAssignableFrom(type)
+                    || typeof(Action_PlayAnim).IsAssignableFrom(type) || typeof(Action_VFX).IsAssignableFrom(type)
+                    ? "공통 · 흐름과 연출" : "사용자 정의";
+            return category + "/" + GetBlockName(type);
+        }
+
+        internal static string GetBlockHelp(Type type)
+        {
+            if (typeof(Action_Wait).IsAssignableFrom(type)) return "공통 · 다음 블록으로 넘어가기 전에 기다립니다. 시간은 초 단위입니다.";
+            if (typeof(Action_Move).IsAssignableFrom(type)) return "공통 · 시전자를 지정 위치로 이동합니다. 일반 접근은 ‘자동 공격 위치’, 마무리는 ‘원래 자리’를 사용합니다. 이동만 하며 피해는 별도 블록입니다.";
+            if (typeof(Action_PlayAnim).IsAssignableFrom(type)) return "공통 · Animator에 등록된 트리거를 실행합니다. 이름은 대소문자까지 일치해야 합니다. 피해는 별도로 적용합니다.";
+            if (typeof(Action_Damage).IsAssignableFrom(type)) return "공통 · 선택 대상에 피해를 적용합니다. 배율 1 = 기본 배율, 1.5 = 150%입니다. 적 스킬은 앞에 ‘방어 대응’을 배치하세요.";
+            if (typeof(Action_ApplyStatus).IsAssignableFrom(type)) return "공통 · 선택 대상에 상태 효과를 부여합니다. 상태 ID는 표시 이름이 아닌 내부 식별자입니다. 지속 시간은 해당 캐릭터의 턴 기준입니다.";
+            if (typeof(Action_QTE).IsAssignableFrom(type)) return "아군 전용 · 입력을 시작한 뒤 이동·애니메이션과 동시에 진행합니다. 피해 블록이 결과를 기다립니다. 적의 Z/X/C 대응은 이 블록이 아닌 ‘방어 대응’입니다.";
+            if (typeof(Action_VFX).IsAssignableFrom(type)) return "공통 · 지정 위치에 이펙트 프리팹을 재생합니다. 피해는 발생시키지 않습니다. 적 타격 직전 전조는 ‘방어 대응’의 전조 프리팹으로 지정하세요.";
+            if (typeof(Action_DefenseWindow).IsAssignableFrom(type)) return "적 공격 · Z/X/C 방어 입력과 타격 시점을 연결합니다. 바로 뒤에 피해·투사체·연쇄 근접 중 하나를 배치하세요.";
+            if (typeof(Action_Projectile).IsAssignableFrom(type)) return "공통 · 투사체 이동과 충돌 피해를 함께 처리합니다. 같은 타격의 ‘피해 적용’을 중복 추가하지 마세요. 적은 앞에 ‘방어 대응’을 배치합니다.";
+            if (typeof(Action_SequentialMelee).IsAssignableFrom(type)) return "공통 · 선택한 대상들을 섞인 순서로 찾아가 공격하고 피해를 줍니다. 이동 시간은 초 단위입니다. 적은 앞에 ‘방어 대응’을 배치합니다.";
+            if (typeof(Action_RapidStrikes).IsAssignableFrom(type)) return "아군 전용 · 타격 간격마다 공격하며 QTE는 별도 주기로 진행합니다. 이동·입력·피해가 포함되어 같은 타격을 중복 추가할 필요가 없습니다.";
+            if (typeof(Action_AerialCrossSlash).IsAssignableFrom(type)) return "아군 전용 · 접근 → 상승 → 카메라 360도 회전 → QTE → 교차 베기 → 복귀를 처리합니다. 캐릭터 자체를 회전시키는 블록이 아닙니다.";
+            if (typeof(Action_EnemyWindup).IsAssignableFrom(type)) return "적 전용 · 적을 확대하고 준비 자세를 보여준 뒤 공격 구도로 돌아옵니다. 다음에 ‘방어 대응 → 피해’를 배치하세요. 이 블록은 피해를 주지 않습니다.";
+            return "사용자 정의 블록 · 아래 설정과 해당 블록의 제작 규칙을 확인하세요. 저장 전 ‘검사’ 탭에서 결과를 확인하세요.";
+        }
+
         internal static string GetDefenseAuthoringHelp(DefenseRequirement requirement)
         {
             const string timing = "\n판정 시간은 입력 시작부터 타격까지의 시간입니다. 저스트 구간은 공통 설정 또는 개별 판정 구간의 첫 값, 회피/반격 구간은 QTEManager 공통 설정을 사용합니다. 모든 구간은 난도 배율을 적용합니다.";
             if (requirement == DefenseRequirement.Counterable)
-                return "연계 반격 공격: Z 가드 불가 / X 회피 / C 연계 반격. 반격 피해 배율은 전열 생존 아군 각각의 기본 공격에 적용됩니다."
+                return "연계 반격 공격: Z 가드 불가 / X 회피 / C 연계 반격. 반격 피해 배율은 공격받은 아군 한 명의 ATK에 적용됩니다. 다른 전열과 후열은 참여하지 않습니다."
                     + "\n접근 → 전조 포함 방어 대응 → 피해 → 원위치 복귀 순서로 배치하세요. C 성공 시 남은 타임라인을 생략하고 공격받은 한 명이 접근 → 패링 → 공격한 뒤 양쪽 복귀합니다. 다른 아군은 이동하지 않습니다."
                     + "\n전조와 충분한 판정 시간을 제공하세요. 일반 강공격이 자동으로 반격 공격이 되지는 않습니다." + timing;
             if (requirement == DefenseRequirement.DodgeOnly || requirement == DefenseRequirement.JumpOnly

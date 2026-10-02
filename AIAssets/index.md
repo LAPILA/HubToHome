@@ -1,5 +1,13 @@
 # AIAssets Index
 
+최신 진입 연출: [심리스 전투 — 경고·짧은 줌·사선 절단·상하 개방·HUD 등장](yjlim/feedback/2026-10-02-battle-entry-reference.md). 후속 요청으로 약 2초/줌 0.5초, 완전 암전 뒤 캐릭터·NPC·UI·카메라 준비로 수정했습니다. 공용 Host 값과 조우별 켜기/끄기 제공, 전용 BattleScene 유지. Runtime/Editor 컴파일 오류 0, Unity Play는 미실행입니다.
+
+최신 제작 문서: [Google Docs 콘텐츠 제작 가이드 갱신](yjlim/feedback/2026-10-02-content-guide-refresh.md) · [원본 가이드 열기](https://docs.google.com/document/d/1kY_qJeiVUwpHJNuCOCk_ac3LsDe85bAiR0iBLx3Py2E/edit). 기존 14장/18표를 보존하고 스킬 13종·전조·압력·상점·캐릭터 데이터 안내를 현행화했습니다. PDF 22쪽 검토 및 표 경로 넘침 수정 완료. [검증 기록](2026-10-02-update.md).
+
+최신 제작 도구: [스킬 블록 한국어·분류·방어 설정 정리](yjlim/feedback/2026-09-28-skill-block-authoring.md). 기존 메이커에서 실행 블록 추가 메뉴와 사용 안내를 정리했습니다. 전투 실행 로직·스킬 자산은 유지합니다.
+
+최신 이펙트 수정: [전조 재생 완료 시 숨김·방어창 종료 시 풀 반환](yjlim/feedback/2026-09-26-telegraph-animation.md). 마지막 프레임 잔류를 제거하고 판정 시간은 유지했습니다. 제작 중인 Aseprite/프리팹은 변경하지 않았습니다. [당일 검증 기록](2026-09-28-update.md).
+
 최신 전투 규칙: [속도 기반 턴 — 최종 규칙·편집 위치·턴 큐 연출](yjlim/feedback/2026-09-28-speed-turns.md) · [2026-09-28 변경/검증 기록](2026-09-28-update.md). SPD는 순서와 행동 빈도에 반영됩니다. 자연 만료를 예고에 미리 반영해 이미 표시한 연속 턴이 만료 뒤 사라지는 오류를 수정했습니다. 순수 검사 19개 통과(100조합/4,800행동), Unity 연결 검사는 컴파일만 확인했습니다.
 
 최종 정리: **증기 가속 샘플 스킬과 DB·카탈로그 연결은 삭제**, 스킬 기획은 보류합니다. 공용 속도 상태·턴 계산·DOTween 재정렬은 유지합니다. 원작 내부 공식 복제가 아닌 프로젝트의 누적 준비량 방식이며, 사용자 PUSH 요청에 따라 현재 브랜치에 반영합니다.

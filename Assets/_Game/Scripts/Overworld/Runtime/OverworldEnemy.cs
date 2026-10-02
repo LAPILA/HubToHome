@@ -12,7 +12,7 @@ using Sirenix.OdinInspector;
 [RequireComponent(typeof(Collider2D))]
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(EnemyCharacter))]
-public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcomeSource, IPreemptiveAttackTarget
+public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcomeSource, IPreemptiveAttackTarget, IEncounterEntryPresentationPolicy
 {
     private static float s_globalEncounterLockUntil;
 
@@ -51,6 +51,9 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
     [SerializeField] private float _battleFadeDuration = 0.08f;
     [SerializeField] private string _battleSceneName = "BattleScene";
     [SerializeField] private bool _useDedicatedBattleScene = true;
+    [SerializeField, LabelText("심리스 진입 절단 연출")]
+    private bool _playBattleEntryPresentation = true;
+    public bool PlayBattleEntryPresentation => _playBattleEntryPresentation;
     [SerializeField] private bool _destroyAfterTouch = false;
     [SerializeField] private float _postEscapeAlpha = 0.5f;
     [SerializeField] private float _postBattleGraceDuration = 1f;
@@ -405,7 +408,9 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
 
         _triggered = true;
         _encounterInProgress = true;
-        float entryDelay = isPreemptiveAttack ? 0f : _encounterDelay;
+        // 심리스는 서비스가 같은 프레임에 잠금을 인수하고 경고부터 시작합니다.
+        // 적 오브젝트의 선행 대기 중 비활성화로 플레이어 잠금이 남지 않게 합니다.
+        float entryDelay = isPreemptiveAttack || !_useDedicatedBattleScene ? 0f : _encounterDelay;
         s_globalEncounterLockUntil = Time.unscaledTime + Mathf.Max(0.75f, entryDelay + 0.5f);
         _rb.linearVelocity = Vector2.zero;
         UpdateMoveAnimation(Vector2.zero);
@@ -414,7 +419,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
             && _collider.enabled;
         if (disabledColliderForTransition)
             _collider.enabled = false;
-        player.SetBattleMode(true);
+        if (_useDedicatedBattleScene) player.SetBattleMode(true);
 
         AudioManager.Instance?.PlayEnemyEncounterSfx(_encounterSFX);
 

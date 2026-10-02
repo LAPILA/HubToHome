@@ -18,6 +18,20 @@ public sealed class SeamlessBattleHost : MonoBehaviour
     [SerializeField, Required] private GameObject _battleUiRoot;
     [SerializeField, Required] private BattleUIController _battleUiController;
 
+    [Title("일반 심리스 전투 진입"), InlineProperty, HideLabel]
+    [SerializeField] private BattleEntrySettings _entryPresentation = new BattleEntrySettings();
+    private SeamlessBattleEntryPresentation _entryPresenter;
+
+    public SeamlessBattleEntryPresentation BeginEntryPresentation(PlayerController player)
+    {
+        if (_entryPresentation == null || !_entryPresentation.Enabled || !isActiveAndEnabled)
+            return null;
+        if (_entryPresenter == null)
+            _entryPresenter = gameObject.AddComponent<SeamlessBattleEntryPresentation>();
+        _entryPresenter.Begin(_entryPresentation, player);
+        return _entryPresenter;
+    }
+
     public BattleManager BattleManager => _battleManager;
     public PositionManager PositionManager => _positionManager;
     public GameObject BattleUiRoot => _battleUiRoot;

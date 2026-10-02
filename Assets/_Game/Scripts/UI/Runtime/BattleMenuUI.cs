@@ -56,6 +56,8 @@ public class BattleMenuUI : UIPanel
     private int _inputEnabledFrame = -1;
     private bool _initialized;
     public bool CommandsEnabled => _inputEnabled && !_isExternallySuspended;
+    // 프리팹에서 상세 목록/설명은 메인 메뉴의 자식이 아닌 형제입니다.
+    public RectTransform SubMenuRoot => _subMenu != null ? _subMenu.transform as RectTransform : null;
 
     private RectTransform _rectTransform;
     private float _baseMenuY;

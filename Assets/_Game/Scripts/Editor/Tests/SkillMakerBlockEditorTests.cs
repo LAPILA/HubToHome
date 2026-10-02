@@ -61,6 +61,8 @@ public sealed class SkillMakerBlockEditorTests
         string counter = SkillMakerBlockEditor.GetDefenseAuthoringHelp(DefenseRequirement.Counterable);
         Assert.That(counter, Does.Contain("Z 가드 불가 / X 회피 / C 연계 반격"));
         Assert.That(counter, Does.Contain("후열은 참여하지 않습니다"));
+        Assert.That(counter, Does.Contain("공격받은 아군 한 명의 ATK"));
+        Assert.That(counter, Does.Not.Contain("생존 아군 각각"));
         string legacyJump = SkillMakerBlockEditor.GetDefenseAuthoringHelp(DefenseRequirement.JumpOnly);
         Assert.That(legacyJump, Does.Contain("X 회피 전용"));
         Assert.That(legacyJump, Does.Contain("자산 호환"));
@@ -218,6 +220,36 @@ public sealed class SkillMakerBlockEditorTests
         Assert.That(SkillMakerBlockEditor.BlockTypes, Has.No.Member(typeof(NestedTestBlock)));
         Assert.That(SkillMakerBlockEditor.GetBlockName(typeof(Action_DefenseWindow)), Is.EqualTo(new Action_DefenseWindow().BlockName));
         Assert.That(SkillMakerBlockEditor.GetBlockName(typeof(Action_Damage)), Is.EqualTo(new Action_Damage().BlockName));
+    }
+
+    [TestCase(typeof(Action_QTE), "아군 전용/실시간 입력 (QTE)")]
+    [TestCase(typeof(Action_DefenseWindow), "적 공격/방어 대응")]
+    [TestCase(typeof(Action_Damage), "공통 · 피해와 효과/피해 적용")]
+    [TestCase(typeof(Action_SequentialMelee), "공통 · 피해와 효과/연쇄 근접")]
+    [TestCase(typeof(Action_Move), "공통 · 흐름과 연출/이동")]
+    [TestCase(typeof(Action_VFX), "공통 · 흐름과 연출/이펙트 재생")]
+    public void BlockMenuUsesRoleGroupsAndMatchesRuntimeDisplayName(Type type, string path)
+    {
+        Assert.That(SkillMakerBlockEditor.GetBlockMenuPath(type), Is.EqualTo(path));
+        Assert.That(SkillMakerBlockEditor.GetBlockHelp(type), Is.Not.Empty);
+        var block = (SkillActionBlock)Activator.CreateInstance(type);
+        Assert.That(SkillMakerBlockEditor.GetBlockName(type), Is.EqualTo(block.BlockName));
+    }
+
+    [Test]
+    public void CustomBlockHelpAndMenuDoNotConstructTheBlock()
+    {
+        Assert.That(SkillMakerBlockEditor.GetBlockMenuPath(typeof(ConstructorGuardBlock)),
+            Does.StartWith("사용자 정의/"));
+        Assert.That(SkillMakerBlockEditor.GetBlockHelp(typeof(ConstructorGuardBlock)),
+            Does.Contain("사용자 정의"));
+    }
+
+    [Serializable]
+    private sealed class ConstructorGuardBlock : SkillActionBlock
+    {
+        public ConstructorGuardBlock() { throw new InvalidOperationException("표시 정보에서 생성하면 안 됩니다."); }
+        public override IEnumerator Execute(SkillContext context) { yield break; }
     }
 
     [Serializable]

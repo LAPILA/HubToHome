@@ -16,4 +16,5 @@ public class DialogueEncounterContext
     public string EncounterIdOverride;
     public bool DefeatEnemyOnVictory;
     public bool AllowEscape = true;
+    public bool PlayEntryPresentation = true;
 }
