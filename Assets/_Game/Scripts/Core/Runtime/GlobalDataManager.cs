@@ -40,10 +40,12 @@ public readonly struct PartyVitalsRestoreEvaluation
 public partial class GlobalDataManager : MonoBehaviour
 {
     public static GlobalDataManager Instance { get; private set; }
+    // 기본 주인공은 위젤(WIZZEL). 직접 입력하거나 저장한 이름은 그대로 유지합니다.
+    public const string DefaultPlayerName = "위젤";
 
     #region [ Runtime Data ]
     // 🚨 인트로에서 설정한 플레이어의 이름이 저장되는 곳!
-    public string PlayerName { get; set; } = "Rapley"; 
+    public string PlayerName { get; set; } = DefaultPlayerName;
 
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
     private readonly Dictionary<string, int> _inventoryDict = new Dictionary<string, int>();
@@ -103,7 +105,7 @@ public partial class GlobalDataManager : MonoBehaviour
     {
         BattleRetryCheckpoint.ClearUnlessRestoring();
         SaveManager.CancelPendingAutoSave();
-        PlayerName = "Rapley";
+        PlayerName = DefaultPlayerName;
         Money = 0;
         _eventFlags.Clear();
         _inventoryDict.Clear();

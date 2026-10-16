@@ -8419,6 +8419,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 219799598360949425, guid: c0515653d43070348953a475e02fc95f, type: 3}
+      propertyPath: Lens.OrthographicSize
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 219799598360949425, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: Target.TrackingTarget
       value: 
       objectReference: {fileID: 58424542}
@@ -8437,6 +8441,10 @@ PrefabInstance:
     - target: {fileID: 2820754610113687333, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: m_NormalizedViewPortRect.height
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3330139295875524663, guid: c0515653d43070348953a475e02fc95f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -10
       objectReference: {fileID: 0}
     - target: {fileID: 5271908229650173906, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: m_LocalPosition.x
@@ -8481,6 +8489,10 @@ PrefabInstance:
     - target: {fileID: 7181352361580535887, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: m_Name
       value: '[Camera]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7211978828694438223, guid: c0515653d43070348953a475e02fc95f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -10
       objectReference: {fileID: 0}
     - target: {fileID: 8874290163352846131, guid: c0515653d43070348953a475e02fc95f, type: 3}
       propertyPath: _centerTarget

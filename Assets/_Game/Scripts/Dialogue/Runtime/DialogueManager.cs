@@ -286,7 +286,7 @@ public class DialogueManager : MonoBehaviour
         if (!InvokeNodeEvent(node.EventTriggerID, _playbackGeneration, _currentDialogue, _currentNodeIndex)) return;
 
         string rawText = (LocalizationManager.Instance != null) ? LocalizationManager.Instance.GetText(node.LocalizationKey, node.DefaultText) : node.DefaultText;
-        string playerName = (GlobalDataManager.Instance != null) ? GlobalDataManager.Instance.PlayerName : "Rapley";
+        string playerName = (GlobalDataManager.Instance != null) ? GlobalDataManager.Instance.PlayerName : GlobalDataManager.DefaultPlayerName;
         
         string finalText = rawText;
         try { finalText = string.Format(rawText, playerName); } catch { finalText = rawText; }

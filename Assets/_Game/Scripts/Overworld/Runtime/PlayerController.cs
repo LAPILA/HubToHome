@@ -21,6 +21,9 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     // ── 이동 설정 ─────────────────────────────────────────────
     [Header("Movement")]
     [SerializeField] private float _moveSpeed = 5f;
+    [SerializeField, Min(1f), LabelText("달리기 속도 배율")]
+    [Tooltip("필드에서 달리기 키(기본 Left Shift)를 누르는 동안 적용할 이동 속도 배율입니다.")]
+    private float _runSpeedMultiplier = 1.5f;
 
     // ── 액션 쿨타임 ───────────────────────────────────────────
     [Header("Action Settings")]
@@ -422,7 +425,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     // ── 이동 적용 ─────────────────────────────────────────────
     private void ApplyMovement()
     {
-        _rb.linearVelocity = _moveInput * _moveSpeed;
+        float speed = _moveSpeed * (GameInput.RunHeld ? _runSpeedMultiplier : 1f);
+        _rb.linearVelocity = _moveInput * speed;
         State = _moveInput.sqrMagnitude > 0.01f ? PlayerState.Moving : PlayerState.Idle;
     }
 
@@ -495,11 +499,11 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     {
         if (_anim == null) return;
 
-        if (isMoving)
-        {
-            _anim.SetFloat(HashMoveX, _moveInput.x);
-            _anim.SetFloat(HashMoveY, _moveInput.y);
-        }
+        // 이동량과 바라보는 방향을 분리합니다. 정지/대화/저장 복원 때도
+        // 마지막 방향을 전달하고, 대각선에서 서로 다른 도트 포즈가 섞이지 않게 합니다.
+        Vector2 facing = GetFacingVector2();
+        _anim.SetFloat(HashMoveX, facing.x);
+        _anim.SetFloat(HashMoveY, facing.y);
         _anim.SetBool(HashIsMoving, isMoving);
     }
 
@@ -645,12 +649,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void SyncOverworldAttackDirection()
     {
-        if (_anim == null) return;
-
-        Vector2 facing = GetFacingVector2();
-        _anim.SetFloat(HashMoveX, facing.x);
-        _anim.SetFloat(HashMoveY, facing.y);
-        _anim.SetBool(HashIsMoving, false);
+        UpdateAnimator(false);
     }
 
     private void RestoreAfterFailedPreemptiveAttack(GameState previousState)
@@ -674,9 +673,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         if (HasAnimatorTrigger(triggerHash))
             _anim.ResetTrigger(triggerHash);
 
-        _anim.SetBool(HashIsMoving, false);
-        _anim.SetFloat(HashMoveX, GetFacingVector2().x);
-        _anim.SetFloat(HashMoveY, GetFacingVector2().y);
+        SyncOverworldAttackDirection();
         TryCrossFadeOverworldIdle();
     }
 
@@ -705,7 +702,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public void SetFacingDirection(int dir)
     {
-        FacingDirection = dir;
+        FacingDirection = dir >= 0 && dir <= 3 ? dir : 0;
         SyncOverworldAttackDirection();
     }
 
@@ -752,6 +749,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
             _rb.bodyType = RigidbodyType2D.Dynamic;
             _rb.linearVelocity = Vector2.zero;
             UpdateAnimator(false);
+            TryCrossFadeOverworldIdle();
         }
     }
 
@@ -782,7 +780,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
             transform.position = new Vector3(global.SpawnX, global.SpawnY, 0f);
         }
 
-        FacingDirection = global.LookingDir;
+        SetFacingDirection(global.LookingDir);
         global.SpawnPointId = string.Empty;
         global.SpawnFallbackAllowed = false;
     }
@@ -1380,7 +1378,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     private void TestIdleLook()
     {
         if (Animator == null) return;
-        Animator.Play("Idle_Down");
+        SetFacingDirection(0);
+        TryCrossFadeOverworldIdle();
     }
 
     [BoxGroup("Battle"), Button("Battle Idle",  ButtonSizes.Medium)]
