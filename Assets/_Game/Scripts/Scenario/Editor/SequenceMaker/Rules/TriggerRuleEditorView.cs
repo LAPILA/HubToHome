@@ -1009,23 +1009,6 @@ public sealed class TriggerRuleEditorView : VisualElement
         }
     }
 
-    private static void EnsureCurrentChoice(
-        List<string> ids,
-        List<string> labels,
-        string id,
-        string label)
-    {
-        if (!string.IsNullOrWhiteSpace(id) && !ids.Contains(id))
-        {
-            ids.Insert(0, id);
-            labels.Insert(0, DefinitionLabel(label, id));
-        }
-        if (ids.Count == 0)
-        {
-            ids.Add(string.Empty);
-            labels.Add("선택 항목 없음");
-        }
-    }
 
     private static string DefinitionLabel(string name, string id)
     {

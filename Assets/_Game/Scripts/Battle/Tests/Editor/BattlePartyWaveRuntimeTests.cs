@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using DG.Tweening;
 
 public sealed class BattlePartyWaveRuntimeTests
 {
@@ -90,6 +91,192 @@ public sealed class BattlePartyWaveRuntimeTests
         Assert.That(GetPrivateList("_reserveParty"), Has.Count.EqualTo(3));
         for (int i = 0; i < _reserve.Count; i++)
             Assert.That(_reserve[i].gameObject.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void WaveExitFadesForHalfASecondWithoutEarlyDeactivationAndRestoresOnCancel()
+    {
+        SpriteRenderer renderer = _front[0].gameObject.AddComponent<SpriteRenderer>();
+        Color original = new Color(0.2f, 0.6f, 0.9f, 0.8f);
+        renderer.color = original;
+        using var presentation = new BattlePartyWavePresentation();
+        IEnumerator fade = presentation.FadeOut(_front, 0.5f);
+        Assert.That(fade.MoveNext(), Is.True);
+        Sequence tween = GetWaveTween(presentation);
+        tween.Pause();
+        Assert.That(tween.Duration(), Is.EqualTo(0.5f).Within(0.001f));
+        tween.Goto(0.25f);
+        Assert.That(renderer.color.a, Is.EqualTo(0.4f).Within(0.01f));
+        Assert.That(_front[0].gameObject.activeSelf, Is.True);
+        Assert.That(_reserve[0].gameObject.activeSelf, Is.False);
+        presentation.Dispose();
+        Assert.That(renderer.color, Is.EqualTo(original));
+        Assert.That(tween.IsActive(), Is.False);
+    }
+
+    [Test]
+    public void WaveEntryStartsOutsideCameraAndCancellationRestoresEverySlot()
+    {
+        Assert.That(InvokePromoteReserveWave(), Is.True);
+        Camera camera = CreateComponent<Camera>("Wave Camera");
+        camera.orthographic = true;
+        camera.orthographicSize = 6f;
+        camera.aspect = 4f / 3f;
+        camera.transform.position = new Vector3(0, 0, -10);
+        using var presentation = new BattlePartyWavePresentation();
+        IEnumerator enter = presentation.Enter(_reserve, camera, 0.55f, 1f);
+        Assert.That(enter.MoveNext(), Is.True);
+        Sequence tween = GetWaveTween(presentation);
+        tween.Pause();
+        for (int i = 0; i < _reserve.Count; i++)
+        {
+            Assert.That(camera.WorldToViewportPoint(_reserve[i].transform.position).x, Is.LessThan(0));
+            Assert.That(_reserve[i].transform.position.y, Is.EqualTo(_positionManager.GetPlayerDefaultPos(i).y));
+        }
+        tween.Goto(0.2f);
+        presentation.Dispose();
+        for (int i = 0; i < _reserve.Count; i++)
+            Assert.That(_reserve[i].transform.position, Is.EqualTo(_positionManager.GetPlayerDefaultPos(i)));
+        Assert.That(tween.IsActive(), Is.False);
+    }
+
+    [Test]
+    public void DisposingWavePhaseKillsItsTweenAndRestoresSprites()
+    {
+        SpriteRenderer renderer = _front[0].gameObject.AddComponent<SpriteRenderer>();
+        renderer.color = Color.cyan;
+        using var presentation = new BattlePartyWavePresentation();
+        IEnumerator fade = presentation.FadeOut(_front, 0.5f);
+        Assert.That(fade.MoveNext(), Is.True);
+        Sequence tween = GetWaveTween(presentation);
+        tween.Goto(0.25f);
+        ((System.IDisposable)fade).Dispose();
+        Assert.That(tween.IsActive(), Is.False);
+        Assert.That(renderer.color, Is.EqualTo(Color.cyan));
+    }
+
+    [Test]
+    public void InterruptedWaveRoutineClearsOnlyItsOwnTransitionLock()
+    {
+        IEnumerator current = BeginWaveRoutineForTest(7);
+        Assert.That(current.MoveNext(), Is.True);
+        ((System.IDisposable)current).Dispose();
+        Assert.That(GetPrivateField<bool>(_manager, "_isPartyWaveTransitioning"), Is.False);
+
+        IEnumerator stale = BeginWaveRoutineForTest(8);
+        Assert.That(stale.MoveNext(), Is.True);
+        SetPrivateField(_manager, "_partyWaveTransitionVersion", 9);
+        ((System.IDisposable)stale).Dispose();
+        Assert.That(GetPrivateField<bool>(_manager, "_isPartyWaveTransitioning"), Is.True);
+    }
+
+    [Test]
+    public void KilledFadeStillPromotesReserveAndPartyEventCanCancelEntry()
+    {
+        BeginWaveRoutineForTest(7);
+        IEnumerator routine = (IEnumerator)typeof(BattleManager).GetMethod("PresentPartyWaveTransition",
+            BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_manager, new object[] { 7 });
+        Assert.That(routine.MoveNext(), Is.True);
+        IEnumerator fade = (IEnumerator)routine.Current;
+        Assert.That(fade.MoveNext(), Is.True);
+        var presentation = GetPrivateField<BattlePartyWavePresentation>(_manager, "_partyWavePresentation");
+        GetWaveTween(presentation).Kill(false);
+        Assert.That(((IEnumerator)fade.Current).MoveNext(), Is.False);
+        Assert.That(fade.MoveNext(), Is.False);
+        _manager.OnPlayerPartyChanged += _ => typeof(BattleManager).GetMethod("CancelPartyWaveTransition",
+            BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_manager, null);
+        Assert.That(routine.MoveNext(), Is.False);
+        Assert.That(_manager._playerParty, Is.EqualTo(_reserve));
+        Assert.That(GetPrivateField<bool>(_manager, "_isPartyWaveTransitioning"), Is.False);
+        for (int i = 0; i < _reserve.Count; i++)
+            Assert.That(_reserve[i].transform.position, Is.EqualTo(_positionManager.GetPlayerDefaultPos(i)));
+    }
+
+    private IEnumerator BeginWaveRoutineForTest(int version)
+    {
+        SetPrivateField(_manager, "_partyWaveTransitionVersion", version);
+        SetPrivateField(_manager, "_isPartyWaveTransitioning", true);
+        return (IEnumerator)typeof(BattleManager).GetMethod("CompletePartyWaveTransition",
+            BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_manager, new object[] { version });
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void ReserveChoice_DoesNotPromoteBeforeDecisionAndConsumesOnlyOneDecision(bool continueBattle)
+    {
+        IEnumerator routine = BeginWaveRoutineForTest(12);
+        Assert.That(routine.MoveNext(), Is.True);
+        IEnumerator prompt = (IEnumerator)routine.Current;
+        Assert.That(prompt.MoveNext(), Is.True);
+        var view = GetPrivateField<BattleReserveChoiceUI>(_manager, "_partyWaveChoice");
+        Assert.That(_manager.IsAwaitingReserveChoice, Is.True);
+        Assert.That(_manager._playerParty, Is.EqualTo(_front));
+        Assert.That(_reserve.TrueForAll(p => !p.gameObject.activeSelf), Is.True);
+        Assert.That(view.TryChoose(continueBattle), Is.False, "열린 프레임에는 선택을 확정하지 않습니다.");
+        SetPrivateField(view, "_openedFrame", -1);
+        Assert.That(view.TryChoose(continueBattle), Is.True);
+        Assert.That(view.TryChoose(!continueBattle), Is.False);
+        Assert.That(view.Result, Is.EqualTo(continueBattle
+            ? BattleReserveChoiceUI.Choice.Continue : BattleReserveChoiceUI.Choice.GiveUp));
+        Assert.That(prompt.MoveNext(), Is.False);
+        Assert.That(_manager.IsAwaitingReserveChoice, Is.False);
+        Assert.That(routine.MoveNext(), Is.EqualTo(continueBattle));
+        if (!continueBattle)
+        {
+            Assert.That(GetPrivateField<bool>(_manager, "_partyWaveAbandoned"), Is.True);
+            Assert.That(_manager._playerParty, Is.EqualTo(_front));
+            Assert.That(_reserve.TrueForAll(p => !p.gameObject.activeSelf), Is.True);
+        }
+        ((System.IDisposable)routine).Dispose();
+    }
+
+    [Test]
+    public void CancelWave_ClosesPromptWithoutActivatingReserve()
+    {
+        IEnumerator routine = BeginWaveRoutineForTest(13);
+        Assert.That(routine.MoveNext(), Is.True);
+        IEnumerator prompt = (IEnumerator)routine.Current;
+        Assert.That(prompt.MoveNext(), Is.True);
+        typeof(BattleManager).GetMethod("CancelPartyWaveTransition", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(_manager, null);
+        Assert.That(_manager.IsAwaitingReserveChoice, Is.False);
+        Assert.That(prompt.MoveNext(), Is.False);
+        Assert.That(routine.MoveNext(), Is.False);
+        Assert.That(_manager._playerParty, Is.EqualTo(_front));
+        Assert.That(GetPrivateField<bool>(_manager, "_isPartyWaveTransitioning"), Is.False);
+    }
+
+    private static T GetPrivateField<T>(object target, string name) => (T)target.GetType()
+        .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(target);
+
+    [Test]
+    public void WaveCompletionAndDestroyedActorCleanupAreSafe()
+    {
+        SpriteRenderer renderer = _front[0].gameObject.AddComponent<SpriteRenderer>();
+        using var presentation = new BattlePartyWavePresentation();
+        IEnumerator fade = presentation.FadeOut(_front, 0.5f);
+        Assert.That(fade.MoveNext(), Is.True);
+        Object.DestroyImmediate(renderer);
+        GetWaveTween(presentation).Complete();
+        Assert.That(((IEnumerator)fade.Current).MoveNext(), Is.False);
+        Assert.That(fade.MoveNext(), Is.False);
+        Assert.That(presentation.Completed, Is.True);
+        Assert.That(InvokePromoteReserveWave(), Is.True);
+        IEnumerator enter = presentation.Enter(_reserve, null, 0.55f, 1f);
+        Assert.That(enter.MoveNext(), Is.True);
+        Object.DestroyImmediate(_reserve[1].gameObject);
+        Assert.DoesNotThrow(() => GetWaveTween(presentation).Complete());
+        Assert.That(((IEnumerator)enter.Current).MoveNext(), Is.False);
+        Assert.That(enter.MoveNext(), Is.False);
+        Assert.That(presentation.Completed, Is.True);
+        Assert.That(_reserve[0].transform.position, Is.EqualTo(_positionManager.GetPlayerDefaultPos(0)));
+        Assert.DoesNotThrow(() => presentation.Dispose());
+    }
+
+    private static Sequence GetWaveTween(BattlePartyWavePresentation presentation)
+    {
+        return (Sequence)typeof(BattlePartyWavePresentation).GetField("_sequence",
+            BindingFlags.Instance | BindingFlags.NonPublic).GetValue(presentation);
     }
 
     [Test]

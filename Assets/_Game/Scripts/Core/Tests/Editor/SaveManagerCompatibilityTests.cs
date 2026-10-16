@@ -6,6 +6,39 @@ using NUnit.Framework;
 public class SaveManagerCompatibilityTests
 {
     [Test]
+    public void PendingReserveDecisionBlocksSavingWithoutMutatingSnapshotOrTouchingStorage()
+    {
+        var instance = typeof(BattleManager).GetField("<Instance>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic);
+        BattleManager previous = BattleManager.Instance;
+        var storageField = typeof(SaveManager).GetField("_storage", BindingFlags.Static | BindingFlags.NonPublic);
+        object previousStorage = storageField.GetValue(null);
+        string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "HTH-save-gate-" + Guid.NewGuid().ToString("N"));
+        var root = new UnityEngine.GameObject("SaveGateBattle");
+        root.SetActive(false);
+        try
+        {
+            var battle = root.AddComponent<BattleManager>();
+            instance.SetValue(null, battle);
+            typeof(BattleManager).GetField("_isPartyWaveTransitioning", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(battle, true);
+            storageField.SetValue(null, new AtomicSaveStorage(directory));
+            var data = new SaveData { saveTime = "unchanged" };
+            SaveStorageResult result = SaveManager.TrySave(data, 0);
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Failure, Is.EqualTo(SaveStorageFailure.NotAllowed));
+            Assert.That(data.saveTime, Is.EqualTo("unchanged"));
+            Assert.That(System.IO.Directory.Exists(directory), Is.False);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(root);
+            instance.SetValue(null, previous);
+            storageField.SetValue(null, previousStorage);
+            if (System.IO.Directory.Exists(directory)) System.IO.Directory.Delete(directory, true);
+        }
+    }
+
+    [Test]
     public void LegacyPublicApiSignaturesRemainAvailable()
     {
         Type type = typeof(SaveManager);

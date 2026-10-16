@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "역류 참격"
   SkillID: tests_player.reverse_flow
-  Description: "후방에 남긴 증기를 역류시켜 두 방향에서 연달아 벤다."
+  Description: "증기를 역류시켜 적을 베어낸다."
   UsageProfile: 1
   APCost: 17
   TargetType: 1

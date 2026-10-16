@@ -49,6 +49,12 @@ public sealed class FlagDialogueRule
     [SerializeField, LabelText("우선순위")]
     private int _priority;
 
+    [SerializeField, LabelText("필요한 소지 아이템 ID")]
+    [Tooltip("비우면 소지 조건을 검사하지 않습니다. 대화 선택만으로 아이템을 소비하지 않습니다.")]
+    private string _requiredItemId;
+    [SerializeField, MinValue(1), LabelText("필요한 개수")]
+    private int _requiredItemCount = 1;
+
     [SerializeField, Required, LabelText("DialogueData")]
     private DialogueData _dialogue;
 
@@ -75,13 +81,24 @@ public sealed class FlagDialogueRule
     public int ExpectedValue => _expectedValue;
     public int Priority => _priority;
     public DialogueData Dialogue => _dialogue;
+    public string RequiredItemId => Normalize(_requiredItemId);
+    public int RequiredItemCount => Math.Max(1, _requiredItemCount);
+
+    public void ConfigureItemRequirement(string itemId, int count = 1)
+    {
+        _requiredItemId = Normalize(itemId);
+        _requiredItemCount = Math.Max(1, count);
+    }
 
     public bool Matches(GlobalDataManager global)
     {
-        if (global == null || string.IsNullOrEmpty(FlagKey))
+        if (global == null || (string.IsNullOrEmpty(FlagKey) && string.IsNullOrEmpty(RequiredItemId)))
             return false;
 
-        return FlagValueComparisonUtility.Evaluate(
+        if (!string.IsNullOrEmpty(RequiredItemId)
+            && InventoryEntryService.GetOwnedCount(global, ItemDatabase.FindById(RequiredItemId)) < RequiredItemCount)
+            return false;
+        return string.IsNullOrEmpty(FlagKey) || FlagValueComparisonUtility.Evaluate(
             global.GetFlag(FlagKey, 0),
             _comparison,
             _expectedValue);
@@ -89,11 +106,14 @@ public sealed class FlagDialogueRule
 
     public bool TryValidate(out string error)
     {
-        if (string.IsNullOrEmpty(FlagKey))
+        if (string.IsNullOrEmpty(FlagKey) && string.IsNullOrEmpty(RequiredItemId))
         {
-            error = "Flag ID가 비어 있습니다.";
+            error = "플래그 또는 소지 아이템 조건이 필요합니다.";
             return false;
         }
+
+        if (!string.IsNullOrEmpty(RequiredItemId) && _requiredItemCount < 1)
+        { error = "소지 아이템 개수는 1 이상이어야 합니다."; return false; }
 
         if (_dialogue == null)
         {

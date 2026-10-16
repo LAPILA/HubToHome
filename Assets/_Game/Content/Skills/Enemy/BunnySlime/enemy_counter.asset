@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "\uCD5C\uC885 \uC548\uC804\uAC80\uC0AC \xB7 C"
   SkillID: lab.bunny.enemy_counter
-  Description: "C 성공 시 공격받은 한 명이 접근 → 패링 → 공격하고 양쪽 복귀합니다. X 회피 가능. Z 방어 불가."
+  Description: "강한 힘을 모아 적진을 내려친다. 반격으로 저지할 수 있다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1

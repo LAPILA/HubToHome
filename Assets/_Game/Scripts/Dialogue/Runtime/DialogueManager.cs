@@ -26,6 +26,9 @@ public class DialogueManager : MonoBehaviour
     private int _playbackStartFrame = -1;
     private List<ChoiceData> _promptChoices;
     private Action<int> _promptChoiceCallback;
+    private bool _skipRequested;
+    private int _skipGeneration;
+    private const int MaxSkippedNodesPerFrame = 64;
 
     public bool IsPlaying
     {
@@ -33,6 +36,7 @@ public class DialogueManager : MonoBehaviour
     }
 
     public int PlaybackGeneration => _playbackGeneration;
+    public bool IsWaitingForChoice => _isPlaying && _activeUI != null && _activeUI.IsWaitingForChoice;
 
     // 논리적인 대화 완료 이후에도 닫기 연출이 끝날 때까지 표시 중입니다.
     public bool IsPresentationVisible => _isPlaying
@@ -88,6 +92,7 @@ public class DialogueManager : MonoBehaviour
             _promptChoices.Add(new ChoiceData { ChoiceText = choiceLabels[i].Trim() });
         }
 
+        HideFinishedPresentation(_playbackGeneration);
         _isPlaying = true;
         _currentDialogue = null;
         _currentNodeIndex = 0;
@@ -96,6 +101,7 @@ public class DialogueManager : MonoBehaviour
         _encounterContext = null;
         _activeUI = _overworldPanel;
         _promptChoiceCallback = onSelected;
+        _skipRequested = false;
         _playbackGeneration++;
         _playbackStartFrame = Time.frameCount;
 
@@ -129,7 +135,9 @@ public class DialogueManager : MonoBehaviour
             return false;
         }
 
-        DialogueUI activeUI = data.Style == DialogueStyle.Cinematic
+        bool inBattleHud = BattleUIController.Instance != null && BattleUIController.Instance.CanHostMainDialogue;
+        DialogueUI activeUI = inBattleHud && _overworldPanel != null ? _overworldPanel
+            : data.Style == DialogueStyle.Cinematic
             ? _cinematicPanel
             : _overworldPanel;
         if (activeUI == null)
@@ -138,6 +146,7 @@ public class DialogueManager : MonoBehaviour
             return false;
         }
 
+        HideFinishedPresentation(_playbackGeneration);
         playbackGeneration = ++_playbackGeneration;
         _playbackStartFrame = Time.frameCount;
         _isPlaying = true;
@@ -147,6 +156,7 @@ public class DialogueManager : MonoBehaviour
         _onCancelledCallback = onCancelled;
         _encounterContext = encounterContext;
         _activeUI = activeUI;
+        _skipRequested = false;
 
         AcquireDialogueState();
         LogDialogueConsole($"StartDialogue started data={GetDialogueName(data)} style={data.Style} nodes={data.Nodes.Count}");
@@ -159,16 +169,98 @@ public class DialogueManager : MonoBehaviour
 
     private void Update()
     {
+        // 저장/불러오기 같은 단독 확인창만 X로 닫습니다. 스토리 선택지는 기존 규칙을 유지합니다.
+        if (_isPlaying && _promptChoices != null && Time.frameCount > _playbackStartFrame
+            && GameInput.UICancelPressed
+            && (GameStateManager.Instance == null || GameStateManager.Instance.CurrentState != GameState.Paused))
+        {
+            FinishDialogue(completed: false);
+            return;
+        }
         // 🚨 이름 입력 중이거나 재생 중이 아니면 무시
-        if (!_isPlaying || _isNaming || _activeUI == null || _playbackStartFrame == Time.frameCount) return;
+        if (!_isPlaying || _isNaming || _activeUI == null || _playbackStartFrame == Time.frameCount
+            || _activeUI.IsWaitingForChoice
+            || (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused)) return;
+
+        if (_skipRequested)
+        {
+            AdvanceSkippedDialogue();
+            return;
+        }
+        if (GameInput.UICancelPressed && TrySkipRemainingDialogue()) return;
 
         bool isConfirmPressed = GameInput.DialogueAdvancePressed;
 
         if (isConfirmPressed)
         {
             if (_activeUI.IsTyping) _activeUI.SkipTyping(); 
-            else if (!_activeUI.IsWaitingForChoice) NextNode(); 
+            else if (!_activeUI.TryAdvancePage()) NextNode();
         }
+    }
+
+    /// <summary>이미 확정된 선형 구간만 빠르게 진행합니다. 선택/이름입력은 반드시 사용자에게 남깁니다.</summary>
+    public bool TrySkipRemainingDialogue()
+    {
+        if (!_isPlaying || _isNaming || _activeUI == null || _activeUI.IsWaitingForChoice
+            || _promptChoices != null || _currentDialogue == null) return false;
+        _skipRequested = true;
+        _skipGeneration = _playbackGeneration;
+        GameInput.SuppressMenuInputsForCurrentFrame();
+        GameInput.ConsumeBattleUIInput();
+        AdvanceSkippedDialogue();
+        return true;
+    }
+
+    private void AdvanceSkippedDialogue()
+    {
+        int generation = _skipGeneration;
+        DialogueData source = _currentDialogue;
+        // 긴 대본도 한 프레임에 무제한 이벤트를 실행하지 않습니다. 다음 프레임에 같은 소유자가 이어갑니다.
+        for (int processed = 0; processed < MaxSkippedNodesPerFrame; processed++)
+        {
+            if (!_skipRequested || !OwnsPlayback(generation, source)) return;
+            int index = ++_currentNodeIndex;
+            if (source.Nodes == null || index >= source.Nodes.Count)
+            { _skipRequested = false; EndDialogue(); return; }
+            DialogueNode node = source.Nodes[index];
+            if (node == null)
+            { _skipRequested = false; FinishDialogue(completed: false); return; }
+            if (DialogueSkipPolicy.RequiresInput(node))
+            {
+                _skipRequested = false;
+                PlayNode(node);
+                return;
+            }
+            if (!InvokeNodeEvent(node.EventTriggerID, generation, source, index))
+            {
+                // 콜백이 연 새 대화의 상태를 이전 skip 요청으로 덮지 않습니다.
+                if (generation == _playbackGeneration) _skipRequested = false;
+                return;
+            }
+        }
+    }
+
+    private bool OwnsPlayback(int generation, DialogueData source)
+        => _isPlaying && _playbackGeneration == generation && _currentDialogue == source;
+
+    private bool InvokeNodeEvent(string eventId, int generation, DialogueData source, int index)
+    {
+        if (!string.IsNullOrEmpty(eventId))
+        {
+            try { EventManager.Trigger(eventId); }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception, this);
+                if (OwnsPlayback(generation, source)) FinishDialogue(completed: false);
+                return false;
+            }
+        }
+        if (OwnsPlayback(generation, source) && _activeUI == null)
+        {
+            FinishDialogue(completed: false);
+            return false;
+        }
+        return OwnsPlayback(generation, source) && _currentNodeIndex == index;
     }
 
     private void PlayNode(DialogueNode node)
@@ -180,6 +272,8 @@ public class DialogueManager : MonoBehaviour
             return;
         }
 
+        // 선택지 확정 콜백이 Update 도중 다음 노드를 열어도 같은 Z로 타이핑을 건너뛰지 않습니다.
+        _playbackStartFrame = Time.frameCount;
         LogDialogueConsole($"PlayNode data={GetDialogueName(_currentDialogue)} index={_currentNodeIndex} speaker={node.Speaker} key={node.LocalizationKey} event={node.EventTriggerID}");
 
         // 🚨 1. 이름 입력 이벤트 체크
@@ -189,7 +283,7 @@ public class DialogueManager : MonoBehaviour
             return;
         }
 
-        if (!string.IsNullOrEmpty(node.EventTriggerID)) EventManager.Trigger(node.EventTriggerID);
+        if (!InvokeNodeEvent(node.EventTriggerID, _playbackGeneration, _currentDialogue, _currentNodeIndex)) return;
 
         string rawText = (LocalizationManager.Instance != null) ? LocalizationManager.Instance.GetText(node.LocalizationKey, node.DefaultText) : node.DefaultText;
         string playerName = (GlobalDataManager.Instance != null) ? GlobalDataManager.Instance.PlayerName : "Rapley";
@@ -210,7 +304,7 @@ public class DialogueManager : MonoBehaviour
     {
         if (choice == null)
         {
-            EndDialogue();
+            FinishDialogue(completed: false);
             return;
         }
 
@@ -314,7 +408,7 @@ public class DialogueManager : MonoBehaviour
         if (_nameInputUI == null)
         {
             Debug.LogError("NameInputUI가 매니저에 없습니다!");
-            NextNode();
+            FinishDialogue(completed: false);
             return;
         }
 
@@ -363,6 +457,12 @@ public class DialogueManager : MonoBehaviour
             FinishDialogue(completed: false);
     }
 
+    // 전투 UI가 사라졌을 때 그 패널을 사용하던 재생만 중단합니다.
+    public void CancelPresentation(DialogueUI panel)
+    {
+        if (_isPlaying && _activeUI == panel) FinishDialogue(completed: false);
+    }
+
     private void FinishDialogue(bool completed)
     {
         if (!_isPlaying)
@@ -373,6 +473,7 @@ public class DialogueManager : MonoBehaviour
         Action callback = completed ? _onCompleteCallback : _onCancelledCallback;
         _isPlaying = false;
         _isNaming = false;
+        _skipRequested = false;
         _onCompleteCallback = null;
         _onCancelledCallback = null;
         _encounterContext = null;
@@ -392,6 +493,8 @@ public class DialogueManager : MonoBehaviour
         _activeUI = null;
 
         GameInput.SuppressPlayerConfirmForCurrentFrame();
+        GameInput.SuppressMenuInputsForCurrentFrame();
+        GameInput.ConsumeBattleUIInput();
         RestoreDialogueStateIfOwned();
         callback?.Invoke();
     }

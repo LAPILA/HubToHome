@@ -61,7 +61,7 @@ public class PartySlotUI
             Portrait.sprite = player.BattlePortrait;
             Portrait.enabled = Portrait.sprite != null;
             Portrait.preserveAspect = true;
-            Portrait.color = Color.white;
+            Portrait.color = player.BattleSpriteTint;
         }
         if (HPFill != null) HPFill.color = player.BattleSymbolColor;
         if (IdentityStrip != null) IdentityStrip.color = player.BattleSymbolColor;
@@ -101,7 +101,7 @@ public class PartySlotUI
     private void HandleStatusChanged(CharacterBase actor) => RefreshStatus();
     private void RefreshStatus()
     {
-        if (StatusIcons != null) StatusIcons.Refresh(_player != null ? _player.ActiveStatusEffects : null, _statusDefinitions);
+        if (StatusIcons != null) StatusIcons.RefreshActor(_player, _statusDefinitions);
     }
 
     public void SetTargeted(bool active)
@@ -152,7 +152,7 @@ public class PartySlotUI
         _hasHighlight = true;
         _highlighted = active;
         Kill(ref _portraitTween);
-        Color color = active ? Color.yellow : Color.white;
+        Color color = active ? Color.yellow : _player != null ? _player.BattleSpriteTint : Color.white;
         if (CanAnimate(Portrait, 0.15f))
             _portraitTween = TweenColor(Portrait, color, 0.15f);
         else Portrait.color = color;

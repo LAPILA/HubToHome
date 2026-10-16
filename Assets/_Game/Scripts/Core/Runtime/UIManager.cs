@@ -69,12 +69,39 @@ public class UIManager : MonoBehaviour
 
     private void Update()
     {
+        if (TryHandleBattlePause()) return;
         UIPanel topPanel = TopPanel;
         if (topPanel != null
             && GameInput.UICancelPressed
             && !topPanel.TryHandleCancelInput())
             CloseTopPanel();
     }
+
+    private bool TryHandleBattlePause()
+    {
+        if (!GameInput.BattlePausePressed) return false;
+        if (TopPanel is OverworldMenuUI menu)
+        {
+            menu.TryCloseFromPauseInput();
+            return true;
+        }
+        BattleManager battle = BattleManager.Instance;
+        if (TopPanel != null || battle == null || !battle.IsBattleSessionActive
+            || battle.IsAwaitingReserveChoice || GameInput.IsDefenseInputBlocked
+            || (SceneLoader.Instance != null && SceneLoader.Instance.IsLoading))
+            return false;
+        if (!CanPauseBattleState(battle.CurrentState)) return false;
+        if (!_registeredPanels.TryGetValue(UIPanelId.Overworld, out UIPanel panel) || panel == null)
+            return false;
+        GameInput.ConsumeBattleUIInput();
+        GameInput.SuppressMenuInputsForCurrentFrame();
+        OpenPanel(panel);
+        return true;
+    }
+
+    public static bool CanPauseBattleState(BattleState state)
+        => state == BattleState.PlayerActionSelect || state == BattleState.ActionExecute
+            || state == BattleState.EnemyAction;
 
     public void RegisterPanel(string panelID, UIPanel panel)
     {

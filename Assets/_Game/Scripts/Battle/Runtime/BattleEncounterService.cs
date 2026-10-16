@@ -8,6 +8,12 @@ public interface IEncounterSource
     void OnEncounterResolved(bool victory, PlayerController player);
 }
 
+/// <summary>씬 복구 뒤에도 같은 조우 소스를 찾기 위한 안정적인 ID입니다.</summary>
+public interface IEncounterRetrySource
+{
+    string RetryEncounterId { get; }
+}
+
 /// <summary>개별 조우에서 일반 심리스 진입 연출을 생략할 수 있습니다.</summary>
 public interface IEncounterEntryPresentationPolicy
 {
@@ -196,6 +202,13 @@ public static class BattleEncounterService
 
         try
         {
+            allowEscape &= !BattleRetryCheckpoint.ContainsBoss(encounterEnemies);
+            if (encounterSource is IEncounterEntryPresentationPolicy initialEntryPolicy)
+                playEntryPresentation &= initialEntryPolicy.PlayBattleEntryPresentation;
+            transaction.RetryCandidate = BattleRetryCheckpoint.Capture(global, player, encounterEnemies,
+                overrideBattleBgm, useDedicatedBattleScene, battleSceneName, battleSceneFadeDuration,
+                encounterId, defeatsOnVictory, encounterSource, battleScenarioData, playerPreemptiveAttack,
+                allowEscape, playEntryPresentation);
             PrepareEncounterContext(
                 global,
                 player,
@@ -362,6 +375,7 @@ public static class BattleEncounterService
         private readonly GameState _gameState;
         private readonly float _timeScale;
         private bool _isCompleted;
+        public BattleRetryCheckpoint.Candidate RetryCandidate { private get; set; }
 
         public EncounterStartTransaction(
             int requestId,
@@ -400,6 +414,7 @@ public static class BattleEncounterService
                 return;
 
             _isCompleted = true;
+            BattleRetryCheckpoint.Commit(RetryCandidate);
             ReleaseRequest(_requestId);
         }
 

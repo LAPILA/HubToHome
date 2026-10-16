@@ -44,12 +44,38 @@ internal static class SkillItemContentRules
             if (item == null)
                 continue;
 
-            if (item.IsStackable && item.MaxStackSize < 1)
+            if (item.IsStackable && (item.MaxStackSize < 1 || item.MaxStackSize > 99))
             {
                 context.Add(
                     item,
                     "item.stack.max.invalid",
-                    "Stackable item MaxStackSize must be at least 1.");
+                    "아이템 최대 보유 수량은 1~99로 지정하세요.");
+            }
+
+            if (item.Type == ItemType.Equipment)
+            {
+                if (item.Equipment == null)
+                    context.Add(item, "item.equipment.missing", "장비 상품의 EquipmentData를 연결하세요.");
+                else
+                {
+                    for (int previous = 0; previous < i; previous++)
+                    {
+                        ItemData other = snapshot.Items[previous];
+                        if (other != null && other.Type == ItemType.Equipment && other.Equipment == item.Equipment)
+                        {
+                            context.Add(item, "item.equipment.product.duplicate", "같은 장비를 여러 상품 ItemData로 중복 등록하지 마세요. 상점별 가격은 ShopEntry에서 지정합니다.");
+                            break;
+                        }
+                    }
+                    if (snapshot.Catalog == null || snapshot.Catalog.Equipment == null || !snapshot.Catalog.Equipment.Contains(item.Equipment))
+                        context.Add(item, "item.equipment.not_registered", "장비를 런타임 카탈로그에 등록하세요.");
+                    if (!item.Equipment.HasValidWeaponOwner())
+                        context.Add(item, "equipment.weapon.owner.missing", "무기는 전용 캐릭터 ID 하나가 필요합니다.");
+                    if (item.Equipment.TriggeredEffects != null)
+                        for (int effectIndex = 0; effectIndex < item.Equipment.TriggeredEffects.Count; effectIndex++)
+                            if (item.Equipment.TriggeredEffects[effectIndex] == null || !item.Equipment.TriggeredEffects[effectIndex].IsValid)
+                                context.Add(item, "equipment.triggered_effect.invalid", "장비 조건부 효과의 조건/효과/수치를 확인하세요.");
+                }
             }
 
             if (item.Type != ItemType.Consumable)
@@ -63,7 +89,7 @@ internal static class SkillItemContentRules
                     "Consumable item has no effect.");
             }
 
-            if ((item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage)
+            if ((item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage || item.ActionType == EffectActionType.Revive)
                 && item.TargetStat != TargetStatType.HP
                 && item.TargetStat != TargetStatType.AP)
             {
@@ -72,6 +98,14 @@ internal static class SkillItemContentRules
                     "item.consumable.target_stat.invalid",
                     "Heal or damage item must target HP or AP.");
             }
+
+            if (item.ActionType == EffectActionType.Revive && item.TargetStat != TargetStatType.HP)
+                context.Add(item, "item.revive.target_stat.invalid", "부활 아이템은 HP를 회복해야 합니다.");
+            if (item.ActionType == EffectActionType.Cleanse && !item.CleanseAllHarmful
+                && !System.Enum.IsDefined(typeof(ElementalStatusKind), item.CleanseElement))
+                context.Add(item, "item.cleanse.element.invalid", "정화할 누적 상태가 올바르지 않습니다.");
+            if (!System.Enum.IsDefined(typeof(EffectActionType), item.ActionType))
+                context.Add(item, "item.consumable.effect.unknown", "지원하지 않는 아이템 효과입니다.");
 
             if (item.ActionType != EffectActionType.ApplyStatus)
                 continue;

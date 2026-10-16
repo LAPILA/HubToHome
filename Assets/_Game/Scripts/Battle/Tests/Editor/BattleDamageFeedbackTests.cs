@@ -59,7 +59,7 @@ public class BattleDamageFeedbackTests
     }
 
     [Test]
-    public void DamageUsesSourcePlayerColorBeforeTargetPlayerColor()
+    public void PhysicalDamageUsesWhiteInsteadOfCharacterSymbolColors()
     {
         CharacterData sourceData = ScriptableObject.CreateInstance<CharacterData>();
         CharacterData targetData = ScriptableObject.CreateInstance<CharacterData>();
@@ -86,7 +86,7 @@ public class BattleDamageFeedbackTests
             Assert.That(feedback.Amount, Is.EqualTo(42));
             Assert.That(feedback.IsCritical, Is.True);
             Assert.That(feedback.Kind, Is.EqualTo(BattleDamageFeedbackKind.Damage));
-            Assert.That(feedback.ResolveColor(), Is.EqualTo(Color.cyan));
+            Assert.That(feedback.ResolveColor(), Is.EqualTo(Color.white));
         }
         finally
         {
@@ -98,7 +98,7 @@ public class BattleDamageFeedbackTests
     }
 
     [Test]
-    public void DamageUsesTargetPlayerColorWhenSourceIsNotAPlayer()
+    public void ElementalDamageUsesElementColorInsteadOfTargetColor()
     {
         CharacterData targetData = ScriptableObject.CreateInstance<CharacterData>();
         var sourceObject = new GameObject("Enemy Source");
@@ -115,9 +115,9 @@ public class BattleDamageFeedbackTests
                 target,
                 17,
                 false,
-                BattleDamageFeedbackKind.Damage);
+                BattleDamageFeedbackKind.Damage, DamageElement.Ice);
 
-            Assert.That(feedback.ResolveColor(), Is.EqualTo(Color.yellow));
+            Assert.That(feedback.ResolveColor(), Is.EqualTo(ElementalStatusPresentation.GetColor(ElementalStatusKind.Chill)));
         }
         finally
         {

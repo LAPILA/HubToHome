@@ -63,9 +63,7 @@ public sealed class SystemSaveFileSystem : ISaveFileSystem
         string destinationPath,
         string backupPath)
     {
-        if (File.Exists(backupPath))
-            File.Delete(backupPath);
-
+        // Replace가 성공할 때 백업도 교체합니다. 미리 삭제하면 교체 실패 시 복구본을 잃습니다.
         File.Replace(sourcePath, destinationPath, backupPath, true);
     }
 
@@ -102,7 +100,8 @@ public enum SaveStorageFailure
     InvalidArgument,
     Serialization,
     Verification,
-    Io
+    Io,
+    NotAllowed
 }
 
 public sealed class SaveStorageResult
@@ -263,7 +262,9 @@ public sealed class AtomicSaveStorage
                 "save_slot_" + slotIndex + ".json"));
     }
 
-    public SaveStorageResult Save(SaveData data, int slotIndex)
+    public SaveStorageResult Save(SaveData data, int slotIndex) => Save(data, slotIndex, null);
+
+    public SaveStorageResult Save(SaveData data, int slotIndex, string saveTimeOverride)
     {
         if (data == null)
         {
@@ -282,7 +283,7 @@ public sealed class AtomicSaveStorage
         string json;
         try
         {
-            json = _codec.Encode(data);
+            json = _codec.Encode(data, saveTimeOverride);
         }
         catch (Exception exception)
         {
@@ -314,6 +315,10 @@ public sealed class AtomicSaveStorage
                 CandidateRead primary = primaryExists
                     ? ReadCandidate(paths.PrimaryPath, SaveLoadSource.Primary)
                     : CandidateRead.Missing(SaveLoadSource.Primary);
+
+                if (primary.Decode != null && primary.Decode.Failure == SaveDecodeFailure.UnsupportedFutureVersion)
+                    return SaveStorageResult.Failed(SaveStorageFailure.NotAllowed,
+                        "더 새로운 게임 버전의 저장 파일은 덮어쓰지 않습니다. 다른 슬롯을 선택하세요.");
 
                 if (primaryExists && primary.Success)
                 {

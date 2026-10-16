@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 public enum LanguageType { KR, EN, JP, CN }
 
@@ -9,9 +8,6 @@ public class LocalizationManager : MonoBehaviour
 {
     private const string LocalizationResourcePath = "LocalizationTable";
     private const int LocalizationColumnCount = 5;
-    private const string CsvSeparatorPattern = @",(?=(?:[^""]*""[^""]*"")*[^""]*$)";
-
-    private static readonly Regex CsvSeparatorRegex = new Regex(CsvSeparatorPattern);
     public static LocalizationManager Instance { get; private set; }
     public static event Action<LanguageType> LanguageChanged;
 
@@ -40,17 +36,17 @@ public class LocalizationManager : MonoBehaviour
             return;
         }
 
-        string[] lines = textData.text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        List<string[]> rows = LocalizationCsv.Parse(textData.text);
         
-        for (int i = 1; i < lines.Length; i++)
+        for (int i = 1; i < rows.Count; i++)
         {
-            // 정규식으로 줄 나누기
-            string[] cols = CsvSeparatorRegex.Split(lines[i]);
+            string[] cols = rows[i];
             
             if (cols.Length < LocalizationColumnCount) continue;
 
             // 큰따옴표 제거 및 줄바꿈 복구
-            string key = CleanCSVCell(cols[0]);
+            string key = cols[0].Trim();
+            if (string.IsNullOrEmpty(key)) continue;
             var langDict = new Dictionary<LanguageType, string>
             {
                 { LanguageType.KR, CleanCSVCell(cols[1]) },
@@ -62,19 +58,14 @@ public class LocalizationManager : MonoBehaviour
             _localizedText[key] = langDict;
         }
         
-        Debug.Log($"<color=cyan>[Localization]</color> CSV 데이터 {lines.Length - 1}줄 로드 완료!");
+        Debug.Log($"<color=cyan>[Localization]</color> CSV 데이터 {_localizedText.Count}개 로드 완료!");
     }
 
     // CSV 특유의 큰따옴표(")와 줄바꿈(\n)을 정리해주는 유틸리티
     private static string CleanCSVCell(string cell)
     {
-        string clean = cell.Trim();
-        if (clean.StartsWith("\"") && clean.EndsWith("\""))
-        {
-            clean = clean.Substring(1, clean.Length - 2);
-        }
-        // 엑셀 내의 \n 문자열을 실제 줄바꿈으로 변환
-        return clean.Replace("\"\"", "\"").Replace("\\n", "\n");
+        // CSV 인용부호/물리적 줄바꿈은 parser가 처리하며 기존 \\n 표기도 유지합니다.
+        return cell.Replace("\\n", "\n");
     }
 
     public string GetText(string key, string fallback = "")
@@ -82,9 +73,18 @@ public class LocalizationManager : MonoBehaviour
         if (string.IsNullOrEmpty(key)) return fallback;
         if (_localizedText != null && _localizedText.TryGetValue(key, out var langDict))
         {
-            if (langDict.TryGetValue(CurrentLanguage, out string text)) return text;
+            if (langDict.TryGetValue(CurrentLanguage, out string text) && !string.IsNullOrEmpty(text)) return text;
+            if (langDict.TryGetValue(LanguageType.KR, out string korean) && !string.IsNullOrEmpty(korean)) return korean;
         }
         return fallback; 
+    }
+
+    public static string Localize(string key, string fallback)
+        => Instance != null ? Instance.GetText(key, fallback) : fallback;
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     public void ChangeLanguage(LanguageType newLang)

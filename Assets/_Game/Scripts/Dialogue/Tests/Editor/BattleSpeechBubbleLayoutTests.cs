@@ -4,6 +4,95 @@ using UnityEngine;
 public class BattleSpeechBubbleLayoutTests
 {
     [Test]
+    public void TextOnlyPreservesTheOriginalInnerArea()
+    {
+        BattleSpeechBubbleLayout.CalculateContent(new Vector2(180, 84), Vector2.zero, true, 16,
+            out Rect text, out Rect icon);
+        Assert.That(text.size, Is.EqualTo(new Vector2(180, 84)));
+        Assert.That(text.center, Is.EqualTo(Vector2.zero));
+        Assert.That(icon.size, Is.EqualTo(Vector2.zero));
+    }
+
+    [Test]
+    public void IconOnlyIsCenteredAndKeepsAspectRatio()
+    {
+        BattleSpeechBubbleLayout.CalculateContent(new Vector2(180, 84), new Vector2(192, 96), false, 16,
+            out Rect text, out Rect icon);
+        Assert.That(text.size, Is.EqualTo(Vector2.zero));
+        Assert.That(icon.center, Is.EqualTo(Vector2.zero));
+        Assert.That(icon.height, Is.EqualTo(84));
+        Assert.That(icon.width / icon.height, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void MixedContentReservesAnIconColumnAndGap()
+    {
+        BattleSpeechBubbleLayout.CalculateContent(new Vector2(300, 100), new Vector2(64, 64), true, 16,
+            out Rect text, out Rect icon);
+        Assert.That(icon.xMin, Is.EqualTo(-150));
+        Assert.That(text.xMin - icon.xMax, Is.EqualTo(16));
+        Assert.That(text.xMax, Is.EqualTo(150));
+        Assert.That(icon.center.y, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void EmptySpeechRulesAreNotEligibleButMissingIconsCanUseText()
+    {
+        var rule = new BattleSpeechRule { Text = "  ", ContentMode = BattleSpeechContentMode.Icon };
+        Assert.That(rule.HasDisplayContent, Is.False);
+        rule.Text = "대체 대사";
+        Assert.That(rule.HasDisplayContent, Is.True);
+        rule.ContentMode = BattleSpeechContentMode.Text;
+        Assert.That(rule.HasDisplayContent, Is.True);
+    }
+
+    [Test]
+    public void InactiveBubbleInitializesOnceAndDoesNotConsumeAnUnshowableRule()
+    {
+        var root = new GameObject("Inactive speech", typeof(RectTransform));
+        root.SetActive(false);
+        try
+        {
+            var bubble = root.AddComponent<BattleSpeechBubble>();
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var rules = new System.Collections.Generic.List<BattleSpeechRule>
+            {
+                new BattleSpeechRule { Text = "test", Chance = 1f, TriggerOnce = true }
+            };
+            typeof(BattleSpeechBubble).GetField("_rules", flags).SetValue(bubble, rules);
+            Assert.That(bubble.TryShow(BattleSpeechTrigger.BattleFlavor, null), Is.False);
+            var runtime = (System.Collections.Generic.List<BattleSpeechRule>)typeof(BattleSpeechBubble)
+                .GetField("_runtimeRules", flags).GetValue(bubble);
+            Assert.That(runtime, Has.Count.EqualTo(1));
+            Assert.That(runtime[0].HasTriggered, Is.False);
+            root.SetActive(true);
+            typeof(BattleSpeechBubble).GetMethod("EnsureInitialized", flags).Invoke(bubble, null);
+            Assert.That(root.activeSelf, Is.True);
+            Assert.That(typeof(BattleSpeechBubble).GetField("_runtimeRules", flags).GetValue(bubble), Is.SameAs(runtime));
+        }
+        finally { Object.DestroyImmediate(root); }
+    }
+
+    [Test]
+    public void RuntimeRuleClonePreservesIconAuthoringButResetsTriggerHistory()
+    {
+        var texture = new Texture2D(8, 8);
+        var sprite = Sprite.Create(texture, new Rect(0, 0, 8, 8), Vector2.one * 0.5f);
+        try
+        {
+            var rule = new BattleSpeechRule { ContentMode = BattleSpeechContentMode.TextAndIcon,
+                Icon = sprite, IconHeight = 32, Text = "!", HasTriggered = true };
+            BattleSpeechRule clone = rule.CloneRuntime();
+            Assert.That(clone.Icon, Is.SameAs(sprite));
+            Assert.That(clone.ContentMode, Is.EqualTo(rule.ContentMode));
+            Assert.That(clone.IconHeight, Is.EqualTo(32));
+            Assert.That(clone.Text, Is.EqualTo("!"));
+            Assert.That(clone.HasTriggered, Is.False);
+        }
+        finally { Object.DestroyImmediate(sprite); Object.DestroyImmediate(texture); }
+    }
+
+    [Test]
     public void ScreenClampKeepsSpeechBetweenTurnQueueAndBottomHud()
     {
         var safe = new Rect(8f, 160f, 624f, 258f);

@@ -268,7 +268,7 @@ public class QTEManagerDefensePipelineTests
         Assert.That(request.DodgeWindow, Is.EqualTo(0.22f));
         Assert.That(request.CounterWindow, Is.EqualTo(0.18f));
         Assert.That(request.GuardDuration, Is.EqualTo(0.4f));
-        Assert.That(request.GuardDamageMultiplier, Is.EqualTo(0.5f));
+        Assert.That(request.GuardDamageMultiplier, Is.EqualTo(0.35f));
         Assert.That(request.TimingProfile.PerfectWindow, Is.EqualTo(0.12f));
         Assert.That(request.Requirement, Is.EqualTo(DefenseRequirement.JumpOnly),
             "Timed guard must preserve authored requirement data for the legacy path.");
@@ -309,6 +309,32 @@ public class QTEManagerDefensePipelineTests
             return true;
         }
         public void PreviewDefenseInput(DefenseInput input) => PreviewCount++;
+    }
+
+    [Test]
+    public void RangedPreparation_DoesNotSpawnCueBeforeSharedSuccessWindow()
+    {
+        // 0.28초 + 공격 국소 감속 0.05초: X 준비 구간은 이미 열렸지만
+        // 공통 Z 성공 구간(0.24초)은 아직 열리지 않은 시작 프레임입니다.
+        var actorObject = new GameObject("CueTimingEnemy");
+        EnemyCharacter actor = actorObject.AddComponent<EnemyCharacter>();
+        typeof(CharacterBase).GetField("_currentHP", BindingFlags.Instance | BindingFlags.NonPublic)
+            .SetValue(actor, 100);
+        QteExecution execution = null;
+        try
+        {
+            execution = _manager.StartBattleDefenseWindow(_manager.CreateDefenseRequest(0.28f, 1f, DefenseRequirement.Any),
+                new FreshParryInput(), _ => { }, attacker: actor,
+                cuePrefab: AssetDatabase.LoadAssetAtPath<GameObject>(TelegraphPath), useMeleeParryAssistance: false);
+            Assert.That(execution.IsDone, Is.False);
+            Assert.That(typeof(QTEManager).GetField("_activeBattleCue", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(_manager), Is.Null, "아직 패링할 수 없는 구간에 타격 신호를 표시하지 않습니다.");
+        }
+        finally
+        {
+            if (execution != null) _manager.Cancel(execution);
+            Object.DestroyImmediate(actorObject);
+        }
     }
 
     [Test]

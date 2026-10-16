@@ -28,7 +28,13 @@ public class InteractionSystem : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            // Player_Base를 공유하는 전투 동료도 이 컴포넌트를 가집니다.
+            // 필드 상호작용만 제외하고 캐릭터/전투 컴포넌트는 보존합니다.
+            enabled = false;
+            return;
+        }
         Instance = this;
 
         _contactFilter = new ContactFilter2D();
@@ -50,7 +56,8 @@ public class InteractionSystem : MonoBehaviour
 
     private void Update()
     {
-        if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) 
+        if (Instance != this) return;
+        if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove)
         {
             ClearTarget();
             _hasDetectionSample = false;

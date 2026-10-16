@@ -47,8 +47,10 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
             yield break;
         }
 
+        using var damageBatch = _battleManager.DamageBatches.Begin();
         var skillContext = new SkillContext
         {
+            DamageBatchId = _battleManager.DamageBatches.CurrentId,
             Actor = actor,
             Targets = targets,
             CurrentDamageMultiplier = 1.0f,

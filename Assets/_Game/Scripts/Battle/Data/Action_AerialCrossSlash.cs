@@ -17,7 +17,8 @@ public sealed class Action_AerialCrossSlash : SkillActionBlock
     [LabelText("한 번 베는 시간 (초)"), MinValue(0.05f)] public float DashDuration = 0.13f;
     [LabelText("복귀 시간 (초)"), MinValue(0.05f)] public float ReturnDuration = 0.2f;
     [LabelText("한 타 피해 배율"), MinValue(0f)] public float DamagePerStrike = 0.8f;
-    [LabelText("QTE 성공 배율"), MinValue(1f)] public float SuccessMultiplier = 1.5f;
+    [HideInInspector] public float SuccessMultiplier = 1.5f; // 구형 데이터 호환
+    [LabelText("QTE 실패 피해 배율"), Range(0f, 0.99f)] public float FailureMultiplier = 0.5f;
     [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
 
     public bool HasValidSettings => Positive(Height) && Positive(CrossingDistance)
@@ -25,7 +26,7 @@ public sealed class Action_AerialCrossSlash : SkillActionBlock
         && Positive(QteDuration) && QteDuration >= 0.2f && Positive(InputWindow) && InputWindow <= QteDuration
         && Positive(DashDuration) && Positive(ReturnDuration)
         && !float.IsNaN(DamagePerStrike) && !float.IsInfinity(DamagePerStrike) && DamagePerStrike >= 0f
-        && Positive(SuccessMultiplier) && SuccessMultiplier >= 1f;
+        && !float.IsNaN(FailureMultiplier) && FailureMultiplier >= 0f && FailureMultiplier < 1f;
 
     private static bool Positive(float value) => !float.IsNaN(value) && !float.IsInfinity(value) && value > 0f;
 
@@ -98,10 +99,10 @@ public sealed class Action_AerialCrossSlash : SkillActionBlock
                     player.PlayBasicAttackEffect();
                     CharacterBase target = context.MainTarget;
                     int hp = target.CurrentHP;
-                    float multiplier = DamagePerStrike * (success ? SuccessMultiplier : 1f) * context.EffectiveDamageMultiplier;
-                    DamageResult result = target.TakeDamage(Mathf.RoundToInt(player.ATK * Mathf.Max(0f, multiplier)), Element, player);
+                    float multiplier = DamagePerStrike * PlayerAttackQtePolicy.DamageMultiplier(success ? 1f : 0f, FailureMultiplier) * context.EffectiveDamageMultiplier;
+                    DamageResult result = context.ApplySkillHit(target, Mathf.RoundToInt(player.ATK * Mathf.Max(0f, multiplier)), Element);
                     if (BattleManager.Instance != null)
-                        BattleManager.Instance.InvokeDamageEvent(player, target, result.FinalDamage, success, hp);
+                        BattleManager.Instance.InvokeDamageEvent(player, target, result.FinalDamage, success, hp, result.Element, context.DamageBatchId);
                 });
                 motion = slash;
                 yield return WaitMotion(motion, context);

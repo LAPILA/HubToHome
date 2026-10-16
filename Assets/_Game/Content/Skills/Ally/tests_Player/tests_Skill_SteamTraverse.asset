@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "증기 횡단"
   SkillID: tests_player.steam_traverse
-  Description: "전장을 두 차례 횡단하며 모든 적에게 연속 타격을 남긴다."
+  Description: "전장을 가로질러 적 전체를 베어낸다."
   UsageProfile: 1
   APCost: 20
   TargetType: 1

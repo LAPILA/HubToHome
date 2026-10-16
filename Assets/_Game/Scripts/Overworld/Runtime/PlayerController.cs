@@ -145,6 +145,9 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void Start()
     {
+        // BattleManager가 Instantiate 직후 위치/방향/전투 모드를 이미 설정한 동료입니다.
+        // 지연된 Start가 이를 필드 좌표/Idle 애니메이션으로 덮어쓰지 않습니다.
+        if (State == PlayerState.InBattle || IsBattleEntryHeld) return;
         LoadPositionFromGlobal();
         UpdateAnimator(false);
 
@@ -208,6 +211,12 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void HandleBattleDefenseInput()
     {
+        if (!CanUseBattleDefense)
+        {
+            _bufferedDefenseInput = DefenseInput.None;
+            _bufferedDefenseInputTime = -999f;
+            return;
+        }
         if (BattleManager.Instance == null)
             return;
 
@@ -232,6 +241,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void AttemptDefenseInput(DefenseInput input)
     {
+        if (!CanUseBattleDefense) return;
         float now = GameInput.GetDefensePressTime(input);
         _bufferedDefenseInput = input;
         _bufferedDefenseInputTime = now;
@@ -247,6 +257,13 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     {
         input = DefenseInput.None;
         inputTime = -999f;
+
+        if (!CanUseBattleDefense)
+        {
+            _bufferedDefenseInput = DefenseInput.None;
+            _bufferedDefenseInputTime = -999f;
+            return false;
+        }
 
         if (_bufferedDefenseInput == DefenseInput.None)
             return false;
@@ -272,6 +289,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public void CommitDefenseAttempt(DefenseInput input, bool acceptedParryFeedback = false)
     {
+        if (!CanUseBattleDefense) return;
         // Update 순서와 관계없이 한 번만 미리보기. 버퍼는 이후에도 수집하지만 모션은 잠급니다.
         bool hurtBusy = _hurtReactionActive || (_battleCharacter != null
             && (!_battleCharacter.IsAlive || _battleCharacter.IsHitReactionActive));
@@ -290,7 +308,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         KillDefenseVisualTween();
         SpriteRenderer sprite = _spriteRenderer;
         if (sprite == null) return;
-        Color baseline = sprite.color;
+        Color baseline = BattleTint;
         sprite.color = Color.Lerp(baseline, ResolveFlashColor(_parryFlashColor), 0.45f);
         Tween feedback = DOTween.To(() => sprite != null ? sprite.color : baseline,
                 color => { if (sprite != null) sprite.color = color; }, baseline, 0.12f)
@@ -306,7 +324,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void PreviewDefenseInputInternal(DefenseInput input, float timestamp)
     {
-        if (input == DefenseInput.None
+        if (!CanUseBattleDefense || input == DefenseInput.None
             || !_defensePresentationGate.CanPreview(HasActiveDefenseVisualTween() || _hurtReactionActive
                 || (_battleCharacter != null && (!_battleCharacter.IsAlive || _battleCharacter.IsHitReactionActive))))
             return;
@@ -874,7 +892,10 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         }
     }
 
-    public bool IsGuardHeld => GameInput.QTEZHeld;
+    public bool CanUseBattleDefense => _battleCharacter == null
+        || (_battleCharacter.IsAlive && !_battleCharacter.Elements.IsFrozen);
+    public bool IsGuardHeld => CanUseBattleDefense && GameInput.QTEZHeld;
+    private Color BattleTint => _battleCharacter != null ? _battleCharacter.BattleSpriteTint : Color.white;
 
     public void ConfirmGuardSuccess()
     {
@@ -885,9 +906,12 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     public IEnumerator WaitForDefenseVisualComplete(float fallbackSeconds = 0.45f)
     {
         float started = Time.unscaledTime;
-        while (HasActiveDefenseVisualTween()
-            && Time.unscaledTime < started + Mathf.Max(0.05f, fallbackSeconds))
+        while (BattleDelay.IsPaused || (HasActiveDefenseVisualTween()
+            && Time.unscaledTime < started + Mathf.Max(0.05f, fallbackSeconds)))
+        {
+            if (BattleDelay.IsPaused) started += Time.unscaledDeltaTime;
             yield return null;
+        }
     }
 
     /// <summary>
@@ -911,10 +935,17 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         float observationGraceUntil = Time.unscaledTime + (canObserveAnimatorState ? 0.05f : 0f);
         PlayerCharacter playerCharacter = tookDamage ? GetComponent<PlayerCharacter>() : null;
 
-        while (Time.unscaledTime < deadline)
+        while (Time.unscaledTime < deadline || BattleDelay.IsPaused)
         {
             if (this == null || !isActiveAndEnabled || State != PlayerState.InBattle)
                 yield break;
+            if (BattleDelay.IsPaused)
+            {
+                deadline += Time.unscaledDeltaTime;
+                observationGraceUntil += Time.unscaledDeltaTime;
+                yield return null;
+                continue;
+            }
             bool defenseTweenActive = HasActiveDefenseVisualTween();
             if (defenseTweenActive)
                 defenseTweenSeen = true;
@@ -1161,7 +1192,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
             _screenFlashScaleProvider?.Scale
             ?? GameConfigManager.DefaultFlashIntensity);
         return VisualAccessibilityPolicy.ScaleFlashColor(
-            Color.white,
+            BattleTint,
             authoredColor,
             scale);
     }
@@ -1199,7 +1230,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
         _vfx?.Play(CharacterVFX.VFXAction.Parry_Success);
 
-        Color restoreColor = _spriteRenderer.color;
+        Color restoreColor = BattleTint;
         Sequence feedback = DOTween.Sequence()
             .SetUpdate(true)
             .SetRecyclable(false)
@@ -1261,7 +1292,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         }
 
         _spriteRenderer.DOKill();
-        Color restoreColor = _spriteRenderer.color;
+        Color restoreColor = BattleTint;
 
         _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), Mathf.Max(0.01f, _hurtFlashDuration))
             .SetUpdate(true)

@@ -73,7 +73,7 @@ public readonly struct DefenseQteRequest
         bool allowNearSuccess = true,
         bool useTimedGuard = false,
         float guardDuration = 0.4f,
-        float guardDamageMultiplier = 0.5f,
+        float guardDamageMultiplier = 0.35f,
         bool useActiveDefense = false,
         float dodgeWindow = 0.22f,
         float counterWindow = 0.18f)

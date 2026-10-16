@@ -2896,20 +2896,6 @@ public sealed class SequenceMakerWindow : EditorWindow
         return ActionSequenceSourceSync.DefaultPrimaryMode;
     }
 
-    private static Button CreateNavigatorRow(string text, bool selected)
-    {
-        var row = new Button { text = text ?? string.Empty };
-        row.AddToClassList("sm-nav-row");
-        row.EnableInClassList("is-selected", selected);
-        return row;
-    }
-
-    private static void AddSectionLabel(VisualElement parent, string text)
-    {
-        var label = new Label(text);
-        label.AddToClassList("sm-section-label");
-        parent.Add(label);
-    }
 
     private static VisualElement CreateEmptyState(string title, string copy)
     {
@@ -2966,43 +2952,6 @@ public sealed class SequenceMakerWindow : EditorWindow
         return action?.ActionId ?? "액션";
     }
 
-    private static string ActionSummary(ScenarioActionData action, ActionCatalogEntry entry)
-    {
-        if (!string.IsNullOrWhiteSpace(action?.Note))
-        {
-            return action.Note.Trim();
-        }
-
-        if (!string.IsNullOrWhiteSpace(action?.ParametersJson)
-            && action.ParametersJson.Trim() != "{}")
-        {
-            string parameters = action.ParametersJson.Trim();
-            return parameters.Length <= 96 ? parameters : parameters.Substring(0, 93) + "...";
-        }
-
-        return entry?.UsageKo ?? action?.ActionId ?? string.Empty;
-    }
-
-    private bool MatchesSearch(ScenarioActionData action, string search)
-    {
-        if (string.IsNullOrEmpty(search))
-        {
-            return true;
-        }
-
-        ActionCatalogEntry entry = FindCatalogEntry(action.ActionId);
-        string haystack = string.Join(" ", new[]
-        {
-            action.ActionId,
-            action.DesignerLabel,
-            action.Note,
-            action.ParametersJson,
-            entry?.DisplayNameKo,
-            entry?.DescriptionKo,
-            entry?.Category
-        });
-        return haystack.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
-    }
 
     private static int CountBlocks(IList<ScenarioActionData> actions)
     {

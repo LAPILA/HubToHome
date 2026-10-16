@@ -10,6 +10,188 @@ using UnityEngine;
 public class BattleTurnQteModuleControllerServiceTests
 {
     [Test]
+    public void EnemyTargetPolicy_IsNotFixedOrderAndWeightsWoundedWithoutStarvingOthers()
+    {
+        var policy = new BattleEnemyTargetSelector<string>();
+        string[] actors = { "front", "support", "striker" };
+        var rng = new System.Random(20261002);
+        int[] counts = new int[3];
+        int last = -1, streak = 0, nonSequential = 0;
+        for (int i = 0; i < 9000; i++)
+        {
+            int target = policy.SelectIndex(actors, actor => actor != null,
+                actor => actor == "support" ? 1.25f : 1f, (float)rng.NextDouble());
+            Assert.That(target, Is.InRange(0, 2));
+            streak = target == last ? streak + 1 : 1;
+            Assert.That(streak, Is.LessThanOrEqualTo(2));
+            if (last >= 0 && target != (last + 1) % 3) nonSequential++;
+            last = target;
+            counts[target]++;
+        }
+        Assert.That(nonSequential, Is.GreaterThan(2000));
+        Assert.That(counts[1], Is.GreaterThan(counts[0]));
+        Assert.That(counts[1], Is.GreaterThan(counts[2]));
+        foreach (int count in counts) Assert.That(count, Is.InRange(2400, 3600));
+    }
+
+    [Test]
+    public void EnemyTargetPolicy_SingleSurvivorAndEndpointsNeverProduceInvalidIndex()
+    {
+        var policy = new BattleEnemyTargetSelector<string>();
+        string[] actors = { null, "survivor", null };
+        foreach (float sample in new[] { 0f, 1f, -1f, 2f, float.NaN })
+            Assert.That(policy.SelectIndex(actors, actor => actor != null, null, sample), Is.EqualTo(1));
+        Assert.That(policy.SelectIndex(actors, actor => false, null, .5f), Is.EqualTo(-1));
+        Assert.That(policy.SelectIndex(null, actor => true, null, .5f), Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void IndividualMelee_PreparationDoesNotStageAnArbitraryFirstDefender()
+    {
+        using (var fixture = new TurnQteFixture())
+        {
+            var preparation = new RecordingSkillActionBlock();
+            var timeline = new List<SkillActionBlock>
+            {
+                preparation, new Action_DefenseWindow(),
+                new Action_SequentialMelee { ApproachEachTarget = true }
+            };
+            var context = new SkillContext
+            {
+                Actor = fixture.Enemy, Targets = new List<CharacterBase> { fixture.Player },
+                IsExecutionActive = () => true
+            };
+            Vector3 home = fixture.Player.transform.position;
+            RunToCompletion(context.ExecuteBlock(preparation, timeline));
+            Assert.That(context.TryGetActorStagingPosition(out _), Is.False);
+            Assert.That(fixture.Player.transform.position, Is.EqualTo(home));
+            using (var local = new BattleDefenderPresentationScope(fixture.Player, () => true, fixture.Enemy, false))
+                Assert.That(local.IsPaired, Is.False);
+            using (var central = new BattleDefenderPresentationScope(fixture.Player, () => true, fixture.Enemy))
+                Assert.That(central.IsPaired, Is.True);
+        }
+    }
+
+    [Test]
+    public void EnemyTargets_RandomlyCoverAllFrontlineMembersWithoutTripleFocus()
+    {
+        using (var fixture = new TurnQteFixture())
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            fixture.AddPlayer("teal");
+            fixture.AddPlayer("purple");
+            var counts = new int[3];
+            int last = -1, streak = 0;
+            for (int action = 0; action < 600; action++)
+            {
+                int index = SelectNextEnemyTarget(service);
+                counts[index]++;
+                streak = index == last ? streak + 1 : 1;
+                Assert.That(streak, Is.LessThanOrEqualTo(2));
+                last = index;
+            }
+            foreach (int count in counts) Assert.That(count, Is.GreaterThan(100));
+        }
+    }
+
+    [Test]
+    public void EnemyTargets_SkipDeadDisabledInactiveAndDestroyedMembers()
+    {
+        using (var fixture = new TurnQteFixture())
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            PlayerCharacter second = fixture.AddPlayer("teal");
+            PlayerCharacter third = fixture.AddPlayer("purple");
+            fixture.Player.TakePureDamage(fixture.Player.CurrentHP);
+            second.enabled = false;
+            Assert.That(SelectNextEnemyTarget(service), Is.EqualTo(2));
+            third.gameObject.SetActive(false);
+            Assert.That(SelectNextEnemyTarget(service), Is.EqualTo(-1));
+            second.enabled = true;
+            Assert.That(SelectNextEnemyTarget(service), Is.EqualTo(1));
+            UnityEngine.Object.DestroyImmediate(second.gameObject);
+            Assert.That(SelectNextEnemyTarget(service), Is.EqualTo(-1));
+            third.gameObject.SetActive(true);
+            Assert.That(SelectNextEnemyTarget(service), Is.EqualTo(2));
+        }
+    }
+
+    [Test]
+    public void EnemyTargets_EmptyPartyAndReserveReplacementStayInBounds()
+    {
+        using (var fixture = new TurnQteFixture())
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            fixture.AddPlayer("teal");
+            fixture.AddPlayer("purple");
+            SelectNextEnemyTarget(service);
+            SelectNextEnemyTarget(service);
+            var party = (IList<PlayerCharacter>)fixture.Host.PlayerParty;
+            party.Clear();
+            Assert.That(SelectNextEnemyTarget(service), Is.EqualTo(-1));
+            fixture.AddPlayer("reserve");
+            Assert.That(SelectNextEnemyTarget(service), Is.Zero);
+            fixture.AddPlayer("reserve2");
+            fixture.AddPlayer("reserve3");
+            for (int action = 0; action < 6; action++)
+                Assert.That(SelectNextEnemyTarget(service), Is.InRange(0, 2));
+        }
+    }
+
+    [Test]
+    public void EnemyTargets_BasicAndSkillShareHistoryButAoeAndWaitDoNotAdvanceIt()
+    {
+        using (var fixture = new TurnQteFixture())
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            fixture.AddPlayer("teal");
+            fixture.AddPlayer("purple");
+            SkillData skill = ScriptableObject.CreateInstance<SkillData>();
+            try
+            {
+                var targetsPerBlock = new List<CharacterBase[]>();
+                skill.ActionTimeline.Add(new InterruptingSkillActionBlock
+                {
+                    OnExecute = context => targetsPerBlock.Add(context.Targets.ToArray())
+                });
+                skill.ActionTimeline.Add(new InterruptingSkillActionBlock
+                {
+                    OnExecute = context => targetsPerBlock.Add(context.Targets.ToArray())
+                });
+
+                fixture.Host.QueueEnemyAction(EnemyAction.BasicAttack);
+                RunToCompletion(service.RunEnemyAction());
+                Assert.That(TargetHistoryPosition(service), Is.EqualTo(1));
+                fixture.Host.QueueEnemyAction(EnemyAction.Wait);
+                RunToCompletion(service.RunEnemyAction());
+                fixture.Host.QueueEnemyAction(EnemyAction.EnragedAttack);
+                RunToCompletion(service.RunEnemyAction());
+                skill.IsAoE = true;
+                RunToCompletion(InvokePrivateExecuteEnemySequenceSkill(service, fixture.Enemy, skill));
+                Assert.That(targetsPerBlock[0], Is.EqualTo(fixture.Host.PlayerParty));
+                Assert.That(targetsPerBlock[1], Is.EqualTo(fixture.Host.PlayerParty));
+                Assert.That(TargetHistoryPosition(service), Is.EqualTo(1));
+
+                skill.IsAoE = false;
+                for (int action = 0; action < 3; action++)
+                {
+                    targetsPerBlock.Clear();
+                    RunToCompletion(InvokePrivateExecuteEnemySequenceSkill(service, fixture.Enemy, skill));
+                    Assert.That(targetsPerBlock, Has.Count.EqualTo(2));
+                    Assert.That(targetsPerBlock[0], Has.Length.EqualTo(1));
+                    Assert.That(fixture.Host.PlayerParty, Does.Contain(targetsPerBlock[0][0]));
+                    Assert.That(targetsPerBlock[1], Is.EqualTo(targetsPerBlock[0]), "All hits retain one target.");
+                    Assert.That(TargetHistoryPosition(service), Is.EqualTo((action + 2) % 4));
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(skill);
+            }
+        }
+    }
+
+    [Test]
     public void SpeedEffect_RefreshesFutureQueueImmediatelyWithoutInterruptingCurrentActor()
     {
         using (var fixture = new TurnQteFixture(
@@ -1008,6 +1190,21 @@ public class BattleTurnQteModuleControllerServiceTests
         }
     }
 
+    private static int TargetHistoryPosition(BattleTurnQteModuleControllerService service)
+    {
+        object policy = typeof(BattleTurnQteModuleControllerService).GetField(
+            "_enemyTargets", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(service);
+        return (int)policy.GetType().GetField("_nextHistory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(policy);
+    }
+
+    private static int SelectNextEnemyTarget(BattleTurnQteModuleControllerService service)
+    {
+        MethodInfo method = typeof(BattleTurnQteModuleControllerService).GetMethod(
+            "SelectNextAlivePlayerIndex", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        return (int)method.Invoke(service, null);
+    }
+
     private static void InvokePrivateApplyEnemyDefenseDamage(
         BattleTurnQteModuleControllerService service,
         EnemyCharacter enemy,
@@ -1155,6 +1352,21 @@ public class BattleTurnQteModuleControllerServiceTests
         public FakeTurnQteHost Host { get; }
         public CameraController CameraController => _cameraController;
         public PositionManager PositionManager => _positionManager;
+
+        public PlayerCharacter AddPlayer(string id)
+        {
+            var obj = new GameObject(id);
+            _assets.Add(obj);
+            CharacterData data = ScriptableObject.CreateInstance<CharacterData>();
+            data.CharacterID = id;
+            data.DisplayName = id;
+            _assets.Add(data);
+            PlayerCharacter player = obj.AddComponent<PlayerCharacter>();
+            player.SetCharacterData(data);
+            player.HealHP(player.MaxHP);
+            ((IList<PlayerCharacter>)Host.PlayerParty).Add(player);
+            return player;
+        }
 
         public void Dispose()
         {

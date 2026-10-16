@@ -74,11 +74,17 @@ public sealed class BunnySlimeShowcaseEnemyTests
     {
         const string folder = "Assets/_Game/Content/Skills/Enemy/ZEV/";
         string[] names = { "Skill_ComboSlash", "Skil_Zev", "Skill_Crash", "Skill_BlinkSlash", "Skill_PhantomArc" };
-        int[] hits = { 3, 1, 1, 1, 2 };
+        int[] hits = { 1, 1, 1, 1, 2 }; // 순회는 방어 템플릿 하나를 실제 대상마다 실행합니다.
         for (int i = 0; i < names.Length; i++)
         {
             SkillData skill = AssetDatabase.LoadAssetAtPath<SkillData>(folder + names[i] + ".asset");
             Assert.That(skill, Is.Not.Null, names[i]);
+            Assert.That(skill.ElementalApplications, Is.Not.Empty);
+            foreach (ElementalStatusApplication application in skill.ElementalApplications)
+            {
+                Assert.That(application.Kind, Is.EqualTo(ElementalStatusKind.Chill).Or.EqualTo(ElementalStatusKind.Electric));
+                Assert.That(application.Amount, Is.GreaterThan(0));
+            }
             int damageCount = 0, windowCount = 0;
             bool windowOpen = false;
             foreach (SkillActionBlock block in skill.ActionTimeline)
@@ -98,7 +104,16 @@ public sealed class BunnySlimeShowcaseEnemyTests
                 }
                 if (block is Action_VFX)
                     Assert.That(windowOpen, Is.True, "Slash effects must follow the defense window.");
-                if (block is Action_Damage)
+                if (block is Action_SequentialMelee melee)
+                {
+                    Assert.That(skill.IsAoE, Is.True);
+                    Assert.That(melee.ApproachEachTarget, Is.True);
+                    Assert.That(melee.DashSpeed, Is.InRange(.05f, .15f));
+                    Assert.That(SkillContext.HasSynchronizedImpact(
+                        skill.ActionTimeline[skill.ActionTimeline.IndexOf(block) - 1] as Action_DefenseWindow,
+                        skill.ActionTimeline), Is.True);
+                }
+                if (block is Action_Damage || block is Action_SequentialMelee)
                 {
                     Assert.That(windowOpen, Is.True, "Every melee impact needs its own defense window.");
                     windowOpen = false;

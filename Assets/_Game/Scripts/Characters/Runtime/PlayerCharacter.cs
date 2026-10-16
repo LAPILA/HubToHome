@@ -62,6 +62,14 @@ public class PlayerCharacter : CharacterBase
 
     public CharacterData CharacterData => _characterData;
     public CharacterBattleResource BattleResource { get; } = new CharacterBattleResource();
+    public Color BattleSpriteTint => _characterData != null && _characterData.BattleSpriteTint.a > 0f
+        ? _characterData.BattleSpriteTint : Color.white;
+    protected override Color BaseFlashColor => BattleSpriteTint;
+
+    public void RestoreBattleSpriteTint()
+    {
+        if (_spriteRenderer != null) _spriteRenderer.color = BattleSpriteTint;
+    }
     public Color BattleSymbolColor
     {
         get
@@ -170,10 +178,17 @@ public class PlayerCharacter : CharacterBase
         float deadline = startedAt + Mathf.Max(0.25f, maxWait);
         bool attackStateSeen = false;
 
-        while (Time.unscaledTime < deadline)
+        while (Time.unscaledTime < deadline || BattleDelay.IsPaused)
         {
             if (this == null || _animator == null || !_animator.isActiveAndEnabled || !IsAlive)
                 yield break;
+            if (BattleDelay.IsPaused)
+            {
+                startedAt += Time.unscaledDeltaTime;
+                deadline += Time.unscaledDeltaTime;
+                yield return null;
+                continue;
+            }
             AnimatorStateInfo current = _animator.GetCurrentAnimatorStateInfo(0);
             bool isTransitioning = _animator.IsInTransition(0);
             AnimatorStateInfo next = isTransitioning
@@ -232,19 +247,20 @@ public class PlayerCharacter : CharacterBase
 
     protected override void PopulateEquipmentStatModifiers(List<StatModifier> modifiers)
     {
-        AppendEquipmentModifier(modifiers, WeaponSlot);
-        AppendEquipmentModifier(modifiers, Accessory1Slot);
-        AppendEquipmentModifier(modifiers, Accessory2Slot);
-        AppendEquipmentModifier(modifiers, HeadSlot);
-        AppendEquipmentModifier(modifiers, BodySlot);
-        AppendEquipmentModifier(modifiers, ShoesSlot);
+        AppendEquipmentModifier(modifiers, WeaponSlot, EquipmentSlot.Weapon);
+        AppendEquipmentModifier(modifiers, Accessory1Slot, EquipmentSlot.Accessory1);
+        AppendEquipmentModifier(modifiers, Accessory2Slot, EquipmentSlot.Accessory2);
+        AppendEquipmentModifier(modifiers, HeadSlot, EquipmentSlot.Head);
+        AppendEquipmentModifier(modifiers, BodySlot, EquipmentSlot.Body);
+        AppendEquipmentModifier(modifiers, ShoesSlot, EquipmentSlot.Shoes);
     }
 
-    private static void AppendEquipmentModifier(
+    private void AppendEquipmentModifier(
         List<StatModifier> modifiers,
-        EquipmentData equipment)
+        EquipmentData equipment, EquipmentSlot slot)
     {
-        equipment?.AppendStatModifiers(modifiers);
+        if (EquipmentLoadoutService.CanApply(equipment, slot, _characterData != null ? _characterData.CharacterID : null))
+            equipment.AppendStatModifiers(modifiers);
     }
 
     public void SetCharacterData(CharacterData data)
@@ -256,6 +272,9 @@ public class PlayerCharacter : CharacterBase
     private void ApplyCharacterData()
     {
         BattleResource.Configure(_characterData != null ? _characterData.BattleResource : null);
+        ConfigureElementalStatus(_characterData != null ? _characterData.StatusProfile : null);
+        if (_spriteRenderer != null) _spriteRenderer.DOKill(false);
+        RestoreBattleSpriteTint();
         CharacterID = _characterData != null && !string.IsNullOrWhiteSpace(_characterData.CharacterID)
             ? _characterData.CharacterID
             : _fallbackCharacterID;
@@ -324,11 +343,7 @@ public class PlayerCharacter : CharacterBase
         saveData.HP = CurrentHP;
         saveData.AP = CurrentAP;
 
-        if (CurrentHP <= 0) 
-        {
-            SetCurrentHPValue(1);
-            saveData.HP = 1;
-        }
+        // 사망자는 회복/부활 경로에서만 되살립니다. 로드와 보상 갱신은 회복이 아닙니다.
     }
 
     public bool SynchronizePersistentVitals(CharacterSaveData saveData)
@@ -377,8 +392,12 @@ public class PlayerCharacter : CharacterBase
             ? _characterData.CharacterID
             : string.Empty;
         _mySaveDataRef.CharacterID = DisplayName;
-        _mySaveDataRef.Level = Mathf.Max(1, Level);
-        _mySaveDataRef.EXP = Mathf.Max(0, EXP);
+        // 전투 종료 직전의 오래된 컴포넌트 값으로 공용 레벨업을 덮어쓰지 않습니다.
+        if (GlobalDataManager.Instance != null)
+        {
+            Level = _mySaveDataRef.Level = GlobalDataManager.Instance.PartyLevel;
+            EXP = _mySaveDataRef.EXP = GlobalDataManager.Instance.PartyExperience;
+        }
         int savedHp = CurrentHP;
         int savedAp = CurrentAP;
         _mySaveDataRef.HP = savedHp;
@@ -469,14 +488,9 @@ public class PlayerCharacter : CharacterBase
         if (string.IsNullOrEmpty(id))
             return null;
 
-        EquipmentData equipment = EquipmentDatabase.FindById(id);
+        EquipmentData equipment = EquipmentLoadoutService.GetEquipped(saveData, slot);
         if (equipment == null)
-            Debug.LogWarning($"[PlayerCharacter] Saved equipment ID could not be resolved: {id}", this);
-        else if (equipment.Slot != slot)
-        {
-            Debug.LogWarning($"[PlayerCharacter] Saved equipment has the wrong slot: {id}", this);
-            return null;
-        }
+            Debug.LogWarning($"[PlayerCharacter] 저장 장비를 적용할 수 없습니다 (ID·슬롯·캐릭터 제한 확인): {id}", this);
 
         return equipment;
     }
@@ -507,7 +521,7 @@ public class PlayerCharacter : CharacterBase
         if (_spriteRenderer != null)
         {
             _spriteRenderer.DOKill();
-            Color restoreColor = _spriteRenderer.color;
+            Color restoreColor = BattleSpriteTint;
             _spriteRenderer.DOColor(ResolveFlashColor(Color.white), 0.05f)
                 .SetUpdate(true)
                 .SetLoops(2, LoopType.Yoyo)

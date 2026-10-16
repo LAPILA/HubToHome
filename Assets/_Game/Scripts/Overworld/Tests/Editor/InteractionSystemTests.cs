@@ -51,6 +51,22 @@ public class InteractionSystemTests
     }
 
     [Test]
+    public void DuplicateInteraction_DisablesOnlyItsComponentAndPreservesThePlayer()
+    {
+        InteractionSystem primary = InteractionSystem.Instance;
+        InteractionSystem duplicate = _playerObject.AddComponent<InteractionSystem>();
+        typeof(InteractionSystem).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(duplicate, null);
+
+        Assert.That(_playerObject != null, Is.True);
+        Assert.That(_playerObject.GetComponent<PlayerController>() != null, Is.True);
+        Assert.That(duplicate.enabled, Is.False);
+        Assert.That(InteractionSystem.Instance, Is.SameAs(primary));
+        Object.DestroyImmediate(duplicate);
+        Assert.That(InteractionSystem.Instance, Is.SameAs(primary));
+    }
+
+    [Test]
     public void TryInteract_DetectsCurrentFrontTargetWithoutWaitingForUpdate()
     {
         PlayerController player = _playerObject.GetComponent<PlayerController>();

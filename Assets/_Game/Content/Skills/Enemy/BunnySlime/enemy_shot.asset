@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "말랑 압축탄"
   SkillID: lab.bunny.enemy_shot
-  Description: "제자리에서 발사하는 단발 투사체. Z 가드/저스트 가드 또는 X 회피."
+  Description: "압축한 탄환을 적에게 발사한다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1

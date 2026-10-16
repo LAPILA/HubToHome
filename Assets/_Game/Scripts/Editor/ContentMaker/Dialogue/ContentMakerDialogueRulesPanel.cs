@@ -107,7 +107,7 @@ namespace HubToHome.EditorTools.ContentMaker
                 _serialized.Update();
                 EditorGUILayout.LabelField(_selected.name + " · 조건 편집", ContentMakerGUI.SectionTitle);
                 EditorGUILayout.PropertyField(_serialized.FindProperty("_fallbackDialogue"), new GUIContent("기본 대화", "맞는 조건이 없으면 사용할 대화입니다."));
-                EditorGUILayout.HelpBox("조건 하나는 플래그 하나를 비교합니다. 맞는 조건 중 우선순위 숫자가 가장 큰 대화를 사용하고, 동점이면 위쪽 조건을 사용합니다. 여러 조건의 AND/OR, NPC 위치·출현 제어, 메인 연출 실행은 이 문서의 기능이 아닙니다.", MessageType.Info);
+                EditorGUILayout.HelpBox("플래그와 소지 아이템을 조건으로 사용합니다. 둘 다 입력하면 둘 다 만족해야 합니다. 대화 선택만으로 아이템을 소비하지 않습니다. 맞는 조건 중 우선순위가 가장 큰 대화를 사용하고, 동점이면 위쪽 조건이 우선합니다. NPC 위치·출현과 메인 연출은 기존 시나리오에서 관리합니다.", MessageType.Info);
                 SerializedProperty rules = _serialized.FindProperty("_rules");
                 for (int index = 0; index < rules.arraySize; index++)
                 {
@@ -143,6 +143,8 @@ namespace HubToHome.EditorTools.ContentMaker
                         comparison.enumValueIndex = EditorGUILayout.Popup("비교 방법", comparison.enumValueIndex, Comparisons);
                         EditorGUILayout.PropertyField(rule.FindPropertyRelative("_expectedValue"), new GUIContent("비교 값"));
                         EditorGUILayout.PropertyField(rule.FindPropertyRelative("_priority"), new GUIContent("우선순위"));
+                        EditorGUILayout.PropertyField(rule.FindPropertyRelative("_requiredItemId"), new GUIContent("필요한 소지 아이템 ID"));
+                        EditorGUILayout.PropertyField(rule.FindPropertyRelative("_requiredItemCount"), new GUIContent("필요한 개수"));
                         EditorGUILayout.PropertyField(rule.FindPropertyRelative("_dialogue"), new GUIContent("재생할 대화"));
                     }
                 }
@@ -156,6 +158,8 @@ namespace HubToHome.EditorTools.ContentMaker
                     rule.FindPropertyRelative("_comparison").enumValueIndex = 0;
                     rule.FindPropertyRelative("_expectedValue").intValue = 1;
                     rule.FindPropertyRelative("_priority").intValue = 0;
+                    rule.FindPropertyRelative("_requiredItemId").stringValue = string.Empty;
+                    rule.FindPropertyRelative("_requiredItemCount").intValue = 1;
                     rule.FindPropertyRelative("_dialogue").objectReferenceValue = context.Dialogue;
                 }
                 _serialized.ApplyModifiedProperties();

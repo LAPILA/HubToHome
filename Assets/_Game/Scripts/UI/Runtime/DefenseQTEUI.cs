@@ -322,6 +322,7 @@ public class DefenseQTEUI : UIPanel
         ShowImmediate();
         if (_resultLabel == null) { Hide(); return; }
 
+        ApplyActiveLabelLayout(_resultLabel, -38f, 28f, 18f);
         _resultLabel.text = isHit ? "HIT!" : "MISS";
         _resultLabel.color = isHit ? new Color(0.2f, 1f, 0.4f) : new Color(1f, 0.3f, 0.3f);
         _resultLabel.alpha = 0f;

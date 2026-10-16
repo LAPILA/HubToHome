@@ -23,25 +23,17 @@ public sealed class GlobalDataShopTransactionStore : IShopRecoveryStore
 
     public bool IsItemRegistered(ItemData item)
     {
-        if (item == null || string.IsNullOrWhiteSpace(item.ItemID))
-            return false;
-
-        ItemData registered = ItemDatabase.FindById(item.ItemID);
-        return registered != null && ReferenceEquals(registered, item);
+        return InventoryEntryService.IsRegistered(item);
     }
 
     public int GetItemCount(string itemId)
     {
-        return _global.GetItemCount(itemId);
+        return InventoryEntryService.GetRemovableCount(_global, ItemDatabase.FindById(itemId));
     }
 
     public int GetAdditionalItemCapacity(ItemData item)
     {
-        if (!IsItemRegistered(item))
-            return 0;
-
-        int maxCount = item.IsStackable ? Math.Max(1, item.MaxStackSize) : 1;
-        return Math.Max(0, maxCount - _global.GetItemCount(item.ItemID));
+        return InventoryEntryService.GetAdditionalCapacity(_global, item);
     }
 
     public bool TrySpendMoneyExact(int amount)
@@ -70,11 +62,12 @@ public sealed class GlobalDataShopTransactionStore : IShopRecoveryStore
         if (string.IsNullOrWhiteSpace(itemId) || amount <= 0)
             return false;
 
-        int added = _global.AddItemAndGetAddedAmount(itemId, amount);
+        ItemData item = ItemDatabase.FindById(itemId);
+        int added = InventoryEntryService.Add(_global, item, amount);
         if (added == amount)
             return true;
 
-        if (added > 0 && !_global.RemoveItem(itemId, added))
+        if (added > 0 && !InventoryEntryService.Remove(_global, item, added))
         {
             throw new InvalidOperationException(
                 $"Partial item addition could not be reverted: item={itemId}, amount={added}");
@@ -85,7 +78,7 @@ public sealed class GlobalDataShopTransactionStore : IShopRecoveryStore
 
     public bool TryRemoveItemExact(string itemId, int amount)
     {
-        return amount > 0 && _global.RemoveItem(itemId, amount);
+        return InventoryEntryService.Remove(_global, ItemDatabase.FindById(itemId), amount);
     }
 
     public bool TryGetFlag(string key, out int value)

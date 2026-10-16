@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-11",
+  "finalCheckedDate": "2026-10-12",
+  "status": "published",
+  "method": "authenticated_browser_native_zip_import_and_native_block_editing",
+  "title": "HUB TO HOME · 개발 학습실",
+  "root": "https://app.notion.com/p/3f6641f6190180bb8567ff9caf83e5a9",
+  "library": "https://app.notion.com/p/3f6641f61901802bba6dfcd7d12d036a",
+  "package": { "markdownEntries": 62, "csvEntries": 4, "rewrittenLinks": 917, "generator": "build-notion-import.cjs", "warning": "재가져오기는 동기화가 아니라 중복 생성이다." },
+  "inventory": { "csharpFiles": 686, "directoriesIncludingScriptsRoot": 96, "learningArticles": 19, "codeIndexArticles": 12, "datedDevelopmentLogs": 28 },
+  "navigation": {
+    "start": "https://app.notion.com/p/3f6641f61901815c86c3d5db0cb7dc8f",
+    "features": "https://app.notion.com/p/3f6641f619018111b1dcfc5c9fc7682e",
+    "algorithms": "https://app.notion.com/p/3f6641f6190181ea92c6eae104c70289",
+    "portfolio": "https://app.notion.com/p/3f6641f6190181869e7ae6267dd39cfd",
+    "developmentDecisions": "https://app.notion.com/p/3f6641f6190181be8d95f94223afeb4c",
+    "codeAtlas": "https://app.notion.com/p/3f6641f61901817caefce396e92e7a3b",
+    "verification": "https://app.notion.com/p/3f6641f61901819caa5dc20c5990216a",
+    "developmentLogFolder": "https://app.notion.com/p/3f6641f61901816ab12df8851e9ef91d",
+    "codeIndexFolder": "https://app.notion.com/p/3f6641f61901816186e9f11e94b1a554"
+  },
+  "learningDatabase": {
+    "url": "https://app.notion.com/p/3f6641f6190181d1b139fae220bb5382",
+    "rows": 19,
+    "views": [
+      { "name": "전체 학습 목록", "type": "table", "id": "3f6641f6190181f7b5b4000ce7f4d051" },
+      { "name": "공부 진행 보드", "type": "board", "id": "3f6641f619018079ab61000cf05018a0", "groupBy": "학습 상태", "sort": "순서 ascending", "hideUnassignedGroup": true }
+    ],
+    "states": ["시작 전", "읽는 중", "직접 실험", "설명 가능"],
+    "initialState": "시작 전",
+    "template": { "name": "학습 기록 양식", "id": "3f6641f6190180db9c24efb494489e94", "sections": 6, "appliedToAllExistingCards": false },
+    "note": "개인 기록용 카드. 기능 해설 본문은 별도 라이브러리 문서에 있다."
+  },
+  "otherDatabases": {
+    "csharp": "https://app.notion.com/p/3f6641f6190181818481f62651e3186f",
+    "folders": "https://app.notion.com/p/3f6641f6190181b1a505ebc501bfb214",
+    "developmentLogs": "05 개발 기록과 설계 결정 폴더 내 CSV 가져오기 데이터베이스"
+  },
+  "deepWalkthrough": {
+    "date": "2026-10-12",
+    "status": "published",
+    "index": "https://app.notion.com/p/3f7641f619018140b840faafd0b4128c",
+    "library": "https://app.notion.com/p/3f7641f6190180328000ca3e2040d876",
+    "articleFolder": "https://app.notion.com/p/3f7641f619018113b31de443e1df5f15",
+    "localIndex": "deep/README.md",
+    "evidence": "deep/source-evidence.json",
+    "generator": "build-deep-import.cjs",
+    "markdownPages": 11,
+    "articles": 10,
+    "sourceExcerpts": 37,
+    "sourceFiles": 22,
+    "generatedCharacters": 60699,
+    "pages": [
+      { "chapter": "00", "title": "코드를 읽기 위한 최소 도구", "url": "https://app.notion.com/p/00-3f7641f619018114a0f2ceaca01589d0", "observedBodyChars": 3130, "figures": 2 },
+      { "chapter": "01", "title": "저장 버튼에서 안전한 파일 교체까지", "url": "https://app.notion.com/p/01-3f7641f61901816b9938cfbc60cd86fd", "observedBodyChars": 5501, "figures": 5 },
+      { "chapter": "02", "title": "한 턴을 뽑고, 공격을 막고, 다음 팀으로 넘기기", "url": "https://app.notion.com/p/02-3f7641f6190181528177de27340c6ea8", "observedBodyChars": 7158, "figures": 6 },
+      { "chapter": "03", "title": "스킬 블록, 실시간 QTE, 압력과 속성", "url": "https://app.notion.com/p/03-QTE-3f7641f6190181ca80abfe79f2a426bc", "observedBodyChars": 7236, "figures": 5 },
+      { "chapter": "04", "title": "스탯 계산과 장비·상점의 데이터 안전성", "url": "https://app.notion.com/p/04-3f7641f6190181ee9ef4e02bd3160103", "observedBodyChars": 7329, "figures": 5 },
+      { "chapter": "05", "title": "NPC를 찾는 순간부터 방 교체까지", "url": "https://app.notion.com/p/05-NPC-3f7641f61901818ea2a3e0833130ed5c", "observedBodyChars": 5680, "figures": 5 },
+      { "chapter": "06", "title": "대사와 시나리오가 끝나는 방법", "url": "https://app.notion.com/p/06-3f7641f619018138939af71aebf072fa", "observedBodyChars": 4514, "figures": 4 },
+      { "chapter": "07", "title": "제작 도구의 Undo와 안전한 저장", "url": "https://app.notion.com/p/07-Undo-3f7641f619018167ba96d86a25866fa0", "observedBodyChars": 6266, "figures": 6 },
+      { "chapter": "08", "title": "피해 숫자와 카메라가 자기 수명을 지키는 방법", "url": "https://app.notion.com/p/08-3f7641f61901811e8e7cdca277259334", "observedBodyChars": 4852, "figures": 4 },
+      { "chapter": "09", "title": "재사용 풀과 픽셀 글줄에서 배우는 자료구조", "url": "https://app.notion.com/p/09-3f7641f619018114a6f1de29efcdf5d7", "observedBodyChars": 4665, "figures": 4 }
+    ],
+    "verification": {
+      "sourceHashAndGeneratedContentCheckPassed": true,
+      "allArticleBodiesAndActualCodeObserved": true,
+      "indexLinksResolved": 10,
+      "homeDirectLinkOpened": true,
+      "originalPortalLinksPreserved": true,
+      "roundTripLimitationCorrectedLocallyAndRemotely": true,
+      "allRemoteBlocksComparedByteForByte": false,
+      "figuresIncludeCodeAndMermaid": true,
+      "unityRun": false,
+      "gameCodeModified": false
+    },
+    "warning": "수정된 최종 ZIP은 로컬 보관용이다. 재가져오기는 중복 생성이며 기존 페이지를 갱신하지 않는다."
+  },
+  "featurePages": {
+    "core": "https://app.notion.com/p/3f6641f6190181f29a0ae3ae930480ff",
+    "battle": "https://app.notion.com/p/3f6641f61901815498c4d1df2336087a",
+    "skills": "https://app.notion.com/p/3f6641f6190181d4b2e4eec72e4a223a",
+    "characters": "https://app.notion.com/p/3f6641f6190181709445c6540fc5f7c1",
+    "items": "https://app.notion.com/p/3f6641f619018153b32ecd23efaef43f",
+    "overworld": "https://app.notion.com/p/3f6641f6190181a8ba50e67e986e945e",
+    "dialogue": "https://app.notion.com/p/3f6641f6190181378747d21bc7355881",
+    "scenario": "https://app.notion.com/p/3f6641f619018115ad09c59d3afebcbf",
+    "sequenceMaker": "https://app.notion.com/p/3f6641f619018147803ccdf5d8b1dc56",
+    "editor": "https://app.notion.com/p/3f6641f6190181a9a464f4f91ad7ed0c",
+    "ui": "https://app.notion.com/p/3f6641f6190181c88cb7e3f47904feac",
+    "camera": "https://app.notion.com/p/3f6641f619018123bfd9fcdcef2903c6",
+    "vfx": "https://app.notion.com/p/3f6641f619018142a699c9519f855ba1",
+    "shared": "https://app.notion.com/p/3f6641f6190181288e68fad4d989f76e"
+  },
+  "verification": {
+    "articleBodiesOpened": 19,
+    "codeIndexBodiesOpened": 12,
+    "developmentLogBodiesOpened": 28,
+    "nativeTablesCodeMermaidAndCheckboxesObserved": true,
+    "allRemoteBlocksComparedByteForByte": false,
+    "allDatabaseRowsIndividuallyOpened": false,
+    "gameCodeModified": false,
+    "unityRun": false,
+    "sharingChanged": false,
+    "commitOrPush": false
+  },
+  "omittedFromInitialPlan": ["two-column home", "gallery view", "calendar view"],
+  "cleanup": "작성 중 생성한 빈 중간 페이지 하나만 복구 가능한 Notion 휴지통으로 이동. 자료실은 요청 루트의 직접 자식으로 보존."
+}

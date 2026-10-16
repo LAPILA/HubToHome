@@ -242,7 +242,7 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
         bool foregroundApplied = false;
         try
         {
-            Vector3 destination = ResolveAnchorPosition(subject, anchor) + new Vector3(x, y, 0f);
+            Vector3 destination = ResolveAnchorPosition(subject, anchor, _host) + new Vector3(x, y, 0f);
             _host?.SetActorForeground(subject, true);
             foregroundApplied = true;
             BattleManager.SetGhostTrail(subject, true);
@@ -292,7 +292,7 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
             yield break;
         }
 
-        Vector3 landingPosition = ResolveSlotPosition(subject);
+        Vector3 landingPosition = ResolveSlotPosition(subject, _host);
         Vector3 currentPosition = subject.transform.position;
         Vector3 startPosition = currentPosition.y > landingPosition.y + 0.05f || Vector3.Distance(currentPosition, landingPosition) > 0.25f
             ? currentPosition
@@ -536,7 +536,7 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
         return subject;
     }
 
-    private Vector3 ResolveSlotPosition(CharacterBase subject)
+    internal static Vector3 ResolveSlotPosition(CharacterBase subject, IBattleCinematicHost host)
     {
         if (subject == null)
         {
@@ -544,14 +544,14 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
         }
 
         PositionManager pm = PositionManager.Instance;
-        if (pm == null || _host == null)
+        if (pm == null || host == null)
         {
             return subject.transform.position;
         }
 
         if (subject is PlayerCharacter player)
         {
-            IReadOnlyList<PlayerCharacter> players = _host.PlayerParty;
+            IReadOnlyList<PlayerCharacter> players = host.PlayerParty;
             for (int i = 0; i < players.Count; i++)
             {
                 if (players[i] == player)
@@ -563,7 +563,7 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
 
         if (subject is EnemyCharacter enemy)
         {
-            IReadOnlyList<EnemyCharacter> enemies = _host.Enemies;
+            IReadOnlyList<EnemyCharacter> enemies = host.Enemies;
             for (int i = 0; i < enemies.Count; i++)
             {
                 if (enemies[i] == enemy)
@@ -613,7 +613,7 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
         }
     }
 
-    private Vector3 ResolveAnchorPosition(CharacterBase subject, string anchor)
+    internal static Vector3 ResolveAnchorPosition(CharacterBase subject, string anchor, IBattleCinematicHost host)
     {
         PositionManager pm = PositionManager.Instance;
         string normalizedAnchor = string.IsNullOrWhiteSpace(anchor) ? "current" : anchor.Trim().ToLowerInvariant();
@@ -624,14 +624,14 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
             case "player_slot":
                 if (subject is PlayerCharacter)
                 {
-                    return ResolveSlotPosition(subject);
+                    return ResolveSlotPosition(subject, host);
                 }
 
                 return subject.transform.position;
             case "enemy_slot":
                 if (subject is EnemyCharacter)
                 {
-                    return ResolveSlotPosition(subject);
+                    return ResolveSlotPosition(subject, host);
                 }
 
                 return subject.transform.position;
@@ -784,7 +784,7 @@ public sealed class BattleCinematicService : IBattleCinematicRunner
                 yield break;
             }
 
-            elapsed += Time.unscaledDeltaTime;
+            if (!BattleDelay.IsPaused) elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
     }

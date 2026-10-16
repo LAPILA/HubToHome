@@ -13,87 +13,73 @@ MonoBehaviour:
   m_Name: Skil_Zev
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 0}
-  SkillName: "\uAC15\uD55C\uCC38\uACA9"
+  SkillName: "극성 단죄"
   SkillID: zev.basic
-  Description: "강한 참격. X로 회피하거나 C 타이밍 성공으로 반격합니다."
+  Description: "냉기와 번개를 실은 강력한 참격으로 <color=#72D5FF>냉기</color>와 <color=#FFE566>감전</color>을 남긴다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1
   IsAoE: 0
+  ElementalApplications:
+  - Kind: 1
+    Amount: 4
+    Mode: 0
+  - Kind: 2
+    Amount: 60
+    Mode: 0
+  StatusProcCoefficient: 1
   ActionTimeline:
-  - rid: 8456611354123173968
-  - rid: 9001
-  - rid: 8456611354123173969
-  - rid: 8456611482560888833
-  - rid: 8456611354123173970
-  - rid: 8456611354123173971
+  - rid: 1001
+  - rid: 1002
+  - rid: 1003
+  - rid: 1004
+  - rid: 1005
+  - rid: 1006
   references:
     version: 2
     RefIds:
-    - rid: 8456611354123173968
+    - rid: 1001
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: 
-        Note: 
+        DesignerLabel: "짧은 돌진"
         Destination: 3
-        Duration: 0.2
+        Duration: 0.16
         MoveEase: 6
-    - rid: 8456611354123173969
+        EnemyHopHeight: 0
+    - rid: 1002
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "준비 클로즈업 · 판정 전에 복귀"
+        ZoomRatio: 0.78
+        FocusDuration: 0.1
+        HoldDuration: 0.24
+        ReleaseDuration: 0.1
+    - rid: 1003
       type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: 강한 참격 · 짧은 추가 준비
-        Note: 
+        DesignerLabel: "특수공격 자세"
         AnimTriggerName: CrossCutReady
-        DelayAfter: 0.22
-    - rid: 8456611354123173970
-      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
-      data:
-        Disabled: 0
-        DesignerLabel: 
-        Note: 
-        VfxPrefab: {fileID: 4748681987041982144, guid: 6a096f17e0593e44590ee0ab4539081e, type: 3}
-        Pivot: 2
-        UseActorRotation: 0
-    - rid: 8456611354123173971
-      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
-      data:
-        Disabled: 0
-        DesignerLabel: 
-        Note: 
-        SkillMultiplier: 5
-        Element: 0
-        ShakeCamera: 1
-    - rid: 8456611482560888833
+        DelayAfter: 0.18
+    - rid: 1004
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: 강한 참격 · X 회피 / C 반격
-        Note: 전조는 실제 입력 성공 구간에서 Center에 한 번만 표시합니다.
+        DesignerLabel: "특수공격 · X 회피 / C 반격"
         PatternMode: 1
         Requirement: 6
         CounterDamageMultiplier: 1.8
         UseTelegraph: 0
         TelegraphVisualMode: 2
-        WarningVfxPrefab: {fileID: 0}
-        WarningSprite: {fileID: 0}
-        TelegraphAnimatorTriggerName:
-        TelegraphAttachPivotName: Center
         TelegraphDuration: 0
         DefenseOpenDelay: 0
-        TimeWindow: 0.55
+        TimeWindow: 0.65
         AllowNearSuccess: 1
         OverrideTimingProfile: 0
-        TimingProfile:
-          PerfectWindow: 0.12
-          GreatWindow: 0.22
-          GoodWindow: 0.4
         FailDamageMultiplier: 1
         ShakeOnFail: 0
-        FailShakeIntensity: 0.15
-        FailShakeDuration: 0.12
-        FailShakeSafety: 0
         DelayAfter: 0
         AttackAnimTriggerName: CrossCutAttack
         AttackAnimationLeadTime: 0
@@ -102,13 +88,19 @@ MonoBehaviour:
         ImpactCuePivotName: Center
         AttackReadyDuration: 0.08
         AttackAnimDelay: 0
-    - rid: 9001
-      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+    - rid: 1005
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: 공격 준비 · 기존 클로즈업
-        Note: 방어창이 열리기 전에 카메라 복귀를 완료합니다.
-        ZoomRatio: 0.65
-        FocusDuration: 0.16
-        HoldDuration: 0.2
-        ReleaseDuration: 0.14
+        DesignerLabel: "타격 이펙트"
+        VfxPrefab: {fileID: 4748681987041982144, guid: 6a096f17e0593e44590ee0ab4539081e, type: 3}
+        Pivot: 0
+        UseActorRotation: 0
+    - rid: 1006
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "방어 결과 피해"
+        SkillMultiplier: 4.2
+        Element: 3
+        ShakeCamera: 0

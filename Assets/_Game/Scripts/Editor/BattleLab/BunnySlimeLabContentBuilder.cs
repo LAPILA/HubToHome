@@ -45,7 +45,7 @@ public static class BunnySlimeLabContentBuilder
             value.APCost = 12;
             value.ResourceEffect = new SkillResourceEffect { Resource = player.BattleResource,
                 EnableBoost = true, RequiredStep = 4, ConsumeStep = 4, DamageMultiplier = 1.5f };
-            value.Description = "5초 동안 0.1초 간격으로 50회 베기. 공격과 별도로 이어지는 Z/X/C 안내에 맞춰 누르면 다음 QTE 결과까지 피해가 강화된다. 입력을 놓쳐도 공격은 계속된다.";
+            value.Description = "압축된 증기를 분출하며 적을 거세게 몰아붙인다.";
             value.ActionTimeline.Add(new Action_RapidStrikes { DesignerLabel = "0.1초 연격 · 독립 Z/X/C QTE" });
         });
         SkillData aerial = Skill(allySkills, "aerial_cross_slash", "공중 회전 베기", SkillUsageProfile.PlayerOnly, false, false, value =>
@@ -54,7 +54,7 @@ public static class BunnySlimeLabContentBuilder
             value.APCost = 14;
             value.ResourceEffect = new SkillResourceEffect { Resource = player.BattleResource,
                 EnableBoost = true, RequiredStep = 3, ConsumeStep = 3, DamageMultiplier = 1.5f };
-            value.Description = "적 앞으로 접근해 도약하면 카메라가 한 바퀴 회전한다. X 입력 성공 시 강화되어, 적 뒤로 급습한 뒤 앞뒤로 두 번 더 베어낸다.";
+            value.Description = "공중에서 적의 빈틈을 파고들어 날카롭게 베어낸다.";
             value.ActionTimeline.Add(new Action_AerialCrossSlash { DesignerLabel = "상승 · 카메라 360도 · X QTE · 뒤/앞/뒤" });
         });
         SkillData guard = EnemyStrike(enemySkills, "guard", "말랑 내려찍기", DefenseRequirement.Any, 1f, 1, false, sparks);
@@ -211,9 +211,11 @@ public static class BunnySlimeLabContentBuilder
         return Skill(folder, "enemy_" + id, title, SkillUsageProfile.EnemyOnly, aoe, false, value =>
         {
             value.Description = requirement == DefenseRequirement.Counterable
-                ? "C 타이밍 성공: 무피해 + 공격받은 한 명이 접근, 패링, 공격 후 양쪽 복귀. X 회피 가능. Z 방어 불가."
-                : requirement == DefenseRequirement.DodgeOnly ? "X 전용 회피 공격. Z로 막을 수 없습니다."
-                : "Z 유지: 피해 감소 / Z 정확한 타이밍: 무피해 + AP / X: 회피. 각 타격마다 판정합니다.";
+                ? "강한 힘을 모아 적진을 내려친다. 반격으로 저지할 수 있다."
+                : requirement == DefenseRequirement.DodgeOnly ? "막을 수 없는 공격으로 적을 쓸어버린다."
+                : aoe ? "넓게 충격을 퍼뜨려 적 전체를 공격한다."
+                : hits > 1 ? "거세게 몸을 튕기며 적을 몰아붙인다."
+                : "몸을 내리쳐 적을 공격한다.";
             bool approach = !aoe || requirement == DefenseRequirement.Counterable;
             if (approach) value.ActionTimeline.Add(new Action_Move
             {
@@ -261,9 +263,9 @@ public static class BunnySlimeLabContentBuilder
     {
         return Skill(folder, "enemy_" + id, title, SkillUsageProfile.EnemyOnly, false, false, value =>
         {
-            value.Description = dodgeOnly ? "X 전용 투사체. Z 방어 불가."
-                : doubleShot ? "느린 첫 탄 뒤 빠른 두 번째 탄. 각 전조마다 Z/X를 새로 입력하세요."
-                : "제자리에서 발사하는 단발 투사체. Z 가드/저스트 가드 또는 X 회피.";
+            value.Description = dodgeOnly ? "막을 수 없는 고압 탄환을 발사한다."
+                : doubleShot ? "속도가 다른 탄환으로 적을 압박한다."
+                : "압축한 탄환을 적에게 발사한다.";
             for (int i = 0; i < (doubleShot ? 2 : 1); i++)
             {
                 float flight = i == 1 ? .42f : dodgeOnly ? .65f : .55f;
@@ -294,7 +296,7 @@ public static class BunnySlimeLabContentBuilder
     {
         return Skill(folder, id, title, usage, aoe, friendly, value =>
         {
-            value.Description = StatusLabel(status) + " 2턴 부여. 피해 공격이 아닌 독립 상태 부여이므로 방어 판정이 없습니다.";
+            value.Description = "대상에게 2턴 동안 " + StatusLabel(status) + " 효과를 부여한다.";
             value.ActionTimeline.Add(new Action_PlayAnim { AnimTriggerName = usage == SkillUsageProfile.EnemyOnly ? "Skill" : "Attack", DelayAfter = .2f });
             value.ActionTimeline.Add(new Action_VFX { VfxPrefab = vfx, Pivot = Action_VFX.VfxPivot.TargetCenter });
             value.ActionTimeline.Add(new Action_ApplyStatus { StatusID = status, DurationTurns = 2 });
@@ -309,7 +311,7 @@ public static class BunnySlimeLabContentBuilder
         {
             string elementName = element == DamageElement.Fire ? "화염" : element == DamageElement.Ice ? "빙결"
                 : element == DamageElement.Electric ? "전기" : "부식";
-            value.Description = elementName + " 속성 1.3배 투사체. 공격 QTE 성공 시 1.5배, 실패 시 0.75배.";
+            value.Description = elementName + " 속성 탄환으로 적을 공격한다.";
             value.ActionTimeline.Add(new Action_QTE { TimeLimit = 1f, SuccessMultiplier = 1.5f, FailMultiplier = .75f,
                 Nodes = new List<SkillQTENode> { new SkillQTENode { PosX = .5f, PosY = .55f, TargetKey = "z" } } });
             value.ActionTimeline.Add(new Action_PlayAnim { AnimTriggerName = "Attack", DelayAfter = .1f });

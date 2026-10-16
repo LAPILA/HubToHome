@@ -15,9 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "\uB9D0\uB791 \uB0B4\uB824\uCC0D\uAE30"
   SkillID: lab.bunny.enemy_guard
-  Description: "Z \uC720\uC9C0: \uD53C\uD574 \uAC10\uC18C / Z \uC815\uD655\uD55C
-    \uD0C0\uC774\uBC0D: \uBB34\uD53C\uD574 + AP / X: \uD68C\uD53C. \uAC01 \uD0C0\uACA9\uB9C8\uB2E4
-    \uD310\uC815\uD569\uB2C8\uB2E4."
+  Description: "몸을 내리쳐 적을 공격한다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1

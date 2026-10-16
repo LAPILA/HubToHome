@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 새 Play 세션에서만 사용하는 개발용 조우 진입점입니다.
-/// 전투 규칙을 복제하지 않고 기존 조우 서비스와 3+3 파티를 사용합니다.
+/// 전투 규칙을 복제하지 않고 기존 조우 서비스와 일반 3명/후열 실습 6명을 사용합니다.
 /// </summary>
 [DefaultExecutionOrder(-11000)]
 [DisallowMultipleComponent]
@@ -23,6 +23,7 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
     private SaveData _emptySession;
     private bool _freshSession;
     private bool _ownsSession;
+    private int _ownedPartyCount;
     private bool _starting;
     private bool _inBattle;
     private bool _returning;
@@ -213,7 +214,8 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
             lookingDirection = 3,
             Money = 500
         };
-        for (int i = 0; i < _data.Party.Length; i++)
+        int partyCount = _data.GetPartyCount(waveExercise);
+        for (int i = 0; i < partyCount; i++)
         {
             CharacterData data = _data.Party[i];
             StatBlock stats = data.BaseStats;
@@ -252,6 +254,7 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
 
         // 실험 씬의 빈 세션만 교체합니다. SaveManager/파일 저장을 사용하지 않습니다.
         _global.FromSaveData(seed);
+        _ownedPartyCount = partyCount;
         if (_data.Equipment != null)
         {
             for (int i = 0; i < _global.Party.Count; i++)
@@ -316,6 +319,13 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
         _inBattle = false;
         yield return null; // Host의 포즈/카메라/조우 정리를 먼저 끝냅니다.
         if (_leaving) yield break;
+        // 후열 투입을 명시적으로 포기한 경우 게임오버가 선택권을 소유합니다.
+        // 연습 메뉴를 뒤에서 다시 열어 같은 Z 입력으로 전투를 재시작하지 않습니다.
+        if (GameOverUI.Instance != null && GameOverUI.Instance.IsVisible)
+        {
+            _returning = false;
+            yield break;
+        }
         PrepareParty(false);
         ShowMenu(title + "\n가드 " + _guardCount + "  ·  저스트 " + _justGuardCount
             + "  ·  회피 " + _dodgeCount + "  ·  반격 " + _counterCount
@@ -326,6 +336,7 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
     private void OnDestroy()
     {
         _leaving = true;
+        SetPartyPreviewVisible(false);
         if (_battle != null)
         {
             _battle.OnPlayerPartyChanged -= HandlePartyChanged;
@@ -340,9 +351,11 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
 
     private bool IsLabPartyStillOwned()
     {
-        if (_data == null || _data.Party == null || _global.Party.Count != _data.Party.Length)
+        if (_data == null || _data.Party == null || _global == null
+            || (_ownedPartyCount != 3 && _ownedPartyCount != 6)
+            || _global.Party.Count != _ownedPartyCount || _data.Party.Length < _ownedPartyCount)
             return false;
-        for (int i = 0; i < _data.Party.Length; i++)
+        for (int i = 0; i < _ownedPartyCount; i++)
             if (_global.Party[i] == null || _data.Party[i] == null
                 || _global.Party[i].CharacterDataID != _data.Party[i].CharacterID)
                 return false;

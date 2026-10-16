@@ -15,9 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "\uB0A0\uBD99\uC774 \uC2E4\uD5D8"
   SkillID: lab.bunny.status_bleed
-  Description: "\uCD9C\uD608 2\uD134 \uBD80\uC5EC. \uD53C\uD574 \uACF5\uACA9\uC774
-    \uC544\uB2CC \uB3C5\uB9BD \uC0C1\uD0DC \uBD80\uC5EC\uC774\uBBC0\uB85C \uBC29\uC5B4
-    \uD310\uC815\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+  Description: "대상에게 2턴 동안 출혈 효과를 부여한다."
   UsageProfile: 1
   APCost: 8
   TargetType: 1

@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "터빈 연격"
   SkillID: tests_player.turbine_rush
-  Description: "검의 터빈을 가속해 한 대상의 앞뒤를 두 차례 가로지른다."
+  Description: "검의 터빈을 가속해 적을 가로지른다."
   UsageProfile: 1
   APCost: 18
   TargetType: 1

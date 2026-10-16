@@ -31,8 +31,12 @@ public sealed class BattleLinkCounterService
             yield break;
 
         CancelActive();
+        BattleDamageBatchTracker damageBatches = (_host as IBattleDamagePresentationHost)?.DamageBatches;
+        using var damageBatch = damageBatches?.Begin();
+        long damageBatchId = damageBatches?.CurrentId ?? 0;
         int version = _reactionVersion;
         defender.BattleResource.RewardCounter();
+        EquipmentEffectService.Apply(defender, EquipmentEffectTrigger.Counter);
         bool Active() => version == _reactionVersion && CanContinue(attacker, isExecutionActive)
             && IsActiveFrontMember(defender);
         var controller = defender.GetComponent<PlayerController>();
@@ -95,12 +99,15 @@ public sealed class BattleLinkCounterService
             defender.PlayBasicAttackEffect();
             int previousHp = attacker.CurrentHP;
             int rawDamage = Mathf.Max(1, Mathf.RoundToInt(defender.ATK * damageMultiplier));
-            DamageResult result = attacker.TakeDamage(rawDamage, DamageElement.Physical, defender);
-            if (!IsHostAvailable() || attacker == null) yield break;
-            _host.PublishEnemyHpScenarioEvent(attacker, previousHp, attacker.CurrentHP, attacker.MaxHP,
-                BattleRuleTiming.AfterCurrentAction);
-            _host.EmitDamageNotificationOnly(defender, attacker, result.FinalDamage, false);
-            _host.PublishEnemyDefeatedScenarioEvent(attacker, defender);
+            using (var damageContext = damageBatches != null ? damageBatches.Activate(damageBatchId) : default)
+            {
+                DamageResult result = attacker.TakeDamage(rawDamage, DamageElement.Physical, defender);
+                if (!IsHostAvailable() || attacker == null) yield break;
+                _host.PublishEnemyHpScenarioEvent(attacker, previousHp, attacker.CurrentHP, attacker.MaxHP,
+                    BattleRuleTiming.AfterCurrentAction);
+                _host.EmitDamageNotificationOnly(defender, attacker, result.FinalDamage, false);
+                _host.PublishEnemyDefeatedScenarioEvent(attacker, defender);
+            }
             if (!Active()) yield break;
 
             IEnumerator attack = defender.WaitForAttackAnimationComplete();

@@ -3,6 +3,49 @@ using NUnit.Framework;
 
 public sealed class CharacterStatsTests
 {
+    [Test]
+    public void MissingStatusMapAndNonFiniteResistance_AreSafeWithoutChangingSource()
+    {
+        var input = new StatBlock { StatusResistances = null, FireResistance = float.NaN, IceResistance = -1f };
+        Assert.That(input.Clone().GetStatusResistance("burn"), Is.EqualTo(1f));
+        StatBlock resolved = CharacterStatsCalculator.Resolve(input, null, null);
+        Assert.That(resolved.FireResistance, Is.EqualTo(1f));
+        Assert.That(resolved.IceResistance, Is.Zero);
+        Assert.That(input.StatusResistances, Is.Null);
+        Assert.That(float.IsNaN(input.FireResistance), Is.True);
+        input.SetStatusResistance("burn", 0.5f);
+        Assert.That(input.GetStatusResistance("burn"), Is.EqualTo(0.5f));
+    }
+
+    [Test]
+    public void NonFiniteModifiers_AreIgnoredAndFiniteOverflowCannotWrapPrimaryStat()
+    {
+        var modifiers = new[]
+        {
+            StatModifier.ForElementResistance(StatLayer.Equipment, DamageElement.Fire, float.NaN),
+            StatModifier.ForStatusResistance(StatLayer.Equipment, "burn", float.PositiveInfinity),
+            StatModifier.ForIncomingDamageMultiplier(StatLayer.Equipment, additivePercent: float.NaN),
+            StatModifier.ForPrimary(StatLayer.Equipment, StatType.ATK, float.NaN)
+        };
+        StatBlock resolved = CharacterStatsCalculator.Resolve(new StatBlock(), modifiers, null);
+        Assert.That(resolved.ATK, Is.EqualTo(10));
+        Assert.That(resolved.FireResistance, Is.EqualTo(1f));
+        Assert.That(resolved.GetStatusResistance("burn"), Is.EqualTo(1f));
+        Assert.That(resolved.IncomingDamageMultiplier, Is.EqualTo(1f));
+        Assert.That(CharacterStatsCalculator.ApplyPrimaryStatLayer(int.MaxValue, StatType.ATK,
+            StatLayer.Equipment, new[] { StatModifier.ForPrimary(StatLayer.Equipment, StatType.ATK, int.MaxValue) }),
+            Is.EqualTo(int.MaxValue));
+    }
+
+    [Test]
+    public void ZeroDefense_RemainsZeroWhenUnrelatedEquipmentIsApplied()
+    {
+        var input = new StatBlock { DEF = 0 };
+        StatBlock resolved = CharacterStatsCalculator.Resolve(input,
+            new[] { StatModifier.ForPrimary(StatLayer.Equipment, StatType.ATK, 7f) }, null);
+        Assert.That(resolved.DEF, Is.Zero);
+    }
+
     [TestCase(3f, 0.5f)]
     [TestCase(-30f, -1.2f)]
     [TestCase(0f, 0f)]

@@ -76,6 +76,8 @@ public class ConfigPanelUI : UIPanel
     private string _lastScrollContractError;
     private string _lastRowContractError;
     private bool _ownsModalState;
+    private bool _closing;
+    private static ConfigPanelUI _modalOwner;
     private float _timeScaleBeforeOpen = 1f;
     private GameState _stateBeforeOpen = GameState.Exploration;
 
@@ -85,7 +87,6 @@ public class ConfigPanelUI : UIPanel
     {
         UIRuntimeGuard.NormalizeCanvas(gameObject, GameConfigPolicy.ReferenceResolution);
         base.Awake();
-        GameInput.SetConfigModalActive(false);
         if (_gameplayPreviewText != null)
         {
             _gameplayPreviewText.maxVisibleLines = 2;
@@ -95,6 +96,8 @@ public class ConfigPanelUI : UIPanel
 
     public override void Show()
     {
+        if (_modalOwner != null && _modalOwner != this) return;
+        _closing = false;
         AcquireModalState();
         base.Show();
         _focus = Focus.Category;
@@ -109,10 +112,18 @@ public class ConfigPanelUI : UIPanel
 
     public override void Hide()
     {
+        if (_closing) return;
         KillAllTweens();
         ClearRows();
         base.Hide();
-        ReleaseModalState();
+        _closing = true;
+        GameConfigManager.Instance?.FlushPendingChanges();
+    }
+
+    public override void ShowImmediate()
+    {
+        Show();
+        if (_modalOwner == this) base.ShowImmediate();
     }
 
     public override void HideImmediate()
@@ -141,6 +152,7 @@ public class ConfigPanelUI : UIPanel
 
     private void AcquireModalState()
     {
+        _modalOwner = this;
         if (!_ownsModalState)
         {
             _timeScaleBeforeOpen = Time.timeScale;
@@ -157,15 +169,20 @@ public class ConfigPanelUI : UIPanel
 
     private void ReleaseModalState()
     {
-        GameInput.SetConfigModalActive(false);
-
         if (!_ownsModalState)
             return;
 
         _ownsModalState = false;
-        Time.timeScale = _timeScaleBeforeOpen;
-
+        GameConfigManager.Instance?.FlushPendingChanges();
+        if (_modalOwner != this) return;
+        _modalOwner = null;
+        GameInput.ConsumeBattleUIInput();
+        GameInput.SuppressPlayerConfirmForCurrentFrame();
+        GameInput.SetConfigModalActive(false);
         GameStateManager stateManager = GameStateManager.Instance;
+        if ((stateManager == null || stateManager.CurrentState == GameState.Paused)
+            && Mathf.Approximately(Time.timeScale, 0f))
+            Time.timeScale = _timeScaleBeforeOpen;
         if (stateManager != null && stateManager.CurrentState == GameState.Paused)
             stateManager.ChangeState(_stateBeforeOpen);
     }
@@ -188,17 +205,17 @@ public class ConfigPanelUI : UIPanel
 
     private void Update()
     {
-        if (!IsVisible) return;
+        if (!IsVisible || _closing) return;
         if (_skipOneFrame) { _skipOneFrame = false; return; }
 
         if (_focus == Focus.KeyCapture) { CaptureKey(); return; }
 
-        if (GameInput.ConfigUpPressed) Move(-1);
-        if (GameInput.ConfigDownPressed) Move(1);
-        if (GameInput.ConfigLeftPressed) Adjust(-1);
-        if (GameInput.ConfigRightPressed) Adjust(1);
-        if (GameInput.ConfigSubmitPressed) Submit();
         if (GameInput.ConfigBackPressed) Back();
+        else if (GameInput.ConfigSubmitPressed) Submit();
+        else if (GameInput.ConfigUpPressed) Move(-1);
+        else if (GameInput.ConfigDownPressed) Move(1);
+        else if (GameInput.ConfigLeftPressed) Adjust(-1);
+        else if (GameInput.ConfigRightPressed) Adjust(1);
     }
 
     private void Move(int dir)
@@ -354,6 +371,8 @@ public class ConfigPanelUI : UIPanel
             row.go = go;
             row.name = nameText;
             row.value = valueText;
+            ConfigureRowText(nameText, true);
+            ConfigureRowText(valueText, false);
             row.background = go.GetComponent<Image>();
             _rows.Add(row);
         }
@@ -807,9 +826,22 @@ public class ConfigPanelUI : UIPanel
 
     private static bool SupportsWindowSettings(RuntimePlatform platform)
     {
-        return platform == RuntimePlatform.WindowsPlayer || platform == RuntimePlatform.WindowsEditor
-            || platform == RuntimePlatform.OSXPlayer || platform == RuntimePlatform.OSXEditor
-            || platform == RuntimePlatform.LinuxPlayer || platform == RuntimePlatform.LinuxEditor;
+        return GameConfigPolicy.SupportsWindowSettings(platform);
+    }
+
+    private static void ConfigureRowText(TextMeshProUGUI text, bool isLabel)
+    {
+        text.raycastTarget = false;
+        text.enableAutoSizing = true;
+        text.fontSizeMax = Mathf.Max(12f, text.fontSize);
+        text.fontSizeMin = 8f;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Ellipsis;
+        var layout = text.GetComponent<LayoutElement>();
+        if (layout == null) layout = text.gameObject.AddComponent<LayoutElement>();
+        layout.minWidth = 0f;
+        layout.preferredWidth = isLabel ? 150f : 100f;
+        layout.flexibleWidth = isLabel ? 1.5f : 1f;
     }
 
     private static bool CanRebindKeyboard => SupportsWindowSettings(Application.platform) && Keyboard.current != null;

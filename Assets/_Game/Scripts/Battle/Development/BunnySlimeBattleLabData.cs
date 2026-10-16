@@ -32,4 +32,7 @@ public sealed class BunnySlimeBattleLabData : ScriptableObject
     [HideInInspector] public SkillData CounterSkill;
     [HideInInspector] public SkillData WaveSkill;
     [HideInInspector] public SkillData[] ProjectileSkills;
+
+    /// <summary>일반 전투는 전열 3명, 전멸 실습만 기존 후열 3명을 함께 준비합니다.</summary>
+    public int GetPartyCount(bool waveExercise) => Party == null ? 0 : Mathf.Min(waveExercise ? 6 : 3, Party.Length);
 }

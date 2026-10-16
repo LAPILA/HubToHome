@@ -66,7 +66,7 @@ public static class GameLoadCoordinator
                 loadResult != null ? loadResult.Message : "불러올 저장 슬롯이 없습니다.");
         }
 
-        return StartLoad(slotIndex, loadResult, onCompleted);
+        return StartLoad(slotIndex, loadResult.Data, onCompleted);
     }
 
     public static GameLoadStartResult LoadSlot(
@@ -84,8 +84,12 @@ public static class GameLoadCoordinator
                 loadResult.Message);
         }
 
-        return StartLoad(slotIndex, loadResult, onCompleted);
+        return StartLoad(slotIndex, loadResult.Data, onCompleted);
     }
+
+    /// <summary>전투 직전 메모리 체크포인트 전용. 디스크 슬롯을 만들거나 덮어쓰지 않습니다.</summary>
+    internal static GameLoadStartResult LoadSnapshot(SaveData snapshot, Action<SceneLoadResult> onCompleted)
+        => StartLoad(-1, snapshot, onCompleted);
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetRuntimeState()
@@ -95,7 +99,7 @@ public static class GameLoadCoordinator
 
     private static GameLoadStartResult StartLoad(
         int slotIndex,
-        SaveLoadResult loadResult,
+        SaveData loadedData,
         Action<SceneLoadResult> onCompleted)
     {
         if (s_isLoading)
@@ -112,7 +116,6 @@ public static class GameLoadCoordinator
         if (sceneLoader.IsLoading)
             return RejectBusy("다른 Scene 전환이 진행 중입니다.");
 
-        SaveData loadedData = loadResult?.Data;
         if (loadedData == null)
         {
             return GameLoadStartResult.Rejected(
@@ -134,6 +137,7 @@ public static class GameLoadCoordinator
             : GameState.Exploration;
         float previousTimeScale = Time.timeScale;
 
+        BattleRetryCheckpoint.ClearUnlessRestoring();
         global.FromSaveData(loadedData);
         global.SpawnScene = targetScene;
         if (usedFallback)

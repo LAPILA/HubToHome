@@ -1,0 +1,174 @@
+# 02 · 한 턴을 뽑고, 공격을 막고, 다음 팀으로 넘기기
+
+> **중심 질문: 화면의 턴 예고와 실제 실행이 같은 규칙을 쓰는가?** 턴 계산, 입력 판정, 후열 진입은 서로 다른 시간과 책임을 갖습니다.
+
+[자료실](README.md) · [전투 입문](https://app.notion.com/p/3f6641f61901815498c4d1df2336087a)
+
+## 01 / 전투를 세 개의 층으로 읽기
+
+| 층 | 실제 담당 | 바꾸는 상태 |
+| --- | --- | --- |
+| 전투 수명 | BattleManager | 전투 시작/종료·파티 교대·전체 상태 |
+| 턴 진행 | BattleTurnQteModuleControllerService | 현재 행동자·살아 있는 참가자·턴 예고 |
+| 순수 계산 | BattleSpeedTurnScheduler<T> | 각 배우의 남은 행동 작업량 |
+| 대응 판정 | QTEManager + DefenseJudgementPolicy | 입력 시각·전조·타격 결과 |
+
+전투의 모든 계산을 BattleManager가 직접 하는 구조로 이해하면 길을 잃습니다. 실제 다음 행동자를 뽑는 진입점은 서비스의 `AdvanceTurn()`입니다.
+
+```mermaid
+flowchart TD
+ A["AdvanceTurn"] --> B["SynchronizeTurnSchedule: 생존자/속도 반영"]
+ B --> C["TryTakeNext: 다음 배우 한 명"]
+ C --> D["BeginBattleTurn / 행동 가능 여부 보관"]
+ D --> E["ProcessEffects"]
+ E --> F{"생존 + 행동 가능?"}
+ F -->|예| G["UpdateTurnQueue → 아군/적 실행"]
+ F -->|아니오| H["CompleteAction"]
+ G --> H
+```
+
+## 02 / 속도가 빠르다고 매 턴 정렬하는 게 아니다
+
+근거 · `Assets/_Game/Scripts/Battle/Runtime/Services/BattleSpeedTurnScheduler.cs` · 99–112행
+
+```csharp
+        actor = null;
+        if (entries.Count == 0) return false;
+        int selected = 0;
+        double elapsed = entries[0].Remaining / entries[0].Speed;
+        for (int i = 1; i < entries.Count; i++)
+        {
+            double time = entries[i].Remaining / entries[i].Speed;
+            // Keep original registration order for equal arrival times.
+            if (time < elapsed - TieTolerance)
+            {
+                selected = i;
+                elapsed = time;
+            }
+        }
+```
+각 배우는 기본 작업량 1000을 갖습니다. `Remaining / Speed`는 다음 행동까지 필요한 가상 시간입니다. 가장 작은 시간을 고르고 모든 배우에게 그만큼 진행을 반영합니다.
+
+근거 · `Assets/_Game/Scripts/Battle/Runtime/Services/BattleSpeedTurnScheduler.cs` · 114–129행
+
+```csharp
+        for (int i = 0; i < entries.Count; i++)
+        {
+            Entry entry = entries[i];
+            entry.Remaining = Math.Max(0d, entry.Remaining - elapsed * entry.Speed);
+            if (i == selected)
+            {
+                actor = entry.Actor;
+                entry.Remaining = TurnWork;
+                if (readSpeedAfterTurns != null)
+                {
+                    entry.ForecastTurns++;
+                    entry.Speed = Math.Max(1, readSpeedAfterTurns(actor, entry.ForecastTurns));
+                }
+            }
+            entries[i] = entry;
+        }
+```
+가정: A 속도 20, B 속도 10, 초기 등록은 A→B. 선제권·버프·사망 없음. 아래 시간은 게임 초가 아니라 계산용 가상 시간입니다.
+
+| 선택 직전 남은 작업량 A/B | 이번 경과 | 선택 | 선택 후 A/B |
+| --- | --- | --- | --- |
+| 1000 / 1000 | 50 | A | 1000 / 500 |
+| 1000 / 500 | 50 | A — 도착 동률, 등록 순서 | 1000 / 0 |
+| 1000 / 0 | 0 | B | 1000 / 1000 |
+
+동률이어도 실제 행동 연출을 동시에 실행하는 것이 아닙니다. 한 명씩 꺼냅니다. 두 번째 A 직후 B가 즉시 준비되어 있는 것과, 두 캐릭터가 같은 프레임에 행동하는 것은 다른 개념입니다.
+
+## 03 / 미래를 보여주려다 현재를 소비하면 안 된다
+
+근거 · `Assets/_Game/Scripts/Battle/Runtime/Services/BattleSpeedTurnScheduler.cs` · 78–94행
+
+```csharp
+    public void AppendPreview(IList<T> destination, int count, Func<T, int, int> readSpeedAfterTurns = null)
+    {
+        if (destination == null) throw new ArgumentNullException(nameof(destination));
+        _preview.Clear();
+        _preview.AddRange(_entries);
+        if (readSpeedAfterTurns != null)
+        {
+            for (int i = 0; i < _preview.Count; i++)
+            {
+                Entry entry = _preview[i];
+                entry.ForecastTurns = 0;
+                entry.Speed = Math.Max(1, readSpeedAfterTurns(entry.Actor, 0));
+                _preview[i] = entry;
+            }
+        }
+        for (int i = 0; i < count && TryTakeNext(_preview, out T actor, readSpeedAfterTurns); i++)
+            destination.Add(actor);
+```
+`_preview.AddRange(_entries)`로 Entry 값을 복사해서 동일한 계산기를 돌립니다. `ForecastTurns`는 예측 중 해당 배우가 몇 번 끝났는지 셉니다. 실제 버프를 만료시키는 대신 제공된 속도 조회 함수로 미래 속도를 읽습니다.
+
+**설계 해석:** 예고 전용 별도 정렬식을 만들면 실제 실행과 어긋날 수 있습니다. 같은 핵심 계산을 복사 상태에 적용하는 구조가 그 위험을 줄입니다. 속도 변경은 남은 작업량을 보존한 채 속도를 바꿉니다. 이미 보인 예고 전체를 고정 예약한다는 뜻은 아닙니다.
+
+비용: 배우 N명일 때 다음 행동 선택 O(N), K칸 예측 O(NK), 예측 추가 메모리 O(N). 동기화에는 목록 간 참조 검색이 있어 O(N²) 경로가 있습니다. 보통 작은 전투 파티에서는 단순한 목록이 이해·유지보수에 유리합니다. 수천 명을 처리할 상황이면 우선순위 큐를 검토하되, 속도 변경과 동률 규칙도 같이 설계해야 합니다.
+
+## 04 / 랜덤 공격인데 같은 캐릭터만 맞지 않게
+
+`BattleEnemyTargetSelector<T>`는 최근 4번의 대상을 배열로 보관합니다. 최근 많이 맞은 대상은 가중치를 낮추고, 다른 유효 대상이 있으면 같은 대상을 세 번 연속 고르지 않습니다. 순서대로 도는 라운드 로빈이 아닙니다.
+
+근거 · `Assets/_Game/Scripts/Battle/Runtime/Services/BattleEnemyTargetSelector.cs` · 46–57행
+
+```csharp
+    private double Weight(T candidate, Func<T, float> priority, int eligibleCount)
+    {
+        bool same = ReferenceEquals(_last, candidate);
+        if (eligibleCount > 1 && same && _consecutive >= 2) return 0;
+        float authored = priority != null ? priority(candidate) : 1f;
+        double weight = float.IsNaN(authored) || float.IsInfinity(authored)
+            ? 1 : Math.Max(1, Math.Min(1.25, authored));
+        int recentCount = 0;
+        for (int i = 0; i < _recent.Length; i++)
+            if (ReferenceEquals(_recent[i], candidate)) recentCount++;
+        weight /= 1 + recentCount * 2;
+        return same && eligibleCount > 1 ? weight * 0.35 : weight;
+```
+`weight /= 1 + recentCount * 2`가 반복 노출 페널티입니다. 다음 배열 위치를 `% _recent.Length`로 순환시키는 것은 원형 버퍼입니다. 이 코드는 입력/카메라를 읽지 않습니다. 플레이어가 누른 방어 키를 보고 대상을 몰래 바꾸는 로직으로 설명하면 안 됩니다.
+
+## 05 / 전조와 판정은 같은 시계를 써야 한다
+
+근거 · `Assets/_Game/Scripts/UI/Runtime/QTEManager.cs` · 405–412행
+
+```csharp
+            // 방어창은 일시정지 중에는 실시간 진행을 멈추지만, 판정에 넘기는
+            // 모든 시각은 같은 절대 시각축을 사용해야 합니다. 기존 코드는
+            // `realtime - pausedDuration`(상대값)과 `impactAt`(절대값)을 비교해
+            // 일시정지 뒤 창이 영원히 끝나지 않거나 입력 시각이 거부될 수 있었습니다.
+            float now = startedAt + Mathf.Max(0f, realtime - startedAt - pausedDuration);
+            float elapsed = now - startedAt;
+            _activeAttackMotion?.SetRate(battleDefense && now >= impactAt
+                ? 0f : impactTiming.RateAt(elapsed));
+```
+핵심은 `now`, `impactAt`, 입력 시각을 같은 기준으로 맞추는 것입니다. 설정창으로 일시정지한 길이를 화면 전조에서는 빼고 판정에서는 빼지 않으면, 보이는 신호를 맞춰도 실패할 수 있습니다.
+
+실제 흐름은 `impactAt - cueLead` 도달 → Telegraph 생성 → `SynchronizeToImpact(impactAt - now)` → 입력 소비 → `DefenseJudgementPolicy.TryCommitBattleInput`입니다. 프리팹 애니메이션이 판정 시간을 독자적으로 정하지 않습니다. 적 공격 모션도 `impactTiming`에서 시간을 받습니다.
+
+| 입력/상태 | 구별할 점 |
+| --- | --- |
+| Z 유지 | 유지 가드와 새로 누른 타이밍 시도는 별도 |
+| X / C | 회피와 특수 반격의 허용 공격·판정 정책을 확인 |
+| 메뉴가 입력을 막음 | 적 공격 모션 정지, 방어 버퍼를 소비해 재개 시 재사용 방지 |
+| 빙결 등 방어 불가 | 입력은 버리지만 적 공격 시계를 멈추지는 않음 |
+| 같은 프레임의 연타 | 프레임·입력 시각으로 같은 입력을 다음 타격에 재사용하지 않게 함 |
+
+## 06 / 전열 전멸은 ‘곧바로 후열 생성’이 아니다
+
+`BattleManager.CompletePartyWaveTransition()`은 먼저 `BattleReserveChoiceUI.Show()`를 기다립니다. 계속 싸우기를 선택한 뒤 `PresentPartyWaveTransition()`에서 전열 페이드 → `TryPromoteReservePartyWave()` → 후열 진입 → 안내 → 턴 계산으로 이어집니다. 포기하면 BattleEnd 방향으로 갑니다.
+
+오래된 교대 코루틴은 `_partyWaveTransitionVersion`이 다르면 새 교대의 입력 잠금을 풀지 않습니다. 씬 전환 중에도 무조건 후열을 꺼내는 처리가 아닙니다. 페이드 기본값 0.5초와 진입 기본값 0.55초는 직렬화 설정으로 조정될 수 있습니다.
+
+## 07 / 실습과 예상 결과 — 이번에는 미실행
+
+- [ ] `BattleSpeedTurnSchedulerTests.cs`에서 속도 2:1과 동률 테스트를 찾고 위 표를 직접 계산한다.
+- [ ] 턴 예고를 여러 번 갱신해도 실제 다음 배우가 소비되지 않는지 확인한다.
+- [ ] 전조 중 설정창을 열고 닫은 뒤 같은 남은 시간에 대응 가능한지 확인한다.
+- [ ] 전열 전멸 시 계속/포기를 각각 선택한다. 예상: 후열 연출과 전투 종료가 분리된다.
+
+읽을 테스트: `Battle/Tests/Editor/BattleSpeedTurnSchedulerTests.cs`, `QTEManagerDefensePipelineTests.cs`, `BattlePartyWaveRuntimeTests.cs`.
+
+면접 질문: **왜 속도순 정렬만 하지 않았나? 예측이 실제 버프를 만료시키지 않음을 어떻게 검증하나? 일시정지와 빙결을 같은 방식으로 처리하면 어떤 버그가 생기나?**

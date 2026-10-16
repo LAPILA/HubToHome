@@ -45,6 +45,11 @@ public class GameConfigManager : MonoBehaviour
     private const string VSyncKey = "Config.VSync";
     private const string TargetFpsKey = "Config.TargetFps";
     private const string WindowScaleKey = "Config.WindowScale";
+    private bool _savePending;
+    private float _saveAt;
+    private bool _saveFailureReported;
+    private const float SaveDelay = 0.5f;
+    public bool HasPendingChanges => _savePending;
 
     public float MasterVolume { get; private set; } = DefaultVolume;
     public float BgmVolume { get; private set; } = DefaultVolume;
@@ -76,7 +81,43 @@ public class GameConfigManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this)
+        {
+            FlushPendingChanges();
             Instance = null;
+        }
+    }
+
+    private void Update()
+    {
+        if (_savePending && Time.unscaledTime >= _saveAt)
+            FlushPendingChanges();
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused) FlushPendingChanges();
+    }
+
+    private void OnApplicationQuit() => FlushPendingChanges();
+
+    private void ScheduleSave()
+    {
+        _savePending = true;
+        _saveAt = Time.unscaledTime + SaveDelay;
+    }
+
+    public void FlushPendingChanges()
+    {
+        if (!_savePending) return;
+        try { Save(); }
+        catch (Exception exception)
+        {
+            // 디스크 실패 때문에 설정창이 닫히지 않거나 일시 정지가 남지 않게 합니다.
+            _saveAt = Time.unscaledTime + 5f;
+            if (!_saveFailureReported)
+                Debug.LogWarning("[GameConfigManager] 설정을 저장하지 못했습니다: " + exception.Message, this);
+            _saveFailureReported = true;
+        }
     }
 
     public static GameConfigManager EnsureInstance()
@@ -127,6 +168,8 @@ public class GameConfigManager : MonoBehaviour
         PlayerPrefs.SetInt(TargetFpsKey, TargetFps);
         PlayerPrefs.SetInt(WindowScaleKey, WindowScale);
         PlayerPrefs.Save();
+        _savePending = false;
+        _saveFailureReported = false;
     }
 
     public void ApplyAll()
@@ -139,6 +182,9 @@ public class GameConfigManager : MonoBehaviour
 
     private void ApplyDisplayMode()
     {
+        if (!GameConfigPolicy.SupportsWindowSettings(Application.platform))
+            return;
+
         if (IsFullscreen)
         {
             Resolution resolution = Screen.currentResolution;
@@ -173,7 +219,7 @@ public class GameConfigManager : MonoBehaviour
 
         MasterVolume = normalized;
         AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
-        Save();
+        ScheduleSave();
     }
 
     public void SetBgmVolume(float value)
@@ -183,7 +229,7 @@ public class GameConfigManager : MonoBehaviour
 
         BgmVolume = normalized;
         AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
-        Save();
+        ScheduleSave();
     }
 
     public void SetSfxVolume(float value)
@@ -193,7 +239,7 @@ public class GameConfigManager : MonoBehaviour
 
         SfxVolume = normalized;
         AudioManager.Instance?.ApplyConfiguredVolumes(MasterVolume, BgmVolume, SfxVolume);
-        Save();
+        ScheduleSave();
     }
 
     public void SetFullscreen(bool value)
@@ -202,7 +248,7 @@ public class GameConfigManager : MonoBehaviour
 
         IsFullscreen = value;
         ApplyDisplayMode();
-        Save();
+        ScheduleSave();
     }
 
     public void SetWindowScale(int value)
@@ -213,7 +259,7 @@ public class GameConfigManager : MonoBehaviour
         WindowScale = normalized;
         if (!IsFullscreen)
             ApplyDisplayMode();
-        Save();
+        ScheduleSave();
     }
 
     public void SetLanguage(LanguageType language)
@@ -224,7 +270,7 @@ public class GameConfigManager : MonoBehaviour
 
         Language = normalized;
         LocalizationManager.Instance?.ChangeLanguage(normalized);
-        Save();
+        ScheduleSave();
     }
 
     public void SetTextSpeed(float value)
@@ -234,7 +280,7 @@ public class GameConfigManager : MonoBehaviour
         if (Mathf.Approximately(TextSpeed, normalized)) return;
 
         TextSpeed = normalized;
-        Save();
+        ScheduleSave();
     }
 
     public void SetAutoAdvance(bool value)
@@ -242,7 +288,7 @@ public class GameConfigManager : MonoBehaviour
         if (AutoAdvance == value) return;
 
         AutoAdvance = value;
-        Save();
+        ScheduleSave();
     }
 
     public void SetScreenShake(float value)
@@ -251,7 +297,7 @@ public class GameConfigManager : MonoBehaviour
         if (Mathf.Approximately(ScreenShake, normalized)) return;
 
         ScreenShake = normalized;
-        Save();
+        ScheduleSave();
     }
 
     public void SetFlashIntensity(float value)
@@ -260,7 +306,7 @@ public class GameConfigManager : MonoBehaviour
         if (Mathf.Approximately(FlashIntensity, normalized)) return;
 
         FlashIntensity = normalized;
-        Save();
+        ScheduleSave();
     }
 
     public void SetVSync(bool value)
@@ -269,7 +315,7 @@ public class GameConfigManager : MonoBehaviour
 
         UseVSync = value;
         ApplyFrameTiming();
-        Save();
+        ScheduleSave();
     }
 
     public void SetTargetFps(int value)
@@ -279,7 +325,7 @@ public class GameConfigManager : MonoBehaviour
 
         TargetFps = normalized;
         ApplyFrameTiming();
-        Save();
+        ScheduleSave();
     }
 
     public void AdjustTargetFps(int direction)
@@ -294,13 +340,16 @@ public class GameConfigManager : MonoBehaviour
     {
         string defaultKey = GetDefaultKey(action).ToString();
         string savedKey = PlayerPrefs.GetString(KeyPrefix + action, defaultKey);
-        return Enum.TryParse(savedKey, out Key key) ? key : GetDefaultKey(action);
+        return Enum.TryParse(savedKey, out Key key) && key != Key.None && Enum.IsDefined(typeof(Key), key)
+            ? key : GetDefaultKey(action);
     }
 
     public void SetKey(ConfigurableAction action, Key key)
     {
+        if (!Enum.IsDefined(typeof(ConfigurableAction), action) || key == Key.None
+            || !Enum.IsDefined(typeof(Key), key)) return;
         PlayerPrefs.SetString(KeyPrefix + action, key.ToString());
-        PlayerPrefs.Save();
+        ScheduleSave();
         GameInput.RefreshKeyBindings();
     }
 
@@ -310,7 +359,7 @@ public class GameConfigManager : MonoBehaviour
         {
             PlayerPrefs.DeleteKey(KeyPrefix + action);
         }
-        PlayerPrefs.Save();
+        ScheduleSave();
         GameInput.RefreshKeyBindings();
     }
 
@@ -335,7 +384,8 @@ public class GameConfigManager : MonoBehaviour
         }
 
         ApplyAll();
-        Save();
+        ScheduleSave();
+        FlushPendingChanges();
         GameInput.RefreshKeyBindings();
     }
 
@@ -371,21 +421,8 @@ public class GameConfigManager : MonoBehaviour
         };
     }
 
-    public bool IsPressed(ConfigurableAction action)
-    {
-        return action switch
-        {
-            ConfigurableAction.Up => GameInput.MoveUpHeld,
-            ConfigurableAction.Down => GameInput.MoveDownHeld,
-            ConfigurableAction.Left => GameInput.MoveLeftHeld,
-            ConfigurableAction.Right => GameInput.MoveRightHeld,
-            ConfigurableAction.Confirm => GameInput.ConfirmPressed,
-            ConfigurableAction.Cancel => GameInput.CancelPressed,
-            ConfigurableAction.Run => GameInput.RunHeld,
-            ConfigurableAction.Menu => GameInput.MenuPressed,
-            _ => false
-        };
-    }
+    // 호환 API: 방향/달리기는 Held, 확정/취소/메뉴는 Pressed라는 기존 의미를 유지합니다.
+    public bool IsPressed(ConfigurableAction action) => WasPressed(action);
 
     private int NormalizeTargetFps(int value)
     {

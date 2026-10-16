@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "압력 해방"
   SkillID: tests_player.pressure_release
-  Description: "축적한 모든 증기압을 한 점에 집중해 거대한 충격으로 방출하는 시험용 필살기."
+  Description: "증기압을 한 점에 모아 강력한 충격으로 방출한다."
   UsageProfile: 1
   APCost: 40
   TargetType: 1

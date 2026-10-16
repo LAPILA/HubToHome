@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "쌍압 절단"
   SkillID: tests_player.twin_pressure
-  Description: "두 번의 압력 방출을 엇갈리게 터뜨려 연속으로 절단한다."
+  Description: "엇갈리는 증기압으로 적을 베어낸다."
   UsageProfile: 1
   APCost: 12
   TargetType: 1

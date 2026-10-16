@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: support_detonate
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "독성 촉진"
+  SkillID: lab.elements.support_detonate
+  Description: "적에게 쌓인 <color=#A6DE65>중독</color>의 피해를 즉시 일으킨다."
+  UsageProfile: 1
+  APCost: 8
+  TargetType: 1
+  IsAoE: 0
+  StatusProcCoefficient: 1
+  ElementalApplications: []
+  ActionTimeline:
+  - rid: 102020001
+  - rid: 102020002
+  - rid: 102020003
+  references:
+    version: 2
+    RefIds:
+    - rid: 102020001
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 촉진"
+        Note: 
+        AnimTriggerName: Attack
+        DelayAfter: 0.2
+    - rid: 102020002
+      type: {class: Action_ElementalUtility, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 촉진"
+        Note: 
+        Operation: 4
+        Kind: 4
+        Amount: 0
+        DamagePerValue: 0
+        HealAmount: 0
+        MinimumValue: 0
+        TargetActor: 0
+    - rid: 102020003
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 촉진"
+        Note: 
+        WaitTime: 0.25

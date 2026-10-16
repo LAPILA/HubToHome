@@ -51,6 +51,7 @@ public sealed class OverworldEnemySaveData
     public string EnemyId = "";
     public string SceneName = "";
     public bool IsDefeated;
+    public bool RespawnOnManualSave;
 }
 
 [Serializable]
@@ -69,6 +70,7 @@ public class SaveData
 
     // ── 2. 파티 시스템 ──
     public List<CharacterSaveData> PartyData = new List<CharacterSaveData>();
+    public PartyProgressionSaveData PartyProgression = new PartyProgressionSaveData();
 
     // ── 3. 소지품 및 플래그 ──
     public Dictionary<string, int> InventoryDict = new Dictionary<string, int>();

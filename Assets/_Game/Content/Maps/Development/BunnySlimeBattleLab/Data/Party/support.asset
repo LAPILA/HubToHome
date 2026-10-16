@@ -26,9 +26,11 @@ MonoBehaviour:
   BattleLargePortrait: {fileID: 21300000, guid: e5e360a1b0e1a2446922682844e871aa, type: 3}
   BattleResource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
   BattlePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
-  BattleSymbolColor: {r: 0.3, g: 0.8, b: 0.68, a: 1}
+  BattleSymbolColor: {r: 0.3, g: 0.85, b: 0.78, a: 1}
+  BattleSpriteTint: {r: 0.3, g: 0.85, b: 0.78, a: 1}
+  StatusProfile: {fileID: 11400000, guid: ad0210e1000000000000000000000101, type: 2}
   CharacterID: lab.wizzel.support
-  DisplayName: "\uC704\uC824 \xB7 \uC9C0\uC6D0"
+  DisplayName: "위젤 · 청록"
   DisplayNameMode: 0
   BaseStats:
     MaxHP: 220
@@ -53,8 +55,10 @@ MonoBehaviour:
   DefensePerLevel: 1
   SpeedPerLevel: 0
   DefaultSkills:
-  - {fileID: 11400000, guid: b40b4d85858a8cd4a9c7c7fc855fac07, type: 2}
-  - {fileID: 11400000, guid: 86f948e75d6e511489eaca42a9d857fe, type: 2}
-  - {fileID: 11400000, guid: 1d09ca8d7483be144a96586ab1b1e6cc, type: 2}
-  - {fileID: 11400000, guid: d596a25410854f90ba050a72065f0285, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000007, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000008, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000009, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000010, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000011, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000012, type: 2}
   PowerUnlocks: []

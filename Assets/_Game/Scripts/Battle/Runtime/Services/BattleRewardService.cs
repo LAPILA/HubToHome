@@ -94,19 +94,12 @@ public static class BattleRewardService
                 continue;
             }
 
-            int added = global.AddItemAndGetAddedAmount(item.ItemId, item.Amount);
+            int added = InventoryEntryService.Add(global, ItemDatabase.FindById(item.ItemId), item.Amount);
             if (added <= 0) result.Items.RemoveAt(i);
             else item.Amount = added;
         }
 
-        for (int i = 0; i < global.Party.Count; i++)
-        {
-            CharacterSaveData member = global.Party[i];
-            if (member == null) continue;
-            CharacterData data = CharacterDatabase.FindById(member.CharacterDataID);
-            result.LevelUps.Add(CharacterProgressionService.GrantExperience(member, data, result.Experience));
-            PowerProgressionService.SynchronizeUnlockedSkills(member, data);
-        }
+        result.LevelUps.AddRange(global.GrantPartyExperience(result.Experience));
 
         return result;
     }

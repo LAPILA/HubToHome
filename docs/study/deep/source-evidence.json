@@ -1,0 +1,396 @@
+{
+  "date": "2026-10-12",
+  "basis": "working tree including uncommitted changes",
+  "pages": [
+    {
+      "file": "00-reading-tools.md",
+      "characters": 3341,
+      "excerpts": 2
+    },
+    {
+      "file": "01-save-settings.md",
+      "characters": 5669,
+      "excerpts": 4
+    },
+    {
+      "file": "02-battle-turn-defense.md",
+      "characters": 7306,
+      "excerpts": 5
+    },
+    {
+      "file": "03-skill-status.md",
+      "characters": 7365,
+      "excerpts": 4
+    },
+    {
+      "file": "04-stats-equipment-shop.md",
+      "characters": 7523,
+      "excerpts": 4
+    },
+    {
+      "file": "05-world-interaction.md",
+      "characters": 5785,
+      "excerpts": 4
+    },
+    {
+      "file": "06-dialogue-scenario.md",
+      "characters": 4695,
+      "excerpts": 3
+    },
+    {
+      "file": "07-editor-undo-save.md",
+      "characters": 6486,
+      "excerpts": 5
+    },
+    {
+      "file": "08-ui-camera-effects.md",
+      "characters": 5046,
+      "excerpts": 3
+    },
+    {
+      "file": "09-pool-text.md",
+      "characters": 4909,
+      "excerpts": 3
+    },
+    {
+      "file": "README.md",
+      "characters": 2574,
+      "excerpts": 0
+    }
+  ],
+  "excerpts": [
+    {
+      "document": "00-reading-tools.md",
+      "id": "00-reading-tools.md:1",
+      "source": "Assets/_Game/Scripts/Battle/Runtime/Services/BattleSpeedTurnScheduler.cs",
+      "start": 45,
+      "end": 50,
+      "fileSha256": "7099be183e6c47936e09b6805e7345c811e8e198944190266e5adb903fe94a6a",
+      "excerptSha256": "649f252ec642fa54b757c8e7a7592b9a0a1f8991355e8138d203a282b06b19d1"
+    },
+    {
+      "document": "00-reading-tools.md",
+      "id": "00-reading-tools.md:2",
+      "source": "Assets/_Game/Scripts/Scenario/Runtime/Presentation/BattleSkillTimelineRunner.cs",
+      "start": 126,
+      "end": 135,
+      "fileSha256": "e003b1cad9a0099b4cac95c0e578517a76b2b5f1dee89db08c1775b04989139a",
+      "excerptSha256": "0a3a70678e185d86d17110e9964b127391ec0aa6aadcc9ab4aa3d9b112bf06ec"
+    },
+    {
+      "document": "01-save-settings.md",
+      "id": "01-save-settings.md:1",
+      "source": "Assets/_Game/Scripts/Core/Runtime/SaveManager.cs",
+      "start": 50,
+      "end": 58,
+      "fileSha256": "eb7498dd2fc652d8060630d6d92c177dfeeb45e7e2813e9e153f8f7ef3464dd0",
+      "excerptSha256": "7a09dae9f32c3eb8f55493319f4767e4a66b43fa21e27d8e012cbaf9b8b2c898"
+    },
+    {
+      "document": "01-save-settings.md",
+      "id": "01-save-settings.md:2",
+      "source": "Assets/_Game/Scripts/Core/Runtime/SaveManager.cs",
+      "start": 99,
+      "end": 107,
+      "fileSha256": "eb7498dd2fc652d8060630d6d92c177dfeeb45e7e2813e9e153f8f7ef3464dd0",
+      "excerptSha256": "c0ce942bdc861d6684023bec49efdf127df3e03b183269101e409b09c0848c63"
+    },
+    {
+      "document": "01-save-settings.md",
+      "id": "01-save-settings.md:3",
+      "source": "Assets/_Game/Scripts/Core/Runtime/SaveManager.cs",
+      "start": 119,
+      "end": 130,
+      "fileSha256": "eb7498dd2fc652d8060630d6d92c177dfeeb45e7e2813e9e153f8f7ef3464dd0",
+      "excerptSha256": "43e675432fe42b98c974bd2a3e4eff46f7d6d66a72281736985be766be5409a1"
+    },
+    {
+      "document": "01-save-settings.md",
+      "id": "01-save-settings.md:4",
+      "source": "Assets/_Game/Scripts/Core/Runtime/AtomicSaveStorage.cs",
+      "start": 300,
+      "end": 312,
+      "fileSha256": "8dd7b53190c559064486c1602b598155daa771c179fa5093042ada9e9f97ba7b",
+      "excerptSha256": "885d2ff4461a3eab15a981ecbad10e9916f79c26b870c35339035556e2255ae4"
+    },
+    {
+      "document": "02-battle-turn-defense.md",
+      "id": "02-battle-turn-defense.md:1",
+      "source": "Assets/_Game/Scripts/Battle/Runtime/Services/BattleSpeedTurnScheduler.cs",
+      "start": 99,
+      "end": 112,
+      "fileSha256": "7099be183e6c47936e09b6805e7345c811e8e198944190266e5adb903fe94a6a",
+      "excerptSha256": "5185ffcc009351d9cdfda74f41d146aa43dc360cbea1b0734c22dc66e1e36307"
+    },
+    {
+      "document": "02-battle-turn-defense.md",
+      "id": "02-battle-turn-defense.md:2",
+      "source": "Assets/_Game/Scripts/Battle/Runtime/Services/BattleSpeedTurnScheduler.cs",
+      "start": 114,
+      "end": 129,
+      "fileSha256": "7099be183e6c47936e09b6805e7345c811e8e198944190266e5adb903fe94a6a",
+      "excerptSha256": "6c9600a13aa7d2cf1bc93539a4e6eb44e1480ca60d7c88eb138a3cfd19039432"
+    },
+    {
+      "document": "02-battle-turn-defense.md",
+      "id": "02-battle-turn-defense.md:3",
+      "source": "Assets/_Game/Scripts/Battle/Runtime/Services/BattleSpeedTurnScheduler.cs",
+      "start": 78,
+      "end": 94,
+      "fileSha256": "7099be183e6c47936e09b6805e7345c811e8e198944190266e5adb903fe94a6a",
+      "excerptSha256": "c7c98cfc9e80e1579f60d35dcbce624510ee7312538a603fef3a39d696729f87"
+    },
+    {
+      "document": "02-battle-turn-defense.md",
+      "id": "02-battle-turn-defense.md:4",
+      "source": "Assets/_Game/Scripts/Battle/Runtime/Services/BattleEnemyTargetSelector.cs",
+      "start": 46,
+      "end": 57,
+      "fileSha256": "0b52b27bbed4508a354587e0ebe50222c81fe42f888a80c3d04dde38ab9a4de9",
+      "excerptSha256": "864aace7976a1853c4dc773949addfccb8c62f35663e0f891f1f5e301ea787e5"
+    },
+    {
+      "document": "02-battle-turn-defense.md",
+      "id": "02-battle-turn-defense.md:5",
+      "source": "Assets/_Game/Scripts/UI/Runtime/QTEManager.cs",
+      "start": 405,
+      "end": 412,
+      "fileSha256": "285070462c19eed2ea21c59098f5847a9225ca83912e5dfac7b9dac4e1b0c332",
+      "excerptSha256": "fcc446e5f2241bede49b34278e0699a4d3608820d8324a190d5c76e7b5a28178"
+    },
+    {
+      "document": "03-skill-status.md",
+      "id": "03-skill-status.md:1",
+      "source": "Assets/_Game/Scripts/Scenario/Runtime/Presentation/BattleSkillTimelineRunner.cs",
+      "start": 70,
+      "end": 95,
+      "fileSha256": "e003b1cad9a0099b4cac95c0e578517a76b2b5f1dee89db08c1775b04989139a",
+      "excerptSha256": "d4dc668560bd817d91cbc528b1c317c387eeba26799c6d142af36681169fe563"
+    },
+    {
+      "document": "03-skill-status.md",
+      "id": "03-skill-status.md:2",
+      "source": "Assets/_Game/Scripts/Battle/Data/SkillActionBlocks.cs",
+      "start": 863,
+      "end": 878,
+      "fileSha256": "51fe11a56e342a991c9b8a8c4f80043596f55895a66cf840e6d1313da92d1aab",
+      "excerptSha256": "6e3c22f26aa5b1d4d105d67e875266b43b92e2b4661d23fe2f9f5b647788e33d"
+    },
+    {
+      "document": "03-skill-status.md",
+      "id": "03-skill-status.md:3",
+      "source": "Assets/_Game/Scripts/Battle/Data/SkillActionBlocks.cs",
+      "start": 73,
+      "end": 89,
+      "fileSha256": "51fe11a56e342a991c9b8a8c4f80043596f55895a66cf840e6d1313da92d1aab",
+      "excerptSha256": "8605a3fb4a544a87cccb69fb7c51859a67e1a589fe5bfdce464e66ae9835abef"
+    },
+    {
+      "document": "03-skill-status.md",
+      "id": "03-skill-status.md:4",
+      "source": "Assets/_Game/Scripts/Characters/Runtime/ElementalStatusState.cs",
+      "start": 50,
+      "end": 67,
+      "fileSha256": "4034ee160a21d16941dd4a5d71f4da49540046abf8ff8df3b58cf181aa6d4106",
+      "excerptSha256": "586c440696a2172421b81f7170b08cdb68d790203605f763c3b93ae90916e541"
+    },
+    {
+      "document": "04-stats-equipment-shop.md",
+      "id": "04-stats-equipment-shop.md:1",
+      "source": "Assets/_Game/Scripts/Characters/Runtime/CharacterStats.cs",
+      "start": 525,
+      "end": 549,
+      "fileSha256": "51d0b0965db2d4600543db6d0ee5f0a4612d1d6ea161436fa7e030083a71fffa",
+      "excerptSha256": "1ae5018c585dab984a5e9e272d4072610cc086b1e0fb1f6a49c596aaa2250310"
+    },
+    {
+      "document": "04-stats-equipment-shop.md",
+      "id": "04-stats-equipment-shop.md:2",
+      "source": "Assets/_Game/Scripts/Characters/Runtime/EquipmentLoadoutService.cs",
+      "start": 100,
+      "end": 116,
+      "fileSha256": "2dc743e07017d2fdca3c2942381427e81e5ec5930ac57acc92ae8d1a5b5c98cc",
+      "excerptSha256": "5a915924d93b8c9982525b96b0bb8837a4067e3c104c06c473d8af437c82e9b4"
+    },
+    {
+      "document": "04-stats-equipment-shop.md",
+      "id": "04-stats-equipment-shop.md:3",
+      "source": "Assets/_Game/Scripts/Characters/Runtime/EquipmentLoadoutService.cs",
+      "start": 182,
+      "end": 197,
+      "fileSha256": "2dc743e07017d2fdca3c2942381427e81e5ec5930ac57acc92ae8d1a5b5c98cc",
+      "excerptSha256": "af3001f743661e51112218aaea5ffb008d58258f0ab8118fd44562b0b9bf0796"
+    },
+    {
+      "document": "04-stats-equipment-shop.md",
+      "id": "04-stats-equipment-shop.md:4",
+      "source": "Assets/_Game/Scripts/Items/Runtime/ShopServiceTransactionService.cs",
+      "start": 48,
+      "end": 65,
+      "fileSha256": "826cb17f8de639b8ced65a4cb477ee18e039748fdd21df0974fbd6b72c1839fa",
+      "excerptSha256": "1898c4c7ce564e30e533e282af54a2ea6552b6ab399c98e57a06215a36d2fc3c"
+    },
+    {
+      "document": "05-world-interaction.md",
+      "id": "05-world-interaction.md:1",
+      "source": "Assets/_Game/Scripts/Overworld/Runtime/InteractionSystem.cs",
+      "start": 75,
+      "end": 88,
+      "fileSha256": "f67a323ad935edf1fd864a496916b690f42856704f5196905f085122c5ad51ef",
+      "excerptSha256": "0d80daeea14b9cbfcdd71a6d928639b13a2740a682d9aa577e30f45300b13886"
+    },
+    {
+      "document": "05-world-interaction.md",
+      "id": "05-world-interaction.md:2",
+      "source": "Assets/_Game/Scripts/Overworld/Runtime/InteractionSystem.cs",
+      "start": 158,
+      "end": 164,
+      "fileSha256": "f67a323ad935edf1fd864a496916b690f42856704f5196905f085122c5ad51ef",
+      "excerptSha256": "2183bd26de9a05f17de6bcbd11a40f28976ae0b55e7b4d8343ff2cf7fc680386"
+    },
+    {
+      "document": "05-world-interaction.md",
+      "id": "05-world-interaction.md:3",
+      "source": "Assets/_Game/Scripts/Overworld/Runtime/InteractionSystem.cs",
+      "start": 96,
+      "end": 115,
+      "fileSha256": "f67a323ad935edf1fd864a496916b690f42856704f5196905f085122c5ad51ef",
+      "excerptSha256": "670d758d2374b1fa303f11a0bb212fc691a7cd4c36766901b43ba1ed72a3c561"
+    },
+    {
+      "document": "05-world-interaction.md",
+      "id": "05-world-interaction.md:4",
+      "source": "Assets/_Game/Scripts/Overworld/Runtime/Map/RoomContainer.cs",
+      "start": 79,
+      "end": 98,
+      "fileSha256": "507aa4a6eb9fae9948cfa44d9fca14256744ea8f78e1a3edc32b10dea9673476",
+      "excerptSha256": "d01dceed6dff3fa2b615aef78961bae3878f1e08307c04336c66037866953076"
+    },
+    {
+      "document": "06-dialogue-scenario.md",
+      "id": "06-dialogue-scenario.md:1",
+      "source": "Assets/_Game/Scripts/Dialogue/Runtime/DialogueManager.cs",
+      "start": 432,
+      "end": 449,
+      "fileSha256": "8021f85f5d5eb565613fe5dffcaf65045a181eb530fb8b4e9d79f2f2b77f3ab8",
+      "excerptSha256": "6e01726ebba682ef5b7cf4824542bcdf3d490bdcf446952d7c64c90f0c082617"
+    },
+    {
+      "document": "06-dialogue-scenario.md",
+      "id": "06-dialogue-scenario.md:2",
+      "source": "Assets/_Game/Scripts/Dialogue/Runtime/DialogueManager.cs",
+      "start": 396,
+      "end": 405,
+      "fileSha256": "8021f85f5d5eb565613fe5dffcaf65045a181eb530fb8b4e9d79f2f2b77f3ab8",
+      "excerptSha256": "769d27ab26405b534c4750d5412d93d0a857eaa09865db5542b55e73ec1d7dff"
+    },
+    {
+      "document": "06-dialogue-scenario.md",
+      "id": "06-dialogue-scenario.md:3",
+      "source": "Assets/_Game/Scripts/Scenario/Runtime/ActionDirector.cs",
+      "start": 425,
+      "end": 434,
+      "fileSha256": "11f0f2e6a75b0430844f2557017737385cca39971ed4b1ee47c1f95f90203a1a",
+      "excerptSha256": "604acd67dbd83ffe1c11dcf336b30a7db334412b899058fd66f149d30c36e7d1"
+    },
+    {
+      "document": "07-editor-undo-save.md",
+      "id": "07-editor-undo-save.md:1",
+      "source": "Assets/_Game/Scripts/Scenario/Editor/SequenceMaker/SequenceEditCommandStack.cs",
+      "start": 175,
+      "end": 187,
+      "fileSha256": "5a4fb3d256fc22e0d4e3e3402e0eadee337bcb263eb86098a22c4a7805630f8f",
+      "excerptSha256": "55cce40ea67cdb1385258bdfa2365f50fa7ab0caf038efc0494a04a4b172317c"
+    },
+    {
+      "document": "07-editor-undo-save.md",
+      "id": "07-editor-undo-save.md:2",
+      "source": "Assets/_Game/Scripts/Scenario/Editor/SequenceMaker/SequenceEditCommandStack.cs",
+      "start": 136,
+      "end": 147,
+      "fileSha256": "5a4fb3d256fc22e0d4e3e3402e0eadee337bcb263eb86098a22c4a7805630f8f",
+      "excerptSha256": "2d575a5cf84c4460c3e4daf61734f4a7ea5a5ae3c1da3c523f6db9753119de1d"
+    },
+    {
+      "document": "07-editor-undo-save.md",
+      "id": "07-editor-undo-save.md:3",
+      "source": "Assets/_Game/Scripts/Scenario/Editor/SequenceMaker/SequenceEditCommandStack.cs",
+      "start": 77,
+      "end": 80,
+      "fileSha256": "5a4fb3d256fc22e0d4e3e3402e0eadee337bcb263eb86098a22c4a7805630f8f",
+      "excerptSha256": "10b3006b98786b410c4c0414042a10bd535ed33814f3edbac8adec123d21a933"
+    },
+    {
+      "document": "07-editor-undo-save.md",
+      "id": "07-editor-undo-save.md:4",
+      "source": "Assets/_Game/Scripts/Scenario/Editor/SequenceMaker/SequenceSaveCoordinator.cs",
+      "start": 176,
+      "end": 191,
+      "fileSha256": "a367520d0192dcd47d5a74c221bfc3ae44b362bf07d7d48899eca25767eef732",
+      "excerptSha256": "0eb5acb054883a5489ab9f754f94aa31be65d258fec69db3e40f5f5d5f628c25"
+    },
+    {
+      "document": "07-editor-undo-save.md",
+      "id": "07-editor-undo-save.md:5",
+      "source": "Assets/_Game/Scripts/Scenario/Editor/ScenarioSourceExporter.cs",
+      "start": 1131,
+      "end": 1150,
+      "fileSha256": "5408da3594af71889066dcb646eaba152d60fea38b58cb51c50429e2655c69e5",
+      "excerptSha256": "fb970ed11d1c28773e33a118c5b0bf66ec2817a74767626eb92d932ee30422d8"
+    },
+    {
+      "document": "08-ui-camera-effects.md",
+      "id": "08-ui-camera-effects.md:1",
+      "source": "Assets/_Game/Scripts/UI/Runtime/BattleDamagePopupPresenter.Totals.cs",
+      "start": 41,
+      "end": 58,
+      "fileSha256": "4f0eb06c209bdff89601eafff2a22d5c8cc51a73d39e820663bfc2829fd834a3",
+      "excerptSha256": "04d9fce54842a65247a47b7c34cfd7efb5b59bbfb4fecbd3edcd79787ac82875"
+    },
+    {
+      "document": "08-ui-camera-effects.md",
+      "id": "08-ui-camera-effects.md:2",
+      "source": "Assets/_Game/Scripts/UI/Runtime/BattleDamagePopupPresenter.Totals.cs",
+      "start": 29,
+      "end": 36,
+      "fileSha256": "4f0eb06c209bdff89601eafff2a22d5c8cc51a73d39e820663bfc2829fd834a3",
+      "excerptSha256": "5e8d4610b4206d0b6237cf5191e7f433c19385bd11675b12d439da181270accb"
+    },
+    {
+      "document": "08-ui-camera-effects.md",
+      "id": "08-ui-camera-effects.md:3",
+      "source": "Assets/_Game/Scripts/Battle/Runtime/Services/BattleCameraActionScope.cs",
+      "start": 80,
+      "end": 94,
+      "fileSha256": "a20737f5aa97816b4f1bc44ef8cefcdc545c9a9424d049705bbecfe4351768c0",
+      "excerptSha256": "f4b8021b4b899912555da4b0e99a206a937b9eb996fcabdc786ed6afbad84026"
+    },
+    {
+      "document": "09-pool-text.md",
+      "id": "09-pool-text.md:1",
+      "source": "Assets/_Game/Scripts/Core/Runtime/ObjectPoolManager.cs",
+      "start": 143,
+      "end": 158,
+      "fileSha256": "96c962ff117b9a8b7292c5a040d0afcc19e931ce94cfde24cede8a08336b7ea8",
+      "excerptSha256": "e910f269219eb5f493108307e058a27d05a9b532d3886a4286fb5981931021e0"
+    },
+    {
+      "document": "09-pool-text.md",
+      "id": "09-pool-text.md:2",
+      "source": "Assets/_Game/Scripts/Shared/Runtime/Text/SmartTextWrapper.cs",
+      "start": 163,
+      "end": 183,
+      "fileSha256": "d6490e135b4ab20e3e2e4ee7a27b1f36e7327732fc5bc4db69d1f80dd3db06a8",
+      "excerptSha256": "ed3fedc0542b32e3814408aa16288eed72be678aa043a650288cbf22b5501c02"
+    },
+    {
+      "document": "09-pool-text.md",
+      "id": "09-pool-text.md:3",
+      "source": "Assets/_Game/Scripts/Shared/Runtime/Text/SmartTextWrapper.cs",
+      "start": 197,
+      "end": 205,
+      "fileSha256": "d6490e135b4ab20e3e2e4ee7a27b1f36e7327732fc5bc4db69d1f80dd3db06a8",
+      "excerptSha256": "4f969ee840483f783a1f893b419cc56a017180b2d5eb42c043cc197a72517173"
+    }
+  ]
+}

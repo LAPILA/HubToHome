@@ -436,6 +436,8 @@ public static class EnemyAttackAuthoringAnalyzer
                 AddError(report, "skill.timeline.sequential.animation.missing", blockIndex, "연쇄 근접 공격 Trigger가 비어 있습니다.");
             if (sequential.DashSpeed <= 0f)
                 AddError(report, "skill.timeline.sequential.dash_duration.invalid", blockIndex, "연쇄 근접 이동 시간은 0보다 커야 합니다.");
+            if (float.IsNaN(sequential.RecoveryDelay) || float.IsInfinity(sequential.RecoveryDelay) || sequential.RecoveryDelay < 0f)
+                AddError(report, "skill.timeline.sequential.recovery.invalid", blockIndex, "연쇄 근접 타격 후 간격은 유한한 0 이상의 초 단위 값이어야 합니다.");
             if (sequential.DamageMultiplier < 0f)
                 AddError(report, "skill.timeline.sequential.damage.invalid", blockIndex, "연쇄 근접 피해 배율은 0 이상이어야 합니다.");
             if (sequential.HitVfxPrefab == null)

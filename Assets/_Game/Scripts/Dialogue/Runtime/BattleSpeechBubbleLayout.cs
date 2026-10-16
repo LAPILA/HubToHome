@@ -31,6 +31,24 @@ public readonly struct BattleSpeechBubbleLayoutResult
 
 public static class BattleSpeechBubbleLayout
 {
+    /// <summary>말풍선 내부 중앙 기준의 텍스트/아이콘 영역. 두 콘텐츠는 겹치지 않습니다.</summary>
+    public static void CalculateContent(Vector2 innerSize, Vector2 iconSize, bool hasText, float gap,
+        out Rect text, out Rect icon)
+    {
+        innerSize = Vector2.Max(Vector2.one, innerSize);
+        iconSize = Vector2.Max(Vector2.zero, iconSize);
+        float fit = Mathf.Min(1f, Mathf.Min(innerSize.x / Mathf.Max(1f, iconSize.x),
+            innerSize.y / Mathf.Max(1f, iconSize.y)));
+        iconSize *= fit;
+        bool hasIcon = iconSize.x > 0f && iconSize.y > 0f;
+        float reserved = hasIcon ? iconSize.x + (hasText ? Mathf.Max(0f, gap) : 0f) : 0f;
+        reserved = Mathf.Min(innerSize.x, reserved);
+        text = hasText ? new Rect(-innerSize.x * 0.5f + reserved, -innerSize.y * 0.5f,
+            innerSize.x - reserved, innerSize.y) : new Rect();
+        icon = hasIcon ? new Rect(hasText ? -innerSize.x * 0.5f : -iconSize.x * 0.5f,
+            -iconSize.y * 0.5f, iconSize.x, iconSize.y) : new Rect();
+    }
+
     public static Vector2 ClampScreenOffset(Rect bubble, Rect safe)
     {
         float x = bubble.width > safe.width ? safe.center.x - bubble.center.x

@@ -17,8 +17,11 @@ public class DialogueBattleNPC : InteractableBase,
     IEncounterOutcomeSource,
     IEncounterAbortSource,
     IEncounterEntryPresentationPolicy,
-    IEncounterPreparationSource
+    IEncounterPreparationSource,
+    IEncounterRetrySource
 {
+    public string RetryEncounterId => ResolveEncounterId();
+
     private const string AttackTriggerName = "Attack";
     private const float MinimumApproachDistance = 0.1f;
 

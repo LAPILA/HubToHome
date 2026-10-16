@@ -3,6 +3,9 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using Sirenix.OdinInspector;
 
+public enum EnemyRank { Normal = 0, Elite = 1, Boss = 2 }
+public enum EnemyKind { Human = 0, Monster = 1, WhiteEntity = 2 }
+
 [System.Serializable]
 public sealed class EnemyDropEntry
 {
@@ -24,6 +27,12 @@ public class EnemyData : SerializedScriptableObject
     public string EnemyId = "";
 
     [BoxGroup("Identity")] public string EnemyName = "Enemy";
+
+    [BoxGroup("Identity"), LabelText("전투 등급")]
+    [Tooltip("일반 적만 수동 저장 시 다시 등장합니다. 보스는 도주 불가·승리 자동 저장·전투 직전 재도전을 사용합니다.")]
+    public EnemyRank Rank = EnemyRank.Normal;
+    [BoxGroup("Identity"), LabelText("종별")]
+    public EnemyKind Kind = EnemyKind.Monster;
 
     [BoxGroup("Audio")]
     [Tooltip("이 적과 전투 시작 시 우선 재생할 전투 BGM입니다. 비워두면 맵 기본 전투 BGM을 사용합니다.")]
@@ -48,6 +57,9 @@ public class EnemyData : SerializedScriptableObject
         DEF = 3,
         SPD = 8,
     };
+
+    [BoxGroup("Combat Logic"), LabelText("누적 상태 규칙"), AssetsOnly]
+    public ElementalStatusProfile StatusProfile;
 
     [BoxGroup("Overworld Encounter"), MinValue(1)]
     public int ThreatLevel = 1;

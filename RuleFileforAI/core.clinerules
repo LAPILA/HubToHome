@@ -1,5 +1,19 @@
 # Core Rules
 
+## 챕터 1 저장·성장 경계 (2026-10-16)
+
+- 공용 EXP는 `GlobalDataManager.GrantPartyExperience`에서 보상당 한 번 지급한다. 개인별 반복 지급이나 저장된 개인 EXP 합산은 금지한다. `PartyProgressionService`의 공용 레벨/EXP와 캐릭터별 투자·구매 소유권을 구분한다.
+- 수동 저장은 독립 복사본에 `ManualSaveRestPolicy.PrepareSnapshot`을 적용한 뒤 원자 저장하고, 성공 후 `ApplyManualSaveRest`와 필드 표현을 갱신한다. 실패·취소에는 HP/AP 회복과 일반 적 재등장이 없어야 한다. 자동저장에는 휴식 정책을 적용하지 않는다.
+- `BattleRetryCheckpoint`는 보스/필수전 직전 메모리 복사본이다. 진입 성공 시에만 확정하고, 일반 패배는 최근 저장을 사용한다. 재도전은 아이템·HP/AP·진행 상태를 되돌리되 디스크 슬롯을 덮어쓰지 않는다. 새 게임/일반 로드/승리/도주에는 해제하고 복원 중에만 유지한다.
+- 설정 PlayerPrefs, 수동 진행 슬롯 0–2, 자동 진행 슬롯 99, 메모리 재도전 복사본은 서로 다른 수명이다. 저장 성공과 런타임 표시 갱신의 예외를 혼동해 이미 기록된 파일을 실패로 보고하지 않는다.
+- 입력 기기 전환은 `GameInput`에 모으고 모바일 버튼도 같은 액션을 통과시킨다. PC 마우스 조작을 켜지 않는다. 전투 메뉴는 Escape/패드 Start/모바일 일시정지로 열어 C 반격과 분리하며, 자신이 소유한 시간 정지만 복원하고 음악을 정지하지 않는다.
+- `JournalCatalog`는 저장 플래그 조건에 맞는 메모/현재 목표의 읽기 전용 표시 자료다. 퀘스트 보상 소유자나 별도 저장 상태가 아니다. 실제 기기별 버튼 배치·폰트·성능 검증은 별도로 남긴다.
+
+## Battle modal input boundary (2026-10-05)
+
+- GameInput.IsBattleInputBlocked covers Config, Paused, Dialogue state, DialogueManager.IsPresentationVisible (including closing animation), and BattleManager.IsAwaitingReserveChoice. Battle menus, targeting keys and QTE/held defense share this gate. The reserve prompt consumes public UI inputs and closes with fresh-press suppression. Do not block DialogueAdvance itself or treat non-modal BattleSpeechBubble as a modal.
+- DialogueManager consumes the closing battle input before restoring state/calling completion. QTE press timestamps recorded inside a modal stay consumed until a fresh press; do not replace this with a one-frame-only guard.
+
 ## Key Modules
 
 - `GameBootstrap`: global singleton prefab bootstrap.
@@ -28,6 +42,13 @@
 - Do not modify third-party package source without explicit approval.
 
 ## Save/Load Notes
+
+- Updated 2026-10-16: Manual save slots0..2 are offered only through SavePoint/SavePointMarker interaction. Boss victory, successful SceneActionSequenceTrigger completion and configured progress/recruitment events request auto slot99; storage waits for stable Exploration with battle/results/dialogue/config/scene transition finished and requests are cancelled on new game/load. ProgressSaveTrigger remains an explicit EventManager/completion or encounter-victory adapter. Do not auto-save plain NPC chatter, every normal battle, or recovery itself.
+- SaveManager.TrySaveProgress snapshots field position and clears stale spawnPointId in the copy. GlobalDataManager.ToSaveData and SaveDataCodec.Encode must not normalize caller-owned state. Atomic replacement must not delete the old backup before File.Replace; future-version primary files cannot be overwritten by the older game.
+- Config changes apply immediately but PlayerPrefs flush is batched (0.5s), with close/pause/quit flush. X means back, not rollback. Apply PC window resolution only on desktop. Only the owning ConfigPanelUI restores modal/time state, after closing presentation completes.
+
+- SaveManager.CanSaveCurrentProgress/TrySave reject active battles (including dialogue/pause/reserve choice within the session) and pending GameLoadCoordinator recovery. AtomicSaveStorage stays independent of gameplay state. SavePoint/AreaMarker check the gate before writing field positions, propagate failures and only display success after successful storage.
+- SaveDataCodec rejects NaN/Infinity positions on encode/decode instead of spawning at an invented coordinate; AtomicSaveStorage may fall back to a valid backup. Negative money/playtime normalize to zero, invalid facing to Down. Do not cap saved HP/AP to base MaxHP/MaxAP: equipment-aware caps are resolved after catalog restoration. Schema v5 migrates shared party growth from the most advanced legacy member without summing EXP; missing enemy RespawnOnManualSave remains false until field registration establishes the policy.
 
 - Save data should include enough state to restore scene, position, facing, party, inventory, money, flags, and relevant room/encounter context.
 - If a feature creates new persistent state, update `SaveData`, `GlobalDataManager`, and the update note together.

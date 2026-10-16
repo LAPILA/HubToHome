@@ -3,6 +3,34 @@ using UnityEngine;
 
 public sealed class FlagWorldStateTests
 {
+    [Test]
+    public void HeldItemDialogueRequiresCountAndFlagWithoutConsumingTheItem()
+    {
+        var cache = typeof(ItemDatabase).GetField("_cache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        object previousCache = cache.GetValue(null);
+        var item = ScriptableObject.CreateInstance<ItemData>();
+        item.ItemID = "test.letter";
+        cache.SetValue(null, new System.Collections.Generic.Dictionary<string, ItemData> { [item.ItemID] = item });
+        try
+        {
+            var rule = new FlagDialogueRule("story.ready", FlagValueComparison.Equal, 1, 10, _progressDialogue);
+            rule.ConfigureItemRequirement(item.ItemID, 2);
+            _selector.Configure(new[] { rule }, _fallback);
+            _global.AddItemAndGetAddedAmount(item.ItemID, 2);
+            Assert.That(_selector.Resolve(_global), Is.SameAs(_fallback));
+            _global.SetFlag("story.ready", 1);
+            Assert.That(_selector.Resolve(_global), Is.SameAs(_progressDialogue));
+            Assert.That(_global.GetItemCount(item.ItemID), Is.EqualTo(2));
+            _global.RemoveItem(item.ItemID, 1);
+            Assert.That(_selector.Resolve(_global), Is.SameAs(_fallback));
+        }
+        finally
+        {
+            cache.SetValue(null, previousCache);
+            Object.DestroyImmediate(item);
+        }
+    }
+
     private GameObject _globalObject;
     private GlobalDataManager _global;
     private DialogueData _fallback;

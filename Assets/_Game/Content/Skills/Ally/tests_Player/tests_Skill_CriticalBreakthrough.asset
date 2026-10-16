@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "임계압 돌파"
   SkillID: tests_player.critical_breakthrough
-  Description: "세 단계로 압력을 해방해 방어선을 밀어내고 마지막 타격으로 돌파한다."
+  Description: "압축한 증기를 해방해 적을 거세게 밀어붙인다."
   UsageProfile: 1
   APCost: 32
   TargetType: 1

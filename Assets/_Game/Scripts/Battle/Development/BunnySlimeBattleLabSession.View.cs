@@ -32,22 +32,31 @@ public sealed partial class BunnySlimeBattleLabSession
         scaler.referenceResolution = new Vector2(640f, 480f);
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
 
-        Image veil = CreateImage(_menuRoot.transform, "Backdrop", Ink);
-        RectTransform veilRect = veil.rectTransform;
-        veilRect.anchorMin = Vector2.zero;
-        veilRect.anchorMax = Vector2.one;
-        veilRect.offsetMin = veilRect.offsetMax = Vector2.zero;
-
         var content = new GameObject("640x480 Safe Content", typeof(RectTransform));
         content.transform.SetParent(_menuRoot.transform, false);
         RectTransform contentRect = content.GetComponent<RectTransform>();
         contentRect.anchorMin = contentRect.anchorMax = new Vector2(0.5f, 0.5f);
         contentRect.sizeDelta = new Vector2(640f, 480f);
 
-        Rect(CreateImage(content.transform, "Top Rule", Mint).rectTransform, 28f, 24f, 44f, 3f);
-        Text(content.transform, "Eyebrow", "HUB TO HOME  /  COMBAT FIELD NOTES", 28f, 32f, 560f, 20f, 13f, Muted);
-        Text(content.transform, "Title", "전투 실험실", 26f, 54f, 540f, 40f, 30f, Color.white);
-        Text(content.transform, "Subtitle", "통합 전투와 연출 전투 · 별도 후열 확인", 28f, 97f, 560f, 24f, 16f, Mint);
+        // 중앙 112~272px는 월드에 있는 주인공과 두 동료가 보이는 영역입니다.
+        Rect(CreateImage(content.transform, "Header Background", Ink).rectTransform, 0f, 0f, 640f, 112f);
+        Rect(CreateImage(content.transform, "Controls Background", Ink).rectTransform, 0f, 272f, 640f, 208f);
+        Rect(CreateImage(content.transform, "Top Rule", Mint).rectTransform, 28f, 14f, 44f, 3f);
+        Text(content.transform, "Eyebrow", "HUB TO HOME  /  COMBAT FIELD NOTES", 28f, 22f, 560f, 20f, 13f, Muted);
+        Text(content.transform, "Title", "전투 실험실", 26f, 43f, 540f, 38f, 28f, Color.white);
+        Text(content.transform, "Subtitle", "전열 3명 · 각 6스킬 · 누적 상태 5종", 28f, 83f, 584f, 24f, 15f, Mint);
+
+        // 월드 미리보기 아래의 이름표입니다. 실제 전투 참가자는 기존 진입 경로가 생성합니다.
+        for (int i = 0; i < (_data != null ? _data.GetPartyCount(false) : 0); i++)
+        {
+            CharacterData member = _data.Party[i];
+            Color color = member != null ? member.BattleSymbolColor : Color.white;
+            float x = 28f + i * 198f;
+            Rect(CreateImage(content.transform, "Roster Card " + i, Panel).rectTransform, x, 277f, 188f, 25f);
+            Rect(CreateImage(content.transform, "Roster Color " + i, color).rectTransform, x + 5f, 283f, 5f, 13f);
+            string name = member != null ? member.ResolveDisplayName("위젤") : "참조 없음";
+            Text(content.transform, "Roster Member " + i, name + " · 6스킬", x + 16f, 280f, 168f, 21f, 14f, color);
+        }
 
         int count = _data != null && _data.Encounters != null ? _data.Encounters.Length : 0;
         _choiceBackgrounds = new Image[count];
@@ -55,20 +64,22 @@ public sealed partial class BunnySlimeBattleLabSession
         _choiceDetails = new TMP_Text[count];
         for (int i = 0; i < count; i++)
         {
-            float y = 138f + i * 68f;
+            float y = 310f + i * 35f;
             _choiceBackgrounds[i] = CreateImage(content.transform, "Mode " + i, Panel);
-            Rect(_choiceBackgrounds[i].rectTransform, 28f, y, 268f, 58f);
-            _choiceTitles[i] = Text(content.transform, "Mode Title " + i, "", 41f, y + 4f, 247f, 23f, 21f, Color.white);
-            _choiceDetails[i] = Text(content.transform, "Mode Detail " + i, _data.Encounters[i]?.Summary ?? "", 43f, y + 32f, 246f, 16f, 12f, Muted);
+            Rect(_choiceBackgrounds[i].rectTransform, 28f, y, 268f, 32f);
+            _choiceTitles[i] = Text(content.transform, "Mode Title " + i, "", 39f, y + 1f, 249f, 18f, 16f, Color.white);
+            _choiceDetails[i] = Text(content.transform, "Mode Detail " + i, _data.Encounters[i]?.Summary ?? "", 41f, y + 19f, 247f, 13f, 10f, Muted);
         }
-        Rect(CreateImage(content.transform, "Description Background", Panel).rectTransform, 309f, 138f, 303f, 208f);
-        _description = Text(content.transform, "Description", "", 323f, 149f, 275f, 188f, 16f, new Color(0.84f, 0.89f, 0.91f));
+        Rect(CreateImage(content.transform, "Description Background", Panel).rectTransform, 309f, 310f, 303f, 102f);
+        _description = Text(content.transform, "Description", "", 320f, 315f, 281f, 92f, 13f, new Color(0.84f, 0.89f, 0.91f));
         _description.textWrappingMode = TextWrappingModes.Normal;
-        Rect(CreateImage(content.transform, "Status Rule", new Color(0.19f, 0.27f, 0.31f)).rectTransform, 28f, 363f, 584f, 1f);
-        _status = Text(content.transform, "Status", "", 28f, 376f, 584f, 42f, 15f, Mint);
+        _description.enableAutoSizing = true;
+        _description.fontSizeMin = 11f;
+        _description.fontSizeMax = 13f;
+        Rect(CreateImage(content.transform, "Status Rule", new Color(0.19f, 0.27f, 0.31f)).rectTransform, 28f, 419f, 584f, 1f);
+        _status = Text(content.transform, "Status", "", 28f, 423f, 584f, 31f, 12f, Mint);
         _status.textWrappingMode = TextWrappingModes.Normal;
-        _footer = Text(content.transform, "Controls", "↑ ↓ 선택  Z 시작  X 처음으로  ·  전투 중 F8: 메뉴로", 28f, 431f, 584f, 22f, 15f, Color.white);
-        Text(content.transform, "Safety", "전용 샘플 데이터 / 원본 불변 / 저장 파일 I/O 없음", 28f, 455f, 584f, 16f, 12f, Muted);
+        _footer = Text(content.transform, "Controls", "↑ ↓ 선택  Z 시작  X 처음으로  ·  전투 중 F8: 메뉴로", 28f, 456f, 584f, 20f, 13f, Color.white);
         // GraphicRaycaster나 Button을 만들지 않아 마우스로 조작할 수 없습니다.
     }
 
@@ -108,6 +119,7 @@ public sealed partial class BunnySlimeBattleLabSession
     {
         _menuVisible = visible;
         _menuRoot.SetActive(visible);
+        SetPartyPreviewVisible(visible);
     }
 
     private static Image CreateImage(Transform parent, string name, Color color)

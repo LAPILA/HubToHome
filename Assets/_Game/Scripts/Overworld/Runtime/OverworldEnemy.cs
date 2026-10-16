@@ -12,7 +12,7 @@ using Sirenix.OdinInspector;
 [RequireComponent(typeof(Collider2D))]
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(EnemyCharacter))]
-public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcomeSource, IPreemptiveAttackTarget, IEncounterEntryPresentationPolicy
+public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcomeSource, IPreemptiveAttackTarget, IEncounterEntryPresentationPolicy, IEncounterRetrySource
 {
     private static float s_globalEncounterLockUntil;
 
@@ -105,10 +105,18 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
     private bool _waitForPlayerExitBeforeRearm;
     private PlayerController _pendingRearmPlayer;
     private bool _encounterInProgress;
+    private bool _hiddenByDefeat;
+    private bool _isBattleInstance;
+    private Vector3 _spawnPosition;
     private IScreenFlashScaleProvider _screenFlashScaleProvider =
         new GameConfigScreenFlashScaleProvider();
 
     public string EnemyId => _enemyId;
+    public string RetryEncounterId => _enemyId;
+    private bool CanRespawnOnManualSave => _mode == EncounterMode.PatrolContactBattle
+        && _enemyCharacter != null && _enemyCharacter.Data != null
+        && _enemyCharacter.Data.Rank == EnemyRank.Normal
+        && !ContainsNonNormalCompanion();
     public string EncounterMemoryKey => BattleEncounterMemoryRecorder.ResolveMemoryKey(
         _battleScenarioData,
         _enemyId);
@@ -169,6 +177,8 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
         _enemyCharacter?.SetBattleMode(false);
 
         EnsureEnemyId();
+        _spawnPosition = transform.position;
+        GlobalDataManager.Instance?.SetOverworldEnemyRespawnPolicy(_enemyId, _sceneName, CanRespawnOnManualSave);
         RestorePersistentState();
     }
 
@@ -285,6 +295,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
 
     public void DisableForBattleInstance()
     {
+        _isBattleInstance = true;
         _runtimeDisabledForBattle = true;
         _triggered = true;
 
@@ -449,7 +460,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
             yield break;
         }
 
-        if (_destroyAfterTouch && _useDedicatedBattleScene)
+        if (_destroyAfterTouch && _useDedicatedBattleScene && !CanRespawnOnManualSave)
             Destroy(gameObject);
     }
 
@@ -689,6 +700,7 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
 
     private void DisablePermanently()
     {
+        _hiddenByDefeat = true;
         _triggered = true;
         _runtimeDisabledForBattle = true;
 
@@ -701,5 +713,49 @@ public class OverworldEnemy : MonoBehaviour, IEncounterSource, IEncounterOutcome
         if (_rb != null) _rb.linearVelocity = Vector2.zero;
         UpdateMoveAnimation(Vector2.zero);
         gameObject.SetActive(false);
+    }
+
+    private bool ContainsNonNormalCompanion()
+    {
+        if (_additionalEncounterEnemies == null) return false;
+        for (int i = 0; i < _additionalEncounterEnemies.Count; i++)
+        {
+            EnemyData enemy = _additionalEncounterEnemies[i];
+            if (enemy != null && enemy.Rank != EnemyRank.Normal) return true;
+        }
+        return false;
+    }
+
+    /// <summary>수동 저장 성공 때만 한 번 조회합니다. 스토리 비활성/방 풀/전투 복제체는 복원하지 않습니다.</summary>
+    public static void RefreshAfterManualSaveRest()
+    {
+        OverworldEnemy[] enemies = FindObjectsByType<OverworldEnemy>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < enemies.Length; i++) enemies[i].TryRespawnAfterRest();
+    }
+
+    private void TryRespawnAfterRest()
+    {
+        if (!_hiddenByDefeat || _isBattleInstance || !CanRespawnOnManualSave) return;
+        GlobalDataManager global = GlobalDataManager.Instance;
+        if (global == null || !global.TryGetOverworldEnemyState(_enemyId, out OverworldEnemyRuntimeState state)
+            || state.IsDefeated || !state.RespawnOnManualSave) return;
+        _hiddenByDefeat = false;
+        _runtimeDisabledForBattle = false;
+        _encounterInProgress = false;
+        _waitForPlayerExitBeforeRearm = false;
+        _pendingRearmPlayer = null;
+        _waypointIndex = 0;
+        _direction = 1;
+        transform.position = _spawnPosition;
+        _localEncounterBlockedUntil = Time.unscaledTime + Mathf.Max(1f, _postBattleGraceDuration);
+        if (_spriteRenderer != null)
+        {
+            Color color = _spriteRenderer.color;
+            color.a = 1f;
+            _spriteRenderer.color = color;
+        }
+        // 부모 방이 비활성이라면 그대로 유지됩니다. 패배로 숨긴 이 자식의 activeSelf만 복구합니다.
+        gameObject.SetActive(true);
+        RestoreActiveState();
     }
 }

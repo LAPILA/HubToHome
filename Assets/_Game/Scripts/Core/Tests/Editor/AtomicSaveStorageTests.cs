@@ -4,6 +4,60 @@ using NUnit.Framework;
 
 public class AtomicSaveStorageTests
 {
+    [Test]
+    public void ThirdCommitReplacesExistingBackupAndFailedFourthPreservesBoth()
+    {
+        AtomicSaveStorage storage = CreateStorage();
+        Assert.That(storage.Save(CreateData("first"), 0).Success, Is.True);
+        Assert.That(storage.Save(CreateData("second"), 0).Success, Is.True);
+        Assert.That(storage.Save(CreateData("third"), 0).Success, Is.True);
+        var paths = storage.GetPaths(0);
+        Assert.That(Decode(paths.BackupPath).Data.playerName, Is.EqualTo("second"));
+        var faulting = new FaultInjectingSaveFileSystem(new SystemSaveFileSystem()) { ThrowOnReplace = true };
+        var failing = new AtomicSaveStorage(_directory, faulting, _codec);
+        var data = CreateData("fourth");
+        data.saveTime = "unchanged";
+        data.Money = -4;
+        Assert.That(failing.Save(data, 0, "new time").Success, Is.False);
+        Assert.That(data.saveTime, Is.EqualTo("unchanged"));
+        Assert.That(data.Money, Is.EqualTo(-4));
+        Assert.That(Decode(paths.PrimaryPath).Data.playerName, Is.EqualTo("third"));
+        Assert.That(Decode(paths.BackupPath).Data.playerName, Is.EqualTo("second"));
+    }
+
+    [Test]
+    public void FuturePrimaryCannotBeSilentlyOverwritten()
+    {
+        var storage = CreateStorage();
+        var paths = storage.GetPaths(0);
+        const string future = "{\"schemaVersion\":999,\"currentScene\":\"Future\"}";
+        File.WriteAllText(paths.PrimaryPath, future);
+        Assert.That(storage.Save(CreateData("old game"), 0).Failure, Is.EqualTo(SaveStorageFailure.NotAllowed));
+        Assert.That(File.ReadAllText(paths.PrimaryPath), Is.EqualTo(future));
+        Assert.That(File.Exists(paths.TemporaryPath), Is.False);
+    }
+
+    [Test]
+    public void Load_NonFinitePrimaryUsesHealthyBackupAndFailedSavePreservesBothFiles()
+    {
+        AtomicSaveStorage storage = CreateStorage();
+        Assert.That(storage.Save(CreateData("healthy"), 0).Success, Is.True);
+        Assert.That(storage.Save(CreateData("latest"), 0).Success, Is.True);
+        SaveSlotPaths paths = storage.GetPaths(0);
+        File.WriteAllText(paths.PrimaryPath, "{\"schemaVersion\":4,\"playerX\":\"NaN\"}");
+        string primary = File.ReadAllText(paths.PrimaryPath);
+        string backup = File.ReadAllText(paths.BackupPath);
+        SaveLoadResult loaded = storage.Load(0);
+        Assert.That(loaded.Success, Is.True);
+        Assert.That(loaded.Source, Is.EqualTo(SaveLoadSource.Backup));
+        Assert.That(loaded.Data.playerName, Is.EqualTo("healthy"));
+        SaveData invalid = CreateData("invalid");
+        invalid.playerY = float.PositiveInfinity;
+        Assert.That(storage.Save(invalid, 0).Success, Is.False);
+        Assert.That(File.ReadAllText(paths.PrimaryPath), Is.EqualTo(primary));
+        Assert.That(File.ReadAllText(paths.BackupPath), Is.EqualTo(backup));
+    }
+
     private string _directory;
     private SaveDataCodec _codec;
 

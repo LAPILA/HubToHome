@@ -71,6 +71,13 @@ public static class GameConfigPolicy
             || deviceType == DeviceType.Handheld;
     }
 
+    public static bool SupportsWindowSettings(RuntimePlatform platform)
+    {
+        return platform == RuntimePlatform.WindowsPlayer || platform == RuntimePlatform.WindowsEditor
+            || platform == RuntimePlatform.OSXPlayer || platform == RuntimePlatform.OSXEditor
+            || platform == RuntimePlatform.LinuxPlayer || platform == RuntimePlatform.LinuxEditor;
+    }
+
     public static LanguageType NormalizeLanguage(int value, LanguageType fallback)
     {
         return Enum.IsDefined(typeof(LanguageType), value)

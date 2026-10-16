@@ -4,6 +4,98 @@ using NUnit.Framework;
 public class SaveDataCodecTests
 {
     [Test]
+    public void VersionFourMigratesHighestPartyProgressWithoutAddingMembersExperience()
+    {
+        SaveDecodeResult result = new SaveDataCodec().Decode(
+            "{\"schemaVersion\":4,\"PartyData\":[{\"CharacterDataID\":\"wizel\",\"Level\":3,\"EXP\":20,\"HP\":0,\"AP\":2},"
+            + "{\"CharacterDataID\":\"ally\",\"Level\":5,\"EXP\":12},{\"Level\":5,\"EXP\":30}],\"Money\":77}");
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Data.PartyProgression.Level, Is.EqualTo(5));
+        Assert.That(result.Data.PartyProgression.EXP, Is.EqualTo(30));
+        Assert.That(result.Data.PartyProgression.CurveCharacterId, Is.EqualTo("wizel"));
+        Assert.That(result.Data.PartyData[0].HP, Is.Zero);
+        Assert.That(result.Data.PartyData[0].AP, Is.EqualTo(2));
+        Assert.That(result.Data.Money, Is.EqualTo(77));
+    }
+
+    [Test]
+    public void VersionFivePreservesCanonicalPartyProgressAndRespawnPolicy()
+    {
+        var source = new SaveData
+        {
+            PartyProgression = new PartyProgressionSaveData { IsInitialized = true, Level = 8, EXP = 12, CurveCharacterId = "wizel" }
+        };
+        source.PartyData.Add(new CharacterSaveData { CharacterDataID = "wizel", Level = 2, EXP = 88 });
+        source.OverworldEnemies["normal"] = new OverworldEnemySaveData { EnemyId = "normal", RespawnOnManualSave = true };
+        var codec = new SaveDataCodec();
+        var decoded = codec.Decode(codec.Encode(source));
+        Assert.That(decoded.Success, Is.True);
+        Assert.That(decoded.Data.PartyProgression.Level, Is.EqualTo(8));
+        Assert.That(decoded.Data.PartyProgression.EXP, Is.EqualTo(12));
+        Assert.That(decoded.Data.OverworldEnemies["normal"].RespawnOnManualSave, Is.True);
+    }
+
+    [Test]
+    public void LegacyUninitializedGrowthPreservesSpentPointsUntilProfileMigration()
+    {
+        var result = new SaveDataCodec().Decode("{\"schemaVersion\":4,\"PartyData\":[{\"Level\":5,\"Growth\":{\"SkillPointsSpent\":3}}]}");
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Data.PartyData[0].Growth.SkillPointsSpent, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void EncodeDoesNotMutateCallerOrNestedCollections()
+    {
+        var data = new SaveData { schemaVersion = 0, saveTime = "original", Money = -7 };
+        var member = new CharacterSaveData { EquippedEquipmentIDs = null };
+        data.PartyData.Add(member);
+        data.InventoryDict.Add("invalid", -1);
+        var codec = new SaveDataCodec();
+        SaveDecodeResult result = codec.Decode(codec.Encode(data, "new timestamp"));
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Data.saveTime, Is.EqualTo("new timestamp"));
+        Assert.That(result.Data.Money, Is.Zero);
+        Assert.That(data.schemaVersion, Is.Zero);
+        Assert.That(data.saveTime, Is.EqualTo("original"));
+        Assert.That(data.Money, Is.EqualTo(-7));
+        Assert.That(member.EquippedEquipmentIDs, Is.Null);
+        Assert.That(data.InventoryDict["invalid"], Is.EqualTo(-1));
+    }
+
+    [TestCase("NaN")]
+    [TestCase("Infinity")]
+    [TestCase("-Infinity")]
+    public void Decode_NonFinitePositionRejectsCandidateForBackupRecovery(string value)
+    {
+        SaveDecodeResult result = new SaveDataCodec().Decode(
+            "{\"schemaVersion\":4,\"playerX\":\"" + value + "\"}");
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Failure, Is.EqualTo(SaveDecodeFailure.InvalidJson));
+    }
+
+    [Test]
+    public void Encode_NonFinitePositionCannotOverwriteHealthySave()
+    {
+        var data = new SaveData { playerY = float.PositiveInfinity };
+        Assert.Throws<System.ArgumentException>(() => new SaveDataCodec().Encode(data));
+    }
+
+    [Test]
+    public void Decode_RepairsNegativeEconomyAndFacingWithoutClampingEquipmentBoostedVitals()
+    {
+        SaveDecodeResult result = new SaveDataCodec().Decode(
+            "{\"schemaVersion\":4,\"Money\":-4,\"playtimeSeconds\":-9,\"lookingDirection\":99," +
+            "\"PartyData\":[{\"HP\":150,\"MaxHP\":100,\"AP\":30,\"MaxAP\":20}]}");
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Data.Money, Is.Zero);
+        Assert.That(result.Data.playtimeSeconds, Is.Zero);
+        Assert.That(result.Data.lookingDirection, Is.Zero);
+        // 상한은 장비 카탈로그가 준비된 뒤 ProjectionService에서 계산합니다.
+        Assert.That(result.Data.PartyData[0].HP, Is.EqualTo(150));
+        Assert.That(result.Data.PartyData[0].AP, Is.EqualTo(30));
+    }
+
+    [Test]
     public void Decode_LegacyJsonWithoutVersion_MigratesToCurrentVersion()
     {
         const string json =

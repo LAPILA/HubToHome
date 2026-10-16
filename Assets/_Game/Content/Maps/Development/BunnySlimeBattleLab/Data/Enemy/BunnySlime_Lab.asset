@@ -28,8 +28,9 @@ MonoBehaviour:
   BattleBGM: {fileID: 8300000, guid: 2358903c2d2850440a9afe9917fe42d3, type: 3}
   Prefab: {fileID: 5456176941106326503, guid: f615c9e035a93a5429f4a61c5b109895, type: 3}
   ReturnMoveTrigger: BattleMoveBack
+  StatusProfile: {fileID: 11400000, guid: ad0210e1000000000000000000000101, type: 2}
   BaseStats:
-    MaxHP: 1800
+    MaxHP: 4800
     MaxAP: 100
     ATK: 26
     DEF: 4
@@ -52,15 +53,13 @@ MonoBehaviour:
   HasEnragedPattern: 0
   IsLargeEnemy: 0
   SkillList:
-  - {fileID: 11400000, guid: 188683247c08da84fa7c9849f5b4fba3, type: 2}
-  - {fileID: 11400000, guid: c517246fb0984e2aaa509cf03ec1df2c, type: 2}
-  - {fileID: 11400000, guid: f3a8e9ee0cbb67d42815953e00825604, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000051, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000052, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000053, type: 2}
   - {fileID: 11400000, guid: 5223a5b9b500fa649a0b03661843c13b, type: 2}
   - {fileID: 11400000, guid: f42b269d7a674e0a98cb417aef6a58c0, type: 2}
-  - {fileID: 11400000, guid: 69cac96e5deefd94b9a1bb8dfd70e75e, type: 2}
-  - {fileID: 11400000, guid: b71bbe0ff53279945874d8c6edcb4a14, type: 2}
-  - {fileID: 11400000, guid: 6b42182f177f0dc4796ec17d725564c7, type: 2}
-  - {fileID: 11400000, guid: 6571caebf3fd2824487bb3f143f110d6, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000054, type: 2}
+  - {fileID: 11400000, guid: ad0210e1000000000000000000000055, type: 2}
   - {fileID: 11400000, guid: cda6e4c803164bc5b7c310a93649f81c, type: 2}
   StrongSkillList: []
   Drops:

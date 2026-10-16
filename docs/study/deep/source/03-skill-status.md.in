@@ -1,0 +1,92 @@
+# 03 · 스킬 블록, 실시간 QTE, 압력과 속성
+
+> **중심 질문: 하나의 스킬 안에서 여러 연출이 실행될 때, 효과를 정확히 한 번 적용하려면?** 데이터 에셋과 한 번의 사용 상태를 분리하는 것이 출발점입니다.
+
+[자료실](README.md) · [스킬 입문](https://app.notion.com/p/3f6641f6190181d4b2e4eec72e4a223a)
+
+## 01 / 정의와 실행 상태는 다른 물건
+
+| 구성 | 저장하는 것 | 수명 |
+| --- | --- | --- |
+| SkillData | 이름·AP·대상·ActionTimeline·자원 조건 | 여러 번 재사용할 에셋 |
+| SkillActionBlock | 이동/애니메이션/피해 등 개별 행동 설정 | 에셋 내 제작 데이터 |
+| SkillContext | 이번 사용자·대상·QTE·피해 배율·자원 처리 여부 | 스킬 한 번의 실행 |
+| BattleSkillTimelineRunner | 순서 실행, 예외 처리, 종료 정리 | 실행기 |
+| ElementalStatusState | 각 캐릭터의 5종 누적 상태 | 캐릭터별 전투 상태 |
+
+위젤 두 명이 같은 SkillData를 써도 이번 QTE 결과를 에셋에 저장하면 안 됩니다. 하나의 공유 정의에 임시 값을 넣으면 다른 위젤의 공격에도 영향을 줄 수 있습니다.
+
+```mermaid
+flowchart LR
+ A["SkillData.ActionTimeline"] --> B["PlaySkillTimeline"]
+ B --> C["SkillContext.BeginSkillResources"]
+ C --> D["블록 ExecuteBlock 반복"]
+ D --> E["QTE/방어 반응 마감"]
+ E --> F["ReturnDefender / CompleteSkillResources"]
+ D --> G["취소/예외 → finally 정리"]
+```
+
+## 02 / 목록에 있는 블록을 실제로 돌리는 부분
+
+@@source Assets/_Game/Scripts/Scenario/Runtime/Presentation/BattleSkillTimelineRunner.cs#L70-L95
+
+실행 전마다 취소 여부, 파괴/사망한 대상, 계속 실행 가능한지 확인합니다. 비활성 블록은 건너뜁니다. 마지막 대상을 처치해 대상 목록이 비면 정상 마무리로 빠지며, 취소와 구분합니다.
+
+`ExecuteBlock`의 반환값은 IEnumerator입니다. 실행기는 `MoveNext()` 도중 발생한 예외도 잡습니다. 블록 생성 시 예외와 다음 프레임으로 진행하다 발생한 예외는 서로 다른 위치에서 생기므로 둘 다 처리해야 합니다.
+
+자료구조/패턴: `List<SkillActionBlock>`은 제작 순서를 보존합니다. 상속된 블록의 `Execute`를 호출하는 다형성은 행동 추가 접점입니다. 명령 패턴과 유사한 행동 객체 구조이지만, 이것을 편집기의 Undo 명령과 같은 책임으로 혼동하지 마세요. 런타임 행동은 이미 준 피해를 자동 되감기하지 않습니다.
+
+## 03 / QTE를 다 누른 뒤 공격하는 방식이 아닌 이유
+
+@@source Assets/_Game/Scripts/Battle/Data/SkillActionBlocks.cs#L863-L878
+
+`StartSequenceQTEWithResult`가 입력 세션을 시작하고, 블록은 잠깐 양보한 뒤 다음 블록으로 진행합니다. 성공률 `success / safeTotal`을 0~1로 제한하고 실패 배율에서 성공 배율로 보간합니다. 실제 피해 블록은 필요할 때 `WaitForActiveSkillQte()`로 결과를 마감합니다.
+
+따라서 “모든 블록이 QTE 완료까지 기다린다”도 아니고 “피해가 QTE 결과와 무관하다”도 아닙니다. **표시·모션은 겹쳐 진행하고, 결과를 사용하는 지점에서 동기화**합니다. 적 사용자면 Action_QTE는 초반 검사에서 건너뜁니다. 적의 방어 대응 창과 플레이어 스킬 QTE는 역할이 다릅니다.
+
+## 04 / 강화 자원은 타격마다 쓰지 않는다
+
+@@source Assets/_Game/Scripts/Battle/Data/SkillActionBlocks.cs#L73-L89
+
+가정 예시: 압력 4, 요구 3, 소비 2, 강화 배율 1.5, 완료 획득 1. 실제 특정 에셋의 수치라는 뜻은 아닙니다.
+
+| 단계 | 압력 | 이번 스킬 배율 | 이유 |
+| --- | --- | --- | --- |
+| 실행 전 | 4 | 1.0 | 아직 판정 전 |
+| BeginSkillResources | 2 | 1.5 | 조건 검사 후 한 번 소비 |
+| 세 번 타격 | 2 | 1.5 유지 | 각 타격이 다시 소비하지 않음 |
+| 정상 완료 | 3 | 실행 종료 | 완료 획득 한 번 |
+| 중간 취소라면 | 2 | 실행 종료 | 정상 완료 획득 경로를 지나지 않음 |
+
+주의: 이 코드에서 취소 시 이미 소비한 자원을 자동 환불하지는 않습니다. “정리한다”와 “모든 게임 효과를 롤백한다”는 다릅니다. AP 지불과 자원 강화도 서로 다른 규칙이므로 한 조건으로 묶어 설명하지 않습니다.
+
+## 05 / 0.3씩 쌓이는 상태가 영원히 0이면 안 된다
+
+@@source Assets/_Game/Scripts/Characters/Runtime/ElementalStatusState.cs#L50-L67
+
+상태 정수값 외에 `_buildupRemainders`가 소수 잔여량을 기억합니다. 0.3씩 네 번 적용하면 잔여량이 0.3→0.6→0.9→0.2가 되고 정수 상태가 1 증가합니다. 매번 정수 변환하면 이 누적이 사라집니다.
+
+여기서 저항은 적용 배율로 곱합니다. 1은 그대로, 0.5는 절반, 0은 적용되지 않음에 해당합니다. 화면에 표시하는 ‘저항률 %’와 동일한 수치라고 단정하지 마세요.
+
+| 시점 | 코드 경로 | 의미 |
+| --- | --- | --- |
+| 상태 적용 | Add | 저항·상한·소수 잔여량 반영 |
+| 자기 턴 종료 | EndTurn | 화상 발동/감소, 독 발동/자연 성장 |
+| 행동 완료 | CompleteAction | 회복 제한 해제, 출혈 발동/감소 |
+| 정화 | Cleanse | 값을 지워도 군중제어 회복 제한을 보존할 수 있음 |
+| 전투 상태 초기화 | Reset | 누적과 회복 제한까지 초기화 |
+
+5종이 고정된 배열은 종류별 조회가 O(1)입니다. 종류를 추가한다면 enum만 늘리는 것이 아니라 배열 길이·인덱스 검증·UI 매핑·테스트도 함께 바뀌어야 합니다.
+
+## 06 / 실패 경계와 실습 — 이번에는 미실행
+
+취소 시 Runner의 finally는 남은 QTE를 취소하고 방어 반응을 정리합니다. 파괴된 대상을 사용하지 않도록 검사하는 것도 실행기 책임입니다. 개별 블록이 만든 트윈의 종료 책임까지 연결해서 읽어야 합니다.
+
+- [ ] 같은 SkillData를 두 캐릭터가 사용해도 QTE 배율이 섞이지 않는지 확인한다.
+- [ ] 자원 강화 연타를 중간 중단해 소비 횟수와 완료 보상을 기록한다.
+- [ ] 상태를 소수로 여러 번 적용하고 정수 상태/잔여량을 함께 기록한다.
+- [ ] 정화와 Reset 이후 군중제어 재적용 차이를 확인한다.
+
+테스트 읽기: `Battle/Tests/Editor/SkillElementalEffectsTests.cs`, `Characters/Tests/Editor/ElementalStatusStateTests.cs`. QTE/타임라인의 통합 동작은 별도 플레이 확인이 필요합니다.
+
+면접 질문: **공유 ScriptableObject에 런타임 배율을 넣으면 왜 문제인가? 코루틴이 겹쳐 실행되는 것과 멀티스레딩은 어떻게 다른가? 자원 소비와 환불 정책을 어디에 두겠는가?**

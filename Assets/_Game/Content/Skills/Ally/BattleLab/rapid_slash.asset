@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "압력 난무 · 5초"
   SkillID: lab.bunny.rapid_slash
-  Description: "5초 동안 0.1초 간격으로 50회 베기. 공격과 별도로 이어지는 Z/X/C 안내에 맞춰 누르면 다음 QTE 결과까지 피해가 강화된다. 입력을 놓쳐도 공격은 계속된다."
+  Description: "압축된 증기를 분출하며 적을 거세게 몰아붙인다."
   UsageProfile: 1
   APCost: 12
   TargetType: 1

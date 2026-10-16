@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4f234536f2d4f1291cbe43bdf4357e7, type: 3}
+  m_Name: JournalCatalog
+  m_EditorClassIdentifier:
+  Entries:
+  - Id: status.burn
+    TitleKey: journal.status.burn.title
+    Title: 화상
+    BodyKey: journal.status.burn.body
+    Body: 화상은 자신의 턴이 끝날 때 피해를 줍니다.
+    IsObjective: 0
+    CompletedFlag:
+    Conditions: []
+  - Id: status.electric
+    TitleKey: journal.status.electric.title
+    Title: 감전
+    BodyKey: journal.status.electric.body
+    Body: 감전이 쌓인 대상은 공격을 받을 때 추가 전기 피해를 받습니다.
+    IsObjective: 0
+    CompletedFlag:
+    Conditions: []

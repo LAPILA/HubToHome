@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "보일러 파열"
   SkillID: tests_player.boiler_burst
-  Description: "전장 중앙에서 증기를 폭발시켜 모든 적을 두 차례 휩쓴다."
+  Description: "증기를 폭발시켜 적 전체를 휩쓴다."
   UsageProfile: 1
   APCost: 26
   TargetType: 1

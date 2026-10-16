@@ -74,7 +74,7 @@ public static class ShopSellTransactionService
             return Failure(ShopSellStatus.ItemNotRegistered, itemId, sellCount, "등록되지 않은 ItemData입니다.");
         if (item.Type == ItemType.KeyItem)
             return Failure(ShopSellStatus.KeyItemProtected, itemId, sellCount, "키 아이템은 판매할 수 없습니다.");
-        if (!item.IsSellable || item.Price < 0)
+        if (!InventoryEntryService.CanSell(item))
             return Failure(ShopSellStatus.NotSellable, itemId, sellCount, "판매할 수 없는 아이템입니다.");
         if (store.GetItemCount(itemId) < sellCount)
             return Failure(ShopSellStatus.InsufficientQuantity, itemId, sellCount, "보유 수량이 부족합니다.");

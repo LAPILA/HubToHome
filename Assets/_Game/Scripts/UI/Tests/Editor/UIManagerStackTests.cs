@@ -56,6 +56,18 @@ public sealed class UIManagerStackTests
         Assert.That(manager.IsAnyPanelOpen, Is.False);
     }
 
+    [TestCase(BattleState.PlayerActionSelect, true)]
+    [TestCase(BattleState.ActionExecute, true)]
+    [TestCase(BattleState.EnemyAction, true)]
+    [TestCase(BattleState.Init, false)]
+    [TestCase(BattleState.TurnCalc, false)]
+    [TestCase(BattleState.BattleDialogue, false)]
+    [TestCase(BattleState.BattleEnd, false)]
+    public void BattlePauseOnlyOpensDuringCommandsAndActions(BattleState state, bool expected)
+    {
+        Assert.That(UIManager.CanPauseBattleState(state), Is.EqualTo(expected));
+    }
+
     [Test]
     public void DestroyedTopPanelIsPrunedWithoutThrowing()
     {

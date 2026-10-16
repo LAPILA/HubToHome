@@ -1,5 +1,13 @@
 # Characters Rules
 
+## 챕터 1 공용 성장·장비 (2026-10-16)
+
+- `PartyProgressionService`가 최대 99의 공용 레벨/EXP를 소유한다. 개인 CharacterSaveData의 Level/EXP는 기존 소비자를 위한 동기화 값이다. 사망/후열 여부로 EXP를 나누거나 인원수만큼 보상을 반복 지급하지 않는다.
+- 레벨업은 캐릭터별 투자/스킬 포인트만 지급한다. 자동 능력치 상승은 하지 않는다. 무료 무제한 투자·스킬 초기화와 전투 중 변경 차단을 함께 유지한다. 신규 합류는 현재 공용 성장에 맞추되 기존 멤버 투자·장비·HP/AP를 덮어쓰지 않는다.
+- `EnemyData.Rank`는 Normal/Elite/Boss, `Kind`는 Human/Monster/WhiteEntity다. 역할·도주/저장 정책과 종별 표현을 혼용하지 않는다. 기존 enum 숫자와 데이터 ID를 보존한다.
+- 조건부 장비 효과는 `EquipmentData.TriggeredEffects` → `EquipmentEffectService`에서 실행한다. 현재 범위는 전투 시작/자기 턴 시작/저스트가드/회피/C 반격의 HP/AP 회복이며, 임의 문자열 PassiveEffectID 실행기가 아니다. 기본 방어 보상과 명시적 장비 효과를 구분한다.
+- 장비 변경은 회복이 아니다. 수동 저장 성공에 따른 회복은 저장 서비스가 소유한다. 공용 성장의 이전 저장 마이그레이션은 최고 진행 멤버를 기준으로 하며 EXP를 합산하지 않는다.
+
 ## Battle-only resources
 
 - CharacterData.BattleResource references immutable authoring data. PlayerCharacter.BattleResource owns independent current steps. Reset at battle setup/end/abort, never merely OnDisable (reserve members are inactive).
@@ -9,7 +17,7 @@
 ## Current Structure
 
 - `CharacterBase`: common stats, HP/MP, damage, healing, status effects, loop VFX.
-- `PlayerCharacter`: level, EXP, equipment, skills, global party save bridge.
+- `PlayerCharacter`: projected party level/EXP, actor equipment/skills/resources, global party save bridge; shared EXP authority stays in PartyProgressionService.
 - `EnemyCharacter`: `EnemyData` setup, AI action selection, hit/death presentation.
 - `EnemyData.Prefab`: 오버월드 배치와 전투 생성에서 함께 사용하는 공용 적 프리팹.
 - 전투 복제본은 `BattleManager`가 `OverworldEnemy.DisableForBattleInstance()`로 오버월드 동작만 비활성화한다.
@@ -17,6 +25,13 @@
 - `EnemyData.EnemyId`: stable scenario/battle-rule ID for enemies. Display name is not the scenario identity.
 
 ## Stats / Damage
+
+- 2026-10-11: GetEquippedId/CountEquipped/GetAvailableCount are read-only. Explicit equipment changes validate party ownership, reject active battle changes, retain current HP/AP without healing, and clamp to equipment-aware maxima. Inventory includes equipped copies; RemoveEquipment must preserve the currently equipped count. Runtime UI refresh follows successful mutations only.
+
+- EquipmentLoadoutService.GetEquipped/CanApply is the shared slot and character-restriction contract for UI/resource-cap projection and PlayerCharacter. Read-only projection must not normalize or mutate saves. Explicit equip/unequip marks HasInitializedEquipment so prefab defaults cannot overwrite the choice later.
+- Resistance fields are multipliers, not percentage points of resistance: base1 normal,0 immunity,0.5 half. Equipment StatBonuses are additive deltas, with zero neutral. StatusResistances affects cumulative buildup for elemental states, and application probability for legacy statuses; never conflate it with elemental damage resistance.
+- CharacterStatsCalculator accepts negative finite modifiers, skips non-finite modifiers, normalizes non-finite base multipliers to1 and clamps final negative multipliers to0. Missing status dictionaries are safe. Primary stat conversion saturates at int.MaxValue; DEF/MaxAP permit0. Do not sanitize modifier blocks in Clone because negative resistance bonuses are intentional.
+- EquipmentData.PassiveEffectID and EquipReactionDialogueID are reserved metadata, not connected execution features. Inspector labels must not imply that entering an ID executes them.
 
 - Base stats: MaxHP, MaxMP, ATK, DEF, SPD.
 - Normal damage uses `TakeDamage`.
@@ -40,7 +55,5 @@
 - New player/ally data should preserve save compatibility.
 - Item and status-effect changes must stay aligned with `ItemData`, `InventoryManager`, `BattleManager.ExecuteItemEffect()`, and any future status factory.
 - If adding a new status effect, document creation path and application path.
-- `EnemyData.UseOrderedSkills` is opt-in (legacy default false). When enabled, EnemyCharacter selects non-null normal skills cyclically instead of probability/strong-telegraph selection. Reset the cursor in Setup; do not store the cursor in the asset. Empty lists fall back to basic attack.
-- BunnySlimeShowcaseEnemy delegates to the common ordered policy when enabled; old HP-index showcase behavior is compatibility-only. New lab HP phase changes belong to authored scenario rules, not the AI skill index.
 - `EnemyData.UseOrderedSkills` is opt-in (legacy default false). When enabled, EnemyCharacter selects non-null normal skills cyclically instead of probability/strong-telegraph selection. Reset the cursor in Setup; do not store the cursor in the asset. Empty lists fall back to basic attack.
 - BunnySlimeShowcaseEnemy delegates to the common ordered policy when enabled; old HP-index showcase behavior is compatibility-only. New lab HP phase changes belong to authored scenario rules, not the AI skill index.

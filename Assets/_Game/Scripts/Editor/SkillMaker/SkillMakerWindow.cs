@@ -274,6 +274,12 @@ namespace HubToHome.EditorTools.SkillMaker
                 }
                 using (ContentMakerGUI.Card())
                 {
+                    ContentMakerGUI.Header("누적 상태", "피해 속성과 별개입니다. 완전 방어/회피 시에는 상태도 막히며, 일반 가드는 부여량을 줄입니다.");
+                    Field(nameof(SkillData.ElementalApplications), "명중 시 상태 부여");
+                    Field(nameof(SkillData.StatusProcCoefficient), "감전 타격 발동 계수");
+                }
+                using (ContentMakerGUI.Card())
+                {
                     ContentMakerGUI.Header("고유 자원", "조건 미달이어도 사용 가능하며 기본 성능으로 실행됩니다.");
                     const string resourcePath = nameof(SkillData.ResourceEffect) + ".";
                     Field(resourcePath + nameof(SkillResourceEffect.Resource), "사용 자원");

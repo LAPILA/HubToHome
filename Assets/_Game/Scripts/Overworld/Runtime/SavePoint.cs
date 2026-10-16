@@ -6,7 +6,7 @@ public class SavePoint : InteractableBase
     [Header("Save Settings")]
     [SerializeField] private int _quickSaveSlot = 0;
     [SerializeField] private bool _autoSaveOnPass = false;
-    [SerializeField] private int  _autoSaveSlot = 99; 
+    [SerializeField, HideInInspector] private int _autoSaveSlot = 99; // 기존 직렬화 호환. 자동 저장은 전용 칸만 사용.
     
     private bool _hasAutoSavedThisVisit = false;
 
@@ -18,6 +18,23 @@ public class SavePoint : InteractableBase
     [SerializeField] private float _pulseSpeed = 1.5f;
 
     private Tween _pulseTween;
+
+    private void OnValidate()
+    {
+        _quickSaveSlot = Mathf.Clamp(_quickSaveSlot, 0, SaveManager.ManualSlotCount - 1);
+        if (_autoSaveSlot != SaveManager.AutoSlotIndex) _autoSaveSlot = SaveManager.AutoSlotIndex;
+    }
+
+    private void OnEnable()
+    {
+        if (_glowSprite != null) StartPulse();
+    }
+
+    private void OnDisable()
+    {
+        DOTween.Kill(this);
+        _pulseTween = null;
+    }
 
     private void Start()
     {
@@ -31,7 +48,9 @@ public class SavePoint : InteractableBase
     private void StartPulse()
     {
         _pulseTween?.Kill();
-        _pulseTween = _glowSprite.DOFade(0.2f, _pulseSpeed).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine).SetId(this);
+        if (_glowSprite == null || !isActiveAndEnabled) return;
+        _pulseTween = _glowSprite.DOFade(0.2f, _pulseSpeed).SetLoops(-1, LoopType.Yoyo)
+            .SetEase(Ease.InOutSine).SetRecyclable(false).SetId(this).SetLink(gameObject, LinkBehaviour.KillOnDisable);
     }
 
     private void OnDestroy() { DOTween.Kill(this); }
@@ -46,8 +65,7 @@ public class SavePoint : InteractableBase
             var player = collision.GetComponent<PlayerController>();
             if (player != null)
             {
-                DoSave(_autoSaveSlot, player);
-                _hasAutoSavedThisVisit = true;
+                _hasAutoSavedThisVisit = SaveManager.RequestAutoSave();
             }
         }
     }
@@ -64,30 +82,29 @@ public class SavePoint : InteractableBase
         
         _glowSprite.DOKill();
         if (show) 
-            _glowSprite.DOColor(_highlightColor, 0.2f);
+            _glowSprite.DOColor(_highlightColor, 0.2f).SetId(this).SetLink(gameObject, LinkBehaviour.KillOnDisable);
         else 
         {
-            _glowSprite.DOColor(_idleColor, 0.2f).OnComplete(StartPulse);
+            _glowSprite.DOColor(_idleColor, 0.2f).SetId(this).SetLink(gameObject, LinkBehaviour.KillOnDisable).OnComplete(StartPulse);
         }
     }
 
     public override void Interact(PlayerController player)
     {
-        DoSave(_quickSaveSlot, player);
+        SaveManager.TryPromptManualSave(this, player, _quickSaveSlot, saved =>
+        {
+            if (saved && this != null && isActiveAndEnabled) ShowSaveFeedback();
+        });
     }
 
-    private void DoSave(int slotIndex, PlayerController player)
+    private void ShowSaveFeedback()
     {
-        if (GlobalDataManager.Instance == null) return;
-
-        player?.SavePositionToGlobal();
-        SaveManager.Save(GlobalDataManager.Instance.ToSaveData(), slotIndex);
-
         if (_glowSprite != null)
         {
             _glowSprite.DOKill();
             _glowSprite.DOColor(_savedColor, 0.15f).SetLoops(4, LoopType.Yoyo).SetEase(Ease.Flash)
-                .SetId(this).OnComplete(() => { _glowSprite.color = _idleColor; StartPulse(); });
+                .SetId(this).SetLink(gameObject, LinkBehaviour.KillOnDisable)
+                .OnComplete(() => { if (_glowSprite != null) { _glowSprite.color = _idleColor; StartPulse(); } });
         }
     }
 }

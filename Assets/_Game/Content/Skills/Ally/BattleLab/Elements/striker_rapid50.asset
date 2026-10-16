@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: striker_rapid50
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "미세 전류 50연타"
+  SkillID: lab.elements.striker_rapid50
+  Description: "거센 검격으로 적을 몰아붙이며 <color=#FFE566>감전</color>을 쌓는다."
+  UsageProfile: 1
+  APCost: 12
+  TargetType: 1
+  IsAoE: 0
+  StatusProcCoefficient: 0.1
+  ElementalApplications:
+  - Kind: 2
+    Amount: 0.2
+    Mode: 1
+  ActionTimeline:
+  - rid: 102020001
+  references:
+    version: 2
+    RefIds:
+    - rid: 102020001
+      type: {class: Action_RapidStrikes, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "미세 전류 50연타"
+        Note: 
+        Duration: 5
+        HitInterval: 0.1
+        PromptInterval: 0.65
+        InputWindow: 0.45
+        DamagePerStrike: 0.12
+        SuccessMultiplier: 1.6
+        Element: 3
+        SlashTravel: 0.15

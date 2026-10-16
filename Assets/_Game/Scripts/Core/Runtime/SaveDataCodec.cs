@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 public static class SaveSchema
 {
     public const int LegacyVersion = 0;
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
 }
 
 public enum SaveDecodeFailure
@@ -89,13 +89,22 @@ public sealed class SaveDataCodec
         };
 
     public string Encode(SaveData data)
+        => Encode(data, null);
+
+    public string Encode(SaveData data, string saveTimeOverride)
     {
         if (data == null)
             throw new ArgumentNullException(nameof(data));
+        if (!HasFinitePosition(data))
+            throw new ArgumentException("저장 좌표에 유효하지 않은 값(NaN/Infinity)이 있습니다.", nameof(data));
 
-        Normalize(data);
-        data.schemaVersion = SaveSchema.CurrentVersion;
-        return JsonConvert.SerializeObject(data, Formatting.Indented);
+        // 정규화와 메타데이터 변경은 디스크에 쓸 복사본에만 적용합니다.
+        // 저장 실패/진단 직렬화가 플레이 중인 파티와 인벤토리를 변경해서는 안 됩니다.
+        SaveData snapshot = JObject.FromObject(data).ToObject<SaveData>();
+        Normalize(snapshot);
+        snapshot.schemaVersion = SaveSchema.CurrentVersion;
+        if (saveTimeOverride != null) snapshot.saveTime = saveTimeOverride;
+        return JsonConvert.SerializeObject(snapshot, Formatting.Indented);
     }
 
     public SaveDecodeResult Decode(string json)
@@ -180,6 +189,12 @@ public sealed class SaveDataCodec
                 sourceVersion);
         }
 
+        // 잘못된 좌표를 0으로 바꿔 맵 안의 임의 위치로 보내지 않습니다.
+        // 손상된 후보로 반환하면 AtomicSaveStorage가 검증된 백업을 사용할 수 있습니다.
+        if (!HasFinitePosition(data))
+            return SaveDecodeResult.Failed(SaveDecodeFailure.InvalidJson,
+                "저장 좌표에 유효하지 않은 값(NaN/Infinity)이 있습니다.", sourceVersion);
+
         int workingVersion = sourceVersion;
         while (workingVersion < SaveSchema.CurrentVersion)
         {
@@ -200,6 +215,10 @@ public sealed class SaveDataCodec
                 case 3:
                     MigrateVersionThreeToVersionFour(data);
                     workingVersion = 4;
+                    break;
+                case 4:
+                    data.PartyProgression = PartyProgressionService.NormalizeSnapshot(null, data.PartyData);
+                    workingVersion = 5;
                     break;
                 default:
                     return SaveDecodeResult.Failed(
@@ -283,6 +302,9 @@ public sealed class SaveDataCodec
 
     private static void Normalize(SaveData data)
     {
+        data.Money = Math.Max(0, data.Money);
+        data.playtimeSeconds = Math.Max(0, data.playtimeSeconds);
+        if (data.lookingDirection < 0 || data.lookingDirection > 3) data.lookingDirection = 0;
         data.currentScene = string.IsNullOrWhiteSpace(data.currentScene)
             ? SceneName.Overworld
             : data.currentScene.Trim();
@@ -293,6 +315,7 @@ public sealed class SaveDataCodec
         data.saveTime = NormalizeText(data.saveTime);
 
         data.PartyData = NormalizeParty(data.PartyData);
+        data.PartyProgression = PartyProgressionService.NormalizeSnapshot(data.PartyProgression, data.PartyData);
         data.InventoryDict = NormalizePositiveCounts(data.InventoryDict);
         data.EquipmentInventoryDict = NormalizePositiveCounts(data.EquipmentInventoryDict);
         data.eventFlags = data.eventFlags
@@ -338,7 +361,9 @@ public sealed class SaveDataCodec
                 member.Growth.Investments.Total,
                 member.Growth.AttributePointsEarned);
             member.Growth.SkillPointsEarned = Math.Max(0, member.Growth.SkillPointsEarned);
-            member.Growth.SkillPointsSpent = Math.Clamp(member.Growth.SkillPointsSpent, 0, member.Growth.SkillPointsEarned);
+            member.Growth.SkillPointsSpent = member.Growth.IsInitialized
+                ? Math.Clamp(member.Growth.SkillPointsSpent, 0, member.Growth.SkillPointsEarned)
+                : Math.Max(0, member.Growth.SkillPointsSpent);
             member.UnlockedSkillIDs = NormalizeUniqueIds(member.UnlockedSkillIDs);
             member.EquippedEquipmentIDs = NormalizeEquipmentSlots(member.EquippedEquipmentIDs);
             result.Add(member);
@@ -499,4 +524,8 @@ public sealed class SaveDataCodec
     {
         return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     }
+
+    private static bool HasFinitePosition(SaveData data)
+        => !float.IsNaN(data.playerX) && !float.IsInfinity(data.playerX)
+            && !float.IsNaN(data.playerY) && !float.IsInfinity(data.playerY);
 }

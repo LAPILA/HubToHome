@@ -15,8 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "\uD734\uB300 \uBC29\uC804\uAE30"
   SkillID: lab.bunny.shot_electric
-  Description: "\uC804\uAE30 \uC18D\uC131 1.3\uBC30 \uD22C\uC0AC\uCCB4. \uACF5\uACA9
-    QTE \uC131\uACF5 \uC2DC 1.5\uBC30, \uC2E4\uD328 \uC2DC 0.75\uBC30."
+  Description: "전기 속성 탄환으로 적을 공격한다."
   UsageProfile: 1
   APCost: 8
   TargetType: 1

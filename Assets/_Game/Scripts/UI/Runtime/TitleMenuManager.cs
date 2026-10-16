@@ -169,14 +169,42 @@ public class TitleMenuManager : MonoBehaviour
         LockTitleInput();
         SetContinueInteractable(false);
 
-        GameLoadStartResult result = _continueSlot >= 0
-            ? GameLoadCoordinator.LoadSlot(_continueSlot, HandleContinueCompleted)
+        if (_continueSlot < 0 && DialogueManager.Instance != null)
+        {
+            var labels = new string[SaveManager.ManualSlotCount + 3];
+            labels[0] = "최근 기록 이어하기";
+            for (int i = 0; i <= SaveManager.ManualSlotCount; i++)
+            {
+                int slot = i == SaveManager.ManualSlotCount ? SaveManager.AutoSlotIndex : i;
+                SaveLoadResult saved = SaveManager.TryLoad(slot);
+                string name = slot == SaveManager.AutoSlotIndex ? "자동 저장" : "수동 저장 " + (slot + 1);
+                labels[i + 1] = name + " · " + (saved.Success ? saved.Data.saveTime
+                    : saved.Failure == SaveLoadFailure.NotFound ? "빈 칸" : "읽기 불가");
+            }
+            labels[labels.Length - 1] = "취소";
+            if (DialogueManager.Instance.TryStartChoicePrompt("불러올 기록을 선택하세요.", labels, selected =>
+            {
+                if (this == null || !isActiveAndEnabled) return;
+                if (selected == labels.Length - 1 || selected < 0) { RestoreContinueInput(); return; }
+                int slot = selected == 0 ? -1
+                    : selected == SaveManager.ManualSlotCount + 1 ? SaveManager.AutoSlotIndex : selected - 1;
+                LoadSelectedSlot(slot);
+            }, RestoreContinueInput)) return;
+        }
+
+        LoadSelectedSlot(_continueSlot);
+    }
+
+    private void LoadSelectedSlot(int slot)
+    {
+        GameLoadStartResult result = slot >= 0
+            ? GameLoadCoordinator.LoadSlot(slot, HandleContinueCompleted)
             : GameLoadCoordinator.LoadMostRecent(HandleContinueCompleted);
         if (result.Accepted)
             return;
 
         Debug.LogError("[TitleMenuManager] Continue 실패: " + result.Message, this);
-        RestoreContinueInput();
+        ShowLoadFailure(result.Message);
     }
 
     private void HandleContinueCompleted(SceneLoadResult result)
@@ -185,11 +213,20 @@ public class TitleMenuManager : MonoBehaviour
             return;
 
         Debug.LogError("[TitleMenuManager] Continue Scene 이동 실패: " + result, this);
+        ShowLoadFailure("저장된 장소로 이동하지 못했습니다.");
+    }
+
+    private void ShowLoadFailure(string message)
+    {
+        if (this == null || !isActiveAndEnabled) return;
+        if (DialogueManager.Instance != null && DialogueManager.Instance.TryStartChoicePrompt(
+            "불러오지 못했습니다.\n" + message, new[] { "돌아가기" }, _ => RestoreContinueInput(), RestoreContinueInput)) return;
         RestoreContinueInput();
     }
 
     private void RestoreContinueInput()
     {
+        if (this == null || !isActiveAndEnabled) return;
         if (_btnContinue != null)
         {
             SetContinueInteractable(true);

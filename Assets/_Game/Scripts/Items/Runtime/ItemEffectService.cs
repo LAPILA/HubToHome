@@ -13,7 +13,7 @@ public static class ItemEffectService
             return false;
         }
 
-        if (target == null || !target.IsAlive)
+        if (!IsValidTarget(item, target))
         {
             error = "The target is not available.";
             return false;
@@ -31,13 +31,13 @@ public static class ItemEffectService
             return false;
         }
 
-        if (item.ActionType == EffectActionType.None)
+        if (item.ActionType == EffectActionType.None || !System.Enum.IsDefined(typeof(EffectActionType), item.ActionType))
         {
             error = "The item has no effect.";
             return false;
         }
 
-        if (item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage)
+        if (item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage || item.ActionType == EffectActionType.Revive)
         {
             if (item.TargetStat != TargetStatType.HP && item.TargetStat != TargetStatType.AP)
             {
@@ -50,10 +50,29 @@ public static class ItemEffectService
                 error = "The item effect value must be greater than zero.";
                 return false;
             }
+            if (item.ActionType == EffectActionType.Revive && item.TargetStat != TargetStatType.HP)
+            {
+                error = "부활은 HP 효과만 지원합니다.";
+                return false;
+            }
+            if (item.ActionType == EffectActionType.Heal
+                && (item.TargetStat == TargetStatType.HP
+                    ? target.CurrentHP >= target.MaxHP
+                    : target.CurrentAP >= target.MaxAP))
+            {
+                error = "이미 최대치여서 회복할 수 없습니다.";
+                return false;
+            }
+        }
+
+        if (item.ActionType == EffectActionType.Cleanse && !ItemCleanseService.CanCleanse(item, target))
+        {
+            error = "정화할 상태가 없습니다.";
+            return false;
         }
 
         if (item.ActionType == EffectActionType.ApplyStatus
-            && !StatusEffectFactory.IsKnown(item.StatusEffectID))
+            && (!StatusEffectFactory.IsKnown(item.StatusEffectID) || item.StatusDurationTurns <= 0))
         {
             error = $"Unknown status effect: {item.StatusEffectID}";
             return false;
@@ -72,8 +91,8 @@ public static class ItemEffectService
         switch (item.ActionType)
         {
             case EffectActionType.Heal:
-                if (item.TargetStat == TargetStatType.HP) target.HealHP(value);
-                else if (item.TargetStat == TargetStatType.AP) target.RestoreAP(value);
+                if (item.TargetStat == TargetStatType.HP) target.HealHP(Mathf.Min(value, Mathf.Max(0, target.MaxHP - target.CurrentHP)));
+                else if (item.TargetStat == TargetStatType.AP) target.RestoreAP(Mathf.Min(value, Mathf.Max(0, target.MaxAP - target.CurrentAP)));
                 else
                 {
                     error = "A heal item must target HP or AP.";
@@ -94,6 +113,16 @@ public static class ItemEffectService
                 }
                 target.TryApplyStatusEffect(effect);
                 break;
+
+            case EffectActionType.Cleanse:
+                ItemCleanseService.Apply(item, target);
+                break;
+
+            case EffectActionType.Revive:
+                target.HealHP(Mathf.Min(Mathf.Max(1, value), target.MaxHP));
+                if (inBattle && target is PlayerCharacter player)
+                    player.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+                break;
         }
 
         error = string.Empty;
@@ -103,12 +132,27 @@ public static class ItemEffectService
     private static int CalculateValue(ItemData item, CharacterBase target)
     {
         int maxValue = item.TargetStat == TargetStatType.AP ? target.MaxAP : target.MaxHP;
+        return CalculateValue(item, maxValue);
+    }
+
+    internal static int CalculateValue(ItemData item, int maxValue)
+    {
         return item.CalcType switch
         {
             ValueCalcType.Flat => Mathf.Max(0, item.EffectValue),
-            ValueCalcType.Percentage => Mathf.Max(0, Mathf.RoundToInt(maxValue * item.EffectValue * 0.01f)),
+            ValueCalcType.Percentage => (int)System.Math.Min(int.MaxValue, System.Math.Max(0d, System.Math.Round((double)maxValue * item.EffectValue * .01d))),
             ValueCalcType.Full => maxValue,
             _ => 0
         };
     }
+
+    public static bool IsValidTarget(ItemData item, CharacterBase target)
+        => item != null && target != null
+            && (item.ActionType == EffectActionType.Revive ? !target.IsAlive : target.IsAlive);
+
+    public static bool CanApplyToSavedMember(ItemData item, CharacterSaveData target, out string error)
+        => SavedPartyItemEffectService.CanApply(item, target, out error);
+
+    public static bool TryApplyToSavedMember(ItemData item, CharacterSaveData target, out string error)
+        => SavedPartyItemEffectService.TryApply(item, target, out error);
 }

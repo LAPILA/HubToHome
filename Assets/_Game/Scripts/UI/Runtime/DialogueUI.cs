@@ -7,9 +7,10 @@ using DG.Tweening;
 using Febucci.UI.Examples;
 using Febucci.TextAnimatorForUnity;
 using UnityEngine.SceneManagement;
+using Sirenix.OdinInspector;
 
 /// <summary>
-/// 오버월드 대화창 소유자. 표시 모드는 FixedViewport이며, Battle Speech Bubble처럼
+/// 공용 메인 대화창 소유자. 전투에서는 서브메뉴 영역에 표시하며, Battle Speech Bubble처럼
 /// 월드를 따라가는 별도 WorldTracked UI와 혼동하지 않는다.
 /// </summary>
 public class DialogueUI : MonoBehaviour
@@ -38,6 +39,9 @@ public class DialogueUI : MonoBehaviour
     [SerializeField] private AudioClip _defaultVoiceBlip;
     [SerializeField] private float _defaultPitch = 1f;
 
+    [BoxGroup("전투 하단 대화"), InlineProperty, HideLabel]
+    [SerializeField] private BattleDialogueLayoutSettings _battleLayoutSettings = new BattleDialogueLayoutSettings();
+
     public bool IsTyping { get; private set; } = false;
     public bool IsWaitingForChoice { get; private set; } = false;
     private Coroutine _applySpeedRoutine;
@@ -46,6 +50,11 @@ public class DialogueUI : MonoBehaviour
     private System.Action<ChoiceData> _onChoiceSelected;
     private int _selectedChoiceIndex;
     private Tween _panelTween;
+    private BattleDialogueLayout _battleLayout;
+    private bool _isClosing;
+    private int _choiceOpenedFrame = -1;
+    private SpeakerData _displayedSpeaker;
+    public bool IsBattleDocked => _battleLayout != null;
 
     private void Awake()
     {
@@ -61,14 +70,19 @@ public class DialogueUI : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += HandleSceneLoaded;
+        LocalizationManager.LanguageChanged += HandleLanguageChanged;
     }
 
     private void OnDisable()
     {
+        bool unexpectedClose = IsBattleDocked && !_isClosing;
         SceneManager.sceneLoaded -= HandleSceneLoaded;
+        LocalizationManager.LanguageChanged -= HandleLanguageChanged;
         StopPanelTween();
         HideChoices();
         StopTypingWork();
+        ReleaseBattleLayout();
+        if (unexpectedClose) DialogueManager.Instance?.CancelPresentation(this);
         if (_canvasGroup != null)
             _canvasGroup.alpha = 0f;
     }
@@ -79,18 +93,58 @@ public class DialogueUI : MonoBehaviour
             HandleChoiceInput();
     }
 
+    private void HandleLanguageChanged(LanguageType language)
+    {
+        if (_displayedSpeaker != null && _speakerNameText != null)
+            _speakerNameText.text = _displayedSpeaker.ResolveDisplayName();
+        if (IsWaitingForChoice) RefreshChoiceVisuals();
+    }
+
+    private void LateUpdate()
+    {
+        if (_battleLayout == null) return;
+        if (!_battleLayout.IsHostAvailable)
+        {
+            DialogueManager.Instance?.CancelPresentation(this);
+            HideImmediate();
+            return;
+        }
+        if (!_isClosing) RefreshBattleLayout();
+    }
+
+    private void RefreshBattleLayout(bool force = false) => _battleLayout?.Refresh(_choiceLabels, _selectedChoiceIndex, force);
+
+    private void ReleaseBattleLayout()
+    {
+        BattleDialogueLayout owned = _battleLayout;
+        _battleLayout = null;
+        owned?.Dispose();
+    }
+
     public void OpenPanel()
     {
         StopPanelTween();
+        ReleaseBattleLayout();
+        _isClosing = false;
         gameObject.SetActive(true);
         // 비활성 상태에서 처음 표시되는 UI도 공통 Canvas 정책을 통과시킨다.
         UIRuntimeGuard.NormalizeCanvas(gameObject);
         RebindCanvasCameraImmediate();
+        BattleMenuUI menu = BattleUIController.Instance != null ? BattleUIController.Instance.MainDialogueMenu : null;
+        if (menu != null && transform is RectTransform panel && _dialogueText != null
+            && _dialogueText.transform.IsChildOf(panel) && menu.BeginDialoguePresentation())
+        {
+            _battleLayout = new BattleDialogueLayout(menu, panel, _portraitImage,
+                _speakerNameText, _dialogueText, _choiceRoot, _battleLayoutSettings);
+            RefreshBattleLayout();
+        }
         ApplyConfiguredTextSpeed();
         if (_canvasGroup != null)
         {
             _canvasGroup.alpha = 0f;
-            _panelTween = _canvasGroup.DOFade(1f, 0.2f).SetUpdate(true)
+            float delay = _battleLayout != null ? menu.DialogueTransitionDuration : 0f;
+            _panelTween = _canvasGroup.DOFade(1f, _battleLayout != null ? .1f : .2f)
+                .SetDelay(delay).SetUpdate(true).SetRecyclable(false)
                 .OnComplete(() => _panelTween = null);
         }
     }
@@ -98,6 +152,7 @@ public class DialogueUI : MonoBehaviour
     public void ClosePanel()
     {
         StopPanelTween();
+        _isClosing = true;
         HideChoices();
         StopTypingWork();
         if (_canvasGroup != null && isActiveAndEnabled)
@@ -125,6 +180,7 @@ public class DialogueUI : MonoBehaviour
         }
 
         gameObject.SetActive(false);
+        ReleaseBattleLayout();
     }
 
     private void StopPanelTween()
@@ -151,13 +207,14 @@ public class DialogueUI : MonoBehaviour
     {
         IsTyping = true;
         IsWaitingForChoice = false;
+        _displayedSpeaker = speaker;
         ApplyConfiguredTextSpeed();
 
         // 1. 이름 및 초상화 세팅
         if (_speakerNameText != null)
         {
             _speakerNameText.gameObject.SetActive(speaker != null || showUnknownSpeaker);
-            _speakerNameText.text = speaker != null ? speaker.DisplayName : "???";
+            _speakerNameText.text = speaker != null ? speaker.ResolveDisplayName() : "???";
         }
 
         if (_portraitImage != null)
@@ -181,6 +238,10 @@ public class DialogueUI : MonoBehaviour
                 _soundWriter.source.pitch = (speaker != null) ? speaker.VoicePitch : _defaultPitch;
             }
         }
+
+        // 초상/이름 변경에 따른 폭과 페이지를 먼저 확정한 뒤 타이핑을 시작합니다.
+        if (_battleLayout != null && _dialogueText != null) _dialogueText.pageToDisplay = 1;
+        RefreshBattleLayout();
 
         // 3. 🚨 텍스트 출력
         if (_typewriter != null)
@@ -211,6 +272,7 @@ public class DialogueUI : MonoBehaviour
     private void StopTypingWork()
     {
         IsTyping = false;
+        if (_typewriter != null) _typewriter.StopShowingText();
         if (_applySpeedRoutine == null)
             return;
 
@@ -258,6 +320,23 @@ public class DialogueUI : MonoBehaviour
         }
     }
 
+    public bool TryAdvancePage()
+    {
+        if (_battleLayout == null || _dialogueText == null) return false;
+        _dialogueText.ForceMeshUpdate();
+        if (_dialogueText.pageToDisplay >= _dialogueText.textInfo.pageCount) return false;
+        _dialogueText.pageToDisplay++;
+        _dialogueText.ForceMeshUpdate();
+        // 다음 페이지는 같은 노드의 나머지 글입니다. ShowText를 재호출해 음성/이벤트를 반복하지 않습니다.
+        if (_typewriter != null)
+        {
+            _typewriter.StopShowingText();
+            _typewriter.TextAnimator?.SetVisibilityEntireText(true, false);
+        }
+        IsTyping = false;
+        return true;
+    }
+
     // 🚨 외부(Text Animator)에서 호출할 수 있는 이벤트 함수 (기존 세팅 유지용)
     public void OnTypingCompleted() { IsTyping = false; }
 
@@ -274,10 +353,12 @@ public class DialogueUI : MonoBehaviour
         _activeChoices = choices;
         _onChoiceSelected = onSelected;
         _selectedChoiceIndex = 0;
+        _choiceOpenedFrame = Time.frameCount;
 
         RebuildChoiceLabels();
         RefreshChoiceVisuals();
         _choiceRoot.gameObject.SetActive(true);
+        RefreshBattleLayout(true);
     }
 
     private void PrepareChoiceUI()
@@ -327,7 +408,7 @@ public class DialogueUI : MonoBehaviour
         for (int i = 0; i < _choiceLabels.Count && i < _activeChoices.Count; i++)
         {
             bool selected = i == _selectedChoiceIndex;
-            _choiceLabels[i].text = (selected ? "▶ " : "   ") + _activeChoices[i].ChoiceText;
+            _choiceLabels[i].text = (selected ? "▶ " : "   ") + _activeChoices[i].ResolveText();
             _choiceLabels[i].color = selected ? ChoiceSelectedColor : Color.white;
         }
     }
@@ -335,6 +416,8 @@ public class DialogueUI : MonoBehaviour
     private void HandleChoiceInput()
     {
         if (_activeChoices == null || _activeChoices.Count == 0) return;
+        if (Time.frameCount <= _choiceOpenedFrame || GameInput.IsConfigModalActive
+            || (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused)) return;
 
         if (GameInput.UIUpPressed)
         {
@@ -349,6 +432,8 @@ public class DialogueUI : MonoBehaviour
 
         if (GameInput.DialogueAdvancePressed || GameInput.ConfirmPressed)
         {
+            if (IsTyping) { SkipTyping(); return; }
+            if (TryAdvancePage()) return;
             CommitChoice(_selectedChoiceIndex);
             return;
         }
@@ -364,6 +449,7 @@ public class DialogueUI : MonoBehaviour
 
         ChoiceData selected = _activeChoices[index];
         System.Action<ChoiceData> callback = _onChoiceSelected;
+        GameInput.ConsumeBattleUIInput();
         AudioManager.Instance?.PlaySelectionSfx();
         HideChoices();
         callback?.Invoke(selected);

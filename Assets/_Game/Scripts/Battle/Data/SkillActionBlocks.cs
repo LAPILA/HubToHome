@@ -45,8 +45,9 @@ public enum EnemyDefensePatternMode
 // ── 1. 공통 컨텍스트 및 베이스 클래스 ──
 // ═══════════════════════════════════════════════════════════════
 
-public class SkillContext
+public partial class SkillContext
 {
+    public long DamageBatchId;
     public CharacterBase Actor;
     public List<CharacterBase> Targets;
     
@@ -68,6 +69,7 @@ public class SkillContext
                 { hasEnabledBlock = true; break; }
         if (!hasEnabledBlock) return;
         _resourceStarted = true;
+        BeginElementalSkill(skill);
         SkillResourceEffect effect = skill != null ? skill.ResourceEffect : null;
         if (!(Actor is PlayerCharacter player) || effect?.Resource == null || !effect.IsValid) return;
         _skillResource = player.BattleResource;
@@ -114,13 +116,14 @@ public class SkillContext
     private Action_DefenseWindow _deferredDefenseWindow;
     private BattleDefenderPresentationScope _defenderPresentation;
     private bool? _hasCombatImpact;
+    private bool _usesIndividualApproach;
 
     public IEnumerator StageDefender(PlayerCharacter target)
     {
         if (Actor is EnemyCharacter) yield return StageCombatants(target);
     }
 
-    public IEnumerator StageCombatants(CharacterBase target)
+    public IEnumerator StageCombatants(CharacterBase target, bool useCentralDuel = true)
     {
         PlayerCharacter player = Actor as PlayerCharacter ?? target as PlayerCharacter;
         EnemyCharacter enemy = Actor as EnemyCharacter ?? target as EnemyCharacter;
@@ -129,7 +132,7 @@ public class SkillContext
             && _defenderPresentation.Enemy == enemy) yield break;
         yield return ReturnDefender();
         if (!CanContinueExecution || player == null || !player.IsAlive || enemy == null || !enemy.IsAlive) yield break;
-        _defenderPresentation = new BattleDefenderPresentationScope(player, IsExecutionActive, enemy);
+        _defenderPresentation = new BattleDefenderPresentationScope(player, IsExecutionActive, enemy, useCentralDuel);
         yield return _defenderPresentation.Enter();
         if (_defenderPresentation == null || !_defenderPresentation.IsStaged)
             StopTimelineExecution = true;
@@ -164,6 +167,8 @@ public class SkillContext
 
     public IEnumerator ExecuteBlock(SkillActionBlock block, IReadOnlyList<SkillActionBlock> timeline)
     {
+        while (BattleDelay.IsPaused && CanContinueExecution) yield return null;
+        if (!CanContinueExecution) yield break;
         if (Actor is EnemyCharacter || Actor is PlayerCharacter)
         {
             if (!_hasCombatImpact.HasValue)
@@ -175,11 +180,14 @@ public class SkillContext
                     if (candidate != null && !candidate.Disabled
                         && (candidate is Action_Damage || candidate is Action_Projectile || candidate is Action_SequentialMelee
                             || candidate is Action_RapidStrikes || candidate is Action_AerialCrossSlash))
-                    { _hasCombatImpact = true; break; }
+                        _hasCombatImpact = true;
+                    if (Actor is EnemyCharacter && candidate is Action_SequentialMelee melee
+                        && !melee.Disabled && melee.ApproachEachTarget)
+                        _usesIndividualApproach = true;
                 }
             }
             // 이동/투사체가 목표 좌표를 잡기 전에 양측 중앙 배치를 완료합니다.
-            if (_hasCombatImpact == true && !(block is Action_SequentialMelee))
+            if (_hasCombatImpact == true && !_usesIndividualApproach && !(block is Action_SequentialMelee))
                 yield return StageCombatants(MainTarget);
             if (!CanContinueExecution) yield break;
         }
@@ -189,7 +197,8 @@ public class SkillContext
             _deferredDefenseWindow = defense;
             yield break;
         }
-        yield return block.Execute(this);
+        while (BattleDelay.IsPaused && CanContinueExecution) yield return null;
+        if (CanContinueExecution) yield return block.Execute(this);
     }
 
     public static bool HasSynchronizedImpact(Action_DefenseWindow defense, IReadOnlyList<SkillActionBlock> timeline)
@@ -246,6 +255,7 @@ public class SkillContext
     {
         EnemyAttackReadyPresented = false;
         EnemyAttackImpactStarted = false;
+        CurrentStatusBuildupMultiplier = 1f;
     }
 
     /// <summary>
@@ -259,7 +269,7 @@ public class SkillContext
             yield break;
 
         if (TryPresentEnemyAttackReady(enemy))
-            yield return new WaitForSecondsRealtime(0.08f);
+            yield return new BattleDelay(0.08f);
 
         if (!string.IsNullOrWhiteSpace(triggerName))
             enemy.PlaySkillAnim(triggerName, EnemyCharacter.HashAttack);
@@ -335,7 +345,7 @@ public class SkillContext
         if (delay <= 0f || !CanContinueExecution)
             yield break;
 
-        yield return new WaitForSecondsRealtime(delay);
+        yield return new BattleDelay(delay);
     }
 
     public IEnumerator WaitForActiveSkillQte()
@@ -626,7 +636,7 @@ public class Action_PlayAnim : SkillActionBlock
         {
             float duplicateDelay = Mathf.Max(0f, DelayAfter);
             if (duplicateDelay > 0f)
-                yield return new WaitForSecondsRealtime(duplicateDelay);
+                yield return new BattleDelay(duplicateDelay);
             yield break;
         }
 
@@ -637,7 +647,7 @@ public class Action_PlayAnim : SkillActionBlock
             if (!context.EnemyAttackImpactStarted)
             {
                 if (context.TryPresentEnemyAttackReady(enemy))
-                    yield return new WaitForSecondsRealtime(EnemyAttackReadyDuration);
+                    yield return new BattleDelay(EnemyAttackReadyDuration);
             }
         }
 
@@ -653,12 +663,12 @@ public class Action_PlayAnim : SkillActionBlock
                 // 보장되어야 다음 Attack 트리거가 같은 프레임에 덮어쓰지 않습니다.
                 float remainingReadyHold = Mathf.Max(0f, EnemyAttackReadyDuration - authoredDelay);
                 if (remainingReadyHold > 0f)
-                    yield return new WaitForSecondsRealtime(remainingReadyHold);
+                    yield return new BattleDelay(remainingReadyHold);
             }
             else if (IsEnemyAttackAnimation(AnimTriggerName))
                 context.MarkEnemyAttackImpactStarted();
         }
-        if (authoredDelay > 0f) yield return new WaitForSecondsRealtime(authoredDelay);
+        if (authoredDelay > 0f) yield return new BattleDelay(authoredDelay);
     }
 
     private static bool IsEnemyAttackAnimation(string triggerName)
@@ -742,9 +752,9 @@ public class Action_Damage : SkillActionBlock
             if (target == null || !target.IsAlive) continue;
             
             int previousHp = target.CurrentHP;
-            DamageResult damageResult = target.TakeDamage(finalDamage, Element, context.Actor);
+            DamageResult damageResult = context.ApplySkillHit(target, finalDamage, Element);
             int dmg = damageResult.FinalDamage;
-            BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dmg, context.IsPerfectQTE, previousHp);
+            BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dmg, context.IsPerfectQTE, previousHp, Element, context.DamageBatchId);
             
             if (ShakeCamera) 
                 CameraController.Instance?.PlayHeavySlam(Vector3.right, context.IsPerfectQTE ? 1.2f : 0.6f, true);
@@ -821,9 +831,9 @@ public class Action_QTE : SkillActionBlock
 {
     [LabelText("제한 시간 (초)")]
     public float TimeLimit = 1.0f;
-    [LabelText("성공 배율")]
+    [HideInInspector] // 직렬화 호환. 공격 QTE 성공은 항상 정상 피해(1배).
     public float SuccessMultiplier = 1.5f;
-    [LabelText("실패 배율")]
+    [LabelText("실패 피해 배율"), Range(0f, 0.99f)]
     public float FailMultiplier = 0.5f;
     
     [ListDrawerSettings(ShowIndexLabels = true)]
@@ -861,7 +871,7 @@ public class Action_QTE : SkillActionBlock
                 successCount = success;
                 int safeTotal = Mathf.Max(1, total);
                 float ratio = Mathf.Clamp01((float)success / safeTotal);
-                context.CurrentDamageMultiplier = Mathf.Lerp(FailMultiplier, SuccessMultiplier, ratio);
+                context.CurrentDamageMultiplier = PlayerAttackQtePolicy.DamageMultiplier(ratio, FailMultiplier);
                 context.IsPerfectQTE = success >= safeTotal;
             });
 
@@ -949,8 +959,9 @@ public class Action_DefenseWindow : SkillActionBlock
     public float CounterDamageMultiplier = 1.5f;
     private bool IsCounterable => Requirement == DefenseRequirement.Counterable;
     [FoldoutGroup("추가 전조 · 예약 공격")]
-    [LabelText("추가 전조 사용")]
-    public bool UseTelegraph = true;
+    [LabelText("추가 예고 연출 사용")]
+    [Tooltip("기본 타격 신호와 별개인 준비 연출입니다. 이 구간은 성공 신호가 아닙니다. 일반 공격은 끄고, 아래 타격 직전 전조 프리팹만 연결하세요.")]
+    public bool UseTelegraph = false;
     [FoldoutGroup("추가 전조 · 예약 공격")]
     [LabelText("전조 표현 방식")]
     [ShowIf(nameof(UseTelegraph))]
@@ -1196,9 +1207,9 @@ public class Action_DefenseWindow : SkillActionBlock
             {
                 telegraph = SpawnTelegraph(context.Actor);
                 if (UseTelegraph && TelegraphDuration > 0f)
-                    yield return new WaitForSecondsRealtime(TelegraphDuration);
+                    yield return new BattleDelay(TelegraphDuration);
                 if (DelayAfter > 0f)
-                    yield return new WaitForSecondsRealtime(DelayAfter);
+                    yield return new BattleDelay(DelayAfter);
                 yield break;
             }
 
@@ -1206,14 +1217,14 @@ public class Action_DefenseWindow : SkillActionBlock
             {
                 telegraph = SpawnTelegraph(context.Actor);
                 if (UseTelegraph && TelegraphDuration > 0f)
-                    yield return new WaitForSecondsRealtime(TelegraphDuration);
+                    yield return new BattleDelay(TelegraphDuration);
                 if (DefenseOpenDelay > 0f)
-                    yield return new WaitForSecondsRealtime(DefenseOpenDelay);
+                    yield return new BattleDelay(DefenseOpenDelay);
             }
             else
             {
                 if (DefenseOpenDelay > 0f)
-                    yield return new WaitForSecondsRealtime(DefenseOpenDelay);
+                    yield return new BattleDelay(DefenseOpenDelay);
                 telegraph = SpawnTelegraph(context.Actor);
             }
             if (!context.CanContinueExecution)
@@ -1241,7 +1252,7 @@ public class Action_DefenseWindow : SkillActionBlock
             // Ready가 같은 프레임의 공격 모션을 덮지 않도록 예약보다 먼저 완료합니다.
             // 준비 중에도 PlayerController의 방어 입력 버퍼는 유지됩니다.
             if (context.TryPresentEnemyAttackReady(enemy))
-                yield return new WaitForSecondsRealtime(ResolveAttackReadyDuration());
+                yield return new BattleDelay(ResolveAttackReadyDuration());
             if (!context.CanContinueExecution || target == null || !target.IsAlive || qteManager == null)
             {
                 context.StopTimelineExecution = true;
@@ -1307,6 +1318,10 @@ public class Action_DefenseWindow : SkillActionBlock
                 yield break;
             }
 
+            context.CurrentStatusBuildupMultiplier = !resultReceived ? 1f
+                : finalResult.PreventsDamage ? 0f
+                : finalResult.IsGuard ? Mathf.Clamp01(finalResult.DamageMultiplier) : 1f;
+
             if (resultReceived && finalResult.IsCounterSuccess)
             {
                 context.CurrentDamageMultiplier = 0f;
@@ -1346,7 +1361,10 @@ public class Action_DefenseWindow : SkillActionBlock
                 context.CurrentDamageMultiplier = 0f;
 
                 if (target is PlayerCharacter resourceOwner && resourceOwner.IsAlive)
+                {
                     resourceOwner.BattleResource.RewardPerfectParry();
+                    EquipmentEffectService.Apply(resourceOwner, EquipmentEffectTrigger.JustGuard);
+                }
 
                 if (target is PlayerCharacter playerTarget
                     && BattleManager.Instance != null)
@@ -1365,6 +1383,8 @@ public class Action_DefenseWindow : SkillActionBlock
             {
                 // 회피에는 AP/반격 보상을 주지 않습니다. 구 점프의 무피해도 보존합니다.
                 context.CurrentDamageMultiplier = 0f;
+                if (finalResult.Input == DefenseInput.Dodge && target is PlayerCharacter dodgeOwner)
+                    EquipmentEffectService.Apply(dodgeOwner, EquipmentEffectTrigger.Dodge);
             }
             else
             {
@@ -1559,9 +1579,9 @@ public class Action_Projectile : SkillActionBlock
 
         int dmg = Mathf.RoundToInt(context.Actor.ATK * effectiveDamageMultiplier);
         int previousHp = context.MainTarget.CurrentHP;
-        DamageResult damageResult = context.MainTarget.TakeDamage(dmg, Element, context.Actor);
+        DamageResult damageResult = context.ApplySkillHit(context.MainTarget, dmg, Element);
         int dealt = damageResult.FinalDamage;
-        BattleManager.Instance.InvokeDamageEvent(context.Actor, context.MainTarget, dealt, context.IsPerfectQTE, previousHp);
+        BattleManager.Instance.InvokeDamageEvent(context.Actor, context.MainTarget, dealt, context.IsPerfectQTE, previousHp, Element, context.DamageBatchId);
 
         context.CurrentDamageMultiplier = 1.0f;
         context.IsPerfectQTE = false;
@@ -1575,7 +1595,7 @@ public class Action_Projectile : SkillActionBlock
 // ── 4. 연쇄 다중 공격 (수정됨) ──
 // ═══════════════════════════════════════════════════════════════
 [System.Serializable]
-[TypeInfoBox("광역기(AoE) 스킬일 경우, 모든 타겟을 순서대로 돌아가며 타격합니다.")]
+[TypeInfoBox("전체 대상 스킬은 생존 대상을 섞어 한 명씩 공격합니다. 개별 접근을 켜면 중앙 집결 대신 각 아군 앞으로 이동합니다. 적은 바로 앞에 방어 대응을 두세요.")]
 public class Action_SequentialMelee : SkillActionBlock
 {
     [LabelText("공격 애니메이션 트리거"), Required] public string AttackAnimTrigger = "Attack";
@@ -1583,10 +1603,12 @@ public class Action_SequentialMelee : SkillActionBlock
     [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
     [LabelText("대상 간 이동 시간 (초)")] public float DashSpeed = 0.15f;
     [AssetsOnly, LabelText("명중 이펙트 프리팹")] public GameObject HitVfxPrefab;
+    [LabelText("적: 각 대상 앞으로 직접 접근")] public bool ApproachEachTarget;
+    [LabelText("타격 후 간격 (초)"), MinValue(0f)] public float RecoveryDelay = 0.2f;
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
     {
-        return SkillActionAuthoringTiming.Variable("연쇄 피해", Mathf.Max(0f, DashSpeed) + 0.3f);
+        return SkillActionAuthoringTiming.Variable("연쇄 피해", Mathf.Max(0f, DashSpeed) + Mathf.Max(0f, RecoveryDelay) + 0.1f);
     }
 
     public override IEnumerator Execute(SkillContext context)
@@ -1622,104 +1644,137 @@ public class Action_SequentialMelee : SkillActionBlock
             shuffledTargets[randomIndex] = temp;
         }
 
-        foreach (var target in shuffledTargets)
+        Vector3 actorStart = context.Actor.transform.position;
+        bool completed = false;
+        try
         {
-            if (!context.CanContinueExecution)
+            foreach (var target in shuffledTargets)
             {
-                context.StopTimelineExecution = true;
-                yield break;
-            }
-            if (target == null || !target.IsAlive) continue;
+                if (!context.CanContinueExecution)
+                {
+                    context.StopTimelineExecution = true;
+                    yield break;
+                }
+                if (target == null || !target.IsAlive || !target.isActiveAndEnabled) continue;
 
-            yield return context.StageCombatants(target);
-            if (!context.CanContinueExecution || target == null || !target.IsAlive) yield break;
+                if (enemyAttack) BattleUIController.Instance?.ShowEnemyTarget(target);
+                yield return context.StageCombatants(target, !(enemyAttack && ApproachEachTarget));
+                if (!context.CanContinueExecution) yield break;
+                if (target == null || !target.IsAlive || !target.isActiveAndEnabled) continue;
 
-            Vector3 targetPos = PositionManager.HorizontalApproach(context.Actor,
-                target.GetPivot(CharacterPivotId.Front).position);
-            if (context.TryGetActorStagingPosition(out Vector3 staged)) targetPos = staged;
+                Vector3 targetPos = target.GetPivot(CharacterPivotId.Front).position;
+                if (enemyAttack && ApproachEachTarget)
+                {
+                    targetPos.y = target.transform.position.y;
+                    targetPos.z = context.Actor.transform.position.z;
+                }
+                else targetPos = PositionManager.HorizontalApproach(context.Actor, targetPos);
+                if (context.TryGetActorStagingPosition(out Vector3 staged)) targetPos = staged;
 
-            Tween movement = null;
-            try
-            {
-                if (ghostTrail != null) ghostTrail.SetTrailActive(true);
-                movement = context.Actor.transform.DOMove(targetPos, DashSpeed).SetEase(Ease.OutExpo).SetRecyclable(false);
-                while (context.CanContinueExecution && movement.IsActive() && !movement.IsComplete())
-                    yield return null;
-            }
-            finally
-            {
-                movement?.Kill();
-                if (ghostTrail != null) ghostTrail.SetTrailActive(false);
-            }
-
-            if (!context.CanContinueExecution || target == null || !target.IsAlive)
-            {
-                context.StopTimelineExecution = true;
-                yield break;
-            }
-
-            // 이동/돌진은 QTE와 병행하고, 타격 직전에만 결과를 기다립니다.
-            yield return context.WaitForActiveSkillQte();
-            if (!context.CanContinueExecution || target == null || !target.IsAlive)
-            {
-                context.StopTimelineExecution = true;
-                yield break;
-            }
-
-            if (enemyAttack)
-            {
-                List<CharacterBase> originalTargets = context.Targets;
-                context.Targets = new List<CharacterBase> { target };
-                context.CurrentDamageMultiplier = baseDamageMultiplier;
-                context.ResetEnemyAttackPresentation();
+                Tween movement = null;
                 try
                 {
-                    yield return impactDefense.Execute(context);
+                    if (ghostTrail != null) ghostTrail.SetTrailActive(true);
+                    PlayActorBattleAnim(context.Actor, enemyAttack ? EnemyCharacter.HashBattleMove : PlayerCharacter.HashBattleMove);
+                    movement = context.Actor.transform.DOMove(targetPos, Mathf.Max(0.01f, DashSpeed))
+                        .SetEase(Ease.OutExpo).SetRecyclable(false)
+                        .SetLink(context.Actor.gameObject, LinkBehaviour.KillOnDisable);
+                    while (context.CanContinueExecution && movement.IsActive() && !movement.IsComplete())
+                        yield return null;
                 }
-                finally { context.Targets = originalTargets; }
-                if (context.AttackInterruptedByCounter) yield break;
-            }
-            else
-            {
-                PlayActorBattleAnim(context.Actor, Animator.StringToHash(AttackAnimTrigger));
-                yield return new WaitForSecondsRealtime(0.1f);
+                finally
+                {
+                    movement?.Kill();
+                    if (ghostTrail != null) ghostTrail.SetTrailActive(false);
+                }
+
+                if (!context.CanContinueExecution || target == null || !target.IsAlive)
+                {
+                    context.StopTimelineExecution = true;
+                    yield break;
+                }
+
+                // 이동/돌진은 QTE와 병행하고, 타격 직전에만 결과를 기다립니다.
+                yield return context.WaitForActiveSkillQte();
+                if (!context.CanContinueExecution || target == null || !target.IsAlive)
+                {
+                    context.StopTimelineExecution = true;
+                    yield break;
+                }
+
+                if (enemyAttack)
+                {
+                    List<CharacterBase> originalTargets = context.Targets;
+                    context.Targets = new List<CharacterBase> { target };
+                    context.CurrentDamageMultiplier = baseDamageMultiplier;
+                    context.ResetEnemyAttackPresentation();
+                    try
+                    {
+                        yield return impactDefense.Execute(context);
+                    }
+                    finally { context.Targets = originalTargets; }
+                    if (context.AttackInterruptedByCounter) yield break;
+                }
+                else
+                {
+                    PlayActorBattleAnim(context.Actor, Animator.StringToHash(AttackAnimTrigger));
+                    yield return new BattleDelay(0.1f);
+                }
+
+                if (!context.CanContinueExecution || target == null || !target.IsAlive)
+                {
+                    context.StopTimelineExecution = true;
+                    yield break;
+                }
+
+                if (HitVfxPrefab != null)
+                {
+                    GameObject hitVfx;
+                    if (ObjectPoolManager.Instance != null) hitVfx = ObjectPoolManager.Instance.Spawn(HitVfxPrefab, target.GetPivot(CharacterPivotId.Center).position, Quaternion.identity);
+                    else hitVfx = GameObject.Instantiate(HitVfxPrefab, target.GetPivot(CharacterPivotId.Center).position, Quaternion.identity);
+                    CharacterVFX.ApplyRuntimeAudioNormalization(hitVfx);
+                }
+
+                if (context.CurrentDamageMultiplier > 0f)
+                {
+                    int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.EffectiveDamageMultiplier);
+                    int previousHp = target.CurrentHP;
+                    DamageResult damageResult = context.ApplySkillHit(target, dmg, Element);
+                    int dealt = damageResult.FinalDamage;
+                    BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dealt, context.IsPerfectQTE, previousHp, Element, context.DamageBatchId);
+                    CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.4f, true);
+                }
+
+                context.ResetEnemyAttackPresentation();
+                yield return context.WaitForPendingDefenseReaction();
+                yield return context.WaitForPendingDefensePostImpactDelay();
+
+                if (enemyAttack && ApproachEachTarget) yield return context.ReturnDefender();
+                if (RecoveryDelay > 0f) yield return new BattleDelay(RecoveryDelay);
             }
 
-            if (!context.CanContinueExecution || target == null || !target.IsAlive)
-            {
-                context.StopTimelineExecution = true;
-                yield break;
-            }
-
-            if (HitVfxPrefab != null)
-            {
-                GameObject hitVfx;
-                if (ObjectPoolManager.Instance != null) hitVfx = ObjectPoolManager.Instance.Spawn(HitVfxPrefab, target.GetPivot(CharacterPivotId.Center).position, Quaternion.identity);
-                else hitVfx = GameObject.Instantiate(HitVfxPrefab, target.GetPivot(CharacterPivotId.Center).position, Quaternion.identity);
-                CharacterVFX.ApplyRuntimeAudioNormalization(hitVfx);
-            }
-            
-            if (context.CurrentDamageMultiplier > 0f)
-            {
-                int dmg = Mathf.RoundToInt(context.Actor.ATK * DamageMultiplier * context.EffectiveDamageMultiplier);
-                int previousHp = target.CurrentHP;
-                DamageResult damageResult = target.TakeDamage(dmg, Element, context.Actor);
-                int dealt = damageResult.FinalDamage;
-                BattleManager.Instance.InvokeDamageEvent(context.Actor, target, dealt, context.IsPerfectQTE, previousHp);
-                CameraController.Instance?.PlayHeavySlam(Vector3.right, 0.4f, true);
-            }
-
+            context.CurrentDamageMultiplier = 1.0f;
+            context.IsPerfectQTE = false;
             context.ResetEnemyAttackPresentation();
             yield return context.WaitForPendingDefenseReaction();
             yield return context.WaitForPendingDefensePostImpactDelay();
-
-            yield return new WaitForSecondsRealtime(0.2f);
+            completed = true;
         }
-
-        context.CurrentDamageMultiplier = 1.0f;
-        context.IsPerfectQTE = false;
-        context.ResetEnemyAttackPresentation();
-        yield return context.WaitForPendingDefenseReaction();
-        yield return context.WaitForPendingDefensePostImpactDelay();
+        finally
+        {
+            // 개별 접근은 적의 이동만 이 블록이 소유합니다. 정상 복귀는 기존 루트가,
+            // 취소/파괴/모듈 이탈 복원은 여기와 기존 방어 scope가 처리합니다.
+            if (enemyAttack && ApproachEachTarget && !completed)
+            {
+                context.ReleaseDefenderPresentation();
+                if (context.Actor != null)
+                {
+                    context.Actor.transform.position = actorStart;
+                    if (context.Actor.IsAlive && context.Actor.isActiveAndEnabled)
+                        PlayActorBattleAnim(context.Actor, EnemyCharacter.HashBattleIdle);
+                }
+            }
+            if (ghostTrail != null) ghostTrail.SetTrailActive(false);
+        }
     }
 }

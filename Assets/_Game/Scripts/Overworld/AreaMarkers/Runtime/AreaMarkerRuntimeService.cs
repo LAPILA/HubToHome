@@ -198,7 +198,7 @@ public static class AreaMarkerRuntimeService
     {
         int grantedAmount = 0;
         if (!string.IsNullOrWhiteSpace(itemId) && GlobalDataManager.Instance != null)
-            grantedAmount = GlobalDataManager.Instance.AddItemAndGetAddedAmount(itemId, amount);
+            grantedAmount = InventoryEntryService.Add(GlobalDataManager.Instance, ItemDatabase.FindById(itemId), amount);
 
         if (grantedAmount > 0)
             AudioManager.Instance?.PlaySelectionSfx();
@@ -262,14 +262,19 @@ public static class AreaMarkerRuntimeService
 
     public static bool RequestSavePoint(AreaMarkerBase owner, PlayerController player, string savePointId, int slotIndex = 0)
     {
+        if (!SaveManager.CanSaveCurrentProgress) return false;
         if (GlobalDataManager.Instance == null)
         {
             Debug.LogWarning("[AreaMarkerRuntimeService] GlobalDataManager가 없어 저장을 수행할 수 없습니다.", owner);
             return false;
         }
 
-        player?.SavePositionToGlobal();
-        SaveManager.Save(GlobalDataManager.Instance.ToSaveData(), Mathf.Max(0, slotIndex));
+        SaveStorageResult result = SaveManager.TrySaveProgress(slotIndex, player);
+        if (!result.Success)
+        {
+            Debug.LogWarning("[AreaMarkerRuntimeService] 저장 실패: " + result.Message, owner);
+            return false;
+        }
         Debug.Log($"[AreaMarkerRuntimeService] 저장 지점 요청: savePointId={savePointId}, slot={slotIndex}", owner);
         return true;
     }

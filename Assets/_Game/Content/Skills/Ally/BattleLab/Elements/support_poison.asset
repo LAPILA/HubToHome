@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: support_poison
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "독성 시약"
+  SkillID: lab.elements.support_poison
+  Description: "독성 물질로 적을 공격해 <color=#A6DE65>중독</color>을 남긴다."
+  UsageProfile: 1
+  APCost: 8
+  TargetType: 1
+  IsAoE: 0
+  StatusProcCoefficient: 1
+  ElementalApplications:
+  - Kind: 4
+    Amount: 8
+    Mode: 0
+  ActionTimeline:
+  - rid: 102020001
+  - rid: 102020002
+  - rid: 102020003
+  - rid: 102020004
+  - rid: 102020005
+  references:
+    version: 2
+    RefIds:
+    - rid: 102020001
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 시약"
+        Note: 
+        TimeLimit: 1
+        SuccessMultiplier: 1.5
+        FailMultiplier: 0.75
+        Nodes:
+        - PosX: 0.5
+          PosY: 0.55
+          TargetKey: z
+    - rid: 102020002
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 시약"
+        Note: 
+        AnimTriggerName: Attack
+        DelayAfter: 0.15
+    - rid: 102020003
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 시약"
+        Note: 
+        VfxPrefab: {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 102020004
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 시약"
+        Note: 
+        SkillMultiplier: 0.6
+        Element: 4
+        ShakeCamera: 0
+    - rid: 102020005
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "독성 시약"
+        Note: 
+        WaitTime: 0.15

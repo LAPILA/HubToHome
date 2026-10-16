@@ -703,12 +703,14 @@ public sealed partial class ShopUI : MonoBehaviour, IShopSessionLauncher
         if (global == null)
             return;
 
-        foreach (KeyValuePair<string, int> entry in global.GetInventory())
+        var equipmentSeen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (ItemData item in ItemDatabase.GetAll())
         {
-            if (entry.Value <= 0)
+            if (!InventoryEntryService.CanSell(item)
+                || !InventoryEntryService.IsRegistered(item)
+                || InventoryEntryService.GetRemovableCount(global, item) <= 0)
                 continue;
-            ItemData item = ItemDatabase.FindById(entry.Key);
-            if (item == null || !item.IsSellable || item.Type == ItemType.KeyItem)
+            if (item.Type == ItemType.Equipment && !equipmentSeen.Add(item.Equipment.ItemID.Trim()))
                 continue;
             _sellItems.Add(item);
         }

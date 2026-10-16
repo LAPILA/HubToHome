@@ -126,8 +126,10 @@ public sealed class PowerGrowthPanelView : MonoBehaviour
         SkillTreeProgressionService.Synchronize(member, data);
 
         CharacterGrowthSaveData growth = member.Growth;
-        int maximumLevel = CharacterGrowthService.ResolveMaxLevel(data);
-        int requiredExp = CharacterProgressionService.ExperienceRequiredForNextLevel(data, member.Level);
+        int maximumLevel = 99;
+        int requiredExp = GlobalDataManager.Instance != null
+            ? GlobalDataManager.Instance.PartyExperienceToNextLevel
+            : CharacterProgressionService.ExperienceRequiredForNextLevel(data, member.Level);
         _nameLabel.text = string.IsNullOrWhiteSpace(displayName) ? "PLAYER" : displayName;
         _levelLabel.text = "LV " + Mathf.Max(1, member.Level).ToString("00");
         _pointLabel.text = tab == PowerGrowthTab.Stats

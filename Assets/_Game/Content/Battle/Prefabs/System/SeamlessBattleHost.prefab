@@ -7237,6 +7237,19 @@ MonoBehaviour:
     ShortLabel: "가"
     Color: {r: 0.3, g: 1, b: 0.85, a: 1}
   _leadCharacterId: Wizzel_ally
+  _enemyStatusIcons:
+  - Kind: 0
+    Icon: {fileID: 1708201846, guid: 4ed8d8879b2e9c44dbaaa930196bb91d, type: 3}
+  - Kind: 1
+    Icon: {fileID: 1540699718, guid: 4ed8d8879b2e9c44dbaaa930196bb91d, type: 3}
+  - Kind: 2
+    Icon: {fileID: -1063079338, guid: 4ed8d8879b2e9c44dbaaa930196bb91d, type: 3}
+  - Kind: 3
+    Icon: {fileID: 568834985, guid: 4ed8d8879b2e9c44dbaaa930196bb91d, type: 3}
+  - Kind: 4
+    Icon: {fileID: 950936563, guid: 4ed8d8879b2e9c44dbaaa930196bb91d, type: 3}
+  _enemyStatusBottomOffset: 8
+  _enemyStatusColumns: 3
   _leadCharacterData: {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
   _partyStatusPanel: {fileID: 3579867621759222459}
   _partySlots:
@@ -7289,7 +7302,7 @@ MonoBehaviour:
   _cursorBobFrequency: 10
   _barTweenDuration: 0.4
   _damagePopupFont: {fileID: 11400000, guid: dd108a4fce9d41743a9526bcdb6f3504, type: 2}
-  _damagePopupFontSize: 60
+  _damagePopupFontSize: 30
   _damagePopupOriginOffset: {x: 10, y: 10}
 --- !u!223 &5445973571512333522
 Canvas:

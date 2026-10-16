@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "과압력탄 · X"
   SkillID: lab.bunny.enemy_dodge_shot
-  Description: "X 전용 투사체. Z 방어 불가."
+  Description: "막을 수 없는 고압 탄환을 발사한다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1

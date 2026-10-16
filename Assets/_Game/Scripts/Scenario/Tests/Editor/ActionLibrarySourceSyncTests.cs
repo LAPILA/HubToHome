@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -87,6 +88,70 @@ public class ActionLibrarySourceSyncTests
 
         Assert.That(result.Success, Is.True, Format(result.Validation));
         Assert.That(result.Document.Entries[0].DescriptionKo, Is.EqualTo("Waits # literally"));
+    }
+
+    [Test]
+    public void WriteThenParse_PreservesEscapedKoreanTextAndQuotedListValues()
+    {
+        ActionLibrarySourceDocument document = ActionLibrarySourceParser.Parse(FlowSource).Document;
+        ActionCatalogEntry entry = document.Entries[0];
+        entry.DescriptionKo = "경고 # 유지, \"인용\" \\ 경로\n다음 줄\t탭";
+        entry.Tags = new List<string> { "쉼표, 포함", "#색상", "따옴표 \"유지\"", "경로\\파일" };
+        entry.Parameters[0].DefaultValue = "첫 줄\r\n둘째 줄";
+
+        ActionLibrarySourceWriteResult write = ActionLibrarySourceWriter.Write(document);
+        ActionLibrarySourceParseResult parsed = ActionLibrarySourceParser.Parse(write.Text);
+
+        Assert.That(write.Success, Is.True, Format(write.Validation));
+        Assert.That(parsed.Success, Is.True, Format(parsed.Validation));
+        Assert.That(parsed.Document.Entries[0].DescriptionKo, Is.EqualTo(entry.DescriptionKo));
+        Assert.That(parsed.Document.Entries[0].Tags, Is.EqualTo(entry.Tags));
+        Assert.That(parsed.Document.Entries[0].Parameters[0].DefaultValue,
+            Is.EqualTo(entry.Parameters[0].DefaultValue));
+        Assert.That(ActionLibrarySourceWriter.Write(parsed.Document).Text, Is.EqualTo(write.Text));
+    }
+
+    [Test]
+    public void WriteThenParse_KeepsInvariantNumbersUnderCommaDecimalCulture()
+    {
+        CultureInfo previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+            ActionLibrarySourceDocument document = ActionLibrarySourceParser.Parse(FlowSource).Document;
+            document.SortOrder = -12;
+            document.Entries[0].Parameters[0].Minimum = 0.125;
+            document.Entries[0].Parameters[0].Maximum = 1.75;
+
+            ActionLibrarySourceWriteResult write = ActionLibrarySourceWriter.Write(document);
+            ActionLibrarySourceParseResult parsed = ActionLibrarySourceParser.Parse(write.Text);
+
+            Assert.That(write.Success, Is.True, Format(write.Validation));
+            Assert.That(parsed.Success, Is.True, Format(parsed.Validation));
+            Assert.That(write.Text, Does.Contain("min: 0.125"));
+            Assert.That(parsed.Document.SortOrder, Is.EqualTo(-12));
+            Assert.That(parsed.Document.Entries[0].Parameters[0].Minimum, Is.EqualTo(0.125));
+            Assert.That(parsed.Document.Entries[0].Parameters[0].Maximum, Is.EqualTo(1.75));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    [TestCase("\n")]
+    [TestCase("\r\n")]
+    [TestCase("\r")]
+    public void Parse_PreservesQuotedCommentsAcrossLineEndings(string newline)
+    {
+        string source = FlowSource.Replace("accent: \"#4FA3FF\"", "accent: \"#4FA3FF\" # outside comment")
+            .Replace("\n", newline);
+        ActionLibrarySourceParseResult parsed = ActionLibrarySourceParser.Parse(source);
+
+        Assert.That(parsed.Success, Is.True, Format(parsed.Validation));
+        Assert.That(parsed.Document.AccentHex, Is.EqualTo("#4FA3FF"));
+        Assert.That(parsed.Document.Entries[0].Parameters[0].ValueSources,
+            Is.EqualTo(new[] { "literal", "input", "event" }));
     }
 
     [Test]

@@ -1,5 +1,13 @@
 # Overworld 규칙
 
+## 챕터 1 합류·저장·재등장 (2026-10-16)
+
+- 본편 새 게임은 주인공 한 명이며 필드에는 기존 위젤만 표시한다. 동료 합류는 `PartyRecruitmentTrigger` 또는 `GlobalDataManager.TryRecruitPartyMember`로 연결하고 안정적인 CharacterID와 완료 플래그를 쓴다. 합류 확인용 필드 복제/디버그 UI를 만들지 않는다.
+- 수동 저장 성공 뒤에만 파티 HP/AP 회복과 일반 적 재등장을 반영한다. `OverworldEnemy`는 필드 등록 때 `EnemyData.Rank`에서 재등장 정책을 계산한다. 보스/엘리트가 포함된 조우와 고정 진행 이벤트는 일반 적 리스폰으로 취급하지 않는다.
+- 패배로 숨긴 재등장 대상만 원래 위치·순찰로 복원한다. 임의의 비활성 NPC/상자/이벤트 오브젝트를 전부 켜거나 Encounter Memory/완료 플래그를 지우지 않는다. 전투 복제본은 필드 재등장 검색에서 제외한다.
+- `EnemyRank`의 기존 데이터 기본값은 Normal이다. 기존 보스는 Boss를 명시해야 보스 자동저장/도주 제한이 적용된다. `EnemyKind`(Human/Monster/WhiteEntity)는 등급과 별개다.
+- 보스/필수전 재도전은 `IEncounterRetrySource.RetryEncounterId`로 원래 조우를 다시 찾는다. 이름으로 추측하지 않고 누락/중복은 실패로 처리한다. `BattleRetryCheckpoint.IsRestoring` 동안 씬 진입 시퀀스를 다시 재생하지 않는다.
+
 ## 현재 구조
 - `PlayerController`: 이동, 입력, 바라보는 방향, 전투 애니메이션 연출 일부 담당.
 - `InteractionSystem`: 플레이어 전방 상호작용 대상 캐싱.
@@ -20,8 +28,12 @@
 - 방향값: 0 Down, 1 Up, 2 Left, 3 Right.
 
 ## 작업 규칙
+
+- 저장 지점은 SaveManager.CanSaveCurrentProgress를 위치 동기화 전에 검사하고 TrySave 결과를 반환한다. 전투/후열 선택/복구 중 저장을 막는다. 실패한 저장에 성공 색상·자동 저장 방문 완료 상태를 적용하지 않는다.
 - 이동 가능 여부는 `GameStateManager.CanPlayerMove`를 확인한다.
 - 전투 중에는 `PlayerController.SetBattleMode(true)`로 이동을 잠근다.
+- `InteractionSystem`은 공용 Player_Base에 포함된다. 중복 인스턴스는 자기 상호작용 컴포넌트만 비활성화하고 캐릭터 GameObject를 삭제하지 않는다. 추가 전투 동료/후열 정리가 필드 주인의 singleton을 해제해서도 안 된다.
+- `PlayerController.Start` 전에 BattleManager가 전투 배치를 완료할 수 있다. 이미 InBattle 또는 진입 잠금 상태라면 필드 좌표/방향/Idle 초기화를 생략하여 배치와 전투 대기 모션을 보존한다.
 - 상호작용 대상은 `IInteractable` 구현 또는 `InteractableBase` 상속을 우선한다.
 - `AreaTrigger`의 AutoEvent는 `DialogueData` 에셋을 직접 받는다.
 - 씬 전환 전 위치/방향 저장을 잊지 않는다.
@@ -40,7 +52,7 @@
 - 짧은 오버월드 전환 연출은 새 Scene을 만들지 말고 같은 Scene의 오프스테이지 `Cinematic Stage`와 전용 Cinemachine Camera를 우선 사용한다.
 - 기본 게임플레이 대상(Player, 동료, 적)은 시네마틱 때문에 기본적으로 숨기거나 비활성화하지 않는다. 카메라 프레이밍으로 분리하고, 같은 공간에서만 별도 Presentation visibility 계약을 추가한다.
 - 씬 진입 연출은 `SceneLoader`의 검은 reveal gate 아래에서 Stage를 준비하고 `SceneRevealCompleted` 이후 `SceneActionSequenceTrigger`가 독립 Action Sequence를 재생하게 한다.
-- 첫 방문 1회 연출은 `GlobalDataManager.eventFlags`에 완료 사실만 저장한다. 저장 시점은 시퀀스 성공 후이며, 전투 세션/진행 중 액션 상태를 저장하지 않는다.
+- 첫 방문 1회 연출은 성공 시에만 `GlobalDataManager.eventFlags`에 완료 사실을 기록한다. `SceneActionSequenceTrigger._autoSaveOnComplete`는 기본 true이며 정상 완료 뒤 자동저장을 예약한다. 실제 기록은 안정된 탐색 경계에서 수행하고 취소/실패에는 예약하지 않는다. 진행과 무관한 반복 연출은 해당 옵션을 끈다. 전투 세션/진행 중 액션 상태를 저장하지 않는다.
 - `Cinematic Stage`의 대상/샷은 안정적인 `stage`/`shot`/`subject` ID로 연결한다. 씬 오브젝트 이름을 YAML 계약으로 직접 사용하지 않는다.
 - Room과 Map의 플레이어 Follow·Confiner 설정은 `OverworldCameraBinding`을 사용한다. 이 바인더는 `CameraController.VirtualCamera`만 변경한다.
 - 게임플레이 카메라를 `FindFirstObjectByType<CinemachineCamera>()`로 찾거나 Follow를 직접 쓰지 않는다. 같은 Scene에 시네마틱용 카메라가 있을 수 있다.
@@ -49,6 +61,6 @@
 - 씬은 Player Follow, Confiner Bounds, 배경색처럼 씬에 속한 참조와 표현만 Prefab Override로 소유한다.
 - 컷신은 공용 리그에 실제 Camera를 추가하지 않고 우선순위가 높은 별도 Cinemachine Camera를 사용한다.
 ## 주의점
-- `InteractionSystem`은 현재 `FindFirstObjectByType<PlayerController>()`를 매 프레임 호출하므로, 나중에 캐싱 개선 여지가 있다.
+- `InteractionSystem`은 주인 인스턴스만 갱신하며 PlayerController를 캐싱한다. 동료를 복제할 때 상호작용 singleton 중복 제거가 캐릭터 수명에 개입하지 않는지 확인한다.
 - `AreaTrigger`의 `DestroyOnVictory`는 현재 전투 시작 직후 Destroy되는 구조라 이름과 실제 동작 차이가 있다.
 - `Assets/_Game/Content/Maps/Shared/Generated`는 생성기 공용 리소스 위치다. 실제 맵 월드 산출물 위치로 사용하지 않는다.

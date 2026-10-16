@@ -30,6 +30,18 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     public static float JuiceDurationScale => Instance != null ? Mathf.Clamp(Instance._juiceDurationScale, 0.5f, 2f) : 1f;
     public Camera WorldCamera => _worldCamera;
 
+    public bool CanHostMainDialogue => isActiveAndEnabled && !_isBattleEnding
+        && BattleManager.Instance != null && BattleManager.Instance.IsBattleSessionActive
+        && _acceptsTurnQteInput && _party != null && _party.Count > 0
+        && _battleMenuUI != null && _battleMenuUI.SubMenuRoot != null;
+
+    public bool IsMainDialogueDocked => _battleMenuUI != null && _battleMenuUI.IsDialoguePresentationActive;
+
+    public bool IsHudChromeVisible => isActiveAndEnabled && !_isBattleEnding
+        && _hudDecoration != null && _hudDecoration.activeInHierarchy;
+
+    public BattleMenuUI MainDialogueMenu => CanHostMainDialogue ? _battleMenuUI : null;
+
     /// <summary>OnBattleStarted에서 데이터/레이아웃을 준비한 뒤에만 호출합니다.</summary>
     public BattleHudEntryMotion BeginEntryPresentation(float distance)
     {
@@ -60,6 +72,12 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     [BoxGroup("HUD")] [SerializeField] private GameObject _turnQueueTitle;
     [BoxGroup("HUD")] [SerializeField] private BattleInputHintView _inputHints;
     [BoxGroup("HUD")] [SerializeField] private BattleStatusIconDefinition[] _statusIcons;
+    [BoxGroup("적 하단 상태"), LabelText("상태별 아이콘")]
+    [SerializeField] private ElementalStatusIconDefinition[] _enemyStatusIcons;
+    [BoxGroup("적 하단 상태"), LabelText("발밑 간격 (px)")]
+    [SerializeField] private float _enemyStatusBottomOffset = 8f;
+    [BoxGroup("적 하단 상태"), Range(1, 6), LabelText("한 줄 최대 개수")]
+    [SerializeField] private int _enemyStatusColumns = 3;
     [BoxGroup("HUD"), Tooltip("표시 순서만 앞에 놓습니다. 실제 편성과 대상 인덱스는 변경하지 않습니다.")]
     [SerializeField] private string _leadCharacterId = "player_001";
     [BoxGroup("HUD"), Tooltip("우선 표시할 캐릭터 DB. 연결하면 이름/ID가 바뀌어도 같은 자산을 기준으로 표시합니다.")]
@@ -95,7 +113,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     [SerializeField] private TMP_FontAsset _damagePopupFont;
 
     [FoldoutGroup("Damage Popup"), MinValue(1f), LabelWidth(140), LabelText("글자 크기")]
-    [SerializeField] private float _damagePopupFontSize = 60f;
+    [SerializeField] private float _damagePopupFontSize = 30f;
 
     [FoldoutGroup("Damage Popup"), LabelWidth(140), LabelText("기준 위치 보정")]
     [SerializeField] private Vector2 _damagePopupOriginOffset = new Vector2(0f, 12f);
@@ -104,6 +122,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     #region [ Internal State ]
     private bool _isTargetingMode = false;
     private bool _isAllyTargeting = false;
+    private bool _allowBothItemTargets;
     private int _selectedTargetIndex = 0;
     private bool _isBattleEnding = false;
     private bool _isScenarioCinematicMode;
@@ -129,6 +148,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private string _activeGameModuleId = BattleTurnQteGameModuleRuntime.Id;
     private bool _acceptsTurnQteInput = true;
     private BattleManager _subscribedBattleManager;
+    private BattleMenuUI _subscribedDialogueMenu;
     private Tween _partyPanelTween;
     private Sequence _scenarioFlashTween;
     private Tween _scenarioShakeTween;
@@ -136,6 +156,11 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private Canvas _partyStatusCanvas;
     private Canvas _turnQueueCanvas;
     private readonly Vector3[] _safeAreaCorners = new Vector3[4];
+    private readonly HashSet<CharacterBase> _elementalActors = new HashSet<CharacterBase>();
+    private readonly Dictionary<CharacterBase, SpriteRenderer> _promptRenderers = new Dictionary<CharacterBase, SpriteRenderer>(8);
+    private readonly List<Rect> _skillPromptExclusions = new List<Rect>(8);
+    private CharacterBase _statusPreviewActor;
+    private BattleEnemyStatusPresenter _enemyStatusPresenter;
     #endregion
 
     #region [ Initialization & Lifecycle ]
@@ -192,6 +217,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _damagePopupPresenter.SetFontSize(_damagePopupFontSize);
         _damagePopupPresenter.SetOriginOffset(_damagePopupOriginOffset);
         _damagePopupPresenter.Initialize(host, _worldCamera, fallbackFont);
+        _damagePopupPresenter.BindBatches(_subscribedBattleManager != null ? _subscribedBattleManager.DamageBatches : null);
     }
     public void SetScreenShakeScaleProvider(IScreenShakeScaleProvider provider)
     {
@@ -221,13 +247,16 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void OnEnable()
     {
+        BindDialogueMenu();
         BindBattleEvents();
         if (_party != null) BindPartySlots(_party);
+        if (_party != null && !_isBattleEnding) BindElementalActors();
         if (_portraitActor != null) SetPortraitActor(_portraitActor);
     }
 
     private void OnDisable()
     {
+        UnbindDialogueMenu();
         UnbindBattleEvents();
         ReleasePresentationTweens();
         if (_resourceView != null) _resourceView.Bind(_largePortrait, null);
@@ -241,6 +270,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (bm == null || _subscribedBattleManager == bm) return;
         UnbindBattleEvents();
         _subscribedBattleManager = bm;
+        _damagePopupPresenter?.BindBatches(bm.DamageBatches);
 
         // Observer 구독
         bm.OnBattleStarted          += HandleBattleStarted;
@@ -259,6 +289,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void OnDestroy()
     {
+        UnbindDialogueMenu();
         if (Instance == this)
             Instance = null;
 
@@ -269,10 +300,46 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         UnbindBattleEvents();
     }
 
+    private void BindDialogueMenu()
+    {
+        if (_subscribedDialogueMenu == _battleMenuUI) return;
+        UnbindDialogueMenu();
+        _subscribedDialogueMenu = _battleMenuUI;
+        if (_subscribedDialogueMenu != null)
+            _subscribedDialogueMenu.DialoguePresentationChanged += HandleDialoguePresentationChanged;
+    }
+
+    private void UnbindDialogueMenu()
+    {
+        if (_subscribedDialogueMenu != null)
+            _subscribedDialogueMenu.DialoguePresentationChanged -= HandleDialoguePresentationChanged;
+        _subscribedDialogueMenu = null;
+    }
+
+    private void HandleDialoguePresentationChanged(bool active)
+    {
+        if (_isBattleEnding || !_acceptsTurnQteInput || !isActiveAndEnabled) return;
+        // 시나리오의 카메라/레터박스 모드는 유지하고 HUD 장식만 대화 동안 빌립니다.
+        SetScenarioHudChromeVisible(!_isScenarioCinematicMode || active);
+        _inputHints?.SetDialoguePresentation(active,
+            DialogueManager.Instance != null && DialogueManager.Instance.IsWaitingForChoice);
+    }
+
+    private void SetScenarioHudChromeVisible(bool visible)
+    {
+        if (_hudDecoration != null) _hudDecoration.SetActive(visible);
+        if (_partyStatusPanel != null) _partyStatusPanel.gameObject.SetActive(visible);
+        if (_turnQueueTitle != null) _turnQueueTitle.SetActive(visible);
+        if (_turnQueueContainer != null) _turnQueueContainer.gameObject.SetActive(visible);
+        if (_turnLabel != null) _turnLabel.gameObject.SetActive(visible);
+    }
+
     private void UnbindBattleEvents()
     {
+        UnbindElementalActors();
         BattleManager bm = _subscribedBattleManager;
         _subscribedBattleManager = null;
+        _damagePopupPresenter?.BindBatches(null);
         if (bm == null) return;
 
         // Observer 해제
@@ -313,6 +380,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         UpdateCursorPosition();
         HandleTargetingInput();
+        _inputHints?.SetDialoguePresentation(IsMainDialogueDocked,
+            DialogueManager.Instance != null && DialogueManager.Instance.IsWaitingForChoice);
     }
     #endregion
 
@@ -366,9 +435,19 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         else if (confirm)
         {
             GameInput.ConsumeBattleUIInput();
+            CharacterBase target = ResolveSelectedTarget();
+            if (!IsValidCommandTarget(target))
+            {
+                _selectedTargetIndex = GetFirstAliveTargetIndex();
+                if (_selectedTargetIndex < 0) CancelUnavailableTargetSelection();
+                else { RefreshAllyTargetHighlight(); UpdateCursorPosition(); }
+                return;
+            }
             _battleMenuUI?.PlayConfirmSfx();
+            int commandTargetIndex = _allowBothItemTargets && !_isAllyTargeting
+                ? _party.Count + _selectedTargetIndex : _selectedTargetIndex;
             ExitTargetingMode();
-            BattleManager.Instance.ConfirmTargetAndExecute(_selectedTargetIndex);
+            BattleManager.Instance.ConfirmTargetAndExecute(commandTargetIndex);
         }
         else if (cancel)
         {
@@ -381,6 +460,25 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void NavigateTarget(int direction)
     {
+        if (_allowBothItemTargets)
+        {
+            int count = _party.Count + _enemies.Count;
+            if (count == 0) return;
+            int flat = _isAllyTargeting ? _selectedTargetIndex : _party.Count + _selectedTargetIndex;
+            for (int attempt = 0; attempt < count; attempt++)
+            {
+                flat = (flat + direction + count) % count;
+                CharacterBase actor = flat < _party.Count ? (CharacterBase)_party[flat] : _enemies[flat - _party.Count];
+                if (!IsValidCommandTarget(actor)) continue;
+                _isAllyTargeting = flat < _party.Count;
+                _selectedTargetIndex = _isAllyTargeting ? flat : flat - _party.Count;
+                _battleMenuUI?.PlayMoveSfx();
+                RefreshAllyTargetHighlight();
+                return;
+            }
+            CancelUnavailableTargetSelection();
+            return;
+        }
         int maxTargets = _isAllyTargeting ? _party.Count : _enemies.Count;
         if (maxTargets == 0) return;
         int previous = _selectedTargetIndex;
@@ -392,8 +490,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             loopCount++;
 
             bool isAlive = _isAllyTargeting
-                ? _party[_selectedTargetIndex] != null && _party[_selectedTargetIndex].IsAlive
-                : _enemies[_selectedTargetIndex] != null && _enemies[_selectedTargetIndex].IsAlive;
+                ? IsValidCommandTarget(_party[_selectedTargetIndex])
+                : IsValidCommandTarget(_enemies[_selectedTargetIndex]);
             if (isAlive) break;
 
         } while (loopCount < maxTargets);
@@ -409,6 +507,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _hasWarnedMissingWorldCamera = false;
         BindCameraToCanvases(worldCamera);
         _damagePopupPresenter?.BindWorldCamera(worldCamera);
+        _enemyStatusPresenter?.BindWorldCamera(worldCamera);
     }
 
     public bool TryResolveWorldCamera()
@@ -472,8 +571,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
         Transform targetTf = null;
         CharacterBase targetChar = _isAllyTargeting
-            ? (_party != null && _selectedTargetIndex < _party.Count ? _party[_selectedTargetIndex] : null)
-            : (_enemies != null && _selectedTargetIndex < _enemies.Count ? _enemies[_selectedTargetIndex] : null);
+            ? (_party != null && _selectedTargetIndex >= 0 && _selectedTargetIndex < _party.Count ? _party[_selectedTargetIndex] : null)
+            : (_enemies != null && _selectedTargetIndex >= 0 && _selectedTargetIndex < _enemies.Count ? _enemies[_selectedTargetIndex] : null);
 
         if (targetChar != null)
         {
@@ -504,15 +603,52 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void ExitTargetingMode()
     {
         _isTargetingMode = false;
+        _allowBothItemTargets = false;
+        _statusPreviewActor = null;
+        _battleMenuUI?.SetStatusPreview(null);
         ShowEnemyTarget(null);
         if (_targetCursor != null) _targetCursor.gameObject.SetActive(false);
     }
 
     private int GetFirstAliveTargetIndex()
     {
+        if (_allowBothItemTargets)
+        {
+            for (int i = 0; i < _party.Count; i++)
+                if (IsValidCommandTarget(_party[i])) { _isAllyTargeting = true; return i; }
+            for (int i = 0; i < _enemies.Count; i++)
+                if (IsValidCommandTarget(_enemies[i])) { _isAllyTargeting = false; return i; }
+            return -1;
+        }
+        int count = _isAllyTargeting ? _party.Count : _enemies.Count;
+        for (int i = 0; i < count; i++)
+        {
+            CharacterBase actor = _isAllyTargeting ? (CharacterBase)_party[i] : _enemies[i];
+            if (IsValidCommandTarget(actor)) return i;
+        }
+        return -1;
+    }
+
+    private static bool IsValidCommandTarget(CharacterBase actor)
+    {
+        ItemData item = BattleManager.Instance != null ? BattleManager.Instance.CurrentPendingItem : null;
+        return item != null ? ItemEffectService.IsValidTarget(item, actor)
+            && ItemEffectService.CanApply(item, actor, true, out _) : actor != null && actor.IsAlive;
+    }
+
+    private CharacterBase ResolveSelectedTarget()
+    {
+        if (_selectedTargetIndex < 0) return null;
         return _isAllyTargeting
-            ? _party.FindIndex(p => p != null && p.IsAlive)
-            : _enemies.FindIndex(e => e != null && e.IsAlive);
+            ? _selectedTargetIndex < _party.Count ? _party[_selectedTargetIndex] : null
+            : _selectedTargetIndex < _enemies.Count ? _enemies[_selectedTargetIndex] : null;
+    }
+
+    private void CancelUnavailableTargetSelection()
+    {
+        GameInput.ConsumeBattleUIInput();
+        ExitTargetingMode();
+        BattleManager.Instance?.CancelActionSelection();
     }
     #endregion
 
@@ -543,6 +679,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         {
             if (enemy != null) _enemyTopPivots[enemy] = enemy.GetPivot(CharacterPivotId.Top);
         }
+        BindElementalActors();
     }
 
     private void HandlePlayerPartyChanged(List<PlayerCharacter> party)
@@ -554,6 +691,64 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         BindPartySlots(party);
         SetPortraitActor(_displayParty.Count > 0 ? _displayParty[0] : null);
         _battleMenuUI?.SetActor(_portraitActor);
+        BindElementalActors();
+    }
+
+    private void BindElementalActors()
+    {
+        UnbindElementalActors();
+        for (int i = 0; _party != null && i < _party.Count; i++) SubscribeElementalActor(_party[i]);
+        for (int i = 0; _enemies != null && i < _enemies.Count; i++) SubscribeElementalActor(_enemies[i]);
+        if (_enemyStatusPresenter == null)
+            _enemyStatusPresenter = gameObject.AddComponent<BattleEnemyStatusPresenter>();
+        _enemyStatusPresenter.Bind(transform as RectTransform, _worldCamera,
+            _turnLabel != null ? _turnLabel.font : _damagePopupFont,
+            _enemies, _enemyStatusIcons, _enemyStatusBottomOffset, _enemyStatusColumns);
+    }
+
+    private void SubscribeElementalActor(CharacterBase actor)
+    {
+        if (actor == null || !_elementalActors.Add(actor)) return;
+        SpriteRenderer sprite = actor.GetComponent<SpriteRenderer>();
+        _promptRenderers[actor] = sprite != null ? sprite : actor.GetComponentInChildren<SpriteRenderer>(true);
+        actor.OnStatusEffectsChanged += RefreshStatusPreview;
+        actor.OnElementalDamage += HandleElementalDamage;
+        actor.OnHPChanged += HandleElementalActorHPChanged;
+    }
+
+    private void UnbindElementalActors()
+    {
+        if (_enemyStatusPresenter != null) _enemyStatusPresenter.Clear();
+        foreach (CharacterBase actor in _elementalActors)
+        {
+            if (ReferenceEquals(actor, null)) continue;
+            actor.OnStatusEffectsChanged -= RefreshStatusPreview;
+            actor.OnElementalDamage -= HandleElementalDamage;
+            actor.OnHPChanged -= HandleElementalActorHPChanged;
+        }
+        _elementalActors.Clear();
+        _promptRenderers.Clear();
+        _skillPromptExclusions.Clear();
+        _statusPreviewActor = null;
+        _battleMenuUI?.SetStatusPreview(null);
+    }
+
+    private void HandleElementalActorHPChanged(CharacterBase actor, int hp, int maxHp)
+    {
+        if (hp <= 0) RefreshStatusPreview(actor);
+    }
+
+    private void RefreshStatusPreview(CharacterBase changedActor)
+    {
+        if (_statusPreviewActor != null && (changedActor == null || changedActor == _statusPreviewActor))
+            _battleMenuUI?.SetStatusPreview(_statusPreviewActor);
+    }
+
+    private void HandleElementalDamage(CharacterBase target, int amount, ElementalStatusKind kind)
+    {
+        if (_isBattleEnding || amount <= 0) return;
+        EnsureDamagePopupPresenter();
+        _damagePopupPresenter?.TryShowElemental(target, amount, kind, out _);
     }
 
     private void BindPartySlots(List<PlayerCharacter> party)
@@ -593,6 +788,11 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
         if (!_acceptsTurnQteInput || _isScenarioCinematicMode)
         {
+            if (_acceptsTurnQteInput && IsMainDialogueDocked)
+            {
+                ExitTargetingMode();
+                return;
+            }
             _battleMenuUI?.HideImmediate();
             _battleMenuUI?.SetDetailsVisible(false);
             ExitTargetingMode();
@@ -679,6 +879,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private static Camera ResolveCanvasCamera(Canvas canvas, Camera fallback)
     {
+        if (canvas != null) canvas = canvas.rootCanvas;
         if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay) return null;
         return canvas != null && canvas.worldCamera != null ? canvas.worldCamera : fallback;
     }
@@ -689,6 +890,11 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             && _selectedTargetIndex >= 0 && _selectedTargetIndex < _party.Count
             ? _party[_selectedTargetIndex] : null;
         ShowEnemyTarget(selected);
+        _statusPreviewActor = _isTargetingMode && _selectedTargetIndex >= 0
+            ? _isAllyTargeting ? selected
+                : _enemies != null && _selectedTargetIndex < _enemies.Count ? _enemies[_selectedTargetIndex] : null
+            : null;
+        _battleMenuUI?.SetStatusPreview(_statusPreviewActor);
     }
 
     private void HandleTargetSelectionStarted(PlayerMenuAction action)
@@ -696,17 +902,26 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         _isTargetingMode = true;
         _targetingStartedFrame = Time.frameCount;
         _isAllyTargeting = false;
+        _allowBothItemTargets = false;
         _battleMenuUI?.SetCommandInputEnabled(false);
         if (_inputHints != null) _inputHints.SetContext(BattleHintContext.Target);
 
         var bm = BattleManager.Instance;
 
         if (action == PlayerMenuAction.Item && bm.CurrentPendingItem != null)
+        {
             _isAllyTargeting = (bm.CurrentPendingItem.TargetType == TargetAreaType.AllyOnly);
+            _allowBothItemTargets = bm.CurrentPendingItem.TargetType == TargetAreaType.Both;
+        }
         else if (action == PlayerMenuAction.Skill && bm.CurrentPendingSkill != null)
             _isAllyTargeting = (bm.CurrentPendingSkill.TargetType == TargetAreaType.AllyOnly);
 
         _selectedTargetIndex = GetFirstAliveTargetIndex();
+        if (_selectedTargetIndex < 0)
+        {
+            CancelUnavailableTargetSelection();
+            return;
+        }
         RefreshAllyTargetHighlight();
 
         if (_targetCursor != null)
@@ -835,6 +1050,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleBattleEnded(bool victory)
     {
+        UnbindElementalActors();
         _turnQueueView?.Clear();
         _isBattleEnding = true;
         ReleasePresentationTweens();
@@ -931,11 +1147,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         if (active) ReleasePresentationTweens();
         _isScenarioCinematicMode = active;
         ExitTargetingMode();
-        if (_hudDecoration != null) _hudDecoration.SetActive(!active);
-        if (_turnQueueTitle != null) _turnQueueTitle.SetActive(!active);
-        _battleMenuUI?.SetDetailsVisible(!active);
+        SetScenarioHudChromeVisible(!active || IsMainDialogueDocked);
+        if (!IsMainDialogueDocked) _battleMenuUI?.SetDetailsVisible(!active);
 
-        if (_battleMenuUI != null)
+        if (_battleMenuUI != null && !IsMainDialogueDocked)
         {
             if (active)
             {
@@ -946,21 +1161,6 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             {
                 _battleMenuUI.gameObject.SetActive(true);
             }
-        }
-
-        if (_partyStatusPanel != null)
-        {
-            _partyStatusPanel.gameObject.SetActive(!active);
-        }
-
-        if (_turnQueueContainer != null)
-        {
-            _turnQueueContainer.gameObject.SetActive(!active);
-        }
-
-        if (_turnLabel != null)
-        {
-            _turnLabel.gameObject.SetActive(!active);
         }
 
         if (_targetCursor != null)
@@ -1087,6 +1287,12 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     public void ShowRandomSkillQTE(string targetKey, float duration)
     {
+        ShowSkillQTE(new Vector2((float)_skillPromptRandom.NextDouble(), (float)_skillPromptRandom.NextDouble()),
+            targetKey, duration);
+    }
+
+    private Rect GetSkillPromptArea()
+    {
         Rect area = Rect.MinMaxRect(0.14f, 0.44f, 0.86f, 0.78f);
         if (TryGetSpeechSafeArea(out Camera camera, out Rect safe))
         {
@@ -1098,25 +1304,61 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             float right = Mathf.Min(area.xMax, (safe.xMax - viewport.xMin) / viewport.width - 0.1f);
             if (right > left && top > bottom) area = Rect.MinMaxRect(left, bottom, right, top);
         }
-        Vector2 position = SelectSkillPromptPosition(area, _previousSkillPromptPosition,
-            new Vector2((float)_skillPromptRandom.NextDouble(), (float)_skillPromptRandom.NextDouble()));
-        _previousSkillPromptPosition = position;
-        ShowSkillQTE(position, targetKey, duration);
+        return area;
     }
 
     public static Vector2 SelectSkillPromptPosition(Rect area, Vector2? previous, Vector2 randomSample)
     {
-        Vector2 position = new Vector2(Mathf.Lerp(area.xMin, area.xMax, Mathf.Clamp01(randomSample.x)),
-            Mathf.Lerp(area.yMin, area.yMax, Mathf.Clamp01(randomSample.y)));
-        // 연속 안내가 같은 자리에 겹치면 반대 반쪽으로 보냅니다. 한 안내가 떠 있는 중에는 움직이지 않습니다.
-        if (previous.HasValue && Vector2.Distance(position, previous.Value) < 0.18f)
-            position.x = previous.Value.x < area.center.x
-                ? Mathf.Lerp(area.center.x, area.xMax, 0.75f)
-                : Mathf.Lerp(area.xMin, area.center.x, 0.25f);
-        return position;
+        return BattleOverlayLayout.SelectSkillPrompt(area, previous, randomSample, null);
     }
 
-    public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration) => _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
+    public void ShowSkillQTE(Vector2 screenPos, string targetKey, float duration)
+    {
+        // 준비 호출은 위치 선택/직전 위치를 갱신하지 않고 기존 비표시 상태를 유지합니다.
+        if (string.IsNullOrEmpty(targetKey) && duration <= 0f)
+        {
+            _defenseQTEUI?.ShowSkillQTE(screenPos, targetKey, duration);
+            return;
+        }
+        BuildSkillPromptExclusions();
+        Vector2 position = BattleOverlayLayout.SelectSkillPrompt(GetSkillPromptArea(),
+            _previousSkillPromptPosition, screenPos, _skillPromptExclusions);
+        _previousSkillPromptPosition = position;
+        _defenseQTEUI?.ShowSkillQTE(position, targetKey, duration);
+    }
+
+    private void BuildSkillPromptExclusions()
+    {
+        _skillPromptExclusions.Clear();
+        if (_worldCamera == null) return;
+        Rect viewport = _worldCamera.pixelRect;
+        if (viewport.width <= 0f || viewport.height <= 0f) return;
+        foreach (var entry in _promptRenderers)
+        {
+            CharacterBase actor = entry.Key;
+            if (actor == null || !actor.IsAlive || !actor.isActiveAndEnabled) continue;
+            SpriteRenderer sprite = entry.Value;
+            Bounds bounds = sprite != null ? sprite.bounds : new Bounds(actor.transform.position, new Vector3(2f, 3f, 0f));
+            Vector2 min = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+            Vector2 max = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+            bool inFront = false;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 screen = _worldCamera.WorldToScreenPoint(new Vector3(
+                    (i & 1) == 0 ? bounds.min.x : bounds.max.x,
+                    (i & 2) == 0 ? bounds.min.y : bounds.max.y, bounds.center.z));
+                inFront |= screen.z > 0f;
+                Vector2 point = new Vector2((screen.x - viewport.xMin) / viewport.width,
+                    (screen.y - viewport.yMin) / viewport.height);
+                min = Vector2.Min(min, point);
+                max = Vector2.Max(max, point);
+            }
+            if (!inFront) continue;
+            // 640x480 기준 링/결과 글자 반경과 8px 여백까지 포함합니다.
+            _skillPromptExclusions.Add(Rect.MinMaxRect(min.x - 48f / 640f, min.y - 56f / 480f,
+                max.x + 48f / 640f, max.y + 56f / 480f));
+        }
+    }
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
     public void SetSkillQTEProgress(float remaining) => _defenseQTEUI?.SetSkillProgress(remaining);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();

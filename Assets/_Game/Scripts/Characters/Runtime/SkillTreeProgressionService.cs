@@ -564,7 +564,7 @@ public static class SkillTreeProgressionService
             }
         }
 
-        if (data.PowerUnlocks != null)
+        if (data.AllowLegacyLevelUnlocks && data.PowerUnlocks != null)
         {
             int level = Mathf.Max(1, character?.Level ?? 1);
             for (int i = 0; i < data.PowerUnlocks.Count; i++)

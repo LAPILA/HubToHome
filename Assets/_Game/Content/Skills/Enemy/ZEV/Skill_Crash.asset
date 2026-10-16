@@ -13,128 +13,90 @@ MonoBehaviour:
   m_Name: Skill_Crash
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   Icon: {fileID: 0}
-  SkillName: "\uB0B4\uB824\uCE58\uAE30"
+  SkillName: "동결 낙인"
   SkillID: zev.crash
-  Description: "\uB192\uAC8C \uB3C4\uC57D\uD574 \uC21C\uAC04\uC801\uC73C\uB85C \uB0B4\uB824\uCC0D\uB294
-    \uCC38\uACA9"
+  Description: "차가운 검으로 적을 내려찍어 <color=#72D5FF>냉기</color>를 남긴다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1
   IsAoE: 0
+  ElementalApplications:
+  - Kind: 1
+    Amount: 6
+    Mode: 0
+  StatusProcCoefficient: 1
   ActionTimeline:
-  - rid: 8456611228188409976
-  - rid: 9001
-  - rid: 8456611491438133252
-  - rid: 8456611228188409979
-  - rid: 9223372036854775807
-  - rid: 8456611228188409980
-  - rid: 8456611228188409978
-  - rid: 2817657493982281856
+  - rid: 1002
+  - rid: 1001
+  - rid: 1003
+  - rid: 1004
+  - rid: 1005
+  - rid: 1006
   references:
     version: 2
     RefIds:
-    - rid: 9001
+    - rid: 1001
       type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: "\uACF5\uACA9 \uC900\uBE44 \xB7 \uAE30\uC874 \uD074\uB85C\uC988\uC5C5"
-        Note: "\uBC29\uC5B4\uCC3D\uC774 \uC5F4\uB9AC\uAE30 \uC804\uC5D0 \uCE74\uBA54\uB77C
-          \uBCF5\uADC0\uB97C \uC644\uB8CC\uD569\uB2C8\uB2E4."
-        ZoomRatio: 0.65
-        FocusDuration: 0.16
-        HoldDuration: 0.2
-        ReleaseDuration: 0.14
-    - rid: 2817657493982281856
-      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
-      data:
-        Disabled: 1
-        DesignerLabel: 복귀 뒤 재접근 비활성
-        Note:
-        Destination: 0
-        Duration: 0.2
-        MoveEase: 6
-        EnemyHopHeight: 0
-    - rid: 8456611228188409976
+        DesignerLabel: "준비 클로즈업 · 판정 전에 복귀"
+        ZoomRatio: 0.78
+        FocusDuration: 0.1
+        HoldDuration: 0.18
+        ReleaseDuration: 0.1
+    - rid: 1002
       type: {class: Action_Move, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: 방어창 전에 공격 위치 정렬
-        Note:
+        DesignerLabel: "짧은 돌진"
         Destination: 5
-        Duration: 0.16
-        MoveEase: 6
-        EnemyHopHeight: 0
-    - rid: 8456611228188409978
-      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
-      data:
-        Disabled: 1
-        DesignerLabel: 공통 복귀 사용 · 중복 복귀 비활성
-        Note:
-        Destination: 4
         Duration: 0.14
-        MoveEase: 17
-        EnemyHopHeight: 0
-    - rid: 8456611228188409979
-      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+        MoveEase: 6
+        EnemyHopHeight: 0.65
+    - rid: 1003
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel:
-        Note:
-        AnimTriggerName: Attack
-        DelayAfter: 0
-    - rid: 8456611228188409980
-      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
-      data:
-        Disabled: 0
-        DesignerLabel:
-        Note:
-        SkillMultiplier: 2.2
-        Element: 0
-        ShakeCamera: 1
-    - rid: 8456611491438133252
+        DesignerLabel: "박자 변주"
+        WaitTime: 0.22
+    - rid: 1004
       type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel: "\uD0C0\uACA9 \uB300\uC751 \xB7 Z \uBC29\uC5B4 / X \uD68C\uD53C"
-        Note: "\uC804\uC870\uB294 \uC2E4\uC81C \uC785\uB825 \uC131\uACF5 \uAD6C\uAC04\uC5D0\uC11C
-          Center\uC5D0 \uD55C \uBC88\uB9CC \uD45C\uC2DC\uD569\uB2C8\uB2E4."
+        DesignerLabel: "전조마다 새 방어 · Z / X"
         PatternMode: 1
         Requirement: 2
         CounterDamageMultiplier: 1.8
         UseTelegraph: 0
         TelegraphVisualMode: 2
-        WarningVfxPrefab: {fileID: 0}
-        WarningSprite: {fileID: 0}
-        TelegraphAnimatorTriggerName:
-        TelegraphAttachPivotName: Center
         TelegraphDuration: 0
         DefenseOpenDelay: 0
-        TimeWindow: 0.5
+        TimeWindow: 0.68
         AllowNearSuccess: 1
         OverrideTimingProfile: 0
-        TimingProfile:
-          PerfectWindow: 0.12
-          GreatWindow: 0.22
-          GoodWindow: 0.4
         FailDamageMultiplier: 1
         ShakeOnFail: 0
-        FailShakeIntensity: 0.15
-        FailShakeDuration: 0.12
-        FailShakeSafety: 0
         DelayAfter: 0
         AttackAnimTriggerName: Attack
-        AttackAnimationLeadTime: 0.05
+        AttackAnimationLeadTime: 0
         ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
         ImpactCueLeadTime: 0.3
         ImpactCuePivotName: Center
         AttackReadyDuration: 0.08
         AttackAnimDelay: 0
-    - rid: 9223372036854775807
+    - rid: 1005
       type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
       data:
         Disabled: 0
-        DesignerLabel:
-        Note:
+        DesignerLabel: "타격 이펙트"
         VfxPrefab: {fileID: 4748681987041982144, guid: a92d3e7dae3e14040994a16acae887e0, type: 3}
         Pivot: 0
         UseActorRotation: 0
+    - rid: 1006
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "방어 결과 피해"
+        SkillMultiplier: 2.25
+        Element: 2
+        ShakeCamera: 0

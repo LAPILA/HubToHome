@@ -39,7 +39,7 @@ public static class PowerProgressionService
                 changed |= AddSkillId(data.DefaultSkills[i], character.UnlockedSkillIDs, known);
         }
 
-        if (data != null && data.PowerUnlocks != null)
+        if (data != null && data.AllowLegacyLevelUnlocks && data.PowerUnlocks != null)
         {
             int level = Math.Max(1, character.Level);
             for (int i = 0; i < data.PowerUnlocks.Count; i++)
@@ -80,7 +80,7 @@ public static class PowerProgressionService
                 AddView(result, added, unlocked, equipped, data.DefaultSkills[i], 1);
         }
 
-        if (data != null && data.PowerUnlocks != null)
+        if (data != null && data.AllowLegacyLevelUnlocks && data.PowerUnlocks != null)
         {
             for (int i = 0; i < data.PowerUnlocks.Count; i++)
             {

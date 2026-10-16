@@ -40,22 +40,25 @@ public interface ICharacterStatsReader
 public sealed class StatBlock
 {
     // 레이어 계산 대상인 기본 전투 능력치.
-    public int MaxHP = 100;
-    public int MaxAP = 50;
-    public int ATK = 10;
-    public int DEF = 5;
-    public int SPD = 10;
+    [InspectorName("최대 HP")] public int MaxHP = 100;
+    [InspectorName("최대 AP")] public int MaxAP = 50;
+    [InspectorName("공격력")] public int ATK = 10;
+    [InspectorName("방어력")] public int DEF = 5;
+    [InspectorName("속도")] public int SPD = 10;
 
     // 피해·상태 판정에 사용하는 저항과 피해 배율.
+    [InspectorName("물리 피해 배율"), Tooltip("캐릭터 기본값: 1=정상, 0.5=절반, 0=면역, 1.5=약점. 장비에서는 더할 보정값입니다.")]
     public float PhysicalResistance = 1f;
-    public float FireResistance = 1f;
-    public float IceResistance = 1f;
-    public float ElectricResistance = 1f;
-    public float CorrosionResistance = 1f;
+    [InspectorName("화염 피해 배율")] public float FireResistance = 1f;
+    [InspectorName("냉기 피해 배율")] public float IceResistance = 1f;
+    [InspectorName("전기 피해 배율")] public float ElectricResistance = 1f;
+    [InspectorName("부식 피해 배율")] public float CorrosionResistance = 1f;
 
-    public float IncomingDamageMultiplier = 1f;
-    public float OutgoingDamageMultiplier = 1f;
+    [InspectorName("받는 피해 전체 배율")] public float IncomingDamageMultiplier = 1f;
+    [InspectorName("주는 피해 전체 배율")] public float OutgoingDamageMultiplier = 1f;
 
+    [InspectorName("상태 적용 배율 (상태 ID별)")]
+    [Tooltip("기본 1, 0=면역. 누적형 속성 상태는 누적량에, 기존 확률형 효과는 부여 확률에 곱합니다. 속성 피해 배율과 별개입니다. 장비 값은 이 기본값에 더해집니다.")]
     public Dictionary<string, float> StatusResistances = new Dictionary<string, float>();
 
     public static StatBlock CreateZeroModifier()
@@ -95,8 +98,9 @@ public sealed class StatBlock
             OutgoingDamageMultiplier = OutgoingDamageMultiplier,
         };
 
-        foreach (var pair in StatusResistances)
-            clone.StatusResistances[pair.Key] = pair.Value;
+        if (StatusResistances != null)
+            foreach (var pair in StatusResistances)
+                clone.StatusResistances[pair.Key] = pair.Value;
 
         return clone;
     }
@@ -157,7 +161,7 @@ public sealed class StatBlock
         if (string.IsNullOrWhiteSpace(effectId))
             return 1f;
 
-        return StatusResistances.TryGetValue(effectId, out float value) ? value : 1f;
+        return StatusResistances != null && StatusResistances.TryGetValue(effectId, out float value) ? value : 1f;
     }
 
     public void SetStatusResistance(string effectId, float value)
@@ -165,6 +169,7 @@ public sealed class StatBlock
         if (string.IsNullOrWhiteSpace(effectId))
             throw new ArgumentException("상태이상 ID는 비어 있을 수 없습니다.", nameof(effectId));
 
+        StatusResistances ??= new Dictionary<string, float>();
         StatusResistances[effectId] = value;
     }
 
@@ -332,7 +337,7 @@ public sealed class StatModifier
 
         foreach (var pair in values.StatusResistances)
         {
-            if (!Mathf.Approximately(pair.Value, 0f))
+            if (!string.IsNullOrWhiteSpace(pair.Key) && !Mathf.Approximately(pair.Value, 0f))
             {
                 destination.Add(ForStatusResistance(
                     layer,
@@ -384,6 +389,19 @@ public static class CharacterStatsCalculator
             throw new ArgumentNullException(nameof(input));
 
         var output = input.Clone();
+        // 보정 블록의 음수는 정상 값이므로 Clone에서는 바꾸지 않습니다.
+        // 실제 기본/최종 수치로 계산할 때만 손상된 배율을 중립(1)로 복구합니다.
+        for (int i = 0; i < 5; i++)
+        {
+            DamageElement element = GetElement(i);
+            output.SetElementResistance(element, SafeMultiplier(input.GetElementResistance(element)));
+        }
+        output.IncomingDamageMultiplier = SafeMultiplier(input.IncomingDamageMultiplier);
+        output.OutgoingDamageMultiplier = SafeMultiplier(input.OutgoingDamageMultiplier);
+        if (input.StatusResistances != null)
+            foreach (var pair in input.StatusResistances)
+                if (string.IsNullOrWhiteSpace(pair.Key)) output.StatusResistances.Remove(pair.Key);
+                else output.SetStatusResistance(pair.Key, SafeMultiplier(pair.Value));
         if (modifiers == null || modifiers.Count == 0)
             return output;
 
@@ -401,7 +419,8 @@ public static class CharacterStatsCalculator
         for (int i = 0; i < modifiers.Count; i++)
         {
             StatModifier modifier = modifiers[i];
-            if (modifier == null || modifier.Layer != layer)
+            if (modifier == null || modifier.Layer != layer || !IsFinite(modifier.FlatValue)
+                || !IsFinite(modifier.AdditivePercent))
                 continue;
 
             switch (modifier.Target)
@@ -456,7 +475,7 @@ public static class CharacterStatsCalculator
             var element = GetElement(i);
             float value = output.GetElementResistance(element);
             float resolved = (value + resistanceFlat[i]) * (1f + resistancePercent[i]);
-            output.SetElementResistance(element, Mathf.Max(0f, resolved));
+            output.SetElementResistance(element, SafeMultiplier(resolved, value));
         }
 
         var statusKeys = new HashSet<string>(statusFlat.Keys);
@@ -473,15 +492,13 @@ public static class CharacterStatsCalculator
                 : 0f;
             float value = output.GetStatusResistance(key);
             float resolved = (value + flatValue) * (1f + percentValue);
-            output.SetStatusResistance(key, Mathf.Max(0f, resolved));
+            output.SetStatusResistance(key, SafeMultiplier(resolved, value));
         }
 
-        output.IncomingDamageMultiplier = Mathf.Max(
-            0f,
-            (output.IncomingDamageMultiplier + incomingFlat) * (1f + incomingPercent));
-        output.OutgoingDamageMultiplier = Mathf.Max(
-            0f,
-            (output.OutgoingDamageMultiplier + outgoingFlat) * (1f + outgoingPercent));
+        output.IncomingDamageMultiplier = SafeMultiplier(
+            (output.IncomingDamageMultiplier + incomingFlat) * (1f + incomingPercent), output.IncomingDamageMultiplier);
+        output.OutgoingDamageMultiplier = SafeMultiplier(
+            (output.OutgoingDamageMultiplier + outgoingFlat) * (1f + outgoingPercent), output.OutgoingDamageMultiplier);
 
         return output;
     }
@@ -496,7 +513,8 @@ public static class CharacterStatsCalculator
         for (int i = 0; i < modifiers.Count; i++)
         {
             StatModifier modifier = modifiers[i];
-            if (modifier == null || modifier.Layer != layer
+            if (modifier == null || modifier.Layer != layer || !IsFinite(modifier.FlatValue)
+                || !IsFinite(modifier.AdditivePercent)
                 || modifier.Target != StatModifierTarget.Primary || modifier.StatType != type) continue;
             flat += modifier.FlatValue;
             percent += modifier.AdditivePercent;
@@ -506,11 +524,16 @@ public static class CharacterStatsCalculator
 
     private static int ResolvePrimaryValue(int input, StatType type, float flat, float percent)
     {
-        float resolved = (input + flat) * (1f + percent);
-        float minimum = type == StatType.MaxAP ? 0f : 1f;
+        double resolved = ((double)input + flat) * (1d + percent);
+        int minimum = type == StatType.MaxAP || type == StatType.DEF ? 0 : 1;
+        if (double.IsNaN(resolved) || double.IsInfinity(resolved)) return Math.Max(minimum, input);
         // Unity RoundToInt는 .5를 짝수로 보내므로, 스탯은 일반적인 반올림 규칙을 사용한다.
-        return Mathf.FloorToInt(Mathf.Max(minimum, resolved) + 0.5f);
+        return (int)Math.Min(int.MaxValue, Math.Floor(Math.Max(minimum, resolved) + 0.5d));
     }
+
+    private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+    private static float SafeMultiplier(float value, float fallback = 1f)
+        => IsFinite(value) ? Mathf.Max(0f, value) : fallback;
 
     // 성장 결과를 시작점으로 장비와 전투 보정을 순서대로 합성한다.
     public static StatBlock Resolve(

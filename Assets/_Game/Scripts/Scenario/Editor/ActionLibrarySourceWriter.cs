@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using static ScenarioLibraryYamlUtility;
 using System.Text;
 
 public sealed class ActionLibrarySourceWriteResult
@@ -181,76 +182,4 @@ public static class ActionLibrarySourceWriter
         }
     }
 
-    private static string Number(double value)
-    {
-        return value.ToString("0.################", CultureInfo.InvariantCulture);
-    }
-
-    private static void Optional(StringBuilder builder, int indent, string key, string value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            Key(builder, indent, key, value);
-        }
-    }
-
-    private static void Key(StringBuilder builder, int indent, string key, string value)
-    {
-        Indent(builder, indent);
-        builder.Append(key);
-        builder.Append(": ");
-        builder.AppendLine(Quote(value));
-    }
-
-    private static void Raw(StringBuilder builder, int indent, string key, string value)
-    {
-        Indent(builder, indent);
-        builder.Append(key);
-        builder.Append(": ");
-        builder.AppendLine(value ?? string.Empty);
-    }
-
-    private static void KeyOnly(StringBuilder builder, int indent, string key)
-    {
-        Indent(builder, indent);
-        builder.Append(key);
-        builder.AppendLine(":");
-    }
-
-    private static void List(StringBuilder builder, int indent, string key, IList<string> values)
-    {
-        Indent(builder, indent);
-        builder.Append(key);
-        builder.Append(": [");
-        if (values != null)
-        {
-            for (int i = 0; i < values.Count; i++)
-            {
-                if (i > 0)
-                {
-                    builder.Append(", ");
-                }
-
-                builder.Append(Quote(values[i]));
-            }
-        }
-
-        builder.AppendLine("]");
-    }
-
-    private static string Quote(string value)
-    {
-        string text = value ?? string.Empty;
-        return "\"" + text
-            .Replace("\\", "\\\\")
-            .Replace("\"", "\\\"")
-            .Replace("\r", "\\r")
-            .Replace("\n", "\\n")
-            .Replace("\t", "\\t") + "\"";
-    }
-
-    private static void Indent(StringBuilder builder, int level)
-    {
-        builder.Append(' ', level * 2);
-    }
 }

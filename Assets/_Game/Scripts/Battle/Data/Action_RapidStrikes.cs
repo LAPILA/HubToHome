@@ -12,7 +12,8 @@ public sealed class Action_RapidStrikes : SkillActionBlock
     [LabelText("QTE 표시 간격(초)"), MinValue(0.2f)] public float PromptInterval = 0.65f;
     [LabelText("입력 허용 시간(초)"), MinValue(0.1f)] public float InputWindow = 0.45f;
     [LabelText("한 타 피해 배율"), MinValue(0f)] public float DamagePerStrike = 0.12f;
-    [LabelText("QTE 성공 배율"), MinValue(1f)] public float SuccessMultiplier = 1.6f;
+    [HideInInspector] public float SuccessMultiplier = 1.6f; // 구형 데이터 호환
+    [LabelText("QTE 실패 피해 배율"), Range(0f, 0.99f)] public float FailureMultiplier = 0.5f;
     [LabelText("피해 속성")] public DamageElement Element = DamageElement.Physical;
     [LabelText("타격 좌우 이동 폭"), Range(0f, 0.5f)] public float SlashTravel = 0.15f;
 
@@ -28,7 +29,7 @@ public sealed class Action_RapidStrikes : SkillActionBlock
         && Positive(HitInterval) && HitInterval >= 0.05f && HitInterval <= Duration && Duration / HitInterval <= 200f
         && Positive(PromptInterval) && PromptInterval >= 0.2f && Positive(InputWindow) && InputWindow <= PromptInterval
         && !float.IsNaN(DamagePerStrike) && !float.IsInfinity(DamagePerStrike) && DamagePerStrike >= 0f
-        && Positive(SuccessMultiplier) && SuccessMultiplier >= 1f
+        && !float.IsNaN(FailureMultiplier) && FailureMultiplier >= 0f && FailureMultiplier < 1f
         && !float.IsNaN(SlashTravel) && !float.IsInfinity(SlashTravel) && SlashTravel >= 0f;
 
     private static bool Positive(float value) => !float.IsNaN(value) && !float.IsInfinity(value) && value > 0f;
@@ -98,12 +99,12 @@ public sealed class Action_RapidStrikes : SkillActionBlock
                         hits++;
                         struck = true;
                         CharacterBase target = context.MainTarget;
-                        float multiplier = DamagePerStrike * (successfulPrompt ? SuccessMultiplier : 1f)
+                        float multiplier = DamagePerStrike * PlayerAttackQtePolicy.DamageMultiplier(successfulPrompt ? 1f : 0f, FailureMultiplier)
                             * context.EffectiveDamageMultiplier;
                         int previousHp = target.CurrentHP;
-                        DamageResult result = target.TakeDamage(Mathf.RoundToInt(player.ATK * Mathf.Max(0f, multiplier)), Element, player);
+                        DamageResult result = context.ApplySkillHit(target, Mathf.RoundToInt(player.ATK * Mathf.Max(0f, multiplier)), Element);
                         if (BattleManager.Instance != null)
-                            BattleManager.Instance.InvokeDamageEvent(player, target, result.FinalDamage, successfulPrompt, previousHp);
+                            BattleManager.Instance.InvokeDamageEvent(player, target, result.FinalDamage, successfulPrompt, previousHp, result.Element, context.DamageBatchId);
                     }
                     if (struck && player != null && player.IsAlive)
                     {

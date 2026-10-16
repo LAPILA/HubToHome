@@ -15,8 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "\uB0C9\uAC01\uD0C4 \uBC1C\uC0AC"
   SkillID: lab.bunny.shot_ice
-  Description: "\uBE59\uACB0 \uC18D\uC131 1.3\uBC30 \uD22C\uC0AC\uCCB4. \uACF5\uACA9
-    QTE \uC131\uACF5 \uC2DC 1.5\uBC30, \uC2E4\uD328 \uC2DC 0.75\uBC30."
+  Description: "빙결 속성 탄환으로 적을 공격한다."
   UsageProfile: 1
   APCost: 8
   TargetType: 1

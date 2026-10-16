@@ -1,5 +1,6 @@
 using System;
 using DG.Tweening;
+using Sirenix.OdinInspector;
 using TMPro;
 using UnityEngine;
 
@@ -23,9 +24,9 @@ public struct BattleDamagePopupAnimationSettings
         SettleDuration = 0.12f,
         HoldDuration = 0.30f,
         FadeDuration = 0.24f,
-        LaunchOffset = new Vector2(18f, 30f),
-        SettleOffset = new Vector2(24f, 22f),
-        FadeOffset = new Vector2(30f, 42f),
+        LaunchOffset = new Vector2(8f, 14f),
+        SettleOffset = new Vector2(12f, 10f),
+        FadeOffset = new Vector2(16f, 24f),
         CriticalGrowDuration = 0.09f,
         CriticalStartScale = 0.45f,
         CriticalEndScale = 1.65f
@@ -45,6 +46,34 @@ public struct BattleDamagePopupAnimationSettings
     }
 }
 
+[Serializable]
+public struct BattleDamagePopupPulseSettings
+{
+    [LabelText("일반 타격 확대"), Range(1f, 1.35f)] public float NormalScale;
+    [LabelText("치명타 확대"), Range(1f, 1.35f)] public float CriticalScale;
+    [LabelText("커지는 시간"), Range(.01f, .1f)] public float GrowDuration;
+    [LabelText("복귀 시간"), Range(.03f, .3f)] public float ReturnDuration;
+    [LabelText("정점 밝기 강조"), Range(0f, .4f)] public float Highlight;
+
+    public static BattleDamagePopupPulseSettings Default => new BattleDamagePopupPulseSettings
+    {
+        NormalScale = 1.12f, CriticalScale = 1.18f,
+        GrowDuration = .04f, ReturnDuration = .12f, Highlight = .2f
+    };
+
+    public BattleDamagePopupPulseSettings Sanitized()
+    {
+        var value = this;
+        if (value.NormalScale < 1f || value.CriticalScale < 1f) value = Default;
+        value.NormalScale = Mathf.Clamp(value.NormalScale, 1f, 1.35f);
+        value.CriticalScale = Mathf.Clamp(value.CriticalScale, value.NormalScale, 1.35f);
+        value.GrowDuration = Mathf.Clamp(value.GrowDuration, .01f, .1f);
+        value.ReturnDuration = Mathf.Clamp(value.ReturnDuration, .03f, .3f);
+        value.Highlight = Mathf.Clamp(value.Highlight, 0f, .4f);
+        return value;
+    }
+}
+
 [DisallowMultipleComponent]
 public sealed class BattleDamagePopupView : MonoBehaviour
 {
@@ -53,6 +82,11 @@ public sealed class BattleDamagePopupView : MonoBehaviour
     [SerializeField] private CanvasGroup _canvasGroup;
 
     private Sequence _sequence;
+    private Sequence _totalPulse;
+    private string _pendingTotalText;
+    private Color _totalColor;
+    private bool _totalGrowing;
+    private bool _pendingCritical;
     private Action<BattleDamagePopupView> _release;
     private bool _completionIssued;
 
@@ -60,6 +94,10 @@ public sealed class BattleDamagePopupView : MonoBehaviour
     public TMP_Text Label => _label;
     public CanvasGroup CanvasGroup => _canvasGroup;
     public Sequence ActiveSequence => _sequence;
+    public Sequence ActiveTotalPulse => _totalPulse;
+    public bool IsReady => _rectTransform != null && _label != null && _canvasGroup != null;
+    // 정점에서 숫자를 교체하기 전에 넓어진 새 숫자의 영역부터 확보합니다.
+    public string LayoutContent => _pendingTotalText ?? (_label != null ? _label.text : string.Empty);
 
     public void Initialize(
         RectTransform rectTransform,
@@ -88,6 +126,11 @@ public sealed class BattleDamagePopupView : MonoBehaviour
         }
 
         ResetVisualState(Vector2.zero);
+    }
+
+    public void SetFontSize(float size)
+    {
+        if (_label != null) _label.fontSize = Mathf.Max(1f, size);
     }
 
     public void Play(
@@ -122,20 +165,36 @@ public sealed class BattleDamagePopupView : MonoBehaviour
         Vector2 settlePosition = startPosition + new Vector2(timing.SettleOffset.x * direction, timing.SettleOffset.y);
         Vector2 fadePosition = startPosition + new Vector2(timing.FadeOffset.x * direction, timing.FadeOffset.y);
 
-        _sequence = DOTween.Sequence().SetId(this);
-        _sequence.Append(_rectTransform.DOAnchorPos(launchPosition, timing.LaunchDuration).SetEase(Ease.OutQuad));
+        // 풀 재사용 전 외부 Kill이 일어나도 다른 재활용 트윈의 핸들을 가리키지 않습니다.
+        _sequence = DOTween.Sequence().SetRecyclable(false).SetId(this);
+        _sequence.Append(MoveTo(launchPosition, timing.LaunchDuration).SetEase(Ease.OutQuad));
         if (isCritical)
         {
-            _sequence.Join(_rectTransform
-                .DOScale(Vector3.one * timing.CriticalEndScale, timing.CriticalGrowDuration)
-                .SetEase(Ease.OutExpo));
+            RectTransform rect = _rectTransform;
+            _sequence.Join(DOTween.To(() => rect != null ? rect.localScale : Vector3.one,
+                scale => { if (rect != null) rect.localScale = scale; },
+                Vector3.one * timing.CriticalEndScale, timing.CriticalGrowDuration).SetEase(Ease.OutExpo));
         }
 
-        _sequence.Append(_rectTransform.DOAnchorPos(settlePosition, timing.SettleDuration).SetEase(Ease.InQuad));
+        _sequence.Append(MoveTo(settlePosition, timing.SettleDuration).SetEase(Ease.InQuad));
         _sequence.AppendInterval(timing.HoldDuration);
-        _sequence.Append(_rectTransform.DOAnchorPos(fadePosition, timing.FadeDuration).SetEase(Ease.OutSine));
-        _sequence.Join(_canvasGroup.DOFade(0f, timing.FadeDuration).SetEase(Ease.InSine));
+        _sequence.Append(MoveTo(fadePosition, timing.FadeDuration).SetEase(Ease.OutSine));
+        _sequence.Join(FadeToZero(timing.FadeDuration).SetEase(Ease.InSine));
         _sequence.OnComplete(CompleteOnce);
+    }
+
+    private Tween MoveTo(Vector2 target, float duration)
+    {
+        RectTransform rect = _rectTransform;
+        return DOTween.To(() => rect != null ? rect.anchoredPosition : target,
+            position => { if (rect != null) rect.anchoredPosition = position; }, target, duration);
+    }
+
+    private Tween FadeToZero(float duration)
+    {
+        CanvasGroup group = _canvasGroup;
+        return DOTween.To(() => group != null ? group.alpha : 0f,
+            alpha => { if (group != null) group.alpha = alpha; }, 0f, Mathf.Max(0.01f, duration));
     }
 
     public void StopAndReset()
@@ -146,6 +205,96 @@ public sealed class BattleDamagePopupView : MonoBehaviour
         ResetVisualState(Vector2.zero);
         if (gameObject.activeSelf)
             gameObject.SetActive(false);
+    }
+
+    /// <summary>누적 숫자는 자리에서 갱신합니다. 연타마다 이동/전체 등장 모션을 다시 시작하지 않습니다.</summary>
+    public void ShowTotal(long total, Color color, bool critical, Action<BattleDamagePopupView> release)
+        => ShowTotal(total, color, critical, release, BattleDamagePopupPulseSettings.Default);
+
+    public void ShowTotal(long total, Color color, bool critical, Action<BattleDamagePopupView> release,
+        BattleDamagePopupPulseSettings settings)
+    {
+        if (!IsReady)
+        {
+            StopAndReset();
+            release?.Invoke(this);
+            return;
+        }
+        // 페이드만 중단합니다. 확대 도중의 연타는 정점을 미루지 않고 최신 합계를 덮어씁니다.
+        if (_sequence != null) _sequence.Kill(false);
+        _sequence = null;
+        gameObject.SetActive(true);
+        _release = release;
+        _completionIssued = false;
+        bool first = _pendingTotalText == null;
+        _pendingTotalText = total.ToString();
+        _totalColor = color;
+        _canvasGroup.alpha = 1f;
+        if (first)
+        {
+            _label.text = _pendingTotalText;
+            _label.color = color;
+            _rectTransform.localScale = Vector3.one;
+        }
+        if (_totalGrowing && _totalPulse != null && _totalPulse.IsActive())
+        {
+            _pendingCritical |= critical;
+            return;
+        }
+
+        _totalPulse?.Kill(false);
+        _totalGrowing = true;
+        _pendingCritical = critical;
+        BattleDamagePopupPulseSettings timing = settings.Sanitized();
+        RectTransform rect = _rectTransform;
+        TextMeshProUGUI label = _label;
+        float startScale = Mathf.Clamp(rect.localScale.x, 1f, timing.CriticalScale);
+        float peakScale = timing.NormalScale;
+        _totalPulse = DOTween.Sequence().SetUpdate(true).SetRecyclable(false).SetId(this);
+        _totalPulse.Append(DOTween.To(() => 0f, progress =>
+        {
+            peakScale = Mathf.Max(startScale, _pendingCritical ? timing.CriticalScale : timing.NormalScale);
+            if (rect != null) rect.localScale = Vector3.one * Mathf.Lerp(startScale, peakScale, progress);
+        }, 1f, timing.GrowDuration).SetEase(Ease.OutQuad));
+        _totalPulse.AppendCallback(() =>
+        {
+            _totalGrowing = false;
+            if (label != null)
+            {
+                label.text = _pendingTotalText;
+                label.color = Color.Lerp(_totalColor, Color.white, timing.Highlight);
+            }
+        });
+        _totalPulse.Append(DOTween.To(() => 0f, progress =>
+        {
+            if (rect != null) rect.localScale = Vector3.one * Mathf.Lerp(peakScale, 1f, progress);
+            if (label != null) label.color = Color.Lerp(
+                Color.Lerp(_totalColor, Color.white, timing.Highlight), _totalColor, progress);
+        }, 1f, timing.ReturnDuration).SetEase(Ease.OutCubic));
+        _totalPulse.OnComplete(() =>
+        {
+            _totalPulse = null;
+            _totalGrowing = false;
+            if (rect != null) rect.localScale = Vector3.one;
+            if (label != null) label.color = _totalColor;
+        });
+    }
+
+    public void SetTotalPosition(Vector2 position)
+    {
+        if (_rectTransform != null)
+            _rectTransform.anchoredPosition = new Vector2(Mathf.Round(position.x), Mathf.Round(position.y));
+    }
+
+    public void FinishTotal(float hold, float fade)
+    {
+        if (_sequence != null) _sequence.Kill(false);
+        _sequence = DOTween.Sequence().SetId(this).SetUpdate(true).SetRecyclable(false);
+        float pulseRemaining = _totalPulse != null && _totalPulse.IsActive()
+            ? Mathf.Max(0f, _totalPulse.Duration() - _totalPulse.Elapsed()) : 0f;
+        _sequence.AppendInterval(Mathf.Max(pulseRemaining, Mathf.Max(0f, hold)));
+        _sequence.Append(FadeToZero(fade));
+        _sequence.OnComplete(CompleteOnce);
     }
 
     private void CompleteOnce()
@@ -164,6 +313,10 @@ public sealed class BattleDamagePopupView : MonoBehaviour
     {
         DOTween.Kill(this, false);
         _sequence = null;
+        _totalPulse = null;
+        _totalGrowing = false;
+        _pendingCritical = false;
+        _pendingTotalText = null;
     }
 
     private void ResetVisualState(Vector2 anchoredPosition)

@@ -725,6 +725,7 @@ public sealed class CinematicLetterboxOverlay : MonoBehaviour
     private RectTransform _top;
     private RectTransform _bottom;
     private float _currentThickness;
+    private Vector2 _appliedHeights = new Vector2(-1f, -1f);
 
     public float CurrentThickness
     {
@@ -831,20 +832,43 @@ public sealed class CinematicLetterboxOverlay : MonoBehaviour
     private void ApplyThickness(float thickness)
     {
         _currentThickness = Mathf.Clamp01(thickness);
-        float height = Screen.height * _currentThickness;
-        if (_top != null)
-        {
-            _top.sizeDelta = new Vector2(0f, height);
-        }
-
-        if (_bottom != null)
-        {
-            _bottom.sizeDelta = new Vector2(0f, height);
-        }
+        RefreshBarGeometry();
 
         if (_currentThickness <= 0.001f)
         {
             gameObject.SetActive(false);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        // 표시가 끝난 두께도 도킹 시작/종료와 출력 크기 변경을 따라갑니다.
+        // 원본 thickness는 보존하여 다음 hide 트윈과 전체 연출 복귀에 사용합니다.
+        RefreshBarGeometry();
+    }
+
+    public static Vector2 CalculateBarHeights(float screenHeight, float thickness, float? bottomLimit)
+    {
+        float height = Mathf.Max(0f, screenHeight) * Mathf.Clamp01(thickness);
+        float bottom = bottomLimit.HasValue ? Mathf.Min(height, Mathf.Max(0f, bottomLimit.Value)) : height;
+        return new Vector2(height, bottom);
+    }
+
+    private void RefreshBarGeometry()
+    {
+        float? bottomLimit = BattleHudViewport.TryGetDockedDialogueBottomLimit(out float limit)
+            ? limit : (float?)null;
+        Vector2 heights = CalculateBarHeights(Screen.height, _currentThickness, bottomLimit);
+        if (_appliedHeights == heights) return;
+        _appliedHeights = heights;
+        if (_top != null)
+        {
+            _top.sizeDelta = new Vector2(0f, heights.x);
+        }
+
+        if (_bottom != null)
+        {
+            _bottom.sizeDelta = new Vector2(0f, heights.y);
         }
     }
 }

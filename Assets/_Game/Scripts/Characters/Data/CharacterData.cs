@@ -38,6 +38,14 @@ public class CharacterData : SerializedScriptableObject
     [BoxGroup("Battle Presentation")]
     public Color BattleSymbolColor = Color.white;
 
+    [BoxGroup("Battle Presentation"), LabelText("캐릭터 스프라이트 색")]
+    [Tooltip("UI 대표색과 별개입니다. 흰색은 원본 스프라이트 색을 유지합니다.")]
+    public Color BattleSpriteTint = Color.white;
+
+    [BoxGroup("Battle Loadout"), LabelText("누적 상태 규칙"), AssetsOnly]
+    [Tooltip("화상·냉기·감전·출혈·중독의 공용 제작 수치입니다. 현재 값은 캐릭터별로 보관합니다.")]
+    public ElementalStatusProfile StatusProfile;
+
     [BoxGroup("Identity")] public string CharacterID = "player_001";
     [BoxGroup("Identity")] public string DisplayName = "Player";
     [BoxGroup("Identity"), LabelText("이름 소스")]
@@ -61,7 +69,7 @@ public class CharacterData : SerializedScriptableObject
     public GrowthBalanceProfile GrowthProfile;
 
     [BoxGroup("Progression")]
-    [Tooltip("캐릭터별 스킬 트리입니다. 비워 두면 기존 기본/레벨 해금 목록만 사용합니다.")]
+    [Tooltip("캐릭터별 포인트 구매 트리입니다. 비워 두면 기본 스킬만 제공합니다.")]
     public SkillTreeDefinition SkillTree;
 
     [HideInInspector] public int MaxLevel = 99;
@@ -76,7 +84,12 @@ public class CharacterData : SerializedScriptableObject
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<SkillData> DefaultSkills = new List<SkillData>();
 
+    [BoxGroup("Battle Loadout"), LabelText("레거시 레벨 자동 해금 허용")]
+    [Tooltip("기본은 끕니다. 신규 스킬은 스킬 트리에서 포인트로 구매합니다. 과거 저장의 습득 스킬은 유지합니다.")]
+    public bool AllowLegacyLevelUnlocks;
+
     [BoxGroup("Battle Loadout")]
+    [ShowIf(nameof(AllowLegacyLevelUnlocks))]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<CharacterPowerUnlock> PowerUnlocks = new List<CharacterPowerUnlock>();
 

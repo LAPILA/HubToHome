@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "공중 회전 베기"
   SkillID: lab.bunny.aerial_cross_slash
-  Description: "적 앞으로 접근해 도약하면 카메라가 한 바퀴 회전한다. X 입력 성공 시 강화되어, 적 뒤로 급습한 뒤 앞뒤로 두 번 더 베어낸다."
+  Description: "공중에서 적의 빈틈을 파고들어 날카롭게 베어낸다."
   UsageProfile: 1
   APCost: 14
   TargetType: 1

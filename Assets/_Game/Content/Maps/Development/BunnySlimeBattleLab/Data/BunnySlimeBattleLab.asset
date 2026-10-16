@@ -15,8 +15,8 @@ MonoBehaviour:
   Encounters:
   - Id: "lab.bunny.integrated"
     Title: "토끼 슬라임 · 통합"
-    Summary: "Z / X / C · 투사체 · 상태 · 대사"
-    Description: "근접 → 단발탄 → C 특수 공격부터\n전체 패턴을 순서대로 확인합니다.\n\nHP 단계에 맞춰 대사·BGM 전환.\n아군 스킬, QTE와 회복 아이템도\n이 전투에서 함께 확인하세요."
+    Summary: "누적 상태 5종 · 소비 · 정화 · 50타"
+    Description: "기본 3명 · 각 6스킬로 상태 실험.\n화상·출혈 / 냉기·중독 / 감전\n역할에 따라 부여·소비를 비교.\n\n적의 타격에 누적 상태가 연결됩니다.\nZ 방어는 절반, 완전 방어는 0.\n대사·BGM·투사체 흐름은 유지."
     Enemy: {fileID: 11400000, guid: d43ee5dcadb816945862fc8c05072aff, type: 2}
     Scenario: {fileID: 11400000, guid: fb021001d617a0e48b2783a1552f3d04, type: 2}
     WeakenFrontLine: 0

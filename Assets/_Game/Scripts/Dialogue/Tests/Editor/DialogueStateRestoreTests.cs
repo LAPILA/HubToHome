@@ -16,10 +16,17 @@ public sealed class DialogueStateRestoreTests
     private DialogueManager _manager;
     private DialogueUI _panel;
     private DialogueData _dialogue;
+    private readonly System.Collections.Generic.Dictionary<FieldInfo, object> _inputState = new();
 
     [SetUp]
     public void SetUp()
     {
+        foreach (string name in new[] { "_consumedBattleUIFrame", "_consumedZAt", "_consumedXAt", "_consumedCAt",
+            "_suppressPlayerConfirmUntilFrame", "_suppressSharedUIUntilFrame", "_prevBattleNavigate", "_currBattleNavigate" })
+        {
+            FieldInfo field = typeof(GameInput).GetField(name, BindingFlags.Static | BindingFlags.NonPublic);
+            _inputState[field] = field.GetValue(null);
+        }
         _previousStateManager = GameStateManager.Instance;
         _previousDialogueManager = DialogueManager.Instance;
         SetStaticInstance(typeof(GameStateManager), null);
@@ -51,6 +58,8 @@ public sealed class DialogueStateRestoreTests
         UnityEngine.Object.DestroyImmediate(_dialogue);
         SetStaticInstance(typeof(DialogueManager), _previousDialogueManager);
         SetStaticInstance(typeof(GameStateManager), _previousStateManager);
+        foreach (var pair in _inputState) pair.Key.SetValue(null, pair.Value);
+        _inputState.Clear();
     }
 
     [TestCase(GameState.Exploration)]
@@ -117,6 +126,25 @@ public sealed class DialogueStateRestoreTests
     }
 
     [Test]
+    public void LostPresentation_CancelsOnlyTheMatchingPanel()
+    {
+        int cancelled = 0;
+        _manager.TryStartDialogue(_dialogue, null, () => cancelled++, null, out _);
+        var otherObject = new GameObject("UnrelatedPanel");
+        try
+        {
+            DialogueUI other = otherObject.AddComponent<DialogueUI>();
+            _manager.CancelPresentation(other);
+            Assert.That(_manager.IsPlaying, Is.True);
+            Assert.That(cancelled, Is.Zero);
+            _manager.CancelPresentation(_panel);
+            Assert.That(_manager.IsPlaying, Is.False);
+            Assert.That(cancelled, Is.EqualTo(1));
+        }
+        finally { UnityEngine.Object.DestroyImmediate(otherObject); }
+    }
+
+    [Test]
     public void DialogueRunnerCancel_ClearsBusyWithoutSuccessCallback()
     {
         var runner = new DialogueManagerRunner(_manager);
@@ -145,6 +173,39 @@ public sealed class DialogueStateRestoreTests
         Assert.That(_manager.IsPresentationVisible, Is.True);
         _manager.HideFinishedPresentation(generation);
         Assert.That(_manager.IsPresentationVisible, Is.False);
+    }
+
+    [Test]
+    public void BattleInputStaysBlockedWhileDialoguePanelIsClosing()
+    {
+        _state.ChangeState(GameState.Battle);
+        SetPrivateField(_panel, "_canvasGroup", _panelObject.AddComponent<CanvasGroup>());
+        _manager.TryStartDialogue(_dialogue, null, null, null, out int generation);
+        Assert.That(GameInput.IsBattleInputBlocked, Is.True);
+        Assert.That(GameInput.IsDefenseInputBlocked, Is.True);
+        _manager.EndDialogue();
+        Assert.That(_state.CurrentState, Is.EqualTo(GameState.Battle));
+        Assert.That(GameInput.IsBattleInputBlocked, Is.True);
+        Assert.That(GameInput.BattleUIInputConsumed, Is.True);
+        _manager.HideFinishedPresentation(generation);
+        Assert.That(GameInput.IsBattleInputBlocked, Is.False);
+    }
+
+    [Test]
+    public void DefensePressInsideDialogueIsConsumedUntilAnotherPress()
+    {
+        _manager.StartDialogue(_dialogue);
+        MethodInfo record = typeof(GameInput).GetMethod("RecordDefensePress", BindingFlags.Static | BindingFlags.NonPublic);
+        object[] arguments = { 10d, -1d, -2d };
+        record.Invoke(null, arguments);
+        Assert.That(arguments[1], Is.EqualTo(10d));
+        Assert.That(arguments[2], Is.EqualTo(10d));
+        _manager.EndDialogue();
+        _manager.HideFinishedPresentation(_manager.PlaybackGeneration);
+        arguments[0] = 11d;
+        record.Invoke(null, arguments);
+        Assert.That(arguments[1], Is.EqualTo(11d));
+        Assert.That(arguments[2], Is.EqualTo(10d));
     }
 
     [Test]
@@ -309,6 +370,82 @@ public sealed class DialogueStateRestoreTests
             UnityEngine.Object.DestroyImmediate(npcObject);
             UnityEngine.Object.DestroyImmediate(playerObject);
         }
+    }
+
+    [Test]
+    public void SkipRunsRemainingEventsOnceAndCompletesNormally()
+    {
+        int first = 0, second = 0, completed = 0;
+        Action firstHandler = () => first++;
+        Action secondHandler = () => second++;
+        _dialogue.Nodes[0].EventTriggerID = "test.skip.first";
+        _dialogue.Nodes.Add(new DialogueNode { DefaultText = "second", EventTriggerID = "test.skip.second" });
+        EventManager.Subscribe("test.skip.first", firstHandler);
+        EventManager.Subscribe("test.skip.second", secondHandler);
+        try
+        {
+            _manager.StartDialogue(_dialogue, () => completed++);
+            Assert.That(_manager.TrySkipRemainingDialogue(), Is.True);
+            Assert.That(first, Is.EqualTo(1), "이미 표시된 노드의 이벤트를 다시 실행하면 안 됩니다.");
+            Assert.That(second, Is.EqualTo(1));
+            Assert.That(completed, Is.EqualTo(1));
+            Assert.That(_manager.IsPlaying, Is.False);
+        }
+        finally
+        {
+            EventManager.Unsubscribe("test.skip.first", firstHandler);
+            EventManager.Unsubscribe("test.skip.second", secondHandler);
+        }
+    }
+
+    [Test]
+    public void SkipEventReentrancyCannotSkipNewPlayback()
+    {
+        DialogueData replacement = ScriptableObject.CreateInstance<DialogueData>();
+        replacement.Nodes.Add(new DialogueNode { DefaultText = "must stay visible" });
+        int staleEvent = 0;
+        Action replace = () => { _manager.CancelDialogue(); _manager.StartDialogue(replacement); };
+        Action stale = () => staleEvent++;
+        _dialogue.Nodes.Add(new DialogueNode { EventTriggerID = "test.skip.replace" });
+        _dialogue.Nodes.Add(new DialogueNode { EventTriggerID = "test.skip.stale" });
+        EventManager.Subscribe("test.skip.replace", replace);
+        EventManager.Subscribe("test.skip.stale", stale);
+        try
+        {
+            _manager.StartDialogue(_dialogue);
+            _manager.TrySkipRemainingDialogue();
+            Assert.That(_manager.IsPlaying, Is.True);
+            Assert.That(GetPrivateField<DialogueData>(_manager, "_currentDialogue"), Is.SameAs(replacement));
+            Assert.That(GetPrivateField<int>(_manager, "_currentNodeIndex"), Is.Zero);
+            Assert.That(staleEvent, Is.Zero);
+        }
+        finally
+        {
+            _manager.CancelDialogue();
+            EventManager.Unsubscribe("test.skip.replace", replace);
+            EventManager.Unsubscribe("test.skip.stale", stale);
+            UnityEngine.Object.DestroyImmediate(replacement);
+        }
+    }
+
+    [Test]
+    public void SkipBudgetYieldsBeforeVeryLongDialogueFinishes()
+    {
+        for (int i = 0; i < 80; i++) _dialogue.Nodes.Add(new DialogueNode { DefaultText = "line" });
+        _manager.StartDialogue(_dialogue);
+        _manager.TrySkipRemainingDialogue();
+        Assert.That(_manager.IsPlaying, Is.True);
+        Assert.That(GetPrivateField<int>(_manager, "_currentNodeIndex"), Is.EqualTo(64));
+        InvokePrivateLifecycle(_manager, "AdvanceSkippedDialogue");
+        Assert.That(_manager.IsPlaying, Is.False);
+    }
+
+    [Test]
+    public void SkipPolicyAlwaysStopsAtChoiceAndNaming()
+    {
+        Assert.That(DialogueSkipPolicy.RequiresInput(new DialogueNode { IsChoiceNode = true }), Is.True);
+        Assert.That(DialogueSkipPolicy.RequiresInput(new DialogueNode { EventTriggerID = "RequestName" }), Is.True);
+        Assert.That(DialogueSkipPolicy.RequiresInput(new DialogueNode { EventTriggerID = "give.item" }), Is.False);
     }
 
     private static void SetPrivateField<T>(object target, string fieldName, T value)

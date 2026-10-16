@@ -76,6 +76,80 @@ public sealed class BattleDamageFeedbackEventTests
     }
 
     [Test]
+    public void ElementAndBatchAreForwardedWithoutChangingLegacyDamage()
+    {
+        int legacyTotal = 0;
+        BattleDamageFeedback received = default;
+        _manager.OnDamageDealt += (_, amount, _) => legacyTotal += amount;
+        _manager.OnDamageFeedbackRequested += feedback => received = feedback;
+        using var action = _manager.DamageBatches.Begin();
+        _manager.InvokeDamageEvent(_source, _target, 12, true, 100, DamageElement.Ice);
+        Assert.That(received.Element, Is.EqualTo(DamageElement.Ice));
+        Assert.That(received.BatchId, Is.EqualTo(_manager.DamageBatches.CurrentId));
+        Assert.That(legacyTotal, Is.EqualTo(12));
+    }
+
+    [Test]
+    public void DirectHitDoesNotPublishElectricReactionTwice()
+    {
+        int electric = 0;
+        BattleDamageFeedback received = default;
+        _target.OnElementalDamage += (_, amount, kind) => { if (kind == ElementalStatusKind.Electric) electric += amount; };
+        _manager.OnDamageFeedbackRequested += feedback => received = feedback;
+        _target.Elements.Add(ElementalStatusKind.Electric, 30);
+        using var action = _manager.DamageBatches.Begin();
+        var context = new SkillContext { Actor = _source, DamageBatchId = _manager.DamageBatches.CurrentId };
+        int hp = _target.CurrentHP;
+        // Use the production direct-hit path. Source need not own a SkillData for this check.
+        DamageResult result = _target.TakeDamage(10, DamageElement.Fire);
+        _manager.InvokeDamageEvent(_source, _target, result.FinalDamage, false, hp, result.Element, context.DamageBatchId);
+        Assert.That(electric, Is.GreaterThan(0));
+        Assert.That(hp - _target.CurrentHP, Is.EqualTo(result.FinalDamage + electric));
+        Assert.That(received.Amount, Is.EqualTo(result.FinalDamage));
+    }
+
+    [Test]
+    public void DamageBatchesHandleNestedOutOfOrderAndStaleDisposal()
+    {
+        var tracker = new BattleDamageBatchTracker();
+        var ended = new System.Collections.Generic.List<long>();
+        tracker.Ended += ended.Add;
+        var first = tracker.Begin();
+        long firstId = tracker.CurrentId;
+        var second = tracker.Begin();
+        long secondId = tracker.CurrentId;
+        using (tracker.Activate(firstId)) Assert.That(tracker.CurrentId, Is.EqualTo(firstId));
+        Assert.That(tracker.CurrentId, Is.EqualTo(secondId));
+        first.Dispose();
+        Assert.That(tracker.CurrentId, Is.EqualTo(secondId));
+        tracker.Clear();
+        using var third = tracker.Begin();
+        long thirdId = tracker.CurrentId;
+        second.Dispose();
+        Assert.That(tracker.CurrentId, Is.EqualTo(thirdId));
+        Assert.That(ended, Is.EqualTo(new[] { firstId, secondId }));
+    }
+
+    [Test]
+    public void ClosingActivatedBatchStopsUsingItsIdBeforeEndCallbacks()
+    {
+        var tracker = new BattleDamageBatchTracker();
+        using var first = tracker.Begin();
+        long firstId = tracker.CurrentId;
+        var second = tracker.Begin();
+        long secondId = tracker.CurrentId;
+        long callbackId = -1;
+        tracker.Ended += _ => callbackId = tracker.CurrentId;
+        using (tracker.Activate(secondId))
+        {
+            second.Dispose();
+            Assert.That(tracker.CurrentId, Is.EqualTo(firstId));
+            Assert.That(callbackId, Is.EqualTo(firstId));
+        }
+        Assert.That(tracker.CurrentId, Is.EqualTo(firstId));
+    }
+
+    [Test]
     public void MissPublishesWhiteNonCriticalFeedbackWithoutLegacyDamageEvent()
     {
         int legacyCount = 0;

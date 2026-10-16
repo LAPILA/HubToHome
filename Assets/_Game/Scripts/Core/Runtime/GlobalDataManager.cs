@@ -7,6 +7,7 @@ public class OverworldEnemyRuntimeState
     public string EnemyId;
     public string SceneName;
     public bool IsDefeated;
+    public bool RespawnOnManualSave;
     public float CooldownUntilUnscaledTime;
     public float CooldownAlpha = 0.5f;
 }
@@ -36,7 +37,7 @@ public readonly struct PartyVitalsRestoreEvaluation
 /// 씬 전환 시에도 데이터를 유지하는 전역 싱글톤 매니저.
 /// 세이브 데이터(SSOT)의 런타임 저장소 역할을 합니다.
 /// </summary>
-public class GlobalDataManager : MonoBehaviour
+public partial class GlobalDataManager : MonoBehaviour
 {
     public static GlobalDataManager Instance { get; private set; }
 
@@ -92,11 +93,16 @@ public class GlobalDataManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this)
+        {
+            SaveManager.CancelPendingAutoSave();
             Instance = null;
+        }
     }
 
     private void InitializeDefaults()
     {
+        BattleRetryCheckpoint.ClearUnlessRestoring();
+        SaveManager.CancelPendingAutoSave();
         PlayerName = "Rapley";
         Money = 0;
         _eventFlags.Clear();
@@ -120,6 +126,7 @@ public class GlobalDataManager : MonoBehaviour
         SpawnY = 0f;
         LookingDir = 0;
         Party.Clear();
+        _partyProgression = new PartyProgressionSaveData();
     }
 
     public void ResetForNewGame()
@@ -190,6 +197,7 @@ public class GlobalDataManager : MonoBehaviour
         PowerProgressionService.SynchronizeUnlockedSkills(newData, characterData);
         SkillTreeProgressionService.Synchronize(newData, characterData);
         Party.Add(newData);
+        EnsureSharedPartyProgression();
         Debug.Log($"<color=yellow>[GlobalData] 파티원 초기화 완료: {newData.CharacterID} (이름: {PlayerName})</color>");
         return newData;
     }
@@ -201,15 +209,10 @@ public class GlobalDataManager : MonoBehaviour
         if (character == null || !Party.Contains(character) || amount <= 0)
             return null;
 
-        CharacterData data = CharacterDatabase.FindById(character.CharacterDataID);
-        CharacterLevelUpResult result = CharacterProgressionService.GrantExperience(
-            character,
-            data,
-            amount);
-        PowerProgressionService.SynchronizeUnlockedSkills(character, data);
-        SkillTreeProgressionService.Synchronize(character, data);
-        CharacterGrowthChanged?.Invoke(character);
-        return result;
+        var results = GrantPartyExperience(amount);
+        for (int i = 0; i < results.Count; i++)
+            if (results[i].CharacterDataId == character.CharacterDataID) return results[i];
+        return null;
     }
 
     public GrowthInvestmentResult TryInvestGrowthStat(
@@ -438,8 +441,8 @@ public class GlobalDataManager : MonoBehaviour
 
     private static bool CanMutateGrowth()
     {
-        return GameStateManager.Instance == null
-            || GameStateManager.Instance.CurrentState != GameState.Battle;
+        return (BattleManager.Instance == null || !BattleManager.Instance.IsBattleSessionActive)
+            && (GameStateManager.Instance == null || GameStateManager.Instance.CurrentState != GameState.Battle);
     }
 
     private CharacterSaveData FindPartyMember(string stableId)
@@ -741,8 +744,8 @@ public class GlobalDataManager : MonoBehaviour
             : 0;
         ItemData item = ItemDatabase.FindById(normalizedId);
         int maxStack = item == null
-            ? int.MaxValue
-            : item.IsStackable ? Mathf.Max(1, item.MaxStackSize) : 1;
+            ? 99
+            : item.IsStackable ? Mathf.Clamp(item.MaxStackSize, 1, 99) : 1;
         int next = (int)System.Math.Min((long)current + amount, maxStack);
         if (next <= current) return 0;
 
@@ -780,7 +783,7 @@ public class GlobalDataManager : MonoBehaviour
         int current = _equipmentInventoryDict.TryGetValue(normalizedId, out int existing)
             ? Mathf.Max(0, existing)
             : 0;
-        int next = (int)System.Math.Min((long)current + amount, int.MaxValue);
+        int next = (int)System.Math.Min((long)current + amount, 99);
         if (next <= current)
             return 0;
 
@@ -798,6 +801,8 @@ public class GlobalDataManager : MonoBehaviour
             return false;
 
         int remaining = current - amount;
+        if (remaining < EquipmentLoadoutService.CountEquipped(Party, normalizedId))
+            return false;
         if (remaining > 0)
             _equipmentInventoryDict[normalizedId] = remaining;
         else
@@ -1071,8 +1076,6 @@ public class GlobalDataManager : MonoBehaviour
     #region [ Save & Load ]
     public SaveData ToSaveData()
     {
-        SynchronizePartyGrowth();
-
         var data = new SaveData
         {
             playerName       = PlayerName, // 🚨 세이브 데이터에 이름 추가!
@@ -1091,8 +1094,11 @@ public class GlobalDataManager : MonoBehaviour
             EncounterMemory = CloneEncounterMemoryDictionary(_encounterMemory),
             OverworldEnemies = CloneOverworldEnemyStates(_overworldEnemyStates),
             PartyData     = CloneParty(Party),
+            PartyProgression = _partyProgression.Clone(),
             Money         = Money
         };
+        SynchronizePartyGrowth(data.PartyData);
+        data.PartyProgression = PartyProgressionService.NormalizeSnapshot(data.PartyProgression, data.PartyData);
         return data;
     }
 
@@ -1104,7 +1110,9 @@ public class GlobalDataManager : MonoBehaviour
             return;
         }
 
+        SaveManager.CancelPendingAutoSave();
         PendingEnemies ??= new List<EnemyData>();
+        BattleRetryCheckpoint.ClearUnlessRestoring();
         PendingEnemies.Clear();
         PendingBattleBGM = null;
         PendingBattleScenario = null;
@@ -1179,6 +1187,7 @@ public class GlobalDataManager : MonoBehaviour
                     EnemyId = enemyId,
                     SceneName = savedState?.SceneName ?? string.Empty,
                     IsDefeated = savedState != null && savedState.IsDefeated,
+                    RespawnOnManualSave = savedState != null && savedState.RespawnOnManualSave,
                     CooldownUntilUnscaledTime = 0f,
                     CooldownAlpha = 0.5f
                 };
@@ -1186,6 +1195,8 @@ public class GlobalDataManager : MonoBehaviour
         }
 
         Party = CloneParty(data.PartyData);
+        _partyProgression = PartyProgressionService.NormalizeSnapshot(data.PartyProgression, Party);
+        EnsureSharedPartyProgression();
         EnsureEquipmentOwnershipCoversLoadouts();
         for (int i = 0; i < Party.Count; i++)
         {
@@ -1239,10 +1250,13 @@ public class GlobalDataManager : MonoBehaviour
     }
 
     private void SynchronizePartyGrowth()
+        => SynchronizePartyGrowth(Party);
+
+    private static void SynchronizePartyGrowth(IReadOnlyList<CharacterSaveData> party)
     {
-        for (int i = 0; i < Party.Count; i++)
+        for (int i = 0; i < party.Count; i++)
         {
-            CharacterSaveData member = Party[i];
+            CharacterSaveData member = party[i];
             if (member == null)
                 continue;
 
@@ -1320,7 +1334,8 @@ public class GlobalDataManager : MonoBehaviour
             {
                 EnemyId = enemyId,
                 SceneName = state.SceneName ?? string.Empty,
-                IsDefeated = state.IsDefeated
+                IsDefeated = state.IsDefeated,
+                RespawnOnManualSave = state.RespawnOnManualSave
             };
         }
 

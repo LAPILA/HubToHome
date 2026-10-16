@@ -11,7 +11,8 @@ public enum EquipmentChangeStatus
     WrongSlot,
     CharacterRestricted,
     NotOwned,
-    AlreadyEquipped
+    AlreadyEquipped,
+    Blocked
 }
 
 public readonly struct EquipmentChangeResult
@@ -72,14 +73,23 @@ public static class EquipmentLoadoutService
         if (character == null || !TryGetSlotIndex(slot, out int index))
             return string.Empty;
 
-        NormalizeSlots(character);
-        return character.EquippedEquipmentIDs[index];
+        return character.EquippedEquipmentIDs != null && index < character.EquippedEquipmentIDs.Count
+            ? NormalizeId(character.EquippedEquipmentIDs[index]) : string.Empty;
     }
 
     public static EquipmentData GetEquipped(CharacterSaveData character, EquipmentSlot slot)
     {
-        return EquipmentDatabase.FindById(GetEquippedId(character, slot));
+        // UI/회복 상한 사전 계산은 저장 데이터 자체를 수정하지 않습니다.
+        if (character == null || !TryGetSlotIndex(slot, out int index)
+            || character.EquippedEquipmentIDs == null || index >= character.EquippedEquipmentIDs.Count)
+            return null;
+        EquipmentData equipment = EquipmentDatabase.FindById(NormalizeId(character.EquippedEquipmentIDs[index]));
+        return CanApply(equipment, slot, character.CharacterDataID) ? equipment : null;
     }
+
+    public static bool CanApply(EquipmentData equipment, EquipmentSlot slot, string characterDataId)
+        => equipment != null && TryGetSlotIndex(slot, out _) && equipment.Slot == slot
+            && equipment.CanEquip(characterDataId);
 
     public static EquipmentChangeResult TryEquip(
         GlobalDataManager global,
@@ -87,8 +97,10 @@ public static class EquipmentLoadoutService
         EquipmentSlot slot,
         EquipmentData equipment)
     {
-        if (character == null)
+        if (character == null || global == null || !global.Party.Contains(character))
             return Failed(EquipmentChangeStatus.InvalidCharacter, slot, "파티원이 없습니다.");
+        if (IsBattleLocked)
+            return Failed(EquipmentChangeStatus.Blocked, slot, "전투 중에는 장비를 변경할 수 없습니다.");
         if (equipment == null || string.IsNullOrWhiteSpace(equipment.ItemID))
             return Failed(EquipmentChangeStatus.InvalidEquipment, slot, "장비 데이터가 올바르지 않습니다.");
         if (!TryGetSlotIndex(slot, out int index) || equipment.Slot != slot)
@@ -105,6 +117,7 @@ public static class EquipmentLoadoutService
 
         NormalizeSlots(character);
         string previous = character.EquippedEquipmentIDs[index];
+        character.HasInitializedEquipment = true;
         if (string.Equals(previous, equipmentId, StringComparison.Ordinal))
         {
             return new EquipmentChangeResult(
@@ -116,6 +129,7 @@ public static class EquipmentLoadoutService
         }
 
         character.EquippedEquipmentIDs[index] = equipmentId;
+        ClampSavedVitals(character);
         return new EquipmentChangeResult(
             EquipmentChangeStatus.Success,
             slot,
@@ -126,6 +140,8 @@ public static class EquipmentLoadoutService
 
     public static EquipmentChangeResult TryUnequip(CharacterSaveData character, EquipmentSlot slot)
     {
+        if (IsBattleLocked)
+            return Failed(EquipmentChangeStatus.Blocked, slot, "전투 중에는 장비를 변경할 수 없습니다.");
         if (character == null)
             return Failed(EquipmentChangeStatus.InvalidCharacter, slot, "파티원이 없습니다.");
         if (!TryGetSlotIndex(slot, out int index))
@@ -134,6 +150,8 @@ public static class EquipmentLoadoutService
         NormalizeSlots(character);
         string previous = character.EquippedEquipmentIDs[index];
         character.EquippedEquipmentIDs[index] = string.Empty;
+        character.HasInitializedEquipment = true;
+        ClampSavedVitals(character);
         return new EquipmentChangeResult(
             EquipmentChangeStatus.Success,
             slot,
@@ -153,7 +171,7 @@ public static class EquipmentLoadoutService
         int count = equippedIds != null ? Math.Min(SlotCount, equippedIds.Count) : 0;
         for (int i = 0; i < count; i++)
         {
-            EquipmentData equipment = EquipmentDatabase.FindById(equippedIds[i]);
+            EquipmentData equipment = GetEquipped(character, (EquipmentSlot)i);
             if (equipment != null)
                 equipment.AppendStatModifiers(modifiers);
         }
@@ -185,14 +203,15 @@ public static class EquipmentLoadoutService
         return index >= 0 && index < SlotCount;
     }
 
-    private static int CountEquipped(
+    public static int CountEquipped(
         IReadOnlyList<CharacterSaveData> party,
         string equipmentId,
-        CharacterSaveData targetCharacter,
-        EquipmentSlot targetSlot)
+        CharacterSaveData targetCharacter = null,
+        EquipmentSlot targetSlot = EquipmentSlot.Weapon)
     {
         int count = 0;
-        if (party == null)
+        equipmentId = NormalizeId(equipmentId);
+        if (party == null || equipmentId.Length == 0)
             return count;
 
         for (int memberIndex = 0; memberIndex < party.Count; memberIndex++)
@@ -201,18 +220,35 @@ public static class EquipmentLoadoutService
             if (member == null)
                 continue;
 
-            NormalizeSlots(member);
             for (int slotIndex = 0; slotIndex < SlotCount; slotIndex++)
             {
                 if (ReferenceEquals(member, targetCharacter) && slotIndex == (int)targetSlot)
                     continue;
-                if (string.Equals(member.EquippedEquipmentIDs[slotIndex], equipmentId, StringComparison.Ordinal))
+                if (string.Equals(GetEquippedId(member, (EquipmentSlot)slotIndex), equipmentId, StringComparison.Ordinal))
                     count++;
             }
         }
 
         return count;
     }
+
+    private static void ClampSavedVitals(CharacterSaveData character)
+    {
+        CharacterStatsProjectionService.ResolveResourceCaps(character,
+            CharacterDatabase.FindById(character.CharacterDataID), out int maxHP, out int maxAP);
+        character.HP = Mathf.Clamp(character.HP, 0, maxHP);
+        character.AP = Mathf.Clamp(character.AP, 0, maxAP);
+    }
+
+    public static EquipmentChangeResult TryUnequip(GlobalDataManager global, CharacterSaveData character, EquipmentSlot slot)
+    {
+        if (global == null || character == null || !global.Party.Contains(character))
+            return Failed(EquipmentChangeStatus.InvalidCharacter, slot, "파티원이 없습니다.");
+        return TryUnequip(character, slot);
+    }
+
+    private static bool IsBattleLocked => (BattleManager.Instance != null && BattleManager.Instance.IsBattleSessionActive)
+        || (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Battle);
 
     private static EquipmentChangeResult Failed(EquipmentChangeStatus status, EquipmentSlot slot, string message)
     {

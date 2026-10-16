@@ -8,6 +8,9 @@ public class SpeakerData : SerializedScriptableObject
 {
     [BoxGroup("기본 정보")] public string SpeakerID;
     public string DisplayName;
+    [BoxGroup("기본 정보"), LabelText("이름 번역 키")]
+    public string DisplayNameLocalizationKey;
+    public string ResolveDisplayName() => LocalizationManager.Localize(DisplayNameLocalizationKey, DisplayName);
     
     [Header("Audio Settings")]
     public AudioClip[] VoiceSounds;

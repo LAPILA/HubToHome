@@ -63,3 +63,33 @@ config.preview.shake,흔들림: {0}%,Shake: {0}%,揺れ: {0}%,震动: {0}%
 config.preview.flash,점멸: {0}%,Flash: {0}%,点滅: {0}%,闪烁: {0}%
 common.on,켜짐,ON,オン,开
 common.off,꺼짐,OFF,オフ,关
+input.choices,선택지 이동,Choose option,選択肢を移動,切换选项
+input.advance,대사 진행,Continue,会話を進める,继续对话
+input.guard,방어,Guard,ガード,防御
+input.dodge,회피,Dodge,回避,闪避
+input.counter,특수 반격,Counter,特殊反撃,特殊反击
+input.target,대상 변경,Change target,対象変更,切换目标
+input.navigate,메뉴 / 항목,Menu / item,メニュー / 項目,菜单 / 项目
+input.confirm,선택,Confirm,決定,确认
+input.cancel,취소,Back,戻る,返回
+input.skip,대사 넘기기,Skip dialogue,会話スキップ,跳过对话
+journal.tab_notes,일지,Journal,日誌,日志
+journal.tab_items,소지품,Items,持ち物,物品
+journal.objective,현재 목표,Current objective,現在の目標,当前目标
+journal.objective_empty,아직 기록된 목표가 없습니다.,No objective recorded yet.,まだ目標が記録されていません。,尚未记录目标。
+journal.empty,아직 기록이 없습니다.,Nothing recorded yet.,まだ記録がありません。,暂无记录。
+journal.used,사용했습니다.,Item used.,使用しました。,已使用。
+journal.cannot_use,지금은 사용할 수 없습니다.,Cannot use this now.,今は使用できません。,现在无法使用。
+journal.hint,↑↓ 선택  {0} 확인  {1} 뒤로  {2} 소지품/일지\n일지: ←→ 페이지,↑↓ Select  {0} Confirm  {1} Back  {2} Items/Journal\nJournal: ←→ Page,↑↓ 選択  {0} 決定  {1} 戻る  {2} 持ち物/日誌\n日誌: ←→ ページ,↑↓ 选择  {0} 确认  {1} 返回  {2} 物品/日志\n日志: ←→ 翻页
+journal.status.burn.title,화상,Burn,火傷,灼烧
+journal.status.burn.body,화상은 자신의 턴이 끝날 때 피해를 줍니다.\n중첩이 많을수록 피해가 커지며 피해 후 일부 감소합니다.\n정화 효과로 제거할 수 있습니다.,Burn deals damage at the end of the affected actor's turn.\nMore stacks cause more damage. Some stacks fade after dealing damage.\nCleansing can remove it.,火傷は対象のターン終了時にダメージを与えます。\n蓄積が多いほどダメージが増え、ダメージ後に一部減少します。\n浄化効果で解除できます。,灼烧在目标回合结束时造成伤害。\n层数越多伤害越高，造成伤害后减少一部分。\n可用净化效果解除。
+journal.status.electric.title,감전,Shock,感電,感电
+journal.status.electric.body,감전이 쌓인 대상은 공격을 받을 때 추가 전기 피해를 받습니다.\n일부 기술은 쌓인 감전을 소비해 다른 효과를 냅니다.\n정화 효과로 제거할 수 있습니다.,Shocked targets take extra electric damage when hit.\nSome skills consume Shock for another effect.\nCleansing can remove it.,感電が蓄積した対象は攻撃を受けると追加の電気ダメージを受けます。\n一部の技は蓄積した感電を消費します。\n浄化効果で解除できます。,感电目标受击时受到额外电伤害。\n部分技能会消耗感电来产生其他效果。\n可用净化效果解除。
+gameover.retry_checkpoint,전투 직전부터 재도전,Retry battle,戦闘をやり直す,重试战斗
+gameover.retry_save,최근 저장에서 재시도,Load latest save,最新のセーブから再開,读取最新存档
+gameover.checkpoint_hint,전투 직전의 파티와 소지품 상태로 다시 도전할 수 있습니다.,Retry with your party and inventory restored to before the battle.,戦闘直前のパーティと持ち物で再挑戦できます。,以战斗前的队伍和物品状态重新挑战。
+gameover.save_hint,마지막 저장 지점에서 다시 시작할 수 있습니다.,Resume from your latest save.,最後のセーブから再開できます。,可以从最近的存档重新开始。
+gameover.no_save,불러올 수 있는 저장 데이터가 없습니다.,No save data is available.,読み込めるセーブデータがありません。,没有可读取的存档。
+gameover.loading_checkpoint,전투 직전 상태를 복구하는 중...,Restoring the battle checkpoint...,戦闘直前の状態を復元中...,正在恢复战斗前状态……
+gameover.loading_save,저장 데이터를 불러오는 중...,Loading save data...,セーブデータを読み込み中...,正在读取存档……
+gameover.title,타이틀로 이동,Return to title,タイトルへ,返回标题

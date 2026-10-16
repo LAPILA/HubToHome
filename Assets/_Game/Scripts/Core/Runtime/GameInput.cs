@@ -7,7 +7,7 @@ using UnityEngine.InputSystem.Controls;
 /// 다른 시스템은 Keyboard.current/InputAction을 직접 사용하지 않고 이 클래스만 바라봅니다.
 /// 기본 입력은 델타룬/언더테일 스타일: 방향키 + Z/X/C 입니다.
 /// </summary>
-public static class GameInput
+public static partial class GameInput
 {
     private const float AxisThreshold = 0.5f;
     private static bool _configModalActive;
@@ -59,6 +59,7 @@ public static class GameInput
     private static InputAction _configReset;
     private static int _cachedFrame = -1;
     private static int _suppressPlayerConfirmUntilFrame = -1;
+    private static int _suppressSharedUIUntilFrame = -1;
 
     private static Vector2 _prevPlayerMove;
     private static Vector2 _currPlayerMove;
@@ -113,9 +114,14 @@ public static class GameInput
         _qteZ = battleActions.QTE_Z;
         _qteX = battleActions.QTE_X;
         _qteC = battleActions.QTE_C;
-        _qteZ.performed += context => _qteZPressedAt = context.time;
-        _qteX.performed += context => _qteXPressedAt = context.time;
-        _qteC.performed += context => _qteCPressedAt = context.time;
+        _qteZ.performed += context => RecordDefensePress(context.time, ref _qteZPressedAt, ref _consumedZAt);
+        _qteX.performed += context => RecordDefensePress(context.time, ref _qteXPressedAt, ref _consumedXAt);
+        _qteC.performed += context => RecordDefensePress(context.time, ref _qteCPressedAt, ref _consumedCAt);
+        _battleNavigate.performed += context =>
+        {
+            if (IsBattleInputBlocked)
+                _prevBattleNavigate = _currBattleNavigate = context.ReadValue<Vector2>();
+        };
         // 생성 파일은 유지하고 공용 QTE 액션에 패드/가상 패드 대응만 추가합니다.
         _qteZ.AddBinding("<Gamepad>/buttonSouth");
         _qteX.AddBinding("<Gamepad>/buttonEast");
@@ -136,6 +142,7 @@ public static class GameInput
         _configBack = configActions.Back;
         _configReset = configActions.ResetDefaults;
 
+        BindDeviceInputs();
         ApplySavedKeyBindings();
 
         _player.Enable();
@@ -159,11 +166,11 @@ public static class GameInput
     public static bool MoveUpHeld    { get { UpdateCache(); return IsUp(_currPlayerMove); } }
     public static bool MoveDownHeld  { get { UpdateCache(); return IsDown(_currPlayerMove); } }
 
-    public static bool ConfirmPressed { get { if (_configModalActive || Time.frameCount <= _suppressPlayerConfirmUntilFrame) return false; EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }
-    public static bool CancelPressed  { get { if (_configModalActive) return false; EnsureInitialized(); return _playerCancel.WasPressedThisFrame() || _uiCancel.WasPressedThisFrame(); } }
-    public static bool MenuPressed    { get { if (_configModalActive) return false; EnsureInitialized(); return _playerMenu.WasPressedThisFrame() || _uiMenu.WasPressedThisFrame(); } }
+    public static bool ConfirmPressed { get { if (_configModalActive || Time.frameCount <= _suppressSharedUIUntilFrame || Time.frameCount <= _suppressPlayerConfirmUntilFrame) return false; EnsureInitialized(); return _playerConfirm.WasPressedThisFrame() || _uiSubmit.WasPressedThisFrame(); } }
+    public static bool CancelPressed  { get { if (_configModalActive || Time.frameCount <= _suppressSharedUIUntilFrame) return false; EnsureInitialized(); return _playerCancel.WasPressedThisFrame() || _uiCancel.WasPressedThisFrame(); } }
+    public static bool MenuPressed    { get { if (_configModalActive || Time.frameCount <= _suppressSharedUIUntilFrame) return false; EnsureInitialized(); return _playerMenu.WasPressedThisFrame() || _uiMenu.WasPressedThisFrame(); } }
     public static bool RunHeld        { get { if (_configModalActive) return false; EnsureInitialized(); return _playerRun.IsPressed(); } }
-    public static bool PreemptiveAttackPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.F); } }
+    public static bool PreemptiveAttackPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.F) || GamepadPressed(Gamepad.current != null ? Gamepad.current.buttonWest : null); } }
 
     public static bool PowerPreviousCharacterPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.Q) || GamepadPressed(Gamepad.current != null ? Gamepad.current.leftShoulder : null); } }
     public static bool PowerNextCharacterPressed { get { if (_configModalActive) return false; return KeyboardPressed(Key.E) || GamepadPressed(Gamepad.current != null ? Gamepad.current.rightShoulder : null); } }
@@ -174,22 +181,29 @@ public static class GameInput
     public static bool UIDownPressed  { get { UpdateCache(); return PressedDown(_prevUINavigate, _currUINavigate); } }
     public static bool UILeftPressed  { get { UpdateCache(); return PressedLeft(_prevUINavigate, _currUINavigate); } }
     public static bool UIRightPressed { get { UpdateCache(); return PressedRight(_prevUINavigate, _currUINavigate); } }
-    public static bool UISubmitPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _uiSubmit.WasPressedThisFrame(); } }
-    public static bool UICancelPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _uiCancel.WasPressedThisFrame(); } }
-    public static bool UIMenuPressed   { get { if (_configModalActive) return false; EnsureInitialized(); return _uiMenu.WasPressedThisFrame(); } }
+    public static bool UISubmitPressed { get { if (_configModalActive || Time.frameCount <= _suppressSharedUIUntilFrame) return false; EnsureInitialized(); return _uiSubmit.WasPressedThisFrame(); } }
+    public static bool UICancelPressed { get { if (_configModalActive || Time.frameCount <= _suppressSharedUIUntilFrame) return false; EnsureInitialized(); return _uiCancel.WasPressedThisFrame(); } }
+    public static bool UIMenuPressed   { get { if (_configModalActive || Time.frameCount <= _suppressSharedUIUntilFrame) return false; EnsureInitialized(); return _uiMenu.WasPressedThisFrame(); } }
 
-    public static bool BattleUpPressed    { get { UpdateCache(); return PressedUp(_prevBattleNavigate, _currBattleNavigate); } }
-    public static bool BattleDownPressed  { get { UpdateCache(); return PressedDown(_prevBattleNavigate, _currBattleNavigate); } }
-    public static bool BattleLeftPressed  { get { UpdateCache(); return PressedLeft(_prevBattleNavigate, _currBattleNavigate); } }
-    public static bool BattleRightPressed { get { UpdateCache(); return PressedRight(_prevBattleNavigate, _currBattleNavigate); } }
-    public static bool BattleConfirmPressed { get { if (_configModalActive || BattleUIInputConsumed) return false; EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
-    public static bool BattleCancelPressed  { get { if (_configModalActive || BattleUIInputConsumed) return false; EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
+    public static bool BattleUpPressed    { get { UpdateCache(); return !IsBattleInputBlocked && !BattleUIInputConsumed && PressedUp(_prevBattleNavigate, _currBattleNavigate); } }
+    public static bool BattleDownPressed  { get { UpdateCache(); return !IsBattleInputBlocked && !BattleUIInputConsumed && PressedDown(_prevBattleNavigate, _currBattleNavigate); } }
+    public static bool BattleLeftPressed  { get { UpdateCache(); return !IsBattleInputBlocked && !BattleUIInputConsumed && PressedLeft(_prevBattleNavigate, _currBattleNavigate); } }
+    public static bool BattleRightPressed { get { UpdateCache(); return !IsBattleInputBlocked && !BattleUIInputConsumed && PressedRight(_prevBattleNavigate, _currBattleNavigate); } }
+    public static bool BattleConfirmPressed { get { if (IsBattleInputBlocked || BattleUIInputConsumed) return false; EnsureInitialized(); return _battleConfirm.WasPressedThisFrame(); } }
+    public static bool BattleCancelPressed  { get { if (IsBattleInputBlocked || BattleUIInputConsumed) return false; EnsureInitialized(); return _battleCancel.WasPressedThisFrame(); } }
     // 원본 Z/X/C를 별도 OR 처리하면 키를 서로 교환했을 때 두 액션이 동시에 눌립니다.
     // 기본 키, 저장된 키 재설정, 패드 입력을 같은 InputAction 판정으로 모읍니다.
-    public static bool QTEZPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZPressedAt > _consumedZAt && _qteZ.WasPressedThisFrame(); } }
-    public static bool QTEZHeld { get { if (_configModalActive) return false; EnsureInitialized(); return _qteZPressedAt > _consumedZAt && _qteZ.IsPressed(); } }
-    public static bool QTEXPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteXPressedAt > _consumedXAt && _qteX.WasPressedThisFrame(); } }
-    public static bool QTECPressed { get { if (_configModalActive) return false; EnsureInitialized(); return _qteCPressedAt > _consumedCAt && _qteC.WasPressedThisFrame(); } }
+    public static bool QTEZPressed { get { if (IsBattleInputBlocked || BattleUIInputConsumed) return false; EnsureInitialized(); return _qteZPressedAt > _consumedZAt && _qteZ.WasPressedThisFrame(); } }
+    public static bool QTEZHeld { get { if (IsBattleInputBlocked || BattleUIInputConsumed) return false; EnsureInitialized(); return _qteZPressedAt > _consumedZAt && _qteZ.IsPressed(); } }
+    public static bool QTEXPressed { get { if (IsBattleInputBlocked || BattleUIInputConsumed) return false; EnsureInitialized(); return _qteXPressedAt > _consumedXAt && _qteX.WasPressedThisFrame(); } }
+    public static bool QTECPressed { get { if (IsBattleInputBlocked || BattleUIInputConsumed) return false; EnsureInitialized(); return _qteCPressedAt > _consumedCAt && _qteC.WasPressedThisFrame(); } }
+
+    private static void RecordDefensePress(double time, ref double pressedAt, ref double consumedAt)
+    {
+        pressedAt = time;
+        // 대사/설정창 안에서 누른 키는 창을 닫은 뒤에도 새 입력 전까지 방어로 쓰지 않습니다.
+        if (IsBattleInputBlocked) consumedAt = time;
+    }
 
     public static bool BattleUIInputConsumed => _consumedBattleUIFrame == Time.frameCount;
 
@@ -202,6 +216,7 @@ public static class GameInput
         if (_qteZ.IsPressed() || _qteZ.WasPressedThisFrame()) _consumedZAt = _qteZPressedAt;
         if (_qteX.IsPressed() || _qteX.WasPressedThisFrame()) _consumedXAt = _qteXPressedAt;
         if (_qteC.IsPressed() || _qteC.WasPressedThisFrame()) _consumedCAt = _qteCPressedAt;
+        _prevBattleNavigate = _currBattleNavigate = _battleNavigate.ReadValue<Vector2>();
     }
 
     public static DefenseInputReadStatus ReadDefenseInputThisFrame(out DefenseInput input)
@@ -212,8 +227,17 @@ public static class GameInput
         return DefenseInputSelectionPolicy.Resolve(z, x, c, out input);
     }
 
-    public static bool IsDefenseInputBlocked => _configModalActive
-        || (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused);
+    // Canvas만 숨긴 전투 메뉴와 방어 입력에도 동일한 모달 경계를 적용합니다.
+    // 캐릭터 머리 위의 비모달 BattleSpeechBubble은 이 경계에 포함하지 않습니다.
+    public static bool IsConfigModalActive => _configModalActive;
+
+    public static bool IsBattleInputBlocked => _configModalActive
+        || (BattleManager.Instance != null && BattleManager.Instance.IsAwaitingReserveChoice)
+        || (GameStateManager.Instance != null && (GameStateManager.Instance.CurrentState == GameState.Paused
+            || GameStateManager.Instance.CurrentState == GameState.Dialogue))
+        || (DialogueManager.Instance != null && DialogueManager.Instance.IsPresentationVisible);
+
+    public static bool IsDefenseInputBlocked => IsBattleInputBlocked;
 
     /// <summary>프레임 처리 시각 대신 입력 이벤트가 실제 발생한 realtime 시각을 반환합니다.</summary>
     public static float GetDefensePressTime(DefenseInput input)
@@ -287,7 +311,15 @@ public static class GameInput
             return actionPressed || fallbackPressed;
         }
     }
-    public static bool ConfigBackPressed { get { EnsureInitialized(); return _configBack.WasPressedThisFrame(); } }
+    public static bool ConfigBackPressed
+    {
+        get
+        {
+            EnsureInitialized();
+            return _configBack.WasPressedThisFrame()
+                || (_configModalActive && _battlePause != null && _battlePause.WasPressedThisFrame());
+        }
+    }
     public static bool ConfigResetDefaultsPressed { get { EnsureInitialized(); return _configReset.WasPressedThisFrame(); } }
 
     public static void SetConfigModalActive(bool active)
@@ -297,6 +329,12 @@ public static class GameInput
 
     public static void SuppressPlayerConfirmForCurrentFrame()
     {
+        _suppressPlayerConfirmUntilFrame = Time.frameCount;
+    }
+
+    public static void SuppressMenuInputsForCurrentFrame()
+    {
+        _suppressSharedUIUntilFrame = Time.frameCount;
         _suppressPlayerConfirmUntilFrame = Time.frameCount;
     }
 
@@ -332,6 +370,7 @@ public static class GameInput
         EnsureInitialized();
         ApplySavedKeyBindings();
         ResetCachedState();
+        DeviceChanged?.Invoke(ActiveDevice);
     }
 
     private static void ApplySavedKeyBindings()
@@ -460,12 +499,18 @@ public static class GameInput
         if (keyboard == null) return false;
 
         KeyControl control = keyboard[key];
-        return control != null && control.wasPressedThisFrame;
+        if (control == null || !control.wasPressedThisFrame) return false;
+        SetActiveDevice(GameInputDeviceKind.Keyboard, string.Empty, keyboard.deviceId);
+        return true;
     }
 
     private static bool GamepadPressed(ButtonControl control)
     {
-        return control != null && control.wasPressedThisFrame;
+        if (control == null || !control.wasPressedThisFrame) return false;
+        InputDevice device = control.device;
+        SetActiveDevice(device.name == TouchDeviceName ? GameInputDeviceKind.Touch : GameInputDeviceKind.Gamepad,
+            device.name == TouchDeviceName ? string.Empty : device.layout, device.deviceId);
+        return true;
     }
 
     private static bool PressedLeft(Vector2 prev, Vector2 curr) => !IsLeft(prev) && IsLeft(curr);

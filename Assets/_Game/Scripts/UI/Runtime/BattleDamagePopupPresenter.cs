@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public sealed class BattleDamagePopupPresenter : MonoBehaviour
+public sealed partial class BattleDamagePopupPresenter : MonoBehaviour
 {
     private const string PopupRootName = "BattleDamagePopupRoot";
     private const string PopupViewName = "BattleDamagePopup";
@@ -12,7 +12,7 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
     [BoxGroup("Typography"), AssetsOnly, LabelText("TMP Font")]
     [SerializeField] private TMP_FontAsset _fontAsset;
     [BoxGroup("Typography"), MinValue(1f), LabelText("기본 글자 크기")]
-    [SerializeField] private float _fontSize = 60f;
+    [SerializeField] private float _fontSize = 30f;
     [BoxGroup("Typography"), Range(0f, 0.25f), LabelText("검정 외곽선")]
     [SerializeField] private float _outlineWidth = 0.08f;
 
@@ -30,13 +30,13 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
     [BoxGroup("Motion"), LabelText("기준 위치 보정")]
     [SerializeField] private Vector2 _originOffset = new Vector2(0f, 12f);
     [BoxGroup("Motion"), MinValue(0f), LabelText("캐릭터 바깥쪽 간격")]
-    [SerializeField] private float _characterSideOffset = 32f;
+    [SerializeField] private float _characterSideOffset = 48f;
     [BoxGroup("Motion"), LabelText("튀어오름 위치")]
-    [SerializeField] private Vector2 _launchOffset = new Vector2(18f, 30f);
+    [SerializeField] private Vector2 _launchOffset = new Vector2(8f, 14f);
     [BoxGroup("Motion"), LabelText("착지 위치")]
-    [SerializeField] private Vector2 _settleOffset = new Vector2(24f, 22f);
+    [SerializeField] private Vector2 _settleOffset = new Vector2(12f, 10f);
     [BoxGroup("Motion"), LabelText("소멸 위치")]
-    [SerializeField] private Vector2 _fadeOffset = new Vector2(30f, 42f);
+    [SerializeField] private Vector2 _fadeOffset = new Vector2(16f, 24f);
 
     [BoxGroup("Critical"), LabelText("확대 시간")]
     [SerializeField] private float _criticalGrowDuration = 0.09f;
@@ -48,10 +48,12 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
     private readonly Stack<BattleDamagePopupView> _available = new Stack<BattleDamagePopupView>();
     private readonly HashSet<BattleDamagePopupView> _active = new HashSet<BattleDamagePopupView>();
     private readonly List<BattleDamagePopupView> _releaseBuffer = new List<BattleDamagePopupView>();
+    private readonly List<BattleDamagePopupView> _displayOrder = new List<BattleDamagePopupView>(16);
+    private readonly Dictionary<BattleDamagePopupView, Rect> _footprints = new Dictionary<BattleDamagePopupView, Rect>(16);
+    private readonly List<Rect> _occupied = new List<Rect>(16);
 
     private RectTransform _popupRoot;
     private Camera _worldCamera;
-    private int _spawnSequence;
     private bool _initialized;
     private bool _isDisposing;
 
@@ -108,20 +110,34 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
         if (!TryWorldToPopupPosition(worldPosition, camera, out Vector2 localPosition))
             return false;
 
-        string content = feedback.Kind == BattleDamageFeedbackKind.Miss
-            ? "MISS"
-            : Mathf.Max(0, feedback.Amount).ToString();
-        // 화면 기준으로 아군은 왼쪽, 적은 오른쪽에 표시합니다. 카메라 줌과
-        // 캐릭터 방향에 관계없이 동일한 UI 간격을 유지합니다.
-        float direction = feedback.Target is PlayerCharacter ? -1f : 1f;
+        // 아군/적 모두 화면 기준 오른쪽. 카메라 회전/캐릭터 방향과 무관합니다.
+        float direction = 1f;
         localPosition.x += direction * Mathf.Max(0f, _characterSideOffset);
+        if (feedback.Kind == BattleDamageFeedbackKind.Damage)
+            return TryShowTotal(feedback.Target, feedback.Amount,
+                BattleDamageTypeUtility.FromElement(feedback.Element), feedback.BatchId,
+                feedback.IsCritical, localPosition, out view);
         return TryShowDirected(
-            content,
+            "MISS",
             feedback.ResolveColor(),
             feedback.IsCritical,
             localPosition,
             direction,
             out view);
+    }
+
+    public bool TryShowElemental(CharacterBase target, int amount, ElementalStatusKind kind,
+        out BattleDamagePopupView view)
+    {
+        view = null;
+        if (!_initialized || _popupRoot == null || target == null || amount <= 0) return false;
+        Camera camera = ResolveWorldCamera();
+        if (camera == null || !TryWorldToPopupPosition(
+            target.GetPivot(CharacterPivotId.Center).position, camera, out Vector2 localPosition)) return false;
+        float direction = 1f;
+        localPosition.x += direction * Mathf.Max(0f, _characterSideOffset);
+        return TryShowTotal(target, amount, BattleDamageTypeUtility.FromStatus(kind),
+            _batches != null ? _batches.CurrentId : 0, false, localPosition, out view);
     }
 
     public bool TryShowAtLocalPosition(
@@ -131,8 +147,7 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
         Vector2 localPosition,
         out BattleDamagePopupView view)
     {
-        // 캐릭터가 없는 범용 팝업 호출은 기존 좌우 교대 연출을 유지합니다.
-        float direction = (_spawnSequence++ & 1) == 0 ? 1f : -1f;
+        float direction = 1f;
         return TryShowDirected(content, color, isCritical, localPosition, direction, out view);
     }
 
@@ -149,13 +164,49 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
             return false;
 
         view = Acquire();
+        view.SetFontSize(_fontSize);
+        Vector2 textSize = view.Label.GetPreferredValues(content);
+        float scale = isCritical ? Mathf.Max(1f, Mathf.Max(_criticalStartScale, _criticalEndScale)) : 1f;
+        textSize = new Vector2(Mathf.Max(_fontSize, textSize.x), Mathf.Max(_fontSize, textSize.y)) * scale;
+        float minX = Mathf.Min(0f, Mathf.Min(_launchOffset.x, Mathf.Min(_settleOffset.x, _fadeOffset.x)));
+        float maxX = Mathf.Max(0f, Mathf.Max(_launchOffset.x, Mathf.Max(_settleOffset.x, _fadeOffset.x)));
+        float minY = Mathf.Min(0f, Mathf.Min(_launchOffset.y, Mathf.Min(_settleOffset.y, _fadeOffset.y)));
+        float maxY = Mathf.Max(0f, Mathf.Max(_launchOffset.y, Mathf.Max(_settleOffset.y, _fadeOffset.y)));
+        // 현재 프레임뿐 아니라 이동/치명타 확대가 끝날 때까지의 영역을 예약합니다.
+        Rect footprint = Rect.MinMaxRect(-textSize.x * 0.5f + minX - 3f, -textSize.y * 0.5f + minY - 3f,
+            textSize.x * 0.5f + maxX + 3f, textSize.y * 0.5f + maxY + 3f);
+        Vector2 preferred = localPosition + _originOffset + Vector2.right * textSize.x * 0.5f;
+        Rect area = _popupRoot.rect;
+        if (area.width < 1f || area.height < 1f) area = new Rect(-320f, -240f, 640f, 480f);
+        area = Rect.MinMaxRect(area.xMin + 8f, area.yMin + area.height * 0.34f,
+            area.xMax - 8f, area.yMax - area.height * 0.12f);
+        Vector2 position;
+        while (true)
+        {
+            _occupied.Clear();
+            foreach (Rect occupied in _footprints.Values) _occupied.Add(occupied);
+            if (BattleOverlayLayout.TryPlacePopup(preferred, footprint, area, _occupied, out position)) break;
+            // 공간이 찬 연타는 오래된 표시부터 반환합니다. 실제 피해/상태 계산은 건드리지 않습니다.
+            BattleDamagePopupView oldestTransient = null;
+            for (int i = 0; i < _displayOrder.Count; i++)
+                if (!_viewGroups.ContainsKey(_displayOrder[i])) { oldestTransient = _displayOrder[i]; break; }
+            if (oldestTransient == null)
+            {
+                Release(view);
+                view = null;
+                return false;
+            }
+            Release(oldestTransient);
+        }
+        _footprints[view] = new Rect(position + footprint.position, footprint.size);
+        _displayOrder.Add(view);
         view.Play(
             content,
             color,
             isCritical,
             new Vector2(
-                Mathf.Round(localPosition.x + _originOffset.x),
-                Mathf.Round(localPosition.y + _originOffset.y)),
+                Mathf.Round(position.x),
+                Mathf.Round(position.y)),
             direction,
             BuildAnimationSettings(),
             Release);
@@ -203,7 +254,15 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
     {
         BattleDamagePopupView view = null;
         while (_available.Count > 0 && view == null)
+        {
             view = _available.Pop();
+            if (view != null && !view.IsReady)
+            {
+                view.StopAndReset();
+                Destroy(view.gameObject);
+                view = null;
+            }
+        }
 
         if (view == null)
             view = CreateView();
@@ -216,11 +275,15 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
 
     private void Release(BattleDamagePopupView view)
     {
-        if (view == null || !_active.Remove(view))
+        if (!_active.Remove(view))
             return;
 
+        _footprints.Remove(view);
+        _displayOrder.Remove(view);
+        RemoveTotalView(view);
+        if (view == null) return;
         view.StopAndReset();
-        if (_isDisposing || _popupRoot == null)
+        if (_isDisposing || _popupRoot == null || !view.IsReady)
         {
             Destroy(view.gameObject);
             return;
@@ -266,6 +329,7 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
             return false;
 
         Canvas canvas = _popupRoot.GetComponentInParent<Canvas>();
+        if (canvas != null) canvas = canvas.rootCanvas;
         Camera uiCamera = null;
         if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
             uiCamera = canvas.worldCamera != null ? canvas.worldCamera : worldCamera;
@@ -311,6 +375,8 @@ public sealed class BattleDamagePopupPresenter : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (_batches != null) _batches.Ended -= FinishBatch;
+        _batches = null;
         _isDisposing = true;
         ReleaseAll();
         while (_available.Count > 0)

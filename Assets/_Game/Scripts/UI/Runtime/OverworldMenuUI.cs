@@ -45,6 +45,8 @@ public sealed class OverworldMenuUI : UIPanel
     [SerializeField] private List<CategoryWindowPanelView> _categoryPanels = new List<CategoryWindowPanelView>();
     [SerializeField] private TextMeshProUGUI _emptyInventoryLabel;
     [SerializeField] private List<TextMeshProUGUI> _itemLabels = new List<TextMeshProUGUI>();
+    [SerializeField, Tooltip("비우면 Resources/HubToHome/JournalCatalog를 한 번 읽습니다.")]
+    private JournalCatalog _journalCatalog;
 
     private readonly OverworldMenuCategory[] _categories =
     {
@@ -66,6 +68,8 @@ public sealed class OverworldMenuUI : UIPanel
     private bool _openOptionsAfterClose;
     private TextMeshProUGUI _equipContentLabel;
     private PowerGrowthPanelView _powerGrowthView;
+    private ItemJournalPanelView _itemJournalView;
+    private float _timeScaleBeforeOpen = 1f;
     private int _categoryCharacterIndex;
     private int _equipSlotIndex;
     private int _growthStatIndex;
@@ -127,6 +131,25 @@ public sealed class OverworldMenuUI : UIPanel
         OpenInternal();
     }
 
+    private void OnEnable()
+    {
+        LocalizationManager.LanguageChanged += HandleLanguageChanged;
+        GameInput.DeviceChanged += HandleDeviceChanged;
+    }
+
+    private void HandleLanguageChanged(LanguageType language)
+    {
+        if (!_isOpen) return;
+        RefreshAll();
+        if (_isCategoryWindowOpen) RefreshCategoryWindowPanels();
+    }
+
+    private void HandleDeviceChanged(GameInputDeviceKind device)
+    {
+        if (_isOpen && _isCategoryWindowOpen && _categories[_selectedIndex] == OverworldMenuCategory.Item)
+            _itemJournalView?.Refresh();
+    }
+
     public override void Hide()
     {
         CloseInternal();
@@ -141,6 +164,8 @@ public sealed class OverworldMenuUI : UIPanel
 
     protected override void OnDisable()
     {
+        LocalizationManager.LanguageChanged -= HandleLanguageChanged;
+        GameInput.DeviceChanged -= HandleDeviceChanged;
         KillMenuTweens();
         RestorePreviousGameState();
         base.OnDisable();
@@ -155,16 +180,31 @@ public sealed class OverworldMenuUI : UIPanel
 
     public override bool TryHandleCancelInput()
     {
-        if (!_isOpen || _isAnimating)
+        if (!_isOpen || _isAnimating || Time.frameCount <= _ignoreInputUntilFrame)
             return true;
 
         if (_isCategoryWindowOpen)
         {
+            if (_categories[_selectedIndex] == OverworldMenuCategory.Item && _itemJournalView != null
+                && _itemJournalView.TryCancelTarget())
+            {
+                _ignoreInputUntilFrame = Time.frameCount;
+                return true;
+            }
+            _ignoreInputUntilFrame = Time.frameCount;
             HideCategoryWindow();
             return true;
         }
 
         return false;
+    }
+
+    public void TryCloseFromPauseInput()
+    {
+        GameInput.ConsumeBattleUIInput();
+        GameInput.SuppressMenuInputsForCurrentFrame();
+        if (!_isOpen || _isAnimating || Time.frameCount <= _ignoreInputUntilFrame) return;
+        RequestCloseFromUIManager();
     }
 
     private void Update()
@@ -176,12 +216,13 @@ public sealed class OverworldMenuUI : UIPanel
 
         if (_isCategoryWindowOpen)
         {
-            bool powerTabRequested = _categories[_selectedIndex] == OverworldMenuCategory.Power
+            bool powerTabRequested = (_categories[_selectedIndex] == OverworldMenuCategory.Power
+                || _categories[_selectedIndex] == OverworldMenuCategory.Item)
                 && GameInput.PowerTabPressed;
             if (powerTabRequested)
                 HandleCategoryWindowInput();
-            else if (GameInput.CancelPressed || GameInput.MenuPressed)
-                HideCategoryWindow();
+            else if (GameInput.CancelPressed)
+                TryHandleCancelInput();
             else
                 HandleCategoryWindowInput();
             return;
@@ -205,6 +246,11 @@ public sealed class OverworldMenuUI : UIPanel
         _isAnimating = true;
         _isCategoryWindowOpen = false;
         _ignoreInputUntilFrame = Time.frameCount + 2;
+
+        _timeScaleBeforeOpen = Time.timeScale;
+        Time.timeScale = 0f;
+        _ownsPauseState = true;
+        GameInput.ConsumeBattleUIInput();
 
         if (GameStateManager.Instance != null)
         {
@@ -264,6 +310,7 @@ public sealed class OverworldMenuUI : UIPanel
 
     private void HideOverworldImmediate()
     {
+        _openOptionsAfterClose = false;
         _isOpen = false;
         _isAnimating = false;
         _isCategoryWindowOpen = false;
@@ -280,6 +327,9 @@ public sealed class OverworldMenuUI : UIPanel
 
         _ownsPauseState = false;
         GameStateManager stateManager = GameStateManager.Instance;
+        if (!GameInput.IsConfigModalActive && Mathf.Approximately(Time.timeScale, 0f))
+            Time.timeScale = _timeScaleBeforeOpen;
+        GameInput.ConsumeBattleUIInput();
         if (stateManager != null && stateManager.CurrentState == GameState.Paused)
             stateManager.ChangeState(_stateBeforeOpen);
     }
@@ -519,6 +569,14 @@ public sealed class OverworldMenuUI : UIPanel
 
     private void RefreshItemCategoryPanel()
     {
+        if (_itemJournalView != null)
+        {
+            if (_emptyInventoryLabel != null) _emptyInventoryLabel.gameObject.SetActive(false);
+            for (int i = 0; i < _itemLabels.Count; i++)
+                if (_itemLabels[i] != null) _itemLabels[i].gameObject.SetActive(false);
+            _itemJournalView.Refresh();
+            return;
+        }
         GlobalDataManager data = ResolveGlobalData();
         IReadOnlyDictionary<string, int> inventory = data != null ? data.GetInventory() : null;
 
@@ -569,7 +627,14 @@ public sealed class OverworldMenuUI : UIPanel
             if (panel == null || !panel.IsValid)
                 continue;
 
-            if (panel.Category == OverworldMenuCategory.Equip)
+            if (panel.Category == OverworldMenuCategory.Item)
+            {
+                TMP_FontAsset font = GameContentCatalog.Instance != null
+                    ? GameContentCatalog.Instance.DefaultUiFont
+                    : _categoryLabel != null ? _categoryLabel.font : null;
+                _itemJournalView = ItemJournalPanelView.Ensure(panel.Panel, font, _journalCatalog);
+            }
+            else if (panel.Category == OverworldMenuCategory.Equip)
             {
                 _equipContentLabel = EnsureContentLabel(panel.Panel, "EquipContent");
             }
@@ -615,7 +680,9 @@ public sealed class OverworldMenuUI : UIPanel
     private void HandleCategoryWindowInput()
     {
         OverworldMenuCategory category = _categories[_selectedIndex];
-        if (category == OverworldMenuCategory.Equip)
+        if (category == OverworldMenuCategory.Item)
+            _itemJournalView?.HandleInput();
+        else if (category == OverworldMenuCategory.Equip)
             HandleEquipInput();
         else if (category == OverworldMenuCategory.Power)
             HandlePowerInput();
@@ -766,7 +833,6 @@ public sealed class OverworldMenuUI : UIPanel
             return;
         }
 
-        EquipmentLoadoutService.NormalizeSlots(member);
         var text = new StringBuilder(512);
         text.Append("<color=#FFD105>").Append(GetPartyDisplayName(member)).Append("</color>");
         text.Append("   ◀ 파티원 ▶\n\n");
@@ -835,10 +901,10 @@ public sealed class OverworldMenuUI : UIPanel
 
         int next = currentIndex + 1;
         EquipmentChangeResult result = next >= candidates.Count
-            ? EquipmentLoadoutService.TryUnequip(member, slot)
+            ? EquipmentLoadoutService.TryUnequip(global, member, slot)
             : EquipmentLoadoutService.TryEquip(global, member, slot, candidates[next]);
         _categoryStatus = result.Message;
-        RefreshRuntimePartyMember(member);
+        if (result.Succeeded) RefreshRuntimePartyMember(member);
         RefreshEquipCategoryPanel();
         RebuildPartyPanel();
     }

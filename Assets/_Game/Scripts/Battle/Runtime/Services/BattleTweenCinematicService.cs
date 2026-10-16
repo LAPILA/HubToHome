@@ -78,7 +78,7 @@ public sealed class BattleTweenCinematicService : IBattleTweenCinematicService
         bool foregroundApplied = false;
         try
         {
-            Vector3 destination = ResolveAnchorPosition(subject, anchor) + new Vector3(x, y, 0f);
+            Vector3 destination = BattleCinematicService.ResolveAnchorPosition(subject, anchor, _host) + new Vector3(x, y, 0f);
             _host?.SetActorForeground(subject, true);
             foregroundApplied = true;
             BattleManager.SetGhostTrail(subject, true);
@@ -133,7 +133,7 @@ public sealed class BattleTweenCinematicService : IBattleTweenCinematicService
             yield break;
         }
 
-        Vector3 landingPosition = ResolveSlotPosition(subject);
+        Vector3 landingPosition = BattleCinematicService.ResolveSlotPosition(subject, _host);
         Vector3 currentPosition = subject.transform.position;
         Vector3 startPosition = currentPosition.y > landingPosition.y + 0.05f || Vector3.Distance(currentPosition, landingPosition) > 0.25f
             ? currentPosition
@@ -372,7 +372,7 @@ public sealed class BattleTweenCinematicService : IBattleTweenCinematicService
                 yield break;
             }
 
-            elapsed += Time.unscaledDeltaTime;
+            if (!BattleDelay.IsPaused) elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
 
@@ -495,60 +495,4 @@ public sealed class BattleTweenCinematicService : IBattleTweenCinematicService
         return subject;
     }
 
-    private Vector3 ResolveSlotPosition(CharacterBase subject)
-    {
-        if (subject == null)
-        {
-            return Vector3.zero;
-        }
-
-        PositionManager pm = PositionManager.Instance;
-        if (pm == null || _host == null)
-        {
-            return subject.transform.position;
-        }
-
-        if (subject is PlayerCharacter player)
-        {
-            IReadOnlyList<PlayerCharacter> players = _host.PlayerParty;
-            for (int i = 0; i < players.Count; i++)
-            {
-                if (players[i] == player)
-                {
-                    return pm.GetPlayerDefaultPos(i);
-                }
-            }
-        }
-
-        if (subject is EnemyCharacter enemy)
-        {
-            IReadOnlyList<EnemyCharacter> enemies = _host.Enemies;
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                if (enemies[i] == enemy)
-                {
-                    return pm.GetEnemyDefaultPos(i);
-                }
-            }
-        }
-
-        return subject.transform.position;
-    }
-
-    private Vector3 ResolveAnchorPosition(CharacterBase subject, string anchor)
-    {
-        PositionManager pm = PositionManager.Instance;
-        string normalizedAnchor = string.IsNullOrWhiteSpace(anchor) ? "current" : anchor.Trim().ToLowerInvariant();
-        switch (normalizedAnchor)
-        {
-            case "center":
-                return pm != null ? pm.GetCenterPos() : subject.transform.position;
-            case "player_slot":
-                return subject is PlayerCharacter ? ResolveSlotPosition(subject) : subject.transform.position;
-            case "enemy_slot":
-                return subject is EnemyCharacter ? ResolveSlotPosition(subject) : subject.transform.position;
-            default:
-                return subject.transform.position;
-        }
-    }
 }

@@ -221,14 +221,14 @@ public class DefenseJudgementPolicyTests
             DefenseQteResult result = DefenseJudgementPolicy.EvaluateActiveDefense(request, default, true, impact);
             Assert.That(result.IsGuard, Is.True);
             Assert.That(result.IsJustGuard, Is.False);
-            Assert.That(result.DamageMultiplier, Is.EqualTo(0.5f));
+            Assert.That(result.DamageMultiplier, Is.EqualTo(0.35f));
             Assert.That(result.PreventsDamage, Is.False);
         }
     }
 
     [TestCase(0.12f, false, true, 0f)]
-    [TestCase(0.121f, true, false, 0.5f)]
-    [TestCase(0.9f, true, false, 0.5f)]
+    [TestCase(0.121f, true, false, 0.35f)]
+    [TestCase(0.9f, true, false, 0.35f)]
     [TestCase(0.13f, false, false, 1f)]
     public void ActiveGuard_NewPressUsesJustWindowAndOtherwiseNeedsHeldGuard(
         float remaining, bool held, bool perfect, float multiplier)
@@ -298,7 +298,7 @@ public class DefenseJudgementPolicyTests
 
         Assert.That(result.IsGuard, Is.True);
         Assert.That(result.IsJustGuard, Is.False);
-        Assert.That(result.DamageMultiplier, Is.EqualTo(0.5f));
+        Assert.That(result.DamageMultiplier, Is.EqualTo(0.35f));
     }
 
     [Test]
@@ -546,13 +546,13 @@ public class DefenseJudgementPolicyTests
 
         Assert.That(request.UseTimedGuard, Is.False);
         Assert.That(request.GuardDuration, Is.EqualTo(0.4f));
-        Assert.That(request.GuardDamageMultiplier, Is.EqualTo(0.5f));
+        Assert.That(request.GuardDamageMultiplier, Is.EqualTo(0.35f));
     }
 
-    [TestCase(0.30f, DefenseOutcome.Guarded, 0.5f, QTEManager.QTEGrade.Good)]
+    [TestCase(0.30f, DefenseOutcome.Guarded, 0.35f, QTEManager.QTEGrade.Good)]
     [TestCase(0.12f, DefenseOutcome.Success, 0f, QTEManager.QTEGrade.Perfect)]
-    [TestCase(0.121f, DefenseOutcome.Guarded, 0.5f, QTEManager.QTEGrade.Good)]
-    [TestCase(0.40f, DefenseOutcome.Guarded, 0.5f, QTEManager.QTEGrade.Good)]
+    [TestCase(0.121f, DefenseOutcome.Guarded, 0.35f, QTEManager.QTEGrade.Good)]
+    [TestCase(0.40f, DefenseOutcome.Guarded, 0.35f, QTEManager.QTEGrade.Good)]
     [TestCase(0.401f, DefenseOutcome.Failure, 1f, QTEManager.QTEGrade.Miss)]
     public void EvaluateTimedGuard_HeldInputUsesPerfectAndGuardBoundaries(
         float secondsBeforeImpact,
@@ -726,15 +726,16 @@ public class DefenseJudgementPolicyTests
         Assert.That(request.GuardDuration, Is.EqualTo(0.4f));
         Assert.That(result.Outcome, Is.EqualTo(expectedOutcome));
         Assert.That(result.DamageMultiplier, Is.EqualTo(expectedOutcome == DefenseOutcome.Success
-            ? 0f : expectedOutcome == DefenseOutcome.Guarded ? 0.5f : 1f));
+            ? 0f : expectedOutcome == DefenseOutcome.Guarded ? 0.35f : 1f));
     }
 
-    [Test]
-    public void EvaluateTimedGuard_UsesConfiguredPartialDamageWithoutLegacyNearSuccess()
+    [TestCase(0.35f)]
+    [TestCase(0.5f)]
+    public void EvaluateTimedGuard_UsesConfiguredPartialDamageWithoutLegacyNearSuccess(float multiplier)
     {
         var request = new DefenseQteRequest(
             1f, 1f, DefenseRequirement.Any, new DefenseTimingProfile(0.12f, 0.22f, 0.4f),
-            allowNearSuccess: false, useTimedGuard: true, guardDuration: 0.4f, guardDamageMultiplier: 0.35f);
+            allowNearSuccess: false, useTimedGuard: true, guardDuration: 0.4f, guardDamageMultiplier: multiplier);
 
         DefenseQteResult result = DefenseJudgementPolicy.EvaluateTimedGuard(
             request, CreateGuardAttempt(0.3f), 0f);
@@ -742,7 +743,7 @@ public class DefenseJudgementPolicyTests
         Assert.That(result.Outcome, Is.EqualTo(DefenseOutcome.Guarded));
         Assert.That(result.PreventsDamage, Is.False);
         Assert.That(result.IsPerfectParry, Is.False);
-        Assert.That(result.DamageMultiplier, Is.EqualTo(0.35f));
+        Assert.That(result.DamageMultiplier, Is.EqualTo(multiplier));
     }
 
     private static DefenseQteRequest CreateTimedGuardRequest(

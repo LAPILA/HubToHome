@@ -46,7 +46,10 @@ public class DialogueNode
 [System.Serializable]
 public class ChoiceData
 {
-    public string ChoiceText; // 번역 Key 사용 권장
+    public string ChoiceText;
+    [Tooltip("선택지 번역 키. 비어 있거나 번역이 없으면 ChoiceText를 표시합니다.")]
+    public string LocalizationKey;
+    public string ResolveText() => LocalizationManager.Localize(LocalizationKey, ChoiceText);
     [Tooltip("선택 시 이동할 다음 DialogueData (없으면 대화 종료)")]
     public DialogueData NextDialogue;
     [Tooltip("선택 시 저장될 게임 진행 플래그 (예: Killed_Boss)")]

@@ -1,0 +1,129 @@
+# 08 · 피해 숫자와 카메라가 자기 수명을 지키는 방법
+
+> **중심 질문: 사라진 UI를 트윈이 계속 만지거나, 옛 연출이 새 카메라를 초기화하지 않는가?** 보기 좋은 연출의 바탕은 소유권과 종료 처리입니다.
+
+[자료실](README.md) · [UI 입문](https://app.notion.com/p/3f6641f6190181c88cb7e3f47904feac) · [카메라 입문](https://app.notion.com/p/3f6641f619018123bfd9fcdcef2903c6)
+
+## 01 / 피해 계산과 숫자 표시의 원본을 구분한다
+
+전투가 HP를 계산하고 피해 이벤트를 발생시킵니다. Presenter는 받은 결과를 묶어서 보여줍니다. 숫자를 크게 띄우는 트윈이 HP를 계산하거나 적의 생사를 결정하지 않습니다.
+
+| 구성 | 책임 | 핵심 식별자 |
+| --- | --- | --- |
+| BattleDamageBatchTracker | 공격 묶음의 시작/끝 | batchId |
+| BattleDamagePopupPresenter | 대상별·묶음별 합계와 배치 | (CharacterBase, batchId) |
+| BattleDamagePopupView | 글자·색·크기·페이드 | 자신이 가진 트윈 |
+| BattleCameraActionScope | 카메라 명령의 범위 | CameraCommandToken |
+
+## 02 / 같은 타입 피해만 합치려면 키가 필요하다
+
+근거 · `Assets/_Game/Scripts/UI/Runtime/BattleDamagePopupPresenter.Totals.cs` · 41–58행
+
+```csharp
+        view = null;
+        if (amount <= 0) return false;
+        // 외부 피해는 같은 프레임의 상태 틱만 묶고 자동 종료합니다.
+        if (batchId == 0) batchId = -(long)Time.frameCount - 1;
+        var key = (target, batchId);
+        if (!_groups.TryGetValue(key, out DamageGroup group))
+        {
+            for (int i = _groupOrder.Count - 1; i >= 0; i--)
+                if (_groupOrder[i].Target == target && _groupOrder[i].Closed) ReleaseGroup(_groupOrder[i]);
+            if (_groupOrder.Count >= 12) ReleaseGroup(_groupOrder[0]);
+            group = new DamageGroup { Target = target, BatchId = batchId, Origin = position + _originOffset };
+            _groups.Add(key, group);
+            _groupOrder.Add(group);
+        }
+
+        int index = (int)type;
+        group.Totals[index] = System.Math.Min(long.MaxValue - amount, group.Totals[index]) + amount;
+        view = group.Views[index];
+```
+먼저 `(target, batchId)`로 공격 묶음을 찾고, 그 안 `Totals[type]`에 속성별 합계를 더합니다. 동일 대상이라는 이유만으로 다음 스킬까지 영원히 합치지 않습니다. `long`을 쓰고 최대값을 넘는 덧셈도 제한합니다.
+
+| 들어온 이벤트 | 저장되는 합계 | 화면 의미 |
+| --- | --- | --- |
+| A 대상, 묶음 10, 물리 12 | 물리 12 | 물리 행 생성 |
+| A 대상, 묶음 10, 물리 8 | 물리 20 | 같은 행의 숫자 갱신 |
+| A 대상, 묶음 10, 화염 5 | 물리 20 / 화염 5 | 다른 타입 행 |
+| B 대상, 묶음 10, 물리 7 | B의 물리 7 | 대상이 달라 별도 그룹 |
+| A 대상, 묶음 11, 물리 9 | 새 그룹 9 | 다음 공격과 분리 |
+
+묶음이 없는 외부 피해는 `-(Time.frameCount)-1`을 사용해 같은 프레임 단위로 묶습니다. 이건 모든 상태 피해가 한 턴 내내 하나로 누적된다는 규칙이 아닙니다. 그룹 수 상한과 닫힌 그룹 정리도 포함되어 있습니다.
+
+조회는 Dictionary의 평균 O(1)입니다. 그 뒤 화면 충돌 배치와 그룹 순회 비용은 별도입니다. 자료구조 조회 비용을 전체 UI 프레임 비용으로 오해하면 안 됩니다.
+
+## 03 / 이벤트는 구독했던 발행자에게서 해제한다
+
+근거 · `Assets/_Game/Scripts/UI/Runtime/BattleDamagePopupPresenter.Totals.cs` · 29–36행
+
+```csharp
+    public void BindBatches(BattleDamageBatchTracker batches)
+    {
+        if (ReferenceEquals(_batches, batches)) return;
+        if (_batches != null) _batches.Ended -= FinishBatch;
+        ReleaseAll();
+        _batches = batches;
+        if (_batches != null) _batches.Ended += FinishBatch;
+    }
+```
+발행자가 바뀌면 이전 `_batches`에서 먼저 해제하고 표시를 비운 후 새 발행자를 구독합니다. 파괴 시에도 보관해 둔 발행자에서 해제합니다. 그때의 Singleton.Instance만 보고 해제하면 이미 새 인스턴스로 바뀌었을 수 있습니다.
+
+이 구조는 Observer 방식의 구체적인 사용입니다. 장점은 피해 계산이 모든 UI 참조를 몰라도 된다는 것, 비용은 **구독 수명을 명시적으로 관리해야 한다는 것**입니다. OnEnable에서 계속 +=만 하면 이벤트 한 번에 소리나 숫자가 두 번 나올 수 있습니다.
+
+## 04 / 트윈 정리는 화면을 숨기는 것과 다르다
+
+`BattleDamagePopupView.StopAndReset()`과 내부 트윈 종료 경로를 함께 읽으세요. View를 비활성화하거나 파괴해도 별도 실행 중인 트윈이 색/크기를 계속 바꾸면 MissingReferenceException으로 이어질 수 있습니다.
+
+올바른 독해 순서는 트윈 생성 → 핸들 저장/대상 지정 → 정상 완료 → 재사용 전 초기화 → OnDisable/파괴 시 종료입니다. `DOTween.KillAll()`로 프로젝트의 모든 연출을 멈추는 것은 수명 문제를 해결하는 것과 다릅니다. 이 View는 자신이 소유한 시퀀스·펄스·대상 트윈을 정리하는 경로를 가집니다.
+
+주의: 이 장은 실제 게임 전체의 모든 트윈이 안전함을 보증하는 감사 보고서가 아닙니다. 소유 관계를 따라 읽는 대표 사례입니다.
+
+## 05 / 카메라를 되돌리기 전에 ‘아직 내 명령인가’ 확인
+
+근거 · `Assets/_Game/Scripts/Battle/Runtime/Services/BattleCameraActionScope.cs` · 80–94행
+
+```csharp
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        CameraController controller = _controller;
+        _controller = null;
+        if (controller != null && controller.IsCurrent(_token))
+        {
+            controller.ResetCamera(_resetDuration);
+        }
+    }
+```
+한 번만 Dispose되고, 그 명령 토큰이 아직 현재 토큰일 때만 ResetCamera를 호출합니다.
+
+```mermaid
+sequenceDiagram
+ participant A as 공격 A
+ participant C as CameraController
+ participant B as 새 연출 B
+ A->>C: Begin, 토큰 A
+ B->>C: 새 명령, 토큰 B
+ A->>C: Dispose, A가 현재인가?
+ C-->>A: 아니오, B를 리셋하지 않음
+```
+
+단순 finally에 ResetCamera를 넣는 것만으로는 충분하지 않습니다. A 종료가 늦게 왔을 때 B의 카메라를 강제로 원위치로 돌릴 수 있기 때문입니다. 토큰은 저장 장의 generation과 비슷하게 **오래된 작업을 구별**합니다.
+
+`Begin()`은 동적 전투 샷, 중앙 확대, 대상 프레이밍 등 현재 카메라 조건에 따라 경로를 고릅니다. 카메라 요청이 거절되면 비활성 범위를 반환할 수 있습니다. 줌이 안 된다고 곧바로 렌즈값만 고치기 전에 소유권/정적 모드/대상을 확인해야 합니다.
+
+## 06 / 실습과 예상 결과 — 이번에는 미실행
+
+- [ ] 한 공격에서 물리·화염 피해를 섞고 합계가 타입별로 분리되는지 확인한다.
+- [ ] UI를 여러 번 켜고 끈 뒤 이벤트 한 번에 View가 중복 생성되는지 확인한다.
+- [ ] 숫자 펄스 도중 View를 정리한다. 예상: 소유 트윈이 남은 파괴 객체를 쓰지 않음.
+- [ ] A 카메라 범위가 끝나기 전에 B를 시작한다. 예상: 늦은 A.Dispose가 B를 리셋하지 않음.
+
+읽을 테스트: `UI/Tests/Editor/BattleDamagePopupPresenterTests.cs`, `BattleDamagePopupViewTests.cs`. 화면 겹침·실제 입력 감각은 테스트 코드만으로 완료 판정하지 말고 플레이 확인을 추가합니다.
+
+면접 질문: **Dictionary 키에 batchId가 없으면 무엇이 달라지는가? 이벤트 구독 해제에 현재 Singleton만 쓰면 위험한 이유는? 멱등적인 Dispose란 무엇이고 왜 필요한가?**

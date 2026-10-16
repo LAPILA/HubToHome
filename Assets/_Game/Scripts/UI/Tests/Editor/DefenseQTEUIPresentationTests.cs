@@ -214,6 +214,16 @@ public class DefenseQTEUIPresentationTests
             new DefenseTimingProfile(0.12f, 0.22f, 0.4f), useActiveDefense: true);
     }
 
+    [Test]
+    public void SkillResultAppearsNextToPromptRatherThanAuthoredFarOffset()
+    {
+        _resultLabel.rectTransform.anchoredPosition = new Vector2(340f, 260f);
+        _ui.ShowSkillQTE(new Vector2(.2f, .75f), "Z", .5f);
+        _ui.ShowSkillResult(true);
+        Assert.That(_resultLabel.rectTransform.anchoredPosition, Is.EqualTo(new Vector2(0f, -38f)));
+        Assert.That(_resultLabel.fontSize, Is.EqualTo(18f));
+    }
+
     private static DefenseQteResult CreateResult(
         DefenseInputReadStatus inputStatus,
         DefenseOutcome outcome)

@@ -15,7 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "엇박자 두 발"
   SkillID: lab.bunny.enemy_double_shot
-  Description: "느린 첫 탄 뒤 빠른 두 번째 탄. 각 전조마다 Z/X를 새로 입력하세요."
+  Description: "속도가 다른 탄환으로 적을 압박한다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1

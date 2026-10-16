@@ -402,36 +402,6 @@ public static class ShowcaseStationDataBuilder
         return target;
     }
 
-    private static void ValidateScenarioSource(string sourcePath)
-    {
-        string sourceText = File.ReadAllText(Path.GetFullPath(sourcePath));
-        ActionSequenceSourceImportResult importResult =
-            ActionSequenceSourceSync.Import(sourceText, sourcePath);
-        try
-        {
-            ScenarioValidationResult validation = importResult.Validation
-                ?? new ScenarioValidationResult();
-            if (importResult.Sequence != null)
-            {
-                validation.Merge(ScenarioCatalogValidator.ValidateSequence(
-                    importResult.Sequence,
-                    RequireAsset<ActionCatalogAsset>(
-                        ProductionActionLibraryBuildCommand.GeneratedAssetPath)));
-            }
-
-            if (importResult.Sequence == null || validation.HasErrors)
-            {
-                throw new InvalidOperationException(
-                    "Showcase sequence prevalidation failed: "
-                    + FormatValidation(validation));
-            }
-        }
-        finally
-        {
-            if (importResult.Sequence != null)
-                UnityEngine.Object.DestroyImmediate(importResult.Sequence);
-        }
-    }
     private static void ValidateDependencies()
     {
         RequireAsset<Sprite>(ShowcaseStationPaths.SharedWhiteSprite);

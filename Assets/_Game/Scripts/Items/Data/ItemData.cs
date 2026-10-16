@@ -2,7 +2,7 @@ using UnityEngine;
 using Sirenix.OdinInspector;
 
 // ── [모든 데이터가 공유하는 공용 Enum] ──
-public enum EffectActionType { None, Heal, Damage, ApplyStatus }
+public enum EffectActionType { None = 0, Heal = 1, Damage = 2, ApplyStatus = 3, Cleanse = 4, Revive = 5 }
 public enum TargetStatType   { None = 0, HP = 1, AP = 2 }
 public enum ValueCalcType    { Flat, Percentage, Full } 
 public enum ItemType         { Consumable, KeyItem, Equipment }
@@ -23,6 +23,10 @@ public class ItemData : ScriptableObject
     [HorizontalGroup("Type & Target/Row1", LabelWidth = 70)] public TargetAreaType TargetType = TargetAreaType.AllyOnly;
     [BoxGroup("Type & Target")] public bool IsAoE = false;
 
+    [BoxGroup("Type & Target"), ShowIf("@Type == ItemType.Equipment"), LabelText("장비 데이터")]
+    [Tooltip("장비 상품/상자/드롭은 이 장비의 보관함으로 지급합니다. Item ID는 상품 ID이며 장비 ID와 달라도 됩니다.")]
+    public EquipmentData Equipment;
+
     // ── 사용 가능 위치 ──
     [BoxGroup("Usability")] public bool UsableInOverworld = true;
     [BoxGroup("Usability")] public bool UsableInBattle = true;
@@ -35,11 +39,11 @@ public class ItemData : ScriptableObject
     [BoxGroup("Main Effect")]
     public EffectActionType ActionType = EffectActionType.Heal;
     
-    [BoxGroup("Main Effect"), ShowIf("@ActionType == EffectActionType.Heal || ActionType == EffectActionType.Damage")]
+    [BoxGroup("Main Effect"), ShowIf("@ActionType == EffectActionType.Heal || ActionType == EffectActionType.Damage || ActionType == EffectActionType.Revive")]
     [Tooltip("Heal/Damage 시 대상이 되는 스탯")]
     public TargetStatType TargetStat = TargetStatType.HP;
     
-    [BoxGroup("Main Effect"), ShowIf("@ActionType == EffectActionType.Heal || ActionType == EffectActionType.Damage")]
+    [BoxGroup("Main Effect"), ShowIf("@ActionType == EffectActionType.Heal || ActionType == EffectActionType.Damage || ActionType == EffectActionType.Revive")]
     [Tooltip("수치 계산 방식 (고정값 / 퍼센트 / 100% 꽉채움)")]
     public ValueCalcType CalcType = ValueCalcType.Flat;
     [BoxGroup("Main Effect"), ShowIf("@CalcType == ValueCalcType.Flat || CalcType == ValueCalcType.Percentage")]
@@ -56,7 +60,15 @@ public class ItemData : ScriptableObject
     [Tooltip("상태이상 지속 턴 수")]
     public int StatusDurationTurns = 0;
 
+    [BoxGroup("정화"), ShowIf("@ActionType == EffectActionType.Cleanse"), LabelText("해로운 상태 전체 정화")]
+    public bool CleanseAllHarmful = true;
+
+    [BoxGroup("정화"), ShowIf("@ActionType == EffectActionType.Cleanse && !CleanseAllHarmful"), LabelText("정화할 누적 상태")]
+    public ElementalStatusKind CleanseElement;
+
     [BoxGroup("Stack")]
     [HorizontalGroup("Stack/Row1", LabelWidth = 80)] public bool IsStackable = true;
     [HorizontalGroup("Stack/Row1", LabelWidth = 80), ShowIf("IsStackable")] public int MaxStackSize = 99;
+
+    public int StackLimit => IsStackable ? Mathf.Clamp(MaxStackSize, 1, 99) : 1;
 }

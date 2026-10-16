@@ -6,6 +6,105 @@ using UnityEngine;
 
 public sealed class EquipmentAndPowerServicesTests
 {
+    [Test]
+    public void EquipmentQueriesDoNotNormalizeOtherPartyMembers()
+    {
+        var hero = Character("hero");
+        var ally = Character("ally");
+        hero.EquippedEquipmentIDs = new List<string> { " equip.a " };
+        ally.EquippedEquipmentIDs = null;
+        _global.Party.Add(hero);
+        _global.Party.Add(ally);
+        _global.AddEquipmentAndGetAddedAmount("equip.a", 2);
+        Assert.That(EquipmentLoadoutService.GetEquippedId(hero, EquipmentSlot.Weapon), Is.EqualTo("equip.a"));
+        Assert.That(EquipmentLoadoutService.GetAvailableCount(_global, ally, EquipmentSlot.Weapon, "equip.a"), Is.EqualTo(1));
+        Assert.That(hero.EquippedEquipmentIDs, Is.EqualTo(new[] { " equip.a " }));
+        Assert.That(ally.EquippedEquipmentIDs, Is.Null);
+    }
+
+    [Test]
+    public void EquippedInventoryCannotBeRemovedButSpareCopiesCan()
+    {
+        var hero = CreateVitalityFixture(out _);
+        string id = hero.EquippedEquipmentIDs[0];
+        Assert.That(_global.RemoveEquipment(id), Is.False);
+        _global.AddEquipmentAndGetAddedAmount(id);
+        Assert.That(_global.RemoveEquipment(id), Is.True);
+        Assert.That(_global.GetEquipmentCount(id), Is.EqualTo(1));
+        Assert.That(_global.RemoveEquipment(id), Is.False);
+    }
+
+    [Test]
+    public void EquipmentSwapsClampVitalsWithoutHealingOrStacking()
+    {
+        var hero = CreateVitalityFixture(out var data);
+        var equipment = EquipmentDatabase.FindById(hero.EquippedEquipmentIDs[0]);
+        hero.HP = 145;
+        hero.AP = 29;
+        Assert.That(EquipmentLoadoutService.TryUnequip(hero, EquipmentSlot.Weapon).Succeeded, Is.True);
+        Assert.That(hero.HP, Is.EqualTo(100));
+        Assert.That(hero.AP, Is.EqualTo(20));
+        for (int i = 0; i < 10; i++)
+        {
+            EquipmentLoadoutService.TryEquip(_global, hero, EquipmentSlot.Weapon, equipment);
+            Assert.That(CharacterStatsProjectionService.ResolveFromSave(hero, data).MaxHP, Is.EqualTo(150));
+            Assert.That(hero.HP, Is.EqualTo(100));
+            Assert.That(hero.AP, Is.EqualTo(20));
+            EquipmentLoadoutService.TryUnequip(hero, EquipmentSlot.Weapon);
+        }
+        hero.HP = 0;
+        EquipmentLoadoutService.TryEquip(_global, hero, EquipmentSlot.Weapon, equipment);
+        Assert.That(hero.HP, Is.Zero, "장비 변경으로 사망한 캐릭터가 부활하지 않습니다.");
+    }
+
+    [Test]
+    public void EquipmentCannotBeAssignedToForeignSaveObject()
+    {
+        var equipment = Equipment("equip.foreign", EquipmentSlot.Weapon, 5);
+        SetEquipmentDatabase(equipment);
+        _global.AddEquipmentAndGetAddedAmount(equipment.ItemID);
+        var foreign = Character("not-in-party");
+        Assert.That(EquipmentLoadoutService.TryEquip(_global, foreign, EquipmentSlot.Weapon, equipment).Status,
+            Is.EqualTo(EquipmentChangeStatus.InvalidCharacter));
+        Assert.That(foreign.EquippedEquipmentIDs, Is.Empty);
+    }
+
+    [Test]
+    public void EquipmentProjection_IgnoresWrongSlotAndRestrictedCharactersWithoutEditingSave()
+    {
+        EquipmentData weapon = Equipment("equip.validated", EquipmentSlot.Weapon, attack: 7);
+        SetEquipmentDatabase(weapon);
+        CharacterSaveData hero = Character("hero");
+        hero.EquippedEquipmentIDs = new List<string> { "", weapon.ItemID };
+        Assert.That(EquipmentLoadoutService.GetEquipped(hero, EquipmentSlot.Accessory1), Is.Null);
+        Assert.That(EquipmentLoadoutService.BuildStatModifiers(hero), Is.Empty);
+        Assert.That(hero.EquippedEquipmentIDs, Has.Count.EqualTo(2));
+        hero.EquippedEquipmentIDs = new List<string> { weapon.ItemID };
+        weapon.AllowedCharacterIDs.Add("other");
+        Assert.That(EquipmentLoadoutService.GetEquipped(hero, EquipmentSlot.Weapon), Is.Null);
+        Assert.That(EquipmentLoadoutService.BuildStatModifiers(hero), Is.Empty);
+        weapon.AllowedCharacterIDs.Clear();
+        Assert.That(EquipmentLoadoutService.GetEquipped(hero, EquipmentSlot.Weapon), Is.SameAs(weapon));
+        Assert.That(EquipmentLoadoutService.BuildStatModifiers(hero), Has.Count.EqualTo(1));
+        Assert.That(hero.EquippedEquipmentIDs, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void ExplicitEquipmentChange_PreventsPrefabDefaultsOverwritingSavedChoice()
+    {
+        EquipmentData weapon = Equipment("equip.explicit", EquipmentSlot.Weapon, attack: 7);
+        SetEquipmentDatabase(weapon);
+        CharacterSaveData hero = Character("hero");
+        _global.Party.Add(hero);
+        _global.AddEquipmentAndGetAddedAmount(weapon.ItemID);
+        Assert.That(hero.HasInitializedEquipment, Is.False);
+        Assert.That(EquipmentLoadoutService.TryEquip(_global, hero, EquipmentSlot.Weapon, weapon).Succeeded, Is.True);
+        Assert.That(hero.HasInitializedEquipment, Is.True);
+        hero.HasInitializedEquipment = false;
+        Assert.That(EquipmentLoadoutService.TryUnequip(hero, EquipmentSlot.Weapon).Succeeded, Is.True);
+        Assert.That(hero.HasInitializedEquipment, Is.True);
+    }
+
     private readonly List<UnityEngine.Object> _created = new List<UnityEngine.Object>();
     private GlobalDataManager _previousGlobal;
     private GlobalDataManager _global;

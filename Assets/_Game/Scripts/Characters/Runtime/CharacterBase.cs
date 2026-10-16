@@ -71,7 +71,17 @@ public abstract class CharacterBase : MonoBehaviour
     private readonly List<StatModifier> _battleStatModifiers = new List<StatModifier>();
     private readonly List<StatModifier> _forecastStatModifiers = new List<StatModifier>();
     private bool _characterStatsDirty = true;
+    public uint BattleStatsRevision { get; private set; }
+    public bool IsResolvingDirectHitReaction { get; private set; }
     private bool _isClearingBattleStatusEffects;
+    private ElementalStatusState _elements;
+    public ElementalStatusState Elements => _elements ?? (_elements = new ElementalStatusState(this));
+
+    public void ConfigureElementalStatus(ElementalStatusProfile profile) => Elements.Configure(profile);
+    internal void NotifyElementalStatusChanged()
+    {
+        if (!_isClearingBattleStatusEffects) OnStatusEffectsChanged?.Invoke(this);
+    }
     // CurrentHP/AP는 레이어 계산값이 아니라 전투 대상 인스턴스의 런타임 자원이다.
     private int _currentHP;
     private int _currentAP;
@@ -117,6 +127,8 @@ public abstract class CharacterBase : MonoBehaviour
     public event Action OnActionExecuted; 
     public event Action<CharacterBase, int, int> OnHPChanged;
     public event Action<CharacterBase, int, int> OnAPChanged;
+    public event Action<CharacterBase, int, ElementalStatusKind> OnElementalDamage;
+    public long ElementalDamageTotal { get; private set; }
 
     protected readonly List<StatusEffect> _activeEffects = new List<StatusEffect>();
     public IReadOnlyList<StatusEffect> ActiveStatusEffects => _activeEffects;
@@ -145,13 +157,15 @@ public abstract class CharacterBase : MonoBehaviour
         _screenShakeScaleProvider = provider ?? new GameConfigScreenShakeScaleProvider();
     }
 
+    protected virtual Color BaseFlashColor => Color.white;
+
     protected Color ResolveFlashColor(Color authoredColor)
     {
         float scale = VisualAccessibilityPolicy.NormalizeScale(
             _screenFlashScaleProvider?.Scale
             ?? GameConfigManager.DefaultFlashIntensity);
         return VisualAccessibilityPolicy.ScaleFlashColor(
-            Color.white,
+            BaseFlashColor,
             authoredColor,
             scale);
     }
@@ -163,9 +177,13 @@ public abstract class CharacterBase : MonoBehaviour
             ?? GameConfigManager.DefaultScreenShake);
     }
 
-    public void NotifyActionExecuted() => OnActionExecuted?.Invoke();
-    public bool CanDodgeOrJump() => !IsBound && !IsStunned;
-    public bool CanTakeTurn() => IsAlive && !IsStunned;
+    public void NotifyActionExecuted(bool triggerElementalBleed = true)
+    {
+        OnActionExecuted?.Invoke();
+        _elements?.CompleteAction(triggerElementalBleed);
+    }
+    public bool CanDodgeOrJump() => !IsBound && !IsStunned && !Elements.IsFrozen;
+    public bool CanTakeTurn() => IsAlive && !IsStunned && !Elements.IsFrozen;
 
     public bool TryShowBattleSpeech(
         BattleSpeechTrigger trigger,
@@ -229,6 +247,7 @@ public abstract class CharacterBase : MonoBehaviour
     protected void MarkCharacterStatsDirty()
     {
         _characterStatsDirty = true;
+        unchecked { BattleStatsRevision++; }
     }
 
     protected virtual void PopulateEquipmentStatModifiers(List<StatModifier> modifiers)
@@ -332,6 +351,13 @@ public abstract class CharacterBase : MonoBehaviour
         int rawDamage,
         DamageElement element,
         CharacterBase attacker = null)
+        => TakeDamage(rawDamage, element, attacker, 1f);
+
+    public virtual DamageResult TakeDamage(
+        int rawDamage,
+        DamageElement element,
+        CharacterBase attacker,
+        float statusProcCoefficient)
     {
         if (!IsAlive)
             return new DamageResult(rawDamage, element, 0, false, false, true);
@@ -359,6 +385,7 @@ public abstract class CharacterBase : MonoBehaviour
         if (IsDefending) step4Damage *= 0.5f;
 
         int finalDamage = Mathf.Max(1, Mathf.RoundToInt(step4Damage));
+        if (_elements != null) finalDamage = _elements.ModifyDirectDamage(finalDamage);
 
         SetCurrentHPInternal(CurrentHP - finalDamage);
         OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
@@ -368,6 +395,13 @@ public abstract class CharacterBase : MonoBehaviour
 
         OnDamageTaken(finalDamage);
         if (CurrentHP == 0) OnDie();
+        else
+        {
+            // The original direct-hit notification includes this reaction's HP change.
+            IsResolvingDirectHitReaction = true;
+            try { _elements?.ReactToDirectHit(statusProcCoefficient); }
+            finally { IsResolvingDirectHitReaction = false; }
+        }
         
         return new DamageResult(
             rawDamage,
@@ -386,6 +420,20 @@ public abstract class CharacterBase : MonoBehaviour
         OnDamageTaken(damage);
         if (CurrentHP == 0) OnDie();
         return damage;
+    }
+
+    /// <summary>Status damage bypasses DEF, affinities, guard and dodge invincibility. It is never a direct hit.</summary>
+    public int ApplyStatusDamage(int damage, ElementalStatusKind kind)
+    {
+        if (!IsAlive || damage <= 0) return 0;
+        int applied = Mathf.Min(CurrentHP, damage);
+        ElementalDamageTotal += applied;
+        SetCurrentHPInternal(CurrentHP - applied);
+        OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
+        OnDamageTaken(applied);
+        OnElementalDamage?.Invoke(this, applied, kind);
+        if (CurrentHP == 0) OnDie();
+        return applied;
     }
 
     protected void SetCurrentHPValue(int value)
@@ -498,6 +546,7 @@ public abstract class CharacterBase : MonoBehaviour
         if (_activeEffects.Remove(effect))
         {
             effect.OnRemove();
+            if (effect.EffectID == StatusEffectIds.Stun) Elements.NotifyCrowdControlEnded();
             MarkCharacterStatsDirty();
             OnStatusEffectsChanged?.Invoke(this);
         }
@@ -534,6 +583,7 @@ public abstract class CharacterBase : MonoBehaviour
         }
         finally
         {
+            _elements?.Reset();
             IsBound = false;
             IsStunned = false;
             IsBerserk = false;
@@ -566,6 +616,7 @@ public abstract class CharacterBase : MonoBehaviour
     public void ProcessEffects(bool endOfTurn)
     {
         if (!IsAlive) return;
+        if (!endOfTurn) _elements?.BeginTurn();
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {
             if (_activeEffects[i].TickAtTurnEnd != endOfTurn)
@@ -573,10 +624,13 @@ public abstract class CharacterBase : MonoBehaviour
             _activeEffects[i].OnTick(); 
             if (_activeEffects[i].IsExpired)
             {
-                _activeEffects[i].OnRemove(); 
+                _activeEffects[i].OnRemove();
+                if (_activeEffects[i].EffectID == StatusEffectIds.Stun) Elements.NotifyCrowdControlEnded();
                 _activeEffects.RemoveAt(i);
             }
         }
+
+        if (endOfTurn && IsAlive) _elements?.EndTurn();
 
         MarkCharacterStatsDirty();
         OnStatusEffectsChanged?.Invoke(this);

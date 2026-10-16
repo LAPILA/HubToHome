@@ -170,6 +170,36 @@ public sealed class ConfigPanelScrollTests
     }
 
     [Test]
+    public void NonOwningPanelCannotReleaseAnotherConfigModal()
+    {
+        bool previous = GameInput.IsConfigModalActive;
+        GameObject owner = CreateInactiveObject("Non Owner Config", typeof(RectTransform), typeof(CanvasGroup));
+        ConfigPanelUI panel = owner.AddComponent<ConfigPanelUI>();
+        try
+        {
+            GameInput.SetConfigModalActive(true);
+            InvokeInstance(panel, "ReleaseModalState");
+            Assert.That(GameInput.IsConfigModalActive, Is.True);
+        }
+        finally { GameInput.SetConfigModalActive(previous); }
+    }
+
+    [Test]
+    public void RowLabelsHaveIndependentWidthsAndCannotOverflow()
+    {
+        GameObject owner = CreateInactiveObject("Label Layout", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        TextMeshProUGUI label = owner.GetComponent<TextMeshProUGUI>();
+        label.fontSize = 18;
+        typeof(ConfigPanelUI).GetMethod("ConfigureRowText", BindingFlags.Static | BindingFlags.NonPublic)
+            .Invoke(null, new object[] { label, true });
+        Assert.That(label.enableAutoSizing, Is.True);
+        Assert.That(label.fontSizeMax, Is.EqualTo(18));
+        Assert.That(label.overflowMode, Is.EqualTo(TextOverflowModes.Ellipsis));
+        Assert.That(label.raycastTarget, Is.False);
+        Assert.That(label.GetComponent<LayoutElement>().minWidth, Is.Zero);
+    }
+
+    [Test]
     public void MissingViewportIsRejectedWithoutCreatingOrInferringRuntimeContent()
     {
         GameObject rowPrefab = CreateValidRowPrefab("Valid Row Prefab");

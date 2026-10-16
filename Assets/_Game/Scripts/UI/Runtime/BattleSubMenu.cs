@@ -28,8 +28,22 @@ public class BattleSubMenu : MonoBehaviour
     private Action<IMenuEntry> _onConfirmCallback;
     private Action _onCancelCallback;
     private GridLayoutGroup _grid;
+    private CharacterBase _statusPreviewActor;
+    private bool _presentationInputBlocked;
     public bool IsActive { get; private set; }
     public int SelectedIndex => _currentIndex;
+
+    public void SetPresentationInputBlocked(bool blocked)
+    {
+        _presentationInputBlocked = blocked;
+        if (!blocked) _openedFrame = Time.frameCount;
+    }
+
+    public void SetStatusPreview(CharacterBase actor)
+    {
+        _statusPreviewActor = actor;
+        UpdateDescription();
+    }
 
     // 고정 HUD에서는 BattleMenuUI 한 곳이 좌우/상하/확정을 소유합니다.
     public void MoveSelection(int offset) => ChangeIndex(offset);
@@ -54,7 +68,7 @@ public class BattleSubMenu : MonoBehaviour
 
     private void Update()
     {
-        if (!IsActive || Time.frameCount <= _openedFrame || GameInput.BattleUIInputConsumed) return;
+        if (_presentationInputBlocked || !IsActive || Time.frameCount <= _openedFrame || GameInput.BattleUIInputConsumed) return;
         if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
         if (GameInput.BattleUpPressed) ChangeIndex(-1);
         else if (GameInput.BattleDownPressed) ChangeIndex(1);
@@ -64,6 +78,7 @@ public class BattleSubMenu : MonoBehaviour
 
     public void Preview(string title, List<IMenuEntry> entries, PlayerCharacter actor)
     {
+        _statusPreviewActor = null;
         IsActive = false;
         ClearCallbacks();
         _actor = actor;
@@ -172,6 +187,11 @@ public class BattleSubMenu : MonoBehaviour
     private void UpdateDescription()
     {
         if (_descriptionText == null) return;
+        if (_statusPreviewActor != null)
+        {
+            _descriptionText.text = ElementalStatusPresentation.FormatDetails(_statusPreviewActor);
+            return;
+        }
         _descriptionText.text = _entries.Count > 0
             ? BattleMenuEntryPresentation.Describe(_entries[_currentIndex], _actor) : string.Empty;
     }

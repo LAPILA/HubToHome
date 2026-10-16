@@ -1,5 +1,14 @@
 # Dialogue Rules
 
+## 챕터 1 스킵·진행·현지화 (2026-10-16)
+
+- `DialogueManager.TrySkipRemainingDialogue`는 확정된 선형 구간의 표시만 건너뛴다. 선택지/RequestName에서 멈추고 임의 분기를 선택하지 않는다. 현재 노드 이벤트는 재호출하지 않고 이후 노드 이벤트를 각 한 번 실행한다. 한 프레임 64노드로 제한하고 재생 세대가 바뀌면 이전 스킵을 중단한다.
+- X는 주 대화를 취소하지 않고 허용된 구간의 스킵을 요청한다. 저장 확인 같은 독립 선택 prompt의 X 취소는 유지한다. 정상 끝까지 진행한 스킵은 성공 완료이고 `CancelDialogue`/실패는 취소 경로다. 이미 확정된 보상을 되돌리거나 성공 콜백을 취소 콜백처럼 사용하지 않는다. 짧은 BattleSpeechBubble 및 ActionSequence/Timeline 전체 건너뛰기는 별개다.
+- 일반 대화 종료 자체는 자동저장 사유가 아니다. 진행 이벤트는 확정 완료 지점에서 `ProgressSaveTrigger`/`SaveManager.RequestAutoSave`를 호출하고, 씬 시퀀스는 `SceneActionSequenceTrigger`의 성공 완료 정책을 사용한다. 단순 마지막 문장 노출·잡담·확인창에 진행 완료 저장을 연결하지 않는다.
+- 본문 `LocalizationKey`, 선택지 `ChoiceData.LocalizationKey`, 화자 `SpeakerData.DisplayNameLocalizationKey`를 사용한다. KR/EN/JP/CN 키 경로와 기본 문자열 대체는 제공되지만 미작성 본편 대사 번역이 자동 완성되는 것은 아니다.
+- `FlagDialogueRule.RequiredItemId/RequiredItemCount`는 소지품 조건이며 지정한 플래그 조건과 AND로 판정한다. 아이템 조건만 사용할 수도 있다. 대화 선택/조회만으로 아이템을 소비하지 않으며 실제 교환·소비는 확정 이벤트가 소유한다.
+- 대화/시나리오 스킵에 편집기 Safe Preview/PreparationRun을 재사용하지 않는다. 실제 진행 이벤트와 보상은 런타임 소유자에서 처리하고 저장은 안정된 탐색까지 예약한다.
+
 ## Current Structure
 
 - Dialogue data uses `DialogueData` ScriptableObjects.
@@ -31,21 +40,35 @@
 
 ## Battle Speech Presentation (2026-09-26)
 
+- BattleSpeechRule.ContentMode defaults to Text and also supports Icon/TextAndIcon. Icon is an optional Sprite; missing icon falls back to authored text. CloneRuntime must preserve icon settings. BattleSpeechBubble lazily reuses ContentIcon, reserves icon width before wrapping, and measures before starting the typewriter. Do not require TMP Sprite Assets or replace source text for icon content. Font clarity remains unverified pending a captured user symptom (2026-10-02); do not record it as fixed.
+
 Battle speech presentation (2026-09-26): shared Player/Enemy bubble prefabs use a wider 1080-local-unit line box and 64-unit source font. `BattleSpeechBubble` maintains a 14px nominal font at the 640×480 reference size, follows the cached actor pivot after Cinemachine, and clamps to `BattleUIController.TryGetSpeechSafeArea` between the live turn queue and bottom HUD. This is world speech, not dialogue modal/layout behavior. Long text expands box height instead of clipping; oversized boxes fit the available area. Visible bubbles only do cached, allocation-free projection work. Preserve SmartTextWrapper, authored text, typewriter and rule triggers. No new scenario grammar or localization keys.
 
 ## Content Maker Authoring (2026-09-07)
 
 - Author through `Hub To Home → 제작 → 콘텐츠 메이커 → 대사 · 화자`. The task pages are `대사 / 화자·표정 / 조건·NPC / CSV·번역 / 문서`; do not add another dialogue editor or duplicate the existing Sequence Maker.
-- `ContentMakerDialogueRulesPanel` edits existing `FlagDialogueSelector` assets via SerializedObject. Runtime state remains owned by GlobalDataManager; one rule compares one flag, highest priority wins, ties use list order.
+- `ContentMakerDialogueRulesPanel` edits existing `FlagDialogueSelector` assets via SerializedObject. Runtime state remains owned by GlobalDataManager; one rule may compare one flag and/or a required owned-item count (AND when both exist). Highest priority wins, ties use list order. Selecting a dialogue does not consume items.
 - NPC linking is restricted to NPCMarker in the explicitly selected Room's open PrefabStage. DialogueBattleNPC staged encounters are not migrated by this tool.
 - CSV import replaces one DialogueData only after validation, preview, and unchanged-target verification. It is not a localization-table importer or XLSX synchronizer.
 - Missing body keys may be generated explicitly without changing existing keys or translation rows. Copies preserve keys; independent text needs independent keys.
-- Current limitations: choice text and speaker display names are not localized; the LocalizationTable loader does not handle quoted physical multiline cells. Do not document these as complete.
+- Choice text and speaker display names now support their own localization keys with authored-text fallback. Existing assets with empty keys remain compatible. LocalizationCsv supports quoted commas, escaped quotes, physical multiline cells and BOM; missing translations fall back to KR, then authored text. Dialogue CSV import is still distinct from translation-table synchronization.
 - Usage: `docs/content-maker-guide.md`. Code-grounded study index: `docs/learning/README.md`.
 
 ## Battle dialogue lifecycle and fixed layout (2026-09-27)
 
+- GameInput owns the battle-input modal gate through IsPresentationVisible, including close animation. DialogueManager consumes the closing input before restoring the prior state/callback; hidden HUD Canvas alone is not an input lock.
+- BattleSpeechBubble initialization is idempotent and can run before Awake for inactive children. Empty rules are ineligible; TriggerOnce is recorded only after content was actually shown. Keep this non-modal speech distinct from DialogueManager.
+
 - BattleScenarioData dialogue mappings may use existing Overworld-style DialogueData. Do not create another battle dialogue manager or embed conversation text in enemy AI.
 - `DialogueManagerRunner.IsBusy` includes `IsPresentationVisible` so `dialogue.wait` waits through panel close animation, not only text completion. External interruption without completion is failure; owned root cancellation calls ICancellableDialogueRunner.Cancel, respecting dialogue generation ownership.
-- BattleHudViewport hides only the HUD Canvas while dialogue presentation is visible; do not deactivate HUD GameObjects or stop battle coroutines just to avoid modal overlap.
+- In an active Turn QTE battle, main dialogue reuses portrait-capable DialogueUI in the resting union of command+submenu rectangles. BattleMenuUI owns unscaled slide/fade of both siblings and their input lock; BattleDialogueLayout projects the pre-motion union and restores original rectangles/fonts. Party/resource/queue chrome stays visible during docked dialogue even when the scenario cinematic gate is active. A previously hidden menu returns only when that gate shows it again. Preserve selections/callbacks and newer turn state. BattleHudViewport keeps the HUD visible for this docked dialogue; settings/pause/reserve prompts and non-docked modals retain priority. Never use HUD visibility as an input lock.
 - `DialogueCanvasViewport` owns the modal Canvas's camera-independent 640x480 overlay. `UIViewportService` supplies output bounds and scene rebinds, never ScreenSpaceCamera projection for this Canvas. Preserve authored panel anchors, anchoredPosition, sizeDelta and sibling order. Do not move the modal toward the speaker, alter the blue background, or apply this policy to WorldTracked speech bubbles. Sorting uses Default layer with overrideSorting: ScreenTransitionOverlay 32767 > dialogue 32766 > CinematicLetterboxOverlay 32765, so letterbox bars never hide dialogue while a full transition still covers it.
+
+## Battle submenu dialogue (2026-10-08)
+
+- BattleDialogueLayout is a disposable display scope, not another dialogue manager. It caches geometry/text settings, fits the original panel to the resting command+submenu union across canvases, and restores them on close/cancel/host loss. Never track the animated menu corners, reparent dialogue under the fading menu, or move HudDecoration/party/resource with the central panels. Shared prefab hierarchy and speaker assets remain unchanged. BattleMenuUI owns transition duration/distance in Odin; DialogueUI delays its short battle fade until the menu exit duration.
+- Dialogue menu slide defaults to 0.3s. During docked dialogue, only the lower letterbox is capped at the HUD's screen-space bottom plus 20 reference pixels; party rows start at24. Keep authored CurrentThickness and the top bar unchanged, and refresh on dock/viewport changes after the show tween has completed. BattleHudViewport fills the unused bottom output strip without moving the 640x480 content. The fill follows HUD chrome and Canvas visibility.
+- DialogueUI's Odin group `전투 하단 대화` owns padding, portrait size, body/name fonts and choice row height. Normal overworld/cinematic layouts are restored; BattleSpeechBubble remains unchanged.
+- Long battle body text uses TMP pages: finish typing, then advance pages, then advance the node. Choices own their input exclusively; a confirm must not both skip typing and select a choice. A new prompt ignores its opening frame. X may skip the committed linear dialogue segment but never cancels the main dialogue or chooses a branch automatically.
+- GameInput's existing modal gate also covers fade-out and rejects held dialogue keys as defense input. After layout release, BattleMenuUI rejects the same frame and honors newer turn/module/end state instead of enabling commands unconditionally.
+- Keep authored main conversations at existing safe scenario checkpoints (opening, after_current_action, before_battle_outcome) via dialogue.wait. This display change does not pause an arbitrary attack coroutine or change scenario grammar. Source mappings and localization ownership stay unchanged.

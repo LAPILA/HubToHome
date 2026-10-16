@@ -129,6 +129,7 @@ public class EnemyCharacter : CharacterBase
     public void Setup(EnemyData data)
     {
         Data = data;
+        ConfigureElementalStatus(Data != null ? Data.StatusProfile : null);
         _nextOrderedSkill = 0;
         if (Data != null)
         {

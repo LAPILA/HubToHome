@@ -1,0 +1,751 @@
+{
+  "version": 1,
+  "status": "published_via_browser",
+  "actualDeliveryManifest": "notion-publication.json",
+  "scopeNote": "아래 design/databases/views는 초기 계획이다. 실제 게시 수량·뷰·URL은 actualDeliveryManifest를 따른다.",
+  "target": "https://app.notion.com/p/3f6641f6190180bb8567ff9caf83e5a9",
+  "checkedDate": "2026-10-11",
+  "safety": {
+    "preserveExistingContent": true,
+    "createElsewhere": false,
+    "changeSharing": false,
+    "publishOnlyAfterTargetFetchSucceeds": false,
+    "publishOnlyAfterExactTargetReadAndEditAccessVerified": true
+  },
+  "design": {
+    "palette": {
+      "base": "default",
+      "technical": "blue",
+      "tools": "purple",
+      "learning": "green",
+      "limits": "yellow"
+    },
+    "homeColumns": 2,
+    "homeSource": "README.md",
+    "pageFormat": [
+      "요약 callout",
+      "목차",
+      "호출 관계 Mermaid",
+      "비교표",
+      "실제 코드",
+      "직접 해볼 과제",
+      "관련 페이지"
+    ],
+    "portableMarkdownTables": "게시 시 enhanced Markdown table로 변환",
+    "localLinks": "실제 생성 URL로 매핑 후 native mention-page로 변환. 로컬 소스 링크는 코드 경로로 보존.",
+    "useCovers": false
+  },
+  "databases": [
+    {
+      "key": "learning",
+      "title": "학습 라이브러리",
+      "schema": "CREATE TABLE (\"주제\" TITLE, \"영역\" SELECT('학습':gray, 'Core':blue, 'Battle':red, 'Characters':orange, 'Items':yellow, 'Overworld':green, 'Dialogue':pink, 'Scenario':purple, 'Editor':purple, 'UI':blue, 'Camera':brown, 'VFX':yellow, 'Shared':gray, '기초':green, '포트폴리오':orange, '개발 기록':gray, '검증':green), \"순서\" NUMBER, \"학습 상태\" SELECT('시작 전':gray, '읽는 중':blue, '직접 실험':yellow, '설명 가능':green), \"키워드\" MULTI_SELECT('구조':gray, '저장':gray, 'Adapter':gray, '입력':gray, '스케줄링':gray, '가중 랜덤':gray, '상태 전환':gray, 'Command':gray, '코루틴':gray, '스탯 합성':gray, '상태':gray, '트랜잭션':gray, '마커':gray, 'Observer':gray, '번역':gray, 'DFS':gray, '취소':gray, 'Undo Redo':gray, '복구':gray, '검증':gray, '제작 도구':gray, 'Stack':gray, '수명':gray, '소유권':gray, '토큰':gray, 'Pool':gray, '탐욕':gray, '이진 탐색':gray, '자료구조':gray, '기여':gray, '사례':gray, 'ADR':gray, '테스트':gray), \"내 설명 완료\" CHECKBOX, \"내 메모\" RICH_TEXT)",
+      "views": [
+        {
+          "name": "기능별 책장",
+          "type": "gallery",
+          "configure": "SORT BY \"순서\" ASC; SHOW \"주제\", \"영역\", \"학습 상태\"; QUICK FILTER \"영역\""
+        },
+        {
+          "name": "공부 보드",
+          "type": "board",
+          "configure": "GROUP BY \"학습 상태\"; SORT BY \"순서\" ASC; SHOW \"주제\", \"영역\""
+        },
+        {
+          "name": "코드 읽는 순서",
+          "type": "table",
+          "configure": "SORT BY \"순서\" ASC; SHOW \"주제\", \"영역\", \"키워드\", \"학습 상태\", \"내 설명 완료\"; WRAP CELLS true; FREEZE COLUMNS 1"
+        }
+      ],
+      "rows": [
+        {
+          "key": "01-learning-map",
+          "source": "01-learning-map.md",
+          "icon": "🧭",
+          "properties": {
+            "주제": "학습 시작과 전체 구조",
+            "영역": "학습",
+            "순서": 1,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "구조"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "02-core-save-input",
+          "source": "02-core-save-input.md",
+          "icon": "💾",
+          "properties": {
+            "주제": "Core 저장 입력과 전역 서비스",
+            "영역": "Core",
+            "순서": 2,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "저장",
+              "Adapter",
+              "입력"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "03-battle-turn-defense",
+          "source": "03-battle-turn-defense.md",
+          "icon": "⚔️",
+          "properties": {
+            "주제": "Battle 턴 방어와 전투 수명",
+            "영역": "Battle",
+            "순서": 3,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "스케줄링",
+              "가중 랜덤",
+              "상태 전환"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "04-skills",
+          "source": "04-skills.md",
+          "icon": "🧩",
+          "properties": {
+            "주제": "스킬 블록과 실시간 QTE",
+            "영역": "Battle",
+            "순서": 4,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "Command",
+              "코루틴"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "05-characters",
+          "source": "05-characters.md",
+          "icon": "👤",
+          "properties": {
+            "주제": "Characters 스탯 장비 성장과 상태",
+            "영역": "Characters",
+            "순서": 5,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "스탯 합성",
+              "상태"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "06-items-shops",
+          "source": "06-items-shops.md",
+          "icon": "🛒",
+          "properties": {
+            "주제": "Items 인벤토리와 상점 거래",
+            "영역": "Items",
+            "순서": 6,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "트랜잭션",
+              "Adapter"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "07-overworld",
+          "source": "07-overworld.md",
+          "icon": "🗺️",
+          "properties": {
+            "주제": "Overworld 방 마커 상호작용과 여행",
+            "영역": "Overworld",
+            "순서": 7,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "상태 전환",
+              "마커"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "08-dialogue",
+          "source": "08-dialogue.md",
+          "icon": "💬",
+          "properties": {
+            "주제": "Dialogue 대사 분기 번역과 전투 대화",
+            "영역": "Dialogue",
+            "순서": 8,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "Observer",
+              "번역"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "09-scenario-runtime",
+          "source": "09-scenario-runtime.md",
+          "icon": "🎬",
+          "properties": {
+            "주제": "Scenario 액션 실행과 취소",
+            "영역": "Scenario",
+            "순서": 9,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "Adapter",
+              "DFS",
+              "취소"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "10-sequence-maker",
+          "source": "10-sequence-maker.md",
+          "icon": "🛠️",
+          "properties": {
+            "주제": "Sequence Maker 제작 도구와 복구",
+            "영역": "Scenario",
+            "순서": 10,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "Command",
+              "Undo Redo",
+              "복구"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "11-editor-tools",
+          "source": "11-editor-tools.md",
+          "icon": "🧰",
+          "properties": {
+            "주제": "Editor 콘텐츠 메이커와 검증 도구",
+            "영역": "Editor",
+            "순서": 11,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "검증",
+              "제작 도구"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "12-ui",
+          "source": "12-ui.md",
+          "icon": "🖥️",
+          "properties": {
+            "주제": "UI 표시 상태와 입력 수명",
+            "영역": "UI",
+            "순서": 12,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "Observer",
+              "Stack",
+              "수명"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "13-camera",
+          "source": "13-camera.md",
+          "icon": "📷",
+          "properties": {
+            "주제": "Camera 연출 소유권과 픽셀 줌",
+            "영역": "Camera",
+            "순서": 13,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "소유권",
+              "토큰"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "14-vfx-audio",
+          "source": "14-vfx-audio.md",
+          "icon": "✨",
+          "properties": {
+            "주제": "VFX 잔상 전조 바람과 오디오 수명",
+            "영역": "VFX",
+            "순서": 14,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "Pool",
+              "수명"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "15-shared",
+          "source": "15-shared.md",
+          "icon": "📐",
+          "properties": {
+            "주제": "Shared 줄바꿈에서 배우는 알고리즘",
+            "영역": "Shared",
+            "순서": 15,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "탐욕",
+              "이진 탐색"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "16-algorithms",
+          "source": "16-algorithms.md",
+          "icon": "📚",
+          "properties": {
+            "주제": "자료구조 알고리즘과 패턴 도감",
+            "영역": "기초",
+            "순서": 16,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "자료구조"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "17-portfolio",
+          "source": "17-portfolio.md",
+          "icon": "🎓",
+          "properties": {
+            "주제": "포트폴리오 사례와 면접 설명 연습",
+            "영역": "포트폴리오",
+            "순서": 17,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "기여",
+              "사례"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "18-development-log",
+          "source": "18-development-log.md",
+          "icon": "🗓️",
+          "properties": {
+            "주제": "개발 기록과 설계 결정",
+            "영역": "개발 기록",
+            "순서": 18,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "ADR"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        },
+        {
+          "key": "19-verification",
+          "source": "19-verification.md",
+          "icon": "✅",
+          "properties": {
+            "주제": "검증 범위와 학습 완료 기준",
+            "영역": "검증",
+            "순서": 19,
+            "학습 상태": "시작 전",
+            "키워드": [
+              "테스트"
+            ],
+            "내 설명 완료": "__NO__"
+          }
+        }
+      ]
+    },
+    {
+      "key": "journal",
+      "title": "개발 일지",
+      "schema": "CREATE TABLE (\"기록명\" TITLE, \"기록일\" DATE, \"원문 경로\" RICH_TEXT, \"검토 상태\" SELECT('원문 목록화':gray, '현재 코드 대조':blue, '직접 재현':green), \"내가 배운 점\" RICH_TEXT)",
+      "views": [
+        {
+          "name": "날짜별 기록",
+          "type": "table",
+          "configure": "SORT BY \"기록일\" DESC; SHOW \"기록명\", \"기록일\", \"검토 상태\"; WRAP CELLS true"
+        },
+        {
+          "name": "개발 달력",
+          "type": "calendar",
+          "configure": "CALENDAR BY \"기록일\""
+        }
+      ],
+      "rows": [
+        {
+          "properties": {
+            "기록명": "2026-10-11 설정 저장과 진행도 저장 및 장비 안정화",
+            "date:기록일:start": "2026-10-11",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-10-11-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-10-09 자체 스크립트 정리",
+            "date:기록일:start": "2026-10-09",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-10-09-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-10-08 — 전투 서브메뉴 메인 대화",
+            "date:기록일:start": "2026-10-08",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-10-08-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-10-07 · 전조/후열 선택·장비/저장 경계",
+            "date:기록일:start": "2026-10-07",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-10-07-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-10-05 — 최근 전투 표현 안정화",
+            "date:기록일:start": "2026-10-05",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-10-05-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-10-02 변경 기록",
+            "date:기록일:start": "2026-10-02",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-10-02-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-28 작업 기록",
+            "date:기록일:start": "2026-09-28",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-28-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-27 — 전투 실험실·압력·이동·UI 표시·픽셀 바람",
+            "date:기록일:start": "2026-09-27",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-27-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-26 — 목업 기준 전투 HUD 개편",
+            "date:기록일:start": "2026-09-26",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-26-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-20 전투 애니메이션·타격 시각 수정",
+            "date:기록일:start": "2026-09-20",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-20-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-15 작업 기록",
+            "date:기록일:start": "2026-09-15",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-15-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-13 작업 기록",
+            "date:기록일:start": "2026-09-13",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-13-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-08 작업 기록",
+            "date:기록일:start": "2026-09-08",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-08-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-09-07 현재 구현 정적 점검",
+            "date:기록일:start": "2026-09-07",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-09-07-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-08-30 빌드 UI·Chapter01 경로 조사",
+            "date:기록일:start": "2026-08-30",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-08-30-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-08-23 Update",
+            "date:기록일:start": "2026-08-23",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-08-23-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-08-12 Update",
+            "date:기록일:start": "2026-08-12",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-08-12-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-08-11 Update",
+            "date:기록일:start": "2026-08-11",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-08-11-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-08-10 Update",
+            "date:기록일:start": "2026-08-10",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-08-10-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-30 Update",
+            "date:기록일:start": "2026-07-30",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-30-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-28 Update",
+            "date:기록일:start": "2026-07-28",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-28-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-24 Update",
+            "date:기록일:start": "2026-07-24",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-24-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-23 Update",
+            "date:기록일:start": "2026-07-23",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-23-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-22 Runtime Stabilization Update",
+            "date:기록일:start": "2026-07-22",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-22-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-13 Merge Conflict Resolution",
+            "date:기록일:start": "2026-07-13",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-13-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-12 Update",
+            "date:기록일:start": "2026-07-12",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-12-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-08 Update",
+            "date:기록일:start": "2026-07-08",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-08-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        },
+        {
+          "properties": {
+            "기록명": "2026-07-07 Update",
+            "date:기록일:start": "2026-07-07",
+            "date:기록일:is_datetime": 0,
+            "원문 경로": "AIAssets/2026-07-07-update.md",
+            "검토 상태": "원문 목록화"
+          },
+          "content": "날짜별 원문 기록입니다. 제목과 경로를 색인했으며 모든 내용이 현재 코드와 같다는 의미는 아닙니다. 주요 변화 해설과 관련 기능 장을 함께 읽으세요."
+        }
+      ]
+    }
+  ],
+  "standalonePages": [
+    {
+      "key": "atlas",
+      "source": "20-code-atlas.md",
+      "children": [
+        {
+          "source": "code/core.md",
+          "title": "Core 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/battle.md",
+          "title": "Battle 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/characters.md",
+          "title": "Characters 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/items.md",
+          "title": "Items 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/overworld.md",
+          "title": "Overworld 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/dialogue.md",
+          "title": "Dialogue 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/scenario.md",
+          "title": "Scenario 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/editor.md",
+          "title": "Editor 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/ui.md",
+          "title": "UI 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/camera.md",
+          "title": "Camera 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/vfx.md",
+          "title": "VFX 전체 파일 색인",
+          "icon": "🗂️"
+        },
+        {
+          "source": "code/shared.md",
+          "title": "Shared 전체 파일 색인",
+          "icon": "🗂️"
+        }
+      ]
+    },
+    {
+      "key": "logs-index",
+      "source": "development-log-index.md"
+    }
+  ],
+  "publicationChecklist": [
+    "대상 페이지 다시 fetch하고 기존 자식 보존",
+    "DB 생성 후 정확한 data_source_id fetch",
+    "공부 원고 19개를 학습 DB 페이지로 게시",
+    "코드 색인 12개와 폴더 전체 색인 연결",
+    "개발 기록 28개 게시",
+    "홈 2열 내비게이션 및 연결 뷰 배치",
+    "생성 ID 매핑 보관",
+    "원격 본문과 행 수 읽기 검증",
+    "브라우저에서 홈·기능 페이지·보드 실제 디자인 확인"
+  ]
+}

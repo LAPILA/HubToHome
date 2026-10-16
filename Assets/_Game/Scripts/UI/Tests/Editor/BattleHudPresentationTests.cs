@@ -95,6 +95,154 @@ public sealed class BattleHudPresentationTests
         finally { consumedFrame.SetValue(null, previousFrame); }
     }
 
+    [TestCase(PlayerMenuAction.Skill, false)]
+    [TestCase(PlayerMenuAction.Item, false)]
+    [TestCase(PlayerMenuAction.Skill, true)]
+    [TestCase(PlayerMenuAction.Item, true)]
+    public void SubMenuSubmit_DispatchesAfterLockingInput_AndPreservesSynchronousRecovery(
+        PlayerMenuAction action, bool resumeSynchronously)
+    {
+        WithSubMenuRouting((menu, sub, router) =>
+        {
+            PlayerCharacter actor = Player("submenu-confirm");
+            menu.SetActor(actor);
+            SkillData skill = action == PlayerMenuAction.Skill ? Own(ScriptableObject.CreateInstance<SkillData>()) : null;
+            ItemData item = action == PlayerMenuAction.Item ? Own(ScriptableObject.CreateInstance<ItemData>()) : null;
+            if (skill != null) skill.APCost = 0;
+            IMenuEntry entry = skill != null ? (IMenuEntry)new SkillMenuEntry(skill) : new ItemMenuEntry(item);
+            sub.Preview(action.ToString(), new List<IMenuEntry> { entry }, actor);
+            router.OnSelected = () =>
+            {
+                Assert.That(menu.CommandsEnabled, Is.False, "입력은 인계 전에 잠그되 이미 수락한 명령은 전달해야 합니다.");
+                if (resumeSynchronously) menu.SetCommandInputEnabled(true);
+            };
+            Set(menu, "_inputEnabledFrame", Time.frameCount - 1);
+            Button button = Get<Button>(menu, action == PlayerMenuAction.Skill ? "_actBtn" : "_itemBtn");
+
+            button.onClick.Invoke(); // 실제 Confirm → 서브 콜백 → BattleManager 라우팅 경로
+
+            Assert.That(router.SelectionCount, Is.EqualTo(1));
+            Assert.That(router.Actor, Is.SameAs(actor));
+            Assert.That(router.Action, Is.EqualTo(action));
+            Assert.That(router.Skill, Is.SameAs(skill));
+            Assert.That(router.Item, Is.SameAs(item));
+            Assert.That(menu.CommandsEnabled, Is.EqualTo(resumeSynchronously),
+                "대상 없음 등의 동기 복귀가 입력을 다시 열었으면 Confirm의 뒷부분이 덮으면 안 됩니다.");
+            button.onClick.Invoke();
+            Assert.That(router.SelectionCount, Is.EqualTo(1), "복귀하더라도 동일 프레임의 Submit은 재사용하지 않습니다.");
+        });
+    }
+
+    [TestCase(PlayerMenuAction.Skill, "dialogue")]
+    [TestCase(PlayerMenuAction.Item, "dialogue")]
+    [TestCase(PlayerMenuAction.Skill, "motion")]
+    [TestCase(PlayerMenuAction.Item, "motion")]
+    [TestCase(PlayerMenuAction.Skill, "suspended")]
+    [TestCase(PlayerMenuAction.Item, "suspended")]
+    [TestCase(PlayerMenuAction.Skill, "modal")]
+    [TestCase(PlayerMenuAction.Item, "modal")]
+    public void SubMenuCallback_StillRejectsPresentationAndModalOwnership(PlayerMenuAction action, string gate)
+    {
+        WithSubMenuRouting((menu, sub, router) =>
+        {
+            Set(menu, "_inputEnabled", false); // Confirm이 이미 수락하여 입력만 잠근 상태
+            if (gate == "dialogue") Assert.That(menu.BeginDialoguePresentation(), Is.True);
+            else if (gate == "motion")
+                Set(menu, "_dialogueMotion", new BattleHudEntryMotion(0f, (RectTransform)menu.transform, menu.SubMenuRoot));
+            else if (gate == "suspended") Set(menu, "_isExternallySuspended", true);
+            else typeof(GameInput).GetField("_configModalActive", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, true);
+            IMenuEntry entry = action == PlayerMenuAction.Skill
+                ? (IMenuEntry)new SkillMenuEntry(Own(ScriptableObject.CreateInstance<SkillData>()))
+                : new ItemMenuEntry(Own(ScriptableObject.CreateInstance<ItemData>()));
+
+            Invoke(menu, action == PlayerMenuAction.Skill ? "OnSkillSelected" : "OnItemSelected", entry);
+
+            Assert.That(router.SelectionCount, Is.Zero, "입력 잠금과 달리 표시/모달 소유권은 콜백 인계도 차단해야 합니다.");
+        });
+    }
+
+    private void WithSubMenuRouting(System.Action<BattleMenuUI, BattleSubMenu, SubMenuRouterProbe> verify)
+    {
+        var savedStatics = new Dictionary<FieldInfo, object>();
+        void ReplaceStatic(System.Type type, string name, object value)
+        {
+            FieldInfo field = type.GetField(name, BindingFlags.Static | BindingFlags.NonPublic);
+            savedStatics.Add(field, field.GetValue(null));
+            field.SetValue(null, value);
+        }
+
+        BattleMenuUI menu = null;
+        try
+        {
+            // 열린 씬의 싱글톤/모달 상태와 독립적으로 확인하고 모두 원상복구합니다.
+            foreach (System.Type type in new[] { typeof(GameStateManager), typeof(DialogueManager),
+                         typeof(BattleUIController), typeof(AudioManager) })
+                ReplaceStatic(type, "<Instance>k__BackingField", null);
+            ReplaceStatic(typeof(GameInput), "_configModalActive", false);
+            ReplaceStatic(typeof(GameInput), "_consumedBattleUIFrame", -1);
+            var managerObject = Own(new GameObject("SubMenu routing"));
+            managerObject.SetActive(false);
+            BattleManager manager = managerObject.AddComponent<BattleManager>();
+            ReplaceStatic(typeof(BattleManager), "<Instance>k__BackingField", manager);
+            var router = new SubMenuRouterProbe();
+            Set(manager, "_turnQteModuleController", router);
+
+            GameObject root = Own(new GameObject("Menu", typeof(RectTransform), typeof(CanvasGroup)));
+            root.SetActive(false);
+            menu = root.AddComponent<BattleMenuUI>();
+            foreach (string field in new[] { "_attackBtn", "_actBtn", "_itemBtn", "_runBtn" })
+            {
+                GameObject button = new GameObject(field, typeof(RectTransform), typeof(Image), typeof(Button));
+                button.transform.SetParent(root.transform, false);
+                Set(menu, field, button.GetComponent<Button>());
+            }
+            GameObject details = Own(new GameObject("Details", typeof(RectTransform)));
+            details.SetActive(false);
+            BattleSubMenu sub = details.AddComponent<BattleSubMenu>();
+            Set(menu, "_subMenu", sub);
+            menu.SetCommandInputEnabled(true);
+            verify(menu, sub, router);
+        }
+        finally
+        {
+            if (menu != null) menu.HideImmediate();
+            foreach (KeyValuePair<FieldInfo, object> saved in savedStatics) saved.Key.SetValue(null, saved.Value);
+        }
+    }
+
+    private sealed class SubMenuRouterProbe : IBattleTurnQteModuleController
+    {
+        public int SelectionCount;
+        public PlayerCharacter Actor;
+        public PlayerMenuAction Action;
+        public SkillData Skill;
+        public ItemData Item;
+        public System.Action OnSelected;
+        public void SelectSubMenuAction(PlayerCharacter actor, PlayerMenuAction action, SkillData skill, ItemData item)
+        {
+            SelectionCount++;
+            Actor = actor;
+            Action = action;
+            Skill = skill;
+            Item = item;
+            OnSelected?.Invoke();
+        }
+        public System.Collections.IEnumerator EnterTurnQteModule(GameModuleRuntimeContext context) { yield break; }
+        public System.Collections.IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context) { yield break; }
+        public System.Collections.IEnumerator StartTurnQteModule(GameModuleRuntimeContext context) { yield break; }
+        public System.Collections.IEnumerator RunTurnCalculation() { yield break; }
+        public System.Collections.IEnumerator BeginPlayerTurn(PlayerCharacter player) { yield break; }
+        public System.Collections.IEnumerator BeginEnemyTurn() { yield break; }
+        public System.Collections.IEnumerator RunEnemyAction() { yield break; }
+        public void AdvanceTurn() { }
+        public void SelectPlayerAction(PlayerCharacter actor, PlayerMenuAction action) { }
+        public void CancelActionSelection() { }
+        public void CancelTargetSelection() { }
+        public void ConfirmTargetAndExecute(int targetIndex) { }
+        public void CompleteAction() { }
+        public void CancelActiveCameraPresentation() { }
+    }
+
     private BattleNarrationUI Narration()
     {
         GameObject root = Own(new GameObject("Narration", typeof(RectTransform), typeof(CanvasGroup)));
@@ -449,6 +597,41 @@ public sealed class BattleHudPresentationTests
         view.Refresh(new CharacterBase[] { c }, 0.24f, 1.06f, false);
         Assert.That(root.GetComponentsInChildren<BattleTurnQueueIcon>(), Has.Length.EqualTo(1));
         Assert.That(rect.childCount, Is.EqualTo(6));
+    }
+
+    [Test]
+    public void SkillPromptsAvoidCenterAndProjectedActorExclusions()
+    {
+        Rect area = Rect.MinMaxRect(.14f, .44f, .86f, .78f);
+        var exclusions = new[] { Rect.MinMaxRect(.14f, .55f, .34f, .80f) };
+        Vector2? previous = null;
+        for (int i = 0; i < 100; i++)
+        {
+            Vector2 next = BattleOverlayLayout.SelectSkillPrompt(area, previous,
+                new Vector2(i / 99f, .5f), exclusions);
+            Assert.That(next.x < .35f || next.x > .65f, Is.True);
+            Assert.That(exclusions[0].Contains(next), Is.False);
+            Assert.That(area.Contains(next), Is.True);
+            previous = next;
+        }
+    }
+
+    [Test]
+    public void PopupLayoutReservesTravelAreaAndRejectsAFullRegion()
+    {
+        Rect area = new Rect(0, 0, 240, 180);
+        Rect footprint = new Rect(-20, -15, 56, 54);
+        var occupied = new List<Rect>();
+        for (int i = 0; i < 4; i++)
+        {
+            Assert.That(BattleOverlayLayout.TryPlacePopup(new Vector2(40, 80), footprint, area, occupied, out Vector2 p), Is.True);
+            var placed = new Rect(p + footprint.position, footprint.size);
+            foreach (Rect previous in occupied) Assert.That(placed.Overlaps(previous), Is.False);
+            occupied.Add(placed);
+        }
+        occupied.Clear();
+        occupied.Add(area);
+        Assert.That(BattleOverlayLayout.TryPlacePopup(new Vector2(40, 80), footprint, area, occupied, out _), Is.False);
     }
 
     private PlayerCharacter Player(string id)

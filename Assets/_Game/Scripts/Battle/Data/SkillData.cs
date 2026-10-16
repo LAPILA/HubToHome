@@ -23,7 +23,9 @@ public class SkillData : ScriptableObject
 
     [BoxGroup("Identity")] public string SkillName = "New Skill";
     [BoxGroup("Identity")] public string SkillID = "skill_000";
-    [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
+    [BoxGroup("Identity"), TextArea(2, 4)]
+    [Tooltip("플레이어용 효과 설명을 짧게 작성합니다. 타수·연타·입력 키·QTE·테스트 안내는 넣지 않고, 제작 메모는 블록 라벨에 작성합니다.")]
+    public string Description = "";
 
     [BoxGroup("Identity"), LabelText("사용 범위")]
     public SkillUsageProfile UsageProfile = SkillUsageProfile.Shared;
@@ -42,6 +44,14 @@ public class SkillData : ScriptableObject
     public TargetAreaType TargetType = TargetAreaType.EnemyOnly;
     [BoxGroup("Targeting")]
     public bool IsAoE = false;
+
+    [BoxGroup("누적 상태"), LabelText("명중 시 상태 부여")]
+    [Tooltip("피해를 받은 대상에만 적용합니다. 피해 속성과 별개이며, 완전 방어/회피 시에는 부여하지 않습니다.")]
+    public ElementalStatusApplication[] ElementalApplications = System.Array.Empty<ElementalStatusApplication>();
+
+    [BoxGroup("누적 상태"), LabelText("감전 타격 발동 계수"), Range(0f, 1f)]
+    [Tooltip("일반 공격 1, 50타 연격 예시 0.1. 상태 부여량이나 직접 피해 배율과는 별개입니다.")]
+    public float StatusProcCoefficient = 1f;
 
     [BoxGroup("고유 자원"), LabelText("조건부 강화 / 획득")]
     [Tooltip("자원 부족은 사용을 막지 않습니다. 시작 시 충족하면 지정량만 소모하고 스킬 전체 피해를 강화합니다.")]

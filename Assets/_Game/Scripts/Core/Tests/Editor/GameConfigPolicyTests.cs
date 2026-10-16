@@ -3,6 +3,17 @@ using UnityEngine;
 
 public sealed class GameConfigPolicyTests
 {
+    [TestCase(RuntimePlatform.WindowsPlayer, true)]
+    [TestCase(RuntimePlatform.LinuxPlayer, true)]
+    [TestCase(RuntimePlatform.OSXPlayer, true)]
+    [TestCase(RuntimePlatform.Android, false)]
+    [TestCase(RuntimePlatform.IPhonePlayer, false)]
+    [TestCase(RuntimePlatform.Switch, false)]
+    public void RuntimeAndSettingsPanelShareDesktopWindowPolicy(RuntimePlatform platform, bool expected)
+    {
+        Assert.That(GameConfigPolicy.SupportsWindowSettings(platform), Is.EqualTo(expected));
+    }
+
     [TestCase(-0.25f, 0f)]
     [TestCase(0.4f, 0.4f)]
     [TestCase(1.25f, 1f)]

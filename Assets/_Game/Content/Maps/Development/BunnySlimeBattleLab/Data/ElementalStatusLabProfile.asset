@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96bfe4b6ac034bd7a1f5b7b9c46d3f92, type: 3}
+  m_Name: ElementalStatusLabProfile
+  m_EditorClassIdentifier: Assembly-CSharp::ElementalStatusProfile
+  _statusDamageUnit: 3
+  _burnMaxValue: 99
+  _electricMaxValue: 999
+  _bleedMaxValue: 99
+  _poisonMaxValue: 99
+  _burnDamageMultiplier: 1
+  _burnDecay: 1
+  _bleedDamageMultiplier: 1.2
+  _bleedDecay: 1
+  _poisonDamageMultiplier: 0.2
+  _poisonGrowth: 3
+  _chillVulnerabilityPerValue: 0.01
+  _freezeThreshold: 10
+  _shatterMultiplier: 1.5
+  _electricDamageMultiplier: 0.02
+  _electricDischargeRate: 0.01

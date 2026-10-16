@@ -1,0 +1,136 @@
+# 09 · 재사용 풀과 픽셀 글줄에서 배우는 자료구조
+
+> **중심 질문: 성능은 ‘빠른 알고리즘 이름’을 쓰는 것이 아니라, 반복되는 작업과 비용을 줄이는 것 아닌가?** 이 장은 풀과 줄바꿈이라는 작은 기능을 깊게 읽습니다.
+
+[자료실](README.md) · [VFX·오디오 입문](https://app.notion.com/p/3f6641f619018142a699c9519f855ba1) · [공통 코드 입문](https://app.notion.com/p/3f6641f6190181288e68fad4d989f76e)
+
+## 01 / ObjectPoolManager에 자료구조가 세 개 필요한 이유
+
+| 자료구조 | 키/값 | 목적 |
+| --- | --- | --- |
+| Dictionary prefab → PoolState | 원본 프리팹별 풀 | 맞는 종류의 풀 찾기 |
+| Queue Available | 쉬는 인스턴스 | 반납된 객체를 꺼내 재사용 |
+| HashSet InPool | 이미 반납된 인스턴스 | 같은 객체를 두 번 넣는 실수 차단 |
+| Dictionary instance → owner | 생성 객체의 원래 풀 | 다른 풀로 반납 방지 |
+
+자료구조 하나를 여러 목적에 억지로 쓰지 않습니다. Queue만 있으면 ‘이미 들어 있나?’ 검사가 선형 탐색이 되고, HashSet만 있으면 재사용 순서를 표현하기 어렵습니다. 각 구조의 추가 메모리와 빠른 조회 사이의 선택입니다.
+
+```mermaid
+flowchart LR
+ A["Spawn(prefab)"] --> B["풀 조회/등록"]
+ B --> C["Available.Dequeue"]
+ C --> D{"살아 있는 올바른 소유 객체?"}
+ D -->|아니오| C
+ D -->|예| E["위치/회전 설정 → 활성화"]
+ B --> F["가용 객체 없으면 CreateNew"]
+ F --> E
+ E --> G["Despawn → 중복/상한 검사"]
+ G --> H["비활성 → Set 추가 → Queue 반납"]
+```
+
+## 02 / 두 번 반납하면 같은 객체가 두 번 나갈 수 있다
+
+근거 · `Assets/_Game/Scripts/Core/Runtime/ObjectPoolManager.cs` · 143–158행
+
+```csharp
+        if (state.InPool.Contains(obj))
+            return;
+
+        obj.SetActive(false);
+
+        int retainedLimit = Mathf.Max(0, _maxRetainedPerPool);
+        if (state.Available.Count >= retainedLimit)
+        {
+            _instanceOwners.Remove(obj);
+            DestroyManagedObject(obj);
+            return;
+        }
+
+        obj.transform.SetParent(transform, false);
+        state.InPool.Add(obj);
+        state.Available.Enqueue(obj);
+```
+`InPool.Contains`에서 이중 반납을 막습니다. 상한보다 많이 쉬게 되면 소유 등록을 지우고 폐기합니다. 현재 기본 보관 상한은 풀당 20이며 Inspector에서 바뀔 수 있습니다.
+
+| 행동 | Available | InPool | 의미 |
+| --- | --- | --- | --- |
+| A 반납 | A | A | 한 개 보관 |
+| A 다시 반납 | A 그대로 | A 그대로 | 중복 삽입 없음 |
+| A 대여 | 비어 있음 | 비어 있음 | 사용 중 |
+| 상한에서 B 반납 | 기존 수량 유지 | 기존 수량 유지 | B 폐기 |
+
+상한은 **쉬는 객체 보관량**이지 동시에 활성화될 수 있는 객체 수 상한이 아닙니다. 풀을 쓴다고 사용량이 무조건 일정해지는 것은 아닙니다. 부족하면 새로 만들고, 과도한 이펙트 요청 자체는 별도 제어가 필요합니다.
+
+평균 Queue/HashSet/Dictionary 연산은 O(1)이지만, 파괴된 항목을 건너뛰는 Spawn 루프는 그 수만큼 진행합니다. Instantiate/Destroy 비용도 남아 있습니다. 풀은 기본 위치/회전/활성화를 처리할 뿐, 개별 VFX의 Animator·색·타이머·잔여 트윈까지 자동 초기화한다고 가정하지 않습니다.
+
+## 03 / 글자 수로 줄바꿈하면 왜 틀릴까?
+
+같은 10글자라도 글꼴·문자·크기에 따라 화면 폭이 다릅니다. `SmartTextWrapper.Wrap`은 폭 측정 함수를 받아 문자열이 영역에 들어가는지 검사합니다. 실제 TMP 측정과 테스트용 단순 측정을 바꿔 넣을 수 있습니다.
+
+보통 단어는 현재 줄에 붙여 보고 넘치면 다음 줄로 보냅니다. 공백 없는 긴 단어는 한 번에 들어갈 가장 긴 조각을 찾습니다. 이를 탐욕적 줄바꿈이라고 부를 수 있지만 전체 문단의 시각적 균형을 최적으로 만드는 조판 알고리즘은 아닙니다.
+
+근거 · `Assets/_Game/Scripts/Shared/Runtime/Text/SmartTextWrapper.cs` · 163–183행
+
+```csharp
+        int remaining = token.Length - startIndex;
+        int low = 1;
+        int high = remaining;
+        int best = 1;
+
+        while (low <= high)
+        {
+            int mid = (low + high) / 2;
+            string candidate = token.Substring(startIndex, mid);
+            if (Measure(candidate, measureWidth, widthCache) <= maxWidth)
+            {
+                best = mid;
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid - 1;
+            }
+        }
+
+        return token.Substring(startIndex, best);
+```
+`low/high` 사이 중간 길이를 측정하고 들어가면 더 길게, 넘치면 짧게 탐색합니다. 이진 탐색이 줄이는 것은 **조각 하나의 길이를 찾는 측정 시도 수**입니다. 남은 길이 L에 대해 O(log L)번 정도의 측정이지만, Substring 생성과 실제 글꼴 측정의 비용은 따로 듭니다. 전체 문장 줄바꿈이 O(log L)이라는 뜻이 아닙니다.
+
+## 04 / 측정 캐시와 한계
+
+근거 · `Assets/_Game/Scripts/Shared/Runtime/Text/SmartTextWrapper.cs` · 197–205행
+
+```csharp
+    private static float Measure(string text, Func<string, float> measureWidth, Dictionary<string, float> widthCache)
+    {
+        if (widthCache.TryGetValue(text, out float cached))
+            return cached;
+
+        float width = Mathf.Max(0f, measureWidth(text));
+        widthCache[text] = width;
+        return width;
+    }
+```
+같은 문자열 폭을 다시 측정하지 않도록 Dictionary에 저장합니다. 캐시도 메모리를 쓰므로 범위와 입력 크기를 고려해야 합니다. 글꼴이나 크기가 달라졌는데 이전 결과를 무제한 공유하면 틀릴 수 있습니다.
+
+현재 분할은 C# 문자열 인덱스/Substring을 사용합니다. UTF-16 코드 단위 경계가 사용자에게 보이는 한 글자 경계와 항상 같지는 않습니다. 이모지·결합 문자·복잡한 리치 텍스트까지 완전한 국제 조판으로 보장하지 않습니다. 이진 탐색은 길이가 늘면 폭도 대체로 늘어난다는 전제가 있으므로 특수 측정 함수를 넣을 때도 확인해야 합니다.
+
+## 05 / 바꿀 때의 경계
+
+| 바꾸려는 것 | 검토할 곳 | 같이 확인할 것 |
+| --- | --- | --- |
+| 이펙트 재사용량 | ObjectPoolManager 상한/등록 | 활성 동시 수와 메모리 측정 |
+| 이펙트 초기화 | 개별 VFX의 재시작/정리 | 잔여 트윈·색·스케일 |
+| 글줄 폭 | SmartTextWrapper 호출부 | TMP 실제 폰트·크기·리치 텍스트 |
+| 새로운 문자권 | 조각 분할/측정 정책 | 결합 문자와 언어별 줄바꿈 규칙 |
+
+## 06 / 실습과 예상 결과 — 이번에는 미실행
+
+- [ ] 동일 객체를 두 번 반납하고 두 번 Spawn한다. 예상: 동일 인스턴스를 중복 대여하지 않음.
+- [ ] 보관 상한을 넘겨 반납하고 메모리와 가용 수량을 확인한다.
+- [ ] `ObjectPoolManagerTests.cs`에서 외부 파괴와 잘못된 반납을 어떻게 표현했는지 찾는다.
+- [ ] `SmartTextWrapperTests.cs`의 폭 측정 함수를 읽고 공백 없는 한글/긴 영단어/이모지 입력을 구분해 예상한다.
+
+면접 질문: **Queue와 HashSet을 같이 쓰는 이유는? 풀링을 했는데도 프레임이 끊길 수 있는 이유는? 이진 탐색 횟수와 전체 문자열 처리 비용은 왜 다른가?**
+
+다 읽었다면 [학습 체크보드](https://app.notion.com/p/3f6641f6190181d1b139fae220bb5382)에 직접 실험한 증거와 본인 설명을 남기세요. 구현 여부와 본인이 이해한 범위를 분리해서 기록하는 것이 공부와 포트폴리오 모두에 도움이 됩니다.

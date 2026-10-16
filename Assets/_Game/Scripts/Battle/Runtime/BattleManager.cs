@@ -13,9 +13,10 @@ using Sirenix.OdinInspector;
 /// 전투의 전체 흐름을 제어하는 중앙 매니저 (Singleton & State Machine 기반).
 /// 옵저버(Observer) 패턴을 활용하여 UI와의 결합도를 낮췄습니다.
 /// </summary>
-public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost, IActionSequenceLiveContextSource
+public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost, IActionSequenceLiveContextSource, IBattleDamagePresentationHost
 {
     public static BattleManager Instance { get; private set; }
+    public BattleDamageBatchTracker DamageBatches { get; } = new BattleDamageBatchTracker();
 
     #region [ Events ]
     public event Action<BattleState>                OnStateChanged;
@@ -68,6 +69,13 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [SerializeField] private int _visibleTurnQueueSize = 6;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("도망 기본 성공 확률")]
     [SerializeField, Range(0f, 1f)] private float _runSuccessChance = 0.6f;
+
+    [BoxGroup("후열 교체 연출"), LabelText("전열 사라지는 시간"), Min(0.01f)]
+    [SerializeField] private float _partyWaveFadeDuration = 0.5f;
+    [BoxGroup("후열 교체 연출"), LabelText("후열 진입 시간"), Min(0.01f)]
+    [SerializeField] private float _partyWaveEntryDuration = 0.55f;
+    [BoxGroup("후열 교체 연출"), LabelText("화면 밖 여유 거리"), Min(0.1f)]
+    [SerializeField] private float _partyWaveOffscreenMargin = 1f;
 
     [Header("Seamless & Scene Settings")]
     [Tooltip("체크 시 전용 배틀 씬으로 동작하며, Start()에서 자동으로 전투 셋업을 시작합니다.")]
@@ -143,6 +151,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     private bool _isBattleActive;
     private bool _isPartyWaveTransitioning;
     private Coroutine _partyWaveTransitionCoroutine;
+    private BattlePartyWavePresentation _partyWavePresentation;
+    private BattleReserveChoiceUI _partyWaveChoice;
+    private bool _partyWaveAbandoned;
+    public bool IsAwaitingReserveChoice => _partyWaveChoice != null && _partyWaveChoice.IsVisible;
+    public bool IsBattleSessionActive => _isBattleActive || _isBattleEnding || _isPartyWaveTransitioning
+        || (_isDedicatedBattleScene && CurrentState != BattleState.Init);
     private int _partyWaveTransitionVersion;
     private bool _rewardCommitted;
     private bool _playerPreemptiveAttackAvailable;
@@ -649,8 +663,15 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _isReadyToReveal = !_isDedicatedBattleScene;
     }
 
+    private void OnDisable()
+    {
+        // GameObject 비활성화는 코루틴만 멈추므로, 외부에서 갱신되는 DOTween도 소유자가 정리합니다.
+        CancelPartyWaveTransition();
+    }
+
     private void OnDestroy()
     {
+        DamageBatches.Clear();
         _seamlessEntryPresentation?.Cancel();
         (_turnQteModuleController as System.IDisposable)?.Dispose();
         CancelPartyWaveTransition();
@@ -771,7 +792,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private bool IsTurnQteCombatInputActive()
     {
-        if (_isBattleEnding)
+        if (_isBattleEnding || _isPartyWaveTransitioning)
         {
             return false;
         }
@@ -1071,10 +1092,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         InitializeBattleScenarioRuntime();
         RefreshBattleSessionParticipants();
+        ApplyBattleStartEquipmentEffects();
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
         _isBattleEnding = false;
+        _partyWaveAbandoned = false;
         _rewardCommitted = false;
         _lastRewardResult = null;
         _playerPreemptiveAttackAvailable = GlobalDataManager.Instance != null
@@ -1266,6 +1289,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         InitializeBattleScenarioRuntime();
         RefreshBattleSessionParticipants();
+        ApplyBattleStartEquipmentEffects();
         OnBattleStarted?.Invoke(_playerParty, _enemies);
         Canvas.ForceUpdateCanvases();
         yield return null;
@@ -1276,6 +1300,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _battleNarrationConfig?.ResetRuntimeState();
         _battleTurnCounter = 0;
         _isBattleEnding = false;
+        _partyWaveAbandoned = false;
         _rewardCommitted = false;
         _lastRewardResult = null;
         _playerPreemptiveAttackAvailable = global != null && global.CurrentEncounterPlayerPreemptiveAttack;
@@ -1366,14 +1391,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         return _enemyBasePrefab;
     }
 
-    private bool EnemyHasSequenceSkill(EnemyCharacter enemy)
+    private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action)
     {
-        return enemy != null && enemy.Data != null && enemy.Data.SkillList != null && enemy.Data.SkillList.Count > 0;
+        return enemy != null ? enemy.SelectSkill(action) : null;
     }
-private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action)
-{
-    return enemy != null ? enemy.SelectSkill(action) : null;
-}
 
     private int ResolveEnemyReturnMoveHash(EnemyCharacter enemy)
     {
@@ -1432,6 +1453,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator ExecuteEnemySequenceSkill(EnemyCharacter enemy, SkillData skill)
     {
+        using var damageBatch = DamageBatches.Begin();
         if (enemy == null || skill == null || skill.ActionTimeline == null || skill.ActionTimeline.Count == 0)
             yield break;
 
@@ -1456,6 +1478,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         SkillContext context = new SkillContext
         {
+            DamageBatchId = DamageBatches.CurrentId,
             Actor = enemy,
             Targets = targets,
             CurrentDamageMultiplier = 1.0f,
@@ -1660,7 +1683,11 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     void IBattleTurnQteHost.EmitDamageNotificationOnly(CharacterBase target, int damage, bool isPerfect) => NotifyDamageDealt(target, damage, isPerfect);
     void IBattleTurnQteHost.EmitDamageNotificationOnly(CharacterBase source, CharacterBase target, int damage, bool isCritical) => NotifyDamageDealt(source, target, damage, isCritical);
     void IBattleTurnQteHost.EmitMiss(CharacterBase source, CharacterBase target) => InvokeMissFeedback(source, target);
-    void IBattleTurnQteHost.PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing) => PublishEnemyHpScenarioEvent(target, previousHp, currentHp, maxHp, timing);
+    void IBattleTurnQteHost.PublishEnemyHpScenarioEvent(CharacterBase target, int previousHp, int currentHp, int maxHp, BattleRuleTiming timing)
+    {
+        RefreshBattleSessionParticipants();
+        PublishEnemyHpScenarioEvent(target, previousHp, currentHp, maxHp, timing);
+    }
     void IBattleTurnQteHost.PublishEnemyDefeatedScenarioEvent(CharacterBase target, CharacterBase sourceActor) => PublishEnemyDefeatedScenarioEvent(target, sourceActor);
     void IBattleTurnQteHost.PublishSkillCompletedScenarioEvent(SkillData skill, CharacterBase sourceActor) => PublishSkillCompletedScenarioEvent(skill, sourceActor);
     IEnumerator IBattleTurnQteHost.FlushBattleScenarioEvents(BattleRuleTiming timing) => FlushBattleScenarioEvents(timing);
@@ -1764,7 +1791,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private bool TryStartNextPartyWave()
     {
-        if (_isPartyWaveTransitioning || _isBattleEnding)
+        if (_isPartyWaveTransitioning) return true;
+        if (_isBattleEnding)
             return false;
 
         for (int i = 0; i < _playerParty.Count; i++)
@@ -1774,14 +1802,16 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
                 return false;
         }
 
+        bool hasReserve = false;
+        for (int i = 0; i < _reserveParty.Count; i++)
+            if (_reserveParty[i] != null && _reserveParty[i].IsAlive) { hasReserve = true; break; }
+        if (!hasReserve) return false;
+
         int transitionVersion = ++_partyWaveTransitionVersion;
         _isPartyWaveTransitioning = true;
-        if (!TryPromoteReservePartyWave())
-        {
-            _isPartyWaveTransitioning = false;
-            return false;
-        }
-
+        // 전환 도중 메뉴·대상 선택을 다시 열지 않습니다. 턴 계산은 진입 완료 뒤 재개합니다.
+        ChangeState(BattleState.ActionExecute);
+        if (!IsPartyWaveTransitionCurrent(transitionVersion)) return true;
         _partyWaveTransitionCoroutine = StartCoroutine(
             CompletePartyWaveTransition(transitionVersion));
         return true;
@@ -1837,30 +1867,87 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
     private IEnumerator CompletePartyWaveTransition(int transitionVersion)
     {
-        RequestNarration(new BattleNarrationMessage(
-            "후열이 전투에 합류했다!",
-            BattleNarrationStyle.System,
-            BattleNarrationPriority.Critical,
-            0.6f,
-            true));
-        yield return StartCoroutine(WaitForNarrationToFinish());
-
-        if (transitionVersion != _partyWaveTransitionVersion
-            || !_isPartyWaveTransitioning
-            || _isBattleEnding)
+        if (!IsPartyWaveTransitionCurrent(transitionVersion)) yield break;
+        bool resumeBattle = false;
+        try
         {
-            yield break;
-        }
+            do
+            {
+                if (_partyWaveChoice == null) _partyWaveChoice = BattleReserveChoiceUI.Create(transform);
+                yield return _partyWaveChoice.Show();
+                if (!IsPartyWaveTransitionCurrent(transitionVersion)) yield break;
+            }
+            while (_partyWaveChoice == null || _partyWaveChoice.Result == BattleReserveChoiceUI.Choice.Cancelled);
 
-        _partyWaveTransitionCoroutine = null;
-        _isPartyWaveTransitioning = false;
-        if (IsTurnQteCombatInputActive())
-            ChangeState(BattleState.TurnCalc);
+            if (_partyWaveChoice.Result == BattleReserveChoiceUI.Choice.GiveUp)
+            {
+                _partyWaveAbandoned = true;
+                resumeBattle = true;
+            }
+            else
+            {
+                yield return PresentPartyWaveTransition(transitionVersion);
+                resumeBattle = IsPartyWaveTransitionCurrent(transitionVersion);
+            }
+        }
+        finally
+        {
+            // 오래된 코루틴의 정리가 새 교체 연출의 입력 잠금을 풀지 않도록 세대를 확인합니다.
+            if (transitionVersion == _partyWaveTransitionVersion)
+            {
+                if (_partyWaveChoice != null) _partyWaveChoice.Cancel();
+                _partyWaveTransitionCoroutine = null;
+                _isPartyWaveTransitioning = false;
+            }
+        }
+        if (resumeBattle && isActiveAndEnabled && IsTurnQteCombatInputActive())
+            ChangeState(_partyWaveAbandoned || CheckDefeat() ? BattleState.BattleEnd : BattleState.TurnCalc);
     }
+
+    private IEnumerator PresentPartyWaveTransition(int transitionVersion)
+    {
+        if (!IsPartyWaveTransitionCurrent(transitionVersion)) yield break;
+        var presentation = new BattlePartyWavePresentation();
+        _partyWavePresentation = presentation;
+        try
+        {
+            yield return presentation.FadeOut(_playerParty, _partyWaveFadeDuration);
+            if (!IsPartyWaveTransitionCurrent(transitionVersion)) yield break;
+            // 연출 트윈만 외부에서 중단된 경우에도 파티 승계는 완료해 전투가 멈추지 않게 합니다.
+            if (TryPromoteReservePartyWave())
+            {
+                // 파티 변경 이벤트의 구독자가 전투를 종료하거나 다른 전투를 시작할 수 있습니다.
+                if (!IsPartyWaveTransitionCurrent(transitionVersion)) yield break;
+                Camera camera = BattleUIController.Instance != null ? BattleUIController.Instance.WorldCamera : null;
+                if (camera == null) camera = Camera.main;
+                yield return presentation.Enter(_playerParty, camera, _partyWaveEntryDuration, _partyWaveOffscreenMargin);
+                if (!IsPartyWaveTransitionCurrent(transitionVersion)) yield break;
+
+                RequestNarration(new BattleNarrationMessage(
+                    "후열이 전투에 합류했다!",
+                    BattleNarrationStyle.System,
+                    BattleNarrationPriority.Critical,
+                    0.6f,
+                    true));
+                yield return WaitForNarrationToFinish();
+            }
+        }
+        finally
+        {
+            presentation.Dispose();
+            if (ReferenceEquals(_partyWavePresentation, presentation)) _partyWavePresentation = null;
+        }
+    }
+
+    private bool IsPartyWaveTransitionCurrent(int version) => version == _partyWaveTransitionVersion
+        && _isPartyWaveTransitioning && !_isBattleEnding;
 
     private void CancelPartyWaveTransition()
     {
         _partyWaveTransitionVersion++;
+        if (_partyWaveChoice != null) _partyWaveChoice.Cancel();
+        _partyWavePresentation?.Dispose();
+        _partyWavePresentation = null;
         if (_partyWaveTransitionCoroutine != null)
         {
             StopCoroutine(_partyWaveTransitionCoroutine);
@@ -1901,7 +1988,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
     private IEnumerator BattleEndRoutine()
     {
         CancelPartyWaveTransition();
-        bool victory = CheckVictory();
+        bool victory = !_partyWaveAbandoned && CheckVictory();
         BattleEncounterOutcome outcome = victory
             ? BattleEncounterOutcome.Victory
             : BattleEncounterOutcome.PartyDefeated;
@@ -2093,9 +2180,22 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         return _lastRewardResult;
     }
 
+    private void ApplyBattleStartEquipmentEffects()
+    {
+        for (int i = 0; i < _playerParty.Count; i++)
+            EquipmentEffectService.Apply(_playerParty[i], EquipmentEffectTrigger.BattleStart);
+    }
+
     private IEnumerator BattleOutroRoutine(BattleEncounterOutcome outcome)
     {
         CancelPartyWaveTransition();
+        bool defeatedBoss = false;
+        for (int i = 0; i < _enemies.Count; i++)
+        {
+            if (_enemies[i] != null && _enemies[i].Data != null && _enemies[i].Data.Rank == EnemyRank.Boss)
+                defeatedBoss = true;
+        }
+        BattleRetryCheckpoint.CompleteEncounter(outcome);
         // Clear before callbacks, saved vitals and rewards observe the participants.
         ClearBattleParticipantStatusEffects();
         bool isVictory = outcome == BattleEncounterOutcome.Victory;
@@ -2118,7 +2218,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (outcome == BattleEncounterOutcome.PartyDefeated)
         {
             // Cleanup clears the source; capture its opt-in policy before notifying it.
-            bool returnToSource = !_isDedicatedBattleScene
+            bool returnToSource = !_partyWaveAbandoned && !_isDedicatedBattleScene
                 && _activeEncounterSource is IEncounterDefeatPolicy defeatPolicy
                 && defeatPolicy.ReturnToExplorationOnDefeat;
             if (_isDedicatedBattleScene)
@@ -2144,6 +2244,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (isVictory)
         {
             BattleRewardResult rewards = CommitVictoryRewards();
+            if (defeatedBoss)
+                SaveManager.RequestAutoSave();
             BattleResultUI resultUi = _battleUICanvas != null
                 ? BattleResultUI.Ensure(_battleUICanvas.transform)
                 : null;
@@ -2226,6 +2328,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         if (_isDedicatedBattleScene)
             return;
 
+        DamageBatches.Clear();
         _seamlessEntryPresentation?.Cancel();
         _seamlessEntryPresentation = null;
         _seamlessEntryVersion++;
@@ -2449,6 +2552,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         _isAbortCleanupInProgress = false;
         _isBattleActive = false;
         _isBattleEnding = false;
+        _partyWaveAbandoned = false;
         _rewardCommitted = false;
         _playerPreemptiveAttackAvailable = false;
         _lastRewardResult = null;
@@ -2508,7 +2612,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         CharacterBase target,
         int damage,
         bool isCritical,
-        int previousHp)
+        int previousHp,
+        DamageElement element = DamageElement.Physical,
+        long batchId = 0)
     {
         if (target != null)
         {
@@ -2522,7 +2628,7 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
 
         RefreshBattleSessionParticipants();
         OnDamageDealt?.Invoke(target, damage, isCritical);
-        PublishDamageFeedback(source, target, damage, isCritical);
+        PublishDamageFeedback(source, target, damage, isCritical, element, batchId);
     }
 
     public void InvokeMissFeedback(CharacterBase source, CharacterBase target)
@@ -2535,7 +2641,8 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             target,
             0,
             false,
-            BattleDamageFeedbackKind.Miss));
+            BattleDamageFeedbackKind.Miss,
+            batchId: DamageBatches.CurrentId));
     }
 
     public void InvokeAPChangedEvent(PlayerCharacter player, int newAP)
@@ -2570,7 +2677,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
         CharacterBase source,
         CharacterBase target,
         int damage,
-        bool isCritical)
+        bool isCritical,
+        DamageElement element = DamageElement.Physical,
+        long batchId = 0)
     {
         if (target == null || damage <= 0)
             return;
@@ -2581,7 +2690,9 @@ private SkillData GetEnemySequenceSkill(EnemyCharacter enemy, EnemyAction action
             target,
             damage,
             isCritical,
-            BattleDamageFeedbackKind.Damage));
+            BattleDamageFeedbackKind.Damage,
+            element,
+            batchId != 0 ? batchId : DamageBatches.CurrentId));
     }
     private void NotifyPlayerTurnStarted(PlayerCharacter player)
     {

@@ -17,6 +17,8 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
     [SerializeField] private bool _runOncePerSave = true;
     [SerializeField] private string _completionFlagId = "overworld.intro.subway.completed";
     [SerializeField] private bool _setExplorationWhenFinished = true;
+    [SerializeField, Tooltip("진행 이벤트 성공 후 자동 저장을 예약합니다. 취소·실패에는 저장하지 않습니다.")]
+    private bool _autoSaveOnComplete = true;
 
     private SceneActionSequencePlayer _player;
     private bool _isReadyToReveal = true;
@@ -102,7 +104,8 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
         _isReadyToReveal = false;
         _shouldPlayAfterReveal = false;
 
-        if (!Application.isPlaying || _sequence == null || HasCompletedForCurrentSave())
+        if (!Application.isPlaying || _sequence == null || HasCompletedForCurrentSave()
+            || BattleRetryCheckpoint.IsRestoring)
         {
             _isReadyToReveal = true;
             return;
@@ -141,6 +144,7 @@ public sealed class SceneActionSequenceTrigger : MonoBehaviour, ISceneRevealGate
         if (result != null && result.Status == ActionExecutionStatus.Succeeded)
         {
             MarkCompletedForCurrentSave();
+            if (_autoSaveOnComplete) SaveManager.RequestAutoSave();
         }
         else
         {

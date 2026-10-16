@@ -27,7 +27,7 @@ public sealed class BattleDefenderPresentationScope : IDisposable
     public bool IsPaired => _paired;
 
     public BattleDefenderPresentationScope(PlayerCharacter player, Func<bool> isActive,
-        EnemyCharacter enemy = null)
+        EnemyCharacter enemy = null, bool useCentralDuel = true)
     {
         _player = player;
         _isActive = isActive;
@@ -39,7 +39,7 @@ public sealed class BattleDefenderPresentationScope : IDisposable
         _enemy = enemy;
         _enemyHomePosition = enemy != null ? enemy.transform.position : Vector3.zero;
         PositionManager positions = PositionManager.Instance;
-        _paired = enemy != null && positions != null && positions.CenterTransform != null;
+        _paired = useCentralDuel && enemy != null && positions != null && positions.CenterTransform != null;
         _moveDuration = _paired ? positions.DuelMoveDuration : MoveDuration;
         _playerStagePosition = _paired ? positions.GetDuelStagingPos(player)
             : HomePosition + Vector3.right * StepDistance;

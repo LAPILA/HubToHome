@@ -56,11 +56,18 @@ public sealed class GameOverUI : MonoBehaviour
         GameStateManager.Instance?.ChangeState(GameState.Cutscene);
         _visible = true;
         _transitioning = false;
-        _selectedIndex = SaveManager.HasAnySave() ? 0 : 1;
-        _retryButton.interactable = SaveManager.HasAnySave();
-        _message.text = _retryButton.interactable
-            ? "마지막 저장 지점에서 다시 시작할 수 있습니다."
-            : "불러올 수 있는 저장 데이터가 없습니다.";
+        bool hasCheckpoint = BattleRetryCheckpoint.HasCheckpoint;
+        _retryButton.interactable = hasCheckpoint || SaveManager.HasAnySave();
+        _selectedIndex = _retryButton.interactable ? 0 : 1;
+        _retryLabel.text = hasCheckpoint
+            ? LocalizationManager.Localize("gameover.retry_checkpoint", "전투 직전부터 재도전")
+            : LocalizationManager.Localize("gameover.retry_save", "최근 저장에서 재시도");
+        _titleLabel.text = LocalizationManager.Localize("gameover.title", "타이틀로 이동");
+        _message.text = hasCheckpoint
+            ? LocalizationManager.Localize("gameover.checkpoint_hint", "전투 직전의 파티와 소지품 상태로 다시 도전할 수 있습니다.")
+            : _retryButton.interactable
+                ? LocalizationManager.Localize("gameover.save_hint", "마지막 저장 지점에서 다시 시작할 수 있습니다.")
+                : LocalizationManager.Localize("gameover.no_save", "불러올 수 있는 저장 데이터가 없습니다.");
         _canvasGroup.alpha = 1f;
         _canvasGroup.blocksRaycasts = true;
         _canvasGroup.interactable = true;
@@ -119,17 +126,22 @@ public sealed class GameOverUI : MonoBehaviour
             return;
 
         _transitioning = true;
-        _message.text = "저장 데이터를 불러오는 중...";
-        GameLoadStartResult result = GameLoadCoordinator.LoadMostRecent(HandleRetryCompleted);
+        bool checkpoint = BattleRetryCheckpoint.HasCheckpoint;
+        _message.text = checkpoint
+            ? LocalizationManager.Localize("gameover.loading_checkpoint", "전투 직전 상태를 복구하는 중...")
+            : LocalizationManager.Localize("gameover.loading_save", "저장 데이터를 불러오는 중...");
+        GameLoadStartResult result = checkpoint
+            ? BattleRetryCheckpoint.TryRetry(HandleRetryCompleted)
+            : GameLoadCoordinator.LoadMostRecent(HandleRetryCompleted);
         if (result.Accepted)
         {
-            HideImmediate();
+            if (_transitioning) HideImmediate();
             return;
         }
 
         _transitioning = false;
         _message.text = "재시도에 실패했습니다. " + result.Message;
-        _retryButton.interactable = SaveManager.HasAnySave();
+        _retryButton.interactable = BattleRetryCheckpoint.HasCheckpoint || SaveManager.HasAnySave();
         if (!_retryButton.interactable)
             _selectedIndex = 1;
         UpdateSelection();
@@ -137,6 +149,16 @@ public sealed class GameOverUI : MonoBehaviour
 
     private void HandleRetryCompleted(SceneLoadResult result)
     {
+        string checkpointFailure = BattleRetryCheckpoint.LastFailure;
+        if (!string.IsNullOrEmpty(checkpointFailure))
+        {
+            BattleRetryCheckpoint.Clear();
+            _retryLabel.text = LocalizationManager.Localize("gameover.retry_save", "최근 저장에서 재시도");
+            _retryButton.interactable = SaveManager.HasAnySave();
+            GameStateManager.Instance?.ChangeState(GameState.Cutscene);
+            RestoreAfterTransitionFailure(checkpointFailure);
+            return;
+        }
         if (SceneLoadResultUtility.WasDestinationActivated(result))
             return;
 
@@ -150,6 +172,7 @@ public sealed class GameOverUI : MonoBehaviour
             return;
 
         _transitioning = true;
+        BattleRetryCheckpoint.Clear();
         GlobalDataManager.Instance?.CancelPendingBattleEncounter();
         Time.timeScale = 1f;
         SceneLoadOperation operation = SceneLoader.Instance?.LoadSceneWithResult(
@@ -249,11 +272,13 @@ public sealed class GameOverUI : MonoBehaviour
         _message.textWrappingMode = TextWrappingModes.Normal;
         SetRect(_message.rectTransform, new Vector2(0f, 28f), new Vector2(500f, 54f));
 
-        _retryButton = CreateButton("Retry", transform, font, "최근 저장에서 재시도", out _retryLabel);
+        _retryButton = CreateButton("Retry", transform, font,
+            LocalizationManager.Localize("gameover.retry_save", "최근 저장에서 재시도"), out _retryLabel);
         SetRect(_retryButton.GetComponent<RectTransform>(), new Vector2(0f, -48f), new Vector2(300f, 46f));
         _retryButton.onClick.AddListener(RetryLatestSave);
 
-        _titleButton = CreateButton("Title", transform, font, "타이틀로 이동", out _titleLabel);
+        _titleButton = CreateButton("Title", transform, font,
+            LocalizationManager.Localize("gameover.title", "타이틀로 이동"), out _titleLabel);
         SetRect(_titleButton.GetComponent<RectTransform>(), new Vector2(0f, -106f), new Vector2(300f, 46f));
         _titleButton.onClick.AddListener(ReturnToTitle);
     }

@@ -15,8 +15,7 @@ MonoBehaviour:
   Icon: {fileID: 0}
   SkillName: "\uC4F8\uC5B4 \uB2F4\uAE30 \xB7 X"
   SkillID: lab.bunny.enemy_dodge
-  Description: "X \uC804\uC6A9 \uD68C\uD53C \uACF5\uACA9. Z\uB85C \uB9C9\uC744 \uC218
-    \uC5C6\uC2B5\uB2C8\uB2E4."
+  Description: "막을 수 없는 공격으로 적을 쓸어버린다."
   UsageProfile: 2
   APCost: 0
   TargetType: 1

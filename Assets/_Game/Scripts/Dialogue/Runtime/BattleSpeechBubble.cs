@@ -25,6 +25,13 @@ public enum BattleSpeechBubbleDirection
     Right
 }
 
+public enum BattleSpeechContentMode
+{
+    [LabelText("텍스트만")] Text = 0,
+    [LabelText("아이콘만")] Icon = 1,
+    [LabelText("텍스트 + 아이콘")] TextAndIcon = 2
+}
+
 [System.Serializable]
 public class BattleSpeechRule
 {
@@ -54,7 +61,18 @@ public class BattleSpeechRule
     [Tooltip("Available tokens: {actor}, {target}, {skill}, {turn}, {hp}, {maxHp}")]
     public string Text = "...";
 
+    [BoxGroup("표시 내용"), LabelText("표시 방식")]
+    public BattleSpeechContentMode ContentMode = BattleSpeechContentMode.Text;
+    [BoxGroup("표시 내용"), LabelText("도트 아이콘"), PreviewField(48)]
+    [Tooltip("Sprite를 연결합니다. 미지정이면 기존 텍스트를 표시합니다. 원본 텍스처는 Point 필터를 권장합니다.")]
+    public Sprite Icon;
+    [BoxGroup("표시 내용"), LabelText("아이콘 높이 (640×480 기준)"), Range(8f, 64f)]
+    public float IconHeight = 24f;
+
     [HideInInspector] public bool HasTriggered;
+
+    public bool HasDisplayContent => !string.IsNullOrWhiteSpace(Text)
+        || (ContentMode != BattleSpeechContentMode.Text && Icon != null);
 
     public BattleSpeechRule CloneRuntime()
     {
@@ -68,6 +86,9 @@ public class BattleSpeechRule
             TriggerOnce = TriggerOnce,
             Direction = Direction,
             Text = Text,
+            ContentMode = ContentMode,
+            Icon = Icon,
+            IconHeight = IconHeight,
             HasTriggered = false
         };
     }
@@ -146,11 +167,23 @@ public class BattleSpeechBubble : MonoBehaviour
     private readonly Vector3[] _screenCorners = new Vector3[4];
     private float _presentationScale = 1f;
     private Tween _scaleTween;
+    private Image _contentIcon;
+    private Vector2 _contentIconSize;
+    private bool _contentHasText;
+    private float _contentGap;
+    private bool _initialized;
 
     public bool IsShowing => _isShowing;
 
     private void Awake()
     {
+        EnsureInitialized();
+    }
+
+    private void EnsureInitialized()
+    {
+        if (_initialized) return;
+        _initialized = true;
         if (_bubbleRoot == null) _bubbleRoot = transform as RectTransform;
         if (_boxRoot == null) _boxRoot = _bubbleRoot;
         if (_canvasGroup == null) _canvasGroup = GetComponentInChildren<CanvasGroup>(true);
@@ -198,12 +231,15 @@ public class BattleSpeechBubble : MonoBehaviour
         float holdOverride = -1f,
         BattleSpeechBubbleDirection? directionOverride = null)
     {
+        EnsureInitialized();
         BattleSpeechRule rule = PickRule(trigger, actor, skill, battleTurn);
         if (rule == null) return false;
 
-        if (rule.TriggerOnce) rule.HasTriggered = true;
-        Show(Format(rule.Text, actor, skill, target, battleTurn), holdOverride > 0f ? holdOverride : _defaultHoldDuration, directionOverride ?? rule.Direction, actor);
-        return true;
+        bool shown = TryShowContent(Format(rule.Text, actor, skill, target, battleTurn),
+            holdOverride > 0f ? holdOverride : _defaultHoldDuration,
+            directionOverride ?? rule.Direction, actor, rule.Icon, rule.ContentMode, rule.IconHeight);
+        if (shown && rule.TriggerOnce) rule.HasTriggered = true;
+        return shown;
     }
 
     public void Show(string text, float holdDuration = -1f)
@@ -218,7 +254,23 @@ public class BattleSpeechBubble : MonoBehaviour
 
     public void Show(string text, float holdDuration, BattleSpeechBubbleDirection direction, CharacterBase actor)
     {
-        if (string.IsNullOrWhiteSpace(text) || _speechText == null) return;
+        Show(text, holdDuration, direction, actor, null, BattleSpeechContentMode.Text);
+    }
+
+    public void Show(string text, float holdDuration, BattleSpeechBubbleDirection direction,
+        CharacterBase actor, Sprite icon, BattleSpeechContentMode contentMode, float iconHeight = 24f)
+    {
+        TryShowContent(text, holdDuration, direction, actor, icon, contentMode, iconHeight);
+    }
+
+    private bool TryShowContent(string text, float holdDuration, BattleSpeechBubbleDirection direction,
+        CharacterBase actor, Sprite icon, BattleSpeechContentMode contentMode, float iconHeight)
+    {
+        EnsureInitialized();
+        bool showIcon = contentMode != BattleSpeechContentMode.Text && icon != null;
+        bool showText = !string.IsNullOrWhiteSpace(text)
+            && (contentMode != BattleSpeechContentMode.Icon || !showIcon);
+        if ((!showText && !showIcon) || _speechText == null) return false;
 
         gameObject.SetActive(true);
         if (_hideRoutine != null) StopCoroutine(_hideRoutine);
@@ -228,15 +280,18 @@ public class BattleSpeechBubble : MonoBehaviour
         NormalizeBoxRect(direction);
         ApplyBubbleSprites(direction);
         DisableTmpAutomaticWrapping();
-        string wrappedText = WrapTextForBubble(text);
-        ApplyText(wrappedText);
+        ConfigureContent(showText, showIcon ? icon : null, iconHeight);
+        string wrappedText = showText ? WrapTextForBubble(text) : string.Empty;
         Vector2 size = ResizeToText(wrappedText, direction);
+        // 크기 측정이 끝난 뒤 타이핑을 시작해 측정용 전체 문장이 먼저 보이지 않게 합니다.
+        ApplyText(wrappedText);
         PositionTail(direction, size);
         SyncTailStencilCutout();
         PositionForActor(actor, direction);
         PlayShowTween();
 
         _hideRoutine = StartCoroutine(CoHideAfter(holdDuration > 0f ? holdDuration : _defaultHoldDuration));
+        return true;
     }
 
     public void HideImmediate()
@@ -249,6 +304,7 @@ public class BattleSpeechBubble : MonoBehaviour
             _bubbleRoot.localScale = _baseScale;
 
         if (_speechText != null) _speechText.text = string.Empty;
+        if (_contentIcon != null) _contentIcon.gameObject.SetActive(false);
         _isShowing = false;
         _confirmWasDown = false;
         gameObject.SetActive(false);
@@ -281,6 +337,7 @@ public class BattleSpeechBubble : MonoBehaviour
         {
             BattleSpeechRule rule = rules[i];
             if (rule == null || rule.Trigger != trigger) continue;
+            if (!rule.HasDisplayContent) continue;
             if (rule.TriggerOnce && rule.HasTriggered) continue;
             if (battleTurn < rule.MinBattleTurn) continue;
             if (actor != null && actor.MaxHP > 0 && ((float)actor.CurrentHP / actor.MaxHP) > rule.HpRatioBelow) continue;
@@ -355,6 +412,38 @@ public class BattleSpeechBubble : MonoBehaviour
             _speechText.text = text;
     }
 
+    private void ConfigureContent(bool showText, Sprite icon, float height)
+    {
+        _contentHasText = showText;
+        _speechText.enabled = showText;
+        _contentIconSize = Vector2.zero;
+        _contentGap = 0f;
+        if (icon == null)
+        {
+            if (_contentIcon != null) _contentIcon.gameObject.SetActive(false);
+            return;
+        }
+
+        if (_contentIcon == null)
+        {
+            var iconObject = new GameObject("ContentIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            iconObject.transform.SetParent(_boxRoot, false);
+            _contentIcon = iconObject.GetComponent<Image>();
+            _contentIcon.raycastTarget = false;
+            _contentIcon.preserveAspect = true;
+        }
+        _contentIcon.sprite = icon;
+        _contentIcon.gameObject.SetActive(true);
+        float unitsPerPixel = _speechText.fontSize / Mathf.Max(1f, _screenFontSize);
+        float localHeight = Mathf.Clamp(height, 8f, 64f) * unitsPerPixel;
+        _contentIconSize = new Vector2(localHeight * icon.rect.width / Mathf.Max(1f, icon.rect.height), localHeight);
+        // 극단적으로 넓은 이미지도 말풍선 최대 폭 안에 들어갑니다.
+        float maxWidth = Mathf.Max(1f, _maxSize.x - GetTextExtraSize().x);
+        float widthLimit = maxWidth * (showText ? 0.4f : 1f);
+        if (_contentIconSize.x > widthLimit) _contentIconSize *= widthLimit / _contentIconSize.x;
+        _contentGap = showText ? 4f * unitsPerPixel : 0f;
+    }
+
     private void DisableTmpAutomaticWrapping()
     {
         if (_speechText == null) return;
@@ -370,13 +459,13 @@ public class BattleSpeechBubble : MonoBehaviour
 
         // Shared dialogue wrapping rule: keep words together first, then let the box resize from the wrapped text.
         float maxWidth = Mathf.Max(_minSize.x, _maxSize.x);
-        float textMaxWidth = Mathf.Max(1f, maxWidth - GetTextExtraSize().x);
+        float textMaxWidth = Mathf.Max(1f, maxWidth - GetTextExtraSize().x - _contentIconSize.x - _contentGap);
         return SmartTextWrapper.Wrap(_speechText, text, textMaxWidth);
     }
 
     private Vector2 ResizeToText(string text, BattleSpeechBubbleDirection direction)
     {
-        if (_speechText == null || string.IsNullOrWhiteSpace(text))
+        if (_speechText == null)
             return _minSize;
 
         _speechText.text = text;
@@ -384,9 +473,12 @@ public class BattleSpeechBubble : MonoBehaviour
 
         float maxWidth = Mathf.Max(_minSize.x, _maxSize.x);
         Vector2 extraSize = GetTextExtraSize();
-        float textMaxWidth = Mathf.Max(1f, maxWidth - extraSize.x);
+        float textMaxWidth = Mathf.Max(1f, maxWidth - extraSize.x - _contentIconSize.x - _contentGap);
 
-        Vector2 preferred = _speechText.GetPreferredValues(text, textMaxWidth, Mathf.Infinity);
+        Vector2 preferred = _contentHasText
+            ? _speechText.GetPreferredValues(text, textMaxWidth, Mathf.Infinity) : Vector2.zero;
+        preferred = new Vector2(preferred.x + _contentIconSize.x + _contentGap,
+            Mathf.Max(preferred.y, _contentIconSize.y));
         Vector2 size = BattleSpeechBubbleLayout.ClampBoxSize(
             preferred + extraSize,
             _minSize,
@@ -408,11 +500,20 @@ public class BattleSpeechBubble : MonoBehaviour
         }
 
         RectTransform textRect = _speechText.rectTransform;
+        BattleSpeechBubbleLayout.CalculateContent(layout.TextSize, _contentIconSize, _contentHasText,
+            _contentGap, out Rect textArea, out Rect iconArea);
         if (textRect != null)
         {
-            textRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, layout.TextSize.x);
-            textRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, layout.TextSize.y);
-            textRect.anchoredPosition = layout.TextAnchoredPosition;
+            textRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, textArea.width);
+            textRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, textArea.height);
+            textRect.anchoredPosition = layout.TextAnchoredPosition + textArea.center;
+        }
+        if (_contentIcon != null && _contentIcon.gameObject.activeSelf)
+        {
+            RectTransform iconRect = _contentIcon.rectTransform;
+            iconRect.anchorMin = iconRect.anchorMax = iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.sizeDelta = iconArea.size;
+            iconRect.anchoredPosition = layout.TextAnchoredPosition + iconArea.center;
         }
 
         Canvas.ForceUpdateCanvases();
@@ -666,7 +767,8 @@ public class BattleSpeechBubble : MonoBehaviour
     private void PositionForActor(CharacterBase actor, BattleSpeechBubbleDirection direction)
     {
         _speakerPivot = null;
-        _speechCamera = BattleUIController.Instance != null ? BattleUIController.Instance.WorldCamera : Camera.main;
+        _speechCamera = BattleUIController.Instance != null ? BattleUIController.Instance.WorldCamera : null;
+        if (_speechCamera == null) _speechCamera = Camera.main;
         if (actor == null || _bubbleRoot == null) return;
 
         Transform pivot = direction == BattleSpeechBubbleDirection.Up

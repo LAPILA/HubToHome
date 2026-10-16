@@ -226,23 +226,21 @@ public static class CharacterGrowthService
             Mathf.Max(0, character.Growth.AttributePointsEarned);
         character.Growth.SkillPointsEarned =
             Mathf.Max(0, character.Growth.SkillPointsEarned);
-        character.Growth.SkillPointsSpent =
-            Mathf.Clamp(
-                character.Growth.SkillPointsSpent,
-                0,
-                character.Growth.SkillPointsEarned);
-
         if (!character.Growth.IsInitialized)
         {
             int completedLevels = Mathf.Max(0, character.Level - 1);
-            character.Growth.AttributePointsEarned = SaturatingMultiply(
+            character.Growth.AttributePointsEarned = Mathf.Max(character.Growth.AttributePointsEarned, SaturatingMultiply(
                 completedLevels,
-                ResolveAttributePointsPerLevel(profile));
-            character.Growth.SkillPointsEarned = SaturatingMultiply(
+                ResolveAttributePointsPerLevel(profile)));
+            character.Growth.SkillPointsEarned = Mathf.Max(character.Growth.SkillPointsEarned,
+                Mathf.Max(character.Growth.SkillPointsSpent, SaturatingMultiply(
                 completedLevels,
-                ResolveSkillPointsPerLevel(profile));
+                ResolveSkillPointsPerLevel(profile))));
             character.Growth.IsInitialized = true;
         }
+
+        character.Growth.SkillPointsSpent = Mathf.Clamp(character.Growth.SkillPointsSpent,
+            0, character.Growth.SkillPointsEarned);
 
         character.Growth.AttributePointsEarned = Mathf.Max(
             character.Growth.AttributePointsEarned,
@@ -330,10 +328,8 @@ public static class CharacterGrowthService
 
         if (preserveResourceDeficit)
         {
-            character.HP = Mathf.Clamp(
-                maxHp - missingHp,
-                0,
-                maxHp);
+            character.HP = character.HP <= 0 ? 0 : Mathf.Clamp(
+                maxHp - missingHp, 0, maxHp);
             character.AP = Mathf.Clamp(
                 maxAp - missingAp,
                 0,
