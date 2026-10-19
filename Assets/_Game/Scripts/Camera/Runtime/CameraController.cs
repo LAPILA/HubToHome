@@ -229,6 +229,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         CameraShotSettings settings = ResolveSettings(style, zoom);
         StopBattleMotion();
         StopTargetFraming();
+        BeginContinuousBattleZoom();
         ApplyTrackingTarget(target);
         ApplySettings(settings);
         TweenLens(settings.OrthographicSize, duration);
@@ -410,6 +411,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         _commandVersion++;
     }
 
+    [Button("대상 확대 / 축소"), DisableInEditorMode]
     public void ZoomOnTransform(Transform target, float targetZoom, float duration = 0.3f)
     {
         if (!TryFocus(

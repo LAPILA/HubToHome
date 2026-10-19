@@ -108,6 +108,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 586a0bc557cf440fa05c1fba8bc51de8, type: 2}
   - {fileID: 11400000, guid: 887c833346404e72a14c5a236d10deee, type: 2}
   - {fileID: 11400000, guid: 4b08a68874b646f8a3653b5917207872, type: 2}
+  - {fileID: 11400000, guid: fbb5c2ccc8a648d6a3aac9dd59b37ea8, type: 2}
   Equipment:
   - {fileID: 11400000, guid: 76100795bbc1c384e90d0f59bd3c7d36, type: 2}
   - {fileID: 11400000, guid: b27e18826c8969f4088adef9f3414ae6, type: 2}

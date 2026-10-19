@@ -53,7 +53,6 @@ public sealed class MobileGameInputOverlay : MonoBehaviour
         _canvas.overrideSorting = true;
         _canvas.sortingOrder = 32760;
         gameObject.AddComponent<CanvasScaler>();
-        UIRuntimeGuard.NormalizeCanvas(gameObject);
         _font = GameContentCatalog.Instance != null ? GameContentCatalog.Instance.DefaultUiFont : TMP_Settings.defaultFontAsset;
         CreateButton(0, "↑", new Vector2(58, 100), GamepadButton.DpadUp);
         CreateButton(1, "↓", new Vector2(58, 20), GamepadButton.DpadDown);
@@ -67,6 +66,7 @@ public sealed class MobileGameInputOverlay : MonoBehaviour
         CreateButton(9, "R", new Vector2(-20, 150), GamepadButton.RightShoulder, true);
         CreateButton(10, "↺", new Vector2(-66, 150), GamepadButton.Select, true);
         CreateButton(11, "Ⅱ", new Vector2(-20, 426), GamepadButton.Start, true);
+        UIRuntimeGuard.NormalizeCanvas(gameObject);
     }
 
     private void CreateButton(int index, string label, Vector2 position, GamepadButton button, bool right = false)
@@ -95,6 +95,9 @@ public sealed class MobileGameInputOverlay : MonoBehaviour
 
     private void Update()
     {
+        bool menuOwnsTouch = FieldMenuTouchInput.IsActive;
+        if (_canvas != null) _canvas.enabled = !menuOwnsTouch;
+        if (menuOwnsTouch) { ReleaseButtons(); return; }
         Touchscreen screen = Touchscreen.current;
         if (!_hasFocus || screen == null || _device == null) { ReleaseButtons(); return; }
         uint mask = 0;

@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_Prologue_Expedition
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 1
+  Nodes:
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_EXPEDITION_01
+    DefaultText: "진실을 찾기 위해 떠난\n첫 번째 원정대."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_EXPEDITION_02
+    DefaultText: "그들마저 돌아오지\n않은 지 1년."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_EXPEDITION_03
+    DefaultText: "이제, 두 번째 원정대가\n같은 철길 위에 선다."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_EXPEDITION_04
+    DefaultText: "열차는 다시, 얼어붙은\n북쪽을 향해 달린다."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

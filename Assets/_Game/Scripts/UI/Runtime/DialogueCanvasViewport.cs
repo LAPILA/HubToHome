@@ -17,6 +17,7 @@ public sealed class DialogueCanvasViewport : MonoBehaviour
     private Vector2Int _lastScreen;
 
     public RectTransform ContentRect => _content;
+    public Camera OutputCamera => _output;
 
     public static void Ensure(Canvas canvas, Camera output)
     {
@@ -34,6 +35,7 @@ public sealed class DialogueCanvasViewport : MonoBehaviour
         if (_scaler == null) _scaler = gameObject.AddComponent<CanvasScaler>();
         _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         _canvas.worldCamera = null;
+        _canvas.pixelPerfect = true;
         // 전체 전환 페이드(32767) > 모달 대사(32766) > 레터박스(32765).
         // 같은 정렬 레이어에서 비교하여 프리팹의 구형 UI 순서에 영향받지 않습니다.
         _canvas.overrideSorting = true;
@@ -78,16 +80,17 @@ public sealed class DialogueCanvasViewport : MonoBehaviour
             ApplyLayout();
     }
 
-    private Rect OutputRect => _output != null ? _output.pixelRect : new Rect(0f, 0f, Screen.width, Screen.height);
+    private Rect OutputRect => UIViewportService.GetOutputRect(_output);
 
     private void ApplyLayout()
     {
         if (_content == null || _canvas == null || _scaler == null) return;
         Rect output = OutputRect;
-        float scale = Mathf.Max(0.01f, Mathf.Min(output.width / ReferenceSize.x, output.height / ReferenceSize.y));
+        float scale = UIViewportService.CalculateReferenceScale(output);
         _scaler.scaleFactor = scale;
         _canvas.scaleFactor = scale;
-        _content.anchoredPosition = (output.center - new Vector2(Screen.width, Screen.height) * 0.5f) / scale;
+        _content.anchoredPosition = (UIViewportService.CalculateContentScreenRect(output).center
+            - new Vector2(Screen.width, Screen.height) * 0.5f) / scale;
         _content.localScale = Vector3.one;
         _content.localRotation = Quaternion.identity;
         _lastOutputRect = output;

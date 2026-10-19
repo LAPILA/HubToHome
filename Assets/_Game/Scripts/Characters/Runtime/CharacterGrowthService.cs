@@ -417,6 +417,81 @@ public static class CharacterGrowthService
             growth);
     }
 
+    /// <summary>전체 추가 투자를 검증한 뒤 한 번만 반영합니다. 실패 시 원본을 초기화하지 않습니다.</summary>
+    public static GrowthInvestmentResult TryInvestBatch(
+        CharacterSaveData character,
+        CharacterData data,
+        CharacterStatInvestments additions)
+    {
+        CharacterStatInvestments requested = additions?.Clone();
+        GrowthStat firstStat = GrowthStat.Vitality;
+        bool hasRequest = false;
+        bool invalidAmount = requested == null;
+        long total = 0;
+        for (int i = 0; i <= (int)GrowthStat.ActionPoints; i++)
+        {
+            GrowthStat stat = (GrowthStat)i;
+            int amount = requested?.Get(stat) ?? 0;
+            if (!hasRequest && amount != 0)
+            {
+                firstStat = stat;
+                hasRequest = true;
+            }
+            invalidAmount |= amount < 0;
+            total += amount;
+        }
+
+        int previousRank = character?.Growth?.Investments?.Get(firstStat) ?? 0;
+        int availablePoints = character?.Growth?.AvailableAttributePoints ?? 0;
+        if (character == null || data == null)
+            return new GrowthInvestmentResult(GrowthInvestmentStatus.InvalidCharacter,
+                firstStat, previousRank, previousRank, availablePoints);
+        if (invalidAmount || total <= 0)
+            return new GrowthInvestmentResult(GrowthInvestmentStatus.InvalidAmount,
+                firstStat, previousRank, previousRank, availablePoints);
+
+        // 조회 중 초기화/상한 보정도 원본에 새지 않도록 독립 작업본에서 계산합니다.
+        var candidate = new CharacterSaveData
+        {
+            CharacterDataID = character.CharacterDataID,
+            CharacterID = character.CharacterID,
+            Level = character.Level,
+            HP = character.HP,
+            AP = character.AP,
+            Growth = character.Growth?.Clone() ?? new CharacterGrowthSaveData(),
+            EquippedEquipmentIDs = character.EquippedEquipmentIDs != null
+                ? new List<string>(character.EquippedEquipmentIDs)
+                : new List<string>()
+        };
+        EnsureInitialized(candidate, data);
+        CharacterGrowthSaveData growth = candidate.Growth;
+        previousRank = growth.Investments.Get(firstStat);
+        if (total > growth.AvailableAttributePoints)
+            return Result(GrowthInvestmentStatus.InsufficientPoints, firstStat, previousRank, growth);
+
+        int maximumRank = ResolveMaxInvestmentRank(data.GrowthProfile);
+        for (int i = 0; i <= (int)GrowthStat.ActionPoints; i++)
+        {
+            GrowthStat stat = (GrowthStat)i;
+            if (requested.Get(stat) > maximumRank - growth.Investments.Get(stat))
+                return Result(GrowthInvestmentStatus.RankCapReached, firstStat, previousRank, growth);
+        }
+
+        for (int i = 0; i <= (int)GrowthStat.ActionPoints; i++)
+        {
+            GrowthStat stat = (GrowthStat)i;
+            growth.Investments.Set(stat, growth.Investments.Get(stat) + requested.Get(stat));
+        }
+        RecalculateBaseStats(candidate, data, true);
+
+        character.Growth = candidate.Growth;
+        ApplyBaseStats(character, new CharacterBaseStatSnapshot(
+            candidate.MaxHP, candidate.MaxAP, candidate.ATK, candidate.DEF, candidate.SPD));
+        character.HP = candidate.HP;
+        character.AP = candidate.AP;
+        return Result(GrowthInvestmentStatus.Success, firstStat, previousRank, growth);
+    }
+
     public static bool TryRefund(
         CharacterSaveData character,
         CharacterData data,

@@ -1,6 +1,6 @@
 # HubToHome UI Policy
 
-상태: 확정 v1.0 — FixedViewport 공통 정책 적용
+상태: 확정 v1.3 — 고정 UI를 조명·후처리에서 분리, 공통 정수 배율·안전 영역 유지 (2026-10-19)
 
 이 문서는 HubToHome의 uGUI Canvas, Game Camera, UI Camera, 해상도 변경, 전체화면 전환 정책을 정의하는 대표 문서다. 우리 게임은 640x480 픽셀 아트 화면을 중심으로 플레이되고, 와이드 모니터에서는 그 게임 화면을 중앙 4:3 viewport로 유지한다. 따라서 UI도 모니터의 현재 크기를 기준으로 다시 설계하는 것이 아니라, UI가 게임 화면과 어떤 관계를 갖는지를 먼저 판단하고 그 관계에 맞는 공통 규칙을 적용한다. 이 문서와 코드 주석의 `FixedViewport`, `WorldTracked`, `Fullscreen` 용어는 동일한 계약을 가리킨다.
 
@@ -8,9 +8,9 @@
 
 - 게임 논리 해상도: `640 x 480`
 - 게임 월드: Pixel Perfect Game Camera가 담당한다.
-- 현재 TestMap 런타임에는 `PPC` Game Camera만 존재한다. 첫 구현은 이 카메라를 FixedViewport UI의 공통 출력 카메라로 재사용한다.
+- Game Camera는 FixedViewport UI의 **출력 경계 정보만** 제공한다. UI 자체는 카메라 렌더링 뒤 Overlay로 그리며 별도 UI Camera는 만들지 않는다.
 - 와이드 화면: 게임 카메라가 만드는 중앙 4:3 viewport 밖에는 게임 UI를 배치하지 않는다.
-- 기존 패널 ID, 직렬화된 참조, 자식 계층, 입력 및 표시 로직은 UI viewport 수정만으로 보존한다.
+- 기존 패널 ID, 직렬화된 참조, 형제 순서, 입력 및 표시 로직을 보존한다. 런타임에만 640×480 콘텐츠 부모를 삽입한다.
 - 논리 해상도 안의 좌표와 크기는 실제 부모 RectTransform의 영역 안에 둔다. 부모가 483 폭이면 640 기준 좌표를 그대로 복사하지 않는다.
 - 런타임 생성 UI도 프리팹 UI와 같은 기준 영역을 사용하며, 화면 크기를 읽어 UI별로 별도 배율을 만들지 않는다.
 
@@ -27,12 +27,16 @@
 
 정책:
 
-- 공통 출력 카메라를 사용한다. 현재는 Game Camera를 재사용하고, 별도 UI Camera가 도입되면 동일한 viewport를 공유해야 한다.
-- 공통 출력 카메라의 viewport는 Game Camera의 실제 viewport와 동일해야 한다.
-- Canvas는 `ScreenSpaceCamera`를 사용한다.
+- Canvas는 `ScreenSpaceOverlay`, `worldCamera=null`을 사용한다. 게임 카메라의 조명·Volume/Post Processing·회전·줌과 분리한다.
+- 일반 화면 UI는 `FixedCanvasViewport`, 전투 HUD와 모달 대사는 기존 전용 viewport가 소유한다. 중첩 Canvas 등록도 실제 최상위 Canvas로 정규화한다.
+- 게임 카메라의 실제 출력 경계만 `UIViewportService.GetOutputCamera`로 조회한다. Overlay 화면 좌표 변환에 이 카메라를 넘기지 않는다.
+- 루트는 Default 정렬 레이어로 통일하되 기존 `sortingOrder`를 보존한다. 월드보다 앞에 표시하려고 모든 창을 같은 최댓값으로 만들지 않는다. 대사·레터박스·전환 페이드의 기존 우선순위를 유지한다.
 - CanvasScaler 기준 해상도는 `640 x 480`이다.
+- 런타임에서는 `ConstantPixelSize`와 공통 계산 배율을 사용한다. `ScaleWithScreenSize`의 모니터 전체 크기로 배율을 다시 계산하지 않는다.
+- `UIViewportService.GetOutputRect`가 카메라 출력 영역과 실제 화면의 교집합을 구한다. 기준 해상도 이상은 1·2·3배 정수 확대, 콘텐츠 시작점은 실제 픽셀에 정렬한다. 고정 Canvas는 `pixelPerfect=true`다.
+- 기준 해상도 미만은 UI 가시성을 위한 축소 예외다. 원본 픽셀 보존을 보장하지 않는다. 직접 콘텐츠 루트를 가진 HUD/대사와 SafeAreaFitter를 쓰는 메뉴 이외의 작은 화면 배치는 별도 확인이 필요하다.
 - `ScreenMatchMode.Expand`는 사용하지 않는다.
-- UI Camera viewport 밖의 좌우 검은 여백에는 UI가 렌더링되지 않아야 한다.
+- 콘텐츠를 640×480 자식 Rect에 배치해 Overlay가 전체 화면으로 늘어나도 UI는 게임 출력 영역 안에 유지한다. 화면 밖까지 그리는 페이드는 Fullscreen 예외다.
 
 ### WorldTracked
 
@@ -67,7 +71,19 @@
 
 게임 UI는 키보드·패드의 방향 이동/확인/취소로 조작한다. 공용 `UIManager.prefab`의 EventSystem은 `InputSystemUIInputModule`의 Point/Click/Scroll/Tracked 포인터 액션을 연결하지 않으며, 배경 클릭으로 선택을 해제하지 않는다. `ActionsAsset`과 Move/Submit/Cancel 연결은 유지한다. 개별 버튼의 onClick은 키보드 확인 명령에서도 사용하므로 삭제하지 않는다.
 
-현재 공용 모듈에서는 마우스뿐 아니라 직접 터치/펜/XR 포인터도 사용하지 않는다. 모바일 가상 패드 도입 시에는 이를 몰래 다시 켜지 말고 GameInput과 연결할 명시적 입력 경로를 함께 설계한다. Unity Editor 제작 도구의 마우스 조작과는 무관하다.
+공용 모듈에서는 마우스뿐 아니라 직접 터치/펜/XR 포인터도 연결하지 않는다. 모바일 전용 입력은 아래 명시적 경로만 사용하며 공용 액션을 몰래 다시 켜지 않는다. Unity Editor 제작 도구의 마우스 조작과는 무관하다.
+
+### 필드 메뉴 직접 터치 예외
+
+- `OverworldMenuUI`의 `FieldMenuTouchInput`만 실제 모바일 `Touchscreen`을 읽는다. PC Mouse/펜/XR을 대신 터치로 취급하지 않는다.
+- 메뉴의 같은 손가락·같은 hit에 대한 짧은 탭만 클릭한다. 이동은 ScrollRect 드래그로 전환하며 클릭을 취소한다. ±는 unscaled hold 반복이고 숫자는 TMP/기기 숫자 키보드로 입력한다.
+- 숫자 입력에서 다른 UI를 누르면 먼저 선택을 해제해 초안을 확정한다. 적용/동료 변경/페이지 변경/모달 진입도 편집을 종료한다. 모달·메뉴 종료 뒤 지연된 TMP 활성화는 `FieldMenuNumberInput`이 현재 선택 소유권을 검사해 차단한다.
+- 전환 중·상위 모달·닫히는 애니메이션에는 명령을 받지 않는다. 메뉴 GameObject가 실제 비활성화될 때까지 `MobileGameInputOverlay`는 가상패드를 숨기고 눌림을 해제한다. 닫는 버튼을 필드 확인/방어 입력으로 재사용하지 않는다.
+- 키보드/패드는 같은 제어기 명령을 사용한다. 버튼의 EventSystem 자동 탐색과 제어기의 방향 입력을 중복 실행하지 않는다. 실제 스위치 아이콘은 검증 없이 추측하지 않는다.
+
+### 필드 메뉴 기기 안전 영역
+
+`FieldMenuViewport`는 기존 Canvas의 출력 Rect와 `Screen.safeArea`를 교차한 후 **동일한** `UIViewportService.CalculateReferenceScale` / `CalculateContentScreenRect` 수식을 사용한다. Canvas 정수 배율을 다시 곱하지 않고 비율만 자식 프레임에 적용한다. 비대칭 노치는 화면 중심을 부모 로컬 좌표로 바꿔 반영한다. 기존 `UIPixelPerfectSafeAreaFitter`의 PPC-fit과 기기 노치 안전 영역은 같은 개념이 아니다. 640×480 미만 출력의 축소, 실제 휴대폰 글자/터치 크기와 TMP 줄바꿈은 실기기 확인이 필요하다.
 
 설정 화면은 수직동기화·목표 FPS를 노출하지 않는다. 내부 GameConfigManager의 기본 프레임 제한, 기기별 상한, 기존 저장값/API는 유지한다. 설정 행을 줄이는 것을 프레임 제한 해제로 구현하지 않는다.
 
@@ -87,7 +103,7 @@ Canvas 개수는 제한하지 않는다. 중요한 것은 Canvas 루트가 어�
 1. 활성 Pixel Perfect Game Camera 확인
 2. 공통 출력 카메라 확인
 3. 공통 출력 카메라 viewport를 Game Camera viewport와 동기화
-4. FixedViewport Canvas 등록 및 카메라 연결
+4. FixedViewport Canvas 등록 및 카메라 출력 경계 연결(UI 렌더링은 분리)
 5. Fullscreen Canvas의 예외 등록
 6. 해상도/Alt+Enter/씬 전환 후 재동기화
 
@@ -103,7 +119,7 @@ WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지�
 2. 와이드 모니터의 검은 여백까지 UI가 덮어야 하는가, 아니면 중앙 게임 viewport 안에만 있어야 하는가?
 3. UI가 월드 좌표를 따라 움직이는가, 아니면 논리 해상도의 고정 좌표에 있어야 하는가?
 
-게임 플레이 화면 위에 고정되는 모든 HUD, 메뉴, 대화, 상점, 설정, 전투 UI는 기본적으로 `FixedViewport`로 처리한다. 이 UI들은 기능이 달라도 같은 출력 카메라, 같은 논리 해상도, 같은 전체화면 전환 정책을 공유한다.
+게임 플레이 화면 위에 고정되는 모든 HUD, 메뉴, 대화, 상점, 설정, 전투 UI는 기본적으로 `FixedViewport`로 처리한다. 기능이 달라도 같은 게임 출력 경계, 논리 해상도, 전체화면 전환 정책을 공유하며 UI는 Overlay로 렌더링한다.
 
 월드 캐릭터나 오브젝트를 따라가야 하는 요소만 `WorldTracked`로 분리한다. 말풍선, 타겟 커서, 데미지 팝업처럼 위치가 월드에 종속되는 요소는 고정 UI 규칙을 억지로 적용하지 않고, Game Camera의 월드 투영을 유지한다.
 
@@ -114,12 +130,12 @@ WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지�
 ## 레이아웃 작성 규칙
 
 1. 고정 UI 루트는 `UIRuntimeGuard.NormalizeCanvas`를 호출한다. 새 UI에서 `UIViewportService`를 직접 호출하지 않는다.
-2. `ScreenSpaceOverlay`를 FixedViewport UI에 남겨두지 않는다. 예외가 필요하면 이 문서의 Fullscreen 분류와 이유를 함께 기록한다.
-3. `CanvasScaler`는 `ScaleWithScreenSize`, 기준 `640 x 480`, `MatchWidthOrHeight`를 사용한다. FixedViewport에서 `Expand`를 사용하지 않는다.
+2. FixedViewport는 Overlay와 640×480 콘텐츠 루트를 함께 사용한다. Overlay 전환만 하고 콘텐츠를 모니터 전체로 늘리지 않는다. 실제 WorldSpace 루트/말풍선은 일괄 변환하지 않는다.
+3. 기준 `640 x 480`은 유지하되 런타임 `CanvasScaler`는 공통 서비스가 `ConstantPixelSize`와 카메라 출력 기준 배율을 적용한다. `UIRuntimeGuard`의 편집 모드 기본값은 최종 런타임 배율 정책이 아니다. FixedViewport에서 `Expand`나 화면 전체 크기 기반 자동 배율을 재적용하지 않는다.
 4. 프리팹의 고정 좌표는 해당 프레임의 실제 콘텐츠 부모 폭/높이를 기준으로 계산한다. 런타임 생성 뷰는 부모가 제공하는 폭을 넘지 않도록 설계 상수를 부모 계약과 함께 둔다.
 5. 텍스트 하나를 화면 경계 안으로 옮기는 임시 보정 대신, 넘친 부모/열/레이아웃 그룹의 계약을 먼저 고친다.
 6. 화면 크기 변경 직후에만 발생하는 문제는 개별 UI에 지연 코드를 추가하지 말고 `UIViewportService`의 공통 안정화 루틴을 사용한다.
-7. UI Camera를 새로 만들지 않는다. 현재 정책은 활성 Pixel Perfect Game Camera 재사용이며, 전용 UI Camera 도입은 이 문서와 카메라 구조를 함께 갱신하는 별도 결정이다.
+7. UI Camera를 새로 만들지 않는다. 활성 Pixel Perfect Game Camera는 출력 경계 조회에만 사용한다. 타이틀처럼 Canvas 바로 아래 일반 Transform+Renderer가 있는 경우 월드 외형·씬 수명을 보존해 UI 밖으로 분리한다. 이를 uGUI 이미지로 자동 변환하지 않는다.
 
 ## 전투 HUD 고정 영역 (2026-09-26)
 
@@ -151,7 +167,7 @@ WorldTracked UI는 공통 관리자의 viewport 정보를 사용할 수 있지�
 
 작업 후:
 
-- [ ] `Expand`, Overlay 잔존, 부모 영역 초과 좌표가 없는지 확인했다.
+- [ ] `Expand`, FixedViewport의 게임 카메라 재연결, 부모 영역 초과 좌표가 없는지 확인했다.
 - [ ] 640x480 창, 와이드 전체화면, Alt+Enter 왕복 직후를 확인했다.
 - [ ] UI가 화면 밖으로 나가지 않고, WorldTracked 요소를 FixedViewport로 잘못 변환하지 않았는지 확인했다.
 - [ ] 관련 EditMode 테스트와 Windows 개발 빌드를 수행하고 결과를 update note에 남겼다.
@@ -168,6 +184,10 @@ Canvas를 생성하거나 정규화하는 코드에는 다음 정보를 짧게 �
 이 주석은 수치 자체의 설명보다 “왜 이 Canvas가 이 정책을 따라야 하는가”를 설명해야 한다. 정책이 바뀌면 코드 주석과 이 문서를 같은 커밋에서 갱신한다.
 
 ## CanvasScaler 규칙
+
+`UIViewportService.CalculateReferenceScale` / `CalculateContentScreenRect`를 일반 메뉴·전투 HUD·모달 대사가 공유한다. 1920×1080의 640×480 콘텐츠는 2.25배가 아니라 2배(1280×960)이며, 남는 영역은 여백이다. `UIPixelPerfectSafeAreaFitter`도 PPC 출력 크기를 별도로 추정하지 않고 같은 콘텐츠 크기를 사용한다. 월드 추적 말풍선·데미지·커서와 전체 화면 페이드는 일괄 변경하지 않는다.
+
+게임 공용 카메라와 타이틀/인트로 PPC는 `Windowbox`, 최종 필터 `Point`다. Mobile RP의 Render Scale은 1이다. 80% 해상도로 렌더한 뒤 보간 확대로 복원하지 않는다. SDF 폰트 atlas의 Bilinear는 원본 스프라이트 필터와 다른 의미이므로 일괄 Point로 변경하지 않는다.
 
 `Expand`는 고정 640x480 구성을 위한 기본값으로 사용하지 않는다. Expand는 화면 비율이 넓어질 때 논리 UI 영역 자체를 좌우로 확장하기 때문에, 640x480 게임 구성의 UI가 검은 여백으로 확장되는 원인이 될 수 있다.
 
@@ -190,9 +210,10 @@ Canvas를 생성하거나 정규화하는 코드에는 다음 정보를 짧게 �
 
 ## 현재 보류 중인 구조 결정
 
-- 별도 UI Camera를 도입할지, Game Camera 재사용을 유지할지
-- URP 카메라 스택을 사용할지, 독립 UI Camera를 사용할지
+- 별도 UI Camera/URP 카메라 스택은 현재 필요하지 않으며 도입하지 않는다. 월드 추적 UI까지 후처리와 분리할지는 기존 위치 추적·가림 규칙을 포함한 별도 결정이다.
 - 설정 메뉴를 Fullscreen 예외로 바꿀지는 별도 결정과 시각 검증이 필요하다.
 - 기존 `UIPixelPerfectSafeAreaFitter`를 공통 관리자의 하위 호환 계층으로 유지할 범위
 
-전용 UI Camera와 URP 카메라 스택 도입 여부는 현재 보류한다. 도입 시 이 문서의 공통 출력 카메라 계약과 모든 FixedViewport 등록 경로를 함께 검토한다.
+`UIPixelPerfectSafeAreaFitter`가 Canvas 루트에 붙어 있으면 새 콘텐츠 루트 안에서 동작한다. 콘텐츠를 자기 자식 SafeArea 아래로 다시 옮기거나 배율을 두 번 적용하지 않는다. 필드 메뉴의 기기 안전 영역 보정은 출력 카메라와 Overlay 투영 카메라(null)를 구분한다.
+
+검증 범위/수정 위치: [고정 UI 조명 분리](../AIAssets/yjlim/feedback/2026-10-19-ui-light-isolation.md). CLI 컴파일과 테스트 소스 추가는 실제 Unity 화면·실기기 검증을 대체하지 않는다.

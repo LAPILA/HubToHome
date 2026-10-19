@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 031147b067b1459984e7476258b15e44, type: 3}
+  m_Name: Prologue_TrainAudio
+  m_EditorClassIdentifier: Assembly-CSharp::PrologueTrainAudioProfile
+  OpeningMusic: {fileID: 8300000, guid: d7884bd51df49324580130cd753911ab, type: 3}
+  OpeningMusicVolume: 0.8
+  OpeningMusicFadeIn: 0.8
+  OpeningMusicFadeOut: 1.2
+  TrainLoop: {fileID: 8300000, guid: 8628f03c8607e26428d4ccbec97442c6, type: 3}
+  TrainVolume: 0.85
+  TrainFadeIn: 0.6
+  TrainFadeOut: 1.8
+  PowerDown: {fileID: 8300000, guid: 2f53a3d72466f204ea7f88a3dafe43d2, type: 3}
+  PowerDownVolume: 0.22
+  Footsteps: {fileID: 8300000, guid: 3fea568341a92a5468d91e779ed0f70c, type: 3}
+  FootstepsVolume: 0.35
+  FootstepsFadeOut: 0.12

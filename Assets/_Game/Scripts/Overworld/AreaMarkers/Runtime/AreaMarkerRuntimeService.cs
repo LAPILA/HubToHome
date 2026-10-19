@@ -196,14 +196,43 @@ public static class AreaMarkerRuntimeService
 
     public static void GrantItem(AreaMarkerBase owner, string itemId, int amount)
     {
-        int grantedAmount = 0;
-        if (!string.IsNullOrWhiteSpace(itemId) && GlobalDataManager.Instance != null)
-            grantedAmount = InventoryEntryService.Add(GlobalDataManager.Instance, ItemDatabase.FindById(itemId), amount);
-
-        if (grantedAmount > 0)
+        if (TryGrantItem(owner, GlobalDataManager.Instance, itemId, amount, out _, out string error))
             AudioManager.Instance?.PlaySelectionSfx();
+        else
+            Debug.LogWarning("[AreaMarkerRuntimeService] " + error, owner);
+    }
 
-        Debug.Log($"[AreaMarkerRuntimeService] 아이템 획득: itemId={itemId}, amount={grantedAmount}", owner);
+    public static bool TryGrantItem(
+        AreaMarkerBase owner,
+        GlobalDataManager global,
+        string itemId,
+        int amount,
+        out ItemData item,
+        out string error)
+    {
+        item = ItemDatabase.FindById(itemId);
+        if (global == null || !InventoryEntryService.IsRegistered(item) || amount <= 0)
+        {
+            error = "* 아이템 정보를 확인할 수 없다.";
+            return false;
+        }
+        // A one-shot reward is all-or-nothing: never discard the rest of a chest at the stack cap.
+        if (InventoryEntryService.GetAdditionalCapacity(global, item) < amount)
+        {
+            error = "* 소지할 공간이 부족하다.";
+            return false;
+        }
+        int granted = InventoryEntryService.Add(global, item, amount);
+        if (granted != amount)
+        {
+            if (granted > 0 && !InventoryEntryService.Remove(global, item, granted))
+                Debug.LogError("[AreaMarkerRuntimeService] 보상 지급 취소에 실패했습니다: " + itemId, owner);
+            error = "* 지금은 아이템을 받을 수 없다.";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
     }
 
     public static void RequestVendor(AreaMarkerBase owner, string vendorId, string shopId)

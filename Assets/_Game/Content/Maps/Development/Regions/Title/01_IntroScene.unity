@@ -334,9 +334,9 @@ MonoBehaviour:
   m_AssetsPPU: 32
   m_RefResolutionX: 640
   m_RefResolutionY: 480
-  m_CropFrame: 1
+  m_CropFrame: 3
   m_GridSnapping: 1
-  m_FilterMode: 0
+  m_FilterMode: 1
   m_UpscaleRT: 0
   m_PixelSnapping: 0
   m_CropFrameX: 0
@@ -621,9 +621,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97e62211d6fdaf243b45850be64114ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IntroManager
-  _introPart1: {fileID: 11400000, guid: c00f1c328ca6ce74b84c7cc8a35dcd62, type: 2}
-  _introPart2: {fileID: 11400000, guid: 2e8596f369924694d8ff917622f1924e, type: 2}
-  _nextSceneName: OverworldScene
+  _openingStory: {fileID: 11400000, guid: e7493822dbc44df4abac65779127c25d, type: 2}
+  _trainAudioProfile: {fileID: 11400000, guid: 45ce4e91976b4cefbc1e31539d4cef99, type: 2}
+  _trainAudioStartPage: 5
+  _openingMusicFadeOutPage: 4
+  _nextSceneName: Region_Train
+  _nextRoomId: all.trainq0
+  _nextSpawnPointId: default
   _nextSceneFadeDuration: 1
 --- !u!114 &887417519
 MonoBehaviour:
@@ -641,9 +645,23 @@ MonoBehaviour:
   _defaultBattleBGM: {fileID: 0}
   _bgmFadeDuration: 1.5
   _cameraBounds: {fileID: 0}
+--- !u!1001 &1983300001
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications: []
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: bb413fa6573383244a4761e7125de72b, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 45048977}
   - {fileID: 887417517}
+  - {fileID: 1983300001}

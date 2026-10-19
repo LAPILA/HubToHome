@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 public sealed class UIViewportServiceTests
@@ -28,7 +29,7 @@ public sealed class UIViewportServiceTests
     }
 
     [Test]
-    public void ConfigureFixedViewportUsesSharedCameraAndNeverExpand()
+    public void ConfigureFixedViewportUsesCameraIndependentOverlayAndNeverExpand()
     {
         _cameraObject = new GameObject("Shared Gameplay Camera");
         Camera camera = _cameraObject.AddComponent<Camera>();
@@ -41,10 +42,39 @@ public sealed class UIViewportServiceTests
 
         UIViewportService.ConfigureFixedViewport(canvas, camera);
 
-        Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceCamera));
-        Assert.That(canvas.worldCamera, Is.SameAs(camera));
+        Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+        Assert.That(canvas.worldCamera, Is.Null);
+        Assert.That(canvas.GetComponent<FixedCanvasViewport>().OutputCamera, Is.SameAs(camera));
+        Assert.That(UIViewportService.GetOutputCamera(canvas), Is.SameAs(camera));
+        Assert.That(canvas.pixelPerfect, Is.True);
+        Assert.That(scaler.uiScaleMode, Is.EqualTo(CanvasScaler.ScaleMode.ConstantPixelSize));
         Assert.That(scaler.referenceResolution, Is.EqualTo(new Vector2(640f, 480f)));
         Assert.That(scaler.screenMatchMode, Is.EqualTo(CanvasScaler.ScreenMatchMode.MatchWidthOrHeight));
+    }
+
+    [Test]
+    public void ConfigureFixedViewportUsesCameraPixelRectAndRefreshesScaleWithoutWaitingForCanvasUpdate()
+    {
+        _cameraObject = new GameObject("Cropped Gameplay Camera", typeof(Camera));
+        Camera camera = _cameraObject.GetComponent<Camera>();
+        _canvasObject = new GameObject("Fixed UI", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+        Canvas canvas = _canvasObject.GetComponent<Canvas>();
+        CanvasScaler scaler = _canvasObject.GetComponent<CanvasScaler>();
+
+        // 실제 Game View가 작아도 보이는 교집합의 배율을 즉시 적용해야 한다.
+        camera.pixelRect = new Rect(80f, 60f, 640f, 480f);
+        UIViewportService.ConfigureFixedViewport(canvas, camera);
+        float expected = UIViewportService.CalculateReferenceScale(UIViewportService.GetOutputRect(camera));
+        Assert.That(scaler.scaleFactor, Is.EqualTo(expected).Within(0.0001f));
+        Assert.That(canvas.scaleFactor, Is.EqualTo(expected).Within(0.0001f));
+
+        camera.pixelRect = new Rect(160f, 120f, 1280f, 960f);
+        UIViewportService.ConfigureFixedViewport(canvas, camera);
+        expected = UIViewportService.CalculateReferenceScale(UIViewportService.GetOutputRect(camera));
+        Assert.That(scaler.scaleFactor, Is.EqualTo(expected).Within(0.0001f));
+        Assert.That(canvas.scaleFactor, Is.EqualTo(expected).Within(0.0001f));
+        Assert.That(scaler.uiScaleMode, Is.EqualTo(CanvasScaler.ScaleMode.ConstantPixelSize));
+        Assert.That(canvas.pixelPerfect, Is.True);
     }
 
     [Test]
@@ -63,6 +93,7 @@ public sealed class UIViewportServiceTests
         RectTransform viewport = canvas.GetComponent<BattleHudViewport>().ContentRect;
         Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
         Assert.That(canvas.worldCamera, Is.Null);
+        Assert.That(canvas.pixelPerfect, Is.True);
         Assert.That(canvas.sortingOrder, Is.LessThan(0), "시스템 팝업/결과/페이드보다 뒤여야 합니다.");
         Assert.That(viewport.sizeDelta, Is.EqualTo(new Vector2(640f, 480f)));
         Assert.That(first.anchoredPosition, Is.EqualTo(new Vector2(20f, 30f)));
@@ -78,10 +109,85 @@ public sealed class UIViewportServiceTests
 
     [TestCase(640f, 480f, 1f)]
     [TestCase(1280f, 960f, 2f)]
-    [TestCase(1920f, 1080f, 2.25f)]
+    [TestCase(960f, 768f, 1f)]
+    [TestCase(1920f, 1080f, 2f)]
+    [TestCase(320f, 240f, 0.5f)]
     public void BattleHud_ReferenceScaleFitsInsideViewport(float width, float height, float scale)
     {
         Assert.That(BattleHudViewport.ReferenceScale(new Rect(0f, 0f, width, height)), Is.EqualTo(scale));
+        Assert.That(UIViewportService.CalculateReferenceScale(new Rect(0f, 0f, width, height)), Is.EqualTo(scale));
+    }
+
+    [TestCase(0f, 0f, 1921f, 1081f)]
+    [TestCase(13f, 7f, 1281f, 961f)]
+    [TestCase(13f, 7f, 641f, 481f)]
+    public void ContentScreenRectAlignsToPixelsInsideOddSizedOutput(float x, float y, float width, float height)
+    {
+        var output = new Rect(x, y, width, height);
+        Rect content = UIViewportService.CalculateContentScreenRect(output);
+        Assert.That(content.xMin, Is.EqualTo(Mathf.Floor(content.xMin)));
+        Assert.That(content.yMin, Is.EqualTo(Mathf.Floor(content.yMin)));
+        Assert.That(content.xMin, Is.GreaterThanOrEqualTo(output.xMin));
+        Assert.That(content.yMin, Is.GreaterThanOrEqualTo(output.yMin));
+        Assert.That(content.xMax, Is.LessThanOrEqualTo(output.xMax));
+        Assert.That(content.yMax, Is.LessThanOrEqualTo(output.yMax));
+        Assert.That(BattleHudViewport.CalculateContentScreenRect(output), Is.EqualTo(content));
+    }
+
+    [Test]
+    public void ContentScreenRectKeepsSmallOutputVisibleWithoutClaimingIntegerPixels()
+    {
+        var output = new Rect(0f, 0f, 321f, 241f);
+        Rect content = UIViewportService.CalculateContentScreenRect(output);
+        float scale = UIViewportService.CalculateReferenceScale(output);
+        Assert.That(scale, Is.LessThan(1f));
+        Assert.That(content.size, Is.EqualTo(new Vector2(640f, 480f) * scale));
+        Assert.That(content.xMin, Is.GreaterThanOrEqualTo(output.xMin));
+        Assert.That(content.yMin, Is.GreaterThanOrEqualTo(output.yMin));
+        Assert.That(content.xMax, Is.LessThanOrEqualTo(output.xMax));
+        Assert.That(content.yMax, Is.LessThanOrEqualTo(output.yMax));
+    }
+
+    [Test]
+    public void VisibleOutputRectPreservesWindowboxAndClipsSmallScreenOverflow()
+    {
+        var normal = new Rect(320f, 60f, 1280f, 960f);
+        Assert.That(UIViewportService.CalculateVisibleOutputRect(normal, new Vector2(1920f, 1080f)),
+            Is.EqualTo(normal));
+        var smallScreen = new Vector2(320f, 240f);
+        Rect visible = UIViewportService.CalculateVisibleOutputRect(new Rect(-160f, -120f, 640f, 480f), smallScreen);
+        Assert.That(visible, Is.EqualTo(new Rect(0f, 0f, 320f, 240f)));
+        Assert.That(UIViewportService.CalculateReferenceScale(visible), Is.EqualTo(0.5f));
+        Assert.That(UIViewportService.CalculateContentScreenRect(visible), Is.EqualTo(visible));
+    }
+
+    [TestCase(640f, 480f)]
+    [TestCase(1280f, 960f)]
+    [TestCase(320f, 240f)]
+    public void SafeAreaUsesReferenceUnitsWithoutApplyingCanvasScaleTwice(float width, float height)
+    {
+        _cameraObject = new GameObject("PPC Output", typeof(Camera));
+        Camera camera = _cameraObject.GetComponent<Camera>();
+        PixelPerfectCamera pixelPerfect = _cameraObject.AddComponent<PixelPerfectCamera>();
+        pixelPerfect.refResolutionX = 640;
+        pixelPerfect.refResolutionY = 480;
+        camera.pixelRect = new Rect(0f, 0f, width, height);
+
+        _canvasObject = new GameObject("Fixed Safe Area", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+        _canvasObject.SetActive(false);
+        Canvas canvas = _canvasObject.GetComponent<Canvas>();
+        UIViewportService.ConfigureFixedViewport(canvas, camera);
+        var fitter = _canvasObject.AddComponent<UIPixelPerfectSafeAreaFitter>();
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        typeof(UIPixelPerfectSafeAreaFitter).GetField("_canvas", flags).SetValue(fitter, canvas);
+        typeof(UIPixelPerfectSafeAreaFitter).GetField("_cachedPixelPerfectCamera", flags).SetValue(fitter, pixelPerfect);
+        MethodInfo resolveSize = typeof(UIPixelPerfectSafeAreaFitter).GetMethod("ResolveSafeAreaSize", flags);
+
+        // 부모 Canvas 크기 제한과 분리하여 픽셀 출력 → 논리 UI 단위 변환만 확인한다.
+        Vector2 safeSize = (Vector2)resolveSize.Invoke(fitter,
+            new object[] { new Vector2(4096f, 4096f), new Vector2(640f, 480f) });
+        Assert.That(safeSize.x, Is.EqualTo(640f).Within(.001f));
+        Assert.That(safeSize.y, Is.EqualTo(480f).Within(.001f));
     }
 
     [Test]
@@ -115,6 +221,7 @@ public sealed class UIViewportServiceTests
 
         Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
         Assert.That(canvas.worldCamera, Is.Null);
+        Assert.That(canvas.pixelPerfect, Is.True);
         Assert.That(canvas.overrideSorting, Is.True);
         Assert.That(canvas.sortingLayerID, Is.Zero);
         Assert.That(canvas.sortingOrder, Is.EqualTo(CinematicLetterboxOverlay.CanvasSortingOrder + 1),
@@ -154,8 +261,12 @@ public sealed class UIViewportServiceTests
             "Resolving a new camera must not mark previously registered canvases as applied.");
         ApplySettledState(service);
 
-        Assert.That(canvas.worldCamera, Is.SameAs(replacement));
-        Assert.That(_secondCanvasObject.GetComponent<Canvas>().worldCamera, Is.SameAs(replacement));
+        Assert.That(canvas.worldCamera, Is.Null);
+        Assert.That(canvas.GetComponent<FixedCanvasViewport>().OutputCamera, Is.SameAs(replacement));
+        Assert.That(UIViewportService.GetOutputCamera(canvas), Is.SameAs(replacement));
+        Canvas secondCanvas = _secondCanvasObject.GetComponent<Canvas>();
+        Assert.That(secondCanvas.worldCamera, Is.Null);
+        Assert.That(secondCanvas.GetComponent<FixedCanvasViewport>().OutputCamera, Is.SameAs(replacement));
         Assert.That(HasViewportChanged(service, replacement), Is.False);
         Assert.That(_canvasObject.activeSelf, Is.False);
     }
@@ -178,7 +289,9 @@ public sealed class UIViewportServiceTests
         SetField(service, "_sharedCamera", replacement);
         Assert.That(HasViewportChanged(service, replacement), Is.True);
         ApplySettledState(service);
-        Assert.That(_canvasObject.GetComponent<Canvas>().worldCamera, Is.SameAs(replacement));
+        Canvas canvas = _canvasObject.GetComponent<Canvas>();
+        Assert.That(canvas.worldCamera, Is.Null);
+        Assert.That(canvas.GetComponent<FixedCanvasViewport>().OutputCamera, Is.SameAs(replacement));
     }
 
     [Test]

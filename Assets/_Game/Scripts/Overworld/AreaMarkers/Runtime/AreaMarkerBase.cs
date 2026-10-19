@@ -194,7 +194,17 @@ public abstract class AreaMarkerBase : MonoBehaviour, IInteractable
         return GlobalDataManager.Instance;
     }
 
-    private void ApplyCompletedState()
+    // Visible completed markers can also rewind when an older save snapshot is loaded.
+    // Ordinary one-shot markers retain their existing forward-only restore/hide behaviour.
+    protected void RefreshCompletionState()
+    {
+        if (!isOneShot || ResolveGlobalData() == null)
+            return;
+        _completed = false;
+        RestoreCompletionState();
+    }
+
+    protected virtual void ApplyCompletedState()
     {
         if (gameObject.activeSelf)
             gameObject.SetActive(false);

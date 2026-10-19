@@ -62,6 +62,7 @@ public partial class CameraController
 
         CameraFramingSettings normalized = settings.Normalized();
         BeginFramingOwnership();
+        BeginContinuousBattleZoom();
 
         _framingTargetGroup.Targets.Clear();
         for (int i = 0; i < _validatedFrameTargets.Count; i++)

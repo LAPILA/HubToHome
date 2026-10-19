@@ -30,6 +30,9 @@ public sealed class JournalEntry
     public string CompletedFlag;
     [LabelText("표시 조건 (모두 충족)"), ListDrawerSettings(ShowIndexLabels = true)]
     public List<JournalFlagCondition> Conditions = new List<JournalFlagCondition>();
+    [LabelText("획득 아이템 ID"), Tooltip("소지한 아이템과 연결된 기록만 획득 일지 목록에 표시합니다. 기존 목표와 상태 도움말은 비워 두어도 됩니다.")]
+    public string RequiredItemId;
+    [LabelText("기록 아이콘 (선택)")] public Sprite Icon;
     public string LocalizedTitle => LocalizationManager.Localize(TitleKey, Title);
     public string LocalizedBody => LocalizationManager.Localize(BodyKey, Body);
 
@@ -43,9 +46,13 @@ public sealed class JournalEntry
 
     public bool IsCompleted(Func<string, int> readFlag)
         => !string.IsNullOrWhiteSpace(CompletedFlag) && readFlag != null && readFlag(CompletedFlag) > 0;
+
+    public bool IsCollected(Func<string, int> readFlag, Func<string, int> readItemCount)
+        => !IsObjective && !string.IsNullOrWhiteSpace(RequiredItemId) && readItemCount != null
+            && readItemCount(RequiredItemId) > 0 && IsVisible(readFlag);
 }
 
-/// <summary>아이템-일지와 현재 목표의 작성 데이터. 진행 사실은 기존 저장 플래그만 사용합니다.</summary>
+/// <summary>일지와 현재 목표의 작성 데이터. 진행과 획득 사실은 기존 저장 플래그와 소지품에서 읽습니다.</summary>
 [CreateAssetMenu(fileName = "JournalCatalog", menuName = "Hub To Home/제작/일지 · 목표 데이터")]
 public sealed class JournalCatalog : ScriptableObject
 {
@@ -71,6 +78,22 @@ public sealed class JournalCatalog : ScriptableObject
             if (entry != null && entry.IsObjective && entry.IsVisible(readFlag) && !entry.IsCompleted(readFlag)) return entry;
         }
         return null;
+    }
+
+    public void GetCollectedEntries(List<JournalEntry> destination, Func<string, int> readFlag,
+        Func<string, int> readItemCount)
+    {
+        if (destination == null) throw new ArgumentNullException(nameof(destination));
+        if (ReferenceEquals(destination, Entries))
+            throw new ArgumentException("획득 일지 목록에는 카탈로그 원본과 다른 목록을 사용해야 합니다.", nameof(destination));
+
+        destination.Clear();
+        if (Entries == null) return;
+        for (int i = 0; i < Entries.Count; i++)
+        {
+            JournalEntry entry = Entries[i];
+            if (entry != null && entry.IsCollected(readFlag, readItemCount)) destination.Add(entry);
+        }
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

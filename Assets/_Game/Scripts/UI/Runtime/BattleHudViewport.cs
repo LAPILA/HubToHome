@@ -20,6 +20,7 @@ public sealed class BattleHudViewport : MonoBehaviour
     private Vector2Int _lastScreen;
     private bool _hiddenForModal;
     public RectTransform ContentRect => _viewport;
+    public Camera OutputCamera => _output;
 
     public static void Ensure(Canvas canvas, Camera output)
     {
@@ -43,6 +44,7 @@ public sealed class BattleHudViewport : MonoBehaviour
         if (_owner != null && isActiveAndEnabled) _activeViewport = this;
         _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         _canvas.worldCamera = null;
+        _canvas.pixelPerfect = true;
         // 결과(500), 로딩 페이드(999), 저장 UI(0)보다 앞에 덮어 그리지 않습니다.
         _canvas.sortingLayerID = 0;
         _canvas.sortingOrder = -100;
@@ -99,7 +101,7 @@ public sealed class BattleHudViewport : MonoBehaviour
 
     private void LateUpdate()
     {
-        // 설정창은 기존 ScreenSpaceCamera입니다. 모달 중 HUD만 잠시 숨겨 가리지 않게 합니다.
+        // 모달 중 HUD만 잠시 숨겨 설정/대사 입력과 시각적 우선순위를 유지합니다.
         // 게임 오브젝트를 비활성화하지 않으므로 QTE/행동 코루틴 수명은 그대로입니다.
         if (_canvas != null)
         {
@@ -122,15 +124,11 @@ public sealed class BattleHudViewport : MonoBehaviour
     public static bool ShouldHideForModal(bool inputBlocked, bool dockedDialogue, bool otherModal)
         => otherModal || (inputBlocked && !dockedDialogue);
 
-    private Rect OutputRect => _output != null ? _output.pixelRect : new Rect(0, 0, Screen.width, Screen.height);
+    private Rect OutputRect => UIViewportService.GetOutputRect(_output);
 
-    public static float ReferenceScale(Rect viewport) => Mathf.Max(0.01f, Mathf.Min(viewport.width / 640f, viewport.height / 480f));
+    public static float ReferenceScale(Rect viewport) => UIViewportService.CalculateReferenceScale(viewport);
 
-    public static Rect CalculateContentScreenRect(Rect output)
-    {
-        Vector2 size = new Vector2(640f, 480f) * ReferenceScale(output);
-        return new Rect(output.center - size * 0.5f, size);
-    }
+    public static Rect CalculateContentScreenRect(Rect output) => UIViewportService.CalculateContentScreenRect(output);
 
     public static Rect CalculateBottomMatteRect(Rect output)
     {
@@ -170,7 +168,8 @@ public sealed class BattleHudViewport : MonoBehaviour
         _canvas.scaleFactor = scale;
         _viewport.anchorMin = _viewport.anchorMax = _viewport.pivot = new Vector2(0.5f, 0.5f);
         _viewport.sizeDelta = new Vector2(640f, 480f);
-        _viewport.anchoredPosition = (rect.center - new Vector2(Screen.width, Screen.height) * 0.5f) / scale;
+        _viewport.anchoredPosition = (CalculateContentScreenRect(rect).center
+            - new Vector2(Screen.width, Screen.height) * 0.5f) / scale;
         _viewport.localScale = Vector3.one;
         _viewport.localRotation = Quaternion.identity;
         if (_bottomMatte != null)

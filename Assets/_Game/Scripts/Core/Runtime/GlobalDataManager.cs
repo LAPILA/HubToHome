@@ -254,6 +254,35 @@ public partial class GlobalDataManager : MonoBehaviour
         return result;
     }
 
+    public GrowthInvestmentResult TryInvestGrowthStats(
+        CharacterSaveData character,
+        CharacterStatInvestments additions)
+    {
+        GrowthStat firstStat = GrowthStat.Vitality;
+        for (int i = 0; i <= (int)GrowthStat.ActionPoints; i++)
+        {
+            if ((additions?.Get((GrowthStat)i) ?? 0) != 0)
+            {
+                firstStat = (GrowthStat)i;
+                break;
+            }
+        }
+        int previousRank = character?.Growth?.Investments?.Get(firstStat) ?? 0;
+        int availablePoints = character?.Growth?.AvailableAttributePoints ?? 0;
+        if (character == null || !Party.Contains(character))
+            return new GrowthInvestmentResult(GrowthInvestmentStatus.InvalidCharacter,
+                firstStat, previousRank, previousRank, availablePoints);
+        if (!CanMutateGrowth())
+            return new GrowthInvestmentResult(GrowthInvestmentStatus.MutationLocked,
+                firstStat, previousRank, previousRank, availablePoints);
+
+        GrowthInvestmentResult result = CharacterGrowthService.TryInvestBatch(character,
+            CharacterDatabase.FindById(character.CharacterDataID), additions);
+        if (result.Succeeded)
+            CharacterGrowthChanged?.Invoke(character);
+        return result;
+    }
+
     public bool TryRefundGrowthStat(
         CharacterSaveData character,
         GrowthStat stat,

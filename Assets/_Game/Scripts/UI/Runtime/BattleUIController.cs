@@ -1462,6 +1462,9 @@ public static class UIRuntimeGuard
         if (canvas == null) canvas = owner.GetComponentInParent<Canvas>(true);
         if (canvas == null) canvas = owner.GetComponentInChildren<Canvas>(true);
         if (canvas == null) return;
+        canvas = canvas.rootCanvas;
+        // Only actual world roots are excluded; nested legacy Canvas values do not own output.
+        if (canvas.renderMode == RenderMode.WorldSpace) return;
 
         RectTransform canvasRect = canvas.transform as RectTransform;
         if (canvasRect != null && IsZeroScale(canvasRect.localScale))

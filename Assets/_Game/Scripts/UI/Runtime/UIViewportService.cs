@@ -7,8 +7,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Central runtime policy for UI that belongs inside the Pixel Perfect gameplay viewport.
-/// FixedViewport UI normally uses the gameplay camera. Battle HUD and modal dialogue
-/// opt into camera-independent overlays while retaining the gameplay viewport bounds.
+/// FixedViewport UI uses camera-independent overlays, retaining only gameplay viewport bounds.
+/// Lighting, camera movement and post processing never render the fixed UI.
 /// </summary>
 public sealed class UIViewportService : MonoBehaviour
 {
@@ -125,30 +125,77 @@ public sealed class UIViewportService : MonoBehaviour
 
     public static void ConfigureFixedViewport(Canvas canvas, Camera sharedCamera)
     {
-        if (canvas != null && canvas.TryGetComponent(out DialogueCanvasViewport dialogueViewport))
+        if (canvas == null) return;
+        canvas = canvas.rootCanvas;
+        if (canvas.renderMode == RenderMode.WorldSpace) return;
+        if (canvas.TryGetComponent(out DialogueCanvasViewport dialogueViewport))
         {
             dialogueViewport.Configure(sharedCamera);
             return;
         }
-        if (canvas != null && canvas.TryGetComponent(out BattleHudViewport battleHud))
+        if (canvas.TryGetComponent(out BattleHudViewport battleHud))
         {
             battleHud.Configure(sharedCamera);
             return;
         }
-        if (canvas == null || sharedCamera == null)
-            return;
+        if (!canvas.TryGetComponent(out FixedCanvasViewport viewport))
+            viewport = canvas.gameObject.AddComponent<FixedCanvasViewport>();
+        viewport.Configure(sharedCamera);
+    }
 
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = sharedCamera;
+    /// <summary>Output bounds camera, not the camera used to project Overlay UI (which is null).</summary>
+    public static Camera GetOutputCamera(Canvas canvas)
+    {
+        if (canvas == null) return null;
+        canvas = canvas.rootCanvas;
+        if (canvas.TryGetComponent(out FixedCanvasViewport fixedViewport)) return fixedViewport.OutputCamera;
+        if (canvas.TryGetComponent(out BattleHudViewport battleViewport)) return battleViewport.OutputCamera;
+        if (canvas.TryGetComponent(out DialogueCanvasViewport dialogueViewport)) return dialogueViewport.OutputCamera;
+        return canvas.worldCamera;
+    }
 
-        CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
-        if (scaler == null)
-            scaler = canvas.gameObject.AddComponent<CanvasScaler>();
+    public static float CalculateReferenceScale(Rect viewport)
+    {
+        float fit = Mathf.Max(0.01f, Mathf.Min(viewport.width / GameplayReferenceResolution.x,
+            viewport.height / GameplayReferenceResolution.y));
+        // 640x480 미만에서는 모든 UI를 보존하기 위해 축소한다. 이 경우 원본 픽셀의
+        // 일대일 보존은 불가능하므로 정수 확대와 같은 선명도를 보장하지 않는다.
+        return fit >= 1f ? Mathf.Max(1f, Mathf.Floor(fit + 0.00001f)) : fit;
+    }
 
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = GameplayReferenceResolution;
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 0.5f;
+    public static Rect GetOutputRect(Camera output)
+    {
+        var screenSize = new Vector2(Screen.width, Screen.height);
+        return output != null
+            ? CalculateVisibleOutputRect(output.pixelRect, screenSize)
+            : new Rect(Vector2.zero, screenSize);
+    }
+
+    public static Rect CalculateVisibleOutputRect(Rect output, Vector2 screenSize)
+    {
+        // PPC Windowbox는 기준 해상도보다 작은 화면에서 화면 밖까지 viewport를
+        // 잡을 수 있다. 고정 UI만 실제 보이는 교집합에 맞춰 잘림을 피한다.
+        float width = Mathf.Max(0f, screenSize.x);
+        float height = Mathf.Max(0f, screenSize.y);
+        float xMin = Mathf.Clamp(output.xMin, 0f, width);
+        float yMin = Mathf.Clamp(output.yMin, 0f, height);
+        float xMax = Mathf.Max(xMin, Mathf.Clamp(output.xMax, 0f, width));
+        float yMax = Mathf.Max(yMin, Mathf.Clamp(output.yMax, 0f, height));
+        return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+    }
+
+    public static Rect CalculateContentScreenRect(Rect output)
+    {
+        float scale = CalculateReferenceScale(output);
+        Vector2 size = GameplayReferenceResolution * scale;
+        Vector2 origin = output.center - size * 0.5f;
+        if (scale >= 1f)
+        {
+            // 홀수 출력 크기에서 중앙 정렬로 생기는 반 픽셀 시작점을 제거한다.
+            origin.x = Mathf.Floor(origin.x + 0.00001f);
+            origin.y = Mathf.Floor(origin.y + 0.00001f);
+        }
+        return new Rect(origin, size);
     }
 
     public Camera ResolveSharedCamera()
@@ -309,6 +356,6 @@ public sealed class UIViewportService : MonoBehaviour
             canvas = owner.GetComponentInParent<Canvas>(true);
         if (canvas == null)
             canvas = owner.GetComponentInChildren<Canvas>(true);
-        return canvas;
+        return canvas != null ? canvas.rootCanvas : null;
     }
 }

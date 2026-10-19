@@ -454,7 +454,8 @@ MonoBehaviour:
   _choiceAnchoredPosition: {x: 0, y: 0}
   _choiceSize: {x: 520, y: 132}
   _defaultVoiceBlip: {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}
-  _defaultPitch: 1
+  _defaultPitch: 0.85
+  _defaultVoiceVolume: 0.25
 --- !u!1 &4541026254652969080
 GameObject:
   m_ObjectHideFlags: 0
@@ -1607,7 +1608,8 @@ MonoBehaviour:
   _choiceAnchoredPosition: {x: 0, y: 0}
   _choiceSize: {x: 520, y: 132}
   _defaultVoiceBlip: {fileID: 8300000, guid: 1be207dd11cf77c4c9391a7bc74b14e0, type: 3}
-  _defaultPitch: 1
+  _defaultPitch: 0.85
+  _defaultVoiceVolume: 0.25
 --- !u!1 &7582505938803683177
 GameObject:
   m_ObjectHideFlags: 0
@@ -1726,9 +1728,9 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: -5459790232518098753, guid: 7e29a96a46a831d4f93fe5590c0fd600, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
-  m_Volume: 1
-  m_Pitch: 1
+  m_PlayOnAwake: 0
+  m_Volume: 0.25
+  m_Pitch: 0.85
   Loop: 0
   Mute: 0
   Spatialize: 0

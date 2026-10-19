@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -37,14 +36,20 @@ public class DialogueUI : MonoBehaviour
 
     [Header("기본 오디오 설정")]
     [SerializeField] private AudioClip _defaultVoiceBlip;
-    [SerializeField] private float _defaultPitch = 1f;
+    [SerializeField, Range(0.1f, 3f), Tooltip("화자가 없는 내레이션의 소리 높낮이입니다.")]
+    private float _defaultPitch = 0.85f;
+    [SerializeField, Range(0f, 1f), Tooltip("내레이션 기본 음량입니다. 설정의 효과음 음량은 기존 SFX 믹서에서 별도로 적용됩니다.")]
+    private float _defaultVoiceVolume = 0.25f;
+
+    [BoxGroup("대사 속도"), SerializeField, LabelText("시네마틱 초당 글자 수"), Min(1f),
+     Tooltip("시네마틱 스타일 또는 Cutscene 상태의 대화에 적용합니다. 설정창의 대사 속도는 적용하지 않습니다.")]
+    private float _cinematicCharactersPerSecond = 14f;
 
     [BoxGroup("전투 하단 대화"), InlineProperty, HideLabel]
     [SerializeField] private BattleDialogueLayoutSettings _battleLayoutSettings = new BattleDialogueLayoutSettings();
 
     public bool IsTyping { get; private set; } = false;
     public bool IsWaitingForChoice { get; private set; } = false;
-    private Coroutine _applySpeedRoutine;
     private readonly List<TextMeshProUGUI> _choiceLabels = new List<TextMeshProUGUI>();
     private List<ChoiceData> _activeChoices;
     private System.Action<ChoiceData> _onChoiceSelected;
@@ -54,13 +59,91 @@ public class DialogueUI : MonoBehaviour
     private bool _isClosing;
     private int _choiceOpenedFrame = -1;
     private SpeakerData _displayedSpeaker;
+    private bool _standaloneNarration;
+    private bool _typingSoundMuted;
+    private bool _cinematicTyping;
+    private float _narrationCharactersPerSecond = 10f;
+    private bool _timingsCaptured;
+    private TypingsTimingsScriptableBase _originalTypingTimings;
+    private TypingDelaysByCharacter _fixedTypingTimings;
     public bool IsBattleDocked => _battleLayout != null;
+
+    /// <summary>다음 본문에 적용합니다. 대화 시작이 거절돼도 공유 AudioSource는 변경하지 않습니다.</summary>
+    public void SetTypingSoundMuted(bool muted) => _typingSoundMuted = muted;
+
+    /// <summary>표시 스타일과 별개로 Cutscene이 소유한 대화도 설정 속도에서 분리합니다.</summary>
+    public void ConfigureTypingStyle(DialogueStyle style, bool isCutscene = false)
+        => _cinematicTyping = style == DialogueStyle.Cinematic || isCutscene;
+
+    /// <summary>삽화 재생 데이터에서 설정 속도와 독립적인 본문 속도를 지정합니다.</summary>
+    public void SetNarrationCharactersPerSecond(float charactersPerSecond)
+        => _narrationCharactersPerSecond = NormalizeCharactersPerSecond(charactersPerSecond, 10f);
+
+    /// <summary>타이핑/음성/입력 정책은 유지하고, 삽화 하단의 테두리 없는 본문만 복제합니다.</summary>
+    public DialogueUI CreateNarrationCopy(Transform parent)
+    {
+        // Awake가 원본 Canvas를 재설정하기 전에 복제본의 소유권을 지정합니다.
+        var holder = new GameObject("Narration construction", typeof(RectTransform));
+        holder.SetActive(false);
+        holder.transform.SetParent(parent, false);
+        DialogueUI copy = Instantiate(this, holder.transform, false);
+        copy.gameObject.SetActive(false);
+        copy._standaloneNarration = true;
+        copy._rootCanvas = parent.GetComponentInParent<Canvas>(true);
+        copy.transform.SetParent(parent, false);
+        copy.name = "Illustrated narration";
+        Destroy(holder);
+
+        RectTransform panel = (RectTransform)copy.transform;
+        panel.anchorMin = Vector2.zero;
+        panel.anchorMax = Vector2.one;
+        panel.offsetMin = panel.offsetMax = Vector2.zero;
+        panel.localScale = Vector3.one;
+        panel.localRotation = Quaternion.identity;
+        foreach (Image image in copy.GetComponentsInChildren<Image>(true))
+        {
+            image.enabled = false;
+            image.raycastTarget = false;
+        }
+        if (copy._portraitImage != null) copy._portraitImage.gameObject.SetActive(false);
+        if (copy._speakerNameText != null) copy._speakerNameText.gameObject.SetActive(false);
+        copy._portraitImage = null;
+        copy._speakerNameText = null;
+        if (copy._dialogueText != null)
+        {
+            RectTransform body = copy._dialogueText.rectTransform;
+            body.SetParent(panel, false);
+            body.anchorMin = body.anchorMax = new Vector2(.5f, 0f);
+            body.pivot = new Vector2(.5f, 0f);
+            body.sizeDelta = new Vector2(560f, 128f);
+            body.anchoredPosition = new Vector2(0f, 12f);
+            body.localScale = Vector3.one;
+            body.localRotation = Quaternion.identity;
+            copy._dialogueText.enableAutoSizing = false;
+            copy._dialogueText.fontSize = 40f;
+            copy._dialogueText.alignment = TextAlignmentOptions.Center;
+            copy._dialogueText.overflowMode = TextOverflowModes.Page;
+            copy._dialogueText.pageToDisplay = 1;
+            copy._dialogueText.margin = Vector4.zero;
+            copy._dialogueText.color = Color.white;
+            copy._dialogueText.raycastTarget = false;
+        }
+        if (copy._canvasGroup != null)
+        {
+            copy._canvasGroup.interactable = false;
+            copy._canvasGroup.blocksRaycasts = false;
+        }
+        return copy;
+    }
 
     private void Awake()
     {
         if (_rootCanvas == null) _rootCanvas = GetComponentInParent<Canvas>(true);
-        DialogueCanvasViewport.Ensure(_rootCanvas, _rootCanvas != null ? _rootCanvas.worldCamera : null);
-        UIRuntimeGuard.NormalizeCanvas(gameObject);
+        if (!_standaloneNarration)
+        {
+            DialogueCanvasViewport.Ensure(_rootCanvas, _rootCanvas != null ? _rootCanvas.worldCamera : null);
+            UIRuntimeGuard.NormalizeCanvas(gameObject);
+        }
         if (_typewriter == null) _typewriter = GetComponentInChildren<TypewriterComponent>(true);
         if (_soundWriter == null) _soundWriter = GetComponent<TAnimSoundWriter>();
         DialogueTextAnimationPolicy.UsePlainTypewriter(_typewriter);
@@ -75,16 +158,27 @@ public class DialogueUI : MonoBehaviour
 
     private void OnDisable()
     {
-        bool unexpectedClose = IsBattleDocked && !_isClosing;
+        bool unexpectedClose = (IsBattleDocked || _standaloneNarration) && !_isClosing;
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         LocalizationManager.LanguageChanged -= HandleLanguageChanged;
         StopPanelTween();
         HideChoices();
         StopTypingWork();
+        RestoreTypingTimings();
+        _cinematicTyping = false;
         ReleaseBattleLayout();
         if (unexpectedClose) DialogueManager.Instance?.CancelPresentation(this);
         if (_canvasGroup != null)
             _canvasGroup.alpha = 0f;
+    }
+
+    private void OnDestroy()
+    {
+        RestoreTypingTimings();
+        if (_fixedTypingTimings == null) return;
+        if (Application.isPlaying) Destroy(_fixedTypingTimings);
+        else DestroyImmediate(_fixedTypingTimings);
+        _fixedTypingTimings = null;
     }
 
     private void Update()
@@ -128,10 +222,10 @@ public class DialogueUI : MonoBehaviour
         _isClosing = false;
         gameObject.SetActive(true);
         // 비활성 상태에서 처음 표시되는 UI도 공통 Canvas 정책을 통과시킨다.
-        UIRuntimeGuard.NormalizeCanvas(gameObject);
+        if (!_standaloneNarration) UIRuntimeGuard.NormalizeCanvas(gameObject);
         RebindCanvasCameraImmediate();
         BattleMenuUI menu = BattleUIController.Instance != null ? BattleUIController.Instance.MainDialogueMenu : null;
-        if (menu != null && transform is RectTransform panel && _dialogueText != null
+        if (!_standaloneNarration && menu != null && transform is RectTransform panel && _dialogueText != null
             && _dialogueText.transform.IsChildOf(panel) && menu.BeginDialoguePresentation())
         {
             _battleLayout = new BattleDialogueLayout(menu, panel, _portraitImage,
@@ -172,7 +266,6 @@ public class DialogueUI : MonoBehaviour
         HideChoices();
         StopTypingWork();
         StopAllCoroutines();
-        _applySpeedRoutine = null;
 
         if (_canvasGroup != null)
         {
@@ -236,19 +329,22 @@ public class DialogueUI : MonoBehaviour
             if (_soundWriter.source != null)
             {
                 _soundWriter.source.pitch = (speaker != null) ? speaker.VoicePitch : _defaultPitch;
+                // 기존 SFX 믹서 경로를 유지합니다. 설정 음량을 여기서 다시 곱하지 않습니다.
+                _soundWriter.source.volume = _typingSoundMuted ? 0f
+                    : Mathf.Clamp01(speaker != null ? speaker.VoiceVolume : _defaultVoiceVolume);
             }
         }
 
         // 초상/이름 변경에 따른 폭과 페이지를 먼저 확정한 뒤 타이핑을 시작합니다.
-        if (_battleLayout != null && _dialogueText != null) _dialogueText.pageToDisplay = 1;
+        if ((_battleLayout != null || _standaloneNarration) && _dialogueText != null) _dialogueText.pageToDisplay = 1;
         RefreshBattleLayout();
 
         // 3. 🚨 텍스트 출력
         if (_typewriter != null)
         {
             _typewriter.ShowText(text);
-            if (_applySpeedRoutine != null) StopCoroutine(_applySpeedRoutine);
-            _applySpeedRoutine = StartCoroutine(CoReapplyTypewriterSpeed());
+            // ShowText resets the package's speed multiplier. Apply immediately, not two frames later.
+            ApplyConfiguredTextSpeed();
         }
         else if (_dialogueText != null)
         {
@@ -261,6 +357,12 @@ public class DialogueUI : MonoBehaviour
     {
         if (_typewriter == null) return;
 
+        if (ApplyFixedTypingTiming())
+        {
+            _typewriter.SetTypewriterSpeed(1f);
+            return;
+        }
+
         GameConfigManager config = GameConfigManager.Instance;
         float speed = config != null
             ? config.TextSpeed
@@ -269,19 +371,56 @@ public class DialogueUI : MonoBehaviour
         _typewriter.SetTypewriterSpeed(boosted);
     }
 
+    private bool ApplyFixedTypingTiming()
+    {
+        if (_typewriter == null) return false;
+        if (!_cinematicTyping && !_standaloneNarration)
+        {
+            RestoreTypingTimings();
+            return false;
+        }
+        if (!_timingsCaptured)
+        {
+            _originalTypingTimings = _typewriter.TimingSettings;
+            _timingsCaptured = true;
+        }
+        if (_fixedTypingTimings == null)
+        {
+            _fixedTypingTimings = ScriptableObject.CreateInstance<TypingDelaysByCharacter>();
+            _fixedTypingTimings.name = "Dialogue fixed typing (runtime)";
+            _fixedTypingTimings.hideFlags = HideFlags.HideAndDontSave;
+            _fixedTypingTimings.avoidMultiplePunctuationWait = true;
+            _fixedTypingTimings.waitForNewLines = false;
+            _fixedTypingTimings.waitForLastCharacter = true;
+            _fixedTypingTimings.skipLastPunctuationWait = true;
+        }
+        float cps = _standaloneNarration ? _narrationCharactersPerSecond
+            : NormalizeCharactersPerSecond(_cinematicCharactersPerSecond, 14f);
+        _fixedTypingTimings.waitForNormalChars = 1f / cps;
+        _fixedTypingTimings.waitMiddle = 0.2f;
+        _fixedTypingTimings.waitLong = 0.4f;
+        _typewriter.TimingSettings = _fixedTypingTimings;
+        return true;
+    }
+
+    private void RestoreTypingTimings()
+    {
+        if (_timingsCaptured && _typewriter != null && _typewriter.TimingSettings == _fixedTypingTimings)
+            _typewriter.TimingSettings = _originalTypingTimings;
+    }
+
+    private static float NormalizeCharactersPerSecond(float value, float fallback)
+        => float.IsNaN(value) || float.IsInfinity(value) ? fallback : Mathf.Clamp(value, 0.01f, 120f);
+
     private void StopTypingWork()
     {
         IsTyping = false;
         if (_typewriter != null) _typewriter.StopShowingText();
-        if (_applySpeedRoutine == null)
-            return;
-
-        StopCoroutine(_applySpeedRoutine);
-        _applySpeedRoutine = null;
     }
 
     private void ResolveCanvasCamera()
     {
+        if (_standaloneNarration) return; // 상위 IllustratedStoryPlayer가 고정 Viewport를 소유합니다.
         if (_rootCanvas == null) _rootCanvas = GetComponentInParent<Canvas>(true);
         if (_rootCanvas == null) return;
         Camera output = Application.isPlaying
@@ -303,14 +442,6 @@ public class DialogueUI : MonoBehaviour
         RebindCanvasCameraImmediate();
     }
 
-    private IEnumerator CoReapplyTypewriterSpeed()
-    {
-        yield return null;
-        ApplyConfiguredTextSpeed();
-        yield return null;
-        ApplyConfiguredTextSpeed();
-    }
-
     public void SkipTyping()
     {
         if (IsTyping && _typewriter != null)
@@ -322,7 +453,7 @@ public class DialogueUI : MonoBehaviour
 
     public bool TryAdvancePage()
     {
-        if (_battleLayout == null || _dialogueText == null) return false;
+        if ((_battleLayout == null && !_standaloneNarration) || _dialogueText == null) return false;
         _dialogueText.ForceMeshUpdate();
         if (_dialogueText.pageToDisplay >= _dialogueText.textInfo.pageCount) return false;
         _dialogueText.pageToDisplay++;

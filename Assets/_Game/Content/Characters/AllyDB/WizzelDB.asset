@@ -27,9 +27,11 @@ MonoBehaviour:
   BattleResource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
   BattlePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
   BattleSymbolColor: {r: 1, g: 0.6878892, b: 0, a: 1}
+  BattleSpriteTint: {r: 1, g: 1, b: 1, a: 1}
+  StatusProfile: {fileID: 0}
   CharacterID: Wizzel_ally
   DisplayName: 위젤
-  DisplayNameMode: 1
+  DisplayNameMode: 0
   BaseStats:
     MaxHP: 300
     MaxAP: 50
@@ -54,4 +56,5 @@ MonoBehaviour:
   SpeedPerLevel: 0
   DefaultSkills:
   - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
+  AllowLegacyLevelUnlocks: 0
   PowerUnlocks: []

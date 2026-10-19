@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_Prologue_Distress
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 1
+  Nodes:
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_DISTRESS_01
+    DefaultText: "그리고...\n소식이 끊겼다."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_DISTRESS_02
+    DefaultText: "오직, 짧은 구조 신호\n하나만을 남긴 채."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_DISTRESS_03
+    DefaultText: "“…긴급 구조를\n요청한다."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 0}
+    Emotion: 0
+    LocalizationKey: PROLOGUE_OPENING_DISTRESS_04
+    DefaultText: "누군가 이 신호를\n듣는다면—”"
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

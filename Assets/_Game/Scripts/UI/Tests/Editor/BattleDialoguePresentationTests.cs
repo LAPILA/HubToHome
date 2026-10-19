@@ -302,8 +302,8 @@ public sealed class BattleDialoguePresentationTests
     }
 
     [TestCase(640f, 500f, 10f, 30f)]
-    [TestCase(960f, 768f, 24f, 54f)]
-    [TestCase(1920f, 1080f, 0f, 45f)]
+    [TestCase(960f, 768f, 144f, 164f)]
+    [TestCase(1920f, 1080f, 60f, 100f)]
     public void BottomHudGeometry_CoversOnlyOutputGapAndPreservesPartyRows(
         float width, float height, float gap, float dialogueLimit)
     {
@@ -323,9 +323,9 @@ public sealed class BattleDialoguePresentationTests
     [TestCase(640f, 500f, 0f, 0f, 0f)]
     [TestCase(640f, 500f, .1f, 50f, 30f)]
     [TestCase(960f, 768f, 0f, 0f, 0f)]
-    [TestCase(960f, 768f, .1f, 76.8f, 54f)]
+    [TestCase(960f, 768f, .1f, 76.8f, 76.8f)]
     [TestCase(1920f, 1080f, 0f, 0f, 0f)]
-    [TestCase(1920f, 1080f, .1f, 108f, 45f)]
+    [TestCase(1920f, 1080f, .1f, 108f, 100f)]
     public void Letterbox_OnlyDockedBottomIsLimited_AndZeroStaysHidden(
         float width, float height, float thickness, float top, float bottom)
     {
@@ -357,14 +357,16 @@ public sealed class BattleDialoguePresentationTests
         Assert.That(matte.rectTransform.parent, Is.SameAs(canvas.transform));
         Assert.That(matte.raycastTarget, Is.False);
         Assert.That(matte.enabled, Is.True);
-        Assert.That(matte.rectTransform.sizeDelta, Is.EqualTo(new Vector2(640f, 10f)));
+        Assert.That(matte.rectTransform.sizeDelta.x, Is.EqualTo(640f).Within(.001f));
+        Assert.That(matte.rectTransform.sizeDelta.y, Is.EqualTo(10f).Within(.001f));
         viewport.Configure(camera);
         Assert.That(((RectTransform)_menu.transform).anchoredPosition, Is.EqualTo(menuPosition));
         Assert.That(viewport.ContentRect.sizeDelta, Is.EqualTo(new Vector2(640f, 480f)));
 
         _menu.BeginDialoguePresentation();
         Assert.That(BattleHudViewport.TryGetDockedDialogueBottomLimit(out float limit), Is.True);
-        Assert.That(limit, Is.EqualTo(30f));
+        Assert.That(limit, Is.EqualTo(BattleHudViewport.CalculateDockedDialogueBottomLimit(
+            UIViewportService.GetOutputRect(camera))).Within(.001f));
         canvas.enabled = false;
         Invoke(viewport, "RefreshMatteVisibility");
         Assert.That(matte.enabled, Is.False);
@@ -399,11 +401,13 @@ public sealed class BattleDialoguePresentationTests
 
         _menu.BeginDialoguePresentation();
         Invoke(overlay, "LateUpdate");
-        Assert.That(bottom.sizeDelta.y, Is.EqualTo(Mathf.Min(requestedHeight, 30f)).Within(.001f));
+        float initialLimit = BattleHudViewport.CalculateDockedDialogueBottomLimit(UIViewportService.GetOutputRect(camera));
+        Assert.That(bottom.sizeDelta.y, Is.EqualTo(Mathf.Min(requestedHeight, initialLimit)).Within(.001f));
         Assert.That(top.sizeDelta.y, Is.EqualTo(requestedHeight).Within(.001f));
         camera.pixelRect = new UnityEngine.Rect(0f, 0f, 960f, 768f);
         Invoke(overlay, "LateUpdate");
-        Assert.That(bottom.sizeDelta.y, Is.EqualTo(Mathf.Min(requestedHeight, 54f)).Within(.001f));
+        float resizedLimit = BattleHudViewport.CalculateDockedDialogueBottomLimit(UIViewportService.GetOutputRect(camera));
+        Assert.That(bottom.sizeDelta.y, Is.EqualTo(Mathf.Min(requestedHeight, resizedLimit)).Within(.001f));
         Assert.That(overlay.CurrentThickness, Is.EqualTo(.1f));
         _menu.EndDialoguePresentation();
         Invoke(overlay, "LateUpdate");
@@ -516,7 +520,9 @@ public sealed class BattleDialoguePresentationTests
         GameObject cameraObject = new GameObject("HUD Output", typeof(Camera));
         _owned.Add(cameraObject);
         camera = cameraObject.GetComponent<Camera>();
-        camera.pixelRect = new UnityEngine.Rect(0f, 0f, 640f, 500f);
+        // 테스트 Game View가 작아도 하단 여백이 있는 실제 출력 영역을 만든다.
+        float outputScale = Mathf.Min(1f, Mathf.Min(Screen.width / 640f, Screen.height / 500f));
+        camera.pixelRect = new UnityEngine.Rect(0f, 0f, 640f * outputScale, 500f * outputScale);
         BattleHudViewport.Ensure(canvas, camera);
         return canvas.GetComponent<BattleHudViewport>();
     }

@@ -188,7 +188,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 1655595087
   m_SortingLayer: -1
-  m_SortingOrder: 1
+  m_SortingOrder: 3
   m_MaskInteraction: 0
   m_Sprite: {fileID: 879611441059155524, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -199,7 +199,7 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_SpriteSortPoint: 0
+  m_SpriteSortPoint: 1
 --- !u!50 &7830336691509602356
 Rigidbody2D:
   serializedVersion: 5
@@ -261,8 +261,8 @@ CapsuleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0.7}
-  m_Size: {x: 1, y: 1.4}
+  m_Offset: {x: 0, y: 0.65}
+  m_Size: {x: 0.7, y: 1.3}
   m_Direction: 0
 --- !u!95 &8157845532445965529
 Animator:
@@ -334,7 +334,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacter
   _characterData: {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
-  _fallbackCharacterID: Player
+  _fallbackCharacterID: Wizzel
   Level: 1
   EXP: 0
   EXPToNextLevel: 100
@@ -361,8 +361,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterVFX
   serializationData:
-    SerializedFormat: 0
-    SerializedBytes: 0101080000005f0076006600780044006900630074002f000000000185000000530079007300740065006d002e0043006f006c006c0065006300740069006f006e0073002e00470065006e0065007200690063002e00440069006300740069006f006e00610072007900600032005b005b004300680061007200610063007400650072005600460058002b0056004600580041006300740069006f006e002c00200041007300730065006d0062006c0079002d004300530068006100720070005d002c005b004300680061007200610063007400650072005600460058002b00560046005800530065007400750070002c00200041007300730065006d0062006c0079002d004300530068006100720070005d005d002c0020006d00730063006f0072006c00690062000000000001010800000063006f006d00700061007200650072002f010000000166000000530079007300740065006d002e0043006f006c006c0065006300740069006f006e0073002e00470065006e0065007200690063002e0045006e0075006d0045007100750061006c0069007400790043006f006d0070006100720065007200600031005b005b004300680061007200610063007400650072005600460058002b0056004600580041006300740069006f006e002c00200041007300730065006d0062006c0079002d004300530068006100720070005d005d002c0020006d00730063006f0072006c0069006200010000000600000000000000000705060300000000000000042e1d010200000024006b000000000000000000030102000000240076002f0200000001260000004300680061007200610063007400650072005600460058002b00560046005800530065007400750070002c00200041007300730065006d0062006c0079002d004300530068006100720070000b0106000000500072006500660061006200000000000b01050000005000690076006f007400010000002b010d00000041007400740061006300680054006f005000690076006f007400010505042e1d010200000024006b0001000000000000000301020000002400760030020000000b0106000000500072006500660061006200020000000b01050000005000690076006f007400010000002b010d00000041007400740061006300680054006f005000690076006f007400010505042e1d010200000024006b0004000000000000000301020000002400760030020000000b0106000000500072006500660061006200020000000b01050000005000690076006f007400030000002b010d00000041007400740061006300680054006f005000690076006f0074000105050705
+    SerializedFormat: 2
+    SerializedBytes: 
     ReferencedUnityObjects:
     - {fileID: 4748681987041982144, guid: 4b9add9c220265b408491b262eff5974, type: 3}
     - {fileID: 4632630371064151832}
@@ -372,7 +372,105 @@ MonoBehaviour:
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
-    SerializationNodes: []
+    SerializationNodes:
+    - Name: _vfxDict
+      Entry: 7
+      Data: 0|System.Collections.Generic.Dictionary`2[[CharacterVFX+VFXAction, Assembly-CSharp],[CharacterVFX+VFXSetup,
+        Assembly-CSharp]], mscorlib
+    - Name: comparer
+      Entry: 7
+      Data: 1|System.Collections.Generic.EnumEqualityComparer`1[[CharacterVFX+VFXAction,
+        Assembly-CSharp]], mscorlib
+    - Name: 
+      Entry: 12
+      Data: 0
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 12
+      Data: 3
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 0
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 0
+    - Name: Pivot
+      Entry: 10
+      Data: 1
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 1
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 2
+    - Name: Pivot
+      Entry: 10
+      Data: 1
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 3
+      Data: 4
+    - Name: $v
+      Entry: 7
+      Data: CharacterVFX+VFXSetup, Assembly-CSharp
+    - Name: Prefab
+      Entry: 10
+      Data: 2
+    - Name: Pivot
+      Entry: 10
+      Data: 3
+    - Name: AttachToPivot
+      Entry: 5
+      Data: true
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
   _embeddedSfxVolumeMultiplier: 0.675
   _forceEmbeddedSfxTo2D: 1
 --- !u!114 &8176373214988643597

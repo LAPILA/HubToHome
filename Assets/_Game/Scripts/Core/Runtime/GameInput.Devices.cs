@@ -28,6 +28,14 @@ public static partial class GameInput
 
     internal static void InitializeRuntimeInput() => EnsureInitialized();
 
+    /// <summary>Explicit field-menu touch input; never treats a PC mouse as a touch device.</summary>
+    public static void NotifyMenuTouchInteraction()
+    {
+        if (!Application.isMobilePlatform) return;
+        EnsureInitialized();
+        SetActiveDevice(GameInputDeviceKind.Touch, string.Empty);
+    }
+
     private static void BindDeviceInputs()
     {
         _battlePause = _ui.AddAction("BattlePause", InputActionType.Button);

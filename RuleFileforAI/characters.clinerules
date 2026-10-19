@@ -7,6 +7,7 @@
 - `EnemyData.Rank`는 Normal/Elite/Boss, `Kind`는 Human/Monster/WhiteEntity다. 역할·도주/저장 정책과 종별 표현을 혼용하지 않는다. 기존 enum 숫자와 데이터 ID를 보존한다.
 - 조건부 장비 효과는 `EquipmentData.TriggeredEffects` → `EquipmentEffectService`에서 실행한다. 현재 범위는 전투 시작/자기 턴 시작/저스트가드/회피/C 반격의 HP/AP 회복이며, 임의 문자열 PassiveEffectID 실행기가 아니다. 기본 방어 보상과 명시적 장비 효과를 구분한다.
 - 장비 변경은 회복이 아니다. 수동 저장 성공에 따른 회복은 저장 서비스가 소유한다. 공용 성장의 이전 저장 마이그레이션은 최고 진행 멤버를 기준으로 하며 EXP를 합산하지 않는다.
+- 필드 메뉴의 투자 초안과 런타임 동기화는 저장 인스턴스별이다. 같은 DB를 쓰는 샘플 동료를 DB ID만으로 일괄 갱신하지 않는다. `PlayerCharacter.IsBoundToSaveData`로 정확한 바인딩을 확인하고, 새로운 저장 데이터의 명시적 연결은 기존 LoadDataFromGlobal이 담당한다.
 
 ## Battle-only resources
 

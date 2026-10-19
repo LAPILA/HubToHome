@@ -291,6 +291,10 @@ public class PlayerCharacter : CharacterBase
     }
 
     // ── 글로벌 동기화 ──
+    // 같은 CharacterData를 쓰는 테스트 동료도 저장 인스턴스는 서로 다릅니다.
+    public bool IsBoundToSaveData(CharacterSaveData saveData)
+        => saveData != null && ReferenceEquals(_mySaveDataRef, saveData);
+
     public void LoadDataFromGlobal(CharacterSaveData saveData)
     {
         if (saveData == null) return;

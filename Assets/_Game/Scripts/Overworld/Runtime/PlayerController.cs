@@ -62,10 +62,10 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     private Vector3        _originalLocalPos;
     private Vector3        _originalLocalScale;
     private Vector3 _battleDefenseAnchorPosition;
+    private const int DefaultSortingOrder = 3;
     private int _baseSortingOrder;
     private bool _hasSortingBase;
     private Tween _defenseVisualTween;
-    private int _battleSortingBoost;
     private DefenseInput _bufferedDefenseInput = DefenseInput.None;
     private float _bufferedDefenseInputTime = -999f;
     private const float DefenseInputBufferWindow = 1.25f;
@@ -138,7 +138,10 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
         if (_spriteRenderer != null)
         {
-            _baseSortingOrder = _spriteRenderer.sortingOrder;
+            // Same-order world objects use renderer Y-axis depth sorting, not a changing order number.
+            _baseSortingOrder = DefaultSortingOrder;
+            _spriteRenderer.sortingOrder = _baseSortingOrder;
+            _spriteRenderer.spriteSortPoint = SpriteSortPoint.Pivot;
             _hasSortingBase = true;
         }
 
@@ -1164,12 +1167,12 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         if (!_hasSortingBase || _spriteRenderer == null) return;
         if (State == PlayerState.InBattle) return;
 
-        _spriteRenderer.sortingOrder = _baseSortingOrder - Mathf.RoundToInt(transform.position.y * 100f) + _battleSortingBoost;
+        if (_spriteRenderer.sortingOrder != _baseSortingOrder)
+            _spriteRenderer.sortingOrder = _baseSortingOrder;
     }
 
     public void SetBattleSortingBoost(int boost)
     {
-        _battleSortingBoost = boost;
         if (_spriteRenderer != null && State == PlayerState.InBattle)
             _spriteRenderer.sortingOrder = _baseSortingOrder + boost;
     }

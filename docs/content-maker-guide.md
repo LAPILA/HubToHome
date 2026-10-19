@@ -82,6 +82,29 @@ NPC Prefab 저장을 켜면 지역의 `Prefabs/NPCs`에 자동 생성됩니다. 
 
 검사는 Unity 자산 참조와 프로젝트 원문의 ID·경로 문자열을 확인합니다. 실행 중 조합되는 문자열이나 기존 세이브 파일까지 검증하지는 못하므로 이미 배포한 방·챕터를 삭제할 때는 저장 데이터 호환성도 별도로 검토해야 합니다.
 
+## 아이템 상자 배치하기
+
+기차 예시는 `Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainQ0.prefab`의 `Props/Chest_TrainSnack`입니다. 기본 시작점 오른쪽에 있으며 가까이서 상자를 바라보고 Z를 누르면 **과자 ×1**을 얻습니다. 열린 상자는 남고 다시 상호작용할 수 없습니다.
+
+1. 방을 Prefab Mode로 열고 `Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Props/Prop_Chest_TrainSnack.prefab`을 `Props` 아래에 배치합니다.
+2. 인스턴스의 **ItemPickupMarker → 기본 정보**에서 `Area/Room ID`를 해당 방 ID로, `마커 ID`를 상자마다 다른 값으로 설정합니다. 예: `chest.windmill.exterior.01`. 복제해도 같은 ID를 쓰면 획득 상태를 공유합니다.
+3. **Item 설정/지급**에서 아이템 ID와 수량을 설정합니다. 아이템은 `GameContentCatalog.Items`에 등록되어 있어야 합니다. 예시 과자는 `food.train_snack`입니다.
+4. **Item 설정/메시지**에서 획득 메시지 또는 `DialogueData`를 지정합니다. 단순한 획득 안내는 메시지만으로 충분합니다.
+5. **상자 외형 → 획득 후 열린 상자 유지**를 켜고 상자 렌더러, 닫힌 그림, 열린 그림을 연결합니다. 예시는 `Art/Common/Chest.png`의 `Chest_0 / Chest_1`입니다.
+6. 위치 조절 → **방 검사** → 현재 방 프리팹만 저장합니다. 기차 예시 상자의 그림은 중심 pivot 보정 때문에 자식 `Visual`의 Y가0.75입니다. 위치는 상자 루트로 조절하세요.
+
+가방에 전체 수량이 들어가지 않으면 지급/열림을 진행하지 않습니다. 획득 완료는 대사를 닫기 전에 확정하므로 대사 취소로 다시 받을 수 없습니다. 게임 저장 후 다시 들어와도 열린 상태를 복원하며, **상자를 열기 전 저장을 불러오면 닫힌 상태와 당시 아이템 수량으로 돌아갑니다**. 상자 개봉 자체가 자동저장을 실행하지는 않습니다.
+
+일반 바닥 아이템은 기존 **아이템 줍기**로 만들고 `획득 후 열린 상자 유지`를 끄면 획득 후 사라집니다. [구현 범위·검증 기록](../AIAssets/yjlim/feedback/2026-10-19-item-chest.md).
+
+### 상자와 플레이어 앞뒤 가림
+
+플레이어의 기본 `Order in Layer`는 **3 고정**입니다. 상자 원본 루트에도 **Sorting Group / Characters / Order3**이 연결되어 있습니다. 그림 자식의 Order는 그룹 내부 순서이므로 외부 가림을 맞추려고 바꿀 필요가 없습니다.
+
+같은 정렬 레이어와 같은 Order의 오브젝트끼리는 Y축 깊이로 정렬합니다. 상자는 그룹 루트가 바닥 기준점이고 플레이어는 SpriteRenderer의 Sort Point가 Pivot입니다. 상자 위치는 Visual 자식이 아니라 루트를 옮기세요. 플레이어가 아래에 있으면 앞으로, 위로 올라가면 뒤로 보여야 합니다. 직접 만든 소품도 같은 기준으로 그룹을 잡고 같은 Characters/Order3을 사용합니다. 다른 Order를 지정하면 Y축보다 Order가 우선합니다.
+
+2D Renderer에서는 `Transparency Sort Mode=Custom Axis`, Axis `(0,1,0)`을 사용합니다. Project Settings의 Y축 설정만으로 Renderer2D의 Default 모드가 바뀌지는 않습니다. 전투 연출의 임시 전경 우선순위는 별도 기존 규칙입니다. [원인·변경·검증](../AIAssets/yjlim/feedback/2026-10-19-player-sorting.md).
+
 ## 문과 시작점 연결하기
 
 1. 도착할 Room에 **도착 시작점**을 배치하고 저장합니다.

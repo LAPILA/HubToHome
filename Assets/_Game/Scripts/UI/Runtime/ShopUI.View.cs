@@ -7,10 +7,10 @@ public sealed partial class ShopUI
     private void BuildView()
     {
         Canvas canvas = gameObject.AddComponent<Canvas>();
-        // FixedViewport: 공통 출력 카메라/640x480 기준 영역은 Awake의 NormalizeCanvas가 연결합니다.
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        // 기존 DialogueCanvas와 같은 UI 레이어에서 대화창(998) 아래에 표시합니다.
-        canvas.sortingLayerName = "UI";
+        // FixedViewport: lighting/post processing stay in the world; NormalizeCanvas fits 640x480.
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        // Keep shop below modal dialogue and transitions on the common overlay sorting layer.
+        canvas.sortingLayerID = 0;
         canvas.sortingOrder = 900;
         var scaler = gameObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;

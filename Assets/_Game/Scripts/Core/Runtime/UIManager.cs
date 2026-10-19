@@ -521,8 +521,10 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
 
     private bool EnsureHierarchy()
     {
-        if (_root == null)
-            _root = transform as RectTransform;
+        // A Canvas-level fitter operates inside the common fixed frame, not around it.
+        // Otherwise moving the frame under its own safe-area child creates a hierarchy cycle.
+        _root = TryGetComponent(out FixedCanvasViewport viewport) && viewport.ContentRect != null
+            ? viewport.ContentRect : transform as RectTransform;
         if (_root == null) return false;
 
         if (_canvas == null)
@@ -539,6 +541,10 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
             var safeAreaObject = new GameObject(SafeAreaRootName, typeof(RectTransform));
             safeAreaObject.layer = gameObject.layer;
             _safeAreaRoot = safeAreaObject.GetComponent<RectTransform>();
+            _safeAreaRoot.SetParent(_root, false);
+        }
+        else if (_safeAreaRoot.parent != _root)
+        {
             _safeAreaRoot.SetParent(_root, false);
         }
 
@@ -575,6 +581,9 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
 
     private Vector2 ResolveCanvasSize()
     {
+        if (_root != null && TryGetComponent(out FixedCanvasViewport viewport)
+            && viewport.ContentRect == _root && IsValid(_root.rect.size))
+            return _root.rect.size;
         RectTransform canvasRect = _canvas != null ? _canvas.transform as RectTransform : _root;
         if (canvasRect != null && IsValid(canvasRect.rect.size))
             return canvasRect.rect.size;
@@ -588,44 +597,18 @@ public sealed class UIPixelPerfectSafeAreaFitter : MonoBehaviour
         if (pixelPerfectCamera == null)
             return FitAspectInsideCanvas(canvasSize, referenceResolution);
 
-        Vector2 pixelSize = CalculatePixelPerfectOutputSize(pixelPerfectCamera, referenceResolution);
+        // 화면 크기로 PPC 배율을 다시 추정하지 않는다. 카메라 밖으로 잘린 영역과
+        // 정수 확대 여백까지 HUD/대사와 같은 콘텐츠 영역을 사용한다.
+        Camera output = UIViewportService.GetOutputCamera(_canvas);
+        if (output == null) output = pixelPerfectCamera.GetComponent<Camera>();
+        Vector2 pixelSize = UIViewportService.CalculateContentScreenRect(
+            UIViewportService.GetOutputRect(output)).size;
         float canvasScale = _canvas != null && _canvas.scaleFactor > 0.001f ? _canvas.scaleFactor : 1f;
         Vector2 safeSize = pixelSize / canvasScale;
 
         safeSize.x = Mathf.Min(safeSize.x, canvasSize.x);
         safeSize.y = Mathf.Min(safeSize.y, canvasSize.y);
         return safeSize;
-    }
-
-    private static Vector2 CalculatePixelPerfectOutputSize(PixelPerfectCamera pixelPerfectCamera, Vector2 referenceResolution)
-    {
-        float refX = Mathf.Max(1f, referenceResolution.x);
-        float refY = Mathf.Max(1f, referenceResolution.y);
-        int zoom = Mathf.Max(1, Mathf.Min(Screen.width / Mathf.RoundToInt(refX), Screen.height / Mathf.RoundToInt(refY)));
-
-        switch (pixelPerfectCamera.cropFrame)
-        {
-            case PixelPerfectCamera.CropFrame.Pillarbox:
-                return new Vector2(refX * zoom, Screen.height);
-            case PixelPerfectCamera.CropFrame.Letterbox:
-                return new Vector2(Screen.width, refY * zoom);
-            case PixelPerfectCamera.CropFrame.Windowbox:
-                return new Vector2(refX * zoom, refY * zoom);
-            case PixelPerfectCamera.CropFrame.StretchFill:
-                return FitAspectInsideScreen(referenceResolution);
-            default:
-                return new Vector2(Screen.width, Screen.height);
-        }
-    }
-
-    private static Vector2 FitAspectInsideScreen(Vector2 referenceResolution)
-    {
-        float targetAspect = referenceResolution.x / referenceResolution.y;
-        float screenAspect = Screen.width / (float)Screen.height;
-
-        return screenAspect > targetAspect
-            ? new Vector2(Screen.height * targetAspect, Screen.height)
-            : new Vector2(Screen.width, Screen.width / targetAspect);
     }
 
     private static Vector2 FitAspectInsideCanvas(Vector2 canvasSize, Vector2 referenceResolution)

@@ -441,10 +441,47 @@ public sealed class DialogueStateRestoreTests
     }
 
     [Test]
-    public void SkipPolicyAlwaysStopsAtChoiceAndNaming()
+    public void LegacyNamingNode_AdvancesWithoutOpeningNameInput()
+    {
+        _dialogue.Nodes.Insert(0, new DialogueNode { EventTriggerID = "RequestName" });
+        _dialogue.Nodes.Insert(1, new DialogueNode { EventTriggerID = "RequestName" });
+
+        _manager.StartDialogue(_dialogue);
+
+        Assert.That(_manager.IsPlaying, Is.True);
+        Assert.That(GetPrivateField<int>(_manager, "_currentNodeIndex"), Is.EqualTo(2));
+        Assert.That(_state.CurrentState, Is.EqualTo(GameState.Dialogue));
+    }
+
+    [Test]
+    public void SkipPassesLegacyNamingWithoutDispatchingItsEvent()
+    {
+        int namingEvents = 0;
+        int completed = 0;
+        Action namingHandler = () => namingEvents++;
+        _dialogue.Nodes.Add(new DialogueNode { EventTriggerID = "RequestName" });
+        _dialogue.Nodes.Add(new DialogueNode { DefaultText = "next" });
+        EventManager.Subscribe("RequestName", namingHandler);
+        try
+        {
+            _manager.StartDialogue(_dialogue, () => completed++);
+
+            Assert.That(_manager.TrySkipRemainingDialogue(), Is.True);
+            Assert.That(namingEvents, Is.Zero);
+            Assert.That(completed, Is.EqualTo(1));
+            Assert.That(_manager.IsPlaying, Is.False);
+        }
+        finally
+        {
+            EventManager.Unsubscribe("RequestName", namingHandler);
+        }
+    }
+
+    [Test]
+    public void SkipPolicyStopsAtChoicesButNotLegacyNaming()
     {
         Assert.That(DialogueSkipPolicy.RequiresInput(new DialogueNode { IsChoiceNode = true }), Is.True);
-        Assert.That(DialogueSkipPolicy.RequiresInput(new DialogueNode { EventTriggerID = "RequestName" }), Is.True);
+        Assert.That(DialogueSkipPolicy.RequiresInput(new DialogueNode { EventTriggerID = "RequestName" }), Is.False);
         Assert.That(DialogueSkipPolicy.RequiresInput(new DialogueNode { EventTriggerID = "give.item" }), Is.False);
     }
 

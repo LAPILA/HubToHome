@@ -93,3 +93,104 @@ gameover.no_save,불러올 수 있는 저장 데이터가 없습니다.,No save 
 gameover.loading_checkpoint,전투 직전 상태를 복구하는 중...,Restoring the battle checkpoint...,戦闘直前の状態を復元中...,正在恢复战斗前状态……
 gameover.loading_save,저장 데이터를 불러오는 중...,Loading save data...,セーブデータを読み込み中...,正在读取存档……
 gameover.title,타이틀로 이동,Return to title,タイトルへ,返回标题
+field_menu.target_hint,동료 선택 · Z 사용 · X 취소,Choose ally · Z Use · X Cancel,仲間を選択 · Z 使用 · X 戻る,选择队友 · Z 使用 · X 取消
+field_menu.reading_hint,↑↓ 읽기 · X 목록,↑↓ Read · X List,↑↓ 読む · X 一覧,↑↓ 阅读 · X 列表
+field_menu.growth_hint,방향키 능력치/트리 · Z 확정 · X 메뉴 · Q/E 동료 · C 탭,Arrows Stats/Tree · Z Confirm · X Menu · Q/E Ally · C Tab,方向キー 能力/ツリー · Z 決定 · X メニュー · Q/E 仲間 · C タブ,方向键 属性/技能树 · Z 确认 · X 菜单 · Q/E 队友 · C 页签
+field_menu.menu_hint,←→ 메뉴 · ↑↓ 목록 · Z 선택 · X 뒤로 · Q/E 동료 · C 분류,←→ Menu · ↑↓ List · Z Select · X Back · Q/E Ally · C Filter,←→ メニュー · ↑↓ 一覧 · Z 決定 · X 戻る · Q/E 仲間 · C 分類,←→ 菜单 · ↑↓ 列表 · Z 选择 · X 返回 · Q/E 队友 · C 分类
+field_menu.no_party,동료 없음,No allies,仲間なし,暂无队友
+field_menu.all,전체,All,すべて,全部
+field_menu.consumable,소모품,Consumables,消耗品,消耗品
+field_menu.important,중요 물품,Key Items,大事な物,重要物品
+field_menu.equipped,장착 중,Equipped,装備中,已装备
+field_menu.unequip,장비 해제,Unequip,装備を外す,卸下装备
+field_menu.collected_notes,수집한 메모 · 책 · 기록,Collected notes · books · records,集めたメモ・本・記録,收集的便条 · 书籍 · 记录
+field_menu.read,읽기,Read,読む,阅读
+field_menu.journal_empty,아직 수집한 기록이 없습니다.,No records collected yet.,まだ記録を集めていません。,尚未收集任何记录。
+field_menu.empty,소지한 물품이 없습니다.,No items held.,持ち物がありません。,没有持有物品。
+field_menu.journal_help,월드에서 얻은 메모나 책을 이곳에서 다시 읽을 수 있습니다.,Reread notes and books found in the world here.,冒険で手に入れたメモや本をここで読み返せます。,可在此重读冒险中获得的便条和书籍。
+field_menu.collected,획득한 기록,Collected record,入手した記録,已获得的记录
+field_menu.reading,읽는 중 · X 목록,Reading · X List,閲覧中 · X 一覧,阅读中 · X 列表
+field_menu.all_allies,아군 전체,All allies,味方全員,全体队友
+field_menu.one_ally,아군 한 명,One ally,味方1人,一名队友
+field_menu.use_on_target,선택한 동료에게 사용,Use on selected ally,選んだ仲間に使う,对选中队友使用
+field_menu.use,사용하기,Use,使う,使用
+field_menu.cannot_use,지금은 사용할 수 없습니다.,Cannot use now.,今は使えません。,现在无法使用。
+field_menu.battle_locked,전투 중 변경 불가,Locked in battle,戦闘中は変更不可,战斗中无法更改
+field_menu.in_use,다른 동료가 사용 중,Equipped by another ally,他の仲間が使用中,其他队友使用中
+field_menu.equip,장착하기,Equip,装備する,装备
+field_menu.applied,능력치 배분을 적용했습니다.,Stat allocation applied.,能力の配分を適用しました。,已应用属性分配。
+field_menu.apply_failed,포인트·최대 단계 또는 전투 상태를 확인해 주세요.,Check points / rank cap / battle state.,ポイント・上限・戦闘状態を確認してください。,请检查点数、投入上限或战斗状态。
+field_menu.used,사용했습니다.,Item used.,使用しました。,已使用。
+field_menu.pending_title,미적용 배분을 취소하고 나갈까요?,Discard pending allocation and leave?,未適用の配分を破棄して戻りますか？,放弃未应用的分配并离开？
+field_menu.reset_title,포인트를 무료로 초기화할까요?,Reset points for free?,無料でポイントをリセットしますか？,免费重置点数？
+field_menu.pending_body,미적용 배분만 취소합니다. 포인트는 소모되지 않습니다.,Only pending changes are discarded. No points are spent.,未適用の配分だけを破棄します。ポイントは消費しません。,仅放弃未应用的分配，不消耗点数。
+field_menu.reset_body,선택한 동료의 현재 탭 투자만 반환합니다. 기본 스킬과 다른 동료는 유지됩니다.,Refunds only this ally's points spent in this tab. Base skills and other allies stay unchanged.,選んだ仲間がこのタブで投資した分だけ返却します。初期スキルと他の仲間は変わりません。,仅返还所选队友在当前页签投入的点数。基础技能和其他队友不受影响。
+field_menu.leave,배분 취소 후 나가기,Discard & Leave,破棄して戻る,放弃并离开
+field_menu.reset,초기화,Reset,リセット,重置
+field_menu.reset_done,포인트를 반환했습니다.,Points refunded.,ポイントを返却しました。,已返还点数。
+field_menu.weapon,무기,Weapon,武器,武器
+field_menu.accessory1,장신구1,Acc.1,装飾品1,饰品1
+field_menu.accessory2,장신구2,Acc.2,装飾品2,饰品2
+field_menu.head,머리,Head,頭,头部
+field_menu.body,몸,Body,体,身体
+field_menu.shoes,신발,Shoes,靴,鞋子
+field_menu.settings,설정,Settings,設定,设置
+field_menu.back,뒤로,Back,戻る,返回
+field_menu.bag,소지품,Inventory,持ち物,物品
+field_menu.equipment,장비 정비,Gear Setup,装備の変更,装备整备
+field_menu.companion,동료와 성장,Party & Growth,仲間と成長,队友与成长
+field_menu.journal,수집한 기록,Collected Records,集めた記録,收集的记录
+field_menu.tab_bag,가방,Bag,持ち物,背包
+field_menu.tab_equipment,장비,Gear,装備,装备
+field_menu.tab_companion,동료,Party,仲間,队友
+field_menu.tab_journal,일지,Journal,日誌,日志
+field_menu.shared_level,파티 공용,Party-wide,パーティ共通,队伍共用
+field_menu.objective,현재 목표,Current objective,現在の目標,当前目标
+field_menu.objective_empty,아직 기록된 목표가 없습니다.,No objective recorded yet.,まだ目標が記録されていません。,尚未记录目标。
+field_menu.stats,상태 · 능력치,Status · Stats,状態・能力,状态 · 属性
+field_menu.skills,스킬 트리,Skill Tree,スキルツリー,技能树
+field_menu.party,함께하는 동료,Party Members,一緒に旅する仲間,同行队友
+field_menu.growth.stat_breakdown,기본 {0} / 투자 {1} / 장비 {2},Base {0} / Invested {1} / Gear {2},基本 {0} / 投資 {1} / 装備 {2},基础 {0} / 投入 {1} / 装备 {2}
+field_menu.growth.stat_rank,투자 단계 {0} → {1} / {2},Rank {0} → {1} / {2},投資段階 {0} → {1} / {2},投入等级 {0} → {1} / {2}
+field_menu.growth.stat_increment,1포인트당 {0} +{1},1 point: {0} +{1},1ポイントで {0} +{1},每点 {0} +{1}
+field_menu.growth.no_member,성장 정보를 확인할 동료가 없습니다.,No ally to show growth for.,成長を確認できる仲間がいません。,没有可查看成长信息的队友。
+field_menu.growth.attribute_points,남은 포인트 {0}    미리 배분 {1},Points {0}    Pending {1},残り {0}    仮配分 {1},剩余点数 {0}    预分配 {1}
+field_menu.growth.mutation_locked,지금은 성장 정보를 변경할 수 없습니다.,Growth changes are locked now.,今は成長情報を変更できません。,现在无法更改成长信息。
+field_menu.growth.amount_hint,입력 숫자는 이번에 추가할 포인트입니다.,Enter points to add this time.,今回追加するポイントを入力します。,输入本次要增加的点数。
+field_menu.growth.apply_draft,배분 한 번에 적용,Apply Allocation,配分をまとめて適用,应用全部分配
+field_menu.growth.clear_draft,미리 배분 취소,Clear Draft,仮配分を取消,取消预分配
+field_menu.growth.reset_free,무료 초기화,Free Reset,無料リセット,免费重置
+field_menu.growth.tree_empty,등록된 스킬 트리가 없습니다.,No skill tree assigned.,スキルツリーが未登録です。,尚未配置技能树。
+field_menu.growth.tree_hint,잠김 · 습득 가능 · 습득 · 장착     넓은 트리는 밀어서 이동,Locked · Ready · Learned · Equipped | Drag to pan,未解放 · 習得可 · 習得済 · 装備中　広いツリーはドラッグで移動,锁定 · 可学 · 已学 · 已装备　拖动查看更大的技能树
+field_menu.growth.unset,미설정,Unset,未設定,未设置
+field_menu.growth.skill_points,남은 SP {0}    장착 {1} / {2},SP left {0}    Equipped {1} / {2},残りSP {0}    装備 {1} / {2},剩余SP {0}    已装备 {1} / {2}
+field_menu.growth.tree_title,스킬 트리,Skill Tree,スキルツリー,技能树
+field_menu.growth.tree_setup,캐릭터 데이터에 스킬 트리를 연결하면 실제 노드와 선행 관계가 표시됩니다.,Assign a skill tree to the character data to show its nodes and prerequisites.,キャラクターデータにスキルツリーを設定すると、ノードと前提条件が表示されます。,为角色数据配置技能树后，将显示实际节点及前置关系。
+field_menu.growth.no_skill,스킬 없음,No skill,スキルなし,暂无技能
+field_menu.growth.no_description,설명이 없습니다.,No description.,説明がありません。,暂无说明。
+field_menu.growth.skill_requirements,필요 Lv {0}  ·  비용 {1} SP,Requires Lv {0}  ·  Cost {1} SP,必要Lv {0}  ·  費用 {1} SP,所需等级 {0}  ·  消耗 {1} SP
+field_menu.growth.unequip,장착 해제,Unequip,装備解除,卸下
+field_menu.growth.equip,장착,Equip,装備,装备
+field_menu.growth.learn_skill,스킬 습득,Learn Skill,スキル習得,学习技能
+field_menu.growth.requirements_unmet,조건 미충족,Requirements Unmet,条件未達成,条件未满足
+field_menu.growth.prerequisites,"선행: ","Prerequisites: ","前提: ","前置: "
+field_menu.growth.none,없음,None,なし,无
+field_menu.growth.state_available,습득 가능,Learnable,習得可,可学习
+field_menu.growth.state_unlocked,습득,Learned,習得済,已学会
+field_menu.growth.state_equipped,장착,Equipped,装備中,已装备
+field_menu.growth.state_locked,잠김,Locked,未解放,已锁定
+field_menu.growth.stat_vitality,생명력,Vitality,生命力,生命力
+field_menu.growth.stat_attack,공격력,Attack,攻撃力,攻击力
+field_menu.growth.stat_defense,방어력,Defense,防御力,防御力
+field_menu.growth.stat_speed,속도,Speed,速度,速度
+field_menu.growth.stat_action,행동력,AP Capacity,行動力,行动力
+field_menu.growth.unit_hp,최대 HP,Max HP,最大HP,最大HP
+field_menu.growth.unit_ap,최대 AP,Max AP,最大AP,最大AP
+field_menu.touch_target_hint,동료 카드를 고른 뒤 사용 · 뒤로 취소,Choose ally card then Use · Back to cancel,仲間カードを選んで使用 · 戻るで取消,选择队友卡后使用 · 返回取消
+field_menu.touch_reading_hint,밀어서 읽기 · 뒤로 목록,Swipe to read · Back to list,スワイプで読む · 戻るで一覧,滑动阅读 · 返回列表
+field_menu.touch_growth_hint,탭·노드 터치 · 수량 입력 또는 ± 길게 누르기,Tap tabs/nodes · Enter amount or hold ±,タブ・ノードをタッチ · 数量入力か±長押し,点按页签或节点 · 输入数量或长按±
+field_menu.touch_menu_hint,탭·목록·동료 터치 · 목록은 밀어서 이동,Tap tabs/list/allies · Swipe list to scroll,タブ・一覧・仲間をタッチ · 一覧はスワイプ,点按页签、列表或队友 · 滑动列表滚动
+field_menu.pad_target_hint,방향키 동료 · {0} 사용 · {1} 취소,Arrows Ally · {0} Use · {1} Cancel,方向キー 仲間 · {0} 使用 · {1} 取消,方向键 队友 · {0} 使用 · {1} 取消
+field_menu.pad_reading_hint,↑↓ 읽기 · {1} 목록,↑↓ Read · {1} List,↑↓ 読む · {1} 一覧,↑↓ 阅读 · {1} 列表
+field_menu.pad_growth_hint,방향키 능력치/트리 · {0} 확정 · {1} 메뉴 · LB/RB 동료,Arrows Stats/Tree · {0} Confirm · {1} Menu · LB/RB Ally,方向キー 能力/ツリー · {0} 決定 · {1} メニュー · LB/RB 仲間,方向键 属性/技能树 · {0} 确认 · {1} 菜单 · LB/RB 队友
+field_menu.pad_menu_hint,←→ 메뉴 · ↑↓ 목록 · {0} 선택 · {1} 뒤로 · LB/RB 동료,←→ Menu · ↑↓ List · {0} Select · {1} Back · LB/RB Ally,←→ メニュー · ↑↓ 一覧 · {0} 決定 · {1} 戻る · LB/RB 仲間,←→ 菜单 · ↑↓ 列表 · {0} 选择 · {1} 返回 · LB/RB 队友

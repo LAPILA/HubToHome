@@ -4,6 +4,7 @@ using DG.Tweening;
 using NUnit.Framework;
 using Unity.Cinemachine;
 using UnityEngine;
+using PixelPerfectCamera = UnityEngine.Rendering.Universal.PixelPerfectCamera;
 
 public sealed class CameraFramingTests
 {
@@ -116,6 +117,178 @@ public sealed class CameraFramingTests
             Object.DestroyImmediate(outputObject);
             Object.DestroyImmediate(texture);
         }
+    }
+
+    [TestCase(4f)]
+    [TestCase(5.37f)]
+    [TestCase(8f)]
+    public void Focus_PreservesAuthoredLensThroughPixelPerfectPipeline(float authoredLens)
+    {
+        WithPixelPerfectOutput((output, pixel, extension) =>
+        {
+            Assert.That(_controller.TryFocus(_leftObject.transform, authoredLens,
+                CameraShotStyle.Dynamic, 0.2f, CameraControlLease.None,
+                out var token, out string error), Is.True, error);
+            Assert.That(extension.enabled, Is.False);
+            DOTween.Complete("CameraZoom");
+            Assert.That(extension.enabled, Is.False, "포커스 유지 중에는 줌을 다시 양자화하지 않습니다.");
+            Assert.That(_controller.IsCurrent(token), Is.True);
+            AssertPixelPerfectPipelineLens(output, pixel, authoredLens);
+        });
+    }
+
+    [Test]
+    public void GroupFraming_PreservesAuthoredRangeThroughPixelPerfectPipeline()
+    {
+        WithPixelPerfectOutput((output, pixel, extension) =>
+        {
+            const float authoredLens = 5.37f;
+            CameraFramingSettings settings = CameraFramingSettings.CreateBattleDefault();
+            settings.Damping = 0f;
+            settings.MinOrthographicSize = authoredLens;
+            settings.MaxOrthographicSize = authoredLens;
+            Assert.That(_controller.TryFrameTargets(new[] { _leftObject.transform, _rightObject.transform },
+                settings, CameraControlLease.None, out var token, out string error), Is.True, error);
+            Assert.That(extension.enabled, Is.False);
+            Assert.That(_controller.IsFramingTargets, Is.True);
+            Assert.That(_controller.IsCurrent(token), Is.True);
+            AssertPixelPerfectPipelineLens(output, pixel, authoredLens);
+        });
+    }
+
+    [TestCase(false, "reset")]
+    [TestCase(true, "reset")]
+    [TestCase(false, "cancel")]
+    [TestCase(true, "cancel")]
+    [TestCase(false, "cancel-reset")]
+    [TestCase(true, "cancel-reset")]
+    [TestCase(false, "timeline")]
+    [TestCase(true, "timeline")]
+    [TestCase(false, "disable")]
+    [TestCase(true, "disable")]
+    public void ContinuousCommand_RestoresPixelExtensionAtOwnershipBoundary(bool framing, string boundary)
+    {
+        WithPixelPerfectOutput((output, pixel, extension) =>
+        {
+            CameraCommandToken token;
+            string error;
+            bool started = framing
+                ? TryStartFraming(out token, out error)
+                : _controller.TryFocus(_leftObject.transform, 5.37f, CameraShotStyle.Dynamic,
+                    0f, CameraControlLease.None, out token, out error);
+            Assert.That(started, Is.True, error);
+            Assert.That(extension.enabled, Is.False);
+
+            switch (boundary)
+            {
+                case "reset":
+                    _controller.ResetCamera(0.2f);
+                    Assert.That(extension.enabled, Is.False, "복귀 트윈 중에는 연속 줌을 유지합니다.");
+                    DOTween.Complete("CameraZoom");
+                    break;
+                case "cancel":
+                case "cancel-reset":
+                    _controller.Cancel(token, boundary == "cancel-reset");
+                    break;
+                case "timeline":
+                    Assert.That(_controller.TryAcquireTimelineControl(this, out var lease, out error),
+                        Is.True, error);
+                    try
+                    {
+                        Assert.That(_controller.IsCurrent(token), Is.False);
+                        Assert.That(_controller.TryFocus(_rightObject.transform, 4f,
+                            CameraShotStyle.Dynamic, 0f, CameraControlLease.None, out _, out _), Is.False);
+                        Assert.That(TryStartFraming(out _, out _), Is.False);
+                    }
+                    finally
+                    {
+                        _controller.ReleaseTimelineControl(lease);
+                    }
+                    break;
+                case "disable":
+                    typeof(CameraController).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .Invoke(_controller, null);
+                    break;
+            }
+
+            Assert.That(extension.enabled, Is.True);
+            Assert.That(pixel.enabled, Is.True, "출력 PixelPerfectCamera는 비활성화하지 않습니다.");
+            Assert.That(_controller.IsFramingTargets, Is.False);
+        });
+    }
+
+    [Test]
+    public void StaleFocusCancel_DoesNotReleaseNewGroupFramingPixelOwnership()
+    {
+        WithPixelPerfectOutput((output, pixel, extension) =>
+        {
+            Assert.That(_controller.TryFocus(_leftObject.transform, 5.37f, CameraShotStyle.Dynamic,
+                0f, CameraControlLease.None, out var focusToken, out string error), Is.True, error);
+            Assert.That(TryStartFraming(out var framingToken, out error), Is.True, error);
+            _controller.Cancel(focusToken, true);
+            Assert.That(_controller.IsCurrent(framingToken), Is.True);
+            Assert.That(_controller.IsFramingTargets, Is.True);
+            Assert.That(extension.enabled, Is.False);
+            Assert.That(pixel.enabled, Is.True);
+            _controller.Cancel(framingToken, true);
+            Assert.That(extension.enabled, Is.True);
+        });
+    }
+
+    [Test]
+    public void FocusCleanup_DoesNotEnableAuthoredDisabledPixelExtension()
+    {
+        WithPixelPerfectOutput((output, pixel, extension) =>
+        {
+            extension.enabled = false;
+            Assert.That(_controller.TryFocus(_leftObject.transform, 5.37f, CameraShotStyle.Dynamic,
+                0f, CameraControlLease.None, out var token, out string error), Is.True, error);
+            _controller.Cancel(token, true);
+            Assert.That(extension.enabled, Is.False);
+            Assert.That(pixel.enabled, Is.True);
+        });
+    }
+
+    private void WithPixelPerfectOutput(System.Action<Camera, PixelPerfectCamera, CinemachinePixelPerfect> verify)
+    {
+        var outputObject = new GameObject("PixelPerfectCommandOutput");
+        var texture = new RenderTexture(640, 480, 0);
+        try
+        {
+            Camera output = outputObject.AddComponent<Camera>();
+            output.orthographic = true;
+            output.targetTexture = texture;
+            var pixel = outputObject.AddComponent<PixelPerfectCamera>();
+            pixel.assetsPPU = 32;
+            pixel.refResolutionX = 640;
+            pixel.refResolutionY = 480;
+            pixel.gridSnapping = PixelPerfectCamera.GridSnapping.UpscaleRenderTexture;
+            pixel.cropFrame = PixelPerfectCamera.CropFrame.Windowbox;
+            pixel.runInEditMode = true;
+            typeof(PixelPerfectCamera).GetMethod("UpdateCameraProperties", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(pixel, null);
+            var extension = _cameraObject.AddComponent<CinemachinePixelPerfect>();
+            var brain = outputObject.AddComponent<CinemachineBrain>();
+            brain.ManualUpdate();
+            verify(output, pixel, extension);
+        }
+        finally
+        {
+            _controller.ResetCamera(0f);
+            Object.DestroyImmediate(outputObject);
+            Object.DestroyImmediate(texture);
+        }
+    }
+
+    private void AssertPixelPerfectPipelineLens(Camera output, PixelPerfectCamera pixel, float expected)
+    {
+        _virtualCamera.UpdateCameraState(Vector3.up, -1f);
+        Assert.That(_virtualCamera.State.Lens.OrthographicSize, Is.EqualTo(expected).Within(0.001f));
+        output.orthographicSize = _virtualCamera.State.Lens.OrthographicSize;
+        typeof(PixelPerfectCamera).GetMethod("OnBeginCameraRendering", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(pixel, new object[] { default(UnityEngine.Rendering.ScriptableRenderContext), output });
+        Assert.That(output.orthographicSize, Is.EqualTo(expected).Within(0.001f));
+        Assert.That(pixel.enabled, Is.True);
     }
 
     [Test]

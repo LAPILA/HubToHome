@@ -105,4 +105,5 @@ MonoBehaviour:
   MinPitch: 0.95
   MaxPitch: 1.05
   VoiceBlipSound: {fileID: 0}
-  VoicePitch: 1
+  VoicePitch: 0.9
+  VoiceVolume: 0.28

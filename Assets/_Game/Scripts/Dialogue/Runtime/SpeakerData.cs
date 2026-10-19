@@ -24,6 +24,10 @@ public class SpeakerData : SerializedScriptableObject
     [Tooltip("소리 높낮이 조절")]
     public float VoicePitch = 1.0f;
 
+    [Range(0f, 1f), LabelText("대사 소리 크기")]
+    [Tooltip("화자별 기본 음량입니다. 기존 화자는 1을 유지하며 설정의 효과음 음량은 SFX 믹서에서 적용됩니다.")]
+    public float VoiceVolume = 1f;
+
     [BoxGroup("초상화 (표정별)")]
     [OdinSerialize]
     [DictionaryDrawerSettings(KeyLabel = "표정 (Emotion)", ValueLabel = "이미지")]

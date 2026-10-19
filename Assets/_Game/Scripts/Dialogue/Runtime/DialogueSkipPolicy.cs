@@ -2,5 +2,5 @@
 public static class DialogueSkipPolicy
 {
     public static bool RequiresInput(DialogueNode node)
-        => node == null || node.IsChoiceNode || node.EventTriggerID == "RequestName";
+        => node == null || node.IsChoiceNode;
 }

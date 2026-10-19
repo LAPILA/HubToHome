@@ -1,5 +1,20 @@
 # Overworld 규칙
 
+## 임시 프롤로그 (2026-10-19)
+
+- 새 게임의 열차 도착은 Region_Train/all.trainq0/default이며 RegionEntryCoordinator의 암전 중 준비를 유지한다. 3초는 SceneLoader 공개 완료 이후 실제 탐색 가능 시간만 누적한다.
+- PrologueTrainSequence는 Q0 로컬 사건/위치 진입과 기존 전역 완료 플래그만 소유한다. 룸 비활성화 시 소유 대사·그림·Tween·Overlay를 정리하고 다른 상태 소유자를 덮어쓰지 않는다. 실제 광원·전역 TimeScale은 변경하지 않는다.
+- 열차 음향은 공통 PrologueTrainAudioProfile과 AudioManager 자식의 전용 세션2D소스2개로 소유한다. 주행음은 창가부터 객차까지 같은 소스로 이어지며 후미 걷기에만 fade-out한다. 공용 PlayAmbience/StopAmbience를 쓰면 MapSettings가 씬 진입에 지우므로 이 용도로 사용하지 않는다. SFX 믹서로 설정 음량을 적용하고 중복 곱하지 않는다. 페이지 알림 구독·연출음·Tween은 실패/취소/방 비활성화/허용 씬 이탈 때 자기 것만 정리한다.
+- IllustratedStoryAsset/Player는 원본 그림/클립과 기존 DialogueData를 연결하는 표시 전용 Presentation이다. 새로운 시나리오 문법·대화 매니저·RenderTexture를 추가하지 않는다. 3초 임시 사건은 향후 실제 이벤트로 대체할 대상이다.
+- Aseprite UI는 미리 추출한 IllustratedStoryFrame(Sprite/Time)을 직접 표시한다. 비Legacy PPtr클립을 Animator 없는 임시GO에서 SampleAnimation으로 평가하지 않는다. 원본클립변경시 Story의 프레임 갱신을 사용하며, clip.length로반복/단발최종hold를유지한다. 텍스트전용Caption페이지는 그림없이 중앙표시하고 페이드/최소시간 후 자동 진행할 수 있다.
+
+## 필드 메뉴 (2026-10-18)
+
+- 기존 OverworldMenuUI 등록과 직렬화 참조를 유지한다. 내부 FieldMenuView/FieldMenuGrowthView는 한 번 만들고 목록·노드·연결선을 재사용한다. 페이지는 가방·장비·동료·일지이며 설정은 별도 shortcut이다.
+- 동료 상태/성장은 한 페이지의 두 탭이다. 실제 DB의 스킬 트리와 현재 저장 파티만 표시하고 UI 확인을 위해 파티/레벨/재화를 생성하지 않는다. 능력치 초안은 동료 전환 후 유지하며 적용 전까지 저장하지 않는다. 종료 시 초안 폐기 확인을 기본 취소로 제공한다.
+- 메뉴는 소유한 pause/timeScale만 닫기·disable·destroy에서 멱등 복원한다. 활성 전투에서는 보기만 허용하고 필드 아이템·장비·성장 변경은 기존 서비스와 UI 양쪽에서 막는다.
+- 일지 읽기 항목은 소지한 기록 아이템 기반이다. 현재 목표 한 줄은 기존 JournalCatalog의 읽기 전용 목표 투영으로, 새 퀘스트 시스템을 추가하지 않는다. 자세한 터치/안전 영역/입력 소유권은 docs/ui-policy.md를 따른다.
+
 ## 챕터 1 합류·저장·재등장 (2026-10-16)
 
 - 본편 새 게임은 주인공 한 명이며 필드에는 기존 위젤만 표시한다. 동료 합류는 `PartyRecruitmentTrigger` 또는 `GlobalDataManager.TryRecruitPartyMember`로 연결하고 안정적인 CharacterID와 완료 플래그를 쓴다. 합류 확인용 필드 복제/디버그 UI를 만들지 않는다.
@@ -28,6 +43,10 @@
 - 방향값: 0 Down, 1 Up, 2 Left, 3 Right.
 
 ## 작업 규칙
+
+- 플레이어 기본/탐색 Order는 3 고정이다. Y좌표를 Order에 곱하지 않는다. 같은 Characters/order3은 renderer CustomAxisY로 정렬하며 플레이어 Pivot/소품 바닥 루트 SortingGroup을 기준으로 한다. 일반 Y정렬을 위해 매프레임 새 Order 스크립트를 플레이어에 중복 부착하지 않는다. 기존 전투 foreground boost/복원은 유지한다. 배경/타일/기존 적/샘플 Y베이크를 일괄 변경하지 않는다.
+
+- 아이템 상자는 `ItemPickupMarker.keepVisibleAfterPickup`과 기존 완료 플래그를 사용한다. 기본 바닥 아이템 숨김은 유지한다. 지급 전 등록·전체 소지 여유를 확인하고 지급 성공 즉시 완료/열림을 확정하며 대사 완료 콜백에 보상을 묶지 않는다. 열린 상자는 FlagChanged로 저장 복원 시 외형·상호작용을 동기화한다. 복제 배치는 고유 markerId/해당RoomId를 설정하며 개봉 자체에 새 자동저장을 추가하지 않는다.
 
 - 저장 지점은 SaveManager.CanSaveCurrentProgress를 위치 동기화 전에 검사하고 TrySave 결과를 반환한다. 전투/후열 선택/복구 중 저장을 막는다. 실패한 저장에 성공 색상·자동 저장 방문 완료 상태를 적용하지 않는다.
 - 이동 가능 여부는 `GameStateManager.CanPlayerMove`를 확인한다.

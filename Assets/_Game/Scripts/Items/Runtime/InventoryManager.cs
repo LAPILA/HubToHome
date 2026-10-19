@@ -162,7 +162,8 @@ public class InventoryManager : MonoBehaviour
             if (players[i] == null || players[i].CharacterData == null) continue;
             for (int j = 0; j < targets.Count; j++)
             {
-                if (!string.Equals(players[i].CharacterData.CharacterID?.Trim(), targets[j].CharacterDataID?.Trim(), System.StringComparison.Ordinal)) continue;
+                // DB ID is shared by sample clones; only the bound save owns these vitals.
+                if (!players[i].IsBoundToSaveData(targets[j])) continue;
                 try { players[i].SynchronizePersistentVitals(targets[j]); }
                 catch (System.Exception exception) { Debug.LogException(exception, players[i]); }
                 break;

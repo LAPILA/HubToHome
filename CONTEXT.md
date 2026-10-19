@@ -1,5 +1,37 @@
 # HubToHome
 
+## 임시 프롤로그 (2026-10-19)
+
+초기4컷은 Two empire.wav를 BGM으로 재생하고 현재 자막에서 fade-out한다. 본문은 Story.NarrationCharactersPerSecond=10, 중앙 자막은 Page.CaptionCharactersPerSecond=4/전체 표시 후1.2초 유지다. 일반 DialogueUI도 Cinematic 스타일 또는 대화 진입 전 Cutscene 상태이면14cps로 설정 속도에서 분리한다. 일반 대화는 원본 timing/설정 속도로 복구하며 공유 Text Animator 자산을 수정하지 않는다. ShowText 직후 속도 적용으로 기존2프레임 재적용 코루틴을 제거했다.
+
+열차 음향은 Prologue_TrainAudio 공통 프로필과 AudioManager 자식의 PrologueTrainAudioSession이 소유한다. 창가부터 주행loop가 인트로→객차 씬 전환에도 이어지고, 사고에 파워다운1회, 후미 걷기 시작에 주행1.8초fade-out/발걸음2.4초를 재생한다. 전용2D소스2개/SFX믹서를 사용하며 MapSettings의 공용 환경음·BGM은 변경하지 않는다. 페이지 시작 알림은 표시 전용 이벤트이고 새 시나리오 문법이나 저장 데이터가 아니다.
+
+창가 반복 장면은 원본128×96을3배(384×288), 화면 중심보다60px 위에 표시한다. 후미 이동/Monster만 Page.FullScreen으로640×480을채운다. 초기4컷3배위쪽정렬은유지하며 Page.MuteTypingSound를켜서글자효과음을끄고, 창가위젤대사부터는소리를복구한다. 기본내레이션소리0.85/.25, 위젤0.9/.28(피치/음량)이며기존SFX믹서를따른다. DialogueTextAnimationPolicy는실효공유설정을개별로복사해appearance/disappearance를끄고타이핑/음성/Behaviors를유지한다. 외부공유설정asset을직접변경하지않는다.
+
+새 게임은 타이틀 → IntroScene의4컷 내레이션 → 검정 화면 중앙 '그리고 현재…' 자막 → 창가 반복 → Region_Train/all.trainq0/default → 탐색3초 후 이상 징후 → 오른쪽 후미 진입/이동 애니메이션1회/Monster 공개로 연결된다. 국가명은 B제국, 본문은40px/중앙 정렬이다. 이름 입력은 호출하지 않으며 위젤 고정, 옛 저장 스키마는 보존한다. IllustratedStoryAsset/Player는 그림 표시 Presentation이고 기존 DialogueData/DialogueManager/DialogueUI를 재사용한다. 애니메이션은 원본 클립에서 미리 추출한 Frames(Sprite/Time)를 직접 선택하며 숨김 Renderer/런타임 SampleAnimation에 의존하지 않는다. 시나리오 문법·Action Sequence 원본을 대체하지 않는다. 사건 지연/위치 진입은 방 수명의 PrologueTrainSequence가 소유하며 성공 시만 기존 전역 플래그를 확정한다. 데이터 위치·임시 종료·검증 한계는 [사용법](AIAssets/yjlim/feedback/2026-10-19-prologue-prototype.md)에 기록했다.
+
+## 플레이어 정렬 (2026-10-19)
+
+플레이어의 기본/탐색 Sorting Order는 3 고정이며 Y×100 값을 더하지 않는다. 같은 Characters/order3에서 실제 Y깊이로 정렬한다. Player SpriteSortPoint는 Pivot, 상자는 바닥 루트의 SortingGroup3을 사용하며 자식 Visual의 내부 order는 보존한다. URP2D의 RendererData는 CustomAxis(0,1,0)를 명시한다(Default는 ProjectGraphicsSettings를 따르지 않음). 기존 전투 foreground boost5000과 복원은 유지한다. 기존 OverworldEnemy의 동적 정렬이나 샘플 생성기 Y베이크는 이번 수정 대상이 아니므로 새 동일 Order 소품 규칙과 혼용 범위를 확인한다. [상세](AIAssets/yjlim/feedback/2026-10-19-player-sorting.md).
+
+## 아이템 상자 (2026-10-19)
+
+`ItemPickupMarker`의 선택적 열린 외형 유지 모드를 상자에 사용한다. `InventoryEntryService`로 등록/전체 수량 여유를 검사하고 지급 성공 직후 기존 `AreaMarkerStateService` 완료 플래그를 확정한다. 대사는 보상 commit 이후의 표현이며 취소/누락으로 재지급하지 않는다. 기본 바닥 아이템은 기존처럼 숨긴다. 열린 상자는 실제 GlobalDataManager.FlagChanged로 이전 저장의 닫힘까지 복원하며 새 SaveData 필드나 개봉 자동저장은 없다. 복제한 상자는 Room ID/markerId를 각각 확인한다. [제작·검증](AIAssets/yjlim/feedback/2026-10-19-item-chest.md).
+
+## 고정 UI 조명 분리 (2026-10-19)
+
+`UIRuntimeGuard` → `UIViewportService`에 등록된 화면 UI는 최상위 Canvas의 `ScreenSpaceOverlay`/worldCamera=null로 렌더링한다. 일반 UI의 `FixedCanvasViewport`와 기존 HUD/대사 viewport가 640×480 콘텐츠/정수 배율을 보존하고 게임 카메라의 출력 경계만 따른다. 화면 좌표 변환 카메라(null)와 경계 조회용 `GetOutputCamera`를 혼동하지 않는다. 루트 Default 정렬 레이어와 기존 창별 order를 사용하며 대사/레터박스/페이드 우선순위를 보존한다. SafeAreaFitter는 공통 콘텐츠 안에서 동작한다. 독립 WorldSpace 말풍선·전조 VFX·월드 조명/Volume는 변경하지 않는다. [범위·검증](AIAssets/yjlim/feedback/2026-10-19-ui-light-isolation.md).
+
+## 필드 메뉴 계약 (2026-10-18)
+
+`OverworldMenuUI`는 기존 패널 등록·프리팹 참조를 유지하는 진입점이다. `FieldMenuView` / `FieldMenuGrowthView`를 한 번 생성해 재사용하며 가방·장비·동료·일지 4탭을 표시한다. 동료 상태와 성장은 통합하고 `SkillTreeDefinition`의 실제 좌표·선행 조건을 사용한다. 능력치 미리 배분은 캐릭터 저장 인스턴스별 초안이며 `TryInvestGrowthStats` → `CharacterGrowthService.TryInvestBatch`가 전체 검증 후 한 번 확정한다. 실제 저장·재화·공용 레벨·개인 포인트만 표시하며 샘플 동료를 생성하지 않는다.
+
+일지는 소지한 `RequiredItemId`와 표시 조건을 만족하는 `JournalEntry`만 읽는다. 퀘스트 진행/수락/보상을 만들지 않으며 목표 한 줄은 기존 `IsObjective` 플래그 투영이다. 모바일 메뉴는 `FieldMenuTouchInput`이 실제 Touchscreen만 받아 같은 명령으로 전달한다. 공용 EventSystem의 PC 포인터 액션은 계속 비연결이며 메뉴 수명 동안 가상패드를 숨기고 입력을 해제한다. 안전 영역은 공용 출력 Rect와 `Screen.safeArea`의 교집합에 같은 정수 fit 수식을 적용한다. 기준 미만 화면은 축소 예외다. [구현·사용법·검증 한계](AIAssets/yjlim/feedback/2026-10-18-field-menu.md).
+
+## 픽셀 출력 계약 (2026-10-16)
+
+고정 UI는 `UIViewportService`의 실제 화면/카메라 교집합과 정수 fit 배율을 공유한다. CanvasScaler는 런타임 ConstantPixelSize, Canvas.pixelPerfect=true; HUD/대사는 같은 640×480 콘텐츠 Rect와 정수 시작점을 사용한다. 공유 카메라·타이틀·인트로 PPC는 Windowbox/Point, Mobile RenderScale=1이다. 기준 미만 출력의 축소는 가시성 예외이며 무손실이 아니다. 일반 Focus와 그룹 프레이밍도 기존 CinemachineContinuousPixelZoom의 명령 소유권을 사용하며 Reset/Cancel/Timeline/Disable에서 복원한다. 기본 Lens 직접 편집은 정수 보정, 실행 중 Odin `대상 확대 / 축소`는 연속 줌이다. 렌더러 슬롯·조명·SDF 폰트·카메라 회전은 임의 변경하지 않는다. [원인·사용법·검증 한계](AIAssets/yjlim/feedback/2026-10-16-pixel-output.md).
+
 ## 챕터 1 공통 계약 (2026-10-16)
 
 - **파티 공용 성장**: `PartyProgressionService` / `GlobalDataManager.GrantPartyExperience`가 파티 EXP와 최대 99레벨을 한 번만 계산한다. 개인별 저장 레벨/EXP는 호환용 투영이며, 능력치 투자·스킬 구매는 캐릭터별이다. 레벨업은 포인트만 지급하고 능력치를 자동 증가시키지 않는다. 초기화는 무료·반복 가능하되 전투 중 변경은 차단한다.
@@ -8,7 +40,7 @@
 - **자동저장과 재도전**: 보스 승리와 연결된 진행 이벤트 성공은 자동저장을 예약하고 안정된 탐색에서 기록한다. 일반 잡담/모든 일반전 종료에는 적용하지 않는다. `BattleRetryCheckpoint`는 보스/도주 불가 필수전의 진입 전 상태를 메모리에만 보관해 아이템 등까지 복구하며, 일반 패배는 최근 저장을 사용한다. 이는 진행 중 전투의 디스크 저장이 아니다.
 - **입력과 전투 결과**: 일반 방어는 65% 감소, 저스트가드는 피해 0 + AP, 회피는 피해 0이며 기본 AP 보상은 없다. `PlayerAttackQtePolicy`의 성공은 정상 피해 1.0, 실패는 감소 피해이며 QTE 자체의 AP/고유 자원 보상은 없다. 스킬·장비 고유 효과는 별도다. 전투 후 HP/AP는 유지하고 전투 상태만 정리한다.
 - **저장 호환**: 스키마 v5의 공용 성장은 이전 파티 중 가장 진행한 멤버로 초기화하며 EXP를 합산하지 않는다. 투자·해금·장비·HP/AP를 보존한다. 기존 적 상태의 `RespawnOnManualSave` 누락은 false로 읽고 필드 적 등록 때 등급에 따라 갱신한다. 적의 `EnemyRank`와 `EnemyKind`는 독립 분류이며 기존 보스 데이터는 등급을 명시해야 한다.
-- **대화와 정보 UI**: `FlagDialogueSelector`는 진행 플래그와 소지 아이템 조건을 함께 검사하되 조회로 아이템을 소비하지 않는다. X 대화 스킵은 확정된 노드 이벤트를 보존하고 선택/이름 입력에서 멈춘다. 일지/현재 목표는 `JournalCatalog`의 플래그 조건으로 표시하며 본문·선택지·화자에 번역 키를 연결한다.
+- **대화와 정보 UI**: `FlagDialogueSelector`는 진행 플래그와 소지 아이템 조건을 함께 검사하되 조회로 아이템을 소비하지 않는다. X 대화 스킵은 확정된 노드 이벤트를 보존하고 선택/이름 입력에서 멈춘다. `JournalCatalog`의 목표는 플래그 조건으로, 일지는 소지한 기록 아이템과 플래그 조건으로 표시한다. 본문·선택지·화자에 번역 키를 연결한다.
 - **전투 메뉴 정지**: Escape/패드 Start/모바일 일시정지로 기존 메뉴를 열며 C 반격과 분리한다. `BattleDelay`, 스킬 블록 경계와 애니메이션 완료 제한시간은 메뉴/설정 중 판정 진행을 멈춘다. 음악과 표시용 unscaled 장식은 별도다. 전투 진입/결과/대사/후열 선택 도중 메뉴를 중첩하지 않는다.
 
 세부 범위와 미확정 콘텐츠는 [챕터 1 구현 계약](docs/superpowers/specs/2026-10-16-chapter01-foundation-design.md)을 따른다. 실제 기기 측정 없이 무발열·프레임 저하 없음·즉시 로딩 달성을 선언하지 않는다.
@@ -44,11 +76,11 @@ _Avoid_: shared/static current steps, save-file pressure, character-name checks,
 HubToHome is a Unity RPG project whose player-facing flow moves between overworld exploration, battle presentation, dialogue, and menu-driven actions.
 
 **Overworld Menu Shell**:
-The exploration menu surface that frames category choice, party status, and money without itself being a category's content.
+The existing registered field-menu entry point. Its cached 640×480 surface has Bag, Equipment, Companion and Journal pages, shared progression/currency, party cards and a separate settings shortcut. Companion unifies status, drafted stat investment and the authored skill tree. The serialized legacy enum/anchors remain compatibility data, not the current navigation model.
 _Avoid_: Options panel, pause menu, inventory window
 
 **Category Window**:
-The framed content area associated with one selected Overworld Menu Shell category: ITEM, EQUIP, POWER, or CONFIG.
+The framed content area associated with Bag, Equipment, Companion or Journal. Settings opens the separate Config Panel rather than occupying a fifth page. Journal means collected reading items, not quests.
 _Avoid_: Main menu, dialogue box
 
 **Config Panel**:
@@ -69,9 +101,9 @@ The BunnySlime development lab explicitly overrides only its existing real camer
 
 Developer: "Pressing C should open the Overworld Menu Shell, not the Config Panel."
 
-Designer: "Then the player chooses ITEM, EQUIP, POWER, or CONFIG from the shell."
+Designer: "Then the player chooses Bag, Equipment, Companion, or Journal; settings has its own shortcut."
 
-Developer: "Choosing a category opens its Category Window; CONFIG may show settings later, but the shell and the Config Panel are still separate concepts."
+Developer: "The Companion page unifies status and growth. The field menu and Config Panel still have separate lifetimes."
 
 **Seamless Battle Host**:
 The shared scene-local composition root used by both Room-based seamless Battle and the dedicated BattleScene. Its prefab is the single source for one BattleManager, PositionManager, battle UI root, duplicate-root prevention, and emergency abort delegation; the dedicated scene keeps only scene presentation objects and explicit dedicated-mode overrides. BattleManager still owns combat rules and the shared seamless cleanup boundary.
@@ -267,7 +299,7 @@ Telegraph playback uses the actual START AnimationClip and its length, sampled d
 Ordinary battle stages the opposing ally/enemy pair at `PositionManager.CenterPos` ±1.25 units over 0.28s. `BattleDefenderPresentationScope` owns both temporary positions and the PlayerController defense anchor; default Approach/OriginalPos skill moves use these staging positions until the action ends. X dodge retreats world-left 1.5 units (48px at 32 PPU), then returns to staging; hurt recoil stays at most 0.1875 units. Completion animates both home returns; cancellation/module exit/disable restores synchronously. Sequential melee stages its actual target; AoE stages one representative defender without changing the damage roster. Support skills/items do not move an enemy. Central approach preserves each actor's Z and uses CenterPos ground Y. Authored special Top/Back/Center moves remain explicit. Player returns stay on the ground. Camera framing uses finite 0.16s DOTween transitions and a 0.18s return, overview ×0.70 zoom and multi-target visibility margins. No constant drift/breathing zoom; meaningful displacement (0.75 units) triggers reframing. Ordinary impacts use a small zoom response instead of repeated random Impulse/global hit-stop. QTE preparation holds the camera through resolution plus 0.12s grace. Shared GameplayCameraRig disables the legacy static policy; that toggle remains a compatibility option. Output PixelPerfectCamera keeps 32 PPU / 640×480; a scoped CinemachineContinuousPixelZoom bypasses only orthographic quantization during action/reset and restores the original extension. Exact integer pixel mapping during fractional zoom/roll is not promised. Timeline leases remain exclusive.
 
 **Battle HUD Viewport / Rhythm Skill**:
-BattleHudViewport isolates only battle HUD/QTE in ScreenSpaceOverlay with a runtime 640×480 child root fitted to the output camera viewport. Existing anchors, sibling order and object references remain intact; world-tracked popups keep their camera. The HUD does not inherit camera rotation/zoom/impulse. It renders behind global result/save/fade and hides only its Canvas during system modal/pause so existing camera-rendered settings remain readable. UIViewportService respects this opt-in instead of rebinding it as ScreenSpaceCamera. Action_RapidStrikes is a PlayerOnly local SkillData block: five seconds, hits every 0.1s (50 hits), independent Z/X/C prompts every 0.65s with 0.45s windows. QTEManager.StartSkillInputStream owns input/presentation and a pausable elapsed clock, not damage; the block schedules damage separately. Results change damage multipliers, never timing. PlayerCharacter owns temporary rapid attack animation speed and restores it when interrupted. Action_AerialCrossSlash is a separate skill: approach/rise/camera 360-degree roll/one X prompt/three crossing strikes/return. The actor Transform never rotates; HUD/QTE stay upright. Rapid strikes do not roll the camera. Before an upright follow-up camera beat, normalize completed turns so 360-to-zero does not rewind. Existing TakeDamage/events/AP/turn/staging owners remain unchanged. Authored camera beats use the existing action token, never directly write Lens/Follow, and stale cleanup cannot affect newer shots. Owned movement/rotation/flip/animation speed/QTE state is restored on completion or cancellation.
+BattleHudViewport owns battle HUD/QTE in ScreenSpaceOverlay with a runtime 640×480 child root fitted to the output camera viewport. General fixed UI now uses the same overlay isolation through FixedCanvasViewport; world-tracked popups keep their camera. Existing anchors, sibling order and object references remain intact. The HUD does not inherit camera rotation/zoom/impulse. It renders behind global result/save/fade and hides only its Canvas during system modal/pause to preserve modal/input ownership. UIViewportService respects its specialized owner. Action_RapidStrikes is a PlayerOnly local SkillData block: five seconds, hits every 0.1s (50 hits), independent Z/X/C prompts every 0.65s with 0.45s windows. QTEManager.StartSkillInputStream owns input/presentation and a pausable elapsed clock, not damage; the block schedules damage separately. Results change damage multipliers, never timing. PlayerCharacter owns temporary rapid attack animation speed and restores it when interrupted. Action_AerialCrossSlash is a separate skill: approach/rise/camera 360-degree roll/one X prompt/three crossing strikes/return. The actor Transform never rotates; HUD/QTE stay upright. Rapid strikes do not roll the camera. Before an upright follow-up camera beat, normalize completed turns so 360-to-zero does not rewind. Existing TakeDamage/events/AP/turn/staging owners remain unchanged. Authored camera beats use the existing action token, never directly write Lens/Follow, and stale cleanup cannot affect newer shots. Owned movement/rotation/flip/animation speed/QTE state is restored on completion or cancellation.
 
 **Link Counter (연계 반격)**:
 A successful C defense against an explicitly Counterable enemy skill. The lab and authoring template stage this ultimate at PositionManager's center X, preserving ground Y/Z, before its telegraph. `Action_DefenseWindow` interrupts the remaining skill timeline and calls `BattleLinkCounterService`, which uses only the attacked living front-line defender. That defender immediately parries while recoiling world-left (0.85 units / 0.13s), lunges back in (0.16s), plays attack-ready and attacks in place, then returns together with the attacker directly to both home positions. The enemy is not knocked back by the parry. `PlayerController.PlayCounterParry` keeps ordinary parry VFX but does not let the color tween restore an obsolete defense anchor during the lunge. The counter owns its recoil camera hold and retargets the existing action shot without replacing the root token. Other allies and reserves stay put. Damage uses the defender's ATK (default 1.5 multiplier). This is a defense reaction, not an extra turn, AP reward, player skill execution, or action-bound status tick. The counter service owns paired return and cancellation cleanup; surrounding Turn QTE flow retains fallback enemy return, outcome checks, and turn advancement.

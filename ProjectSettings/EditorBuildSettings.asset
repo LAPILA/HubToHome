@@ -6,11 +6,11 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity
-    guid: ab3ad379232158a4ba849675b37b1afb
-  - enabled: 1
     path: Assets/_Game/Content/Maps/Development/Regions/Title/00_TitleScene.unity
     guid: f9c01da499d98a74fa4805594609eec7
+  - enabled: 1
+    path: Assets/_Game/Content/Maps/Development/TestMap/TestMap.unity
+    guid: ab3ad379232158a4ba849675b37b1afb
   - enabled: 1
     path: Assets/_Game/Content/Maps/Development/Regions/Title/01_IntroScene.unity
     guid: 4a935b649d9247e47be209a4cbd28661
@@ -29,6 +29,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Game/Content/Maps/Development/Regions/WideField/Scenes/Region_WideField.unity
     guid: 506ee73fd65b6b946be1241f51602a3e
+  - enabled: 1
+    path: Assets/_Game/Content/Maps/Regions/ALL/Scenes/Region_Train.unity
+    guid: db5cc8cdc997a2b4cbe2d0a2c1375232
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

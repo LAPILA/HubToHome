@@ -2,7 +2,7 @@ using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
-/// <summary>전투 숏 동안만 렌즈 양자화를 완화합니다. 출력 PixelPerfectCamera는 끄지 않습니다.</summary>
+/// <summary>포커스·그룹 프레이밍·전투 숏이 소유한 동안 렌즈 양자화를 완화합니다. 출력 PixelPerfectCamera는 끄지 않습니다.</summary>
 [DisallowMultipleComponent]
 [DefaultExecutionOrder(-79)]
 public sealed class CinemachineContinuousPixelZoom : CinemachineExtension

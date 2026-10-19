@@ -10,13 +10,13 @@ public class DialogueManager : MonoBehaviour
     [Header("UI 패널 참조")]
     [SerializeField] private DialogueUI _overworldPanel;
     [SerializeField] private DialogueUI _cinematicPanel;
-    [SerializeField] private NameInputUI _nameInputUI; // 🚨 인스펙터에서 꼭 연결
+    // 이전 프리팹의 직렬화 참조와 취소 정리만 보존합니다. 이름 입력은 실행하지 않습니다.
+    [SerializeField, HideInInspector] private NameInputUI _nameInputUI;
 
     private DialogueUI _activeUI;
     private DialogueData _currentDialogue;
     private int _currentNodeIndex;
     private bool _isPlaying = false;
-    private bool _isNaming = false;
     private Action _onCompleteCallback;
     private Action _onCancelledCallback;
     private DialogueEncounterContext _encounterContext;
@@ -106,6 +106,7 @@ public class DialogueManager : MonoBehaviour
         _playbackStartFrame = Time.frameCount;
 
         AcquireDialogueState();
+        _activeUI.ConfigureTypingStyle(DialogueStyle.Overworld);
         _activeUI.RebindCanvasCameraImmediate();
         _activeUI.OpenPanel();
         _activeUI.DisplayPrompt(prompt);
@@ -115,6 +116,34 @@ public class DialogueManager : MonoBehaviour
 
     public bool TryStartDialogue(
         DialogueData data,
+        Action onComplete,
+        Action onCancelled,
+        DialogueEncounterContext encounterContext,
+        out int playbackGeneration)
+        => TryStartDialogueInternal(data, null, onComplete, onCancelled, encounterContext, out playbackGeneration);
+
+    /// <summary>삽화 연출 전용 복제 패널. 공용 전투/필드 패널의 배치는 변경하지 않습니다.</summary>
+    public DialogueUI CreateNarrationPanel(Transform parent)
+        => _cinematicPanel != null && parent != null ? _cinematicPanel.CreateNarrationCopy(parent) : null;
+
+    public bool TryStartDialogueOnPanel(
+        DialogueData data,
+        DialogueUI panel,
+        Action onComplete,
+        Action onCancelled,
+        out int playbackGeneration)
+    {
+        if (panel == null)
+        {
+            playbackGeneration = 0;
+            return false;
+        }
+        return TryStartDialogueInternal(data, panel, onComplete, onCancelled, null, out playbackGeneration);
+    }
+
+    private bool TryStartDialogueInternal(
+        DialogueData data,
+        DialogueUI presentation,
         Action onComplete,
         Action onCancelled,
         DialogueEncounterContext encounterContext,
@@ -136,7 +165,8 @@ public class DialogueManager : MonoBehaviour
         }
 
         bool inBattleHud = BattleUIController.Instance != null && BattleUIController.Instance.CanHostMainDialogue;
-        DialogueUI activeUI = inBattleHud && _overworldPanel != null ? _overworldPanel
+        DialogueUI activeUI = presentation != null ? presentation
+            : inBattleHud && _overworldPanel != null ? _overworldPanel
             : data.Style == DialogueStyle.Cinematic
             ? _cinematicPanel
             : _overworldPanel;
@@ -161,6 +191,7 @@ public class DialogueManager : MonoBehaviour
         AcquireDialogueState();
         LogDialogueConsole($"StartDialogue started data={GetDialogueName(data)} style={data.Style} nodes={data.Nodes.Count}");
 
+        _activeUI.ConfigureTypingStyle(data.Style, _stateBeforeDialogue == GameState.Cutscene);
         _activeUI.RebindCanvasCameraImmediate();
         _activeUI.OpenPanel();
         PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
@@ -177,8 +208,7 @@ public class DialogueManager : MonoBehaviour
             FinishDialogue(completed: false);
             return;
         }
-        // 🚨 이름 입력 중이거나 재생 중이 아니면 무시
-        if (!_isPlaying || _isNaming || _activeUI == null || _playbackStartFrame == Time.frameCount
+        if (!_isPlaying || _activeUI == null || _playbackStartFrame == Time.frameCount
             || _activeUI.IsWaitingForChoice
             || (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused)) return;
 
@@ -198,10 +228,10 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
-    /// <summary>이미 확정된 선형 구간만 빠르게 진행합니다. 선택/이름입력은 반드시 사용자에게 남깁니다.</summary>
+    /// <summary>이미 확정된 선형 구간만 빠르게 진행합니다. 선택지는 반드시 사용자에게 남깁니다.</summary>
     public bool TrySkipRemainingDialogue()
     {
-        if (!_isPlaying || _isNaming || _activeUI == null || _activeUI.IsWaitingForChoice
+        if (!_isPlaying || _activeUI == null || _activeUI.IsWaitingForChoice
             || _promptChoices != null || _currentDialogue == null) return false;
         _skipRequested = true;
         _skipGeneration = _playbackGeneration;
@@ -231,6 +261,8 @@ public class DialogueManager : MonoBehaviour
                 PlayNode(node);
                 return;
             }
+            // 이름 입력을 요구하던 이전 대본은 이벤트도 발생시키지 않고 통과합니다.
+            if (node.EventTriggerID == "RequestName") continue;
             if (!InvokeNodeEvent(node.EventTriggerID, generation, source, index))
             {
                 // 콜백이 연 새 대화의 상태를 이전 skip 요청으로 덮지 않습니다.
@@ -276,10 +308,10 @@ public class DialogueManager : MonoBehaviour
         _playbackStartFrame = Time.frameCount;
         LogDialogueConsole($"PlayNode data={GetDialogueName(_currentDialogue)} index={_currentNodeIndex} speaker={node.Speaker} key={node.LocalizationKey} event={node.EventTriggerID}");
 
-        // 🚨 1. 이름 입력 이벤트 체크
+        // 기존 대본과의 호환성만 유지합니다. 주인공 이름은 캐릭터 데이터의 고정 이름입니다.
         if (node.EventTriggerID == "RequestName")
         {
-            StartNamingProcess();
+            NextNode();
             return;
         }
 
@@ -291,6 +323,8 @@ public class DialogueManager : MonoBehaviour
         string finalText = rawText;
         try { finalText = string.Format(rawText, playerName); } catch { finalText = rawText; }
 
+        // 선택지가 다른 대본으로 분기해도 같은 패널에 이전 속도를 남기지 않습니다.
+        _activeUI.ConfigureTypingStyle(_currentDialogue.Style, _stateBeforeDialogue == GameState.Cutscene);
         _activeUI.DisplayNode(node.Speaker, node.Emotion, finalText);
 
         if (node.IsChoiceNode && node.Choices != null && node.Choices.Count > 0)
@@ -403,36 +437,13 @@ public class DialogueManager : MonoBehaviour
             encounterContext == null || encounterContext.PlayEntryPresentation);
     }
 
-    private void StartNamingProcess()
-    {
-        if (_nameInputUI == null)
-        {
-            Debug.LogError("NameInputUI가 매니저에 없습니다!");
-            FinishDialogue(completed: false);
-            return;
-        }
-
-        _isNaming = true;
-        _activeUI.ClosePanel();
-        int generation = _playbackGeneration;
-
-        _nameInputUI.Open(newName =>
-        {
-            if (!_isPlaying || generation != _playbackGeneration)
-                return;
-
-            if (GlobalDataManager.Instance != null)
-                GlobalDataManager.Instance.PlayerName = newName;
-            _isNaming = false;
-            _activeUI.RebindCanvasCameraImmediate();
-            _activeUI.OpenPanel();
-            NextNode();
-        });
-    }
-
     private void NextNode()
     {
         _currentNodeIndex++;
+        // 연속된 레거시 이름 노드도 재귀 호출 없이 넘깁니다.
+        while (_currentNodeIndex < _currentDialogue.Nodes.Count
+            && _currentDialogue.Nodes[_currentNodeIndex]?.EventTriggerID == "RequestName")
+            _currentNodeIndex++;
         if (_currentNodeIndex < _currentDialogue.Nodes.Count) PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
         else EndDialogue();
     }
@@ -472,7 +483,6 @@ public class DialogueManager : MonoBehaviour
 
         Action callback = completed ? _onCompleteCallback : _onCancelledCallback;
         _isPlaying = false;
-        _isNaming = false;
         _skipRequested = false;
         _onCompleteCallback = null;
         _onCancelledCallback = null;
