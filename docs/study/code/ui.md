@@ -43,7 +43,7 @@
 | [NameInputUI.cs](../../../Assets/_Game/Scripts/UI/Runtime/NameInputUI.cs) | 런타임 | `NameInputUI` |
 | [OptionRowUI.cs](../../../Assets/_Game/Scripts/UI/Runtime/OptionRowUI.cs) | 런타임 | `OptionRowUI` |
 | [OptionsPanelService.cs](../../../Assets/_Game/Scripts/UI/Runtime/OptionsPanelService.cs) | 런타임 | `OptionsPanelService` |
-| [OverworldMenuUI.cs](../../../Assets/_Game/Scripts/UI/Runtime/OverworldMenuUI.cs) | 런타임 | `OverworldMenuCategory`, `OverworldMenuUI` |
+| [OverworldMenuUI.cs](../../../Assets/_Game/Scripts/UI/Runtime/FieldMenu/OverworldMenuUI.cs) | 런타임 | `OverworldMenuCategory`, `OverworldMenuUI` |
 | [OverworldPartySlotView.cs](../../../Assets/_Game/Scripts/UI/Runtime/OverworldPartySlotView.cs) | 런타임 | `OverworldPartySlotView` |
 | [ParallaxLayer.cs](../../../Assets/_Game/Scripts/UI/Runtime/ParallaxLayer.cs) | 런타임 | `ParallaxLayer` |
 | [PartySlotUI.cs](../../../Assets/_Game/Scripts/UI/Runtime/PartySlotUI.cs) | 런타임 | `PartySlotUI` |

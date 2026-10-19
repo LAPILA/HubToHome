@@ -199,9 +199,38 @@ public sealed class FieldMenuEditingTests
         Assert.That(actor.IsBoundToSaveData(null), Is.False);
     }
 
+    [Test]
+    public void CancelledPointerHoldDoesNotConsumeNextFreshKeyboardSubmit()
+    {
+        Button button = _widgets.Button(_root.transform, "Repeat", "+", 0, 0, 32, 32,
+            new FieldMenuCommand(FieldMenuCommandKind.StatStep, 0, 1), true);
+        FieldMenuButtonRelay relay = button.GetComponent<FieldMenuButtonRelay>();
+        var pointer = new PointerEventData(_events);
+        relay.OnPointerDown(pointer);
+        relay.OnPointerExit(pointer); relay.OnPointerUp(pointer);
+        Assert.That(_commands.Count, Is.EqualTo(1));
+
+        relay.SubmitFromKeyboard();
+
+        Assert.That(_commands.Count, Is.EqualTo(2));
+        Assert.That(_commands[1].Kind, Is.EqualTo(FieldMenuCommandKind.StatStep));
+        Assert.That(GetField<bool>(relay, "_pointerGesture"), Is.False);
+    }
+
+    [Test]
+    public void PointerTapDoesNotApplyRepeatStepTwice()
+    {
+        Button button = _widgets.Button(_root.transform, "RepeatTap", "+", 0, 0, 32, 32,
+            new FieldMenuCommand(FieldMenuCommandKind.StatStep, 0, 1), true);
+        FieldMenuButtonRelay relay = button.GetComponent<FieldMenuButtonRelay>();
+        var pointer = new PointerEventData(_events);
+        relay.OnPointerDown(pointer); relay.OnPointerUp(pointer); relay.Submit();
+        Assert.That(_commands.Count, Is.EqualTo(1));
+    }
+
     private TMP_InputField Input(int index)
     {
-        Transform target = _growth.transform.Find("Attributes/AttributeRows/Stat" + index + "/Amount" + index);
+        Transform target = _growth.transform.Find("Attributes/AttributeRows/Viewport/Rows/Stat" + index + "/Amount" + index);
         Assert.That(target, Is.Not.Null);
         return target.GetComponent<TMP_InputField>();
     }

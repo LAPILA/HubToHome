@@ -73,17 +73,21 @@
 
 공용 모듈에서는 마우스뿐 아니라 직접 터치/펜/XR 포인터도 연결하지 않는다. 모바일 전용 입력은 아래 명시적 경로만 사용하며 공용 액션을 몰래 다시 켜지 않는다. Unity Editor 제작 도구의 마우스 조작과는 무관하다.
 
-### 필드 메뉴 직접 터치 예외
+### 필드 메뉴·설정의 국소 포인터 예외 (2026-10-19)
 
-- `OverworldMenuUI`의 `FieldMenuTouchInput`만 실제 모바일 `Touchscreen`을 읽는다. PC Mouse/펜/XR을 대신 터치로 취급하지 않는다.
+- `OverworldMenuUI`와 `ConfigPanelUI`의 `FieldMenuTouchInput`만 Mouse/Touchscreen을 읽는다. 사용자가 승인한 메뉴/설정 한정 예외이며 다른 게임 UI의 Point/Click/Scroll 액션은 비연결로 유지한다. PC 마우스는 터치로 위장하지 않고 Keyboard 안내 기기로 표시한다.
 - 메뉴의 같은 손가락·같은 hit에 대한 짧은 탭만 클릭한다. 이동은 ScrollRect 드래그로 전환하며 클릭을 취소한다. ±는 unscaled hold 반복이고 숫자는 TMP/기기 숫자 키보드로 입력한다.
 - 숫자 입력에서 다른 UI를 누르면 먼저 선택을 해제해 초안을 확정한다. 적용/동료 변경/페이지 변경/모달 진입도 편집을 종료한다. 모달·메뉴 종료 뒤 지연된 TMP 활성화는 `FieldMenuNumberInput`이 현재 선택 소유권을 검사해 차단한다.
 - 전환 중·상위 모달·닫히는 애니메이션에는 명령을 받지 않는다. 메뉴 GameObject가 실제 비활성화될 때까지 `MobileGameInputOverlay`는 가상패드를 숨기고 눌림을 해제한다. 닫는 버튼을 필드 확인/방어 입력으로 재사용하지 않는다.
 - 키보드/패드는 같은 제어기 명령을 사용한다. 버튼의 EventSystem 자동 탐색과 제어기의 방향 입력을 중복 실행하지 않는다. 실제 스위치 아이콘은 검증 없이 추측하지 않는다.
+- `FieldMenuNavigation`은 보이는 유효 버튼을 기준으로 포커스를 옮긴다. 탭·분류·동료·내용·적용·초기화·설정·뒤로에 방향키로 접근하며 Q/E/C/R은 필수가 아니다. 포인터 hold의 클릭 억제는 다음 키보드 확인으로 이어지지 않는다.
+- 설정은 메뉴 위 모달로 연다. 미확정 배분/메뉴 pause를 유지하고, 부모 강제 종료 시 자신이 연 설정을 먼저 정리한다. 설정창을 열려고 전역 전투 진입 제한을 해제하지 않는다.
 
 ### 필드 메뉴 기기 안전 영역
 
 `FieldMenuViewport`는 기존 Canvas의 출력 Rect와 `Screen.safeArea`를 교차한 후 **동일한** `UIViewportService.CalculateReferenceScale` / `CalculateContentScreenRect` 수식을 사용한다. Canvas 정수 배율을 다시 곱하지 않고 비율만 자식 프레임에 적용한다. 비대칭 노치는 화면 중심을 부모 로컬 좌표로 바꿔 반영한다. 기존 `UIPixelPerfectSafeAreaFitter`의 PPC-fit과 기기 노치 안전 영역은 같은 개념이 아니다. 640×480 미만 출력의 축소, 실제 휴대폰 글자/터치 크기와 TMP 줄바꿈은 실기기 확인이 필요하다.
+
+실제 필드 창은592×416이며 출력640×480을 바꾸거나 전체 글자를 비정수 축소하지 않는다. 숫자 편집의 OS 키보드는 `TouchScreenKeyboard.area`로 별도 회피하고 편집 후 위치를 복구한다(영역 미보고+실제visible일 때만 하단45% 보수적 대체). `FieldMenuBackdrop`은 메뉴 표시 전1회 캡처/저해상도2pass 필터만 소유하며 닫기/중단/리사이즈에 정리한다. UI/글자·공유 카메라 후처리를 흐리게 하지 않는다. [사용법과 한계](../AIAssets/yjlim/feedback/2026-10-19-field-menu-navigation.md).
 
 설정 화면은 수직동기화·목표 FPS를 노출하지 않는다. 내부 GameConfigManager의 기본 프레임 제한, 기기별 상한, 기존 저장값/API는 유지한다. 설정 행을 줄이는 것을 프레임 제한 해제로 구현하지 않는다.
 

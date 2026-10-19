@@ -61,4 +61,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ad0210e1000000000000000000000004, type: 2}
   - {fileID: 11400000, guid: ad0210e1000000000000000000000005, type: 2}
   - {fileID: 11400000, guid: ad0210e1000000000000000000000006, type: 2}
+  - {fileID: 11400000, guid: 7e5ad4cba3f04ca6a256a99938abc283, type: 2}
   PowerUnlocks: []

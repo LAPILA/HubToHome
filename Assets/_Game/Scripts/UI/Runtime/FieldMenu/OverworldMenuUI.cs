@@ -22,10 +22,6 @@ public enum OverworldMenuCategory
 /// </summary>
 public sealed class OverworldMenuUI : UIPanel
 {
-    private const float TopPanelHeight = 96f;
-    private const float BottomPanelHeight = 78f;
-    private const float SlideDuration = 0.22f;
-    private const float WindowDuration = 0.12f;
     private const int GrowthStatCount = 5;
 
     private static readonly Color Black = new Color(0f, 0f, 0f, 0.96f);
@@ -93,6 +89,9 @@ public sealed class OverworldMenuUI : UIPanel
 
     private FieldMenuView _view;
     private FieldMenuTouchInput _touch;
+    private FieldMenuNavigation _navigation;
+    private FieldMenuBackdrop _backdrop;
+    private ConfigPanelUI _settingsPanel;
     private GlobalDataManager _global;
     private readonly List<ItemData> _items = new List<ItemData>();
     private readonly List<EquipmentData> _equipment = new List<EquipmentData>();
@@ -104,7 +103,7 @@ public sealed class OverworldMenuUI : UIPanel
     private PlayerCharacter[] _runtimeParty = Array.Empty<PlayerCharacter>();
     private int _page, _filter, _row, _actor, _stat, _node;
     private bool _isOpen, _isAnimating, _contentFocus, _targeting, _reading, _dirty;
-    private bool _ownsPauseState, _openOptionsAfterClose, _modalChoice;
+    private bool _ownsPauseState, _modalChoice;
     private float _timeScaleBeforeOpen = 1f, _confirmAfter;
     private int _ignoreInputUntilFrame;
     private GameState _stateBeforeOpen;
@@ -134,6 +133,9 @@ public sealed class OverworldMenuUI : UIPanel
         gameObject.AddComponent<FieldMenuViewport>().Initialize(_view.Frame, canvas);
         _touch = gameObject.AddComponent<FieldMenuTouchInput>();
         _touch.Initialize(this, canvas, _view.Frame, CanInteract);
+        _navigation = new FieldMenuNavigation(_view.Frame, _view.NavigationButtons, PreviewNavigation);
+        _backdrop = gameObject.AddComponent<FieldMenuBackdrop>();
+        _backdrop.Initialize((RectTransform)_view.Frame.parent, canvas);
         _journalCatalog = _journalCatalog != null ? _journalCatalog : JournalCatalog.LoadDefault();
         SetVisible(false);
     }
@@ -148,7 +150,7 @@ public sealed class OverworldMenuUI : UIPanel
         LocalizationManager.LanguageChanged -= LanguageChanged;
         GameInput.DeviceChanged -= DeviceChanged;
         UnbindData(); KillMenuTweens(); RestorePreviousGameState(); _isOpen = false;
-        _drafts.Clear(); _openOptionsAfterClose = false; base.OnDisable();
+        _drafts.Clear(); base.OnDisable();
     }
     protected override void OnDestroy()
     {
@@ -193,11 +195,21 @@ public sealed class OverworldMenuUI : UIPanel
         if (_rootGroup != _canvasGroup) { _rootGroup.alpha = 1; _rootGroup.interactable = true; _rootGroup.blocksRaycasts = true; }
         Refresh();
         KillMenuTweens();
+        _navigation.Select(_navigation.Find(FieldMenuCommandKind.Page, _page), false);
+        _backdrop.Prepare(BeginShowAnimation);
+    }
+    private void BeginShowAnimation()
+    {
+        if (!_isOpen || !isActiveAndEnabled) return;
+        KillMenuTweens();
         _panelSequence = DOTween.Sequence().SetUpdate(true).SetRecyclable(false).SetLink(gameObject);
         _panelSequence.Append(_canvasGroup.DOFade(1, .16f));
         _panelSequence.OnComplete(() => { if (this == null) return; _panelSequence = null; _isAnimating = false; });
     }
-    public override void ShowImmediate() { Show(); if (_panelSequence != null) _panelSequence.Complete(); }
+    public override void ShowImmediate()
+    {
+        Show(); _backdrop?.Release(); BeginShowAnimation(); _panelSequence?.Complete();
+    }
     public override void FocusDefaultSelection()
     {
         // 메뉴의 방향 입력은 제어기가 소유합니다. 이전 UI 선택에 Submit을 중복 전달하지 않습니다.
@@ -206,6 +218,7 @@ public sealed class OverworldMenuUI : UIPanel
     public override void Hide()
     {
         if (!_isOpen) return;
+        _backdrop?.CancelPendingCapture();
         KillMenuTweens(); _isAnimating = true; _view.EndTextEditing();
         GameInput.ConsumeBattleUIInput(); GameInput.SuppressMenuInputsForCurrentFrame();
         _panelSequence = DOTween.Sequence().SetUpdate(true).SetRecyclable(false).SetLink(gameObject);
@@ -214,14 +227,12 @@ public sealed class OverworldMenuUI : UIPanel
         {
             if (this == null) return;
             _panelSequence = null; _isOpen = _isAnimating = false;
-            bool options = _openOptionsAfterClose; _openOptionsAfterClose = false;
             RestorePreviousGameState(); gameObject.SetActive(false);
-            if (options) OptionsPanelService.Open();
         });
     }
     public override void HideImmediate()
     {
-        KillMenuTweens(); _openOptionsAfterClose = false; _isOpen = _isAnimating = false;
+        KillMenuTweens(); _isOpen = _isAnimating = false;
         _view?.EndTextEditing(); RestorePreviousGameState(); SetVisible(false); gameObject.SetActive(false);
     }
     private void SetVisible(bool visible)
@@ -233,6 +244,10 @@ public sealed class OverworldMenuUI : UIPanel
     private void RestorePreviousGameState()
     {
         if (!_ownsPauseState) return;
+        // Close our child modal first; otherwise its delayed release could leave timeScale at zero.
+        if (_settingsPanel != null && _settingsPanel.OwnsModalState) _settingsPanel.HideImmediate();
+        _settingsPanel = null;
+        _backdrop?.Release();
         _ownsPauseState = false;
         if (!GameInput.IsConfigModalActive && Mathf.Approximately(Time.timeScale, 0)) Time.timeScale = _timeScaleBeforeOpen;
         if (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused)
@@ -250,8 +265,16 @@ public sealed class OverworldMenuUI : UIPanel
     private void Update()
     {
         if (_dirty && _isOpen) Refresh();
-        if (!CanInteract() || _view.IsTextEditing) return;
+        if (!CanInteract()) return;
         if (GameInput.CancelPressed) { TryHandleCancelInput(); return; }
+        if (_view.IsTextEditing)
+        {
+            if (GameInput.ConfirmPressed || GameInput.UISubmitPressed)
+            {
+                _view.EndTextEditing(); SuppressConfirm();
+            }
+            return;
+        }
         if (_modal != MenuModal.None)
         {
             if (GameInput.UILeftPressed || GameInput.UIRightPressed) { _modalChoice = !_modalChoice; RenderModal(); }
@@ -273,12 +296,20 @@ public sealed class OverworldMenuUI : UIPanel
         else if (GameInput.UILeftPressed) direction = Vector2.left;
         else if (GameInput.UIRightPressed) direction = Vector2.right;
         if (direction != Vector2.zero) { Navigate(direction); return; }
-        if (GameInput.ConfirmPressed || GameInput.UISubmitPressed) Confirm();
+        if (GameInput.ConfirmPressed || GameInput.UISubmitPressed) ActivateNavigation();
+    }
+
+    private void LateUpdate()
+    {
+        // Only the cached selection follows scrolling; no content rebuild or input polling here.
+        if (_isOpen) _navigation?.RefreshVisual(_modal == MenuModal.None && !_view.IsTextEditing);
     }
 
     private void Dispatch(FieldMenuCommand command)
     {
         if (!CanInteract()) return;
+        if (_modal == MenuModal.None && _navigation != null)
+            _navigation.Select(_navigation.Find(command.Kind, command.Index, command.Amount), false);
         if (command.Kind != FieldMenuCommandKind.StatSelect && command.Kind != FieldMenuCommandKind.StatSet)
             _view.EndTextEditing();
         if (_modal != MenuModal.None)
@@ -293,9 +324,11 @@ public sealed class OverworldMenuUI : UIPanel
             case FieldMenuCommandKind.Page: ChangePage(command.Index); break;
             case FieldMenuCommandKind.Filter: if (!_targeting) { _filter = Mathf.Clamp(command.Index, 0, FilterCount - 1); _row = 0; _reading = false; Refresh(); } break;
             case FieldMenuCommandKind.Actor: SelectActor(command.Index, command.Amount); break;
-            case FieldMenuCommandKind.Row: _row = Mathf.Clamp(command.Index, 0, Mathf.Max(0, _rows.Count - 1)); _reading = false; Refresh(); break;
-            case FieldMenuCommandKind.Cancel: TryHandleCancelInput(); break;
-            case FieldMenuCommandKind.Confirm: Confirm(); break;
+            case FieldMenuCommandKind.Row: _row = Mathf.Clamp(command.Index, 0, Mathf.Max(0, _rows.Count - 1)); _targeting = _reading = false; Refresh(); break;
+            case FieldMenuCommandKind.Cancel:
+                _navigation?.Select(_navigation.Find(FieldMenuCommandKind.Page, _page), false);
+                TryHandleCancelInput(); break;
+            case FieldMenuCommandKind.Confirm: _contentFocus = _page == 2; Confirm(); SuppressConfirm(); break;
             case FieldMenuCommandKind.CompanionTab: _tab = (PowerGrowthTab)Mathf.Clamp(command.Index, 0, 1); _contentFocus = true; Refresh(); break;
             case FieldMenuCommandKind.StatSelect: _stat = Mathf.Clamp(command.Index, 0, 4); _contentFocus = true; Refresh(); break;
             case FieldMenuCommandKind.StatStep: StageStat(command.Index, Draft.Get((GrowthStat)command.Index) + command.Amount); break;
@@ -303,9 +336,10 @@ public sealed class OverworldMenuUI : UIPanel
             case FieldMenuCommandKind.ClearDraft: Draft.Reset(); Refresh(); break;
             case FieldMenuCommandKind.Reset: RequestReset(); break;
             case FieldMenuCommandKind.SkillSelect: _node = Mathf.Clamp(command.Index, 0, Mathf.Max(0, _nodes.Count - 1)); _contentFocus = true; Refresh(); break;
-            case FieldMenuCommandKind.Settings: _openOptionsAfterClose = true; RequestClose(); break;
+            case FieldMenuCommandKind.Settings: OpenSettings(); break;
             case FieldMenuCommandKind.DetailScroll: _view.ScrollDetail(command.Amount); break;
         }
+        _navigation?.RefreshVisual(_modal == MenuModal.None);
     }
     private void ChangePage(int page)
     {
@@ -318,18 +352,59 @@ public sealed class OverworldMenuUI : UIPanel
     {
         if (_targeting) { SelectActor(-1, direction.x < 0 || direction.y > 0 ? -1 : 1); return; }
         if (_reading) { _view.ScrollDetail(direction.y < 0 || direction.x > 0 ? 1 : -1); return; }
-        if (_page == 2 && _contentFocus)
+        _navigation.Move(direction);
+        _view.EnsureNavigationVisible(_navigation.Selected);
+        _navigation.RefreshVisual();
+    }
+
+    private void PreviewNavigation(FieldMenuCommand command)
+    {
+        switch (command.Kind)
         {
-            if (_tab == PowerGrowthTab.Skills)
-                _node = SkillTreeProgressionService.FindDirectionalNodeIndex(_nodes, _node, direction);
-            else if (direction.y != 0) _stat = (_stat + (direction.y > 0 ? 4 : 1)) % 5;
-            else StageStat(_stat, Draft.Get((GrowthStat)_stat) + (direction.x > 0 ? 1 : -1));
-            Refresh(); return;
+            case FieldMenuCommandKind.Page:
+            case FieldMenuCommandKind.Filter:
+            case FieldMenuCommandKind.Row:
+            case FieldMenuCommandKind.StatSelect:
+            case FieldMenuCommandKind.SkillSelect:
+            case FieldMenuCommandKind.CompanionTab:
+                Dispatch(command); break;
+            case FieldMenuCommandKind.Actor:
+                if (command.Index >= 0 && !_targeting) SelectActor(command.Index, 0);
+                break;
         }
-        if (direction.x != 0) { ChangePage(_page + (direction.x > 0 ? 1 : -1)); return; }
-        if (_page == 2) _contentFocus = true;
-        else if (_rows.Count > 0) _row = (_row + (direction.y > 0 ? _rows.Count - 1 : 1)) % _rows.Count;
-        Refresh();
+    }
+
+    private void ActivateNavigation()
+    {
+        if (_targeting || _reading) { Confirm(); SuppressConfirm(); return; }
+        if (!FieldMenuNavigation.IsAvailable(_navigation.Selected))
+            _navigation.Select(_navigation.Find(FieldMenuCommandKind.Page, _page), false);
+        Button selected = _navigation.Selected;
+        if (selected == null) return;
+        FieldMenuCommand command = _navigation.Command;
+        if (command.Kind == FieldMenuCommandKind.StatSelect)
+        { _view.BeginStatEditing(command.Index); SuppressConfirm(); return; }
+        if (command.Kind == FieldMenuCommandKind.Row || command.Kind == FieldMenuCommandKind.SkillSelect)
+        { _contentFocus = _page == 2; Confirm(); }
+        else if (selected.TryGetComponent(out FieldMenuButtonRelay relay)) relay.SubmitFromKeyboard();
+        else selected.onClick.Invoke();
+        SuppressConfirm();
+    }
+
+    private void SuppressConfirm()
+    {
+        _ignoreInputUntilFrame = Time.frameCount;
+        GameInput.ConsumeBattleUIInput(); GameInput.SuppressMenuInputsForCurrentFrame();
+    }
+
+    private void OpenSettings()
+    {
+        _view.EndTextEditing();
+        ConfigPanelUI panel = OptionsPanelService.EnsurePanel();
+        if (panel == null) return;
+        _settingsPanel = panel; SuppressConfirm();
+        if (UIManager.Instance != null) UIManager.Instance.OpenPanel(panel);
+        else panel.Show();
     }
     private void SelectActor(int index, int delta)
     {
@@ -350,7 +425,12 @@ public sealed class OverworldMenuUI : UIPanel
         if (_modal != MenuModal.None) { ResolveModal(false); return true; }
         if (_targeting) { _targeting = false; _status = string.Empty; Refresh(); return true; }
         if (_reading) { _reading = false; Refresh(); return true; }
-        if (_contentFocus) { _contentFocus = false; Refresh(); return true; }
+        if (_navigation != null && _navigation.Selected != _navigation.Find(FieldMenuCommandKind.Page, _page))
+        {
+            _contentFocus = false;
+            _navigation.Select(_navigation.Find(FieldMenuCommandKind.Page, _page), false);
+            Refresh(); return true;
+        }
         RequestClose(); return true;
     }
     public void TryCloseFromPauseInput()
@@ -428,8 +508,8 @@ public sealed class OverworldMenuUI : UIPanel
         }
         string hint = _targeting ? L("target_hint", "동료 선택 · Z 사용 · X 취소")
             : _reading ? L("reading_hint", "↑↓ 읽기 · X 목록")
-            : _page == 2 && _contentFocus ? L("growth_hint", "방향키 능력치/트리 · Z 확정 · X 메뉴 · Q/E 동료 · C 탭")
-            : L("menu_hint", "←→ 메뉴 · ↑↓ 목록 · Z 선택 · X 뒤로 · Q/E 동료 · C 분류");
+            : _page == 2 && _contentFocus ? L("growth_hint", "방향키 이동 · Z 편집/선택 · X 상위 메뉴")
+            : L("menu_hint", "방향키 이동 · Z 선택 · X 뒤로 · 클릭/터치 가능");
         if (GameInput.ActiveDevice == GameInputDeviceKind.Touch)
             hint = _targeting ? L("touch_target_hint", "동료 카드를 고른 뒤 사용 · 뒤로 취소")
                 : _reading ? L("touch_reading_hint", "밀어서 읽기 · 뒤로 목록")
@@ -439,12 +519,18 @@ public sealed class OverworldMenuUI : UIPanel
         {
             string template = _targeting ? L("pad_target_hint", "방향키 동료 · {0} 사용 · {1} 취소")
                 : _reading ? L("pad_reading_hint", "↑↓ 읽기 · {1} 목록")
-                : _page == 2 && _contentFocus ? L("pad_growth_hint", "방향키 능력치/트리 · {0} 확정 · {1} 메뉴 · LB/RB 동료")
-                : L("pad_menu_hint", "←→ 메뉴 · ↑↓ 목록 · {0} 선택 · {1} 뒤로 · LB/RB 동료");
+                : _page == 2 && _contentFocus ? L("pad_growth_hint", "방향키 이동 · {0} 편집/선택 · {1} 상위 메뉴")
+                : L("pad_menu_hint", "방향키 이동 · {0} 선택 · {1} 뒤로");
             hint = string.Format(template, GameInput.GetActionLabel(ConfigurableAction.Confirm),
                 GameInput.GetActionLabel(ConfigurableAction.Cancel));
         }
         _view.Status(string.IsNullOrEmpty(_status) ? hint : _status);
+        if (_navigation != null)
+        {
+            if (!FieldMenuNavigation.IsAvailable(_navigation.Selected))
+                _navigation.Select(_navigation.Find(FieldMenuCommandKind.Page, _page), false);
+            _navigation.RefreshVisual(_modal == MenuModal.None);
+        }
     }
     private int ReadFlag(string id) => _global != null ? _global.GetFlag(id) : 0;
     private int ReadItem(string id) => _global != null ? _global.GetItemCount(id) : 0;
@@ -594,6 +680,7 @@ public sealed class OverworldMenuUI : UIPanel
     }
     private void RenderModal()
     {
+        _navigation?.RefreshVisual(false);
         bool discard = _modal == MenuModal.Discard;
         _view.Modal(true, discard ? L("pending_title", "미적용 배분을 취소하고 나갈까요?") : L("reset_title", "포인트를 무료로 초기화할까요?"),
             discard ? L("pending_body", "미적용 배분만 취소합니다. 포인트는 소모되지 않습니다.") : L("reset_body", "선택한 동료의 현재 탭 투자만 반환합니다. 기본 스킬과 다른 동료는 유지됩니다."),
@@ -603,7 +690,7 @@ public sealed class OverworldMenuUI : UIPanel
     {
         MenuModal modal = _modal; CharacterSaveData member = _modalMember;
         _modal = MenuModal.None; _view.Modal(false); _confirmAfter = Time.unscaledTime + .18f;
-        if (!accepted) { _openOptionsAfterClose = false; Refresh(); return; }
+        if (!accepted) { Refresh(); return; }
         if (modal == MenuModal.Discard) { _drafts.Clear(); CloseThroughManager(); return; }
         if (member != null && _global != null)
         {

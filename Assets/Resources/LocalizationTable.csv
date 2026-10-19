@@ -95,8 +95,8 @@ gameover.loading_save,저장 데이터를 불러오는 중...,Loading save data.
 gameover.title,타이틀로 이동,Return to title,タイトルへ,返回标题
 field_menu.target_hint,동료 선택 · Z 사용 · X 취소,Choose ally · Z Use · X Cancel,仲間を選択 · Z 使用 · X 戻る,选择队友 · Z 使用 · X 取消
 field_menu.reading_hint,↑↓ 읽기 · X 목록,↑↓ Read · X List,↑↓ 読む · X 一覧,↑↓ 阅读 · X 列表
-field_menu.growth_hint,방향키 능력치/트리 · Z 확정 · X 메뉴 · Q/E 동료 · C 탭,Arrows Stats/Tree · Z Confirm · X Menu · Q/E Ally · C Tab,方向キー 能力/ツリー · Z 決定 · X メニュー · Q/E 仲間 · C タブ,方向键 属性/技能树 · Z 确认 · X 菜单 · Q/E 队友 · C 页签
-field_menu.menu_hint,←→ 메뉴 · ↑↓ 목록 · Z 선택 · X 뒤로 · Q/E 동료 · C 분류,←→ Menu · ↑↓ List · Z Select · X Back · Q/E Ally · C Filter,←→ メニュー · ↑↓ 一覧 · Z 決定 · X 戻る · Q/E 仲間 · C 分類,←→ 菜单 · ↑↓ 列表 · Z 选择 · X 返回 · Q/E 队友 · C 分类
+field_menu.growth_hint,방향키 이동 · Z 편집/선택 · X 상위 메뉴,Arrows Move · Z Edit/Select · X Back,方向キー 移動 · Z 編集/選択 · X 戻る,方向键 移动 · Z 编辑/选择 · X 返回
+field_menu.menu_hint,방향키 이동 · Z 선택 · X 뒤로 · 클릭/터치 가능,Arrows Move · Z Select · X Back · Click/Touch,方向キー 移動 · Z 選択 · X 戻る · クリック/タッチ,方向键 移动 · Z 选择 · X 返回 · 点击/触控
 field_menu.no_party,동료 없음,No allies,仲間なし,暂无队友
 field_menu.all,전체,All,すべて,全部
 field_menu.consumable,소모품,Consumables,消耗品,消耗品
@@ -192,5 +192,5 @@ field_menu.touch_growth_hint,탭·노드 터치 · 수량 입력 또는 ± 길�
 field_menu.touch_menu_hint,탭·목록·동료 터치 · 목록은 밀어서 이동,Tap tabs/list/allies · Swipe list to scroll,タブ・一覧・仲間をタッチ · 一覧はスワイプ,点按页签、列表或队友 · 滑动列表滚动
 field_menu.pad_target_hint,방향키 동료 · {0} 사용 · {1} 취소,Arrows Ally · {0} Use · {1} Cancel,方向キー 仲間 · {0} 使用 · {1} 取消,方向键 队友 · {0} 使用 · {1} 取消
 field_menu.pad_reading_hint,↑↓ 읽기 · {1} 목록,↑↓ Read · {1} List,↑↓ 読む · {1} 一覧,↑↓ 阅读 · {1} 列表
-field_menu.pad_growth_hint,방향키 능력치/트리 · {0} 확정 · {1} 메뉴 · LB/RB 동료,Arrows Stats/Tree · {0} Confirm · {1} Menu · LB/RB Ally,方向キー 能力/ツリー · {0} 決定 · {1} メニュー · LB/RB 仲間,方向键 属性/技能树 · {0} 确认 · {1} 菜单 · LB/RB 队友
-field_menu.pad_menu_hint,←→ 메뉴 · ↑↓ 목록 · {0} 선택 · {1} 뒤로 · LB/RB 동료,←→ Menu · ↑↓ List · {0} Select · {1} Back · LB/RB Ally,←→ メニュー · ↑↓ 一覧 · {0} 決定 · {1} 戻る · LB/RB 仲間,←→ 菜单 · ↑↓ 列表 · {0} 选择 · {1} 返回 · LB/RB 队友
+field_menu.pad_growth_hint,방향키 이동 · {0} 편집/선택 · {1} 상위 메뉴,Arrows Move · {0} Edit/Select · {1} Back,方向キー 移動 · {0} 編集/選択 · {1} 戻る,方向键 移动 · {0} 编辑/选择 · {1} 返回
+field_menu.pad_menu_hint,방향키 이동 · {0} 선택 · {1} 뒤로,Arrows Move · {0} Select · {1} Back,方向キー 移動 · {0} 選択 · {1} 戻る,方向键 移动 · {0} 选择 · {1} 返回

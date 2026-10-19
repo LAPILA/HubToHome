@@ -9,6 +9,7 @@ public static class BunnySlimeElementLabBuilder
 {
     public const string AllyRoot = "Assets/_Game/Content/Skills/Ally/BattleLab/Elements";
     public const string EnemyRoot = "Assets/_Game/Content/Skills/Enemy/BunnySlime/Elements";
+    public const string ScreenSplitSkillPath = "Assets/_Game/Content/Skills/Ally/BattleLab/diagonal_screen_slash.asset";
     private const string DataRoot = BunnySlimeBattleLabBuilder.Root + "/Data";
     private static readonly string[] AllyNames =
     {
@@ -27,7 +28,7 @@ public static class BunnySlimeElementLabBuilder
             return;
         }
         if (!EditorUtility.DisplayDialog("원소 실험실 연결 복원",
-            "실험실 전열 3명의 기본 6스킬·색·상태 프로필과 토끼 공격 목록을 복원합니다.\n씬, 기존 스킬 내용, 후열 3명, ZEV, 본편 위젤은 변경하지 않습니다.", "복원", "취소")) return;
+            "실험실 전열 3명의 기본 6스킬·색·상태 프로필과 토끼 공격 목록을 복원합니다. 첫 위젤의 사선 참격도 연결합니다.\n씬, 기존 스킬 내용, 후열 3명, ZEV, 본편 위젤은 변경하지 않습니다.", "복원", "취소")) return;
         ApplyConnections();
     }
 
@@ -43,6 +44,10 @@ public static class BunnySlimeElementLabBuilder
         var enemySkills = new SkillData[EnemyNames.Length];
         for (int i = 0; i < skills.Length; i++) skills[i] = RequireSkill(AllyRoot, AllyNames[i]);
         for (int i = 0; i < enemySkills.Length; i++) enemySkills[i] = RequireSkill(EnemyRoot, EnemyNames[i]);
+        SkillData screenSplit = Require<SkillData>(ScreenSplitSkillPath);
+        if (screenSplit.SkillID != "lab.presentation.diagonal_screen_slash")
+            throw new InvalidOperationException("사선 참격 실험실 스킬 ID가 바뀌어 복원을 중단합니다.");
+        SkillData[] presentationSkills = { screenSplit };
         string commonEnemyRoot = "Assets/_Game/Content/Skills/Enemy/BunnySlime/";
         var ordered = new List<SkillData>
         {
@@ -65,11 +70,13 @@ public static class BunnySlimeElementLabBuilder
         // 검증은 모두 변경 전에 수행합니다. 기존 ID와 충돌하면 기존 카탈로그를 보존합니다.
         ValidateCatalogIds(catalog.Skills, skills);
         ValidateCatalogIds(catalog.Skills, enemySkills);
+        ValidateCatalogIds(catalog.Skills, presentationSkills);
         Undo.RecordObjects(new UnityEngine.Object[] { party[0], party[1], party[2], enemy, catalog }, "Restore Element Lab Connections");
         for (int i = 0; i < party.Length; i++)
         {
             party[i].DefaultSkills = new List<SkillData>();
             for (int j = 0; j < 6; j++) party[i].DefaultSkills.Add(skills[i * 6 + j]);
+            if (i == 0) party[i].DefaultSkills.Add(screenSplit);
             party[i].StatusProfile = profile;
             party[i].BattleSpriteTint = tints[i];
             party[i].BattleSymbolColor = i == 0 ? new Color(.95f, .72f, .3f) : tints[i];
@@ -82,6 +89,7 @@ public static class BunnySlimeElementLabBuilder
         enemy.UseOrderedSkills = true;
         Register(catalog.Skills, skills);
         Register(catalog.Skills, enemySkills);
+        Register(catalog.Skills, presentationSkills);
         EditorUtility.SetDirty(enemy);
         EditorUtility.SetDirty(catalog);
         AssetDatabase.SaveAssetIfDirty(enemy);

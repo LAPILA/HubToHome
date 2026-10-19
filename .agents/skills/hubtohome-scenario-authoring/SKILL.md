@@ -147,6 +147,7 @@ Treat scenario YAML as the source of truth and ScriptableObject assets as the Un
 - Rule 삭제는 `BattleScenarioEditCommandStack`을 사용한다. Trigger Rule은 Rule ID, legacy Rule은 index와 전체 값 복사본으로 제거하며 Undo가 원래 위치와 값을 복구해야 한다. 삭제 확인창은 `규칙 삭제 / 취소` 두 버튼만 표시하고 Rule만 제거하며 대상 Sequence는 유지한다.
 - Rule 삭제 성공 후 해당 Rule이 참조하던 Sequence를 선택하고 `SequenceUsageIndex`를 즉시 다시 계산한다. 사용자는 창을 다시 열지 않고 바로 Sequence 삭제 가능 여부를 확인할 수 있어야 한다.
 - `BattleSkillTimelineRunner` only runs the legacy skill timeline blocks. Post-skill actor reset, camera reset, narration waits, turn ending, and phase/module transition policy must remain in the surrounding battle or Action Sequence flow.
+- When the final skill target dies, normal blocks retain their early finish; only an enabled block explicitly opting into `CanRunWithoutLivingTargets` may continue. Currently `Action_ScreenSplit` uses this for finishing-blow presentation, never damage or target animation. Keep cancellation/dead-caster checks first and preserve this policy in normal turns and `battle.skill.timeline`. This is a local SkillActionBlock contract, not a new Scenario Action ID or Source field.
 - Scenario validation must use `ScenarioCatalogValidator.ValidateBattleScenario(...)` for full battle scenarios, not only `ValidateSequence(...)`, so `dialogue.wait` IDs are checked against `BattleScenarioData.Dialogues` before runtime.
 - Disabled actions are skipped at execution time but should still stay visible in authoring tools.
 - Fail the current handle on unknown action IDs; never silently continue.

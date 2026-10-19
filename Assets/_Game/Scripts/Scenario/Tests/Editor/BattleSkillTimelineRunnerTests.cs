@@ -186,6 +186,89 @@ public class BattleSkillTimelineRunnerTests
         }
     }
 
+    [Test]
+    public void PlaySkillTimelineExecutesTargetlessPresentationAfterLastTargetDies()
+    {
+        var fixture = new BattleFixture();
+        SkillData skill = null;
+        try
+        {
+            var presentation = new TargetlessPresentationSkillActionBlock();
+            skill = MakeSkill("player_slash", new KillTargetsSkillActionBlock(),
+                null, new RecordingSkillActionBlock { Disabled = true }, presentation);
+            fixture.Player.Skills.Add(skill);
+            var context = new ActionExecutionContext();
+            var runner = new BattleSkillTimelineRunner(fixture.BattleManager);
+
+            RunToCompletion(runner.PlaySkillTimeline("player_slash", "player", new[] { "zev" }, context));
+
+            Assert.That(fixture.Enemy.IsAlive, Is.False);
+            Assert.That(presentation.Calls, Is.EqualTo(1));
+            Assert.That(presentation.TargetCount, Is.Zero);
+            Assert.That(context.Handle.Status, Is.Not.EqualTo(ActionExecutionStatus.Failed), context.Handle.Result.Message);
+        }
+        finally
+        {
+            Object.DestroyImmediate(skill);
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void PlaySkillTimelineStopsAtOrdinaryBlockAfterLastTargetDies()
+    {
+        var fixture = new BattleFixture();
+        SkillData skill = null;
+        try
+        {
+            RecordingSkillActionBlock.Reset();
+            var presentation = new TargetlessPresentationSkillActionBlock();
+            skill = MakeSkill("player_slash", new KillTargetsSkillActionBlock(),
+                new RecordingSkillActionBlock(), presentation);
+            fixture.Player.Skills.Add(skill);
+            var context = new ActionExecutionContext();
+            var runner = new BattleSkillTimelineRunner(fixture.BattleManager);
+
+            RunToCompletion(runner.PlaySkillTimeline("player_slash", "player", new[] { "zev" }, context));
+
+            Assert.That(fixture.Enemy.IsAlive, Is.False);
+            Assert.That(RecordingSkillActionBlock.Calls, Is.Zero);
+            Assert.That(presentation.Calls, Is.Zero);
+            Assert.That(context.Handle.Status, Is.Not.EqualTo(ActionExecutionStatus.Failed), context.Handle.Result.Message);
+        }
+        finally
+        {
+            Object.DestroyImmediate(skill);
+            fixture.Dispose();
+        }
+    }
+
+    [Test]
+    public void PlaySkillTimelineCancellationSkipsTargetlessPresentation()
+    {
+        var fixture = new BattleFixture();
+        SkillData skill = null;
+        try
+        {
+            var context = new ActionExecutionContext();
+            var presentation = new TargetlessPresentationSkillActionBlock();
+            skill = MakeSkill("player_slash", new KillTargetsSkillActionBlock { CancelHandle = context.Handle }, presentation);
+            fixture.Player.Skills.Add(skill);
+            var runner = new BattleSkillTimelineRunner(fixture.BattleManager);
+
+            RunToCompletion(runner.PlaySkillTimeline("player_slash", "player", new[] { "zev" }, context));
+
+            Assert.That(fixture.Enemy.IsAlive, Is.False);
+            Assert.That(presentation.Calls, Is.Zero);
+            Assert.That(context.Handle.Status, Is.EqualTo(ActionExecutionStatus.Canceled));
+        }
+        finally
+        {
+            Object.DestroyImmediate(skill);
+            fixture.Dispose();
+        }
+    }
+
     private static SkillData MakeSkill(string skillId, params SkillActionBlock[] blocks)
     {
         SkillData skill = ScriptableObject.CreateInstance<SkillData>();
@@ -204,13 +287,22 @@ public class BattleSkillTimelineRunnerTests
     private static void RunToCompletion(IEnumerator routine, int maxSteps = 100)
     {
         int steps = 0;
-        while (routine.MoveNext())
+        try
         {
-            steps++;
-            if (steps > maxSteps)
+            while (routine.MoveNext())
             {
-                Assert.Fail("Routine did not complete within " + maxSteps + " steps.");
+                steps++;
+                if (steps > maxSteps)
+                {
+                    Assert.Fail("Routine did not complete within " + maxSteps + " steps.");
+                }
+                if (routine.Current is IEnumerator nested)
+                    RunToCompletion(nested, maxSteps);
             }
+        }
+        finally
+        {
+            (routine as System.IDisposable)?.Dispose();
         }
     }
 
@@ -276,6 +368,33 @@ public class BattleSkillTimelineRunnerTests
                 "Instance",
                 BindingFlags.Public | BindingFlags.Static);
             property.GetSetMethod(true).Invoke(null, new object[] { instance });
+        }
+    }
+
+    private sealed class KillTargetsSkillActionBlock : SkillActionBlock
+    {
+        public ActionExecutionHandle CancelHandle;
+
+        public override IEnumerator Execute(SkillContext context)
+        {
+            foreach (CharacterBase target in context.Targets)
+                target.TakePureDamage(target.CurrentHP);
+            CancelHandle?.Cancel();
+            yield break;
+        }
+    }
+
+    private sealed class TargetlessPresentationSkillActionBlock : SkillActionBlock
+    {
+        public override bool CanRunWithoutLivingTargets => true;
+        public int Calls { get; private set; }
+        public int TargetCount { get; private set; }
+
+        public override IEnumerator Execute(SkillContext context)
+        {
+            Calls++;
+            TargetCount = context.Targets.Count;
+            yield break;
         }
     }
 

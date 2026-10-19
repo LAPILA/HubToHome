@@ -410,6 +410,9 @@ public abstract class SkillActionBlock
 
     public abstract IEnumerator Execute(SkillContext context);
 
+    // Opt in only for presentation that never reads or mutates a target (including a finishing blow).
+    public virtual bool CanRunWithoutLivingTargets => false;
+
     public virtual SkillActionAuthoringTiming GetAuthoringTiming()
     {
         return SkillActionAuthoringTiming.Unsupported(GetBlockCategoryKo());
@@ -429,6 +432,7 @@ public abstract class SkillActionBlock
         if (this is Action_SequentialMelee) return "연쇄 근접";
         if (this is Action_RapidStrikes) return "고속 연격 · 독립 QTE";
         if (this is Action_AerialCrossSlash) return "공중 회전 · 교차 베기";
+        if (this is Action_ScreenSplit) return "사선 화면 절단";
         if (this is Action_EnemyWindup) return "적 공격 준비 · 클로즈업";
         return GetType().Name.Replace("Action_", string.Empty);
     }
@@ -439,6 +443,7 @@ public abstract class SkillActionBlock
         if (this is Action_Move) return "이동";
         if (this is Action_PlayAnim) return "애니메이션";
         if (this is Action_EnemyWindup) return "카메라";
+        if (this is Action_ScreenSplit) return "화면 연출";
         if (this is Action_Damage || this is Action_Projectile || this is Action_SequentialMelee
             || this is Action_RapidStrikes || this is Action_AerialCrossSlash) return "피해";
         if (this is Action_VFX) return "이펙트";

@@ -1182,6 +1182,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         context.BeginSkillResources(skill);
         BattleCameraActionScope cameraScope = BeginActiveCameraScope(actor.transform, targets);
+        BindSkillExecutionToScope(context, cameraScope);
         try
         {
             if (skill.ActionTimeline != null)
@@ -1196,7 +1197,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                     }
 
                     context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-                    if (context.Targets.Count == 0)
+                    if (context.Targets.Count == 0 && !block.CanRunWithoutLivingTargets)
                     {
                         break;
                     }
@@ -1410,6 +1411,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         Tween returnMovement = null;
         BattleCameraActionScope cameraScope = BeginActiveCameraScope(enemy.transform, targets);
+        BindSkillExecutionToScope(context, cameraScope);
         try
         {
             // Enemy timelines also need their authored on-hit payload and proc coefficient.
@@ -1424,7 +1426,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 }
 
                 context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-                if (context.Targets.Count == 0)
+                if (context.Targets.Count == 0 && !block.CanRunWithoutLivingTargets)
                 {
                     break;
                 }
@@ -1548,6 +1550,14 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 targets.Add(enemy);
             }
         }
+    }
+
+    private void BindSkillExecutionToScope(SkillContext context, BattleCameraActionScope scope)
+    {
+        // Abort/module exit can stop Unity coroutines before their finally runs. The render-side
+        // lease also checks this exact action scope, so an old cast cannot survive or enter a new one.
+        context.IsExecutionActive = () => !_disposed && ReferenceEquals(_activeCameraScope, scope)
+            && _host != null && _host.IsTurnQteCombatInputActive();
     }
 
     public void CancelActiveCameraPresentation()

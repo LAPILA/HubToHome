@@ -7,6 +7,7 @@ public sealed class FieldMenuButtonRelay : MonoBehaviour, IPointerDownHandler, I
 {
     private Action<FieldMenuCommand> _dispatch;
     private FieldMenuCommand _command;
+    public FieldMenuCommand Command => _command;
     private bool _repeat, _held, _pointerGesture;
     private float _nextRepeat;
     private UnityEngine.UI.Button _button;
@@ -15,6 +16,12 @@ public sealed class FieldMenuButtonRelay : MonoBehaviour, IPointerDownHandler, I
     public void Submit()
     {
         if (_repeat && _pointerGesture) { _pointerGesture = false; return; }
+        _dispatch?.Invoke(_command);
+    }
+    public void SubmitFromKeyboard()
+    {
+        // A cancelled/long pointer hold may not produce a click. Never consume the next fresh Z.
+        _held = _pointerGesture = false;
         _dispatch?.Invoke(_command);
     }
     public void OnPointerDown(PointerEventData eventData)

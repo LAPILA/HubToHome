@@ -1,5 +1,11 @@
 # AIAssets Index
 
+최신 패링 연출(2026-10-19): [저스트가드 · 배경만 약한 충격파](yjlim/feedback/2026-10-19-parry-background-ripple.md). 실험실 Z 성공 시 Center 기준0.3초, Background 정렬레이어만 왜곡하고 캐릭터/HUD를 보존합니다. Profile에서 강도/반경/고리색 편집, 휴면GPU0패스·활성2패스. C#/D3D분리문법/관리형검사 통과, Unity/GPU/실기기는 미검증입니다.
+
+최신 전투 샘플(2026-10-19): [단층 베기 · 사선 화면 절단](yjlim/feedback/2026-10-19-diagonal-screen-slash.md). 토끼 실험실 첫 위젤7번째/AP12, 검정틈44기준픽셀·0.18초확대→1초유지→0.3초복원. 0강도에서 부드럽게 열고 닫으며 별도 캡처 없이 활성1효과패스/Point1샘플입니다. Overlay HUD/본편DB/저장은 유지, GPU·실기기발열은 미검증입니다.
+
+최신 메뉴 정리(2026-10-19): [작은 창·방향키/클릭·설정 모달·배경 흐림](yjlim/feedback/2026-10-19-field-menu-navigation.md). 출력640×480/창592×416, Q/E필수해제, 메뉴·설정 한정 포인터, OS 숫자키보드 회피. 전용코드10개는 `UI/Runtime/FieldMenu`로 모으고 meta해시를 보존했다. CLI 오류0/순수수치31검사 통과, Unity화면·실기기는 미검증.
+
 최신 프롤로그(2026-10-19): [새 게임 → 4컷 → 창가 → 열차 → 백색체 공개](yjlim/feedback/2026-10-19-prologue-prototype.md). 이름 입력 제거, 원본 애니메이션 반복/1회 구분, 임시3초 사건·후미 진입 연결. 대사·시간·플래그 편집 위치와 실제 Unity 재생 미검증 범위를 함께 기록했다.
 
 최신 정렬 수정(2026-10-19): [플레이어 Order3 고정·상자 Y축 가림](yjlim/feedback/2026-10-19-player-sorting.md). 플레이어 Y×100 계산을 제거하고 기본3 고정, 상자 바닥SortingGroup3 및 실제사용2DRenderer의CustomAxisY 적용. 사용자 콜라이더·위치·그림은 보존하고 기존 전투 임시전경은 유지.

@@ -159,7 +159,7 @@ Scene 기본곡을 다루는 [MapSettings](../../Assets/_Game/Scripts/Overworld/
 
 서비스는 마지막으로 찾은 카메라와 마지막으로 Canvas에 적용한 카메라를 따로 기억합니다. 같은 화면 크기라도 카메라 객체가 바뀌면 재연결해야 합니다. 카메라가 없는 로딩 구간의 전체 검색은 0.25초 간격으로 제한하며, Scene 변경 후 화면이 안정된 뒤 재적용합니다.
 
-화면이 잘리면 RectTransform 위치만 고치기 전에 Canvas renderMode → worldCamera → CanvasScaler → 기준 해상도 → anchor/pivot → 상위 LayoutGroup을 확인합니다. [ConfigPanelUI](../../Assets/_Game/Scripts/UI/Runtime/ConfigPanelUI.cs)와 [OverworldMenuUI](../../Assets/_Game/Scripts/UI/Runtime/OverworldMenuUI.cs)는 같은 창이 아닙니다. 설정 창과 탐색 메뉴 껍데기를 구분합니다.
+화면이 잘리면 RectTransform 위치만 고치기 전에 Canvas renderMode → worldCamera → CanvasScaler → 기준 해상도 → anchor/pivot → 상위 LayoutGroup을 확인합니다. [ConfigPanelUI](../../Assets/_Game/Scripts/UI/Runtime/ConfigPanelUI.cs)와 [OverworldMenuUI](../../Assets/_Game/Scripts/UI/Runtime/FieldMenu/OverworldMenuUI.cs)는 같은 창이 아닙니다. 설정 창과 탐색 메뉴 껍데기를 구분합니다.
 
 카메라는 공용 [GameplayCameraRig.prefab](../../Assets/_Game/Core/Prefabs/Camera/GameplayCameraRig.prefab)을 기준으로 실제 Camera와 Cinemachine 구성을 공유합니다. `CameraController`가 추적 대상·Lens·그룹 프레이밍·Timeline 제어권을 소유하고, [OverworldCameraBinding](../../Assets/_Game/Scripts/Overworld/Runtime/OverworldCameraBinding.cs)이 그 컨트롤러의 가상 카메라에 Player·Room Bounds를 적용합니다.
 

@@ -1,5 +1,15 @@
 # 전투 실험실 — 토끼 슬라임 / ZEV
 
+## 저스트가드 · 배경 충격파 (2026-10-19)
+
+토끼/ZEV 전투에서 **Z 저스트가드 성공** 시 캐릭터 Center를 중심으로 Background 정렬레이어만0.3초 동안 약하게 일렁입니다. 일반가드/X/C에는 없으며 캐릭터·전경·UI는 보존합니다. 별도 배치는 필요 없고 `Presentation/BunnySlimeLab_ParryRipple.asset`에서 강도/반경/고리색을 조절합니다. 실험실 전용, 휴면GPU0패스·활성2패스이며 Unity/GPU/실기기는 미검증입니다. [설정·구현·제한](../AIAssets/yjlim/feedback/2026-10-19-parry-background-ripple.md).
+
+## 사선 화면 참격 샘플 (2026-10-19)
+
+**토끼 슬라임 · 통합 → 첫 위젤의 SKILL → 7번째 `단층 베기`(AP12)**를 선택합니다. 기존 참격/물리 피해 뒤0.18초 동안 양쪽22픽셀씩 부드럽게 벌려 검정 틈44픽셀을 만들고,1초 유지 뒤0.3초 복원합니다. 시작/종료에서 갑자기 폭이 바뀌지 않으며 총1.48초입니다. 별도 캡처/잔상 패스나 QTE를 추가하지 않고 Overlay HUD는 그대로입니다. 기존 원소18스킬은 보존하고 첫 위젤에게만 연출 스킬1개를 더했습니다.
+
+`Content/Skills/Ally/BattleLab/diagonal_screen_slash.asset`의 **사선 화면 절단** 블록에서 시간·각도·이동 폭·비틀림·선 두께를 조정합니다. 실험실 전용 Renderer에만 연결된 URP 17.3 RenderGraph 기능으로, 효과가 있을 때만 1효과패스/Point 1샘플을 사용하고 휴면 시 패스를 등록하지 않습니다. 재질은 최초 생성 후 재사용하며 별도 `.mat`은 없습니다. 최초 셰이더/재질 비용과 실기기 발열은 미측정, GPU/Unity Play 검증도 미실행입니다. [구현 원리·수정 위치·주의점](../AIAssets/yjlim/feedback/2026-10-19-diagonal-screen-slash.md).
+
 ## 후열 선택 · 전조 확인 (2026-10-07)
 
 - **3+3 전멸·후열 확인**에서 전열 전체가 쓰러지면 선택창이 먼저 나옵니다. `계속 싸우기` → 0.5초 페이드 → 후열 진입 → Idle. `포기하기` → 후열 투입 없이 게임오버. 취소 입력은 계속 싸우기 항목으로 돌아갈 뿐 결정을 내리지 않습니다.
@@ -118,7 +128,7 @@ ZEV의 방어창은 0.45~0.55초이며 실제 성공 구간 표시는 공용 판
 
 6명 모두 기존 위젤 외형을 쓰는 실습 역할입니다. 서로 다른 신규 동료 아트가 아닙니다. 이름·전투 색상·고유 ID·스킬 구성을 분리했습니다. 수동 교대 없이 전열 전원이 쓰러져야 후열이 나옵니다.
 
-전열 기본 목록은 위쪽 **현재 구성**의 각 6스킬이 기준입니다. 아래는 보존된 후열 편성입니다.
+전열 원소 목록은 위쪽 **현재 구성**의 각 6스킬이 기준이며, 첫 위젤에는 **단층 베기**가 7번째로 추가됩니다. 아래는 보존된 후열 편성입니다.
 
 | 역할 | 스킬 4개 |
 | --- | --- |
@@ -150,6 +160,7 @@ ZEV의 방어창은 0.45~0.55초이며 실제 성공 구간 표시는 공용 판
 | ZEV 준비·방어창·피해 | `Assets/_Game/Content/Skills/Enemy/ZEV` — 원본 5개를 스킬 메이커로 편집 |
 | 토끼 누적 상태 공격 5개 / 기존 스킬 | `Assets/_Game/Content/Skills/Enemy/BunnySlime/Elements` / 상위 폴더 |
 | 전열 원소 실습 스킬 18개 / 기존 스킬 | `Assets/_Game/Content/Skills/Ally/BattleLab/Elements` / 상위 폴더 |
+| 단층 베기 · 화면 분할 값 | `Assets/_Game/Content/Skills/Ally/BattleLab/diagonal_screen_slash.asset` — 사선 화면 절단 블록 |
 | 누적 상태 규칙 | `Data/ElementalStatusLabProfile.asset` |
 | 파티별 수치·장착 스킬 | `Data/Party` |
 | 장비 보정 수치 | `Data/Equipment` |
@@ -241,7 +252,7 @@ ZEV의 방어창은 0.45~0.55초이며 실제 성공 구간 표시는 공용 판
 
 같은 위젤의 다음 스킬입니다. AP 14. **적 앞 접근 → 상승 → 카메라 360도 회전 → X QTE → 적 뒤 급습 → 앞/뒤 추가 베기 → 복귀** 순서입니다. QTE 성공이면 3타가 1.5배로 강화되며 실패해도 기본 공격은 진행합니다. 캐릭터 자체를 돌리지 않고 카메라가 한 바퀴 회전합니다. HUD/QTE는 정방향입니다.
 
-`Assets/_Game/Content/Skills/Ally/BattleLab/aerial_cross_slash.asset`의 **공중 회전 · 교차 베기**에서 높이·앞뒤 거리·각 단계 시간·피해를 조절합니다. 두 스킬의 공용 카탈로그 연결은 보존하지만 현재 `Party/front.asset`은 위쪽 원소 6스킬로 교체했습니다. 기존 스킬을 다시 확인하려면 실험실 파티에 별도로 편성합니다. 실제 화면/손맛은 사용자 Play 확인이 필요합니다. [수명/파일/검증 상세](../AIAssets/yjlim/feedback/2026-09-26-independent-barrage-aerial-skill.md).
+`Assets/_Game/Content/Skills/Ally/BattleLab/aerial_cross_slash.asset`의 **공중 회전 · 교차 베기**에서 높이·앞뒤 거리·각 단계 시간·피해를 조절합니다. 두 스킬의 공용 카탈로그 연결은 보존하지만 현재 `Party/front.asset`은 원소 6스킬+단층 베기 구성입니다. 기존 스킬을 다시 확인하려면 실험실 파티에 별도로 편성합니다. 실제 화면/손맛은 사용자 Play 확인이 필요합니다. [수명/파일/검증 상세](../AIAssets/yjlim/feedback/2026-09-26-independent-barrage-aerial-skill.md).
 
 ## 조명·색감 샘플 (2026-09-26)
 

@@ -1,5 +1,19 @@
 # HubToHome
 
+## 실험실 저스트가드 배경 파장 (2026-10-19)
+
+`PlayerController.ConfirmDefenseSuccess`의 Z Parry만 Center 월드 위치를 `ParryBackgroundRipple`에 요청한다. 일반가드/X/C·피해·보상·전투 대기시간은 그대로다. Lab Renderer2D의 `ParryBackgroundRippleRendererFeature`만 연결했으며 기본0.3초/16→110px/폭14/변위1.25px/링alpha0.04다. 조정은 Lab Presentation의 `BunnySlimeLab_ParryRipple.asset`에서 한다.
+
+BeforePP에서 같은 크기 R8 Point 허용마스크(Background white→상위 정렬레이어 black)를 그리고 source/destination이 모두 배경일 때만 원형 UV변형을 적용한다. 캐릭터·전경·HUD 보존을 우선하며 GPU SpriteSkin/커스텀 정점변형은 미지원이다. 카메라별 최신1개/동일owner동일frame중복차단·프레임당unscaled clock·BattleDelay pause·owner/scene/feature cleanup을 적용한다. 휴면GPU0패스, 활성mask+warp2패스, 추가카메라/상시CameraSortingLayerTexture/블러/깊이prepass/copyback은 없다. 기존 ScreenSplit/기본Renderer/본편DB/저장/시나리오는 보존한다. [설정·검증 한계](AIAssets/yjlim/feedback/2026-10-19-parry-background-ripple.md).
+
+## 실험실 사선 화면 참격 (2026-10-19)
+
+흰 외곽선은 검정 틈의 양쪽 바깥 경계에만 그린다. 기존LineColor/LineWidthPixels로 색상·알파·두께를 편집하고 기본white/1.25px이다. OutlinePulseStrength(.65)는 최대폭 도달 전후 짧은 두께 강조이며 별도 Bloom/블러/패스를 추가하지 않는다. 검정 gap 마스크를 최종 적용해 선이 틈 안으로 들어가지 않는다.
+
+`Action_ScreenSplit`은 피해 뒤0.18초 확대→1초 유지→0.3초 복원하는 로컬 스킬 블록이다. 초기0강도/cubic smoothstep으로 자연스럽게 열고 닫으며, 기본 양쪽폭22/검정틈44기준픽셀이다. ExpandDuration/HoldDuration/기존Duration은 확대/유지/복원 시간이다. `ScreenSplitEffect`가 카메라별 토큰/표시 스냅샷을 소유하고 Lab Renderer2D의 `ScreenSplitRendererFeature`가 활성일 때만 RenderGraph1패스로 읽기 좌표를 바꾼다. 캡처/잔상패스 없이 표시를 유지하며 Overlay HUD는 그대로다. 활성 Color 입력으로 중간 색상 타깃을 요청하고 CopyColor/깊이-copy는 추가하지 않는다. 재질은 지연생성/재사용하며 첫 위젤7번째 `단층 베기`/AP12는 원소18개와 별도다. 본편DB/저장은 변경하지 않는다.
+
+대상이 모두 사망하면 기본 블록은 기존처럼 중단하되 `CanRunWithoutLivingTargets`를 명시한 표시 블록만 실행한다. 현재 opt-in은 ScreenSplit뿐이며 취소/시전자 사망을 우회하지 않는다. Turn QTE 스킬의 실행 콜백은 현재 action scope와도 연결되어 강제중단 후 렌더 조회가 잔여효과를 제거한다. 시나리오 `battle.skill.timeline`도 동일한 마지막 대상 정책을 따르고 Source 문법/Action ID는 유지한다. [사용법·성능 한계](AIAssets/yjlim/feedback/2026-10-19-diagonal-screen-slash.md).
+
 ## 임시 프롤로그 (2026-10-19)
 
 초기4컷은 Two empire.wav를 BGM으로 재생하고 현재 자막에서 fade-out한다. 본문은 Story.NarrationCharactersPerSecond=10, 중앙 자막은 Page.CaptionCharactersPerSecond=4/전체 표시 후1.2초 유지다. 일반 DialogueUI도 Cinematic 스타일 또는 대화 진입 전 Cutscene 상태이면14cps로 설정 속도에서 분리한다. 일반 대화는 원본 timing/설정 속도로 복구하며 공유 Text Animator 자산을 수정하지 않는다. ShowText 직후 속도 적용으로 기존2프레임 재적용 코루틴을 제거했다.
@@ -22,11 +36,11 @@
 
 `UIRuntimeGuard` → `UIViewportService`에 등록된 화면 UI는 최상위 Canvas의 `ScreenSpaceOverlay`/worldCamera=null로 렌더링한다. 일반 UI의 `FixedCanvasViewport`와 기존 HUD/대사 viewport가 640×480 콘텐츠/정수 배율을 보존하고 게임 카메라의 출력 경계만 따른다. 화면 좌표 변환 카메라(null)와 경계 조회용 `GetOutputCamera`를 혼동하지 않는다. 루트 Default 정렬 레이어와 기존 창별 order를 사용하며 대사/레터박스/페이드 우선순위를 보존한다. SafeAreaFitter는 공통 콘텐츠 안에서 동작한다. 독립 WorldSpace 말풍선·전조 VFX·월드 조명/Volume는 변경하지 않는다. [범위·검증](AIAssets/yjlim/feedback/2026-10-19-ui-light-isolation.md).
 
-## 필드 메뉴 계약 (2026-10-18)
+## 필드 메뉴 계약 (2026-10-19)
 
-`OverworldMenuUI`는 기존 패널 등록·프리팹 참조를 유지하는 진입점이다. `FieldMenuView` / `FieldMenuGrowthView`를 한 번 생성해 재사용하며 가방·장비·동료·일지 4탭을 표시한다. 동료 상태와 성장은 통합하고 `SkillTreeDefinition`의 실제 좌표·선행 조건을 사용한다. 능력치 미리 배분은 캐릭터 저장 인스턴스별 초안이며 `TryInvestGrowthStats` → `CharacterGrowthService.TryInvestBatch`가 전체 검증 후 한 번 확정한다. 실제 저장·재화·공용 레벨·개인 포인트만 표시하며 샘플 동료를 생성하지 않는다.
+`UI/Runtime/FieldMenu/OverworldMenuUI`는 기존 패널 등록·프리팹 참조를 유지하는 진입점이다. `FieldMenuView` / `FieldMenuGrowthView`를 한 번 생성해 재사용하며 가방·장비·동료·일지 4탭을 표시한다. 출력640×480/실제창592×416이며 글자를 비정수 축소하지 않는다. 방향키·확인·취소만으로 주요 버튼에 접근하고 설정은 위 모달로 열어 포커스/초안을 유지한다. 동료 상태와 성장은 통합하고 `SkillTreeDefinition`의 실제 좌표·선행 조건을 사용한다. 능력치 미리 배분은 캐릭터 저장 인스턴스별 초안이며 `TryInvestGrowthStats` → `CharacterGrowthService.TryInvestBatch`가 전체 검증 후 한 번 확정한다. 실제 저장·재화·공용 레벨·개인 포인트만 표시하며 샘플 동료를 생성하지 않는다.
 
-일지는 소지한 `RequiredItemId`와 표시 조건을 만족하는 `JournalEntry`만 읽는다. 퀘스트 진행/수락/보상을 만들지 않으며 목표 한 줄은 기존 `IsObjective` 플래그 투영이다. 모바일 메뉴는 `FieldMenuTouchInput`이 실제 Touchscreen만 받아 같은 명령으로 전달한다. 공용 EventSystem의 PC 포인터 액션은 계속 비연결이며 메뉴 수명 동안 가상패드를 숨기고 입력을 해제한다. 안전 영역은 공용 출력 Rect와 `Screen.safeArea`의 교집합에 같은 정수 fit 수식을 적용한다. 기준 미만 화면은 축소 예외다. [구현·사용법·검증 한계](AIAssets/yjlim/feedback/2026-10-18-field-menu.md).
+일지는 소지한 `RequiredItemId`와 표시 조건을 만족하는 `JournalEntry`만 읽는다. 퀘스트 진행/수락/보상을 만들지 않으며 목표 한 줄은 기존 `IsObjective` 플래그 투영이다. `FieldMenuTouchInput`은 메뉴/설정에만 Mouse/Touchscreen을 받아 같은 명령으로 전달한다. 공용 EventSystem의 포인터 액션은 계속 비연결이며 가상패드는 메뉴/설정 수명 동안 숨긴다. 안전 영역은 공용 출력 Rect와 `Screen.safeArea` 교집합의 정수 fit이고 숫자 키보드는 별도 위치 이동으로 회피한다. 기준 미만 화면은 축소 예외다. 배경은 열기전1회 저해상도 흐림이며 실패·초고해상도·리사이즈에는 어두운 막만 쓴다. [현재 사용법·검증 한계](AIAssets/yjlim/feedback/2026-10-19-field-menu-navigation.md).
 
 ## 픽셀 출력 계약 (2026-10-16)
 

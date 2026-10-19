@@ -36,6 +36,13 @@ public static partial class GameInput
         SetActiveDevice(GameInputDeviceKind.Touch, string.Empty);
     }
 
+    /// <summary>메뉴 전용 마우스 브리지의 안내 기기만 변경하며 게임플레이 클릭은 연결하지 않습니다.</summary>
+    public static void NotifyMenuMouseInteraction()
+    {
+        EnsureInitialized();
+        SetActiveDevice(GameInputDeviceKind.Keyboard, string.Empty);
+    }
+
     private static void BindDeviceInputs()
     {
         _battlePause = _ui.AddAction("BattlePause", InputActionType.Button);

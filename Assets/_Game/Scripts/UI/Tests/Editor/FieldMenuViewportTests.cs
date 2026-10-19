@@ -1,6 +1,7 @@
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UI;
 
 public sealed class FieldMenuViewportTests
 {
@@ -36,6 +37,8 @@ public sealed class FieldMenuViewportTests
                 content.center, null, out Vector2 expectedCenter), Is.True);
             Assert.That(frame.localPosition.x, Is.EqualTo(expectedCenter.x).Within(.001f));
             Assert.That(frame.localPosition.y, Is.EqualTo(expectedCenter.y).Within(.001f));
+            Assert.That(frame.sizeDelta, Is.EqualTo(new Vector2(592f, 416f)));
+            Assert.That(frame.localRotation, Is.EqualTo(Quaternion.identity));
         }
         finally
         {
@@ -108,5 +111,75 @@ public sealed class FieldMenuViewportTests
         Rect content = FieldMenuViewport.CalculateSafeContentRect(
             new Rect(0f, 0f, 640f, 480f), new Rect(640f, 0f, 640f, 480f));
         Assert.That(content.size, Is.EqualTo(Vector2.zero));
+    }
+
+    [TestCase(100f, 200f, 112f)]
+    [TestCase(230f, 200f, 0f)]
+    [TestCase(100f, 0f, 0f)]
+    public void KeyboardAvoidanceLiftsOnlyEnoughToRevealEditingField(float fieldBottom, float keyboardHeight, float expected)
+    {
+        float lift = FieldMenuViewport.CalculateKeyboardLift(new Rect(100, fieldBottom, 72, 32),
+            new Rect(0, 0, 640, keyboardHeight), new Rect(0, 0, 640, 480));
+        Assert.That(lift, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void KeyboardAvoidancePreservesTopSafetyAndIgnoresNonOverlappingFloatingKeyboard()
+    {
+        Rect field = new Rect(100, 400, 72, 32);
+        Rect output = new Rect(0, 0, 640, 480);
+        Assert.That(FieldMenuViewport.CalculateKeyboardLift(field, new Rect(0, 0, 640, 470), output), Is.EqualTo(36));
+        Assert.That(FieldMenuViewport.CalculateKeyboardLift(field, new Rect(400, 0, 200, 470), output), Is.Zero);
+    }
+
+    [Test]
+    public void CompactMenuKeepsFooterControlsAndAllThreePartyCardsInsideFrame()
+    {
+        var parent = new GameObject("Compact Menu Layout", typeof(RectTransform));
+        try
+        {
+            FieldMenuView view = FieldMenuView.Create(parent.GetComponent<RectTransform>(), null, _ => { });
+            Assert.That(view.Frame.sizeDelta, Is.EqualTo(new Vector2(592, 416)));
+            Assert.That(view.Frame.localScale, Is.EqualTo(Vector3.one));
+            string[] names = { "Settings", "Back", "Party0", "Party1", "Party2" };
+            for (int i = 0; i < names.Length; i++)
+            {
+                RectTransform control = (RectTransform)view.Frame.Find(names[i]);
+                Assert.That(control, Is.Not.Null, names[i]);
+                Assert.That(control.rect.height, Is.GreaterThanOrEqualTo(28), names[i]);
+                Assert.That(control.anchoredPosition.x, Is.GreaterThanOrEqualTo(0), names[i]);
+                Assert.That(control.anchoredPosition.x + control.rect.width, Is.LessThanOrEqualTo(592), names[i]);
+                Assert.That(-control.anchoredPosition.y + control.rect.height, Is.LessThanOrEqualTo(416), names[i]);
+            }
+            RectTransform scrollUp = (RectTransform)view.Frame.Find("Content/Detail/ScrollUp");
+            RectTransform scrollDown = (RectTransform)view.Frame.Find("Content/Detail/ScrollDown");
+            Assert.That(scrollUp.rect.size, Is.EqualTo(new Vector2(28, 28)));
+            Assert.That(scrollDown.rect.size, Is.EqualTo(new Vector2(28, 28)));
+            Assert.That(view.Frame.Find("Content/Companion/Body/Growth/Skills/SkillDetail/ScrollUp"), Is.Not.Null);
+            Assert.That(view.Frame.Find("Content/Companion/Body/Growth/Skills/SkillDetail/ScrollDown"), Is.Not.Null);
+        }
+        finally { Object.DestroyImmediate(parent); }
+    }
+
+    [Test]
+    public void CompactAttributesScrollFifthRowIntoViewWithoutScalingText()
+    {
+        var parent = new GameObject("Compact Attribute Layout", typeof(RectTransform));
+        try
+        {
+            FieldMenuWidgets widgets = new FieldMenuWidgets(null, _ => { });
+            FieldMenuGrowthView growth = FieldMenuGrowthView.Create(parent.GetComponent<RectTransform>(), widgets);
+            ScrollRect scroll = growth.transform.Find("Attributes/AttributeRows").GetComponent<ScrollRect>();
+            RectTransform lastRow = (RectTransform)scroll.content.Find("Stat4");
+            Assert.That(scroll.viewport.rect.height, Is.EqualTo(156));
+            Assert.That(lastRow.rect.height, Is.EqualTo(32));
+            typeof(FieldMenuGrowthView).GetMethod("EnsureStatVisible", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(growth, new object[] { 4 });
+            float top = -lastRow.anchoredPosition.y - scroll.content.anchoredPosition.y;
+            Assert.That(top, Is.GreaterThanOrEqualTo(0));
+            Assert.That(top + lastRow.rect.height, Is.LessThanOrEqualTo(scroll.viewport.rect.height));
+            Assert.That(growth.transform.localScale, Is.EqualTo(Vector3.one));
+        }
+        finally { Object.DestroyImmediate(parent); }
     }
 }

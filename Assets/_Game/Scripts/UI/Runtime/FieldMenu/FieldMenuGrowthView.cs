@@ -10,10 +10,13 @@ using UnityEngine.UI;
 /// <summary>Read-only growth presentation. Only the owning menu dispatches save mutations.</summary>
 public sealed class FieldMenuGrowthView : MonoBehaviour
 {
-    private const float LeftWidth = 342f;
-    private const float RightX = 354f;
-    private const float RightWidth = 250f;
-    private const float TreeHeight = 160f;
+    private const float ViewWidth = 568f;
+    private const float ViewHeight = 156f;
+    private const float LeftWidth = 322f;
+    private const float RightX = 334f;
+    private const float RightWidth = 234f;
+    private const float DetailWidth = RightWidth - 16f;
+    private const float TreeHeight = 138f;
     private const float NodeWidth = 88f;
     private const float NodeHeight = 36f;
     private const float TreePadding = 12f;
@@ -26,7 +29,7 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
     private readonly StringBuilder _detailBuilder = new StringBuilder(256);
     private FieldMenuWidgets _widgets;
     private RectTransform _statsRoot, _skillsRoot, _treeViewport, _treeContent, _linkRoot, _nodeRoot;
-    private ScrollRect _treeScroll, _detailScroll;
+    private ScrollRect _treeScroll, _detailScroll, _statsScroll;
     private CanvasGroup _interactionGroup;
     private TextMeshProUGUI _statTitle, _statDetail, _statPoints, _statHint;
     private TextMeshProUGUI _skillTitle, _skillDetail, _skillPoints, _skillActionLabel, _treeEmpty, _treeHint;
@@ -74,16 +77,41 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
         {
             if (_statsRoot == null || !_statsRoot.gameObject.activeInHierarchy) return false;
             for (int i = 0; i < _rows.Length; i++)
-                if (_rows[i].Input.isFocused) return true;
+                if (_rows[i]?.Input != null && _rows[i].Input.isFocused) return true;
             return false;
         }
+    }
+
+    public RectTransform FocusedNumberRect
+    {
+        get
+        {
+            if (_statsRoot == null || !_statsRoot.gameObject.activeInHierarchy) return null;
+            for (int i = 0; i < _rows.Length; i++)
+                if (_rows[i]?.Input != null && _rows[i].Input.isFocused)
+                    return (RectTransform)_rows[i].Input.transform;
+            return null;
+        }
+    }
+
+    public TMP_InputField BeginStatEditing(int index)
+    {
+        if (!_mutable || !_interactable || index < 0 || index >= _rows.Length
+            || _statsRoot == null || !_statsRoot.gameObject.activeInHierarchy) return null;
+        TMP_InputField input = _rows[index]?.Input;
+        EventSystem events = EventSystem.current;
+        if (input == null || !input.IsInteractable() || events == null) return null;
+        EnsureStatVisible(index);
+        events.SetSelectedGameObject(input.gameObject);
+        input.ActivateInputField();
+        return input;
     }
 
     public static FieldMenuGrowthView Create(RectTransform parent, FieldMenuWidgets widgets)
     {
         if (parent == null) throw new ArgumentNullException(nameof(parent));
         if (widgets == null) throw new ArgumentNullException(nameof(widgets));
-        RectTransform root = widgets.Rect(parent, "Growth", 0, 0, 604, 178);
+        RectTransform root = widgets.Rect(parent, "Growth", 0, 0, ViewWidth, ViewHeight);
         var view = root.gameObject.AddComponent<FieldMenuGrowthView>();
         view._widgets = widgets;
         view._interactionGroup = root.gameObject.AddComponent<CanvasGroup>();
@@ -126,24 +154,32 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
 
     private void BuildStats(RectTransform root)
     {
-        _statsRoot = _widgets.Rect(root, "Attributes", 0, 0, 604, 178);
-        RectTransform list = _widgets.Panel(_statsRoot, "AttributeRows", 0, 0, LeftWidth, 178);
+        _statsRoot = _widgets.Rect(root, "Attributes", 0, 0, ViewWidth, ViewHeight);
+        RectTransform listPanel = _widgets.Panel(_statsRoot, "AttributeRows", 0, 0, LeftWidth, ViewHeight);
+        RectTransform viewport = _widgets.Rect(listPanel, "Viewport", 0, 0, LeftWidth, ViewHeight);
+        viewport.gameObject.AddComponent<RectMask2D>();
+        Image listHit = viewport.gameObject.AddComponent<Image>(); listHit.color = Color.clear; listHit.raycastTarget = true;
+        RectTransform list = _widgets.Rect(viewport, "Rows", 0, 0, LeftWidth, 174);
+        _statsScroll = listPanel.gameObject.AddComponent<ScrollRect>();
+        _statsScroll.viewport = viewport; _statsScroll.content = list; _statsScroll.horizontal = false;
+        _statsScroll.movementType = ScrollRect.MovementType.Clamped;
+        _statsScroll.scrollSensitivity = 34;
         for (int i = 0; i < _rows.Length; i++)
         {
             int index = i;
-            Button select = _widgets.Button(list, "Stat" + i, string.Empty, 4, 4 + i * 34, 334, 32,
+            Button select = _widgets.Button(list, "Stat" + i, string.Empty, 4, 4 + i * 34, LeftWidth - 8, 32,
                 new FieldMenuCommand(FieldMenuCommandKind.StatSelect, i));
             var row = new StatRow { Select = select, Label = select.GetComponentInChildren<TextMeshProUGUI>() };
             row.Label.rectTransform.anchoredPosition = new Vector2(6, -1);
-            row.Label.rectTransform.sizeDelta = new Vector2(174, 30);
+            row.Label.rectTransform.sizeDelta = new Vector2(166, 30);
             row.Label.alignment = TextAlignmentOptions.MidlineLeft;
             row.Label.fontSize = 10;
             row.Label.textWrappingMode = TextWrappingModes.NoWrap;
-            row.Minus = _widgets.Button(select.transform, "Minus", "−", 182, 0, 32, 32,
+            row.Minus = _widgets.Button(select.transform, "Minus", "−", 170, 0, 32, 32,
                 new FieldMenuCommand(FieldMenuCommandKind.StatStep, i, -1), true);
-            row.Plus = _widgets.Button(select.transform, "Plus", "+", 302, 0, 32, 32,
+            row.Plus = _widgets.Button(select.transform, "Plus", "+", 282, 0, 32, 32,
                 new FieldMenuCommand(FieldMenuCommandKind.StatStep, i, 1), true);
-            row.Input = CreateNumberInput(select.transform, i, 218, 0, 80, 32);
+            row.Input = CreateNumberInput(select.transform, i, 206, 0, 72, 32);
             row.Input.onSelect.AddListener(_ =>
             {
                 if (_interactable) _widgets.Dispatch(new FieldMenuCommand(FieldMenuCommandKind.StatSelect, index));
@@ -152,21 +188,21 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
             _rows[i] = row;
         }
 
-        RectTransform detail = _widgets.Panel(_statsRoot, "AttributeDetail", RightX, 0, RightWidth, 178);
-        _statTitle = _widgets.Text(detail, "Title", string.Empty, 13, 9, 5, 232, 19, FieldMenuPalette.Yellow);
-        _statDetail = _widgets.Text(detail, "Detail", string.Empty, 10, 9, 27, 232, 57);
+        RectTransform detail = _widgets.Panel(_statsRoot, "AttributeDetail", RightX, 0, RightWidth, ViewHeight);
+        _statTitle = _widgets.Text(detail, "Title", string.Empty, 13, 8, 2, DetailWidth, 19, FieldMenuPalette.Yellow);
+        _statDetail = _widgets.Text(detail, "Detail", string.Empty, 10, 8, 35, DetailWidth, 42);
         _statDetail.lineSpacing = 1;
-        _statPoints = _widgets.Text(detail, "Points", string.Empty, 11, 9, 88, 232, 19, FieldMenuPalette.Mint);
-        _apply = _widgets.Button(detail, "Apply", string.Empty, 8, 112, 234, 28,
+        _statPoints = _widgets.Text(detail, "Points", string.Empty, 11, 8, 79, DetailWidth, 17, FieldMenuPalette.Mint);
+        _apply = _widgets.Button(detail, "Apply", string.Empty, 8, 98, DetailWidth, 28,
             new FieldMenuCommand(FieldMenuCommandKind.Confirm));
-        _clear = _widgets.Button(detail, "ClearDraft", string.Empty, 8, 145, 114, 22,
+        _clear = _widgets.Button(detail, "ClearDraft", string.Empty, 8, 128, 106, 28,
             new FieldMenuCommand(FieldMenuCommandKind.ClearDraft));
-        _resetStats = _widgets.Button(detail, "Reset", string.Empty, 128, 145, 114, 22,
+        _resetStats = _widgets.Button(detail, "Reset", string.Empty, 120, 128, 106, 28,
             new FieldMenuCommand(FieldMenuCommandKind.Reset));
         _applyLabel = _apply.GetComponentInChildren<TextMeshProUGUI>();
         _clearLabel = _clear.GetComponentInChildren<TextMeshProUGUI>();
         _resetStatsLabel = _resetStats.GetComponentInChildren<TextMeshProUGUI>();
-        _statHint = _widgets.Text(detail, "Hint", string.Empty, 8, 8, 168, 234, 10, FieldMenuPalette.Muted);
+        _statHint = _widgets.Text(detail, "Hint", string.Empty, 8, 8, 21, DetailWidth, 13, FieldMenuPalette.Muted);
     }
 
     private TMP_InputField CreateNumberInput(Transform parent, int index, float x, float y, float width, float height)
@@ -191,6 +227,7 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
         input.lineType = TMP_InputField.LineType.SingleLine;
         input.characterLimit = 9;
         input.richText = false;
+        input.shouldHideMobileInput = true;
         input.caretColor = FieldMenuPalette.Yellow;
         input.customCaretColor = true;
         input.selectionColor = new Color(0.55f, 0.45f, 0.65f, 0.5f);
@@ -233,6 +270,7 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
         int remaining = Mathf.Max(0, available - spent);
         int maxRank = CharacterGrowthService.ResolveMaxInvestmentRank(data != null ? data.GrowthProfile : null);
         int selected = Mathf.Clamp(selectedIndex, 0, 4);
+        if (focus && !IsTextEditing) EnsureStatVisible(selected);
         bool validDraft = valid && spent <= available;
         for (int i = 0; i < _rows.Length; i++)
         {
@@ -300,7 +338,7 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
 
     private void BuildSkills(RectTransform root)
     {
-        _skillsRoot = _widgets.Rect(root, "Skills", 0, 0, 604, 178);
+        _skillsRoot = _widgets.Rect(root, "Skills", 0, 0, ViewWidth, ViewHeight);
         RectTransform treePanel = _widgets.Panel(_skillsRoot, "SkillTree", 0, 0, LeftWidth, TreeHeight);
         treePanel.GetComponent<Image>().raycastTarget = true;
         _treeViewport = _widgets.Rect(treePanel, "Viewport", 0, 0, LeftWidth, TreeHeight);
@@ -315,19 +353,19 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
         _treeScroll.movementType = ScrollRect.MovementType.Clamped;
         _treeScroll.scrollSensitivity = 24;
         _treeEmpty = _widgets.Text(treePanel, "Empty", string.Empty, 12,
-            12, 64, LeftWidth - 24, 36, FieldMenuPalette.Muted, TextAlignmentOptions.Center);
+            12, 51, LeftWidth - 24, 36, FieldMenuPalette.Muted, TextAlignmentOptions.Center);
         _treeHint = _widgets.Text(_skillsRoot, "TreeHint", string.Empty, 9,
-            0, 164, LeftWidth, 14, FieldMenuPalette.Muted);
+            0, 142, LeftWidth, 14, FieldMenuPalette.Muted);
 
-        RectTransform detail = _widgets.Panel(_skillsRoot, "SkillDetail", RightX, 0, RightWidth, 178);
-        _skillTitle = _widgets.Text(detail, "Title", string.Empty, 13, 8, 5, 234, 19, FieldMenuPalette.Yellow);
-        RectTransform viewport = _widgets.Rect(detail, "DetailViewport", 8, 28, 234, 79);
+        RectTransform detail = _widgets.Panel(_skillsRoot, "SkillDetail", RightX, 0, RightWidth, ViewHeight);
+        _skillTitle = _widgets.Text(detail, "Title", string.Empty, 13, 8, 3, DetailWidth, 20, FieldMenuPalette.Yellow);
+        RectTransform viewport = _widgets.Rect(detail, "DetailViewport", 8, 26, DetailWidth, 62);
         viewport.gameObject.AddComponent<RectMask2D>();
         Image hit = viewport.gameObject.AddComponent<Image>();
         hit.color = Color.clear;
         hit.raycastTarget = true;
-        _skillDetailContent = _widgets.Rect(viewport, "Content", 0, 0, 234, 79);
-        _skillDetail = _widgets.Text(_skillDetailContent, "Description", string.Empty, 10, 0, 0, 234, 79);
+        _skillDetailContent = _widgets.Rect(viewport, "Content", 0, 0, DetailWidth, 62);
+        _skillDetail = _widgets.Text(_skillDetailContent, "Description", string.Empty, 10, 0, 0, DetailWidth, 62);
         _skillDetail.overflowMode = TextOverflowModes.Overflow;
         _skillDetail.lineSpacing = 1;
         _detailScroll = viewport.gameObject.AddComponent<ScrollRect>();
@@ -336,11 +374,15 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
         _detailScroll.horizontal = false;
         _detailScroll.movementType = ScrollRect.MovementType.Clamped;
         _detailScroll.scrollSensitivity = 18;
-        _skillPoints = _widgets.Text(detail, "SkillPoints", string.Empty, 10, 8, 111, 234, 16, FieldMenuPalette.Mint);
-        _skillAction = _widgets.Button(detail, "SkillAction", string.Empty, 8, 134, 150, 32,
+        _skillPoints = _widgets.Text(detail, "SkillPoints", string.Empty, 10, 8, 90, DetailWidth, 16, FieldMenuPalette.Mint);
+        _widgets.Button(detail, "ScrollUp", "↑", 8, 114, 28, 32,
+            new FieldMenuCommand(FieldMenuCommandKind.DetailScroll, 0, -1));
+        _widgets.Button(detail, "ScrollDown", "↓", 40, 114, 28, 32,
+            new FieldMenuCommand(FieldMenuCommandKind.DetailScroll, 0, 1));
+        _skillAction = _widgets.Button(detail, "SkillAction", string.Empty, 76, 114, 82, 32,
             new FieldMenuCommand(FieldMenuCommandKind.Confirm));
         _skillActionLabel = _skillAction.GetComponentInChildren<TextMeshProUGUI>();
-        _resetSkills = _widgets.Button(detail, "ResetSkills", string.Empty, 164, 134, 78, 32,
+        _resetSkills = _widgets.Button(detail, "ResetSkills", string.Empty, 164, 114, 62, 32,
             new FieldMenuCommand(FieldMenuCommandKind.Reset));
         _resetSkillsLabel = _resetSkills.GetComponentInChildren<TextMeshProUGUI>();
     }
@@ -420,9 +462,9 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
                 _mutable && skill != null && selectedNode.State != SkillTreeNodeState.Locked, NodeColor(selectedNode.State));
             if (selectionChanged) EnsureSelectedVisible(_nodes[selected].Rect);
         }
-        float detailHeight = Mathf.Max(79, _skillDetail.GetPreferredValues(_skillDetail.text, 234, 0).y + 3);
-        _skillDetail.rectTransform.sizeDelta = new Vector2(234, detailHeight);
-        _skillDetailContent.sizeDelta = new Vector2(234, detailHeight);
+        float detailHeight = Mathf.Max(62, _skillDetail.GetPreferredValues(_skillDetail.text, DetailWidth, 0).y + 3);
+        _skillDetail.rectTransform.sizeDelta = new Vector2(DetailWidth, detailHeight);
+        _skillDetailContent.sizeDelta = new Vector2(DetailWidth, detailHeight);
         if (selectionChanged) _detailScroll.verticalNormalizedPosition = 1;
         _focusedTree = tree;
         _focusedMember = member;
@@ -548,6 +590,30 @@ public sealed class FieldMenuGrowthView : MonoBehaviour
         position.y = Mathf.Clamp(position.y, 0, Mathf.Max(0, _treeContent.sizeDelta.y - TreeHeight));
         _treeScroll.StopMovement();
         _treeContent.anchoredPosition = position;
+    }
+
+    private void EnsureStatVisible(int index)
+    {
+        if (_statsScroll == null || index < 0 || index >= _rows.Length) return;
+        RectTransform row = _rows[index].Select.transform as RectTransform;
+        float top = -row.anchoredPosition.y;
+        float height = _statsScroll.viewport.rect.height;
+        float position = _statsScroll.content.anchoredPosition.y;
+        if (top < position) position = top;
+        else if (top + row.rect.height > position + height) position = top + row.rect.height - height;
+        _statsScroll.StopMovement();
+        _statsScroll.content.anchoredPosition = new Vector2(0,
+            Mathf.Clamp(position, 0, Mathf.Max(0, _statsScroll.content.rect.height - height)));
+    }
+
+    public void ScrollDetail(float direction)
+    {
+        if (_detailScroll == null || !_skillsRoot.gameObject.activeInHierarchy) return;
+        _detailScroll.StopMovement();
+        Vector2 position = _skillDetailContent.anchoredPosition;
+        float max = Mathf.Max(0, _skillDetailContent.rect.height - _detailScroll.viewport.rect.height);
+        position.y = Mathf.Clamp(position.y + direction * 28, 0, max);
+        _skillDetailContent.anchoredPosition = position;
     }
 
     private void AppendPrerequisites(SkillTreeNodeDefinition definition, IReadOnlyList<SkillTreeNodeView> nodes)

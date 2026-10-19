@@ -257,6 +257,114 @@ public sealed class ConfigPanelScrollTests
     }
 
     [Test]
+    public void PointerRowsAddLocalButtonsWithoutMutatingTheTemplate()
+    {
+        GameObject template = CreateValidRowPrefab("Pointer Row Template");
+        ConfigPanelUI panel = CreatePanelFixture(template, bindViewport: true);
+
+        InvokeInstance(panel, "RebuildRows");
+
+        Assert.That(template.GetComponent<Button>(), Is.Null);
+        Assert.That(template.GetComponentsInChildren<TextMeshProUGUI>(true), Has.Length.EqualTo(2));
+        List<GameObject> rows = GetRowObjects(panel);
+        Assert.That(rows, Has.Count.EqualTo(3));
+        foreach (GameObject row in rows)
+        {
+            AssertLocalButton(row.GetComponent<Button>());
+            Assert.That(row.GetComponent<Image>().raycastTarget, Is.True);
+            foreach (string name in new[] { "Decrease", "Increase" })
+            {
+                Transform control = row.transform.Find(name);
+                Assert.That(control, Is.Not.Null);
+                AssertLocalButton(control.GetComponent<Button>());
+                Assert.That(control.GetComponent<LayoutElement>().preferredWidth, Is.EqualTo(32f));
+                Assert.That(control.GetComponentInChildren<TextMeshProUGUI>().raycastTarget, Is.False);
+            }
+        }
+    }
+
+    [Test]
+    public void KeyBindingAndResetRowsDoNotCreateValueAdjustmentButtons()
+    {
+        ConfigPanelUI panel = CreatePanelFixture(CreateValidRowPrefab("Controls Template"), bindViewport: true);
+        SetEnumField(panel, "_selectedCategory", "Controls");
+
+        InvokeInstance(panel, "RebuildRows");
+
+        foreach (GameObject row in GetRowObjects(panel))
+        {
+            AssertLocalButton(row.GetComponent<Button>());
+            Assert.That(row.transform.Find("Decrease"), Is.Null);
+            Assert.That(row.transform.Find("Increase"), Is.Null);
+        }
+    }
+
+    [Test]
+    public void PointerControlsAreReusedAcrossRepeatedOpenPreparation()
+    {
+        ConfigPanelUI panel = CreatePanelFixture(CreateValidRowPrefab("Reusable Template"), bindViewport: true);
+        panel.gameObject.AddComponent<Canvas>();
+        panel.gameObject.AddComponent<GraphicRaycaster>();
+
+        InvokeInstance(panel, "EnsurePointerControls");
+        FieldMenuTouchInput bridge = panel.GetComponent<FieldMenuTouchInput>();
+        Button back = GetPrivateField<Button>(panel, "_backButton");
+        InvokeInstance(panel, "EnsurePointerControls");
+
+        Assert.That(panel.GetComponents<FieldMenuTouchInput>(), Has.Length.EqualTo(1));
+        Assert.That(panel.GetComponent<FieldMenuTouchInput>(), Is.SameAs(bridge));
+        Assert.That(GetPrivateField<Button>(panel, "_backButton"), Is.SameAs(back));
+        AssertLocalButton(back);
+        Assert.That(((RectTransform)back.transform).sizeDelta, Is.EqualTo(new Vector2(124f, 32f)));
+    }
+
+    [Test]
+    public void PointerGateRejectsClosingOpeningFramesAndAlreadyHandledInput()
+    {
+        ConfigPanelUI panel = CreatePanelFixture(CreateValidRowPrefab("Guard Template"), bindViewport: true);
+        FieldInfo modalOwner = typeof(ConfigPanelUI).GetField("_modalOwner", BindingFlags.Static | BindingFlags.NonPublic);
+        object previousOwner = modalOwner.GetValue(null);
+        panel.gameObject.SetActive(true);
+        CanvasGroup group = panel.GetComponent<CanvasGroup>();
+        typeof(UIPanel).GetField("_canvasGroup", InstancePrivate).SetValue(panel, group);
+        group.alpha = 1f;
+        SetPrivateField(panel, "_ownsModalState", true);
+        SetPrivateField(panel, "_skipOneFrame", false);
+        modalOwner.SetValue(null, panel);
+        MethodInfo canPointer = typeof(ConfigPanelUI).GetMethod("CanPointerInteract", InstancePrivate);
+        try
+        {
+            // An unrelated live UIManager may own another top panel in an editor test scene.
+            if (UIManager.Instance != null && UIManager.Instance.TopPanel != panel)
+                Assert.Ignore("An existing UIManager owns a different panel in this editor scene.");
+            Assert.That(canPointer.Invoke(panel, null), Is.True);
+            SetPrivateField(panel, "_closing", true);
+            Assert.That(canPointer.Invoke(panel, null), Is.False);
+            SetPrivateField(panel, "_closing", false);
+            SetPrivateField(panel, "_skipOneFrame", true);
+            Assert.That(canPointer.Invoke(panel, null), Is.False);
+            SetPrivateField(panel, "_skipOneFrame", false);
+            SetPrivateField(panel, "_lastHandledInputFrame", Time.frameCount);
+            Assert.That(canPointer.Invoke(panel, null), Is.False);
+            SetPrivateField(panel, "_lastHandledInputFrame", -1);
+            modalOwner.SetValue(null, null);
+            Assert.That(canPointer.Invoke(panel, null), Is.False);
+        }
+        finally
+        {
+            SetPrivateField(panel, "_ownsModalState", false);
+            modalOwner.SetValue(null, previousOwner);
+        }
+    }
+
+    private static void AssertLocalButton(Button button)
+    {
+        Assert.That(button, Is.Not.Null);
+        Assert.That(button.navigation.mode, Is.EqualTo(Navigation.Mode.None));
+        Assert.That(button.transition, Is.EqualTo(Selectable.Transition.None));
+    }
+
+    [Test]
     public void ControlsSelectionAndCategoryChangeKeepRowsInsideTheViewport()
     {
         ConfigPanelUI panel = InstantiateConfigPanelAsset();

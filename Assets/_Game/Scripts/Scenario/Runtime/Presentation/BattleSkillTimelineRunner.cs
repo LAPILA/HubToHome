@@ -80,9 +80,6 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
                 {
                     yield break;
                 }
-                // Killing the last target is a successful finish, not cancellation.
-                if (skillContext.Targets.Count == 0) break;
-
                 SkillActionBlock block = skill.ActionTimeline[i];
                 if (block == null)
                 {
@@ -93,6 +90,9 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
                 {
                     continue;
                 }
+
+                // Killing the last target still permits explicitly targetless presentation.
+                if (skillContext.Targets.Count == 0 && !block.CanRunWithoutLivingTargets) break;
 
                 IEnumerator routine;
                 try

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using DG.Tweening;
 using UnityEngine.UI;
@@ -43,7 +44,17 @@ public class ConfigPanelUI : UIPanel
     }
 
     [Serializable] private class CategoryLabel { public Category category; public TextMeshProUGUI text; }
-    private class SpawnedRow { public RowType type; public GameObject go; public TextMeshProUGUI name; public TextMeshProUGUI value; public Image background; }
+    private class SpawnedRow
+    {
+        public RowType type;
+        public GameObject go;
+        public TextMeshProUGUI name;
+        public TextMeshProUGUI value;
+        public Image background;
+        public Button select;
+        public Button decrease;
+        public Button increase;
+    }
 
     [Header("UI")]
     [SerializeField] private TextMeshProUGUI _titleText;
@@ -80,8 +91,15 @@ public class ConfigPanelUI : UIPanel
     private static ConfigPanelUI _modalOwner;
     private float _timeScaleBeforeOpen = 1f;
     private GameState _stateBeforeOpen = GameState.Exploration;
+    private FieldMenuTouchInput _pointerInput;
+    private Button _backButton;
+    private TextMeshProUGUI _backLabel;
+    private readonly List<Button> _categoryButtons = new List<Button>(4);
+    private readonly HashSet<GameObject> _boundCategoryObjects = new HashSet<GameObject>();
+    private int _lastHandledInputFrame = -1;
 
     private GameConfigManager Config { get { return GameConfigManager.EnsureInstance(); } }
+    public bool OwnsModalState => _modalOwner == this && _ownsModalState;
 
     protected override void Awake()
     {
@@ -105,7 +123,9 @@ public class ConfigPanelUI : UIPanel
         _rowIndex = 0;
         _skipOneFrame = true;
         _keyCaptureConflict = false;
+        _lastHandledInputFrame = Time.frameCount;
 
+        EnsurePointerControls();
         RebuildRows();
         Refresh();
     }
@@ -124,6 +144,13 @@ public class ConfigPanelUI : UIPanel
     {
         Show();
         if (_modalOwner == this) base.ShowImmediate();
+    }
+
+    public override void FocusDefaultSelection()
+    {
+        // Keyboard input is routed by this panel, not by EventSystem Submit as well.
+        if (_modalOwner == this && EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(null);
     }
 
     public override void HideImmediate()
@@ -205,17 +232,200 @@ public class ConfigPanelUI : UIPanel
 
     private void Update()
     {
-        if (!IsVisible || _closing) return;
+        if (!CanInteract()) return;
         if (_skipOneFrame) { _skipOneFrame = false; return; }
+        if (_lastHandledInputFrame == Time.frameCount) return;
 
         if (_focus == Focus.KeyCapture) { CaptureKey(); return; }
 
-        if (GameInput.ConfigBackPressed) Back();
-        else if (GameInput.ConfigSubmitPressed) Submit();
-        else if (GameInput.ConfigUpPressed) Move(-1);
-        else if (GameInput.ConfigDownPressed) Move(1);
-        else if (GameInput.ConfigLeftPressed) Adjust(-1);
-        else if (GameInput.ConfigRightPressed) Adjust(1);
+        if (GameInput.ConfigBackPressed) { MarkInputHandled(); Back(); }
+        else if (GameInput.ConfigSubmitPressed) { MarkInputHandled(); Submit(); }
+        else if (GameInput.ConfigUpPressed) { MarkInputHandled(); Move(-1); }
+        else if (GameInput.ConfigDownPressed) { MarkInputHandled(); Move(1); }
+        else if (GameInput.ConfigLeftPressed) { MarkInputHandled(); Adjust(-1); }
+        else if (GameInput.ConfigRightPressed) { MarkInputHandled(); Adjust(1); }
+    }
+
+    private bool CanInteract()
+    {
+        return IsVisible && !_closing && _ownsModalState && _modalOwner == this
+            && (UIManager.Instance == null || UIManager.Instance.TopPanel == this);
+    }
+
+    private bool CanPointerInteract()
+    {
+        return CanInteract() && !_skipOneFrame && _lastHandledInputFrame != Time.frameCount;
+    }
+
+    private bool TryBeginPointerAction(bool allowKeyCapture = false)
+    {
+        if (!CanPointerInteract() || (!allowKeyCapture && _focus == Focus.KeyCapture)) return false;
+        // Prefer an already queued keyboard command, independent of Update ordering.
+        if (GameInput.ConfigBackPressed || GameInput.ConfigSubmitPressed
+            || GameInput.ConfigUpPressed || GameInput.ConfigDownPressed
+            || GameInput.ConfigLeftPressed || GameInput.ConfigRightPressed) return false;
+        MarkInputHandled();
+        return true;
+    }
+
+    private void MarkInputHandled()
+    {
+        _lastHandledInputFrame = Time.frameCount;
+        GameInput.SuppressMenuInputsForCurrentFrame();
+    }
+
+    private void EnsurePointerControls()
+    {
+        Canvas canvas = GetComponentInParent<Canvas>();
+        RectTransform bounds = transform as RectTransform;
+        if (canvas != null && bounds != null)
+        {
+            _pointerInput = GetComponent<FieldMenuTouchInput>();
+            if (_pointerInput == null) _pointerInput = gameObject.AddComponent<FieldMenuTouchInput>();
+            _pointerInput.Initialize(this, canvas, bounds, CanPointerInteract);
+        }
+
+        for (int i = 0; i < _categories.Count; i++)
+        {
+            CategoryLabel category = _categories[i];
+            if (category == null || category.text == null
+                || !_boundCategoryObjects.Add(category.text.gameObject)) continue;
+            category.text.raycastTarget = true;
+            Button button = ConfigurePointerButton(category.text.gameObject, category.text);
+            Category target = category.category;
+            button.onClick.AddListener(() => SelectPointerCategory(target));
+            _categoryButtons.Add(button);
+        }
+
+        if (_backButton != null) return;
+        Transform parent = _titleText != null ? _titleText.transform.parent
+            : _scrollRect != null ? _scrollRect.transform.parent : transform;
+        GameObject back = new GameObject("ConfigBack", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        back.transform.SetParent(parent, false);
+        RectTransform rect = (RectTransform)back.transform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(-178f, -160f);
+        rect.sizeDelta = new Vector2(124f, 32f);
+        Image image = back.GetComponent<Image>();
+        image.color = _rowNormalColor;
+        _backButton = ConfigurePointerButton(back, image);
+        _backLabel = CreatePointerLabel(rect, "Label", string.Empty, _titleText);
+        _backButton.onClick.AddListener(PointerBack);
+    }
+
+    private void SelectPointerCategory(Category category)
+    {
+        if (!TryBeginPointerAction()) return;
+        bool changed = _selectedCategory != category;
+        _selectedCategory = category;
+        _focus = Focus.RowList;
+        _rowIndex = 0;
+        if (changed || _rows.Count == 0) RebuildRows();
+        AudioManager.Instance?.PlayUISFX(_selectSfx);
+        Refresh();
+    }
+
+    private void SelectPointerRow(SpawnedRow row, int adjustment)
+    {
+        if (row == null || row.go == null || !IsRowAvailable(row.type)) return;
+        int index = _rows.IndexOf(row);
+        if (index < 0 || !TryBeginPointerAction()) return;
+        _focus = Focus.RowList;
+        _rowIndex = index;
+        if (adjustment != 0) Adjust(adjustment);
+        else if (IsSubmitRow(row.type)) Submit();
+        else
+        {
+            AudioManager.Instance?.PlayUISFX(_moveSfx);
+            Refresh();
+        }
+    }
+
+    private void PointerBack()
+    {
+        if (TryBeginPointerAction(true)) Back();
+    }
+
+    private static Button ConfigurePointerButton(GameObject owner, Graphic target)
+    {
+        Button button = owner.GetComponent<Button>();
+        if (button == null) button = owner.AddComponent<Button>();
+        button.transition = UnityEngine.UI.Selectable.Transition.None;
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
+        button.targetGraphic = target;
+        if (target != null) target.raycastTarget = true;
+        return button;
+    }
+
+    private static TextMeshProUGUI CreatePointerLabel(RectTransform parent, string name, string text,
+        TextMeshProUGUI template)
+    {
+        GameObject labelObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(parent, false);
+        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+        if (template != null) label.font = template.font;
+        label.fontSize = 16f;
+        label.alignment = TextAlignmentOptions.Center;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+        label.raycastTarget = false;
+        label.text = text;
+        RectTransform rect = label.rectTransform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(3f, 2f);
+        rect.offsetMax = new Vector2(-3f, -2f);
+        return label;
+    }
+
+    private void ConfigureRowPointerControls(SpawnedRow row)
+    {
+        if (row.background == null) row.background = row.go.AddComponent<Image>();
+        row.select = ConfigurePointerButton(row.go, row.background);
+        row.select.onClick.AddListener(() => SelectPointerRow(row, 0));
+        if (!IsAdjustableRow(row.type)) return;
+
+        HorizontalLayoutGroup layout = row.go.GetComponent<HorizontalLayoutGroup>();
+        layout.spacing = 4f;
+        LayoutElement nameLayout = row.name.GetComponent<LayoutElement>();
+        nameLayout.preferredWidth = 120f;
+        nameLayout.flexibleWidth = 1f;
+        LayoutElement valueLayout = row.value.GetComponent<LayoutElement>();
+        valueLayout.preferredWidth = 80f;
+        valueLayout.flexibleWidth = 0.5f;
+        row.decrease = CreateAdjustmentButton(row, "Decrease", "−", -1);
+        row.increase = CreateAdjustmentButton(row, "Increase", "+", 1);
+    }
+
+    private Button CreateAdjustmentButton(SpawnedRow row, string name, string symbol, int direction)
+    {
+        GameObject owner = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
+        owner.transform.SetParent(row.go.transform, false);
+        LayoutElement layout = owner.GetComponent<LayoutElement>();
+        layout.minWidth = layout.preferredWidth = 32f;
+        layout.minHeight = 30f;
+        layout.flexibleWidth = 0f;
+        layout.flexibleHeight = 1f;
+        Image image = owner.GetComponent<Image>();
+        image.color = _rowSelectedColor;
+        Button button = ConfigurePointerButton(owner, image);
+        CreatePointerLabel((RectTransform)owner.transform, "Label", symbol, row.value);
+        button.onClick.AddListener(() => SelectPointerRow(row, direction));
+        return button;
+    }
+
+    private static bool IsAdjustableRow(RowType type)
+    {
+        return type == RowType.MasterVolume || type == RowType.BgmVolume || type == RowType.SfxVolume
+            || type == RowType.Language || type == RowType.TextSpeed || type == RowType.AutoAdvance
+            || type == RowType.ScreenShake || type == RowType.FlashIntensity
+            || type == RowType.Fullscreen || type == RowType.WindowScale;
+    }
+
+    private static bool IsSubmitRow(RowType type)
+    {
+        return IsKeyRow(type) || type == RowType.Language || type == RowType.AutoAdvance
+            || type == RowType.Fullscreen || type == RowType.ResetDefault || type == RowType.ControlsResetDefault;
     }
 
     private void Move(int dir)
@@ -269,6 +479,7 @@ public class ConfigPanelUI : UIPanel
         {
             case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
             case RowType.Language: CycleLanguage(1); break;
+            case RowType.AutoAdvance: Config.SetAutoAdvance(!Config.AutoAdvance); break;
             case RowType.ResetDefault: Config.ResetDefaults(); break;
             case RowType.ControlsResetDefault: Config.ResetControlsDefaults(); break;
         }
@@ -310,13 +521,26 @@ public class ConfigPanelUI : UIPanel
 
     private void CaptureKey()
     {
+        if (_rowIndex < 0 || _rowIndex >= _rows.Count)
+        {
+            _focus = Focus.Category;
+            Refresh();
+            return;
+        }
         if (!CanRebindKeyboard)
         {
             _focus = Focus.RowList;
             Refresh();
             return;
         }
+        if (GameInput.ConfigBackPressed)
+        {
+            MarkInputHandled();
+            _focus = Focus.RowList; _keyCaptureConflict = false;
+            Refresh(); return;
+        }
         if (!GameInput.TryReadPressedKey(out Key key)) return;
+        MarkInputHandled();
         if (key == Key.Escape)
         {
             _focus = Focus.RowList;
@@ -374,6 +598,7 @@ public class ConfigPanelUI : UIPanel
             ConfigureRowText(nameText, true);
             ConfigureRowText(valueText, false);
             row.background = go.GetComponent<Image>();
+            ConfigureRowPointerControls(row);
             _rows.Add(row);
         }
 
@@ -498,6 +723,14 @@ public class ConfigPanelUI : UIPanel
     private void Refresh()
     {
         if (_titleText != null) _titleText.text = L("config.title", "SETTINGS");
+        if (_backLabel != null)
+        {
+            _backLabel.text = L("input.cancel", "Back");
+            _backLabel.color = _normalColor;
+        }
+        bool canSelect = _focus != Focus.KeyCapture;
+        for (int i = 0; i < _categoryButtons.Count; i++)
+            if (_categoryButtons[i] != null) _categoryButtons[i].interactable = canSelect;
         RefreshGameplayPreview();
 
         for (int i = 0; i < _categories.Count; i++)
@@ -520,6 +753,9 @@ public class ConfigPanelUI : UIPanel
             SetRowText(r);
             bool selected = _focus != Focus.Category && i == _rowIndex;
             bool available = IsRowAvailable(r.type);
+            if (r.select != null) r.select.interactable = available && canSelect;
+            if (r.decrease != null) r.decrease.interactable = available && canSelect;
+            if (r.increase != null) r.increase.interactable = available && canSelect;
             if (!available && r.value != null)
                 r.value.text = L("config.value.unavailable", "Unavailable");
             ApplyVisual(r.name, selected, available);

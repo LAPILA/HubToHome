@@ -17,6 +17,13 @@ public readonly struct FieldMenuListEntry
 /// <summary>Cached visual surface. Game rules and save mutations belong to the menu controller/services.</summary>
 public sealed class FieldMenuView : MonoBehaviour
 {
+    public static readonly Vector2 FrameSize = new Vector2(592f, 416f);
+    private const float ContentWidth = 568f;
+    private const float ListWidth = 322f;
+    private const float DetailWidth = 234f;
+    private const float BodyTop = 130f;
+    private const float BodyHeight = 184f;
+    private const float PartyBarWidth = 136f;
     private FieldMenuWidgets _w;
     private RectTransform _frame, _body, _listPanel, _listViewport, _listContent, _detailPanel, _detailViewport, _detailContent;
     private RectTransform _actor, _growth, _growthBody, _modal;
@@ -36,8 +43,11 @@ public sealed class FieldMenuView : MonoBehaviour
     private string _detailValue;
     private float _detailHeight;
     public RectTransform Frame => _frame;
+    public IReadOnlyList<Button> NavigationButtons => _w.Buttons;
+    public RectTransform FocusedNumberRect => _growthView != null ? _growthView.FocusedNumberRect : null;
     public bool IsTextEditing => _growthView != null && _growthView.IsTextEditing;
     public void EndTextEditing() { if (_growthView != null) _growthView.EndTextEditing(); }
+    public TMP_InputField BeginStatEditing(int index) => _growthView != null ? _growthView.BeginStatEditing(index) : null;
 
     private sealed class Row { public Button Button; public Image Icon; public TMP_Text Name, Hint; }
     private sealed class PartyCard { public Button Button; public Image Portrait, Hp, Ap; public TMP_Text Name, Level, HpText, ApText; }
@@ -48,7 +58,7 @@ public sealed class FieldMenuView : MonoBehaviour
         var go = new GameObject("FieldMenu", typeof(RectTransform), typeof(FieldMenuView));
         RectTransform frame = go.GetComponent<RectTransform>();
         frame.SetParent(parent, false); frame.anchorMin = frame.anchorMax = frame.pivot = new Vector2(.5f, .5f);
-        frame.sizeDelta = new Vector2(640, 480);
+        frame.sizeDelta = FrameSize;
         var view = go.GetComponent<FieldMenuView>(); view._frame = frame;
         view._w = new FieldMenuWidgets(font, dispatch); view.Build();
         return view;
@@ -58,51 +68,53 @@ public sealed class FieldMenuView : MonoBehaviour
     {
         Image backdrop = _frame.gameObject.AddComponent<Image>();
         backdrop.color = FieldMenuPalette.Background; backdrop.raycastTarget = true;
-        _w.Panel(_frame, "Mark", 18, 14, 34, 34);
-        _w.Text(_frame, "MarkLabel", "▥", 28, 18, 12, 34, 38, FieldMenuPalette.Yellow, TextAlignmentOptions.Center);
-        _title = _w.Text(_frame, "Title", "", 20, 64, 10, 270, 28);
-        _w.Text(_frame, "Subtitle", "HUB TO HOME", 8, 65, 39, 270, 14, FieldMenuPalette.Muted);
-        _level = _w.Text(_frame, "Level", "", 10, 398, 15, 116, 16, FieldMenuPalette.Yellow);
-        _exp = _w.Text(_frame, "Experience", "", 8, 398, 32, 116, 12, FieldMenuPalette.Muted);
-        _w.Fill(_frame, "ExpTrack", 398, 47, 116, 3, Color.black);
-        _expFill = _w.Fill(_frame, "ExpFill", 398, 47, 116, 3, FieldMenuPalette.Mint);
-        _money = _w.Text(_frame, "Money", "", 17, 526, 24, 96, 27, FieldMenuPalette.Yellow, TextAlignmentOptions.Right);
-        for (int i = 0; i < 4; i++) _tabs[i] = _w.Button(_frame, "Tab" + i, "", 18 + i * 153, 66, 145, 34, new FieldMenuCommand(FieldMenuCommandKind.Page, i));
-        RectTransform objective = _w.Panel(_frame, "Objective", 18, 107, 604, 20);
-        _objective = _w.Text(objective, "Text", "", 9, 7, 2, 590, 17, FieldMenuPalette.Muted);
-        _actor = _w.Panel(_frame, "SelectedCompanion", 18, 127, 604, 30);
-        _w.Button(_actor, "Previous", "‹", 5, 3, 25, 24, new FieldMenuCommand(FieldMenuCommandKind.Actor, -1, -1));
+        _w.Panel(_frame, "Mark", 12, 8, 32, 32);
+        _w.Text(_frame, "MarkLabel", "▥", 28, 12, 6, 32, 36, FieldMenuPalette.Yellow, TextAlignmentOptions.Center);
+        _title = _w.Text(_frame, "Title", "", 20, 54, 5, 280, 27);
+        _w.Text(_frame, "Subtitle", "HUB TO HOME", 8, 55, 32, 280, 12, FieldMenuPalette.Muted);
+        _level = _w.Text(_frame, "Level", "", 10, 348, 7, 116, 16, FieldMenuPalette.Yellow);
+        _exp = _w.Text(_frame, "Experience", "", 8, 348, 24, 116, 12, FieldMenuPalette.Muted);
+        _w.Fill(_frame, "ExpTrack", 348, 39, 116, 3, Color.black);
+        _expFill = _w.Fill(_frame, "ExpFill", 348, 39, 116, 3, FieldMenuPalette.Mint);
+        _money = _w.Text(_frame, "Money", "", 17, 476, 15, 104, 27, FieldMenuPalette.Yellow, TextAlignmentOptions.Right);
+        for (int i = 0; i < 4; i++) _tabs[i] = _w.Button(_frame, "Tab" + i, "", 12 + i * 144, 48, 136, 30, new FieldMenuCommand(FieldMenuCommandKind.Page, i));
+        RectTransform objective = _w.Panel(_frame, "Objective", 12, 82, ContentWidth, 18);
+        _objective = _w.Text(objective, "Text", "", 9, 6, 1, ContentWidth - 12, 16, FieldMenuPalette.Muted);
+        _actor = _w.Panel(_frame, "SelectedCompanion", 12, 100, ContentWidth, 30);
+        _w.Button(_actor, "Previous", "‹", 2, 1, 28, 28, new FieldMenuCommand(FieldMenuCommandKind.Actor, -1, -1));
         _actorPortrait = _w.Fill(_actor, "Portrait", 34, 2, 26, 26, Color.white); _actorPortrait.preserveAspect = true;
-        _w.Button(_actor, "Next", "›", 64, 3, 25, 24, new FieldMenuCommand(FieldMenuCommandKind.Actor, -1, 1));
-        _actorName = _w.Text(_actor, "Name", "", 12, 96, 7, 250, 20);
-        _points = _w.Text(_actor, "Points", "", 9, 355, 9, 240, 16, FieldMenuPalette.Mint, TextAlignmentOptions.Right);
-        _body = _w.Rect(_frame, "Content", 18, 157, 604, 202);
-        _listPanel = _w.Panel(_body, "List", 0, 0, 342, 202);
-        for (int i = 0; i < 6; i++) _filters[i] = _w.Button(_listPanel, "Filter" + i, "", 5 + i * 55, 3, 52, 26, new FieldMenuCommand(FieldMenuCommandKind.Filter, i));
-        _listViewport = _w.Rect(_listPanel, "Viewport", 5, 34, 332, 162);
+        _w.Button(_actor, "Next", "›", 64, 1, 28, 28, new FieldMenuCommand(FieldMenuCommandKind.Actor, -1, 1));
+        _actorName = _w.Text(_actor, "Name", "", 12, 100, 6, 246, 20);
+        _points = _w.Text(_actor, "Points", "", 9, 350, 9, 210, 16, FieldMenuPalette.Mint, TextAlignmentOptions.Right);
+        _body = _w.Rect(_frame, "Content", 12, BodyTop, ContentWidth, BodyHeight);
+        _listPanel = _w.Panel(_body, "List", 0, 0, ListWidth, BodyHeight);
+        for (int i = 0; i < 6; i++) _filters[i] = _w.Button(_listPanel, "Filter" + i, "", 5 + i * 51, 3, 48, 28, new FieldMenuCommand(FieldMenuCommandKind.Filter, i));
+        _listViewport = _w.Rect(_listPanel, "Viewport", 5, 36, ListWidth - 10, BodyHeight - 42);
         _listScroll = MakeScroll(_listViewport, "Rows", out _listContent);
-        _detailPanel = _w.Panel(_body, "Detail", 354, 0, 250, 202);
-        _detailTitle = _w.Text(_detailPanel, "Title", "", 15, 10, 8, 230, 36);
-        _detailSubtitle = _w.Text(_detailPanel, "Type", "", 9, 10, 45, 230, 15, FieldMenuPalette.Mint);
-        _detailViewport = _w.Rect(_detailPanel, "DescriptionViewport", 10, 64, 230, 96);
+        _detailPanel = _w.Panel(_body, "Detail", 334, 0, DetailWidth, BodyHeight);
+        _detailTitle = _w.Text(_detailPanel, "Title", "", 15, 8, 5, DetailWidth - 16, 34);
+        _detailSubtitle = _w.Text(_detailPanel, "Type", "", 9, 8, 40, DetailWidth - 16, 15, FieldMenuPalette.Mint);
+        _detailViewport = _w.Rect(_detailPanel, "DescriptionViewport", 8, 60, DetailWidth - 16, BodyHeight - 100);
         _detailScroll = MakeScroll(_detailViewport, "Description", out _detailContent);
-        _detailText = _w.Text(_detailContent, "Text", "", 11, 0, 0, 226, 96);
+        _detailText = _w.Text(_detailContent, "Text", "", 11, 0, 0, DetailWidth - 20, BodyHeight - 100);
         _detailText.overflowMode = TextOverflowModes.Overflow;
-        _detailAction = _w.Button(_detailPanel, "Action", "", 10, 166, 230, 28, new FieldMenuCommand(FieldMenuCommandKind.Confirm));
-        _growth = _w.Rect(_body, "Companion", 0, 0, 604, 202);
-        _subTabs[0] = _w.Button(_growth, "StatsTab", "", 0, 0, 146, 24, new FieldMenuCommand(FieldMenuCommandKind.CompanionTab, 0));
-        _subTabs[1] = _w.Button(_growth, "SkillsTab", "", 152, 0, 146, 24, new FieldMenuCommand(FieldMenuCommandKind.CompanionTab, 1));
-        _growthBody = _w.Rect(_growth, "Body", 0, 24, 604, 178);
+        _detailAction = _w.Button(_detailPanel, "Action", "", 76, BodyHeight - 36, DetailWidth - 84, 28, new FieldMenuCommand(FieldMenuCommandKind.Confirm));
+        _w.Button(_detailPanel, "ScrollUp", "↑", 8, BodyHeight - 36, 28, 28, new FieldMenuCommand(FieldMenuCommandKind.DetailScroll, 0, -1));
+        _w.Button(_detailPanel, "ScrollDown", "↓", 40, BodyHeight - 36, 28, 28, new FieldMenuCommand(FieldMenuCommandKind.DetailScroll, 0, 1));
+        _growth = _w.Rect(_body, "Companion", 0, 0, ContentWidth, BodyHeight);
+        _subTabs[0] = _w.Button(_growth, "StatsTab", "", 0, 0, 146, 28, new FieldMenuCommand(FieldMenuCommandKind.CompanionTab, 0));
+        _subTabs[1] = _w.Button(_growth, "SkillsTab", "", 152, 0, 146, 28, new FieldMenuCommand(FieldMenuCommandKind.CompanionTab, 1));
+        _growthBody = _w.Rect(_growth, "Body", 0, 28, ContentWidth, BodyHeight - 28);
         _growthView = FieldMenuGrowthView.Create(_growthBody, _w);
-        _partyLabel = _w.Text(_frame, "PartyLabel", "", 9, 18, 366, 604, 14, FieldMenuPalette.Muted);
+        _partyLabel = _w.Text(_frame, "PartyLabel", "", 9, 12, 318, ContentWidth, 12, FieldMenuPalette.Muted);
         for (int i = 0; i < 3; i++) _party[i] = BuildPartyCard(i);
-        _w.Fill(_frame, "FooterRule", 18, 450, 604, 1, FieldMenuPalette.Border);
-        _status = _w.Text(_frame, "Status", "", 9, 18, 457, 448, 20, FieldMenuPalette.Muted);
-        _settings = _w.Button(_frame, "Settings", L("settings", "설정"), 474, 454, 62, 23, new FieldMenuCommand(FieldMenuCommandKind.Settings));
-        _back = _w.Button(_frame, "Back", L("back", "뒤로"), 542, 454, 80, 23, new FieldMenuCommand(FieldMenuCommandKind.Cancel));
-        _modal = _w.Rect(_frame, "Confirmation", 0, 0, 640, 480);
-        _w.Fill(_modal, "Cover", 0, 0, 640, 480, new Color(0, 0, 0, .9f)).raycastTarget = true;
-        RectTransform card = _w.Panel(_modal, "Card", 130, 146, 380, 190);
+        _w.Fill(_frame, "FooterRule", 12, 378, ContentWidth, 1, FieldMenuPalette.Border);
+        _status = _w.Text(_frame, "Status", "", 9, 12, 384, 408, 26, FieldMenuPalette.Muted);
+        _settings = _w.Button(_frame, "Settings", L("settings", "설정"), 430, 382, 68, 28, new FieldMenuCommand(FieldMenuCommandKind.Settings));
+        _back = _w.Button(_frame, "Back", L("back", "뒤로"), 506, 382, 74, 28, new FieldMenuCommand(FieldMenuCommandKind.Cancel));
+        _modal = _w.Rect(_frame, "Confirmation", 0, 0, FrameSize.x, FrameSize.y);
+        _w.Fill(_modal, "Cover", 0, 0, FrameSize.x, FrameSize.y, new Color(0, 0, 0, .9f)).raycastTarget = true;
+        RectTransform card = _w.Panel(_modal, "Card", 106, 113, 380, 190);
         _modalTitle = _w.Text(card, "Title", "", 16, 14, 12, 352, 42, FieldMenuPalette.Yellow);
         _modalBody = _w.Text(card, "Body", "", 12, 14, 58, 352, 70);
         _modalButtons[0] = _w.Button(card, "Cancel", "", 14, 140, 170, 34, new FieldMenuCommand(FieldMenuCommandKind.ModalAccept, 0));
@@ -124,17 +136,17 @@ public sealed class FieldMenuView : MonoBehaviour
     private PartyCard BuildPartyCard(int index)
     {
         var card = new PartyCard();
-        card.Button = _w.Button(_frame, "Party" + index, "", 18 + index * 205, 380, 194, 64, new FieldMenuCommand(FieldMenuCommandKind.Actor, index));
-        card.Portrait = _w.Fill(card.Button.transform, "Portrait", 5, 5, 42, 50, Color.white); card.Portrait.preserveAspect = true;
-        card.Name = _w.Text(card.Button.transform, "Name", "", 10, 53, 4, 96, 14);
+        card.Button = _w.Button(_frame, "Party" + index, "", 12 + index * 192, 332, 184, 44, new FieldMenuCommand(FieldMenuCommandKind.Actor, index));
+        card.Portrait = _w.Fill(card.Button.transform, "Portrait", 4, 4, 32, 36, Color.white); card.Portrait.preserveAspect = true;
+        card.Name = _w.Text(card.Button.transform, "Name", "", 10, 42, 2, 98, 14);
         card.Name.textWrappingMode = TextWrappingModes.NoWrap;
-        card.Level = _w.Text(card.Button.transform, "Level", "", 8, 153, 4, 36, 14, FieldMenuPalette.Muted, TextAlignmentOptions.Right);
-        card.HpText = _w.Text(card.Button.transform, "HP", "", 9, 53, 21, 134, 12);
-        _w.Fill(card.Button.transform, "HpTrack", 53, 34, 134, 3, Color.black);
-        card.Hp = _w.Fill(card.Button.transform, "HpFill", 53, 34, 134, 3, FieldMenuPalette.Mint);
-        card.ApText = _w.Text(card.Button.transform, "AP", "", 9, 53, 40, 134, 12);
-        _w.Fill(card.Button.transform, "ApTrack", 53, 53, 134, 3, Color.black);
-        card.Ap = _w.Fill(card.Button.transform, "ApFill", 53, 53, 134, 3, FieldMenuPalette.Yellow);
+        card.Level = _w.Text(card.Button.transform, "Level", "", 8, 142, 3, 36, 12, FieldMenuPalette.Muted, TextAlignmentOptions.Right);
+        card.HpText = _w.Text(card.Button.transform, "HP", "", 9, 42, 16, PartyBarWidth, 12);
+        _w.Fill(card.Button.transform, "HpTrack", 42, 27, PartyBarWidth, 2, Color.black);
+        card.Hp = _w.Fill(card.Button.transform, "HpFill", 42, 27, PartyBarWidth, 2, FieldMenuPalette.Mint);
+        card.ApText = _w.Text(card.Button.transform, "AP", "", 9, 42, 30, PartyBarWidth, 12);
+        _w.Fill(card.Button.transform, "ApTrack", 42, 41, PartyBarWidth, 2, Color.black);
+        card.Ap = _w.Fill(card.Button.transform, "ApFill", 42, 41, PartyBarWidth, 2, FieldMenuPalette.Yellow);
         return card;
     }
 
@@ -155,12 +167,20 @@ public sealed class FieldMenuView : MonoBehaviour
         // Bag targeting also needs previous/next on touch when the party exceeds three.
         bool actor = page != 3;
         _actor.gameObject.SetActive(actor);
-        _body.anchoredPosition = new Vector2(18, actor ? -157 : -127);
-        float height = actor ? 202 : 232;
-        _body.sizeDelta = new Vector2(604, height); _listPanel.sizeDelta = new Vector2(342, height); _detailPanel.sizeDelta = new Vector2(250, height);
-        _listViewport.sizeDelta = new Vector2(332, height - 40);
-        _detailViewport.sizeDelta = new Vector2(230, height - 108);
-        _detailAction.GetComponent<RectTransform>().anchoredPosition = new Vector2(10, -(height - 36));
+        _body.anchoredPosition = new Vector2(12, actor ? -BodyTop : -(BodyTop - 30));
+        float height = actor ? BodyHeight : BodyHeight + 30;
+        _body.sizeDelta = new Vector2(ContentWidth, height); _listPanel.sizeDelta = new Vector2(ListWidth, height); _detailPanel.sizeDelta = new Vector2(DetailWidth, height);
+        _listViewport.sizeDelta = new Vector2(ListWidth - 10, height - 42);
+        _detailViewport.sizeDelta = new Vector2(DetailWidth - 16, height - 100);
+        for (int i = 0; i < _detailPanel.childCount; i++)
+        {
+            Transform child = _detailPanel.GetChild(i);
+            if (child.TryGetComponent(out Button button))
+            {
+                var rect = (RectTransform)button.transform;
+                rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, -(height - 36));
+            }
+        }
         _growth.gameObject.SetActive(page == 2); _listPanel.gameObject.SetActive(page != 2); _detailPanel.gameObject.SetActive(page != 2);
         Label(_subTabs[0], L("stats", "상태 · 능력치")); Label(_subTabs[1], L("skills", "스킬 트리"));
         Label(_settings, L("settings", "설정")); Label(_back, L("back", "뒤로"));
@@ -183,8 +203,9 @@ public sealed class FieldMenuView : MonoBehaviour
             _filters[i].gameObject.SetActive(i < count);
             if (i >= count) continue;
             var rect = (RectTransform)_filters[i].transform;
-            float width = (332f - (count - 1) * 4) / Mathf.Max(1, count);
-            rect.anchoredPosition = new Vector2(5 + i * (width + 4), -3); rect.sizeDelta = new Vector2(width, 26);
+            float step = (ListWidth - 6) / Mathf.Max(1, count);
+            float left = Mathf.Round(i * step), right = Mathf.Round((i + 1) * step) - 4;
+            rect.anchoredPosition = new Vector2(5 + left, -3); rect.sizeDelta = new Vector2(right - left, 28);
             Label(_filters[i], labels[i]);
             _filters[i].GetComponentInChildren<TMP_Text>().fontSize = count > 3 ? 9 : 11;
             FieldMenuWidgets.Style(_filters[i], i == selected);
@@ -197,9 +218,9 @@ public sealed class FieldMenuView : MonoBehaviour
         while (_rows.Count < count)
         {
             int i = _rows.Count;
-            Button button = _w.Button(_listContent, "Row" + i, "", 0, i * 33, 330, 30, new FieldMenuCommand(FieldMenuCommandKind.Row, i));
+            Button button = _w.Button(_listContent, "Row" + i, "", 0, i * 33, ListWidth - 12, 30, new FieldMenuCommand(FieldMenuCommandKind.Row, i));
             Image icon = _w.Fill(button.transform, "Icon", 5, 3, 24, 24, Color.white); icon.preserveAspect = true;
-            _rows.Add(new Row { Button = button, Icon = icon, Name = _w.Text(button.transform, "Name", "", 11, 36, 7, 218, 20), Hint = _w.Text(button.transform, "Hint", "", 9, 254, 9, 68, 18, FieldMenuPalette.Muted, TextAlignmentOptions.Right) });
+            _rows.Add(new Row { Button = button, Icon = icon, Name = _w.Text(button.transform, "Name", "", 11, 36, 5, 198, 22), Hint = _w.Text(button.transform, "Hint", "", 9, 238, 7, 64, 20, FieldMenuPalette.Muted, TextAlignmentOptions.Right) });
         }
         for (int i = 0; i < _rows.Count; i++)
         {
@@ -209,7 +230,7 @@ public sealed class FieldMenuView : MonoBehaviour
             // Unavailable rows stay selectable so their restrictions can be read.
             FieldMenuWidgets.Style(row.Button, i == selected); row.Name.color = entry.Enabled ? (i == selected ? FieldMenuPalette.Yellow : FieldMenuPalette.Text) : FieldMenuPalette.Muted;
         }
-        _listContent.sizeDelta = new Vector2(332, Mathf.Max(_listViewport.rect.height, count * 33));
+        _listContent.sizeDelta = new Vector2(ListWidth - 10, Mathf.Max(_listViewport.rect.height, count * 33));
         float start = Mathf.Clamp(_listContent.anchoredPosition.y, 0, Mathf.Max(0, count * 33 - _listViewport.rect.height));
         if (selected * 33 < start) start = selected * 33;
         if (selected * 33 + 30 > start + _listViewport.rect.height) start = selected * 33 + 30 - _listViewport.rect.height;
@@ -224,8 +245,8 @@ public sealed class FieldMenuView : MonoBehaviour
         {
             _detailHeight = _detailViewport.rect.height;
             _detailValue = description; _detailText.text = description ?? string.Empty;
-            float preferred = _detailText.GetPreferredValues(_detailText.text, 226, 100000).y;
-            _detailContent.sizeDelta = new Vector2(230, Mathf.Max(_detailViewport.rect.height, preferred + 8));
+            float preferred = _detailText.GetPreferredValues(_detailText.text, DetailWidth - 20, 100000).y;
+            _detailContent.sizeDelta = new Vector2(DetailWidth - 16, Mathf.Max(_detailViewport.rect.height, preferred + 8));
             _detailText.rectTransform.sizeDelta = _detailContent.sizeDelta;
             _detailContent.anchoredPosition = Vector2.zero;
         }
@@ -234,6 +255,7 @@ public sealed class FieldMenuView : MonoBehaviour
 
     public void ScrollDetail(float direction)
     {
+        if (_page == 2) { _growthView.ScrollDetail(direction); return; }
         float max = Mathf.Max(0, _detailContent.rect.height - _detailViewport.rect.height);
         _detailContent.anchoredPosition = new Vector2(0, Mathf.Clamp(_detailContent.anchoredPosition.y + direction * 34, 0, max));
     }
@@ -262,14 +284,39 @@ public sealed class FieldMenuView : MonoBehaviour
             card.Portrait.sprite = data != null ? data.Portrait : null; card.Portrait.enabled = card.Portrait.sprite != null;
             card.HpText.text = "HP " + member.HP + "/" + hp; card.ApText.text = "AP " + member.AP + "/" + ap;
             card.Hp.color = data != null ? data.BattleSymbolColor : FieldMenuPalette.Mint;
-            card.Hp.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 134 * (hp > 0 ? Mathf.Clamp01((float)member.HP / hp) : 0));
-            card.Ap.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 134 * (ap > 0 ? Mathf.Clamp01((float)member.AP / ap) : 0));
+            card.Hp.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, PartyBarWidth * (hp > 0 ? Mathf.Clamp01((float)member.HP / hp) : 0));
+            card.Ap.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, PartyBarWidth * (ap > 0 ? Mathf.Clamp01((float)member.AP / ap) : 0));
             card.Button.GetComponent<FieldMenuButtonRelay>().Configure(Dispatch, new FieldMenuCommand(FieldMenuCommandKind.Actor, index), false);
             FieldMenuWidgets.Style(card.Button, index == selected, true, FieldMenuPalette.Mint);
         }
     }
 
     private Action<FieldMenuCommand> _command;
+    public void EnsureNavigationVisible(Button button)
+    {
+        if (button == null) return;
+        ScrollRect scroll = button.GetComponentInParent<ScrollRect>();
+        if (scroll == null || scroll.content == null || scroll.viewport == null) return;
+        RectTransform target = (RectTransform)button.transform;
+        Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(scroll.viewport, target);
+        Rect viewport = scroll.viewport.rect;
+        Vector2 adjustment = Vector2.zero;
+        if (scroll.vertical)
+        {
+            if (bounds.max.y > viewport.yMax) adjustment.y = viewport.yMax - bounds.max.y;
+            else if (bounds.min.y < viewport.yMin) adjustment.y = viewport.yMin - bounds.min.y;
+        }
+        if (scroll.horizontal)
+        {
+            if (bounds.min.x < viewport.xMin) adjustment.x = viewport.xMin - bounds.min.x;
+            else if (bounds.max.x > viewport.xMax) adjustment.x = viewport.xMax - bounds.max.x;
+        }
+        scroll.StopMovement();
+        Vector2 position = scroll.content.anchoredPosition + adjustment;
+        position.x = Mathf.Clamp(position.x, Mathf.Min(0, viewport.width - scroll.content.rect.width), 0);
+        position.y = Mathf.Clamp(position.y, 0, Mathf.Max(0, scroll.content.rect.height - viewport.height));
+        scroll.content.anchoredPosition = position;
+    }
     public void Bind(Action<FieldMenuCommand> command) { _command = command; }
     private void Dispatch(FieldMenuCommand command) { _command?.Invoke(command); }
     public void Status(string value) { _status.text = value ?? string.Empty; }

@@ -6,15 +6,16 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// Explicit mobile-only pointer bridge for the field menu. Shared EventSystem pointer
-/// actions remain disconnected, so this cannot enable PC mouse clicks on other game UI.
+/// Menu-local mouse/touch bridge. Shared EventSystem pointer actions remain disconnected;
+/// only the owning menu or settings panel receives clicks. The type name is kept for compatibility.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class FieldMenuTouchInput : MonoBehaviour
 {
     private const float MaxTapSeconds = 0.55f;
     private const float DragDistanceReferencePixels = 8f;
-    private static FieldMenuTouchInput s_active;
+    private const int MousePointerId = -2;
+    private static readonly List<FieldMenuTouchInput> Owners = new List<FieldMenuTouchInput>();
     private readonly List<RaycastResult> _raycasts = new List<RaycastResult>(32);
     private UIPanel _owner;
     private Canvas _canvas;
@@ -36,8 +37,19 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
     private bool _hasFocus = true;
 
     // Ownership lasts until the menu GameObject is disabled, including its closing motion.
-    public static bool IsActive => s_active != null && s_active.isActiveAndEnabled
-        && s_active._owner != null && s_active._owner.gameObject.activeInHierarchy;
+    public static bool IsActive
+    {
+        get
+        {
+            for (int i = 0; i < Owners.Count; i++)
+                if (Owners[i] != null && Owners[i].isActiveAndEnabled
+                    && Owners[i]._owner != null && Owners[i]._owner.gameObject.activeInHierarchy) return true;
+            return false;
+        }
+    }
+
+    public static bool CanReadMouse(bool mobilePlatform, bool hasTouchscreen)
+        => !mobilePlatform || !hasTouchscreen;
 
     public void Initialize(UIPanel owner, Canvas canvas, RectTransform bounds, Func<bool> canInteract)
     {
@@ -47,17 +59,17 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
         _bounds = bounds;
         _canInteract = canInteract;
         _raycaster = canvas != null ? canvas.GetComponent<GraphicRaycaster>() : null;
-        if (isActiveAndEnabled && owner != null) s_active = this;
+        if (isActiveAndEnabled && owner != null && !Owners.Contains(this)) Owners.Add(this);
     }
 
     private void OnEnable()
     {
-        if (_owner != null) s_active = this;
+        if (_owner != null && !Owners.Contains(this)) Owners.Add(this);
     }
 
     private void Update()
     {
-        if (!Application.isMobilePlatform || !_hasFocus || _owner == null || _canvas == null
+        if (!_hasFocus || _owner == null || _canvas == null
             || !_canvas.isActiveAndEnabled || _bounds == null || !_bounds.gameObject.activeInHierarchy
             || _canInteract == null || !_canInteract() || _raycaster == null || EventSystem.current == null)
         {
@@ -66,13 +78,18 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
         }
 
         Touchscreen screen = Touchscreen.current;
-        if (screen == null) { CancelCapture(); return; }
         EnsurePointer(EventSystem.current);
+        if (CanReadMouse(Application.isMobilePlatform, screen != null) && Mouse.current != null)
+        {
+            ReadMouse(Mouse.current);
+            return;
+        }
+        if (screen == null) { CancelCapture(); return; }
         for (int i = 0; i < screen.touches.Count; i++)
         {
             var touch = screen.touches[i];
             int id = touch.touchId.ReadValue();
-            if (_touchId >= 0)
+            if (_touchId != -1)
             {
                 if (id != _touchId) continue;
                 Vector2 position = touch.position.ReadValue();
@@ -93,7 +110,34 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
             return;
         }
         // A removed touch/device cannot leave a hold button or ScrollRect dragging forever.
-        if (_touchId >= 0) CancelCapture();
+        if (_touchId != -1) CancelCapture();
+    }
+
+    private void ReadMouse(Mouse mouse)
+    {
+        Vector2 position = mouse.position.ReadValue();
+        if (_touchId == MousePointerId)
+        {
+            if (mouse.leftButton.isPressed) MoveCapture(position);
+            else FinishCapture(position);
+            return;
+        }
+        Camera camera = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
+        if (!RectTransformUtility.RectangleContainsScreenPoint(_bounds, position, camera)) return;
+        if (mouse.leftButton.wasPressedThisFrame)
+        {
+            GameInput.NotifyMenuMouseInteraction();
+            BeginCapture(MousePointerId, position);
+        }
+        else if (mouse.scroll.ReadValue().sqrMagnitude > 0f)
+        {
+            _pointer.position = position;
+            RaycastResult hit = RaycastAt(position);
+            if (hit.gameObject == null) return;
+            GameInput.NotifyMenuMouseInteraction();
+            _pointer.scrollDelta = mouse.scroll.ReadValue() / 120f;
+            ExecuteEvents.ExecuteHierarchy(hit.gameObject, _pointer, ExecuteEvents.scrollHandler);
+        }
     }
 
     private void EnsurePointer(EventSystem eventSystem)
@@ -136,7 +180,7 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
         _pointer.pointerDrag = _dragTarget;
         if (_dragTarget != null)
             ExecuteEvents.Execute(_dragTarget, _pointer, ExecuteEvents.initializePotentialDrag);
-        GameInput.NotifyMenuTouchInteraction();
+        if (touchId != MousePointerId) GameInput.NotifyMenuTouchInteraction();
         ExecuteEvents.ExecuteHierarchy(_pressedHit, _pointer, ExecuteEvents.pointerEnterHandler);
         // Store the handler before dispatch so a disabling callback can release its hold.
         _pressedTarget = ExecuteEvents.GetEventHandler<IPointerDownHandler>(_pressedHit);
@@ -156,7 +200,7 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
             _moved = true;
             _pointer.eligibleForClick = false;
             ReleasePress();
-            if (_touchId < 0) return;
+            if (_touchId == -1) return;
             if (_dragTarget != null)
             {
                 _pointer.position = _startPosition;
@@ -173,14 +217,14 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
     private void FinishCapture(Vector2 position)
     {
         MoveCapture(position);
-        if (_touchId < 0) return;
+        if (_touchId == -1) return;
         GameObject click = _clickTarget;
         RaycastResult hit = RaycastAt(position);
         bool activate = !_moved && _pointer.eligibleForClick && hit.gameObject == _pressedHit
             && Time.unscaledTime - _pressedAt <= MaxTapSeconds;
         ReleasePress();
         // Pointer-up callbacks can close/disable the menu. Never dispatch a stale click.
-        if (_touchId < 0) return;
+        if (_touchId == -1) return;
         bool canClick = activate && click != null && isActiveAndEnabled && _canInteract != null && _canInteract();
         _touchId = -1;
         if (canClick) ExecuteEvents.Execute(click, _pointer, ExecuteEvents.pointerClickHandler);
@@ -245,15 +289,15 @@ public sealed class FieldMenuTouchInput : MonoBehaviour
     private void OnDisable()
     {
         CancelCapture();
-        if (s_active == this) s_active = null;
+        Owners.Remove(this);
     }
 
     private void OnDestroy()
     {
         CancelCapture();
-        if (s_active == this) s_active = null;
+        Owners.Remove(this);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetSession() => s_active = null;
+    private static void ResetSession() => Owners.Clear();
 }

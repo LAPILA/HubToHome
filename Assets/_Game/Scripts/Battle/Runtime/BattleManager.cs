@@ -1492,8 +1492,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             foreach (var block in skill.ActionTimeline)
             {
                 context.Targets.RemoveAll(t => t == null || !t.IsAlive);
-                if (context.Targets.Count == 0 || !context.CanContinueExecution) break;
+                if (!context.CanContinueExecution) break;
                 if (block == null || block.Disabled) continue;
+                if (context.Targets.Count == 0 && !block.CanRunWithoutLivingTargets) break;
                 yield return StartCoroutine(context.ExecuteBlock(block, skill.ActionTimeline));
                 if (!context.CanContinueExecution) break;
             }

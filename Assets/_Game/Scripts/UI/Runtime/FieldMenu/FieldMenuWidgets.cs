@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -36,6 +37,8 @@ public sealed class FieldMenuWidgets
 {
     public readonly TMP_FontAsset Font;
     private readonly Action<FieldMenuCommand> _dispatch;
+    private readonly List<Button> _buttons = new List<Button>();
+    public IReadOnlyList<Button> Buttons => _buttons;
     public FieldMenuWidgets(TMP_FontAsset font, Action<FieldMenuCommand> dispatch)
     { Font = font; _dispatch = dispatch; }
     public void Dispatch(FieldMenuCommand command) { _dispatch?.Invoke(command); }
@@ -93,6 +96,7 @@ public sealed class FieldMenuWidgets
         var relay = rect.gameObject.AddComponent<FieldMenuButtonRelay>();
         relay.Configure(_dispatch, command, repeat);
         button.onClick.AddListener(relay.Submit);
+        _buttons.Add(button);
         Text(rect, "Label", label, 11, 4, 1, width - 8, height - 2,
             FieldMenuPalette.Text, TextAlignmentOptions.Center);
         return button;

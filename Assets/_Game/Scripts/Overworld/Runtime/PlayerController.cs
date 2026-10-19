@@ -879,6 +879,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         switch (input)
         {
             case DefenseInput.Parry:
+                ParryBackgroundRipple.TryPlay(this, _battleCharacter != null
+                    ? _battleCharacter.GetPivot(CharacterPivotId.Center).position : transform.position);
                 PlayBattleAnim(HashParry);
                 break;
             case DefenseInput.Dodge:

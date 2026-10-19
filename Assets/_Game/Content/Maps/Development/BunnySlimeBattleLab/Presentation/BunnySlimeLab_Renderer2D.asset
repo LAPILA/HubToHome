@@ -24,8 +24,10 @@ MonoBehaviour:
     probeSamplingDebugMesh: {fileID: 0}
     probeSamplingDebugTexture: {fileID: 0}
     probeVolumeBlendStatesCS: {fileID: 0}
-  m_RendererFeatures: []
-  m_RendererFeatureMap:
+  m_RendererFeatures:
+  - {fileID: 880000000019101901}
+  - {fileID: 880000000019101902}
+  m_RendererFeatureMap: cd787b6b5663360cce787b6b5663360c
   m_UseNativeRenderPass: 0
   m_LayerMask:
     serializedVersion: 2
@@ -56,3 +58,34 @@ MonoBehaviour:
   m_PostProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   m_DefaultMaterialType: 0
   m_DefaultCustomMaterial: {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+--- !u!114 &880000000019101901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0491083bf9ce44c792df0c2f2031e294, type: 3}
+  m_Name: ScreenSplit
+  m_EditorClassIdentifier:
+  m_Active: 1
+  _shader: {fileID: 4800000, guid: 54961792b72a47ed9190ba258c989409, type: 3}
+--- !u!114 &880000000019101902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38966b6718584f618d73bd4fa6f73e0e, type: 3}
+  m_Name: Parry Background Ripple
+  m_EditorClassIdentifier:
+  m_Active: 1
+  _profile: {fileID: 11400000, guid: 82192cf4f7d145b8b858d67ee6fd6df8, type: 2}
+  _maskShader: {fileID: 4800000, guid: 454b5f2ade574aa3beca19838151011f, type: 3}
+  _rippleShader: {fileID: 4800000, guid: fd26908ad2f04edcb286b8f57257b8a6, type: 3}
+  _backgroundSortingLayer: Background

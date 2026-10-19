@@ -662,6 +662,7 @@ runtimeBinding: "`BattleSessionState`의 battle-scoped flag store를 갱신합�
 Existing `SkillActionBlock` classes are not the global grammar, but they are useful migration references:
 
 - `Action_Wait` -> `flow.wait`
+- `Action_ScreenSplit` remains a local presentation-only SkillActionBlock, not a global Action ID. It samples the live game-camera color through the lab Renderer2D feature; Overlay UI and damage remain separate. It explicitly opts into `CanRunWithoutLivingTargets` so the immediately preceding final-target kill does not omit the effect. All other blocks default to early finish without living targets; cancellation or a dead caster still stops every block. Turn-QTE execution callbacks also match the owned action scope to invalidate presentation after Abort/Exit even if Unity stops a coroutine without disposal.
 - `Action_EnemyWindup` stays a local EnemyOnly SkillActionBlock; it is not a registered global Action ID. CameraController uses the current battle action token for attacker closeup, then the shared ready pose and a completed zoom-out before the next defense block. Tune ratio/focus/hold/release in SkillData, not scenario parameter JSON or lab mode-index branches.
 - `Action_Move` -> `actor.move`
 - `Action_PlayAnim` -> `actor.animation`
