@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -5,6 +6,26 @@ using UnityEngine;
 public sealed class PlayerPreemptiveAttackStateTests
 {
     private const BindingFlags PrivateInstance = BindingFlags.Instance | BindingFlags.NonPublic;
+    private GameStateManager _previousStateManager;
+    private GameObject _stateObject;
+    private GameStateManager _stateManager;
+
+    [SetUp]
+    public void SetUp()
+    {
+        _previousStateManager = GameStateManager.Instance;
+        typeof(GameStateManager).GetProperty("Instance").SetValue(null, null);
+        _stateObject = new GameObject("Preemptive Attack State Owner");
+        _stateManager = _stateObject.AddComponent<GameStateManager>();
+        typeof(GameStateManager).GetProperty("Instance").SetValue(null, _stateManager);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (_stateObject != null) Object.DestroyImmediate(_stateObject);
+        typeof(GameStateManager).GetProperty("Instance").SetValue(null, _previousStateManager);
+    }
 
     [Test]
     public void TryStartPreemptiveAttack_WhenAttackIsInProgressRejectsReentry()
@@ -54,6 +75,114 @@ public sealed class PlayerPreemptiveAttackStateTests
             if (playerObject != null)
                 Object.DestroyImmediate(playerObject);
         }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DisableDuringPreparation_ReleasesOwnedStateAndAllowsFreshAttack(bool disableObject)
+    {
+        PlayerController player = CreatePlayer(out GameObject playerObject);
+        try
+        {
+            IEnumerator old = BeginPreparation(player);
+            if (disableObject) playerObject.SetActive(false);
+            else player.enabled = false;
+
+            Assert.That(GetPrivateField<bool>(player, "_preemptiveAttackInProgress"), Is.False);
+            Assert.That(_stateManager.CurrentState, Is.EqualTo(GameState.Exploration));
+            Assert.That(old.MoveNext(), Is.False);
+
+            if (disableObject) playerObject.SetActive(true);
+            else player.enabled = true;
+            IEnumerator fresh = BeginPreparation(player);
+            Assert.That(old.MoveNext(), Is.False);
+            Assert.That(GetPrivateField<bool>(player, "_preemptiveAttackInProgress"), Is.True);
+            Assert.That(_stateManager.CurrentState, Is.EqualTo(GameState.Cutscene));
+            player.CompletePreemptiveAttackWithoutBattle();
+            Assert.That(fresh.MoveNext(), Is.False);
+        }
+        finally { Object.DestroyImmediate(playerObject); }
+    }
+
+    [TestCase(GameState.Dialogue)]
+    [TestCase(GameState.Paused)]
+    [TestCase(GameState.Battle)]
+    public void ExternalStateChange_EndsOldPreparationWithoutRestoringOverNewOwner(GameState state)
+    {
+        PlayerController player = CreatePlayer(out GameObject playerObject);
+        try
+        {
+            IEnumerator attack = BeginPreparation(player);
+            _stateManager.ChangeState(state);
+            Assert.That(attack.MoveNext(), Is.False);
+            Assert.That(GetPrivateField<bool>(player, "_preemptiveAttackInProgress"), Is.False);
+            Assert.That(_stateManager.CurrentState, Is.EqualTo(state));
+        }
+        finally { Object.DestroyImmediate(playerObject); }
+    }
+
+    [Test]
+    public void ExternalStateLeavesAndReturnsToCutscene_DoesNotRegainOldOwnership()
+    {
+        PlayerController player = CreatePlayer(out GameObject playerObject);
+        try
+        {
+            IEnumerator attack = BeginPreparation(player);
+            _stateManager.ChangeState(GameState.Dialogue);
+            _stateManager.ChangeState(GameState.Cutscene);
+            Assert.That(attack.MoveNext(), Is.False);
+            Assert.That(GetPrivateField<bool>(player, "_preemptiveAttackInProgress"), Is.False);
+            Assert.That(_stateManager.CurrentState, Is.EqualTo(GameState.Cutscene));
+        }
+        finally { Object.DestroyImmediate(playerObject); }
+    }
+
+    [Test]
+    public void CompleteWithoutBattle_CancelsOldPreparationAndDoesNotReleaseNewOne()
+    {
+        PlayerController player = CreatePlayer(out GameObject playerObject);
+        try
+        {
+            IEnumerator old = BeginPreparation(player);
+            player.CompletePreemptiveAttackWithoutBattle();
+            Assert.That(_stateManager.CurrentState, Is.EqualTo(GameState.Exploration));
+            IEnumerator fresh = BeginPreparation(player);
+            Assert.That(old.MoveNext(), Is.False);
+            Assert.That(GetPrivateField<bool>(player, "_preemptiveAttackInProgress"), Is.True);
+            Assert.That(_stateManager.CurrentState, Is.EqualTo(GameState.Cutscene));
+            player.CompletePreemptiveAttackWithoutBattle();
+            Assert.That(fresh.MoveNext(), Is.False);
+        }
+        finally { Object.DestroyImmediate(playerObject); }
+    }
+
+    [Test]
+    public void BattleEntryTransfer_CancelsOldPreparationWithoutRestoringExploration()
+    {
+        PlayerController player = CreatePlayer(out GameObject playerObject);
+        try
+        {
+            IEnumerator attack = BeginPreparation(player);
+            player.HoldForBattleEntry();
+            Assert.That(GetPrivateField<bool>(player, "_preemptiveAttackInProgress"), Is.False);
+            Assert.That(player.IsBattleEntryHeld, Is.True);
+            Assert.That(attack.MoveNext(), Is.False);
+            Assert.That(_stateManager.CurrentState, Is.EqualTo(GameState.Cutscene));
+        }
+        finally { Object.DestroyImmediate(playerObject); }
+    }
+
+    private IEnumerator BeginPreparation(PlayerController player)
+    {
+        SetPrivateField<Animator>(player, "_anim", null);
+        SetPrivateField(player, "_attackDelay", 60f);
+        MethodInfo method = typeof(PlayerController).GetMethod("CoPreemptiveAttack", PrivateInstance);
+        Assert.That(method, Is.Not.Null);
+        var attack = (IEnumerator)method.Invoke(player, null);
+        Assert.That(attack.MoveNext(), Is.True);
+        Assert.That(_stateManager.CurrentState, Is.EqualTo(GameState.Cutscene));
+        Assert.That(GetPrivateField<bool>(player, "_preemptiveAttackInProgress"), Is.True);
+        return attack;
     }
 
     private static PlayerController CreatePlayer(out GameObject playerObject)

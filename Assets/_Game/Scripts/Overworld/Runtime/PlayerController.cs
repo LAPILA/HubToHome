@@ -17,6 +17,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
     public PlayerState State { get; private set; } = PlayerState.Idle;
     public bool IsBattleEntryHeld { get; private set; }
+    public float CurrentOverworldMoveSpeed => _moveSpeed * (GameInput.RunHeld ? _runSpeedMultiplier : 1f);
 
     // ── 이동 설정 ─────────────────────────────────────────────
     [Header("Movement")]
@@ -78,6 +79,11 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     private bool _preemptiveAttackInProgress;
     private bool _preemptiveAttackHitResolved;
     private bool _preemptiveAttackStartedEncounter;
+    private Coroutine _preemptiveAttackRoutine;
+    private uint _preemptiveAttackGeneration;
+    private GameStateManager _preemptiveAttackStateOwner;
+    private GameState _preemptiveAttackPreviousState;
+    private bool _preemptiveAttackOwnsCutscene;
     private readonly Collider2D[] _preemptiveAttackHits = new Collider2D[12];
     private ContactFilter2D _preemptiveAttackContactFilter;
     private IScreenFlashScaleProvider _screenFlashScaleProvider =
@@ -156,6 +162,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         if (State == PlayerState.InBattle || IsBattleEntryHeld) return;
         LoadPositionFromGlobal();
         UpdateAnimator(false);
+        OverworldPartyFollowerController.EnsureFor(this);
 
     }
 
@@ -201,6 +208,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void OnDisable()
     {
+        CancelPreemptiveAttack(true);
+        OverworldPartyFollowerController.For(this)?.NotifyLeaderDisabled();
         IsBattleEntryHeld = false;
         ActiveDefensePresentation?.Dispose();
         _defensePresentationGate.Close();
@@ -531,44 +540,68 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove) return false;
         if (!CanExecuteAction()) return false;
 
-        StartCoroutine(CoPreemptiveAttack());
+        uint generation = unchecked(_preemptiveAttackGeneration + 1);
+        Coroutine routine = StartCoroutine(CoPreemptiveAttack());
+        if (_preemptiveAttackInProgress && generation == _preemptiveAttackGeneration)
+            _preemptiveAttackRoutine = routine;
         return true;
     }
 
     private IEnumerator CoPreemptiveAttack()
     {
+        uint generation = ++_preemptiveAttackGeneration;
         _preemptiveAttackInProgress = true;
         _preemptiveAttackHitResolved = false;
         _preemptiveAttackStartedEncounter = false;
-
-        GameState previousState = GameStateManager.Instance != null
-            ? GameStateManager.Instance.CurrentState
+        _preemptiveAttackStateOwner = GameStateManager.Instance;
+        _preemptiveAttackPreviousState = _preemptiveAttackStateOwner != null
+            ? _preemptiveAttackStateOwner.CurrentState
             : GameState.Exploration;
+        _preemptiveAttackOwnsCutscene = _preemptiveAttackStateOwner != null;
+        if (_preemptiveAttackStateOwner != null)
+            _preemptiveAttackStateOwner.OnStateChanged += HandlePreemptiveAttackStateChanged;
 
-        GameStateManager.Instance?.ChangeState(GameState.Cutscene);
-        StopOverworldMovement();
-        SyncOverworldAttackDirection();
-        TryPlayAnimatorTrigger(_attackTriggerName);
+        try
+        {
+            _preemptiveAttackStateOwner?.ChangeState(GameState.Cutscene);
+            if (!IsCurrentPreemptiveAttack(generation)) yield break;
+            StopOverworldMovement();
+            SyncOverworldAttackDirection();
+            TryPlayAnimatorTrigger(_attackTriggerName);
 
-        float fallbackDelay = Mathf.Max(0f, _attackDelay);
-        float fallbackAt = Time.unscaledTime + fallbackDelay;
-        while (!_preemptiveAttackHitResolved && Time.unscaledTime < fallbackAt)
-            yield return null;
+            float fallbackDelay = Mathf.Max(0f, _attackDelay);
+            float fallbackAt = Time.unscaledTime + fallbackDelay;
+            while (IsCurrentPreemptiveAttack(generation)
+                && !_preemptiveAttackHitResolved && Time.unscaledTime < fallbackAt)
+                yield return null;
+            if (!IsCurrentPreemptiveAttack(generation)) yield break;
 
-        ResolvePreemptiveAttackHit();
+            ResolvePreemptiveAttackHit();
+            if (generation != _preemptiveAttackGeneration || _preemptiveAttackStartedEncounter)
+                yield break;
 
-        if (_preemptiveAttackStartedEncounter)
-            yield break;
+            if (_attackRecoverDelay > 0f)
+                yield return new WaitForSecondsRealtime(_attackRecoverDelay);
 
-        if (_attackRecoverDelay > 0f)
-            yield return new WaitForSecondsRealtime(_attackRecoverDelay);
-
-        RestoreAfterFailedPreemptiveAttack(previousState);
+            if (IsCurrentPreemptiveAttack(generation))
+                RestoreAfterFailedPreemptiveAttack(_preemptiveAttackPreviousState);
+        }
+        finally
+        {
+            if (generation == _preemptiveAttackGeneration)
+            {
+                _preemptiveAttackRoutine = null;
+                // 즉시 승리는 결과창이 닫힐 때 명시적으로 완료합니다.
+                if (!_preemptiveAttackStartedEncounter) CancelPreemptiveAttack(true);
+            }
+        }
     }
 
     public void ResolvePreemptiveAttackHit()
     {
         if (!_preemptiveAttackInProgress || _preemptiveAttackHitResolved) return;
+        uint generation = _preemptiveAttackGeneration;
+        if (!IsCurrentPreemptiveAttack(generation)) return;
 
         _preemptiveAttackHitResolved = true;
         IPreemptiveAttackTarget target = FindPreemptiveAttackTarget();
@@ -576,11 +609,14 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
         try
         {
-            _preemptiveAttackStartedEncounter = target.TryStartPreemptiveAttack(this);
+            bool started = target.TryStartPreemptiveAttack(this);
+            if (generation == _preemptiveAttackGeneration)
+                _preemptiveAttackStartedEncounter = started;
         }
         catch (System.Exception exception)
         {
-            _preemptiveAttackStartedEncounter = false;
+            if (generation == _preemptiveAttackGeneration)
+                _preemptiveAttackStartedEncounter = false;
             Debug.LogException(exception, this);
         }
     }
@@ -657,15 +693,53 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void RestoreAfterFailedPreemptiveAttack(GameState previousState)
     {
-        GameState restoreState = previousState == GameState.Paused
-            ? GameState.Exploration
-            : previousState;
-        GameStateManager.Instance?.ChangeState(restoreState);
-        ResetOverworldAttackAnimation();
-        StopOverworldMovement();
+        _preemptiveAttackPreviousState = previousState;
+        CancelPreemptiveAttack(true);
+    }
+
+    private bool IsCurrentPreemptiveAttack(uint generation)
+    {
+        if (generation != _preemptiveAttackGeneration || !_preemptiveAttackInProgress
+            || !isActiveAndEnabled || IsBattleEntryHeld || State == PlayerState.InBattle)
+            return false;
+        return ReferenceEquals(_preemptiveAttackStateOwner, null)
+            || (_preemptiveAttackStateOwner != null
+                && ReferenceEquals(_preemptiveAttackStateOwner, GameStateManager.Instance)
+                && _preemptiveAttackOwnsCutscene
+                && _preemptiveAttackStateOwner.CurrentState == GameState.Cutscene);
+    }
+
+    private void HandlePreemptiveAttackStateChanged(GameState state)
+    {
+        if (state != GameState.Cutscene) _preemptiveAttackOwnsCutscene = false;
+    }
+
+    private void CancelPreemptiveAttack(bool restoreState)
+    {
+        bool restoreOwnedState = restoreState && _preemptiveAttackInProgress
+            && !IsBattleEntryHeld && State != PlayerState.InBattle
+            && (ReferenceEquals(_preemptiveAttackStateOwner, null)
+                || (_preemptiveAttackStateOwner != null && _preemptiveAttackOwnsCutscene
+                    && ReferenceEquals(_preemptiveAttackStateOwner, GameStateManager.Instance)
+                    && _preemptiveAttackStateOwner.CurrentState == GameState.Cutscene));
+        GameStateManager stateOwner = _preemptiveAttackStateOwner;
+        GameState previousState = _preemptiveAttackPreviousState;
+        if (!ReferenceEquals(stateOwner, null))
+            stateOwner.OnStateChanged -= HandlePreemptiveAttackStateChanged;
+        _preemptiveAttackStateOwner = null;
+        _preemptiveAttackOwnsCutscene = false;
+        ++_preemptiveAttackGeneration;
+        Coroutine routine = _preemptiveAttackRoutine;
+        _preemptiveAttackRoutine = null;
         _preemptiveAttackInProgress = false;
         _preemptiveAttackHitResolved = false;
         _preemptiveAttackStartedEncounter = false;
+        if (routine != null) StopCoroutine(routine);
+        if (!restoreOwnedState) return;
+        ResetOverworldAttackAnimation();
+        StopOverworldMovement();
+        if (stateOwner != null)
+            stateOwner.ChangeState(previousState == GameState.Paused ? GameState.Exploration : previousState);
     }
 
     private void ResetOverworldAttackAnimation()
@@ -682,14 +756,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public void CompletePreemptiveAttackWithoutBattle()
     {
-        ResetOverworldAttackAnimation();
-        StopOverworldMovement();
-        _preemptiveAttackInProgress = false;
-        _preemptiveAttackHitResolved = false;
-        _preemptiveAttackStartedEncounter = false;
-        if (State != PlayerState.InBattle)
-            State = PlayerState.Idle;
-        GameStateManager.Instance?.ChangeState(GameState.Exploration);
+        CancelPreemptiveAttack(true);
     }
 
     private void TryCrossFadeOverworldIdle()
@@ -712,6 +779,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     /// <summary>암전 전에는 필드 모습/구도를 유지하고 이동·입력만 잠급니다.</summary>
     public void HoldForBattleEntry()
     {
+        CancelPreemptiveAttack(false);
         IsBattleEntryHeld = true;
         CloseDefenseInputWindow();
         StopOverworldMovement();
@@ -721,6 +789,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     /// <summary>전투 씬에서 이동/상호작용 입력을 완전히 잠급니다.</summary>
     public void SetBattleMode(bool active)
     {
+        CancelPreemptiveAttack(false);
         IsBattleEntryHeld = false;
         if (_rb == null) _rb = GetComponent<Rigidbody2D>();
 
@@ -754,6 +823,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
             UpdateAnimator(false);
             TryCrossFadeOverworldIdle();
         }
+        OverworldPartyFollowerController.For(this)?.SetBattleHidden(active);
     }
 
     // ── GlobalDataManager 연동 ────────────────────────────────
@@ -786,6 +856,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         SetFacingDirection(global.LookingDir);
         global.SpawnPointId = string.Empty;
         global.SpawnFallbackAllowed = false;
+        OverworldPartyFollowerController.For(this)?.ResetAtLeader();
     }
 
     // ── 액션 쿨타임 체크 ──────────────────────────────────────

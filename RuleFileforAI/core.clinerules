@@ -30,6 +30,7 @@
 
 ## Work Rules
 
+- AudioManager의 명중음만 CombatHitAudioPolicy/고정4보이스를 사용한다. 같은35ms 접촉만 합치고 피해/입력 이벤트를 버리지 않는다. 10Hz연타는 유지하며 공유SFX source.pitch·UI/전조/음성/BGM을 변주/제한하지 않는다. 설정은 기존 SFX Mixer를 복사해 이미 울리는 명중음에도 적용된다. Disable/Destroy에는 자기보이스만 stop/reset한다. 메뉴 중복음 버그를 전역 cooldown으로 숨기지 않는다.
 - Check `GameStateManager` before allowing player movement or interaction.
 - Save scene/position/facing/party/world state through `GlobalDataManager` where applicable.
 - Do not create new global singletons casually. Prefer extending an existing core module or creating a narrow adapter.
@@ -60,4 +61,5 @@
 - A `SaveData` format change requires a `SaveSchema` version decision, an explicit migration path, and legacy/future-version tests.
 - Preserve the Primary → Backup → Temporary recovery order. A corrupt Primary must never overwrite a valid Backup.
 - Loading a recovery candidate must not trigger an automatic save. The next explicit save commits the new Primary.
+- 정상 Primary/Backup 없이 유효 Temporary만 남았다면, 다음 명시적 Save는 새 임시 쓰기 전에 이를 Primary로 보존한다. 보존 실패/미래 버전 거부에는 기존 tmp를 정리하지 않으며 이번 호출이 시작한 임시 쓰기만 finally에서 정리한다. Load는 계속 읽기 전용이다.
 - Use `Hub To Home > 도구 > 저장 데이터 진단` for read-only slot inspection and explicit reset commands.

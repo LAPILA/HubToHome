@@ -1,5 +1,33 @@
 # HubToHome
 
+## 고정 전투 배율 · 엄격 픽셀 출력 (2026-10-23 최종 후속)
+
+앞선 HUD 보정의 매 프레임 자동 Lens 확대·축소와 연속 줌 우회를 제거했다. `CameraController.BattleViewport`는 전투 시작에 안전영역을 계산한 뒤 한 session의 Lens를 고정하고 중심만 제한한다. PPU32/640×480에서 허용값은7.5/n(정수n≥1), 기본 전투는 원본1배/7.5, 최소 요청값은3.75다. 수용 범위를 넘는 배치는 경고하고 자동 줌으로 숨기지 않는다. 하단162px/상단48px+각8px 예약·몸체 캐시·방어 Hold·Timeline lease는 유지한다.
+
+`CinemachineContinuousPixelZoom`은 이름만 호환 유지하며 native CinemachinePixelPerfect를 끄지 않는다. Body/Finalize의 보정 반환값·최종XY격자/Dutch0을 적용하고 Brain 블렌드 후 출력 Lens도 보정한다. 명령 Release와 전투 정책 owner 수명은 분리한다. 엄격 모드의 명중/스킬 줌·카메라 회전은 억제하며 이동/피격/VFX/HUD는 보존한다. 새 카메라/RT/GPU패스는 없다. [규칙·설정·파일·검증 한계](AIAssets/yjlim/feedback/2026-10-23-camera-pixel-stability.md). CLI447/370소스 오류0·관리형52사례/73,689단언·메타1,555개 통과. Unity 재생/GPU/실기기는 미검증이다.
+
+## 선택형 적 근접 돌파 (2026-10-23 후속)
+
+제브 빙섬/개별 연쇄 참격의 기존 `Action_DefenseWindow.UseMeleePassThrough`만 선택 적용한다. 적 중심 준비 구도 → 방어 시계 마지막0.12초 접근 → 접촉 위치에서 기존 피해 → 실패/회피 시 뒤0.95거리로0.09초 통과 → 기존 복귀다. 가드/저스트가드는 접촉에서 멈추고 C/투사체/직접 광역은 제외한다. 목표는 최초 포착점으로 고정한다. 카메라는 방어 hold 동안 고정, 결과에만 짧은 방향 이동/줌을 낸다. HUD/전조 창/피해 계산/저장은 유지한다.
+
+`SkillContext`가 이동·잔상·카메라 scope를 소유하고 실제 피해 후 `WaitForPendingDefenseReaction`에서 통과 이동을 소비한다. 취소/새 범위/연쇄 복원 순서를 보존하며 전역 시간·새 Update/GPU 패스는 없다. Windup이 Ready를 이미 표시했어도 카메라 진입에 필요한 준비 시간만 판정창 전에 보장한다. [조정·제작·검증](AIAssets/yjlim/feedback/2026-10-23-enemy-melee-pass.md). CLI Runtime444/Editor368 오류0, 경로871관리형 단언 통과; Unity 체감은 미검증이다.
+
+## 오버월드 동료 동행 (2026-10-23)
+
+이번 승인으로 기존 ‘필드에는 위젤만’ 제한을 대체한다. 실제 저장 파티의 리더를 제외한 순서대로 기본 동료2명(리더 포함3명), 설정 시 최대5명(전체6명)을 표시한다. 새 게임은 여전히 위젤 한 명이며 합류/탈퇴·성장·저장은 기존 GlobalDataManager가 소유한다. 표시를 위해 실제 파티나 전투 인원을 생성하지 않는다.
+
+`OverworldPartyFollowerController` / `OverworldFollowerActor`는 리더가 실제 지나간 꺾은선을 `OverworldFollowerTrail`의 고정1024점 순환 버퍼에 기록하고 누적 거리 커서로 추종한다. Collider/입력/상호작용을 복제하지 않으며 허용한 SpriteRenderer/표시용 Animator만 복사한다. CharacterData의 선택적 OverworldVisualPrefab, BattlePrefab 루트, 리더 표시 순으로 해석한다. 임의 프리팹 전체 Instantiate나 매 프레임 전역 탐색은 하지 않는다. 기존 BattleLab 미리보기는 자동 연결에서 제외한다.
+
+Follow/Hold/Detached와 Visible은 방 수명의 표시 상태다. 명시 경유점 이동은 DOTween 자기 명령만 소유하며, 재합류는 남아 있는 실제 기록 경로 위일 때만 허용한다. 경로 만료/이탈은 Hold/명확한 실패이고 벽을 가로지르는 자동 복귀를 하지 않는다. Gather는 암전/도착용 명시 재배치다. 맵 도착·전투·리더 종료·명령 교체는 이동과 대기 명령을 함께 정리한다. 카메라는 기존 리더/Confiner/연출 제어권을 유지한다.
+
+기존 Scene Action Sequence에 `overworld.party.mode / visibility / move / gather`를 추가했다. Preview/Preparation에서는 실제 필드 상태를 변경하지 않는다. 카메라 Stage/샷 없는 일반 필드 진입 시퀀스는 허용하되 샷만 지정하고 Stage가 없으면 실패한다. [제작 사용법](docs/overworld-party-follow-guide.md) · [자료구조·취소 학습](docs/study/deep/10-overworld-party-follow.md). Runtime/Editor CLI 오류0과 관리형 검사를 확인했으며 Unity Play/엔진 NUnit/실기기는 미검증이다.
+
+## 방 날씨 샘플·피격·고정 이름 (2026-10-23)
+
+`Content/Maps/Shared/Weather/WeatherSample.prefab`은 방 자식으로 넣는 표시 전용 샘플이다. `WeatherSample`이 최초 생성한 SpriteRenderer/ParticleSystem과 개별 재질을 재사용한다. 안개는 영역 안의 대상 주변만 월드 XY 원형으로 투명하게 만들며, 활성화 시 플레이어를 한 번 찾거나 `SetTarget`으로 명시한다. 비는 2D 착지점을 먼저 골라 시작점을 역산하고 Death sub-emitter로 물튀김을 낸다. 매 프레임 탐색/충돌/추가 카메라/RT/저장 필드는 없고 기존 씬에 자동 배치하지 않는다. 그림 슬롯3개는 후속 아트로 교체한다. [배치·교체 안내](AIAssets/yjlim/feedback/2026-10-23-weather-opening-hit.md).
+
+후속 사용자 승인으로 직접 피격의 기본 Animator 정지는0이며 즉시 Hurt/백색/기존 Hit VFX·공격 방향 수평 반동을 낸다. CameraController가 공격 직전0.05초 구도 고정→명중0.025진입/0.025유지/0.075복귀로 박자를 맡는다. 실제 방어 hold/Timeline/모달/토큰이 우선하고, 명중이 진행 중 구도 전환을 끊지 않도록 일시정지 후 재개한다. HP 실제 숫자/바는 즉시, 잃은 구간만 지연표시하며 상태 부여/빙결 전환과 명중음4보이스도 공통 표시 계층에서 처리한다. 상태 틱은 새 정지/카메라 컷을 만들거나 직접 피격을 취소하지 않는다. `CharacterHitFeedback`은 원본 Y정렬/공유 재질을 보존하고 양수 정지 옵션의 기존 수명 계약도 유지한다. 공격자 이동/전조/QTE·전역 timeScale/음악/HUD배치는 변경하지 않는다. [조정·범위·검증](AIAssets/yjlim/feedback/2026-10-23-battle-impact-cuts.md). 수동/자동 저장 구조는 재작성하지 않았으며 실제 사용자 파일 대신 메모리 파일시스템으로 손상·교체 실패·옛 형식·미래 버전 보호를 검사했다. Unity/GPU/실기기는 미검증이다.
+
 ## 실험실 저스트가드 배경 파장 (2026-10-19)
 
 `PlayerController.ConfirmDefenseSuccess`의 Z Parry만 Center 월드 위치를 `ParryBackgroundRipple`에 요청한다. 일반가드/X/C·피해·보상·전투 대기시간은 그대로다. Lab Renderer2D의 `ParryBackgroundRippleRendererFeature`만 연결했으며 기본0.3초/16→110px/폭14/변위1.25px/링alpha0.04다. 조정은 Lab Presentation의 `BunnySlimeLab_ParryRipple.asset`에서 한다.
@@ -16,13 +44,13 @@ BeforePP에서 같은 크기 R8 Point 허용마스크(Background white→상위 
 
 ## 임시 프롤로그 (2026-10-19)
 
-초기4컷은 Two empire.wav를 BGM으로 재생하고 현재 자막에서 fade-out한다. 본문은 Story.NarrationCharactersPerSecond=10, 중앙 자막은 Page.CaptionCharactersPerSecond=4/전체 표시 후1.2초 유지다. 일반 DialogueUI도 Cinematic 스타일 또는 대화 진입 전 Cutscene 상태이면14cps로 설정 속도에서 분리한다. 일반 대화는 원본 timing/설정 속도로 복구하며 공유 Text Animator 자산을 수정하지 않는다. ShowText 직후 속도 적용으로 기존2프레임 재적용 코루틴을 제거했다.
+2026-10-23 개정: 국가 설명4컷과 '그리고 현재' 자막을 Opening에서 제거했다. 새 게임은 창가 위젤 반복 장면 한 페이지부터 시작한다. Two empire BGM 재생 코드/프로필 필드는 제거했지만 원본 그림·음원·옛 대본과 범용 StoryPlayer는 보존했다. 새 기계 수리 장면/대본은 아직 만들지 않았다. 일반 DialogueUI의 Cinematic/Cutscene14cps 분리와 공유 Text Animator 자산을 직접 수정하지 않는 정책은 유지한다.
 
 열차 음향은 Prologue_TrainAudio 공통 프로필과 AudioManager 자식의 PrologueTrainAudioSession이 소유한다. 창가부터 주행loop가 인트로→객차 씬 전환에도 이어지고, 사고에 파워다운1회, 후미 걷기 시작에 주행1.8초fade-out/발걸음2.4초를 재생한다. 전용2D소스2개/SFX믹서를 사용하며 MapSettings의 공용 환경음·BGM은 변경하지 않는다. 페이지 시작 알림은 표시 전용 이벤트이고 새 시나리오 문법이나 저장 데이터가 아니다.
 
-창가 반복 장면은 원본128×96을3배(384×288), 화면 중심보다60px 위에 표시한다. 후미 이동/Monster만 Page.FullScreen으로640×480을채운다. 초기4컷3배위쪽정렬은유지하며 Page.MuteTypingSound를켜서글자효과음을끄고, 창가위젤대사부터는소리를복구한다. 기본내레이션소리0.85/.25, 위젤0.9/.28(피치/음량)이며기존SFX믹서를따른다. DialogueTextAnimationPolicy는실효공유설정을개별로복사해appearance/disappearance를끄고타이핑/음성/Behaviors를유지한다. 외부공유설정asset을직접변경하지않는다.
+창가 반복 장면은 원본128×96을3배(384×288), 화면 중심보다60px 위에 표시한다. 후미 이동/Monster만 Page.FullScreen으로640×480을채운다. 창가 위젤 대사의 소리는 유지한다. 기본내레이션소리0.85/.25, 위젤0.9/.28(피치/음량)이며기존SFX믹서를따른다. DialogueTextAnimationPolicy는실효공유설정을개별로복사해appearance/disappearance를끄고타이핑/음성/Behaviors를유지한다. 외부공유설정asset을직접변경하지않는다.
 
-새 게임은 타이틀 → IntroScene의4컷 내레이션 → 검정 화면 중앙 '그리고 현재…' 자막 → 창가 반복 → Region_Train/all.trainq0/default → 탐색3초 후 이상 징후 → 오른쪽 후미 진입/이동 애니메이션1회/Monster 공개로 연결된다. 국가명은 B제국, 본문은40px/중앙 정렬이다. 이름 입력은 호출하지 않으며 위젤 고정, 옛 저장 스키마는 보존한다. IllustratedStoryAsset/Player는 그림 표시 Presentation이고 기존 DialogueData/DialogueManager/DialogueUI를 재사용한다. 애니메이션은 원본 클립에서 미리 추출한 Frames(Sprite/Time)를 직접 선택하며 숨김 Renderer/런타임 SampleAnimation에 의존하지 않는다. 시나리오 문법·Action Sequence 원본을 대체하지 않는다. 사건 지연/위치 진입은 방 수명의 PrologueTrainSequence가 소유하며 성공 시만 기존 전역 플래그를 확정한다. 데이터 위치·임시 종료·검증 한계는 [사용법](AIAssets/yjlim/feedback/2026-10-19-prologue-prototype.md)에 기록했다.
+새 게임은 타이틀 → IntroScene 창가 반복 → Region_Train/all.trainq0/default → 탐색3초 후 이상 징후 → 오른쪽 후미 진입/이동 애니메이션1회/Monster 공개로 연결된다. NameInputUI 코드/전용 오브젝트와 참조를 제거했으며 주인공 정체성은 WIZZEL/한국어 위젤이다. 옛 SaveData.playerName 필드는 호환용으로 남지만 FromSaveData는 기본 이름을 사용한다. 동료/NPC 표시명과 런타임 교체 API는 유지한다. IllustratedStoryAsset/Player는 그림 표시 Presentation이고 기존 DialogueData/DialogueManager/DialogueUI를 재사용한다. 애니메이션은 원본 클립에서 미리 추출한 Frames(Sprite/Time)를 직접 선택하며 숨김 Renderer/런타임 SampleAnimation에 의존하지 않는다. 시나리오 문법·Action Sequence 원본을 대체하지 않는다. 사건 지연/위치 진입은 방 수명의 PrologueTrainSequence가 소유하며 성공 시만 기존 전역 플래그를 확정한다.
 
 ## 플레이어 정렬 (2026-10-19)
 
@@ -44,12 +72,12 @@ BeforePP에서 같은 크기 R8 Point 허용마스크(Background white→상위 
 
 ## 픽셀 출력 계약 (2026-10-16)
 
-고정 UI는 `UIViewportService`의 실제 화면/카메라 교집합과 정수 fit 배율을 공유한다. CanvasScaler는 런타임 ConstantPixelSize, Canvas.pixelPerfect=true; HUD/대사는 같은 640×480 콘텐츠 Rect와 정수 시작점을 사용한다. 공유 카메라·타이틀·인트로 PPC는 Windowbox/Point, Mobile RenderScale=1이다. 기준 미만 출력의 축소는 가시성 예외이며 무손실이 아니다. 일반 Focus와 그룹 프레이밍도 기존 CinemachineContinuousPixelZoom의 명령 소유권을 사용하며 Reset/Cancel/Timeline/Disable에서 복원한다. 기본 Lens 직접 편집은 정수 보정, 실행 중 Odin `대상 확대 / 축소`는 연속 줌이다. 렌더러 슬롯·조명·SDF 폰트·카메라 회전은 임의 변경하지 않는다. [원인·사용법·검증 한계](AIAssets/yjlim/feedback/2026-10-16-pixel-output.md).
+고정 UI는 `UIViewportService`의 실제 화면/카메라 교집합과 정수 fit 배율을 공유한다. CanvasScaler는 런타임 ConstantPixelSize, Canvas.pixelPerfect=true; HUD/대사는 같은640×480 콘텐츠 Rect와 정수 시작점을 사용한다. 공유 카메라·타이틀·인트로 PPC는 Windowbox/Point、RenderScale=1、AA 없음이다. 기준 미만 출력의 축소는 가시성 예외이며 무손실이 아니다. 10/23부터 일반 Focus/그룹/Odin 확대도 최종 출력은 정수 허용 Lens로 맞춘다. 임의 연속 줌·회전과 원본 격자 보존을 동시에 보장하지 않는다. 전투는 위 고정 배율 계약이 우선한다. 렌더러 슬롯·조명·SDF 폰트는 유지한다. [최신 규칙](AIAssets/yjlim/feedback/2026-10-23-camera-pixel-stability.md) · [이전 진단](AIAssets/yjlim/feedback/2026-10-16-pixel-output.md).
 
 ## 챕터 1 공통 계약 (2026-10-16)
 
 - **파티 공용 성장**: `PartyProgressionService` / `GlobalDataManager.GrantPartyExperience`가 파티 EXP와 최대 99레벨을 한 번만 계산한다. 개인별 저장 레벨/EXP는 호환용 투영이며, 능력치 투자·스킬 구매는 캐릭터별이다. 레벨업은 포인트만 지급하고 능력치를 자동 증가시키지 않는다. 초기화는 무료·반복 가능하되 전투 중 변경은 차단한다.
-- **이벤트 합류**: 새 게임은 주인공 한 명이다. `PartyRecruitmentTrigger` → `TryRecruitPartyMember`가 안정적인 CharacterID로 중복 합류를 막고 현재 파티 성장에 맞춘 동료를 저장한다. 필드 동료 복제나 수동 전투 교대는 추가하지 않는다.
+- **이벤트 합류**: 새 게임은 주인공 한 명이다. `PartyRecruitmentTrigger` → `TryRecruitPartyMember`가 안정적인 CharacterID로 중복 합류를 막고 현재 파티 성장에 맞춘 동료를 저장한다. 필드에는 위 동행 표시 계층을 사용하며, 실제 파티를 복제하거나 수동 전투 교대를 추가하지 않는다.
 - **수동 저장 휴식**: `ManualSaveRestPolicy`가 독립 저장 복사본의 HP/AP와 일반 적 재등장 상태를 준비한다. 원자 파일 저장 성공 후에만 런타임에 반영한다. 취소·실패·자동저장은 회복/재등장하지 않는다. 보스·엘리트, 상자, 완료 플래그와 Encounter Memory는 초기화하지 않는다.
 - **자동저장과 재도전**: 보스 승리와 연결된 진행 이벤트 성공은 자동저장을 예약하고 안정된 탐색에서 기록한다. 일반 잡담/모든 일반전 종료에는 적용하지 않는다. `BattleRetryCheckpoint`는 보스/도주 불가 필수전의 진입 전 상태를 메모리에만 보관해 아이템 등까지 복구하며, 일반 패배는 최근 저장을 사용한다. 이는 진행 중 전투의 디스크 저장이 아니다.
 - **입력과 전투 결과**: 일반 방어는 65% 감소, 저스트가드는 피해 0 + AP, 회피는 피해 0이며 기본 AP 보상은 없다. `PlayerAttackQtePolicy`의 성공은 정상 피해 1.0, 실패는 감소 피해이며 QTE 자체의 AP/고유 자원 보상은 없다. 스킬·장비 고유 효과는 별도다. 전투 후 HP/AP는 유지하고 전투 상태만 정리한다.
@@ -351,7 +379,7 @@ The Inspector-authored contract for multi-target framing: minimum and maximum or
 _Avoid_: calculating midpoint and zoom independently in each attack, QTE, or skill block.
 
 **Battle Camera Action Scope**:
-The disposable, token-owned camera lifetime for one battle action. Opposing combatants use CameraController's reusable dynamic tracking target by default; QTE preparation holds final camera pose/lens until the defense resolves. Legacy static mode retains fixed-center zoom and same-side no-op behavior. Same-side actions in dynamic mode use existing group framing. Restore the default camera only while this scope's token is still newest; module exit, coroutine disposal, run, battle end, seamless cleanup and BattleManager destruction cancel it. Reset keeps continuous pixel zoom until the resting lens is reached, then restores quantization. Old defense holds cannot release a newer shot or Timeline.
+The disposable, token-owned camera lifetime for one battle action. Opposing combatants use CameraController's reusable dynamic tracking target; QTE preparation holds final camera pose/lens until defense resolves. Same-side actions retain group framing. Restore only while this token is newest; module exit, disposal, run, battle end, seamless cleanup and BattleManager destruction cancel it. Pixel quantization remains active through Reset/Cancel/Timeline. Presentation Release clears its hold but not the separate battle viewport policy owner; Timeline/disable/session end explicitly unbind that policy. Temporary HUD hiding/pause retains the fixed Lens and skips center fitting only. Strict Pixel Perfect battle size remains locked across actions. Old defense holds cannot release a newer shot or Timeline.
 _Avoid_: unconditional global camera resets in action cleanup or allowing an old action to overwrite a newer Timeline/focus command.
 
 **Overworld Camera Binding**:

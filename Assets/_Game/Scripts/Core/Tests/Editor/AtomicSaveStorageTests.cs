@@ -172,6 +172,88 @@ public class AtomicSaveStorageTests
         Assert.That(result.Data.playerName, Is.EqualTo("pending"));
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Save_WriteFailurePreservesOnlyValidTemporaryRecovery(bool corruptPrimaryExists)
+    {
+        AtomicSaveStorage storage = CreateStorage();
+        SaveSlotPaths paths = storage.GetPaths(0);
+        File.WriteAllText(paths.TemporaryPath, _codec.Encode(CreateData("recovered")));
+        if (corruptPrimaryExists) File.WriteAllText(paths.PrimaryPath, "{broken");
+        var faulting = new FaultInjectingSaveFileSystem(new SystemSaveFileSystem()) { ThrowOnWrite = true };
+        var failing = new AtomicSaveStorage(_directory, faulting, _codec);
+
+        Assert.That(failing.Load(0).Source, Is.EqualTo(SaveLoadSource.Temporary));
+        Assert.That(failing.Save(CreateData("replacement"), 0).Failure, Is.EqualTo(SaveStorageFailure.Io));
+
+        SaveLoadResult recovered = failing.Load(0);
+        Assert.That(recovered.Success, Is.True, recovered.Message);
+        Assert.That(recovered.Data.playerName, Is.EqualTo("recovered"));
+        if (corruptPrimaryExists)
+            Assert.That(File.ReadAllText(paths.CorruptPath), Is.EqualTo("{broken"));
+    }
+
+    [Test]
+    public void Save_TemporaryPreservationMoveFailureDoesNotCleanRecoveryFile()
+    {
+        AtomicSaveStorage storage = CreateStorage();
+        SaveSlotPaths paths = storage.GetPaths(0);
+        string recovery = _codec.Encode(CreateData("recovered"));
+        File.WriteAllText(paths.TemporaryPath, recovery);
+        var faulting = new FaultInjectingSaveFileSystem(new SystemSaveFileSystem()) { ThrowOnMove = true };
+        var failing = new AtomicSaveStorage(_directory, faulting, _codec);
+
+        Assert.That(failing.Save(CreateData("replacement"), 0).Failure, Is.EqualTo(SaveStorageFailure.Io));
+        Assert.That(File.ReadAllText(paths.TemporaryPath), Is.EqualTo(recovery));
+        Assert.That(failing.Load(0).Source, Is.EqualTo(SaveLoadSource.Temporary));
+        Assert.That(failing.Load(0).Data.playerName, Is.EqualTo("recovered"));
+    }
+
+    [Test]
+    public void Save_OnlyValidTemporaryRecoveryBecomesBackupOfSuccessfulCommit()
+    {
+        AtomicSaveStorage storage = CreateStorage();
+        SaveSlotPaths paths = storage.GetPaths(0);
+        File.WriteAllText(paths.TemporaryPath, _codec.Encode(CreateData("recovered")));
+
+        Assert.That(storage.Save(CreateData("replacement"), 0).Success, Is.True);
+        Assert.That(Decode(paths.PrimaryPath).Data.playerName, Is.EqualTo("replacement"));
+        Assert.That(Decode(paths.BackupPath).Data.playerName, Is.EqualTo("recovered"));
+        Assert.That(File.Exists(paths.TemporaryPath), Is.False);
+    }
+
+    [Test]
+    public void Save_HealthyBackupRemainsAuthoritativeWhenTemporaryExistsAndWriteFails()
+    {
+        AtomicSaveStorage storage = CreateStorage();
+        SaveSlotPaths paths = storage.GetPaths(0);
+        string backup = _codec.Encode(CreateData("backup"));
+        File.WriteAllText(paths.BackupPath, backup);
+        File.WriteAllText(paths.TemporaryPath, _codec.Encode(CreateData("temporary")));
+        var faulting = new FaultInjectingSaveFileSystem(new SystemSaveFileSystem()) { ThrowOnWrite = true };
+        var failing = new AtomicSaveStorage(_directory, faulting, _codec);
+
+        Assert.That(failing.Save(CreateData("replacement"), 0).Success, Is.False);
+        Assert.That(File.ReadAllText(paths.BackupPath), Is.EqualTo(backup));
+        Assert.That(failing.Load(0).Source, Is.EqualTo(SaveLoadSource.Backup));
+        Assert.That(failing.Load(0).Data.playerName, Is.EqualTo("backup"));
+    }
+
+    [Test]
+    public void Save_FuturePrimaryIsRejectedBeforeChangingExistingTemporary()
+    {
+        AtomicSaveStorage storage = CreateStorage();
+        SaveSlotPaths paths = storage.GetPaths(0);
+        const string future = "{\"schemaVersion\":999,\"currentScene\":\"Future\"}";
+        string temporary = _codec.Encode(CreateData("temporary"));
+        File.WriteAllText(paths.PrimaryPath, future);
+        File.WriteAllText(paths.TemporaryPath, temporary);
+
+        Assert.That(storage.Save(CreateData("replacement"), 0).Failure, Is.EqualTo(SaveStorageFailure.NotAllowed));
+        Assert.That(File.ReadAllText(paths.PrimaryPath), Is.EqualTo(future));
+        Assert.That(File.ReadAllText(paths.TemporaryPath), Is.EqualTo(temporary));
+    }
+
     [Test]
     public void Save_ReplaceFailureKeepsExistingPrimaryLoadable()
     {
@@ -266,6 +348,8 @@ public class AtomicSaveStorageTests
         }
 
         public bool ThrowOnReplace { get; set; }
+        public bool ThrowOnWrite { get; set; }
+        public bool ThrowOnMove { get; set; }
 
         public bool FileExists(string path)
         {
@@ -284,6 +368,8 @@ public class AtomicSaveStorageTests
 
         public void WriteAllTextDurable(string path, string content)
         {
+            if (ThrowOnWrite)
+                throw new IOException("Injected write failure.");
             _inner.WriteAllTextDurable(path, content);
         }
 
@@ -300,6 +386,8 @@ public class AtomicSaveStorageTests
 
         public void MoveFile(string sourcePath, string destinationPath)
         {
+            if (ThrowOnMove)
+                throw new IOException("Injected move failure.");
             _inner.MoveFile(sourcePath, destinationPath);
         }
 

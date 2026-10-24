@@ -623,8 +623,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::IntroManager
   _openingStory: {fileID: 11400000, guid: e7493822dbc44df4abac65779127c25d, type: 2}
   _trainAudioProfile: {fileID: 11400000, guid: 45ce4e91976b4cefbc1e31539d4cef99, type: 2}
-  _trainAudioStartPage: 5
-  _openingMusicFadeOutPage: 4
+  _trainAudioStartPage: 0
   _nextSceneName: Region_Train
   _nextRoomId: all.trainq0
   _nextSpawnPointId: default

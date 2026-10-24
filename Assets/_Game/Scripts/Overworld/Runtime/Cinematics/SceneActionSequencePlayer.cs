@@ -19,6 +19,7 @@ public sealed class SceneActionSequencePlayer : MonoBehaviour
     private ActionExecutionContext _executionContext;
     private DialogueManagerRunner _dialogueRunner;
     private Coroutine _playRoutine;
+    private IEnumerator _actionRoutine;
     private Action<ActionExecutionResult> _onFinished;
     private int _playbackGeneration;
     private bool _isPlaying;
@@ -51,6 +52,9 @@ public sealed class SceneActionSequencePlayer : MonoBehaviour
         error = string.Empty;
         if (_cinematicStage == null)
         {
+            // Ordinary field actions do not require an offstage camera/shot at scene entry.
+            if (string.IsNullOrWhiteSpace(_initialShotId))
+                return true;
             error = "Cinematic Stage is missing.";
             return false;
         }
@@ -162,12 +166,15 @@ public sealed class SceneActionSequencePlayer : MonoBehaviour
         if (_playRoutine != null)
             StopCoroutine(_playRoutine);
 
+        DisposeActionRoutine();
+
         CompletePlayback(generation, result);
     }
 
     private IEnumerator PlayRoutine(int generation, ActionDirector director)
     {
         IEnumerator routine = director.Play(_sequence, _executionContext);
+        _actionRoutine = routine;
         while (_isPlaying && generation == _playbackGeneration)
         {
             bool moved;
@@ -227,7 +234,8 @@ public sealed class SceneActionSequencePlayer : MonoBehaviour
             _sequence,
             _cinematicStage,
             new ScreenTransitionRunner(),
-            dialogueRunner: dialogueRunner);
+            dialogueRunner: dialogueRunner,
+            overworldPartyRunner: OverworldPartyActionRunner.Resolve(gameObject.scene));
         error = string.Empty;
         return true;
     }
@@ -243,12 +251,20 @@ public sealed class SceneActionSequencePlayer : MonoBehaviour
         _onFinished = null;
 
         _dialogueRunner?.Cancel();
+        DisposeActionRoutine();
         _dialogueRunner = null;
         _cinematicStage?.Release();
         RestoreCutsceneStateIfOwned();
         _executionContext = null;
 
         callback?.Invoke(result ?? ActionExecutionResult.Failed("Scene action sequence returned no result."));
+    }
+
+    private void DisposeActionRoutine()
+    {
+        IEnumerator routine = _actionRoutine;
+        _actionRoutine = null;
+        (routine as IDisposable)?.Dispose();
     }
 
     private void AcquireCutsceneState()

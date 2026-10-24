@@ -846,6 +846,82 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             });
     }
 
+    /// <summary>
+    /// 카메라가 전투 캐릭터를 배치할 화면 영역입니다. HUD 진입 중에도 기본 높이를
+    /// 미리 예약하므로 패널의 슬라이드에 따라 카메라 구도가 다시 움직이지 않습니다.
+    /// </summary>
+    public bool TryGetBattlePlayfieldScreenRect(out Camera worldCamera, out Rect area)
+    {
+        worldCamera = _worldCamera;
+        area = default;
+        if (!isActiveAndEnabled || _isBattleEnding || worldCamera == null
+            || !TryCalculateBattlePlayfieldScreenRect(worldCamera.pixelRect, Screen.safeArea, out area))
+            return false;
+
+        float margin = BattleHudViewport.ReferenceScale(worldCamera.pixelRect) * 8f;
+        float bottom = area.yMin;
+        float top = area.yMax;
+        Camera uiCamera = ResolveCanvasCamera(_partyStatusCanvas != null ? _partyStatusCanvas : _turnQueueCanvas,
+            worldCamera);
+        IncludeBattleHudTop(_partyStatusPanel, uiCamera, margin, ref bottom);
+        IncludeBattleHudTop(_hudDecoration != null ? _hudDecoration.transform as RectTransform : null,
+            uiCamera, margin, ref bottom);
+        IncludeBattleHudTop(_battleMenuUI != null ? _battleMenuUI.transform as RectTransform : null,
+            uiCamera, margin, ref bottom);
+        IncludeBattleHudTop(_battleMenuUI != null ? _battleMenuUI.SubMenuRoot : null,
+            uiCamera, margin, ref bottom);
+        if (_turnQueueContainer is RectTransform queue && queue.gameObject.activeInHierarchy)
+        {
+            Camera queueCamera = ResolveCanvasCamera(_turnQueueCanvas, worldCamera);
+            queue.GetWorldCorners(_safeAreaCorners);
+            for (int i = 0; i < 4; i++)
+                top = Mathf.Min(top, RectTransformUtility.WorldToScreenPoint(queueCamera, _safeAreaCorners[i]).y - margin);
+        }
+
+        Rect resolved = Rect.MinMaxRect(area.xMin, bottom, area.xMax, top);
+        if (!IsValidBattlePlayfieldRect(resolved))
+        {
+            area = default;
+            return false;
+        }
+        area = resolved;
+        return true;
+    }
+
+    private static bool TryCalculateBattlePlayfieldScreenRect(Rect output, Rect deviceSafeArea, out Rect area)
+    {
+        area = default;
+        if (!IsValidBattlePlayfieldRect(output) || !IsValidBattlePlayfieldRect(deviceSafeArea)) return false;
+        Rect content = BattleHudViewport.CalculateContentScreenRect(output);
+        float scale = BattleHudViewport.ReferenceScale(output);
+        // 640x480 기준 하단 HUD 162px, 상단 턴 큐 48px와 각각 8px 여백입니다.
+        Rect resolved = Rect.MinMaxRect(
+            Mathf.Max(Mathf.Max(output.xMin, deviceSafeArea.xMin), content.xMin + 8f * scale),
+            Mathf.Max(Mathf.Max(output.yMin, deviceSafeArea.yMin), content.yMin + 170f * scale),
+            Mathf.Min(Mathf.Min(output.xMax, deviceSafeArea.xMax), content.xMax - 8f * scale),
+            Mathf.Min(Mathf.Min(output.yMax, deviceSafeArea.yMax), content.yMax - 56f * scale));
+        if (!IsValidBattlePlayfieldRect(resolved)) return false;
+        area = resolved;
+        return true;
+    }
+
+    private void IncludeBattleHudTop(RectTransform panel, Camera uiCamera, float margin, ref float bottom)
+    {
+        if (panel == null || !panel.gameObject.activeInHierarchy) return;
+        panel.GetWorldCorners(_safeAreaCorners);
+        for (int i = 0; i < 4; i++)
+            bottom = Mathf.Max(bottom, RectTransformUtility.WorldToScreenPoint(uiCamera, _safeAreaCorners[i]).y + margin);
+    }
+
+    private static bool IsValidBattlePlayfieldRect(Rect area)
+    {
+        return area.width > 0f && area.height > 0f
+            && !float.IsNaN(area.xMin) && !float.IsInfinity(area.xMin)
+            && !float.IsNaN(area.yMin) && !float.IsInfinity(area.yMin)
+            && !float.IsNaN(area.xMax) && !float.IsInfinity(area.xMax)
+            && !float.IsNaN(area.yMax) && !float.IsInfinity(area.yMax);
+    }
+
     public bool TryGetSpeechSafeArea(out Camera worldCamera, out Rect area)
     {
         worldCamera = _worldCamera;

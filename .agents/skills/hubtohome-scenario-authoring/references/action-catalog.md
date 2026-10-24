@@ -93,7 +93,7 @@ actions:
 - Production category sources live under `Assets/_Game/Content/Scenarios/ActionLibrary/Source/`; the generated official catalog is `Assets/_Game/Content/Scenarios/ActionLibrary/Generated/ActionLibrary.asset`.
 - Rebuild through `ProductionActionLibraryBuildCommand.Rebuild()`. It parses every category, merges them, validates adapter coverage, and then replaces the generated asset. This rebuild is not exposed as a discoverable Unity menu.
 - `BattleScenarioActionRegistryFactory.CreateRegistry()` and `SceneActionSequenceContextFactory.CreateRegistry()` expose production registrations without scene state. `ActionAdapterContractScanner` must report adapter-without-catalog and catalog-without-adapter separately; `flow.parallel` is explicitly Director-owned.
-- The initial production library contains 28 contracts: 27 runtime adapters plus Director-owned `flow.parallel`. Any new registered Action must add its category source and consistency test in the same change.
+- The production library contains 33 contracts (2026-10-23): 32 runtime adapters plus Director-owned `flow.parallel`, including the four `overworld.party.*` entries. Any new registered Action must add its category source and consistency test in the same change.
 - `flow.parallel.parameters.policy` is a segmented enum with `all`, `any`, and `race`. Keep the default `all` for old sources. The Action Library description and generated runtime asset must be rebuilt whenever these completion semantics change.
 - `flow.parallel.parameters.previewWinner` is an optional direct-child Block ID used only by Preparation Run for `any` and `race`. Runtime combat does not use it. Without this explicit preview branch, selected-block Preparation must stop instead of guessing.
 - `preparation: apply_final_state` and `preparation: execute_isolated` are executable safety contracts, not editor labels. Add or update the matching `IActionPreparationAdapter` in the same change. `skip_presentation`, `require_input`, and `unsupported` must keep their documented fail/skip behavior.
@@ -114,6 +114,53 @@ Start with these categories:
 - `flow`: wait, parallel, branch, cancel, marker.
 - `save`: set encounter memory, set flag, record outcome.
 - `cinematic`: scene-local Cinematic Stage preparation, reusable shot playback, and camera handoff.
+- `overworld_party`: visual-only follower mode, visibility, individual explicit movement, and covered-screen gathering. This category never changes saved party membership.
+
+## Overworld Party Entries (2026-10-23)
+
+The production source is `Assets/_Game/Content/Scenarios/ActionLibrary/Source/overworld_party.actions.yaml`. All four entries require `overworld_party_runner`, allow only `overworld`, declare `preview: live_only` and `preparation: unsupported`. Safe Preview never copies the production follower service. Preparation stops at the exact unsupported Block ID, including a selected Live Test whose prefix contains these actions. Full Live Test from the start may execute against the registered scene context.
+
+| Action | Required parameters | Optional parameters | Completion |
+| --- | --- | --- | --- |
+| `overworld.party.mode` | `slot` integer0..5, `mode` follow/hold/detach | none | Controller accepts the complete selection; no partial all-selection mutation |
+| `overworld.party.visibility` | `slot` integer0..5, `visible` bool | none | Changes presentation only; movement mode stays unchanged |
+| `overworld.party.move` | `slot` integer1..5, finite `x`, `y`, nonnegative finite `duration` | `path` intermediate world-XY JSON objects (max128), `rejoin` bool (false) | Waits for owned move; defaults to Hold. `rejoin: true` returns to Follow only if the final real position is on retained trail |
+| `overworld.party.gather` | none | none | Resets real trail and all followers at the leader; next actual movement unfolds the line |
+
+Slot1 is the first follower, never the player. Slot0 means all currently displayed roster members and is forbidden for individual movement. Empty/missing selections fail clearly. Same-character DB IDs do not identify the selected runtime save object; current follower order does. All state is runtime presentation, not recruitment/dismissal or SaveData.
+
+`OverworldPartyActionContract` validates missing, unknown, wrongly typed and non-finite values consistently in `ScenarioCatalogValidator` and runtime adapters. Bindings are accepted during authoring and must be resolved before runtime. Path points are intermediate points; the final `x`/`y` is appended and each follower keeps its Z. Direct or waypoint movement is authored presentation, not pathfinding; the author owns a collision-free route.
+
+```yaml
+- overworld.party.mode:
+    slot: 1
+    mode: hold
+- overworld.party.move:
+    slot: 1
+    x: 4
+    y: 2
+    duration: 1.2
+    path: [{"x": 2, "y": 1}, {"x": 4, "y": 1}]
+    rejoin: false
+- overworld.party.visibility:
+    slot: 0
+    visible: false
+- screen.fade:
+    mode: out
+    duration: 0.25
+- overworld.party.gather:
+- screen.fade:
+    mode: in
+    duration: 0.25
+```
+
+Gather is only for explicit covered-screen/arrival relocation. Normal Follow does not teleport over a missing trail or repair expired history automatically. A field arrival resets modes/visibility to Follow/visible; persistent story absence must use real party/progress policy, not a hidden follower flag. This action layer does not acquire camera ownership; continue to use the existing `CameraController` presentation contracts.
+
+`OverworldPartyActionRunner` caches one same-scene registered controller per context; missing or ambiguous leaders fail closed. It does not call Ensure/spawn or search in Update. Adapters receive only the injected narrow service. A newer move, map reset, battle entry, disabled/destroyed leader or roster replacement ends the old command. A canceled/superseded command fails its waiting Action unless the parent handle was itself canceled. Iterator `finally` and cancellation subscriptions cancel only the owned command, never global `DOKill` or another follower/newer request.
+
+A `SceneActionSequenceTrigger` may run a field-only sequence without a Cinematic Stage or initial shot. `SceneActionSequencePlayer.PrepareForSceneReveal` treats both absent as nothing to prepare; a configured initial shot with a missing Stage still fails. Keep the initial-shot field empty for ordinary party/dialogue actions, and configure stable Stage/Shot IDs only for actual offstage cinematics.
+
+When Unity refresh/reimport is explicitly prohibited, do not call `ProductionActionLibraryBuildCommand.Rebuild()` (it saves/imports assets). A permitted offline mechanical synchronization must use the actual `ActionLibrarySourceParser`/writer/`ResolvedActionLibrary` semantic hash and compare every generated entry field with the resolved model. Preserve existing entries/meta/Unity identity. The 2026-10-23 managed check is under ignored `Library/CodexChecks/PartyFollow/Sequence`; production consistency tests compare source paths, hash, count and full entry JSON. This is not engine serialization/Play validation.
 
 ## Cinematic Stage Entries
 
@@ -676,6 +723,8 @@ Existing `SkillActionBlock` classes are not the global grammar, but they are use
 Do not rename or move existing serialized action classes during initial migration unless a migration plan exists.
 
 Enemy `battle.skill.timeline` also stages the selected player 1 unit forward before resolving approach/projectile positions. `SkillContext` owns `BattleDefenderPresentationScope`; normal roots must await `ReturnDefender`, and cancellation must call `CancelPendingDefenseReaction`. Sequential melee stages each actual target; AoE uses the representative only. C ultimate templates/samples use legacy `Action_Move.Center` before telegraph, optional enemy-only `EnemyHopHeight`, and pass the original defender position into paired recovery. These are legacy SkillData fields/runtime behavior, not additions to Scenario Source grammar or `actor.move` parameters. Existing assets default to ground movement.
+
+Local SkillData presentation addition (2026-10-23): `Action_DefenseWindow.UseMeleePassThrough` defaults false; `MeleeDashDuration=.12`, `MeleePassDistance=.95`, `MeleeExitDuration=.09`. Only ZEV BlinkSlash/ComboSlash currently opt in. Single-player-target melee follows a captured point using the same QTE authored time; guard/JustGuard stop, failure/dodge pass through after the existing damage consumer. C/projectile/direct AoE/telegraph-only opt out. Keep defense→VFX/damage or adjacent defense→SequentialMelee with no inserted moves/waits. `SkillContext.ExecuteBlock`, `WaitForPendingDefenseReaction`, `CancelPendingDefenseReaction` retain ownership in both normal and scenario roots; cancel the melee scope before sequential actorStart restoration. Camera uses the current BattleShotToken and respects defense hold/Timeline/C takeover. No Scenario YAML field/action/catalog generation change is needed. Details: `AIAssets/yjlim/feedback/2026-10-23-enemy-melee-pass.md`.
 
 ## Runtime Asset Mapping
 

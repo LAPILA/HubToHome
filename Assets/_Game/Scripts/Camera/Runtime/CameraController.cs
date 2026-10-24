@@ -89,6 +89,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
     private void OnDisable()
     {
         StopBattleMotion();
+        if (_continuousPixelZoom != null) _continuousPixelZoom.SetBattleViewportOwner(null);
         ReleaseOwnedHitStop();
         ReleaseFramingStateOnDisable();
         KillCameraTweens();
@@ -278,6 +279,7 @@ public partial class CameraController : MonoBehaviour, ICameraPresentationServic
         }
 
         CameraShotSettings settings = ResolveSettings(style, _defaultLensSize, true);
+        StopBattleImpactBeat();
         bool returnFromBattle = _battleShotActive && _battleShotTarget != null && duration > 0f;
         Vector3 battlePosition = returnFromBattle ? _battleShotTarget.position : Vector3.zero;
         StopBattleMotion(false);

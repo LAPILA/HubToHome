@@ -10,8 +10,6 @@ public class DialogueManager : MonoBehaviour
     [Header("UI 패널 참조")]
     [SerializeField] private DialogueUI _overworldPanel;
     [SerializeField] private DialogueUI _cinematicPanel;
-    // 이전 프리팹의 직렬화 참조와 취소 정리만 보존합니다. 이름 입력은 실행하지 않습니다.
-    [SerializeField, HideInInspector] private NameInputUI _nameInputUI;
 
     private DialogueUI _activeUI;
     private DialogueData _currentDialogue;
@@ -110,7 +108,7 @@ public class DialogueManager : MonoBehaviour
         _activeUI.RebindCanvasCameraImmediate();
         _activeUI.OpenPanel();
         _activeUI.DisplayPrompt(prompt);
-        _activeUI.ShowChoices(_promptChoices, OnPromptChoiceSelected);
+        _activeUI.ShowChoices(_promptChoices, OnPromptChoiceSelected, allowShortcuts: false);
         return true;
     }
 
@@ -492,7 +490,6 @@ public class DialogueManager : MonoBehaviour
         _promptChoices = null;
         _promptChoiceCallback = null;
 
-        _nameInputUI?.CancelImmediate();
         if (_activeUI != null)
         {
             if (completed)

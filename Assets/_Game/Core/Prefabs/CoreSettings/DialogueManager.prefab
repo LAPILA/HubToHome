@@ -48,7 +48,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueManager
   _overworldPanel: {fileID: 3675069216865015921}
   _cinematicPanel: {fileID: 3530719157885178279}
-  _nameInputUI: {fileID: 3932097833315759856}
 --- !u!114 &8294368602951851403
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122,10 +121,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4390369160051076443, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5768385742298663620, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
@@ -300,17 +295,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0055ba3ee34c424d80e122cbfd58871, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DialogueUI
---- !u!114 &3932097833315759856 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 197825047743682335, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}
-  m_PrefabInstance: {fileID: 3760311007695708655}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a4dd99fd23a76044a087baf4f082da9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NameInputUI
 --- !u!224 &5096462072796627731 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 8256518344660411132, guid: c0571f892d3e2e448aeff37312a19ed5, type: 3}

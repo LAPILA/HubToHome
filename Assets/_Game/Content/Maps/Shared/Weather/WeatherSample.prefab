@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &100000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 100001}
+  - component: {fileID: 100002}
+  m_Layer: 0
+  m_Name: WeatherSample
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &100001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &100002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 439ba92b21b35e8434a9a9b4c86f0897, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::WeatherSample
+  _center: {x: 0, y: 0}
+  _size: {x: 24, y: 14}
+  _target: {fileID: 0}
+  _fogEnabled: 1
+  _fogSprite: {fileID: 0}
+  _fogColor: {r: 0.72, g: 0.79, b: 0.86, a: 0.55}
+  _holeRadius: 0.8
+  _holeFeather: 0.55
+  _fogOrder: 20
+  _fogMaterial: {fileID: 2100000, guid: eff23fd7043d3c0597d6b9fe331d70a2, type: 2}
+  _rainEnabled: 1
+  _rainSprite: {fileID: 0}
+  _splashSprite: {fileID: 0}
+  _rainRate: 90
+  _rainVelocity: {x: -1.8, y: -14}
+  _rainLifetime: 0.55
+  _rainSize: {x: 0.035, y: 0.35}
+  _rainColor: {r: 0.68, g: 0.82, b: 1, a: 0.68}
+  _splashSize: 0.2
+  _splashLifetime: 0.16
+  _rainOrder: 10
+  _splashOrder: 5
+  _particleMaterial: {fileID: 2100000, guid: c8eacf69ef58cd3b9090c8b9124308b8, type: 2}

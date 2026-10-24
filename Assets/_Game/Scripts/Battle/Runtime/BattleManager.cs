@@ -2685,7 +2685,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         if (target == null || damage <= 0)
             return;
 
-        AudioManager.Instance?.PlayCombatHitSfx();
+        AudioManager.Instance?.PlayCombatHitSfx(1f, isCritical || !target.IsAlive);
         OnDamageFeedbackRequested?.Invoke(new BattleDamageFeedback(
             source,
             target,

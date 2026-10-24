@@ -54,6 +54,7 @@ public class DialogueUI : MonoBehaviour
     private List<ChoiceData> _activeChoices;
     private System.Action<ChoiceData> _onChoiceSelected;
     private int _selectedChoiceIndex;
+    private bool _allowChoiceShortcuts = true;
     private Tween _panelTween;
     private BattleDialogueLayout _battleLayout;
     private bool _isClosing;
@@ -158,7 +159,9 @@ public class DialogueUI : MonoBehaviour
 
     private void OnDisable()
     {
-        bool unexpectedClose = (IsBattleDocked || _standaloneNarration) && !_isClosing;
+        // 일반 필드/시네마틱 패널도 손실되면 대기 중인 재생을 취소합니다.
+        // 활성 패널 일치 여부는 DialogueManager가 검사하므로 다른 대화는 건드리지 않습니다.
+        bool unexpectedClose = !_isClosing;
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         LocalizationManager.LanguageChanged -= HandleLanguageChanged;
         StopPanelTween();
@@ -471,7 +474,8 @@ public class DialogueUI : MonoBehaviour
     // 🚨 외부(Text Animator)에서 호출할 수 있는 이벤트 함수 (기존 세팅 유지용)
     public void OnTypingCompleted() { IsTyping = false; }
 
-    public void ShowChoices(List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
+    public void ShowChoices(List<ChoiceData> choices, System.Action<ChoiceData> onSelected,
+        bool allowShortcuts = true)
     {
         PrepareChoiceUI();
         if (_choiceRoot == null || _choiceTemplate == null || choices == null || choices.Count == 0)
@@ -483,6 +487,7 @@ public class DialogueUI : MonoBehaviour
         IsWaitingForChoice = true;
         _activeChoices = choices;
         _onChoiceSelected = onSelected;
+        _allowChoiceShortcuts = allowShortcuts;
         _selectedChoiceIndex = 0;
         _choiceOpenedFrame = Time.frameCount;
 
@@ -569,6 +574,9 @@ public class DialogueUI : MonoBehaviour
             return;
         }
 
+        // 저장/불러오기 prompt의 X는 소유자가 취소로 처리합니다. 같은 X를
+        // Choice2로 먼저 확정하면 Update 실행 순서에 따라 다른 슬롯을 선택하게 됩니다.
+        if (!_allowChoiceShortcuts) return;
         if (GameInput.Choice1Pressed && _activeChoices.Count > 0) CommitChoice(0);
         else if (GameInput.Choice2Pressed && _activeChoices.Count > 1) CommitChoice(1);
         else if (GameInput.Choice3Pressed && _activeChoices.Count > 2) CommitChoice(2);

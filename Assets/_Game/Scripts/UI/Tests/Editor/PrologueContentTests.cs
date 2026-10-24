@@ -18,40 +18,13 @@ public sealed class PrologueContentTests
     private const string TrainScene = ContentRoot + "/Scenes/Region_Train.unity";
 
     [Test]
-    public void OpeningUsesFourOrderedPicturesThenPresentCaptionAndLoopingWindowAnimation()
+    public void OpeningStartsWithOnlyLoopingWindowAnimationAndDialogue()
     {
         IllustratedStoryAsset story = LoadStory("Prologue_Opening");
         Assert.That(story.TryValidate(out string error), Is.True, error);
-        Assert.That(story.Pages.Count, Is.EqualTo(6));
-        long[] pictureIds = { 1357199294L, -1435760267L, 1032856444L, 1888716162L };
-        for (int i = 0; i < pictureIds.Length; i++)
-        {
-            IllustratedStoryPage page = story.Pages[i];
-            AssertReference(page.Picture, "b551642519a23144a8fe9d4c4463a863", pictureIds[i]);
-            Assert.That(page.Animation, Is.Null);
-            Assert.That(page.PixelScale, Is.EqualTo(3));
-            Assert.That(page.Dialogue, Is.Not.Null);
-            Assert.That(page.Dialogue.Nodes.Count, Is.GreaterThanOrEqualTo(1));
-        }
-
-        string nationText = string.Empty;
-        foreach (DialogueNode node in story.Pages[1].Dialogue.Nodes)
-            nationText += node.DefaultText + "\n";
-        StringAssert.Contains("B제국", nationText);
-
-        IllustratedStoryPage present = story.Pages[4];
-        Assert.That(present.Caption, Is.EqualTo("그리고... 현재."));
-        Assert.That(present.CaptionLocalizationKey, Is.EqualTo("PROLOGUE_TIME_PRESENT"));
-        Assert.That(present.IsCaptionPage, Is.True);
-        Assert.That(present.Picture, Is.Null);
-        Assert.That(present.Animation, Is.Null);
-        Assert.That(present.Dialogue, Is.Null);
-        Assert.That(present.WaitForConfirmWithoutDialogue, Is.False);
-        Assert.That(present.MinimumDuration, Is.EqualTo(3.8f).Within(0.001f));
-        Assert.That(present.FadeInDuration, Is.EqualTo(1.4f).Within(0.001f));
-        Assert.That(present.FadeOutDuration, Is.EqualTo(1f).Within(0.001f));
-
-        IllustratedStoryPage window = story.Pages[5];
+        Assert.That(story.Pages.Count, Is.EqualTo(1));
+        IllustratedStoryPage window = story.Pages[0];
+        Assert.That(window.IsCaptionPage, Is.False);
         Assert.That(window.Picture, Is.Null);
         AssertReference(window.Animation, "1f8ddfd131bedaf499bbd19b9cd21567", -1394380028033222937L);
         Assert.That(window.CanvasSize, Is.EqualTo(new Vector2Int(128, 96)));
@@ -94,14 +67,49 @@ public sealed class PrologueContentTests
     }
 
     [Test]
-    public void EarlyNarrationMutesTypingSoundButWindowConversationRetainsIt()
+    public void WindowConversationRetainsTypingSound()
     {
         IllustratedStoryAsset opening = LoadStory("Prologue_Opening");
-        for (int i = 0; i < 4; i++)
-            Assert.That(opening.Pages[i].MuteTypingSound, Is.True, "opening narration " + i);
-        Assert.That(opening.Pages[4].MuteTypingSound, Is.False, "present caption");
-        Assert.That(opening.Pages[5].MuteTypingSound, Is.False, "window conversation");
+        Assert.That(opening.Pages[0].MuteTypingSound, Is.False, "window conversation");
         Assert.That(new IllustratedStoryPage().MuteTypingSound, Is.False, "다른 대화의 기본 타이핑 소리는 유지합니다.");
+    }
+
+    [Test]
+    public void NameInputHierarchyIsRemovedWithoutRemovingSharedDialoguePanels()
+    {
+        string canvas = ReadProjectText("Assets/_Game/Content/Dialogue/Prefabs/DialogueCanvas.prefab");
+        string manager = ReadProjectText("Assets/_Game/Core/Prefabs/CoreSettings/DialogueManager.prefab");
+        StringAssert.DoesNotContain("NameInputPanel", canvas);
+        StringAssert.DoesNotContain("NameInputUI", canvas);
+        StringAssert.DoesNotContain("NameInputUI", manager);
+        StringAssert.DoesNotContain("_nameInputUI", manager);
+        StringAssert.Contains("m_Name: DialogueCanvas", canvas);
+        StringAssert.Contains("m_Name: OverworldPanel", canvas);
+        StringAssert.Contains("m_Name: CinematicPanel", canvas);
+        StringAssert.Contains("m_Name: BattleNarrationPanel", canvas);
+        Assert.That(typeof(DialogueManager).GetField("_nameInputUI", BindingFlags.Instance | BindingFlags.NonPublic), Is.Null);
+    }
+
+    [Test]
+    public void DefaultHeroAndSpeakerUseTheirAuthoredNamesWithoutChangingOtherCharacters()
+    {
+        CharacterData hero = AssetDatabase.LoadAssetAtPath<CharacterData>(
+            "Assets/_Game/Content/Characters/AllyDB/WizzelDB.asset");
+        SpeakerData speaker = AssetDatabase.LoadAssetAtPath<SpeakerData>(
+            "Assets/_Game/Content/Dialogue/Data/Speakers/Speaker_Wizzel.asset");
+        Assert.That(hero, Is.Not.Null);
+        Assert.That(speaker, Is.Not.Null);
+        Assert.That(hero.DisplayNameMode, Is.EqualTo(CharacterDisplayNameMode.StaticData));
+        Assert.That(hero.ResolveDisplayName("옛 저장 이름"), Is.EqualTo(GlobalDataManager.DefaultPlayerName));
+        Assert.That(speaker.DisplayName, Is.EqualTo(GlobalDataManager.DefaultPlayerName));
+
+        CharacterData companion = ScriptableObject.CreateInstance<CharacterData>();
+        try
+        {
+            companion.DisplayName = "동료 이름";
+            Assert.That(companion.ResolveDisplayName(GlobalDataManager.DefaultPlayerName), Is.EqualTo("동료 이름"));
+        }
+        finally { Object.DestroyImmediate(companion); }
     }
 
     [Test]
@@ -246,10 +254,6 @@ public sealed class PrologueContentTests
         PrologueTrainAudioProfile profile = AssetDatabase.LoadAssetAtPath<PrologueTrainAudioProfile>(
             StoryRoot + "/Prologue_TrainAudio.asset");
         AssertReference(profile, "45ce4e91976b4cefbc1e31539d4cef99", 11400000L);
-        AssertReference(profile.OpeningMusic, "d7884bd51df49324580130cd753911ab", 8300000L);
-        Assert.That(profile.OpeningMusicVolume, Is.EqualTo(0.8f).Within(0.0001f));
-        Assert.That(profile.OpeningMusicFadeIn, Is.EqualTo(0.8f).Within(0.0001f));
-        Assert.That(profile.OpeningMusicFadeOut, Is.EqualTo(1.2f).Within(0.0001f));
         AssertReference(profile.TrainLoop, "8628f03c8607e26428d4ccbec97442c6", 8300000L);
         AssertReference(profile.PowerDown, "2f53a3d72466f204ea7f88a3dafe43d2", 8300000L);
         AssertReference(profile.Footsteps, "3fea568341a92a5468d91e779ed0f70c", 8300000L);
@@ -259,6 +263,16 @@ public sealed class PrologueContentTests
         Assert.That(profile.TrainFadeIn, Is.EqualTo(0.6f).Within(0.0001f));
         Assert.That(profile.TrainFadeOut, Is.EqualTo(1.8f).Within(0.0001f));
         Assert.That(profile.FootstepsFadeOut, Is.EqualTo(0.12f).Within(0.0001f));
+    }
+
+    [Test]
+    public void RemovedNationNarrationCannotPlayItsBgmButOriginalAudioIsPreserved()
+    {
+        StringAssert.DoesNotContain("OpeningMusic", ReadProjectText(StoryRoot + "/Prologue_TrainAudio.asset"));
+        StringAssert.DoesNotContain("OpeningMusic", ReadProjectText("Assets/_Game/Scripts/UI/Runtime/IntroManager.cs"));
+        string originalMusicPath = AssetDatabase.GUIDToAssetPath("d7884bd51df49324580130cd753911ab");
+        Assert.That(originalMusicPath, Is.Not.Empty);
+        Assert.That(AssetDatabase.LoadAssetAtPath<AudioClip>(originalMusicPath), Is.Not.Null);
     }
 
     [Test]
@@ -273,9 +287,9 @@ public sealed class PrologueContentTests
         Assert.That(manager.Success, Is.True, "IntroManager component is missing.");
         string fields = manager.Groups["body"].Value;
         StringAssert.Contains("_trainAudioProfile: {fileID: 11400000, guid: 45ce4e91976b4cefbc1e31539d4cef99, type: 2}", fields);
-        Assert.That(Regex.IsMatch(fields, @"(?m)^\s+_trainAudioStartPage: 5\s*$"), Is.True);
-        Assert.That(Regex.IsMatch(fields, @"(?m)^\s+_openingMusicFadeOutPage: 4\s*$"), Is.True);
-        Assert.That(LoadStory("Prologue_Opening").Pages[5].LoopAnimation, Is.True);
+        Assert.That(Regex.IsMatch(fields, @"(?m)^\s+_trainAudioStartPage: 0\s*$"), Is.True);
+        StringAssert.DoesNotContain("_openingMusicFadeOutPage", fields);
+        Assert.That(LoadStory("Prologue_Opening").Pages[0].LoopAnimation, Is.True);
 
         GameObject room = AssetDatabase.LoadAssetAtPath<GameObject>(
             ContentRoot + "/Prefabs/Rooms/Room_ALL_TrainQ0.prefab");
@@ -342,7 +356,7 @@ public sealed class PrologueContentTests
         }
     }
 
-    [TestCase("Prologue_Opening", 5)]
+    [TestCase("Prologue_Opening", 0)]
     [TestCase("Prologue_RearReveal", 0)]
     public void AnimationFramesMatchSpriteCurveOrderWithoutRepeatedHoldKeys(string storyName, int pageIndex)
     {
@@ -450,12 +464,12 @@ public sealed class PrologueContentTests
     }
 
     [Test]
-    public void OpeningUsesFixedNarrationAndCaptionTypingSpeedsWithCaptionHold()
+    public void OpeningPreservesNarrationRateAndReusableCaptionDefaults()
     {
         IllustratedStoryAsset opening = LoadStory("Prologue_Opening");
         Assert.That(opening.NarrationCharactersPerSecond, Is.EqualTo(10f));
-        Assert.That(opening.Pages[4].CaptionCharactersPerSecond, Is.EqualTo(4f));
-        Assert.That(opening.Pages[4].CaptionHoldDuration, Is.EqualTo(1.2f).Within(0.0001f));
+        Assert.That(opening.Pages.Count, Is.EqualTo(1));
+        Assert.That(opening.Pages[0].IsCaptionPage, Is.False);
         Assert.That(new IllustratedStoryPage().CaptionCharactersPerSecond, Is.EqualTo(4f));
         Assert.That(new IllustratedStoryPage().CaptionHoldDuration, Is.EqualTo(1.2f).Within(0.0001f));
     }

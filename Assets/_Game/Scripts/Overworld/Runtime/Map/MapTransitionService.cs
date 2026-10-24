@@ -470,7 +470,7 @@ public class MapTransitionService : MonoBehaviour
         }
 
         room.OnRoomEntered(player);
-        SuppressArrivalDoor(request.TargetSpawnPointId);
+        SuppressArrivalDoor(player.transform.position, room.transform);
         _roomContainer.ApplyCurrentRoomAudio();
         return SceneLoadResult.Succeeded;
     }
@@ -527,6 +527,7 @@ public class MapTransitionService : MonoBehaviour
 
         player.transform.position = arrival.Position;
         ApplyFacing(player, arrival.Facing);
+        OverworldPartyFollowerController.EnsureFor(player)?.ResetAtLeader();
 
         GlobalDataManager global = GlobalDataManager.Instance;
         if (global != null)
@@ -626,28 +627,28 @@ public class MapTransitionService : MonoBehaviour
         player.SetFacingDirection((int)facing);
     }
 
-    private void SuppressArrivalDoor(string spawnPointId)
+    private void SuppressArrivalDoor(Vector3 arrivalPosition, Transform roomRoot)
     {
-        if (string.IsNullOrWhiteSpace(spawnPointId))
-            return;
-        if (!SpawnPoint.TryFind(spawnPointId, out SpawnPoint spawnPoint) || spawnPoint == null)
+        if (roomRoot == null)
             return;
 
-        DoorTransition[] doors = FindObjectsByType<DoorTransition>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        // 이전 방은 프레임 끝까지 남을 수 있고 SpawnPoint ID는 방마다 재사용합니다.
+        // 이미 확정된 도착 위치와 목적 방만 사용하며 좌표 fallback에도 같은 규칙을 적용합니다.
+        DoorTransition[] doors = roomRoot.GetComponentsInChildren<DoorTransition>(false);
         for (int i = 0; i < doors.Length; i++)
         {
             if (doors[i] != null
-                && Vector2.Distance(doors[i].transform.position, spawnPoint.transform.position) <= 1.5f)
+                && Vector2.Distance(doors[i].transform.position, arrivalPosition) <= 1.5f)
             {
                 doors[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
             }
         }
 
-        AreaConnectionMarker[] markers = FindObjectsByType<AreaConnectionMarker>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        AreaConnectionMarker[] markers = roomRoot.GetComponentsInChildren<AreaConnectionMarker>(false);
         for (int i = 0; i < markers.Length; i++)
         {
             if (markers[i] != null
-                && Vector2.Distance(markers[i].transform.position, spawnPoint.transform.position) <= 1.5f)
+                && Vector2.Distance(markers[i].transform.position, arrivalPosition) <= 1.5f)
             {
                 markers[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
             }

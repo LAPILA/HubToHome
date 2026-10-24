@@ -249,6 +249,7 @@ public partial class CameraController
 
     private void LateUpdate()
     {
+        UpdateBattleViewportSafety();
         UpdateBattleMotion();
         if (!_isFramingTargets || _framingTargetGroup == null)
         {

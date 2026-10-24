@@ -295,10 +295,43 @@ public sealed class AtomicSaveStorage
         lock (_gate)
         {
             SaveSlotPaths paths = GetPaths(slotIndex);
+            bool ownsTemporaryWrite = false;
             try
             {
                 _fileSystem.CreateDirectory(_rootDirectory);
+                bool primaryExists = _fileSystem.FileExists(paths.PrimaryPath);
+                CandidateRead primary = primaryExists
+                    ? ReadCandidate(paths.PrimaryPath, SaveLoadSource.Primary)
+                    : CandidateRead.Missing(SaveLoadSource.Primary);
+
+                if (primary.Decode != null && primary.Decode.Failure == SaveDecodeFailure.UnsupportedFutureVersion)
+                    return SaveStorageResult.Failed(SaveStorageFailure.NotAllowed,
+                        "더 새로운 게임 버전의 저장 파일은 덮어쓰지 않습니다. 다른 슬롯을 선택하세요.");
+
+                // 중단된 첫 저장의 유일한 복구본을 새 쓰기보다 먼저 보존합니다.
+                // Load는 계속 읽기 전용이며, 명시적 Save에서만 후보를 승격합니다.
+                if (!primary.Success && _fileSystem.FileExists(paths.TemporaryPath))
+                {
+                    CandidateRead temporaryRecovery = ReadCandidate(paths.TemporaryPath, SaveLoadSource.Temporary);
+                    CandidateRead backup = _fileSystem.FileExists(paths.BackupPath)
+                        ? ReadCandidate(paths.BackupPath, SaveLoadSource.Backup)
+                        : CandidateRead.Missing(SaveLoadSource.Backup);
+                    if (temporaryRecovery.Success && !backup.Success)
+                    {
+                        if (primaryExists)
+                        {
+                            DeleteIfExists(paths.CorruptPath);
+                            _fileSystem.MoveFile(paths.PrimaryPath, paths.CorruptPath);
+                        }
+
+                        _fileSystem.MoveFile(paths.TemporaryPath, paths.PrimaryPath);
+                        primaryExists = true;
+                        primary = temporaryRecovery;
+                    }
+                }
+
                 DeleteIfExists(paths.TemporaryPath);
+                ownsTemporaryWrite = true;
                 _fileSystem.WriteAllTextDurable(paths.TemporaryPath, json);
 
                 CandidateRead temporary = ReadCandidate(
@@ -310,15 +343,6 @@ public sealed class AtomicSaveStorage
                         SaveStorageFailure.Verification,
                         "임시 저장 검증에 실패했습니다: " + temporary.Message);
                 }
-
-                bool primaryExists = _fileSystem.FileExists(paths.PrimaryPath);
-                CandidateRead primary = primaryExists
-                    ? ReadCandidate(paths.PrimaryPath, SaveLoadSource.Primary)
-                    : CandidateRead.Missing(SaveLoadSource.Primary);
-
-                if (primary.Decode != null && primary.Decode.Failure == SaveDecodeFailure.UnsupportedFutureVersion)
-                    return SaveStorageResult.Failed(SaveStorageFailure.NotAllowed,
-                        "더 새로운 게임 버전의 저장 파일은 덮어쓰지 않습니다. 다른 슬롯을 선택하세요.");
 
                 if (primaryExists && primary.Success)
                 {
@@ -352,7 +376,8 @@ public sealed class AtomicSaveStorage
             }
             finally
             {
-                TryDeleteWithoutThrow(paths.TemporaryPath);
+                if (ownsTemporaryWrite)
+                    TryDeleteWithoutThrow(paths.TemporaryPath);
             }
         }
     }

@@ -289,6 +289,7 @@ public partial class SkillContext
     /// </summary>
     public void CancelPendingDefenseReaction()
     {
+        CancelEnemyMeleePresentation();
         QteExecution defense = ActiveDefenseWindow;
         ActiveDefenseWindow = null;
         if (defense != null && !defense.IsDone) QTEManager.Instance?.Cancel(defense);
@@ -322,6 +323,7 @@ public partial class SkillContext
 
     public IEnumerator WaitForPendingDefenseReaction()
     {
+        yield return WaitForEnemyMeleePresentation();
         PlayerController controller = PendingDefenseReactionController;
         DefenseInput input = PendingDefenseReactionInput;
         bool tookDamage = PendingDefenseReactionTookDamage;
@@ -1050,6 +1052,18 @@ public class Action_DefenseWindow : SkillActionBlock
     [MinValue(0f)]
     [Tooltip("적이 실제 공격을 시작하기 전에 준비 자세를 유지하는 시간입니다. 이 시간에도 Z/X/C 입력을 버퍼링합니다.")]
     public float AttackReadyDuration = 0.08f;
+    [BoxGroup("근접 돌파 연출", order: 11), LabelText("타격 후 아군 뒤로 돌파")]
+    [Tooltip("단일 아군을 노리는 근접 참격 전용입니다. 투사체·광역·C 특수공격에는 적용하지 않습니다. 가드 성공 시 접촉 지점에서 멈춥니다.")]
+    public bool UseMeleePassThrough;
+    [BoxGroup("근접 돌파 연출"), ShowIf(nameof(UseMeleePassThrough))]
+    [LabelText("타격 직전 대시 시간 (초)"), Range(0.04f, 0.3f)]
+    public float MeleeDashDuration = 0.12f;
+    [BoxGroup("근접 돌파 연출"), ShowIf(nameof(UseMeleePassThrough))]
+    [LabelText("대상 뒤 통과 거리"), Range(0.4f, 1.5f)]
+    public float MeleePassDistance = 0.95f;
+    [BoxGroup("근접 돌파 연출"), ShowIf(nameof(UseMeleePassThrough))]
+    [LabelText("타격 후 통과 시간 (초)"), Range(0.04f, 0.25f)]
+    public float MeleeExitDuration = 0.09f;
     [FoldoutGroup("구형 호환 설정")]
     [LabelText("구형 공격 애니메이션 후 대기 (초)")]
     [MinValue(0f)]
@@ -1200,6 +1214,7 @@ public class Action_DefenseWindow : SkillActionBlock
         PlayerController targetController = GetPlayerController(context.Targets[0]);
         QteExecution execution = null;
         bool resultResolved = false;
+        BattleEnemyMeleePresentationScope melee = null;
 
         try
         {
@@ -1254,10 +1269,17 @@ public class Action_DefenseWindow : SkillActionBlock
                 yield break;
             }
 
+            if (BattleEnemyMeleeDashPath.CanUse(UseMeleePassThrough, isProjectile,
+                    context.Targets.Count, target is PlayerCharacter, Requirement, PatternMode))
+                melee = context.BeginEnemyMeleePresentation(enemy, (PlayerCharacter)target, this);
+
             // Ready가 같은 프레임의 공격 모션을 덮지 않도록 예약보다 먼저 완료합니다.
             // 준비 중에도 PlayerController의 방어 입력 버퍼는 유지됩니다.
-            if (context.TryPresentEnemyAttackReady(enemy))
-                yield return new BattleDelay(ResolveAttackReadyDuration());
+            bool startedReady = context.TryPresentEnemyAttackReady(enemy);
+            // Windup이 Ready를 이미 표시했어도 돌파 구도는 판정창 전에 끝냅니다.
+            // 모션은 재시작하지 않고, 기존 판정 창 바깥의 준비 시간만 보장합니다.
+            if (startedReady || melee != null)
+                yield return new BattleDelay(Mathf.Max(ResolveAttackReadyDuration(), melee?.PreparationDuration ?? 0f));
             if (!context.CanContinueExecution || target == null || !target.IsAlive || qteManager == null)
             {
                 context.StopTimelineExecution = true;
@@ -1286,6 +1308,7 @@ public class Action_DefenseWindow : SkillActionBlock
                     resultReceived = true;
                     resultResolved = true;
                     onImpactResolved?.Invoke();
+                    melee?.ResolveImpact(result);
                     // 판정 시점은 이미 진행 중인 모션의 실제 타격 프레임입니다.
                     if (!result.IsCounterSuccess && enemy != null && enemy.IsAlive)
                     {
@@ -1311,7 +1334,11 @@ public class Action_DefenseWindow : SkillActionBlock
                 },
                 AttackAnimationLeadTime,
                 attacker: enemy, cuePrefab: ImpactCuePrefab, cuePivot: ImpactCuePivotName,
-                onAttackProgress: advanceAttack, useMeleeParryAssistance: !isProjectile);
+                onAttackProgress: time =>
+                {
+                    advanceAttack?.Invoke(time);
+                    melee?.AdvanceAttack(time);
+                }, useMeleeParryAssistance: !isProjectile);
             context.ActiveDefenseWindow = execution;
 
             yield return new WaitUntil(() => execution.IsDone);
@@ -1329,6 +1356,7 @@ public class Action_DefenseWindow : SkillActionBlock
 
             if (resultReceived && finalResult.IsCounterSuccess)
             {
+                context.CancelEnemyMeleePresentation();
                 context.CurrentDamageMultiplier = 0f;
                 context.AttackInterruptedByCounter = true;
                 context.PendingDefensePostImpactDelay = 0f;
@@ -1419,6 +1447,8 @@ public class Action_DefenseWindow : SkillActionBlock
         }
         finally
         {
+            if (melee != null && (!resultResolved || !context.CanContinueExecution))
+                context.CancelEnemyMeleePresentation();
             if (ReferenceEquals(context.ActiveDefenseWindow, execution)) context.ActiveDefenseWindow = null;
             if (execution != null && !execution.IsDone)
             {
@@ -1771,6 +1801,7 @@ public class Action_SequentialMelee : SkillActionBlock
             // 취소/파괴/모듈 이탈 복원은 여기와 기존 방어 scope가 처리합니다.
             if (enemyAttack && ApproachEachTarget && !completed)
             {
+                context.CancelEnemyMeleePresentation();
                 context.ReleaseDefenderPresentation();
                 if (context.Actor != null)
                 {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
@@ -159,8 +160,8 @@ public sealed class RegionEntryCoordinatorTests
         Assert.That(_audio.RequestedBgmClip, Is.SameAs(clip));
     }
 
-    [Test]
-    public void RoomTransition_AppliesDestinationBgm()
+    [UnityTest]
+    public IEnumerator RoomTransition_AppliesDestinationBgm()
     {
         SetBgm(_defaultRoom, "OriginRoom");
         AudioClip clip = SetBgm(_secondRoom, "DestinationRoom");
@@ -175,9 +176,13 @@ public sealed class RegionEntryCoordinatorTests
             FadeDuration = 0f
         };
 
-        object result = InvokePrivate(service, "LoadRoom", request, _player);
+        SceneLoadResult? result = null;
+        Assert.That(service.TryRequestTransition(request, _player, value => result = value), Is.True);
+        for (int frame = 0; result == null && frame < 20; frame++)
+            yield return null;
 
         Assert.That(result, Is.EqualTo(SceneLoadResult.Succeeded));
+        Assert.That(service.IsTransitioning, Is.False);
         Assert.That(_container.CurrentDefinition, Is.SameAs(_secondRoom));
         Assert.That(_audio.RequestedBgmClip, Is.SameAs(clip));
     }
