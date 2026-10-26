@@ -25,6 +25,8 @@ public class DialogueUI : MonoBehaviour
 
     [Header("UI 참조")]
     [SerializeField] private Image _portraitImage;
+    [SerializeField, LabelText("전투 대화 배경 (선택)"), Tooltip("비워 두면 본문을 감싼 배경 Image를 사용합니다. 전투에서만 색을 빌리고 닫을 때 원래 상태로 복원합니다.")]
+    private Image _battleBackgroundImage;
     [SerializeField] private TextMeshProUGUI _speakerNameText;
     [SerializeField] private TextMeshProUGUI _dialogueText; 
     [SerializeField] private RectTransform _choiceRoot;
@@ -54,6 +56,7 @@ public class DialogueUI : MonoBehaviour
     private List<ChoiceData> _activeChoices;
     private System.Action<ChoiceData> _onChoiceSelected;
     private int _selectedChoiceIndex;
+    private bool _allowChoiceShortcuts = true;
     private Tween _panelTween;
     private BattleDialogueLayout _battleLayout;
     private bool _isClosing;
@@ -62,6 +65,7 @@ public class DialogueUI : MonoBehaviour
     private bool _standaloneNarration;
     private bool _typingSoundMuted;
     private bool _cinematicTyping;
+    private bool _revealTextImmediately;
     private float _narrationCharactersPerSecond = 10f;
     private bool _timingsCaptured;
     private TypingsTimingsScriptableBase _originalTypingTimings;
@@ -72,8 +76,12 @@ public class DialogueUI : MonoBehaviour
     public void SetTypingSoundMuted(bool muted) => _typingSoundMuted = muted;
 
     /// <summary>표시 스타일과 별개로 Cutscene이 소유한 대화도 설정 속도에서 분리합니다.</summary>
-    public void ConfigureTypingStyle(DialogueStyle style, bool isCutscene = false)
-        => _cinematicTyping = style == DialogueStyle.Cinematic || isCutscene;
+    public void ConfigureTypingStyle(DialogueStyle style, bool isCutscene = false,
+        bool revealTextImmediately = false)
+    {
+        _cinematicTyping = style == DialogueStyle.Cinematic || isCutscene;
+        _revealTextImmediately = revealTextImmediately;
+    }
 
     /// <summary>삽화 재생 데이터에서 설정 속도와 독립적인 본문 속도를 지정합니다.</summary>
     public void SetNarrationCharactersPerSecond(float charactersPerSecond)
@@ -158,7 +166,9 @@ public class DialogueUI : MonoBehaviour
 
     private void OnDisable()
     {
-        bool unexpectedClose = (IsBattleDocked || _standaloneNarration) && !_isClosing;
+        // 일반 필드/시네마틱 패널도 손실되면 대기 중인 재생을 취소합니다.
+        // 활성 패널 일치 여부는 DialogueManager가 검사하므로 다른 대화는 건드리지 않습니다.
+        bool unexpectedClose = !_isClosing;
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         LocalizationManager.LanguageChanged -= HandleLanguageChanged;
         StopPanelTween();
@@ -166,6 +176,7 @@ public class DialogueUI : MonoBehaviour
         StopTypingWork();
         RestoreTypingTimings();
         _cinematicTyping = false;
+        _revealTextImmediately = false;
         ReleaseBattleLayout();
         if (unexpectedClose) DialogueManager.Instance?.CancelPresentation(this);
         if (_canvasGroup != null)
@@ -192,6 +203,50 @@ public class DialogueUI : MonoBehaviour
         if (_displayedSpeaker != null && _speakerNameText != null)
             _speakerNameText.text = _displayedSpeaker.ResolveDisplayName();
         if (IsWaitingForChoice) RefreshChoiceVisuals();
+        DialogueManager.Instance?.RefreshLocalizedPresentation(this);
+    }
+
+    /// <summary>대화 소유권·선택·이벤트를 유지하고 현재 문장만 교체합니다.</summary>
+    public void RefreshLocalizedBody(string text)
+    {
+        if (_isClosing || !isActiveAndEnabled) return;
+        bool wasTyping = IsTyping;
+        int page = _dialogueText != null ? _dialogueText.pageToDisplay : 1;
+        AudioSource voice = _soundWriter != null ? _soundWriter.source : null;
+        float volume = voice != null ? voice.volume : 0f;
+        try
+        {
+            // 이미 읽은 문장을 번역할 때 첫 글자 음성을 중복 재생하지 않습니다.
+            if (!wasTyping && voice != null) voice.volume = 0f;
+            if (_typewriter != null)
+            {
+                if (_revealTextImmediately)
+                    DisplayBodyImmediately(text);
+                else
+                {
+                    IsTyping = wasTyping;
+                    _typewriter.ShowText(text ?? string.Empty);
+                    ApplyConfiguredTextSpeed();
+                    if (!wasTyping)
+                    {
+                        _typewriter.StopShowingText();
+                        _typewriter.TextAnimator?.SetVisibilityEntireText(true, false);
+                        IsTyping = false;
+                    }
+                }
+            }
+            else if (_dialogueText != null)
+            {
+                _dialogueText.text = text ?? string.Empty;
+                IsTyping = false;
+            }
+            if (_dialogueText != null)
+            {
+                _dialogueText.ForceMeshUpdate();
+                _dialogueText.pageToDisplay = Mathf.Clamp(page, 1, Mathf.Max(1, _dialogueText.textInfo.pageCount));
+            }
+        }
+        finally { if (voice != null) voice.volume = volume; }
     }
 
     private void LateUpdate()
@@ -229,7 +284,8 @@ public class DialogueUI : MonoBehaviour
             && _dialogueText.transform.IsChildOf(panel) && menu.BeginDialoguePresentation())
         {
             _battleLayout = new BattleDialogueLayout(menu, panel, _portraitImage,
-                _speakerNameText, _dialogueText, _choiceRoot, _battleLayoutSettings);
+                _speakerNameText, _dialogueText, _choiceRoot, _battleLayoutSettings,
+                ResolveBattleBackgroundImage(panel));
             RefreshBattleLayout();
         }
         ApplyConfiguredTextSpeed();
@@ -241,6 +297,22 @@ public class DialogueUI : MonoBehaviour
                 .SetDelay(delay).SetUpdate(true).SetRecyclable(false)
                 .OnComplete(() => _panelTween = null);
         }
+    }
+
+    private Image ResolveBattleBackgroundImage(RectTransform panel)
+    {
+        if (_battleBackgroundImage != null && _battleBackgroundImage != _portraitImage
+            && _battleBackgroundImage.transform.IsChildOf(panel)) return _battleBackgroundImage;
+        // 기존 프리팹은 본문을 배경 아래에 두므로 이름/색상에 의존하지 않고 조상만 확인합니다.
+        Transform candidate = _dialogueText != null ? _dialogueText.transform.parent : null;
+        while (candidate != null && (candidate == panel || candidate.IsChildOf(panel)))
+        {
+            if (candidate.TryGetComponent(out Image background) && background != _portraitImage)
+                return background;
+            if (candidate == panel) break;
+            candidate = candidate.parent;
+        }
+        return null;
     }
 
     public void ClosePanel()
@@ -340,7 +412,9 @@ public class DialogueUI : MonoBehaviour
         RefreshBattleLayout();
 
         // 3. 🚨 텍스트 출력
-        if (_typewriter != null)
+        if (_revealTextImmediately)
+            DisplayBodyImmediately(text);
+        else if (_typewriter != null)
         {
             _typewriter.ShowText(text);
             // ShowText resets the package's speed multiplier. Apply immediately, not two frames later.
@@ -351,6 +425,26 @@ public class DialogueUI : MonoBehaviour
             _dialogueText.text = text;
             IsTyping = false;
         }
+    }
+
+    private void DisplayBodyImmediately(string text)
+    {
+        // ShowText/SkipTypewriter를 거치지 않아 글자별 음성과 대기 명령을 한꺼번에 재생하지 않습니다.
+        if (_typewriter != null)
+        {
+            _typewriter.StopShowingText();
+            var animator = _typewriter.TextAnimator;
+            if (animator != null)
+            {
+                animator.SetText(text ?? string.Empty, false);
+                animator.SetVisibilityEntireText(true, false);
+            }
+            else if (_dialogueText != null)
+                _dialogueText.text = text ?? string.Empty;
+        }
+        else if (_dialogueText != null)
+            _dialogueText.text = text ?? string.Empty;
+        IsTyping = false;
     }
 
     private void ApplyConfiguredTextSpeed()
@@ -471,7 +565,8 @@ public class DialogueUI : MonoBehaviour
     // 🚨 외부(Text Animator)에서 호출할 수 있는 이벤트 함수 (기존 세팅 유지용)
     public void OnTypingCompleted() { IsTyping = false; }
 
-    public void ShowChoices(List<ChoiceData> choices, System.Action<ChoiceData> onSelected)
+    public void ShowChoices(List<ChoiceData> choices, System.Action<ChoiceData> onSelected,
+        bool allowShortcuts = true)
     {
         PrepareChoiceUI();
         if (_choiceRoot == null || _choiceTemplate == null || choices == null || choices.Count == 0)
@@ -483,6 +578,7 @@ public class DialogueUI : MonoBehaviour
         IsWaitingForChoice = true;
         _activeChoices = choices;
         _onChoiceSelected = onSelected;
+        _allowChoiceShortcuts = allowShortcuts;
         _selectedChoiceIndex = 0;
         _choiceOpenedFrame = Time.frameCount;
 
@@ -569,6 +665,9 @@ public class DialogueUI : MonoBehaviour
             return;
         }
 
+        // 저장/불러오기 prompt의 X는 소유자가 취소로 처리합니다. 같은 X를
+        // Choice2로 먼저 확정하면 Update 실행 순서에 따라 다른 슬롯을 선택하게 됩니다.
+        if (!_allowChoiceShortcuts) return;
         if (GameInput.Choice1Pressed && _activeChoices.Count > 0) CommitChoice(0);
         else if (GameInput.Choice2Pressed && _activeChoices.Count > 1) CommitChoice(1);
         else if (GameInput.Choice3Pressed && _activeChoices.Count > 2) CommitChoice(2);

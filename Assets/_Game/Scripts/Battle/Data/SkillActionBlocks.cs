@@ -18,8 +18,10 @@ public enum DefenseRequirement
     DodgeOnly = 4,
     [InspectorName("구 회피 / 점프 (새 모드: 회피)")]
     DodgeOrJump = 5,
-    [InspectorName("반격 가능 특수공격 (회피 / 연계 반격)")]
-    Counterable = 6
+    [InspectorName("특수 반격만 (C · 구 데이터 호환)")]
+    Counterable = 6,
+    [InspectorName("특수 반격만 (C)")]
+    CounterOnly = 7
 }
 public enum TelegraphVisualMode
 {
@@ -85,6 +87,7 @@ public partial class SkillContext
     {
         if (!_resourceStarted || _resourceCompleted || !CanContinueExecution) return;
         _resourceCompleted = true;
+        CompletePresentationAccent();
         if (_skillResource != null && _skillResource.Definition == _skillResourceDefinition)
             _skillResource.Gain(_resourceGainOnCompletion);
     }
@@ -178,8 +181,11 @@ public partial class SkillContext
                 {
                     SkillActionBlock candidate = timeline[i];
                     if (candidate != null && !candidate.Disabled
-                        && (candidate is Action_Damage || candidate is Action_Projectile || candidate is Action_SequentialMelee
-                            || candidate is Action_RapidStrikes || candidate is Action_AerialCrossSlash))
+                        && (candidate is Action_Damage || candidate is Action_DefenseWindow
+                            || candidate is Action_Projectile || candidate is Action_SequentialMelee
+                            || candidate is Action_ScreenPassSlash
+                            || candidate is Action_RapidStrikes || candidate is Action_AerialCrossSlash
+                            || candidate is Action_EnemyAssaultCombo))
                         _hasCombatImpact = true;
                     if (Actor is EnemyCharacter && candidate is Action_SequentialMelee melee
                         && !melee.Disabled && melee.ApproachEachTarget)
@@ -187,6 +193,9 @@ public partial class SkillContext
                 }
             }
             // 이동/투사체가 목표 좌표를 잡기 전에 양측 중앙 배치를 완료합니다.
+            IsContinuousEnemyAction = Actor is EnemyCharacter && _hasCombatImpact == true;
+            if (IsContinuousEnemyAction && (block is Action_Wait || IsRedundantEnemyApproach(block)))
+                yield break;
             if (_hasCombatImpact == true && !_usesIndividualApproach && !(block is Action_SequentialMelee))
                 yield return StageCombatants(MainTarget);
             if (!CanContinueExecution) yield break;
@@ -210,10 +219,18 @@ public partial class SkillContext
             SkillActionBlock candidate = timeline[i];
             if (!found) { found = ReferenceEquals(candidate, defense); continue; }
             if (candidate == null || candidate.Disabled) continue;
+            if (candidate is Action_Wait || candidate is Action_EnemyWindup || candidate is Action_PresentationAccent
+                || IsRedundantEnemyApproach(candidate)
+                || candidate is Action_PlayAnim pose && Action_PlayAnim.IsEnemyReadyAnimation(pose.AnimTriggerName))
+                continue;
             return candidate is Action_Projectile || candidate is Action_SequentialMelee;
         }
         return false;
     }
+
+    internal static bool IsRedundantEnemyApproach(SkillActionBlock block)
+        => block is Action_Move move && move.EnemyHopHeight <= 0f
+            && (move.Destination == Action_Move.MoveDest.TargetFront || move.Destination == Action_Move.MoveDest.AttackStaging);
 
     public Action_DefenseWindow TakeImpactDefense(float duration, string attackTrigger = null, bool flight = false)
     {
@@ -268,9 +285,6 @@ public partial class SkillContext
         if (!(Actor is EnemyCharacter enemy) || EnemyAttackImpactStarted)
             yield break;
 
-        if (TryPresentEnemyAttackReady(enemy))
-            yield return new BattleDelay(0.08f);
-
         if (!string.IsNullOrWhiteSpace(triggerName))
             enemy.PlaySkillAnim(triggerName, EnemyCharacter.HashAttack);
         else
@@ -289,6 +303,8 @@ public partial class SkillContext
     /// </summary>
     public void CancelPendingDefenseReaction()
     {
+        CancelPresentationAccent();
+        CancelEnemyMeleePresentation();
         QteExecution defense = ActiveDefenseWindow;
         ActiveDefenseWindow = null;
         if (defense != null && !defense.IsDone) QTEManager.Instance?.Cancel(defense);
@@ -322,6 +338,9 @@ public partial class SkillContext
 
     public IEnumerator WaitForPendingDefenseReaction()
     {
+        yield return WaitForEnemyMeleePresentation();
+        // 연속 난무는 이동만 마치고 다음 타격으로 이어갑니다. 마지막에만 반응을 완료/정리합니다.
+        if (DeferDefenseReactionCompletion && CanContinueExecution) yield break;
         PlayerController controller = PendingDefenseReactionController;
         DefenseInput input = PendingDefenseReactionInput;
         bool tookDamage = PendingDefenseReactionTookDamage;
@@ -432,7 +451,10 @@ public abstract class SkillActionBlock
         if (this is Action_SequentialMelee) return "연쇄 근접";
         if (this is Action_RapidStrikes) return "고속 연격 · 독립 QTE";
         if (this is Action_AerialCrossSlash) return "공중 회전 · 교차 베기";
+        if (this is Action_EnemyAssaultCombo) return "적 연속 돌파 · 공중 난무";
         if (this is Action_ScreenSplit) return "사선 화면 절단";
+        if (this is Action_PresentationAccent) return "실루엣 · 명중 점멸";
+        if (this is Action_ScreenPassSlash) return "화면 관통 참격";
         if (this is Action_EnemyWindup) return "적 공격 준비 · 클로즈업";
         return GetType().Name.Replace("Action_", string.Empty);
     }
@@ -443,9 +465,10 @@ public abstract class SkillActionBlock
         if (this is Action_Move) return "이동";
         if (this is Action_PlayAnim) return "애니메이션";
         if (this is Action_EnemyWindup) return "카메라";
-        if (this is Action_ScreenSplit) return "화면 연출";
+        if (this is Action_ScreenSplit || this is Action_PresentationAccent || this is Action_ScreenPassSlash) return "화면 연출";
         if (this is Action_Damage || this is Action_Projectile || this is Action_SequentialMelee
-            || this is Action_RapidStrikes || this is Action_AerialCrossSlash) return "피해";
+            || this is Action_RapidStrikes || this is Action_AerialCrossSlash
+            || this is Action_EnemyAssaultCombo) return "피해";
         if (this is Action_VFX) return "이펙트";
         if (this is Action_QTE) return "입력";
         if (this is Action_DefenseWindow) return "방어";
@@ -603,7 +626,8 @@ public class Action_Move : SkillActionBlock
                 yield break;
             }
             completed = movement.IsActive() && movement.IsComplete();
-            PlayActorBattleAnim(context.Actor, context.Actor is EnemyCharacter ? EnemyCharacter.HashBattleIdle : PlayerCharacter.HashBattleIdle);
+            if (!context.IsContinuousEnemyAction)
+                PlayActorBattleAnim(context.Actor, context.Actor is EnemyCharacter ? EnemyCharacter.HashBattleIdle : PlayerCharacter.HashBattleIdle);
         }
         finally
         {
@@ -619,7 +643,6 @@ public class Action_Move : SkillActionBlock
 [TypeInfoBox("특정 애니메이션을 재생합니다.")]
 public class Action_PlayAnim : SkillActionBlock
 {
-    private const float EnemyAttackReadyDuration = 0.08f;
 
     [LabelText("애니메이션 이름 (Trigger)")] public string AnimTriggerName = "Attack";
     [LabelText("애니메이션 후 대기 (초)")]
@@ -635,40 +658,25 @@ public class Action_PlayAnim : SkillActionBlock
     {
         bool isEnemyAttack = context?.Actor is EnemyCharacter
             && IsEnemyAttackAnimation(AnimTriggerName);
+        bool flowingEnemy = context?.Actor is EnemyCharacter && context.IsContinuousEnemyAction;
+        if (flowingEnemy && IsEnemyReadyAnimation(AnimTriggerName)) yield break;
         // DefenseWindow의 결과 콜백이 이미 공격 트리거를 시작한 뒤 이어지는
         // 레거시 PlayAnim Attack은 같은 타격을 두 번 재생하지 않습니다.
         if (isEnemyAttack && context.EnemyAttackImpactStarted)
         {
-            float duplicateDelay = Mathf.Max(0f, DelayAfter);
-            if (duplicateDelay > 0f)
-                yield return new BattleDelay(duplicateDelay);
+            if (!flowingEnemy && DelayAfter > 0f) yield return new BattleDelay(DelayAfter);
             yield break;
-        }
-
-        // 방어 대응 블록이 없는 레거시 적 스킬도 공격 전에 같은 준비 자세를
-        // 거칩니다. 이미 BattleReady/Telegraph 자체를 재생하는 블록은 제외합니다.
-        if (isEnemyAttack && context.Actor is EnemyCharacter enemy)
-        {
-            if (!context.EnemyAttackImpactStarted)
-            {
-                if (context.TryPresentEnemyAttackReady(enemy))
-                    yield return new BattleDelay(EnemyAttackReadyDuration);
-            }
         }
 
         int hash = Animator.StringToHash(AnimTriggerName);
         PlayActorBattleAnim(context.Actor, hash);
-        float authoredDelay = Mathf.Max(0f, DelayAfter);
+        float authoredDelay = flowingEnemy ? 0f : Mathf.Max(0f, DelayAfter);
         if (context?.Actor is EnemyCharacter enemyActor)
         {
             if (IsEnemyReadyAnimation(AnimTriggerName))
             {
                 context.EnemyAttackReadyPresented = true;
-                // 명시적으로 준비 트리거를 작성한 타임라인도 최소 준비 시간이
-                // 보장되어야 다음 Attack 트리거가 같은 프레임에 덮어쓰지 않습니다.
-                float remainingReadyHold = Mathf.Max(0f, EnemyAttackReadyDuration - authoredDelay);
-                if (remainingReadyHold > 0f)
-                    yield return new BattleDelay(remainingReadyHold);
+                if (!flowingEnemy) authoredDelay = Mathf.Max(.08f, authoredDelay);
             }
             else if (IsEnemyAttackAnimation(AnimTriggerName))
                 context.MarkEnemyAttackImpactStarted();
@@ -692,7 +700,7 @@ public class Action_PlayAnim : SkillActionBlock
             && !normalized.Contains("telegraph");
     }
 
-    private static bool IsEnemyReadyAnimation(string triggerName)
+    internal static bool IsEnemyReadyAnimation(string triggerName)
     {
         if (string.IsNullOrWhiteSpace(triggerName))
             return false;
@@ -948,10 +956,9 @@ public class Action_VFX : SkillActionBlock
 }
 
 [System.Serializable]
-[TypeInfoBox("적 타격 직전 배치합니다. Z 가드/저스트 가드, X 회피를 판정합니다. 반격 가능 특수공격은 X/C만 허용하며 C 성공 시 남은 스킬을 중단하고 공격받은 한 명만 반격합니다. 실제 적 피해는 뒤의 피해 블록에서 처리합니다.")]
-public class Action_DefenseWindow : SkillActionBlock
+[TypeInfoBox("적 타격 직전 배치합니다. 일반 공격은 Z 가드/저스트·X 회피, 특수 반격 공격은 C만 허용합니다. C 성공 시 남은 스킬을 중단하고 공격받은 한 명만 반격합니다. 실제 피해는 뒤의 피해 블록에서 처리합니다.")]
+public partial class Action_DefenseWindow : SkillActionBlock
 {
-    private const float LegacyDefaultAttackReadyDuration = 0.08f;
 
     [FoldoutGroup("추가 전조 · 예약 공격", false, 40)]
     [LabelText("방어 패턴 모드")]
@@ -962,7 +969,11 @@ public class Action_DefenseWindow : SkillActionBlock
     [BoxGroup("대응 · 판정")]
     [ShowIf(nameof(IsCounterable)), LabelText("반격: 피격 대상 ATK 배율"), MinValue(0.01f)]
     public float CounterDamageMultiplier = 1.5f;
-    private bool IsCounterable => Requirement == DefenseRequirement.Counterable;
+    private bool IsCounterable => DefenseJudgementPolicy.IsCounterRequirement(Requirement);
+    [BoxGroup("공격 연출"), AssetsOnly, LabelText("공격 시작 이펙트")] public GameObject AttackVfxPrefab;
+    [BoxGroup("공격 연출"), LabelText("이펙트 배율"), Range(.01f, 8f)] public float AttackVfxScale = 1f;
+    [BoxGroup("공격 연출"), LabelText("이펙트 최대 수명"), Range(.05f, 10f)] public float AttackVfxLifetime = 1.5f;
+    [BoxGroup("공격 연출"), LabelText("이펙트를 대상 중심에 표시")] public bool AttackVfxAtTarget = true;
     [FoldoutGroup("추가 전조 · 예약 공격")]
     [LabelText("추가 예고 연출 사용")]
     [Tooltip("기본 타격 신호와 별개인 준비 연출입니다. 이 구간은 성공 신호가 아닙니다. 일반 공격은 끄고, 아래 타격 직전 전조 프리팹만 연결하세요.")]
@@ -996,7 +1007,7 @@ public class Action_DefenseWindow : SkillActionBlock
     [LabelText("전조 후 준비 시간 (초)")]
     [MinValue(0f)] public float DefenseOpenDelay = 0f;
     [BoxGroup("대응 · 판정")]
-    [LabelText("판정 시간 (초)")]
+    [LabelText("명중까지 이동/공격 시간 (초)")]
     [ValidateInput(nameof(HasValidTimeWindow), "방어 판정 시간은 0보다 커야 합니다.")]
     public float TimeWindow = 0.8f;
     [FoldoutGroup("구형 호환 설정", false, 50)]
@@ -1027,17 +1038,17 @@ public class Action_DefenseWindow : SkillActionBlock
     [ShowIf(nameof(ShakeOnFail)), LabelText("카메라 안전 등급")]
     public CameraShakeSafety FailShakeSafety = CameraShakeSafety.GameplaySafe;
     [BoxGroup("공격 모션 · 전조", order: 10)]
-    [LabelText("판정 후 대기 (초)")] public float DelayAfter = 0.1f;
+    [HideInInspector] public float DelayAfter = 0.1f;
     [BoxGroup("공격 모션 · 전조")]
     [LabelText("전조 후 공격 애니메이션 트리거")]
     public string AttackAnimTriggerName = "";
     [BoxGroup("공격 모션 · 전조")]
     [LabelText("공격 시작 → 타격 시간 (초)"), MinValue(0f)]
-    [Tooltip("클립 시작부터 실제 타격 프레임까지의 초입니다. 방어 판정 시간 이하여야 합니다. 0은 기존처럼 판정 시점에 모션을 시작합니다.")]
+    [Tooltip("클립 시작부터 명중 프레임까지의 초입니다. 0은 캐릭터 기본값을 사용합니다. C/광역의 제자리 모션은 이 프레임이 실제 명중 시각에 오도록 재생 속도를 맞춥니다.")]
     public float AttackAnimationLeadTime;
     [BoxGroup("공격 모션 · 전조")]
     [AssetsOnly, LabelText("타격 직전 전조 프리팹")]
-    [Tooltip("BattleTelegraphCue가 붙은 프리팹. 실제 대응 성공 구간이 열릴 때 표시합니다. 일반 공격은 패링, 회피 전용은 회피, 특수공격은 반격 구간을 사용합니다.")]
+    [Tooltip("BattleTelegraphCue가 붙은 프리팹. 기존 전조 길이로 표시하며 실제 저스트 가드·회피·반격 성공 구간은 별도로 판정합니다.")]
     public GameObject ImpactCuePrefab;
     // 기존 자산 호환용. 전조 시작은 이제 판정 정책에서 계산하므로 사용하지 않습니다.
     [HideInInspector]
@@ -1046,10 +1057,35 @@ public class Action_DefenseWindow : SkillActionBlock
     [ShowIf(nameof(ImpactCuePrefab)), LabelText("전조 표시 피벗")]
     public string ImpactCuePivotName = CharacterPivotId.Center;
     [BoxGroup("공격 모션 · 전조")]
-    [LabelText("공격 준비 자세 시간 (초)")]
+    [HideInInspector]
     [MinValue(0f)]
-    [Tooltip("적이 실제 공격을 시작하기 전에 준비 자세를 유지하는 시간입니다. 이 시간에도 Z/X/C 입력을 버퍼링합니다.")]
+    [Tooltip("저장 호환용. 현재 적 전투는 준비 자세 대기 없이 공격 중 대응합니다.")]
     public float AttackReadyDuration = 0.08f;
+    [HideInInspector]
+    [Tooltip("저장 호환용. 일반 단일 근접은 이 값과 무관하게 연속 이동합니다.")]
+    public bool UseMeleePassThrough;
+    [HideInInspector]
+    [LabelText("타격 직전 대시 시간 (초)"), Range(0.04f, 0.3f)]
+    public float MeleeDashDuration = 0.12f;
+    [BoxGroup("근접 돌파 연출")]
+    [LabelText("대상 뒤 통과 거리"), Range(0.4f, 1.5f)]
+    public float MeleePassDistance = 0.95f;
+    [BoxGroup("근접 돌파 연출")]
+    [LabelText("타격 후 통과 시간 (초)"), Range(0.04f, 0.25f)]
+    public float MeleeExitDuration = 0.09f;
+    [BoxGroup("근접 돌파 연출"), LabelText("관통 범위")]
+    public EnemyMeleePassExtent MeleePassExtent = EnemyMeleePassExtent.Local;
+    [BoxGroup("근접 돌파 연출"), ShowIf(nameof(UseScreenWideMelee))]
+    [LabelText("화면 관통 기준 시간 (초)"), Range(0.08f, 0.6f)]
+    [Tooltip("일반 공격의 명중 시각은 위의 이동/공격 시간이 소유합니다. 난무는 이 관통 기준으로 속도를 계산합니다.")]
+    public float ScreenPassDuration = 0.22f;
+    [BoxGroup("근접 돌파 연출"), ShowIf(nameof(UseScreenWideMelee))]
+    [LabelText("출발 화면 끝 접근 (초)"), Range(0.04f, 0.3f)]
+    public float ScreenEdgeApproachDuration = 0.10f;
+    [BoxGroup("근접 돌파 연출"), ShowIf(nameof(UseScreenWideMelee))]
+    [LabelText("화면 끝 여백 (기준 픽셀)"), Range(0f, 64f)]
+    public float ScreenEdgeMarginPixels = 12f;
+    private bool UseScreenWideMelee => MeleePassExtent == EnemyMeleePassExtent.ScreenWide;
     [FoldoutGroup("구형 호환 설정")]
     [LabelText("구형 공격 애니메이션 후 대기 (초)")]
     [MinValue(0f)]
@@ -1058,21 +1094,12 @@ public class Action_DefenseWindow : SkillActionBlock
 
     public override SkillActionAuthoringTiming GetAuthoringTiming()
     {
-        float afterDelay = Mathf.Max(0f, DelayAfter);
         if (PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow)
-        {
-            float telegraphOnly = UseTelegraph ? Mathf.Max(0f, TelegraphDuration) : 0f;
-            return SkillActionAuthoringTiming.Fixed("전조", telegraphOnly + afterDelay);
-        }
-
-        float telegraphLead = PatternMode == EnemyDefensePatternMode.TelegraphThenWindow && UseTelegraph
-            ? Mathf.Max(0f, TelegraphDuration)
-            : 0f;
-        // 준비 자세를 먼저 보인 뒤, 하나의 방어 시계로 모션 시작과 충돌을 예약합니다.
-        float activeWindow = new BattleImpactTiming(TimeWindow, 0.2f).Duration;
-        float duration = telegraphLead + Mathf.Max(0f, DefenseOpenDelay)
-            + ResolveAttackReadyDuration() + activeWindow + afterDelay;
-        return SkillActionAuthoringTiming.Variable("방어", duration);
+            return SkillActionAuthoringTiming.Fixed("다음 턴 예고 · 비차단", 0f);
+        float activeWindow = new BattleImpactTiming(TimeWindow, 0.2f, enabled: false).Duration;
+        float screenApproach = UseScreenWideMelee && !float.IsNaN(ScreenEdgeApproachDuration)
+            && !float.IsInfinity(ScreenEdgeApproachDuration) ? Mathf.Max(0f, ScreenEdgeApproachDuration) : 0f;
+        return SkillActionAuthoringTiming.Variable("이동/공격 중 대응", screenApproach + activeWindow);
     }
 
     private bool HasRequiredWarningVfx(GameObject value)
@@ -1200,9 +1227,12 @@ public class Action_DefenseWindow : SkillActionBlock
         PlayerController targetController = GetPlayerController(context.Targets[0]);
         QteExecution execution = null;
         bool resultResolved = false;
+        BattleEnemyMeleePresentationScope melee = null;
+        BattleSkillVfxLifetime.Lease attackVfx = default;
 
         try
         {
+            context.DeferDefenseReactionCompletion = true;
             // 전조/접근 단계부터 입력을 받을 수 있게 합니다. Z를 미리 유지하거나
             // X/C를 선입력해도 실제 충돌 시점에 한 번만 소비됩니다.
             if (PatternMode != EnemyDefensePatternMode.TelegraphThenNextTurnWindow && targetController != null)
@@ -1211,26 +1241,7 @@ public class Action_DefenseWindow : SkillActionBlock
             if (PatternMode == EnemyDefensePatternMode.TelegraphThenNextTurnWindow)
             {
                 telegraph = SpawnTelegraph(context.Actor);
-                if (UseTelegraph && TelegraphDuration > 0f)
-                    yield return new BattleDelay(TelegraphDuration);
-                if (DelayAfter > 0f)
-                    yield return new BattleDelay(DelayAfter);
                 yield break;
-            }
-
-            if (PatternMode == EnemyDefensePatternMode.TelegraphThenWindow)
-            {
-                telegraph = SpawnTelegraph(context.Actor);
-                if (UseTelegraph && TelegraphDuration > 0f)
-                    yield return new BattleDelay(TelegraphDuration);
-                if (DefenseOpenDelay > 0f)
-                    yield return new BattleDelay(DefenseOpenDelay);
-            }
-            else
-            {
-                if (DefenseOpenDelay > 0f)
-                    yield return new BattleDelay(DefenseOpenDelay);
-                telegraph = SpawnTelegraph(context.Actor);
             }
             if (!context.CanContinueExecution)
             {
@@ -1254,25 +1265,39 @@ public class Action_DefenseWindow : SkillActionBlock
                 yield break;
             }
 
-            // Ready가 같은 프레임의 공격 모션을 덮지 않도록 예약보다 먼저 완료합니다.
-            // 준비 중에도 PlayerController의 방어 입력 버퍼는 유지됩니다.
-            if (context.TryPresentEnemyAttackReady(enemy))
-                yield return new BattleDelay(ResolveAttackReadyDuration());
+            if (BattleEnemyMeleeDashPath.CanUse(true, isProjectile,
+                    context.Targets.Count, target is PlayerCharacter, Requirement, PatternMode))
+                melee = context.BeginEnemyMeleePresentation(enemy, (PlayerCharacter)target, this);
+
+            if (melee != null)
+            {
+                yield return melee.Prepare();
+                if (!melee.IsPrepared || !melee.IsActive)
+                { context.StopTimelineExecution = true; yield break; }
+                // 화면 끝 접근 모션이 Windup의 Ready를 덮었으므로 준비 자세만 다시 예약합니다.
+                if (melee.IsScreenWide) context.EnemyAttackReadyPresented = false;
+            }
+
+            // 근접 이동이 없는 C/광역도 공격 모션과 전조를 같은 비차단 시계로 실행합니다.
             if (!context.CanContinueExecution || target == null || !target.IsAlive || qteManager == null)
             {
                 context.StopTimelineExecution = true;
                 yield break;
             }
 
+            float activeDuration = melee != null ? melee.ImpactTime : TimeWindow;
+            float attackLead = AttackAnimationLeadTime > 0f ? AttackAnimationLeadTime : enemy.BasicAttackImpactLeadTime;
+            bool animateFromStart = !isProjectile && melee == null;
+            bool attackVfxStarted = false;
             DefenseQteRequest request = OverrideTimingProfile
                 ? new DefenseQteRequest(
-                    TimeWindow,
+                    activeDuration,
                     1f,
                     Requirement,
                     TimingProfile,
                     AllowNearSuccess)
                 : qteManager.CreateDefenseRequest(
-                    TimeWindow,
+                    activeDuration,
                     1f,
                     Requirement,
                     AllowNearSuccess);
@@ -1286,6 +1311,7 @@ public class Action_DefenseWindow : SkillActionBlock
                     resultReceived = true;
                     resultResolved = true;
                     onImpactResolved?.Invoke();
+                    melee?.ResolveImpact(result);
                     // 판정 시점은 이미 진행 중인 모션의 실제 타격 프레임입니다.
                     if (!result.IsCounterSuccess && enemy != null && enemy.IsAlive)
                     {
@@ -1307,11 +1333,32 @@ public class Action_DefenseWindow : SkillActionBlock
                         enemy.PlaySkillAnim(AttackAnimTriggerName, EnemyCharacter.HashAttack);
                     else
                         enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
+                    if (!animateFromStart && !attackVfxStarted)
+                    {
+                        attackVfx = SpawnAttackVfx(context, target);
+                        attackVfxStarted = true;
+                    }
                     context.MarkEnemyAttackImpactStarted();
                 },
-                AttackAnimationLeadTime,
+                attackLead,
                 attacker: enemy, cuePrefab: ImpactCuePrefab, cuePivot: ImpactCuePivotName,
-                onAttackProgress: advanceAttack, useMeleeParryAssistance: !isProjectile);
+                onAttackProgress: time =>
+                {
+                    advanceAttack?.Invoke(time);
+                    melee?.AdvanceAttack(time);
+                    if (animateFromStart && !attackVfxStarted && time >= activeDuration - Mathf.Min(attackLead, activeDuration))
+                    {
+                        attackVfx = SpawnAttackVfx(context, target);
+                        attackVfxStarted = true;
+                    }
+                    if (melee != null && !melee.IsActive)
+                    {
+                        context.StopTimelineExecution = true;
+                        if (execution != null) qteManager.Cancel(execution);
+                    }
+                }, useMeleeParryAssistance: !isProjectile,
+                continuousAttackMotion: true,
+                animateFromWindowStart: animateFromStart);
             context.ActiveDefenseWindow = execution;
 
             yield return new WaitUntil(() => execution.IsDone);
@@ -1329,6 +1376,7 @@ public class Action_DefenseWindow : SkillActionBlock
 
             if (resultReceived && finalResult.IsCounterSuccess)
             {
+                context.CancelEnemyMeleePresentation();
                 context.CurrentDamageMultiplier = 0f;
                 context.AttackInterruptedByCounter = true;
                 context.PendingDefensePostImpactDelay = 0f;
@@ -1374,8 +1422,7 @@ public class Action_DefenseWindow : SkillActionBlock
                 if (target is PlayerCharacter playerTarget
                     && BattleManager.Instance != null)
                 {
-                    playerTarget.RestoreAP(BattleManager.Instance._apOnParryPerfect);
-                    BattleManager.Instance.InvokeAPChangedEvent(playerTarget, playerTarget.CurrentAP);
+                    BattleManager.Instance.AwardPerfectParryAP(playerTarget);
                 }
             }
             else if (resultReceived && finalResult.IsGuard)
@@ -1415,10 +1462,15 @@ public class Action_DefenseWindow : SkillActionBlock
 
             // 이 대기를 충돌 전에 두면 공격 트리거와 피해가 벌어집니다.
             // 실제 피해/상태 소비자가 끝난 뒤에만 정리 시간으로 적용합니다.
-            context.QueueDefensePostImpactDelay(DelayAfter);
+            context.QueueDefensePostImpactDelay(0f);
         }
         finally
         {
+            if (!resultResolved || context.StopTimelineExecution
+                || (context.IsExecutionActive != null && !context.IsExecutionActive()))
+                attackVfx.Dispose();
+            if (melee != null && (!resultResolved || !context.CanContinueExecution))
+                context.CancelEnemyMeleePresentation();
             if (ReferenceEquals(context.ActiveDefenseWindow, execution)) context.ActiveDefenseWindow = null;
             if (execution != null && !execution.IsDone)
             {
@@ -1437,6 +1489,17 @@ public class Action_DefenseWindow : SkillActionBlock
         }
     }
 
+    private BattleSkillVfxLifetime.Lease SpawnAttackVfx(SkillContext context, CharacterBase target)
+    {
+        if (AttackVfxPrefab == null) return default;
+        CharacterBase anchor = AttackVfxAtTarget ? target : context.Actor;
+        if (anchor == null) return default;
+        Transform pivot = anchor.GetPivot(CharacterPivotId.Center);
+        Vector3 position = pivot != null ? pivot.position : anchor.transform.position;
+        return BattleSkillVfxLifetime.Spawn(AttackVfxPrefab, position, AttackVfxScale,
+            AttackVfxLifetime, context.IsExecutionActive);
+    }
+
     private void PlayFailCameraFeedback()
     {
         CameraController cameraController = CameraController.Instance;
@@ -1452,14 +1515,6 @@ public class Action_DefenseWindow : SkillActionBlock
         {
             Debug.LogWarning("[Action_DefenseWindow] Camera feedback skipped: " + error);
         }
-    }
-
-    private float ResolveAttackReadyDuration()
-    {
-        // 새 필드가 없는 기존 SerializeReference 에셋도 공격 준비 단계를 보장합니다.
-        return AttackReadyDuration > 0f
-            ? AttackReadyDuration
-            : LegacyDefaultAttackReadyDuration;
     }
 
 }
@@ -1493,6 +1548,12 @@ public class Action_Projectile : SkillActionBlock
 
         Vector3 startPos = context.Actor.GetPivot(CharacterPivotId.Center).position;
         Vector3 endPos = context.MainTarget.GetPivot(CharacterPivotId.Center).position;
+        if (context.Actor is EnemyCharacter)
+        {
+            PlayerController defender = context.MainTarget.GetComponent<PlayerController>();
+            if (defender != null)
+                endPos += defender.BattleDefenseAnchorPosition - context.MainTarget.transform.position;
+        }
 
         ObjectPoolManager pool = ObjectPoolManager.Instance;
         GameObject proj = null;
@@ -1502,9 +1563,12 @@ public class Action_Projectile : SkillActionBlock
             if (context.Actor is EnemyCharacter)
             {
                 bool launched = false;
+                bool flightCompleted = false;
                 Action_DefenseWindow defense = context.TakeImpactDefense(FlightDuration, flight: true);
                 yield return defense.ExecuteImpact(context, attackTime =>
                 {
+                    // 입력 유예 동안에도 진행 콜백은 이어집니다. 도착한 투사체를 다시 생성하지 않습니다.
+                    if (flightCompleted) return;
                     if (!launched)
                     {
                         launched = true;
@@ -1516,18 +1580,18 @@ public class Action_Projectile : SkillActionBlock
                     }
                     if (proj == null || !flight.IsActive())
                         throw new System.InvalidOperationException("공격 중 투사체가 제거되었습니다.");
-                    // 전조·입력·투사체가 같은 시계를 사용합니다. 메뉴 정지와 감속도 함께 적용됩니다.
-                    flight.Goto(Mathf.Min(attackTime, Mathf.Max(0.01f, FlightDuration)), false);
+                    // 비행과 입력은 같은 시계를 사용하고, 실제 도착 뒤에는 접점에 세워 두지 않습니다.
+                    float flightDuration = Mathf.Max(0.01f, FlightDuration);
+                    flight.Goto(Mathf.Min(attackTime, flightDuration), false);
+                    if (attackTime >= flightDuration)
+                    {
+                        flightCompleted = true;
+                        ReleaseFlight(pool, ref proj, ref flight);
+                    }
                 }, () =>
                 {
-                    flight?.Kill();
-                    flight = null;
-                    if (proj != null)
-                    {
-                        if (pool != null) pool.Despawn(proj);
-                        else GameObject.Destroy(proj);
-                        proj = null;
-                    }
+                    flightCompleted = true;
+                    ReleaseFlight(pool, ref proj, ref flight);
                 }, isProjectile: true);
             }
             else
@@ -1543,12 +1607,7 @@ public class Action_Projectile : SkillActionBlock
         }
         finally
         {
-            flight?.Kill();
-            if (proj != null)
-            {
-                if (pool != null) pool.Despawn(proj);
-                else GameObject.Destroy(proj);
-            }
+            ReleaseFlight(pool, ref proj, ref flight);
         }
 
         if (context.AttackInterruptedByCounter) yield break;
@@ -1594,6 +1653,18 @@ public class Action_Projectile : SkillActionBlock
         yield return context.WaitForPendingDefenseReaction();
         yield return context.WaitForPendingDefensePostImpactDelay();
     }
+
+    private static void ReleaseFlight(ObjectPoolManager pool, ref GameObject projectile, ref Tween flight)
+    {
+        Tween ownedFlight = flight;
+        flight = null;
+        ownedFlight?.Kill();
+        if (projectile == null) return;
+        GameObject ownedProjectile = projectile;
+        projectile = null;
+        if (pool != null) pool.Despawn(ownedProjectile);
+        else GameObject.Destroy(ownedProjectile);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1627,6 +1698,7 @@ public class Action_SequentialMelee : SkillActionBlock
         bool enemyAttack = context.Actor is EnemyCharacter;
         Action_DefenseWindow impactDefense = enemyAttack
             ? context.TakeImpactDefense(0.6f, AttackAnimTrigger) : null;
+        if (impactDefense != null) impactDefense.UseMeleePassThrough = true;
         float baseDamageMultiplier = context.CurrentDamageMultiplier;
         if (context.CurrentDamageMultiplier <= 0f)
         {
@@ -1650,6 +1722,10 @@ public class Action_SequentialMelee : SkillActionBlock
         }
 
         Vector3 actorStart = context.Actor.transform.position;
+        List<CharacterBase> originalTargets = context.Targets;
+        var singleTarget = enemyAttack ? new List<CharacterBase>(1) { null } : null;
+        bool previousDefer = context.DeferDefenseReactionCompletion;
+        if (enemyAttack) context.DeferDefenseReactionCompletion = true;
         bool completed = false;
         try
         {
@@ -1662,6 +1738,11 @@ public class Action_SequentialMelee : SkillActionBlock
                 }
                 if (target == null || !target.IsAlive || !target.isActiveAndEnabled) continue;
 
+                if (enemyAttack)
+                {
+                    singleTarget[0] = target;
+                    context.Targets = singleTarget;
+                }
                 if (enemyAttack) BattleUIController.Instance?.ShowEnemyTarget(target);
                 yield return context.StageCombatants(target, !(enemyAttack && ApproachEachTarget));
                 if (!context.CanContinueExecution) yield break;
@@ -1676,21 +1757,25 @@ public class Action_SequentialMelee : SkillActionBlock
                 else targetPos = PositionManager.HorizontalApproach(context.Actor, targetPos);
                 if (context.TryGetActorStagingPosition(out Vector3 staged)) targetPos = staged;
 
-                Tween movement = null;
-                try
+                // 적은 방어 scope가 접근과 판정을 함께 소유합니다. 먼저 도착한 뒤 전조를 기다리지 않습니다.
+                if (!enemyAttack)
                 {
-                    if (ghostTrail != null) ghostTrail.SetTrailActive(true);
-                    PlayActorBattleAnim(context.Actor, enemyAttack ? EnemyCharacter.HashBattleMove : PlayerCharacter.HashBattleMove);
-                    movement = context.Actor.transform.DOMove(targetPos, Mathf.Max(0.01f, DashSpeed))
-                        .SetEase(Ease.OutExpo).SetRecyclable(false)
-                        .SetLink(context.Actor.gameObject, LinkBehaviour.KillOnDisable);
-                    while (context.CanContinueExecution && movement.IsActive() && !movement.IsComplete())
-                        yield return null;
-                }
-                finally
-                {
-                    movement?.Kill();
-                    if (ghostTrail != null) ghostTrail.SetTrailActive(false);
+                    Tween movement = null;
+                    try
+                    {
+                        if (ghostTrail != null) ghostTrail.SetTrailActive(true);
+                        PlayActorBattleAnim(context.Actor, PlayerCharacter.HashBattleMove);
+                        movement = context.Actor.transform.DOMove(targetPos, Mathf.Max(0.01f, DashSpeed))
+                            .SetEase(Ease.OutExpo).SetRecyclable(false)
+                            .SetLink(context.Actor.gameObject, LinkBehaviour.KillOnDisable);
+                        while (context.CanContinueExecution && movement.IsActive() && !movement.IsComplete())
+                            yield return null;
+                    }
+                    finally
+                    {
+                        movement?.Kill();
+                        if (ghostTrail != null) ghostTrail.SetTrailActive(false);
+                    }
                 }
 
                 if (!context.CanContinueExecution || target == null || !target.IsAlive)
@@ -1709,16 +1794,16 @@ public class Action_SequentialMelee : SkillActionBlock
 
                 if (enemyAttack)
                 {
-                    List<CharacterBase> originalTargets = context.Targets;
-                    context.Targets = new List<CharacterBase> { target };
                     context.CurrentDamageMultiplier = baseDamageMultiplier;
                     context.ResetEnemyAttackPresentation();
-                    try
+                    yield return impactDefense.Execute(context);
+                    if (context.AttackInterruptedByCounter)
                     {
-                        yield return impactDefense.Execute(context);
+                        // C 성공은 취소가 아닙니다. 반격 서비스가 복귀한 위치를 actorStart로 되감지 않습니다.
+                        context.CancelPendingDefenseReaction();
+                        completed = true;
+                        yield break;
                     }
-                    finally { context.Targets = originalTargets; }
-                    if (context.AttackInterruptedByCounter) yield break;
                 }
                 else
                 {
@@ -1755,22 +1840,28 @@ public class Action_SequentialMelee : SkillActionBlock
                 yield return context.WaitForPendingDefensePostImpactDelay();
 
                 if (enemyAttack && ApproachEachTarget) yield return context.ReturnDefender();
-                if (RecoveryDelay > 0f) yield return new BattleDelay(RecoveryDelay);
+                if (!enemyAttack && RecoveryDelay > 0f) yield return new BattleDelay(RecoveryDelay);
             }
 
+            context.Targets = originalTargets;
             context.CurrentDamageMultiplier = 1.0f;
             context.IsPerfectQTE = false;
             context.ResetEnemyAttackPresentation();
+            context.DeferDefenseReactionCompletion = previousDefer;
             yield return context.WaitForPendingDefenseReaction();
             yield return context.WaitForPendingDefensePostImpactDelay();
             completed = true;
         }
         finally
         {
+            context.Targets = originalTargets;
+            context.DeferDefenseReactionCompletion = previousDefer;
+            if (enemyAttack && !completed) context.CancelPendingDefenseReaction();
             // 개별 접근은 적의 이동만 이 블록이 소유합니다. 정상 복귀는 기존 루트가,
             // 취소/파괴/모듈 이탈 복원은 여기와 기존 방어 scope가 처리합니다.
             if (enemyAttack && ApproachEachTarget && !completed)
             {
+                context.CancelEnemyMeleePresentation();
                 context.ReleaseDefenderPresentation();
                 if (context.Actor != null)
                 {

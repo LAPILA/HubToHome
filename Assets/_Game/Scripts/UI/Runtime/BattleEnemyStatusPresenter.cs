@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using Sirenix.OdinInspector;
 using TMPro;
 using UnityEngine;
@@ -29,6 +30,12 @@ public sealed class BattleEnemyStatusPresenter : MonoBehaviour
     private float _bottomOffset;
     private int _columns;
     private int _boundCount;
+    [FoldoutGroup("상태 변화 반응"), LabelText("새 상태 강조")]
+    [SerializeField] private bool _animateStatusChanges = true;
+    [FoldoutGroup("상태 변화 반응"), LabelText("강조 배율"), Range(1f, 1.3f)]
+    [SerializeField] private float _statusChangeScale = 1.12f;
+    [FoldoutGroup("상태 변화 반응"), LabelText("강조 시간"), MinValue(0.05f)]
+    [SerializeField] private float _statusChangeDuration = 0.18f;
 
     public void Bind(RectTransform host, Camera worldCamera, TMP_FontAsset font,
         IReadOnlyList<EnemyCharacter> enemies, ElementalStatusIconDefinition[] icons,
@@ -164,6 +171,10 @@ public sealed class BattleEnemyStatusPresenter : MonoBehaviour
     private sealed class Row
     {
         private readonly BattleEnemyStatusPresenter _owner;
+        private readonly BattleStatusTransitionTracker _transitions = new BattleStatusTransitionTracker();
+        private readonly Tween[] _pulses = new Tween[SlotCount];
+        private readonly Vector3[] _scaleBaselines = new Vector3[SlotCount];
+        private readonly int[] _displayedKeys = new int[SlotCount];
         private bool _wasAlive;
         public readonly RectTransform Root;
         public readonly RectTransform[] Cells = new RectTransform[SlotCount];
@@ -195,6 +206,8 @@ public sealed class BattleEnemyStatusPresenter : MonoBehaviour
             Actor = null;
             Bottom = null;
             Count = 0;
+            _transitions.Reset();
+            for (int i = 0; i < SlotCount; i++) { StopPulse(i); _displayedKeys[i] = 0; }
             if (Root != null) Root.gameObject.SetActive(false);
         }
 
@@ -207,6 +220,7 @@ public sealed class BattleEnemyStatusPresenter : MonoBehaviour
         {
             if (Root == null) return;
             _wasAlive = actor != null && actor.IsAlive;
+            _transitions.Capture(_wasAlive ? actor.Elements : null);
             Count = _wasAlive
                 ? Mathf.Min(SlotCount, ElementalStatusPresentation.GetEntryCount(actor.Elements)) : 0;
             int columns = Mathf.Min(_owner._columns, Count);
@@ -216,7 +230,7 @@ public sealed class BattleEnemyStatusPresenter : MonoBehaviour
             {
                 if (Cells[i] == null) continue;
                 Cells[i].gameObject.SetActive(i < Count);
-                if (i >= Count) continue;
+                if (i >= Count) { StopPulse(i); _displayedKeys[i] = 0; continue; }
                 ElementalStatusPresentation.TryGetEntry(actor.Elements, i, out ElementalStatusKind kind,
                     out int amount, out bool frozen);
                 Sprite sprite = _owner.ResolveIcon(frozen ? ElementalStatusKind.Chill : kind);
@@ -228,8 +242,42 @@ public sealed class BattleEnemyStatusPresenter : MonoBehaviour
                 float inset = (columns - inThisRow) * (CellWidth + Gap) * 0.5f;
                 Cells[i].anchoredPosition = new Vector2(inset + (i % columns) * (CellWidth + Gap),
                     -(i / columns) * (CellHeight + Gap));
+                int key = frozen ? -1 : (int)kind + 1;
+                if (_displayedKeys[i] != key) StopPulse(i);
+                _displayedKeys[i] = key;
+                bool emphasized = _transitions.IsNewElement(kind, frozen)
+                    || (!frozen && _transitions.IsPotencyIncreased(kind));
+                if (emphasized && _owner._animateStatusChanges
+                    && Application.isPlaying && _owner.isActiveAndEnabled && BattleUIController.JuiceIntensity > 0f)
+                    PulseCell(i);
             }
             if (Count == 0) Root.gameObject.SetActive(false);
+        }
+
+        private void PulseCell(int index)
+        {
+            StopPulse(index);
+            RectTransform cell = Cells[index];
+            if (cell == null) return;
+            Vector3 baseline = cell.localScale;
+            _scaleBaselines[index] = baseline;
+            float scale = 1f + (_owner._statusChangeScale - 1f) * Mathf.Clamp01(BattleUIController.JuiceIntensity);
+            cell.localScale = baseline * scale;
+            _pulses[index] = DOTween.To(() => scale,
+                    value => { if (cell != null) cell.localScale = baseline * value; }, 1f,
+                    Mathf.Max(0.05f, _owner._statusChangeDuration) * BattleUIController.JuiceDurationScale)
+                .SetEase(Ease.OutQuad).SetUpdate(true).SetTarget(cell).SetRecyclable(false)
+                .SetLink(_owner.gameObject, LinkBehaviour.KillOnDisable)
+                .OnKill(() => { if (cell != null) cell.localScale = baseline; });
+        }
+
+        private void StopPulse(int index)
+        {
+            Tween owned = _pulses[index];
+            _pulses[index] = null;
+            if (owned == null) return;
+            if (owned.IsActive()) owned.Kill(false);
+            if (Cells[index] != null) Cells[index].localScale = _scaleBaselines[index];
         }
     }
 }

@@ -1,0 +1,102 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: "Wizzel_SteamThrust"
+  m_EditorClassIdentifier: "Assembly-CSharp::SkillData"
+  Icon: {fileID: 0}
+  SkillName: "증기 찌르기"
+  NameLocalizationKey: "skill.showcase.wizzel.steam_thrust.name"
+  DescriptionLocalizationKey: "skill.showcase.wizzel.steam_thrust.description"
+  SkillID: "lab.showcase.wizzel.steam_thrust"
+  Description: "응축한 증기로 적의 방어를 꿰뚫는다."
+  UsageProfile: 1
+  APCost: 14
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications: []
+  StatusProcCoefficient: 1
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 0
+    RequiredStep: 0
+    ConsumeStep: 0
+    DamageMultiplier: 1
+    GainOnCompletion: 1
+  ActionTimeline:
+  - rid: 202610250003001
+  - rid: 202610250003002
+  - rid: 202610250003003
+  - rid: 202610250003006
+  - rid: 202610250003007
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610250003001
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 5
+        Duration: 0.16
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 202610250003002
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "자세와 공격 프레임"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AnimTriggerName: "BattleReady"
+        DelayAfter: 0.12
+    - rid: 202610250003003
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동·공격과 병행하는 아군 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        TimeLimit: 0.72
+        SuccessMultiplier: 1
+        FailMultiplier: 0.55
+        Nodes:
+          - PosX: 0.18
+            PosY: 0.28
+            TargetKey: "x"
+    - rid: 202610250003006
+      type: {class: Action_ScreenPassSlash, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "화면 좌우 관통 · 통과 순간 명중"
+        Note: "안전 영역 안에서 돌파하고 평범하게 복귀합니다. 피해는 이 블록이 직접 적용합니다."
+        PassCount: 1
+        MoveToEdgeDuration: 0.12
+        PrepareDuration: 0.08
+        DashDuration: 0.14
+        StopDuration: 0.05
+        ReturnDuration: 0.18
+        EdgeMarginPixels: 12
+        DamagePerPass: 1.7
+        Element: 0
+    - rid: 202610250003007
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "현재 캐릭터 크기의 실루엣"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Mode: 1
+        Duration: 0.1
+        Strength: 0.4
+        AccentColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24

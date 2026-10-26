@@ -25,4 +25,13 @@ public readonly struct BattleImpactTiming
 
     public float RateAt(float elapsed) => elapsed >= SlowStart && elapsed < SlowStart + SlowDuration
         ? SlowRate : 1f;
+
+    /// <summary>제자리 공격은 정지 자세 대신 클립의 명중 프레임까지 끊김 없이 진행합니다.</summary>
+    public static float AnimationRateToImpact(float clipImpactLead, float impactDuration)
+    {
+        if (float.IsNaN(clipImpactLead) || float.IsInfinity(clipImpactLead) || clipImpactLead <= 0f
+            || float.IsNaN(impactDuration) || float.IsInfinity(impactDuration) || impactDuration <= 0f)
+            return 1f;
+        return Mathf.Max(.0001f, clipImpactLead / impactDuration);
+    }
 }

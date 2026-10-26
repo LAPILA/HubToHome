@@ -145,6 +145,80 @@ public sealed class DialogueStateRestoreTests
     }
 
     [Test]
+    public void OrdinaryPanelDisableCancelsPlaybackAndRestoresItsPreviousState()
+    {
+        int completed = 0;
+        int cancelled = 0;
+        _state.ChangeState(GameState.Cutscene);
+        Assert.That(_manager.TryStartDialogue(_dialogue, () => completed++, () => cancelled++, null, out _), Is.True);
+        Assert.That(_panel.IsBattleDocked, Is.False);
+
+        _panelObject.SetActive(false);
+
+        Assert.That(_manager.IsPlaying, Is.False);
+        Assert.That(cancelled, Is.EqualTo(1));
+        Assert.That(completed, Is.Zero);
+        Assert.That(_state.CurrentState, Is.EqualTo(GameState.Cutscene));
+    }
+
+    [Test]
+    public void OrdinaryPanelDestroyCancelsPlaybackExactlyOnce()
+    {
+        int cancelled = 0;
+        _manager.TryStartDialogue(_dialogue, null, () => cancelled++, null, out _);
+
+        UnityEngine.Object.DestroyImmediate(_panelObject);
+        _panelObject = null;
+
+        Assert.That(_manager.IsPlaying, Is.False);
+        Assert.That(cancelled, Is.EqualTo(1));
+        Assert.That(_state.CurrentState, Is.EqualTo(GameState.Exploration));
+    }
+
+    [Test]
+    public void DisablingUnrelatedOrdinaryPanelDoesNotCancelTheActivePanel()
+    {
+        int cancelled = 0;
+        _manager.TryStartDialogue(_dialogue, null, () => cancelled++, null, out _);
+        var otherObject = new GameObject("UnrelatedDisabledDialoguePanel");
+        try
+        {
+            otherObject.AddComponent<DialogueUI>();
+            otherObject.SetActive(false);
+
+            Assert.That(_manager.IsPlaying, Is.True);
+            Assert.That(cancelled, Is.Zero);
+            Assert.That(_state.CurrentState, Is.EqualTo(GameState.Dialogue));
+        }
+        finally { UnityEngine.Object.DestroyImmediate(otherObject); }
+    }
+
+    [Test]
+    public void StandalonePromptDisablesDirectShortcutsAndStoryChoicesRestoreThem()
+    {
+        var root = new GameObject("PromptChoiceRoot", typeof(RectTransform));
+        root.transform.SetParent(_panelObject.transform, false);
+        var template = new GameObject("PromptChoiceTemplate", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+        template.transform.SetParent(root.transform, false);
+        SetPrivateField(_panel, "_choiceRoot", root.GetComponent<RectTransform>());
+        SetPrivateField(_panel, "_choiceTemplate", template.GetComponent<TMPro.TextMeshProUGUI>());
+        Assert.That(_manager.TryStartChoicePrompt("save", new[] { "slot 1", "slot 2", "cancel" }, _ => { }), Is.True);
+
+        Assert.That(GetPrivateBool(_panel, "_allowChoiceShortcuts"), Is.False,
+            "The prompt owner handles X cancellation; the panel must not commit Choice2 from the same X.");
+
+        _manager.CancelDialogue();
+        _panel.ShowChoices(new System.Collections.Generic.List<ChoiceData>
+        {
+            new ChoiceData { ChoiceText = "story first" },
+            new ChoiceData { ChoiceText = "story second" }
+        }, _ => { });
+
+        Assert.That(GetPrivateBool(_panel, "_allowChoiceShortcuts"), Is.True,
+            "Ordinary story choices must keep their existing direct selection shortcuts.");
+    }
+
+    [Test]
     public void DialogueRunnerCancel_ClearsBusyWithoutSuccessCallback()
     {
         var runner = new DialogueManagerRunner(_manager);
@@ -222,27 +296,6 @@ public sealed class DialogueStateRestoreTests
         Assert.That(closeTween.IsActive(), Is.False);
         Assert.That(_panelObject.activeSelf, Is.True);
         _panel.HideImmediate();
-    }
-
-    [Test]
-    public void NameInputCancelImmediate_DoesNotInvokeCompletion()
-    {
-        var inputObject = new GameObject("NameInputUI_DialogueStateRestoreTests");
-        NameInputUI input = inputObject.AddComponent<NameInputUI>();
-        int completionCount = 0;
-
-        try
-        {
-            input.Open(_ => completionCount++);
-            input.CancelImmediate();
-
-            Assert.That(completionCount, Is.Zero);
-            Assert.That(inputObject.activeSelf, Is.False);
-        }
-        finally
-        {
-            UnityEngine.Object.DestroyImmediate(inputObject);
-        }
     }
 
     [Test]

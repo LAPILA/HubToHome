@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
   serializationData:
     SerializedFormat: 2
-    SerializedBytes: 
+    SerializedBytes:
     ReferencedUnityObjects: []
-    SerializedBytesString: 
+    SerializedBytesString:
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
@@ -26,11 +26,13 @@ MonoBehaviour:
   BattleLargePortrait: {fileID: 21300000, guid: e5e360a1b0e1a2446922682844e871aa, type: 3}
   BattleResource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
   BattlePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
+  OverworldVisualPrefab: {fileID: 0}
   BattleSymbolColor: {r: 1, g: 0.6878892, b: 0, a: 1}
   BattleSpriteTint: {r: 1, g: 1, b: 1, a: 1}
   StatusProfile: {fileID: 0}
   CharacterID: Wizzel_ally
-  DisplayName: 위젤
+  DisplayName: "\uC704\uC824"
+  DisplayNameLocalizationKey: HTH_PROLOGUE_NAME_WIZZEL
   DisplayNameMode: 0
   BaseStats:
     MaxHP: 300

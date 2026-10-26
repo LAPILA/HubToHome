@@ -9,6 +9,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private readonly IBattleTurnQteHost _host;
     private readonly BattleLinkCounterService _linkCounterService;
+    private readonly BattleParryRewardBudget<PlayerCharacter> _fallbackParryRewards = new BattleParryRewardBudget<PlayerCharacter>();
     private BattleCameraActionScope _activeCameraScope;
     private readonly BattleSpeedTurnScheduler<CharacterBase> _turnSchedule = new BattleSpeedTurnScheduler<CharacterBase>();
     private readonly List<CharacterBase> _scheduledActors = new List<CharacterBase>();
@@ -19,6 +20,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
     private CharacterBase _activeTurnActor;
     private bool _processingTurnBoundary;
     private bool _disposed;
+    private readonly BattlePlayerActionCompletionGate _playerActionCompletion = new BattlePlayerActionCompletionGate();
     private readonly BattleEnemyTargetSelector<PlayerCharacter> _enemyTargets = new BattleEnemyTargetSelector<PlayerCharacter>();
     private static readonly System.Func<PlayerCharacter, bool> IsEnemyTarget =
         player => player != null && player.IsAlive && player.isActiveAndEnabled;
@@ -26,6 +28,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         player => 1f + 0.25f * (1f - Mathf.Clamp01((float)player.CurrentHP / Mathf.Max(1, player.MaxHP)));
     private readonly HashSet<CharacterBase> _observedActors = new HashSet<CharacterBase>();
     private readonly Dictionary<CharacterBase, uint> _observedStatRevisions = new Dictionary<CharacterBase, uint>();
+    private readonly Dictionary<EnemyCharacter, BattleEnemyActionPatternState> _enemyPatterns = new Dictionary<EnemyCharacter, BattleEnemyActionPatternState>();
     private readonly List<CharacterBase> _unsubscribedActors = new List<CharacterBase>();
 
     public BattleTurnQteModuleControllerService(IBattleTurnQteHost host, BattleLinkCounterService linkCounterService = null)
@@ -43,14 +46,19 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     public IEnumerator ExitTurnQteModule(GameModuleRuntimeContext context)
     {
+        (_host as IBattleParryRewardHost)?.ResetParryRewardAction();
+        _fallbackParryRewards.Reset();
+        // 중단된 배치의 Ended가 결과 안내를 다시 띄우기 전에 표시 관찰부터 해제합니다.
+        BattleUIController.Instance?.SuspendBattleModuleInput();
+        (_host as IBattlePlayerActionCompletionHost)?.CancelPendingStoryWithdrawal();
         (_host as IBattleDamagePresentationHost)?.DamageBatches.Clear();
         _linkCounterService.CancelActive();
         CancelActiveCameraPresentation();
         QTEManager.Instance?.ForceStop();
         ClearDefenseInputBuffers();
         _host?.ClearTurnQtePendingActionState();
+        foreach (BattleEnemyActionPatternState pattern in _enemyPatterns.Values) pattern.CancelAction();
         ReleaseTurnSubscriptions();
-        BattleUIController.Instance?.SuspendBattleModuleInput();
         yield break;
     }
 
@@ -70,6 +78,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         yield return null;
         if (_disposed || !_host.IsTurnQteCombatInputActive() || _hasActiveTurn) yield break;
+        if ((_host as IBattlePlayerActionCompletionHost)?.TryCompleteStoryWithdrawalAtBoundary() == true) yield break;
 
         if (_host.Enemies == null || _host.Enemies.Count == 0)
         {
@@ -116,13 +125,22 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         _hasActiveTurn = true;
         _activeTurnActor = actor;
+        _playerActionCompletion.Begin(actor);
         actor.BeginBattleTurn();
         _host.TurnQueue.Clear();
         _host.TurnQueue.Add(actor);
         _host.CurrentActorIndex = 1;
 
         // Remember the restriction before ticking: a one-turn stun still skips this turn.
-        bool canTakeTurn = actor.CanTakeTurn();
+        bool recovering = actor is EnemyCharacter recoveringEnemy
+            && _enemyPatterns.TryGetValue(recoveringEnemy, out BattleEnemyActionPatternState recovery)
+            && recovery.TryConsumeRecoveryTurn();
+        bool canTakeTurn = actor.CanTakeTurn() && !recovering;
+        bool wasFrozen = actor.Elements.IsFrozen;
+        bool wasStunned = actor.IsStunned;
+        if (actor.IsAlive && recovering)
+            _host.RequestNarration(new BattleNarrationMessage(BattleCombatLogFormatter.Recovery(actor)));
+        else if (actor.IsAlive && !canTakeTurn) RequestTurnRestriction(actor, wasFrozen, wasStunned);
         _processingTurnBoundary = true;
         try
         {
@@ -132,6 +150,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         finally { _processingTurnBoundary = false; }
         if (!actor.IsAlive || !canTakeTurn || !actor.CanTakeTurn())
         {
+            if (actor.IsAlive && canTakeTurn)
+                RequestTurnRestriction(actor, actor.Elements.IsFrozen, actor.IsStunned);
             CompleteAction();
             return;
         }
@@ -157,6 +177,13 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         AddAliveEnemies(_scheduledActors);
         _turnSchedule.Synchronize(_scheduledActors, ReadTurnSpeed);
         SynchronizeSpeedSubscriptions();
+    }
+
+    private void RequestTurnRestriction(CharacterBase actor, bool frozen, bool stunned)
+    {
+        string text = BattleCombatLogFormatter.CannotAct(actor, frozen, stunned);
+        if (!string.IsNullOrEmpty(text))
+            _host.RequestNarration(new BattleNarrationMessage(text, holdOverride: 0.85f, revealImmediately: true));
     }
 
     private void SynchronizeSpeedSubscriptions()
@@ -196,6 +223,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private void ReleaseTurnSubscriptions()
     {
+        _playerActionCompletion.Cancel();
         foreach (CharacterBase actor in _observedActors)
         {
             actor.OnStatusEffectsChanged -= HandleStatusEffectsChanged;
@@ -222,8 +250,12 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     public void Dispose()
     {
+        (_host as IBattleParryRewardHost)?.ResetParryRewardAction();
+        _fallbackParryRewards.Reset();
+        (_host as IBattlePlayerActionCompletionHost)?.CancelPendingStoryWithdrawal();
         (_host as IBattleDamagePresentationHost)?.DamageBatches.Clear();
         _disposed = true;
+        _enemyPatterns.Clear();
         ReleaseTurnSubscriptions();
     }
 
@@ -265,9 +297,12 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         _host.ResetAllPlayerBattlePoses();
         player.GetComponent<PlayerController>()?.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
-        player.RestoreAP(_host.ApPerTurn);
-        EquipmentEffectService.Apply(player, EquipmentEffectTrigger.TurnStart);
-        _host.EmitApChanged(player, player.CurrentAP);
+        using ((_host as IBattleDamagePresentationHost)?.DamageBatches.Begin())
+        {
+            player.RestoreAP(_host.ApPerTurn);
+            EquipmentEffectService.Apply(player, EquipmentEffectTrigger.TurnStart);
+            _host.EmitApChanged(player, player.CurrentAP);
+        }
         if (player.TryShowBattleSpeech(BattleSpeechTrigger.TurnStart, null, null, _host.BattleTurnCounter))
         {
             yield return _host.StartManagedCoroutine(player.WaitForBattleSpeech());
@@ -293,6 +328,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     public IEnumerator RunEnemyAction()
     {
+        using var parryRewards = (_host as IBattleParryRewardHost)?.BeginParryRewardAction();
+        _fallbackParryRewards.Reset();
         using var damageBatch = (_host as IBattleDamagePresentationHost)?.DamageBatches.Begin();
         if (_host == null || !_host.IsTurnQteCombatInputActive())
         {
@@ -312,6 +349,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         bool actionExecuted = false;
         EnemyAction action;
         bool isExecutingReservedAction = false;
+        BattleEnemyActionPatternState pattern = GetEnemyPatternState(enemy);
+        IBattleSessionStateReader session = (_host as IBattleEnemyPatternHost)?.ScenarioSessionState;
 
         if (_host.ReservedEnemyActions.TryGetValue(enemy, out BattleQueuedEnemyAction reservedAction))
         {
@@ -327,15 +366,26 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             enemySkill = reservedAction.Skill;
             _host.ReservedEnemyActions.Remove(enemy);
             isExecutingReservedAction = true;
+            pattern.BeginAction(session, allowFollowup: false);
         }
         else
         {
-            action = enemy.DecideAction();
-            enemySkill = _host.ResolveEnemySequenceSkill(enemy, action);
+            enemySkill = pattern.BeginAction(session);
+            if (enemySkill != null)
+            {
+                // 후속 스킬은 기존 순환 목록을 추가로 소비하지 않습니다.
+                action = EnemyAction.UseSkill;
+            }
+            else
+            {
+                action = enemy.DecideAction();
+                enemySkill = _host.ResolveEnemySequenceSkill(enemy, action);
+            }
         }
 
         if (action == EnemyAction.Wait)
         {
+            pattern.CancelAction();
             BattleNarrationMessage narration = enemy is BunnySlimeCharacter bunnySlime
                 ? bunnySlime.GetNextWaitNarration()
                 : new BattleNarrationMessage(
@@ -370,10 +420,11 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         if (shouldTelegraphSkillThisTurn)
         {
+            pattern.CancelAction();
             string enemyName = enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.EnemyName) ? enemy.Data.EnemyName : "적";
             string warnText = $"{enemyName}가 강한 공격을 준비한다...";
-            _host.RequestNarration(new BattleNarrationMessage(warnText, BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.4f, true));
-            yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
+            // 예약 턴의 전투 규칙은 유지하되 준비 안내가 공격 흐름을 붙잡지 않습니다.
+            _host.RequestNarration(new BattleNarrationMessage(warnText, BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.4f, false));
 
             _host.ReservedEnemyActions[enemy] = new BattleQueuedEnemyAction
             {
@@ -385,17 +436,11 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             yield break;
         }
 
+        (_host as IBattleCombatLogHost)?.BeginCombatLogAction(enemy, enemySkill);
         if ((action == EnemyAction.UseSkill || action == EnemyAction.UseStrongSkill) && enemySkill != null)
         {
-            if (enemy.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, enemySkill, null, _host.BattleTurnCounter, 1.2f))
-            {
-                yield return _host.StartManagedCoroutine(enemy.WaitForBattleSpeech());
-            }
-            else
-            {
-                yield return new WaitForSeconds(0.18f);
-            }
-
+            // 짧은 말풍선은 공격과 함께 표시합니다. 스토리 대화는 Scenario가 별도로 소유합니다.
+            enemy.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, enemySkill, null, _host.BattleTurnCounter, 1.2f);
             yield return _host.StartManagedCoroutine(ExecuteEnemySequenceSkill(enemy, enemySkill, () => actionExecuted = true));
         }
         else if (attackType == EnemyAttackType.MeleeClose)
@@ -408,6 +453,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 BattleUIController.Instance?.ShowEnemyTarget(target);
                 PlayerController targetCtrl = target != null ? target.GetComponent<PlayerController>() : null;
                 QteExecution qteExecution = null;
+                SkillContext meleeContext = null;
+                BattleEnemyMeleePresentationScope meleePresentation = null;
                 var defenderPresentation = new BattleDefenderPresentationScope(target, _host.IsTurnQteCombatInputActive, enemy);
                 try
                 {
@@ -429,17 +476,33 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                     bool resultReceived = false;
                     bool impactApplied = false;
 
-                    enemy.PlayAttackReady();
-                    if (_host.EnemyAttackVisualDuration > 0f)
-                        yield return new BattleDelay(_host.EnemyAttackVisualDuration);
-                    if (!_host.IsTurnQteCombatInputActive() || enemy == null || !enemy.IsAlive)
+                    meleeContext = new SkillContext
+                    {
+                        Actor = enemy,
+                        Targets = new List<CharacterBase> { target },
+                        IsExecutionActive = _host.IsTurnQteCombatInputActive,
+                        LinkCounterService = _linkCounterService
+                    };
+                    BindSkillExecutionToScope(meleeContext, cameraScope);
+                    meleePresentation = meleeContext.BeginEnemyMeleePresentation(enemy, target,
+                        new Action_DefenseWindow
+                        {
+                            TimeWindow = _host.EnemyDefenseQteWindow,
+                            UseMeleePassThrough = true,
+                            MeleePassThroughOnGuard = true,
+                            Requirement = DefenseRequirement.Any
+                        });
+                    yield return meleePresentation.Prepare();
+                    if (!meleePresentation.IsPrepared || !meleePresentation.IsActive
+                        || !_host.IsTurnQteCombatInputActive() || enemy == null || !enemy.IsAlive)
                         yield break;
+                    enemy.PlayBattleAnim(EnemyCharacter.HashBattleMove);
 
                     QTEManager qteManager = QTEManager.Instance;
                     if (qteManager != null)
                     {
                         DefenseQteRequest request = qteManager.CreateDefenseRequest(
-                            _host.EnemyDefenseQteWindow,
+                            meleePresentation.ImpactTime,
                             1f,
                             DefenseRequirement.Any);
                         // 적 공격은 방어 판정만 공유하고 QTE UI는 열지 않습니다.
@@ -450,6 +513,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                             {
                                 finalResult = result;
                                 resultReceived = true;
+                                meleePresentation.ResolveImpact(result);
                                 // 결과가 확정된 바로 그 프레임에 공격 모션과 피해를
                                 // 함께 시작합니다. 기존처럼 창이 끝난 뒤 별도 대기하지 않습니다.
                                 if (!result.IsCounterSuccess && !impactApplied
@@ -466,12 +530,20 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                              },
                              onAttackAnimationStart: () => enemy.PlayBattleAnim(EnemyCharacter.HashAttack),
                              attackAnimationLeadTime: enemy.BasicAttackImpactLeadTime,
-                             attacker: enemy);
+                             attacker: enemy,
+                             onAttackProgress: time =>
+                             {
+                                 meleePresentation.AdvanceAttack(time);
+                                 if (!meleePresentation.IsActive && qteExecution != null)
+                                     qteManager.Cancel(qteExecution);
+                             },
+                             continuousAttackMotion: true);
                     }
 
                     if (qteExecution == null)
                     {
                         enemy.PlayBattleAnim(EnemyCharacter.HashAttack);
+                        meleePresentation.ResolveImpact(default);
                         // QTE 서비스가 없는 테스트/복구 상황에서도 적의 턴을
                         // 정지시키지 않고 기본 타격을 즉시 확정합니다.
                         PlayEnemyBasicAttackImpact(enemy);
@@ -505,9 +577,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                         }
                     }
 
-                    // 방어 결과와 후속 리액션은 전투 연출 시간 기준으로 유지합니다.
-                    // 슬로모션/히트스톱이 남아 있어도 피해 직후의 모션을 지연시키지 않습니다.
-                    yield return new BattleDelay(Mathf.Max(0f, _host.EnemyPostHitDelay));
+                    // 입력 유예 중 이미 진행한 관통을 이어 마치며 접점에서 다시 기다리지 않습니다.
+                    yield return meleePresentation.Finish();
                     if (!_host.IsTurnQteCombatInputActive())
                         yield break;
 
@@ -551,6 +622,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 {
                     if (qteExecution != null && !qteExecution.IsDone)
                         QTEManager.Instance?.Cancel(qteExecution);
+                    meleeContext?.CancelEnemyMeleePresentation();
                     targetCtrl?.ResetDefenseReactionLock();
                     defenderPresentation.Dispose();
                     if (enemy != null)
@@ -594,9 +666,6 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 DefenseQteResult finalResult = default;
                 bool resultReceived = false;
                 bool impactApplied = false;
-                enemy.PlayAttackReady();
-                if (_host.EnemyAttackVisualDuration > 0f)
-                    yield return new BattleDelay(_host.EnemyAttackVisualDuration);
                 if (!_host.IsTurnQteCombatInputActive() || enemy == null || !enemy.IsAlive)
                     yield break;
                 DefenseQteRequest request = qteManager.CreateDefenseRequest(
@@ -639,7 +708,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                      },
                      onAttackAnimationStart: () => enemy.PlayBattleAnim(EnemyCharacter.HashAttack),
                      attackAnimationLeadTime: enemy.BasicAttackImpactLeadTime,
-                     attacker: enemy, useMeleeParryAssistance: false);
+                     attacker: enemy, useMeleeParryAssistance: false,
+                     continuousAttackMotion: true, animateFromWindowStart: true);
 
                 if (qteExecution == null)
                 {
@@ -663,8 +733,6 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 }
                 else
                 {
-                    if (!impactApplied && _host.EnemyAoeWindup > 0f)
-                        yield return new BattleDelay(_host.EnemyAoeWindup);
                     yield return new WaitUntil(() => qteExecution.IsDone);
                     if (qteExecution.Termination == QteTermination.Cancelled
                         || qteExecution.Termination == QteTermination.Failed
@@ -699,8 +767,6 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                         actionExecuted = true;
                     }
                 }
-
-                yield return new BattleDelay(Mathf.Max(0f, _host.EnemyPostHitDelay));
 
                 bool partyTookDamage = !resultReceived || !finalResult.PreventsDamage;
                 if (partyTookDamage)
@@ -738,6 +804,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
         if (!_host.IsTurnQteCombatInputActive())
             yield break;
+        pattern.CompleteAction(actionExecuted && enemy != null && enemy.IsAlive,
+            enemySkill != null ? enemySkill.RecoveryTurns : 0);
         damageBatch?.Dispose();
         yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
         // 반격 피해로 발생한 HP/사망 이벤트는 연출 종료 뒤에만 처리합니다.
@@ -745,6 +813,16 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         if (!_host.IsTurnQteCombatInputActive())
             yield break;
         CompleteAction(actionExecuted ? enemy : null);
+    }
+
+    private BattleEnemyActionPatternState GetEnemyPatternState(EnemyCharacter enemy)
+    {
+        if (!_enemyPatterns.TryGetValue(enemy, out BattleEnemyActionPatternState state))
+        {
+            state = new BattleEnemyActionPatternState(enemy.Data != null ? enemy.Data.FollowupPatterns : null);
+            _enemyPatterns.Add(enemy, state);
+        }
+        return state;
     }
 
     private void ApplyEnemyDefenseDamage(
@@ -791,10 +869,18 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         if (!result.IsPerfectParry)
             return;
 
-        target.RestoreAP(_host.ApOnParryPerfect);
+        if (_host is IBattleParryRewardHost rewards) rewards.AwardPerfectParryAP(target);
+        else
+        {
+            int amount = _fallbackParryRewards.Claim(target, _host.ApOnParryPerfect);
+            if (amount > 0)
+            {
+                target.RestoreAP(amount);
+                _host.EmitApChanged(target, target.CurrentAP);
+            }
+        }
         target.BattleResource.RewardPerfectParry();
         EquipmentEffectService.Apply(target, EquipmentEffectTrigger.JustGuard);
-        _host.EmitApChanged(target, target.CurrentAP);
     }
 
     private static void PlayDefenseResultVisual(
@@ -858,6 +944,12 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             return;
         }
 
+        if (action == PlayerMenuAction.Skill && actor.IsBattleSkillLocked(skill))
+        {
+            RejectLockedSkill(actor);
+            return;
+        }
+
         _host.PendingActor = actor;
         _host.PendingAction = action;
         _host.PendingSkill = skill;
@@ -915,6 +1007,11 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         }
         else if (_host.PendingAction == PlayerMenuAction.Skill && _host.PendingSkill != null)
         {
+            if (_host.PendingActor == null || _host.PendingActor.IsBattleSkillLocked(_host.PendingSkill))
+            {
+                RejectLockedSkill(_host.PendingActor);
+                return;
+            }
             if (_host.PendingActor.CurrentAP < _host.PendingSkill.APCost)
             {
                 _host.RequestNarration(new BattleNarrationMessage("AP가 부족하다.", BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.2f, true));
@@ -992,6 +1089,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         ClearDefenseInputBuffers();
         _host.ResetAllPlayerBattlePoses();
         CancelActiveCameraPresentation();
+        _playerActionCompletion.Cancel();
         _hasActiveTurn = false;
         if (_activeTurnActor != null) _activeTurnActor.EndBattleTurn();
         _activeTurnActor = null;
@@ -1002,6 +1100,9 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         }
 
         UpdateTurnQueue(null);
+
+        if ((_host as IBattlePlayerActionCompletionHost)?.TryCompleteStoryWithdrawalAtBoundary() == true)
+            return;
 
         if (_host.CheckVictory())
         {
@@ -1024,6 +1125,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private IEnumerator ExecuteAttack(PlayerCharacter actor, int targetIndex)
     {
+        uint actionVersion = _playerActionCompletion.Version;
         using var damageBatch = (_host as IBattleDamagePresentationHost)?.DamageBatches.Begin();
         EnemyCharacter target = GetEnemy(targetIndex);
         if (_host == null || actor == null || target == null || !target.IsAlive)
@@ -1031,6 +1133,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             CompleteAction();
             yield break;
         }
+
+        (_host as IBattleCombatLogHost)?.BeginCombatLogAction(actor);
 
         BattleCameraActionScope cameraScope = BeginActiveCameraScope(actor.transform, target.transform);
         var duelPresentation = new BattleDefenderPresentationScope(actor, _host.IsTurnQteCombatInputActive, target);
@@ -1059,7 +1163,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             // 공격 중 추가 돌진/뒤쪽 이동은 제거해 피격 프레임과 모션을 일치시킵니다.
             actor.PlayAttackReady();
             yield return new BattleDelay(PlayerAttackReadyDuration);
-            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             if (target == null || !target.IsAlive) { CompleteAction(actor); yield break; }
 
             actor.PlayBasicAttackEffect();
@@ -1069,7 +1173,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             // 슬로모션이나 히트스톱이 남아 있어도 공격 모션만 먼저 진행되어
             // 피격/피해가 뒤늦게 발생하지 않도록 unscaled 대기를 사용합니다.
             yield return new BattleDelay(Mathf.Max(0f, _host.PlayerAttackHitDelay));
-            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             if (target == null || !target.IsAlive) { CompleteAction(actor); yield break; }
 
             int previousHp = target.CurrentHP;
@@ -1087,14 +1191,14 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             }
 
             yield return new BattleDelay(Mathf.Max(0f, _host.PlayerAttackRecoverDelay));
-            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             yield return _host.StartManagedCoroutine(actor.WaitForAttackAnimationComplete());
-            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             BattleManager.SetGhostTrail(actor, false);
             _host.SetActorForeground(actor, false);
 
             yield return duelPresentation.Return();
-            if (!_host.IsTurnQteCombatInputActive() || actor == null || !actor.IsAlive) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             BattleManager.SetGhostTrail(actor, false);
 
             actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
@@ -1103,6 +1207,9 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             damageBatch?.Dispose();
             yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
             yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentAction));
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
+            NotifyCompletedPlayerAction(actor, PlayerMenuAction.Attack, actionVersion);
+            if (!_playerActionCompletion.IsCurrent(actor, actionVersion)) yield break;
             CompleteAction(actor);
         }
         finally
@@ -1119,6 +1226,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private IEnumerator ExecuteSkill(PlayerCharacter actor, int targetIndex, SkillData skill)
     {
+        uint actionVersion = _playerActionCompletion.Version;
         using var damageBatch = (_host as IBattleDamagePresentationHost)?.DamageBatches.Begin();
         if (_host == null || actor == null || skill == null)
         {
@@ -1129,6 +1237,13 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         if (!_host.IsTurnQteCombatInputActive() || !actor.IsAlive)
             yield break;
 
+        if (actor.IsBattleSkillLocked(skill))
+        {
+            RejectLockedSkill(actor);
+            yield break;
+        }
+
+        (_host as IBattleCombatLogHost)?.BeginCombatLogAction(actor, skill);
         actor.ConsumeAP(skill.APCost);
         _host.EmitApChanged(actor, actor.CurrentAP);
         if (actor.TryShowBattleSpeech(BattleSpeechTrigger.SkillUse, skill, null, _host.BattleTurnCounter))
@@ -1243,6 +1358,9 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             EndActiveCameraScope(cameraScope);
             yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
             yield return _host.StartManagedCoroutine(_host.FlushBattleScenarioEvents(BattleRuleTiming.AfterCurrentSkill));
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
+            NotifyCompletedPlayerAction(actor, PlayerMenuAction.Skill, actionVersion, skill);
+            if (!_playerActionCompletion.IsCurrent(actor, actionVersion)) yield break;
             CompleteAction(actor);
         }
         finally
@@ -1259,6 +1377,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
 
     private IEnumerator ExecuteItem(PlayerCharacter actor, int targetIndex, ItemData item)
     {
+        uint actionVersion = _playerActionCompletion.Version;
         using var damageBatch = (_host as IBattleDamagePresentationHost)?.DamageBatches.Begin();
         if (_host == null || actor == null || item == null)
         {
@@ -1323,6 +1442,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
         PositionManager pm = PositionManager.Instance;
         Vector3 originalPosition = actor.transform.position;
         Tween movement = null;
+        bool itemEffectApplied = false;
+        (_host as IBattleCombatLogHost)?.BeginCombatLogAction(actor, item: item);
         try
         {
             actorCtrl?.PlayBattleAnim(PlayerCharacter.HashBattleMove);
@@ -1330,19 +1451,22 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             movement = actor.transform.DOMove(originalPosition + Vector3.right, 0.2f)
                 .SetEase(Ease.OutQuad).SetLink(actor.gameObject);
             yield return movement.WaitForCompletion();
-            if (actor == null || !actor.IsAlive || !_host.IsTurnQteCombatInputActive()) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             if (actorCtrl != null) actorCtrl.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
             yield return new WaitForSeconds(0.3f);
-            if (actor == null || !actor.IsAlive || !_host.IsTurnQteCombatInputActive()) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             for (int i = targets.Count - 1; i >= 0; i--)
                 if (!ItemEffectService.CanApply(item, targets[i], true, out _)) targets.RemoveAt(i);
             if (targets.Count == 0) { CancelActionSelection(); yield break; }
-            // 효과 직전에 소모하므로 진입 연출 중 중단되어도 아이템이 사라지지 않습니다.
-            if (!global.RemoveItem(item.ItemID, 1)) { CancelActionSelection(); yield break; }
-            for (int i = 0; i < targets.Count; i++)
-                if (targets[i] != null) BattleManager.ExecuteItemEffect(targets[i], item);
+            // 효과 직전에 한 번만 소모하므로 진입 연출 중 중단되어도 아이템이 사라지지 않습니다.
+            itemEffectApplied = TryExecuteItemBatch(actor, item, targets, global);
+            if (!itemEffectApplied)
+            {
+                CancelActionSelection();
+                yield break;
+            }
             yield return new WaitForSeconds(0.5f);
-            if (actor == null || !_host.IsTurnQteCombatInputActive()) yield break;
+            if (!IsCurrentPlayerAction(actor, actionVersion)) yield break;
             int idx = FindPlayerIndex(actor);
             if (actorCtrl != null) actorCtrl.PlayBattleAnim(PlayerCharacter.HashBattleMove);
             movement = actor.transform.DOMove(pm != null && idx >= 0 ? pm.GetPlayerDefaultPos(idx) : originalPosition, 0.3f)
@@ -1360,8 +1484,57 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             }
         }
 
+        damageBatch?.Dispose();
         yield return _host.StartManagedCoroutine(_host.WaitForNarrationToFinish());
+        if (!_playerActionCompletion.IsCurrent(actor, actionVersion)) yield break;
+        if (itemEffectApplied) NotifyCompletedPlayerAction(actor, PlayerMenuAction.Item, actionVersion, item: item);
+        if (!_playerActionCompletion.IsCurrent(actor, actionVersion)) yield break;
         CompleteAction(actor, triggerElementalBleed: false);
+    }
+
+    private static bool TryExecuteItemBatch(PlayerCharacter actor, ItemData item, List<CharacterBase> targets, GlobalDataManager inventory)
+    {
+        if (actor == null || !actor.IsAlive || item == null || targets == null || inventory == null) return false;
+        bool hasApplicableTarget = false;
+        for (int i = 0; i < targets.Count; i++)
+            if (ItemEffectService.CanApply(item, targets[i], true, out _)) { hasApplicableTarget = true; break; }
+        if (!hasApplicableTarget || !inventory.RemoveItem(item.ItemID, 1)) return false;
+        bool applied = false;
+        for (int i = 0; i < targets.Count; i++)
+            if (targets[i] != null && BattleManager.TryExecuteItemEffect(targets[i], item)) applied = true;
+        if (!applied)
+        {
+            // 효과 콜백이 대상을 바꿨더라도 무효 사용은 소모·턴·장비 발동으로 이어지지 않습니다.
+            inventory.AddItem(item.ItemID, 1);
+            return false;
+        }
+        EquipmentEffectService.Apply(actor, EquipmentEffectTrigger.ItemUsed);
+        return true;
+    }
+
+    private bool IsCurrentPlayerAction(PlayerCharacter actor, uint actionVersion) => !_disposed && _host != null
+        && _hasActiveTurn && actor != null && actor.IsAlive && _activeTurnActor == actor
+        && _host.IsTurnQteCombatInputActive() && _playerActionCompletion.IsCurrent(actor, actionVersion);
+
+    private void RejectLockedSkill(PlayerCharacter actor)
+    {
+        if (actor != null) actor.PlayBattleAnim(PlayerCharacter.HashBattleIdle);
+        _host.PendingSkill = null;
+        _host.PendingItem = null;
+        _host.ChangeBattleState(BattleState.PlayerActionSelect);
+        _host.RequestNarration(new BattleNarrationMessage(
+            LocalizationManager.Localize("battle.skill_locked", "사용 불가"),
+            BattleNarrationStyle.Warning, BattleNarrationPriority.High, 0.25f, false));
+    }
+
+    private void NotifyCompletedPlayerAction(PlayerCharacter actor, PlayerMenuAction action, uint actionVersion,
+        SkillData skill = null, ItemData item = null)
+    {
+        if (_disposed || _host == null || !_hasActiveTurn || _activeTurnActor != actor
+            || actor == null || !actor.IsAlive || !_host.IsTurnQteCombatInputActive()) return;
+        if (!_playerActionCompletion.TryComplete(actor, true, true, actionVersion)) return;
+        (_host as IBattlePlayerActionCompletionHost)?.NotifyPlayerActionCompleted(
+            new BattlePlayerActionResult(actor, action, skill, item));
     }
 
     private IEnumerator ExecuteEnemySequenceSkill(EnemyCharacter enemy, SkillData skill, System.Action onCompleted = null)
@@ -1406,7 +1579,8 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             CurrentDamageMultiplier = 1.0f,
             IsPerfectQTE = false,
             IsExecutionActive = _host.IsTurnQteCombatInputActive,
-            LinkCounterService = _linkCounterService
+            LinkCounterService = _linkCounterService,
+            DeferDefenseReactionCompletion = true
         };
 
         Tween returnMovement = null;
@@ -1445,6 +1619,7 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
             // 타임라인형 적 공격은 방어 결과 모션이 끝난 뒤에야 전투 포즈를
             // 초기화해야 합니다. 피해/상태 소비자가 놓친 경우에도 안전망으로
             // 여기서 한 번 소비합니다.
+            context.DeferDefenseReactionCompletion = false;
             yield return context.WaitForPendingDefenseReaction();
             yield return context.WaitForPendingDefensePostImpactDelay();
             yield return context.ReturnDefender();
@@ -1468,11 +1643,13 @@ public sealed class BattleTurnQteModuleControllerService : IBattleTurnQteModuleC
                 yield break;
             if (enemy != null && enemy.IsAlive)
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+            context.CompletePresentationAccent();
             onCompleted?.Invoke();
         }
         finally
         {
             returnMovement?.Kill();
+            context.DeferDefenseReactionCompletion = false;
             // 씬 전환/전투 취소로 타임라인이 중단돼도 입력창과 방어 리액션이
             // 다음 전투로 새지 않도록 동기 복구합니다. 정상 완료 시에는 앞선
             // 소비 경로가 필드를 비워 두므로 아무 작업도 하지 않습니다.

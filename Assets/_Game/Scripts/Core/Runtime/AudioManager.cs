@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using Sirenix.OdinInspector;
 using UnityEngine.Audio;
 using DG.Tweening;
 
@@ -56,6 +57,14 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioClip _combatHitSfx;
     [SerializeField] private AudioClip _enemyEncounterSfx;
     [SerializeField] private AudioClip _selectionSfx;
+
+    [Header("명중 효과음 혼합 (UI·전조는 영향 없음)")]
+    [SerializeField, Range(0f, 1f), LabelText("명중음 기본 크기")] private float _combatHitGain = 0.75f;
+    [SerializeField, Range(0f, 1f), LabelText("동시 명중음 합산 상한")] private float _combatHitMaxCombinedVolume = 1f;
+
+    private readonly CombatHitAudioPolicy _combatHitAudioPolicy = new CombatHitAudioPolicy();
+    private readonly AudioSource[] _combatHitVoices = new AudioSource[CombatHitAudioPolicy.VoiceCount];
+    private readonly float[] _combatHitVoiceVolumes = new float[CombatHitAudioPolicy.VoiceCount];
 
     private AudioSource _activeBGM;
     private AudioSource _inactiveBGM;
@@ -115,6 +124,7 @@ public class AudioManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        StopCombatHitVoices();
         CancelBgmTransition();
         _bgmDuckTween?.Kill();
         _bgmDuckTween = null;
@@ -128,6 +138,8 @@ public class AudioManager : MonoBehaviour
         if (Instance == this)
             Instance = null;
     }
+
+    private void OnDisable() => StopCombatHitVoices();
 
     public void ApplyConfiguredVolumes(float masterVolume, float bgmVolume, float sfxVolume)
     {
@@ -554,7 +566,113 @@ public class AudioManager : MonoBehaviour
 
     public void PlayCombatHitSfx(float volume = 1f)
     {
-        PlaySFX(_combatHitSfx, volume);
+        PlayCombatHitSfx(volume, false);
+    }
+
+    /// <summary>기존 명중 음원을 재사용하며 치명/마무리 타격만 낮은 음높이로 강조합니다.</summary>
+    public void PlayCombatHitSfx(float volume, bool emphasized)
+    {
+        if (!isActiveAndEnabled || _combatHitSfx == null || _sfxSource == null || !_sfxSource.isActiveAndEnabled
+            || float.IsNaN(volume) || float.IsInfinity(volume) || volume <= 0f
+            || _combatHitGain <= 0f || _combatHitMaxCombinedVolume <= 0f)
+            return;
+        if (!_combatHitAudioPolicy.TryBegin(Time.unscaledTimeAsDouble, emphasized, out CombatHitAudioRequest request))
+            return;
+
+        AudioSource voice = GetCombatHitVoice(request.VoiceIndex);
+        CopyCombatHitSourceSettings(_sfxSource, voice);
+        voice.Stop();
+        voice.clip = _combatHitSfx;
+        voice.pitch = Mathf.Clamp(_sfxSource.pitch * request.Pitch, 0.1f, 3f);
+        _combatHitVoiceVolumes[request.VoiceIndex] =
+            Mathf.Clamp01(volume) * Mathf.Clamp01(_sfxSource.volume) * _combatHitGain * request.Gain;
+        ApplyCombatHitVoiceVolumes(request.VoiceIndex);
+        voice.Play();
+    }
+
+    private AudioSource GetCombatHitVoice(int index)
+    {
+        if (_combatHitVoices[index] != null)
+            return _combatHitVoices[index];
+
+        var voiceObject = new GameObject("Combat Hit " + (index + 1));
+        voiceObject.transform.SetParent(transform, false);
+        AudioSource voice = voiceObject.AddComponent<AudioSource>();
+        voice.playOnAwake = false;
+        voice.loop = false;
+        // Copy curves once. GetCustomCurve creates managed wrappers and must not run on every rapid hit.
+        CopyCombatHitCurve(_sfxSource, voice, AudioSourceCurveType.CustomRolloff);
+        CopyCombatHitCurve(_sfxSource, voice, AudioSourceCurveType.SpatialBlend);
+        CopyCombatHitCurve(_sfxSource, voice, AudioSourceCurveType.ReverbZoneMix);
+        CopyCombatHitCurve(_sfxSource, voice, AudioSourceCurveType.Spread);
+        _combatHitVoices[index] = voice;
+        return voice;
+    }
+
+    private static void CopyCombatHitCurve(AudioSource source, AudioSource voice, AudioSourceCurveType type)
+    {
+        AnimationCurve curve = source.GetCustomCurve(type);
+        if (curve != null)
+            voice.SetCustomCurve(type, curve);
+    }
+
+    private static void CopyCombatHitSourceSettings(AudioSource source, AudioSource voice)
+    {
+        // Preserve the existing SFX route and listener policy without ever changing the shared source pitch.
+        voice.transform.position = source.transform.position;
+        voice.outputAudioMixerGroup = source.outputAudioMixerGroup;
+        voice.mute = source.mute;
+        voice.priority = source.priority;
+        voice.panStereo = source.panStereo;
+        voice.spatialBlend = source.spatialBlend;
+        voice.spatialize = source.spatialize;
+        voice.spatializePostEffects = source.spatializePostEffects;
+        voice.dopplerLevel = source.dopplerLevel;
+        voice.spread = source.spread;
+        voice.rolloffMode = source.rolloffMode;
+        voice.minDistance = source.minDistance;
+        voice.maxDistance = source.maxDistance;
+        voice.reverbZoneMix = source.reverbZoneMix;
+        voice.bypassEffects = source.bypassEffects;
+        voice.bypassListenerEffects = source.bypassListenerEffects;
+        voice.bypassReverbZones = source.bypassReverbZones;
+        voice.ignoreListenerPause = source.ignoreListenerPause;
+        voice.ignoreListenerVolume = source.ignoreListenerVolume;
+        voice.velocityUpdateMode = source.velocityUpdateMode;
+    }
+
+    private void ApplyCombatHitVoiceVolumes(int pendingVoiceIndex)
+    {
+        float total = 0f;
+        for (int i = 0; i < _combatHitVoices.Length; i++)
+        {
+            AudioSource voice = _combatHitVoices[i];
+            if (voice != null && (i == pendingVoiceIndex || voice.isPlaying))
+                total += _combatHitVoiceVolumes[i];
+        }
+
+        float scale = CombatHitAudioPolicy.ResolveMixScale(total, _combatHitMaxCombinedVolume);
+        for (int i = 0; i < _combatHitVoices.Length; i++)
+        {
+            AudioSource voice = _combatHitVoices[i];
+            if (voice != null)
+                voice.volume = _combatHitVoiceVolumes[i] * scale;
+        }
+    }
+
+    private void StopCombatHitVoices()
+    {
+        _combatHitAudioPolicy.Reset();
+        for (int i = 0; i < _combatHitVoices.Length; i++)
+        {
+            AudioSource voice = _combatHitVoices[i];
+            if (voice != null)
+            {
+                voice.Stop();
+                voice.clip = null;
+            }
+            _combatHitVoiceVolumes[i] = 0f;
+        }
     }
 
     public void PlayEnemyEncounterSfx(AudioClip overrideClip = null, float volume = 1f)

@@ -7,6 +7,17 @@ public enum EnemyRank { Normal = 0, Elite = 1, Boss = 2 }
 public enum EnemyKind { Human = 0, Monster = 1, WhiteEntity = 2 }
 
 [System.Serializable]
+public sealed class EnemyFollowupSkillPattern
+{
+    [LabelText("필요 전투 플래그"), Tooltip("비우면 항상 준비합니다. 페이즈 전환 자체는 Scenario가 소유합니다.")]
+    public string RequiredBattleFlag = "";
+    [LabelText("필요 플래그 값")] public string RequiredFlagValue = "true";
+    [LabelText("먼저 완료할 일반 행동 수"), MinValue(0)] public int NormalActionsBefore = 1;
+    [LabelText("후속 스킬"), Required, AssetsOnly] public SkillData Skill;
+    [LabelText("전투 중 한 번만")] public bool OncePerBattle = true;
+}
+
+[System.Serializable]
 public sealed class EnemyDropEntry
 {
     public string ItemId = "";
@@ -27,12 +38,22 @@ public class EnemyData : SerializedScriptableObject
     public string EnemyId = "";
 
     [BoxGroup("Identity")] public string EnemyName = "Enemy";
+    [BoxGroup("Identity"), LabelText("이름 번역 키")] public string NameLocalizationKey;
+    public string LocalizedName => LocalizationManager.Localize(NameLocalizationKey, EnemyName);
 
     [BoxGroup("Identity"), LabelText("전투 등급")]
     [Tooltip("일반 적만 수동 저장 시 다시 등장합니다. 보스는 도주 불가·승리 자동 저장·전투 직전 재도전을 사용합니다.")]
     public EnemyRank Rank = EnemyRank.Normal;
     [BoxGroup("Identity"), LabelText("종별")]
     public EnemyKind Kind = EnemyKind.Monster;
+
+    [BoxGroup("Battle Presentation"), LabelText("체력 진행 표시")]
+    [Tooltip("보스 등급은 자동 표시합니다. 엘리트/실험 적도 필요하면 켭니다. 전투 규칙은 변경하지 않습니다.")]
+    public bool ShowHealthProgress;
+    [BoxGroup("Battle Presentation"), LabelText("체력 구간 표시 (남은 비율)")]
+    [Tooltip("예: 0.5. 표시 전용이며 페이즈 전환은 기존 시나리오가 담당합니다. 최대8개를 표시합니다.")]
+    public float[] HealthProgressMarkers = System.Array.Empty<float>();
+    public bool UsesHealthProgress => Rank == EnemyRank.Boss || ShowHealthProgress;
 
     [BoxGroup("Audio")]
     [Tooltip("이 적과 전투 시작 시 우선 재생할 전투 BGM입니다. 비워두면 맵 기본 전투 BGM을 사용합니다.")]
@@ -96,6 +117,11 @@ public class EnemyData : SerializedScriptableObject
     [InfoBox("강한 적 스킬입니다. TelegraphStrongSkill이 켜져 있으면 예고 후 다음 자기 턴에 사용합니다.")]
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<SkillData> StrongSkillList = new List<SkillData>();
+
+    [BoxGroup("AI & Pattern"), LabelText("조건부 후속 스킬")]
+    [Tooltip("조건이 맞은 뒤 지정한 정상 행동 수를 완료하면 다음 자기 행동에 사용합니다. 예고·대기·취소는 세지 않으며 순환 스킬 순서는 소비하지 않습니다.")]
+    [ListDrawerSettings(ShowIndexLabels = true)]
+    public List<EnemyFollowupSkillPattern> FollowupPatterns = new List<EnemyFollowupSkillPattern>();
 
     // ── 🚨 추가됨: 상태이상 내성 (배율) ──
     [BoxGroup("Resistances (상태이상 내성)")]

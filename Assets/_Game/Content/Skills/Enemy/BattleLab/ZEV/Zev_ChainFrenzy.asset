@@ -1,0 +1,184 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: Zev_ChainFrenzy
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "사슬 광란"
+  NameLocalizationKey: skill.showcase.zev.chain_frenzy.name
+  DescriptionLocalizationKey: skill.showcase.zev.chain_frenzy.description
+  SkillID: lab.showcase.zev.chain_frenzy
+  Description: "사슬을 넘나들며 맹렬한 참격을 쏟아낸다."
+  UsageProfile: 2
+  RecoveryTurns: 1
+  APCost: 0
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications: []
+  StatusProcCoefficient: 0.1
+  ActionTimeline:
+  - rid: 202610260080001
+  - rid: 202610260080002
+  - rid: 202610260080003
+  - rid: 202610260080004
+  - rid: 202610260080005
+  - rid: 202610260080006
+  - rid: 202610260080007
+  - rid: 202610260080008
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610260080001
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "사슬 난무 · 준비"
+        Note: "2페이즈 후속 패턴이 예약하는 실험실 전용 스킬입니다."
+        ZoomRatio: 0.86
+        FocusDuration: 0.08
+        HoldDuration: 0.15
+        ReleaseDuration: 0.08
+    - rid: 202610260080002
+      type: {class: Action_EnemyAssaultCombo, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "가속 왕복 → 공중 → 혼합 난무"
+        Note: "끊김 없는 연속 이동. 관통 기준 0.60→0.34→0.30→0.24초로 가속하며 후반 반응 여유를 늘렸습니다. 마지막 C만 별도 예고합니다."
+        Stages:
+        - Kind: 0
+          HitCount: 10
+          StartTimeWindow: 0.65
+          EndTimeWindow: 0.3
+          StartPassDuration: 0.6
+          EndPassDuration: 0.34
+          StartEntryDuration: 0.1
+          EndEntryDuration: 0.04
+          StartReadyDuration: 0.08
+          EndReadyDuration: 0.025
+          DamageMultiplier: 0.18
+          AirHeight: 0
+          MixedAerialChance: 0
+        - Kind: 1
+          HitCount: 2
+          StartTimeWindow: 0.3
+          EndTimeWindow: 0.28
+          StartPassDuration: 0.34
+          EndPassDuration: 0.3
+          StartEntryDuration: 0.1
+          EndEntryDuration: 0.08
+          StartReadyDuration: 0.025
+          EndReadyDuration: 0.02
+          DamageMultiplier: 0.22
+          AirHeight: 3
+          MixedAerialChance: 1
+        - Kind: 2
+          HitCount: 8
+          StartTimeWindow: 0.28
+          EndTimeWindow: 0.2
+          StartPassDuration: 0.3
+          EndPassDuration: 0.24
+          StartEntryDuration: 0.04
+          EndEntryDuration: 0.04
+          StartReadyDuration: 0.02
+          EndReadyDuration: 0.01
+          DamageMultiplier: 0.18
+          AirHeight: 3.2
+          MixedAerialChance: 0.5
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        AttackAnimTriggerName: Attack
+        AttackAnimationLeadTime: 0.12
+        Element: 0
+        EdgeMarginPixels: 12
+        PassThroughOnGuard: 1
+        ContinuousMotion: 1
+    - rid: 202610260080003
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "최종 검격 · 중앙 진입"
+        Note: "난무가 끝난 뒤 중앙에서 반격 대응을 보여 줍니다."
+        Destination: 3
+        Duration: 0.14
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 202610260080004
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "최종 검격 · 준비 자세"
+        Note: "마지막 대응은 빠른 난무와 분리해 읽을 시간을 둡니다."
+        AnimTriggerName: CrossCutReady
+        DelayAfter: 0.18
+    - rid: 202610260080005
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "최종 검격 · 현재 크기 실루엣"
+        Note: "초상 컷인이나 캐릭터 확대를 하지 않습니다."
+        Mode: 1
+        Duration: 0.15
+        Strength: 0.55
+        AccentColor: {r: 0.45, g: 0.85, b: 1, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610260080006
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "최종 검격 · 특수 반격 전용"
+        Note: "C 성공·실패 어느 쪽이든 루트 완료 뒤 휴식 턴이 예약됩니다."
+        PatternMode: 1
+        Requirement: 7
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
+        TelegraphVisualMode: 2
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.9
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        DelayAfter: 0.35
+        AttackAnimTriggerName: CrossCutAttack
+        AttackAnimationLeadTime: 0.12
+        UseMeleePassThrough: 0
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.75
+        MeleeExitDuration: 0.09
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.35
+        AttackAnimDelay: 0
+        AttackVfxPrefab: {fileID: 4748681987041982144, guid: 6a096f17e0593e44590ee0ab4539081e, type: 3}
+        AttackVfxScale: 1.25
+        AttackVfxLifetime: 1.5
+        AttackVfxAtTarget: 1
+    - rid: 202610260080007
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "최종 검격 · 확정 피해"
+        Note: "방어 결과를 소비하는 피해 블록은 하나만 둡니다."
+        SkillMultiplier: 2.5
+        Element: 0
+        ShakeCamera: 0
+    - rid: 202610260080008
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "최종 검격 · 여운"
+        Note: "자기 턴 휴식은 RecoveryTurns 데이터가 처리합니다."
+        WaitTime: 0.25

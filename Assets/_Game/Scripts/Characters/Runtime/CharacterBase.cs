@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening;
 
 public enum StatType { MaxHP = 0, MaxAP = 1, ATK = 2, DEF = 3, SPD = 4 }
 public enum DamageElement
@@ -75,6 +76,9 @@ public abstract class CharacterBase : MonoBehaviour
     public bool IsResolvingDirectHitReaction { get; private set; }
     private bool _isClearingBattleStatusEffects;
     private ElementalStatusState _elements;
+    private bool _isStatusDamageFeedback;
+    private CharacterHitFeedback _hitFeedback;
+    private CharacterBase _damageFeedbackAttacker;
     public ElementalStatusState Elements => _elements ?? (_elements = new ElementalStatusState(this));
 
     public void ConfigureElementalStatus(ElementalStatusProfile profile) => Elements.Configure(profile);
@@ -161,13 +165,73 @@ public abstract class CharacterBase : MonoBehaviour
 
     protected Color ResolveFlashColor(Color authoredColor)
     {
-        float scale = VisualAccessibilityPolicy.NormalizeScale(
-            _screenFlashScaleProvider?.Scale
-            ?? GameConfigManager.DefaultFlashIntensity);
+        float scale = ResolveFlashScale();
         return VisualAccessibilityPolicy.ScaleFlashColor(
             BaseFlashColor,
             authoredColor,
             scale);
+    }
+
+    private float ResolveFlashScale() => VisualAccessibilityPolicy.NormalizeScale(
+        _screenFlashScaleProvider?.Scale ?? GameConfigManager.DefaultFlashIntensity);
+
+    protected float BeginHitFeedback(SpriteRenderer sprite, Animator animator, float flashDuration,
+        Action onImpact, int damage = 0, Action onContact = null)
+    {
+        if (_isStatusDamageFeedback || !IsAlive || !isActiveAndEnabled)
+        {
+            onContact?.Invoke();
+            onImpact?.Invoke();
+            return 0f;
+        }
+        if (_hitFeedback == null)
+            _hitFeedback = GetComponent<CharacterHitFeedback>() ?? gameObject.AddComponent<CharacterHitFeedback>();
+        float damageRatio = MaxHP > 0 ? (float)damage / MaxHP : 0f;
+        return _hitFeedback.Begin(sprite, animator, flashDuration, ResolveFlashScale(), onImpact,
+            damageRatio, onContact);
+    }
+
+    protected void TrackHitFeedbackTween(Tween tween) => _hitFeedback?.Track(tween);
+    protected void CancelHitFeedback() => _hitFeedback?.Cancel();
+
+    protected float ResolveHitReactionDirection(float fallback)
+    {
+        if (_damageFeedbackAttacker == null) return fallback;
+        float difference = transform.position.x - _damageFeedbackAttacker.transform.position.x;
+        return Mathf.Abs(difference) > 0.01f ? Mathf.Sign(difference) : fallback;
+    }
+
+    protected void BeginDefeatFeedback(SpriteRenderer sprite)
+    {
+        if (!isActiveAndEnabled) return;
+        if (_hitFeedback == null)
+            _hitFeedback = GetComponent<CharacterHitFeedback>() ?? gameObject.AddComponent<CharacterHitFeedback>();
+        _hitFeedback.ShowDefeat(sprite, 0.06f, ResolveFlashScale());
+    }
+
+    private void NotifyDamageTaken(int damage, bool statusDamage, CharacterBase attacker = null)
+    {
+        // Electric reactions can occur synchronously after a direct hit. Keep that hit's
+        // hold/flash/recoil intact; HP and elemental events are still published by the caller.
+        if (statusDamage && IsAlive && _hitFeedback != null && _hitFeedback.IsActive) return;
+        bool previous = _isStatusDamageFeedback;
+        CharacterBase previousAttacker = _damageFeedbackAttacker;
+        _isStatusDamageFeedback = statusDamage;
+        _damageFeedbackAttacker = attacker;
+        try
+        {
+            if (!statusDamage && damage > 0)
+                CameraController.Instance?.RequestBattleHitCut(
+                    attacker != null ? attacker.GetPivot(CharacterPivotId.Center) : null,
+                    GetPivot(CharacterPivotId.Center), MaxHP > 0
+                        ? Mathf.Lerp(0.6f, 1f, Mathf.Clamp01((float)damage / MaxHP * 4f)) : 0.75f);
+            OnDamageTaken(damage);
+        }
+        finally
+        {
+            _isStatusDamageFeedback = previous;
+            _damageFeedbackAttacker = previousAttacker;
+        }
     }
 
     protected float ResolveShakeScale()
@@ -393,7 +457,7 @@ public abstract class CharacterBase : MonoBehaviour
         string elemLog = elementMult > 1f ? "<color=red>약점!</color>" : (elementMult < 1f ? "<color=grey>저항</color>" : "");
         Debug.Log($"[Damage] 원본:{rawDamage} -> 방어감소:{step2Damage:F1} -> 속성({elemLog}):{step3Damage:F1} -> <b>최종: {finalDamage}</b>");
 
-        OnDamageTaken(finalDamage);
+        NotifyDamageTaken(finalDamage, false, attacker);
         if (CurrentHP == 0) OnDie();
         else
         {
@@ -414,12 +478,21 @@ public abstract class CharacterBase : MonoBehaviour
 
     public virtual int TakePureDamage(int damage)
     {
-        if (!IsAlive || IsInvincible) return 0;
+        if (!IsAlive || IsInvincible || damage <= 0) return 0;
         SetCurrentHPInternal(CurrentHP - damage);
         OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
-        OnDamageTaken(damage);
+        NotifyDamageTaken(damage, _isStatusDamageFeedback);
         if (CurrentHP == 0) OnDie();
         return damage;
+    }
+
+    /// <summary>Legacy DOT keeps pure-damage rules, but must not start a direct-hit pause.</summary>
+    internal int TakeLegacyStatusDamage(int damage)
+    {
+        bool previous = _isStatusDamageFeedback;
+        _isStatusDamageFeedback = true;
+        try { return TakePureDamage(damage); }
+        finally { _isStatusDamageFeedback = previous; }
     }
 
     /// <summary>Status damage bypasses DEF, affinities, guard and dodge invincibility. It is never a direct hit.</summary>
@@ -430,7 +503,7 @@ public abstract class CharacterBase : MonoBehaviour
         ElementalDamageTotal += applied;
         SetCurrentHPInternal(CurrentHP - applied);
         OnHPChanged?.Invoke(this, CurrentHP, MaxHP);
-        OnDamageTaken(applied);
+        NotifyDamageTaken(applied, true);
         OnElementalDamage?.Invoke(this, applied, kind);
         if (CurrentHP == 0) OnDie();
         return applied;

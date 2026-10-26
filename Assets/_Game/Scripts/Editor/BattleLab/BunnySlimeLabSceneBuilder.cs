@@ -25,8 +25,8 @@ public static class BunnySlimeLabSceneBuilder
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
             throw new InvalidOperationException("Play 중에는 전투 실험 씬을 생성하지 않습니다.");
-        if (data == null || data.Party == null || data.Party.Length != 6 || data.Party[0] == null)
-            throw new ArgumentException("먼저 샘플 전투 데이터와 파티 6명을 생성해야 합니다.", nameof(data));
+        if (data == null || data.Party == null || data.Party.Length != 1 || data.Party[0] == null)
+            throw new ArgumentException("먼저 실험실 위젤 한 명을 연결해야 합니다.", nameof(data));
         string normalized = (root ?? string.Empty).Replace('\\', '/').TrimEnd('/');
         if (!normalized.StartsWith("Assets/_Game/Content/Maps/Development/", StringComparison.Ordinal)
             || normalized.Contains(".."))

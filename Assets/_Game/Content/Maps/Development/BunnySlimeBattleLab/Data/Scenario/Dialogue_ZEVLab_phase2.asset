@@ -17,28 +17,21 @@ MonoBehaviour:
   - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
     Emotion: 1
     LocalizationKey: lab.zev.phase2.00
-    DefaultText: "칼끝보다 어깨를 보고 계시는군요. 나쁘지 않습니다."
-    EventTriggerID:
-    IsChoiceNode: 0
-    Choices: []
-  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
-    Emotion: 1
-    LocalizationKey: lab.zev.phase2.01
-    DefaultText: "그렇게 확대해서 보여 주시는데 못 보면 억울하잖아요."
+    DefaultText: "2페이즈에 돌입해야겠군요."
     EventTriggerID:
     IsChoiceNode: 0
     Choices: []
   - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
     Emotion: 1
-    LocalizationKey: lab.zev.phase2.02
-    DefaultText: "다음 공격은 두 번입니다. 첫 번째를 막았다고 끝이 아닙니다."
+    LocalizationKey: lab.zev.phase2.01
+    DefaultText: "패시브로 당분간 일부 스킬은 못 쓸 겁니다."
     EventTriggerID:
     IsChoiceNode: 0
     Choices: []
   - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
     Emotion: 1
-    LocalizationKey: lab.zev.phase2.03
-    DefaultText: "친절한 설명이 제일 불안하네요."
+    LocalizationKey: lab.zev.phase2.02
+    DefaultText: "아오, 귀찮아."
     EventTriggerID:
     IsChoiceNode: 0
     Choices: []

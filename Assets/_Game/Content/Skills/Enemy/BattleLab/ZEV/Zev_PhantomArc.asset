@@ -1,0 +1,192 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: "Zev_PhantomArc"
+  m_EditorClassIdentifier: "Assembly-CSharp::SkillData"
+  Icon: {fileID: 0}
+  SkillName: "잔뢰 이연"
+  NameLocalizationKey: "skill.showcase.zev.phantom_arc.name"
+  DescriptionLocalizationKey: "skill.showcase.zev.phantom_arc.description"
+  SkillID: "lab.showcase.zev.phantom_arc"
+  Description: "엇박자의 참격으로 <color=#FFE566>감전</color>을 남긴다."
+  UsageProfile: 2
+  APCost: 0
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications:
+    - Kind: 2
+      Amount: 8
+      Mode: 0
+  StatusProcCoefficient: 1
+  ActionTimeline:
+  - rid: 202610250012001
+  - rid: 202610250012012
+  - rid: 202610250012003
+  - rid: 202610250012004
+  - rid: 202610250012005
+  - rid: 202610250012006
+  - rid: 202610250012007
+  - rid: 202610250012009
+  - rid: 202610250012010
+  - rid: 202610250012011
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610250012001
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "적 준비 · 대응창 전에 종료"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        ZoomRatio: 0.78
+        FocusDuration: 0.08
+        HoldDuration: 0.12
+        ReleaseDuration: 0.1
+    - rid: 202610250012012
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "다음 유효 명중에 점멸 1회 예약"
+        Note: "피해·방어·복귀를 기다리지 않는 단발 예약입니다. 명중 전 취소되면 표시하지 않습니다."
+        Mode: 2
+        Duration: 0.08
+        Strength: 0.15
+        AccentColor: {r: 0.94, g: 0.8, b: 0.32, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610250012003
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "전조가 열릴 때 새 대응 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
+        TelegraphVisualMode: 2
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.5
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: "CrossCutAttack"
+        AttackAnimationLeadTime: 0.12
+        UseMeleePassThrough: 1
+        MeleePassExtent: 1
+        ScreenPassDuration: 0.22
+        ScreenEdgeApproachDuration: 0.1
+        ScreenEdgeMarginPixels: 12
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.75
+        MeleeExitDuration: 0.09
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: "Center"
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
+    - rid: 202610250012004
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "소유 효과 프리팹"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        VfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 202610250012005
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "확정된 명중 피해"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        SkillMultiplier: 0.8
+        Element: 3
+        ShakeCamera: 0
+    - rid: 202610250012006
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "박자 간격"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        WaitTime: 0.18
+    - rid: 202610250012007
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "현재 캐릭터 크기의 실루엣"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Mode: 1
+        Duration: 0.12
+        Strength: 0.32
+        AccentColor: {r: 0.94, g: 0.8, b: 0.32, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610250012009
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "전조가 열릴 때 새 대응 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
+        TelegraphVisualMode: 2
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.55
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: "CrossCutAttack"
+        AttackAnimationLeadTime: 0.12
+        UseMeleePassThrough: 1
+        MeleePassExtent: 1
+        ScreenPassDuration: 0.22
+        ScreenEdgeApproachDuration: 0.1
+        ScreenEdgeMarginPixels: 12
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.75
+        MeleeExitDuration: 0.09
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: "Center"
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
+    - rid: 202610250012010
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "소유 효과 프리팹"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        VfxPrefab: {fileID: 4748681987041982144, guid: c6d8472fd2a44b24c90abc54bb1ee63f, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 202610250012011
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "확정된 명중 피해"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        SkillMultiplier: 1.05
+        Element: 3
+        ShakeCamera: 0

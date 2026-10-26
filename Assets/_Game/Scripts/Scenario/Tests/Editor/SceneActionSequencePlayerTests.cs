@@ -46,6 +46,21 @@ public sealed class SceneActionSequencePlayerTests
     }
 
     [Test]
+    public void PrepareForRevealWithoutStageOrShotAllowsOrdinaryFieldSequences()
+    {
+        _player.Configure(_sequence, null, string.Empty);
+        Assert.That(_player.PrepareForSceneReveal(out string error), Is.True, error);
+    }
+
+    [Test]
+    public void PrepareForRevealWithShotButMissingStageFailsClearly()
+    {
+        _player.Configure(_sequence, null, "requested-shot");
+        Assert.That(_player.PrepareForSceneReveal(out string error), Is.False);
+        Assert.That(error, Does.Contain("Cinematic Stage is missing"));
+    }
+
+    [Test]
     public void ValidateConfiguration_RejectsInvalidDialogueReferences()
     {
         AssertInvalid(new ScenarioDialogueReferenceData[] { null }, "index 0 is null");

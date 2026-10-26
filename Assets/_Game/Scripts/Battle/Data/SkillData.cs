@@ -22,13 +22,22 @@ public class SkillData : ScriptableObject
     public Sprite Icon;
 
     [BoxGroup("Identity")] public string SkillName = "New Skill";
+    [BoxGroup("Identity"), LabelText("이름 번역 키")] public string NameLocalizationKey;
+    [BoxGroup("Identity"), LabelText("설명 번역 키")] public string DescriptionLocalizationKey;
     [BoxGroup("Identity")] public string SkillID = "skill_000";
     [BoxGroup("Identity"), TextArea(2, 4)]
     [Tooltip("플레이어용 효과 설명을 짧게 작성합니다. 타수·연타·입력 키·QTE·테스트 안내는 넣지 않고, 제작 메모는 블록 라벨에 작성합니다.")]
     public string Description = "";
 
+    public string LocalizedName => LocalizationManager.Localize(NameLocalizationKey, SkillName);
+    public string LocalizedDescription => LocalizationManager.Localize(DescriptionLocalizationKey, Description);
+
     [BoxGroup("Identity"), LabelText("사용 범위")]
     public SkillUsageProfile UsageProfile = SkillUsageProfile.Shared;
+
+    [BoxGroup("Enemy Runtime"), LabelText("완료 후 휴식 턴"), MinValue(0)]
+    [Tooltip("적이 스킬을 정상 완료하거나 C 반격으로 마쳤을 때 다음 자기 턴을 이 횟수만큼 쉽니다. 취소·사망에는 적용하지 않으며 상태 저항과 무관합니다. 0이면 기존 동작입니다.")]
+    public int RecoveryTurns;
 
     [BoxGroup("Player Runtime")]
     [FormerlySerializedAs("MPCost")]

@@ -40,6 +40,7 @@ public class GameConfigManager : MonoBehaviour
     private const string KeyPrefix = "Config.Key.";
     private const string TextSpeedKey = "Config.TextSpeed";
     private const string AutoAdvanceKey = "Config.AutoAdvance";
+    private const string AutoSkillQteKey = "Config.AutoSkillQte";
     private const string ScreenShakeKey = "Config.ScreenShake";
     private const string FlashIntensityKey = "Config.FlashIntensity";
     private const string VSyncKey = "Config.VSync";
@@ -58,6 +59,7 @@ public class GameConfigManager : MonoBehaviour
     public LanguageType Language { get; private set; } = DefaultLanguage;
     public float TextSpeed { get; private set; } = DefaultTextSpeed;
     public bool AutoAdvance { get; private set; } = false;
+    public bool AutoSkillQte { get; private set; } = false;
     public float ScreenShake { get; private set; } = DefaultScreenShake;
     public float FlashIntensity { get; private set; } = DefaultFlashIntensity;
     public bool UseVSync { get; private set; } = false;
@@ -142,6 +144,7 @@ public class GameConfigManager : MonoBehaviour
         TextSpeed = GameConfigPolicy.NormalizeFinite(
             PlayerPrefs.GetFloat(TextSpeedKey, DefaultTextSpeed), 0.5f, 2f, DefaultTextSpeed);
         AutoAdvance = PlayerPrefs.GetInt(AutoAdvanceKey, 0) == 1;
+        AutoSkillQte = PlayerPrefs.GetInt(AutoSkillQteKey, 0) == 1;
         ScreenShake = GameConfigPolicy.NormalizeUnit(
             PlayerPrefs.GetFloat(ScreenShakeKey, DefaultScreenShake), DefaultScreenShake);
         FlashIntensity = GameConfigPolicy.NormalizeUnit(
@@ -162,6 +165,7 @@ public class GameConfigManager : MonoBehaviour
         PlayerPrefs.SetInt(LanguageKey, (int)Language);
         PlayerPrefs.SetFloat(TextSpeedKey, TextSpeed);
         PlayerPrefs.SetInt(AutoAdvanceKey, AutoAdvance ? 1 : 0);
+        PlayerPrefs.SetInt(AutoSkillQteKey, AutoSkillQte ? 1 : 0);
         PlayerPrefs.SetFloat(ScreenShakeKey, ScreenShake);
         PlayerPrefs.SetFloat(FlashIntensityKey, FlashIntensity);
         PlayerPrefs.SetInt(VSyncKey, UseVSync ? 1 : 0);
@@ -291,6 +295,13 @@ public class GameConfigManager : MonoBehaviour
         ScheduleSave();
     }
 
+    public void SetAutoSkillQte(bool value)
+    {
+        if (AutoSkillQte == value) return;
+        AutoSkillQte = value;
+        ScheduleSave();
+    }
+
     public void SetScreenShake(float value)
     {
         float normalized = GameConfigPolicy.NormalizeUnit(value, DefaultScreenShake);
@@ -372,6 +383,7 @@ public class GameConfigManager : MonoBehaviour
         Language = DefaultLanguage;
         TextSpeed = DefaultTextSpeed;
         AutoAdvance = false;
+        AutoSkillQte = false;
         ScreenShake = DefaultScreenShake;
         FlashIntensity = DefaultFlashIntensity;
         UseVSync = false;

@@ -267,6 +267,7 @@ namespace HubToHome.EditorTools.SkillMaker
                 {
                     ContentMakerGUI.Header("비용과 대상", "아군 스킬은 캐릭터의 AP를 사용합니다.");
                     Field(nameof(SkillData.APCost), "AP 소모량");
+                    Field(nameof(SkillData.RecoveryTurns), "적: 완료 후 휴식 턴");
                     Popup(nameof(SkillData.TargetType), "대상", new[] { "아군", "적", "양측 (기존 값)", "전체 (기존 값)" });
                     Field(nameof(SkillData.IsAoE), "전체 대상 선택");
                     if (_skill.TargetType == TargetAreaType.Both || _skill.TargetType == TargetAreaType.AoEAll)
@@ -614,7 +615,7 @@ namespace HubToHome.EditorTools.SkillMaker
                 skill.TargetType = TargetAreaType.EnemyOnly;
                 skill.IsAoE = false;
                 skill.SkillName = counterable ? "연계 반격 기회" : "전조 공격";
-                skill.Description = counterable ? "가드 불가. 회피하거나 연계 반격으로 대응합니다." : "가드 또는 회피로 대응합니다.";
+                skill.Description = counterable ? "가드와 회피가 불가능합니다. 특수 반격으로 대응합니다." : "가드 또는 회피로 대응합니다.";
                 skill.ActionTimeline = counterable
                     ? EnemyAttackTemplateFactory.CreateCounterableStrike()
                     : EnemyAttackTemplateFactory.CreateTelegraphedStrike();

@@ -1,5 +1,21 @@
 # Dialogue Rules
 
+## 전투 주 대화 배경 (2026-10-26)
+
+- `BattleDialogueLayout` 수명에서만 명시적 배경 Image의 color/enabled를 캡처해 검정으로 바꾸고 Dispose에서 복원한다. 필드·일반 시네마틱 원본 프리팹/그림/재질은 바꾸지 않는다.
+- `DialogueUI`의 선택적 `_battleBackgroundImage`가 없으면 본문 TMP의 조상 Image를 한 번 해석한다. 초상이나 임의 첫 자식 Image를 배경으로 추측하지 않는다. 향후 도트창 교체는 sprite/material을 그대로 보존한다.
+- 제브 Lab의17대사 키는 한·영·일·중 실제 CSV에 연결한다. 별도 `BattleSpeechBubble`는 변경하지 않는다.
+
+## 프롤로그 즉시 확인 (2026-10-24 후속)
+
+- `DialogueData.RevealTextImmediately`는 기본 false다. 전용 프롤로그 대사27개에는 true를 적용해 글자 대기 없이 표시하고 기존 확인 입력으로 한 단계씩 진행한다. 일반 NPC의 타이핑/고정 시네마틱 속도는 기본 유지한다.
+- 즉시 표시에는 TextAnimator.SetText/SetVisibilityEntireText를 사용한다. ShowText 직후 SkipTypewriter로 글자별 음성/명령을 한꺼번에 실행하지 않는다. 입력 처리를 별도로 추가하지 않으며 선택지/페이지/첫 프레임 소비 방어와 언어 변경 시 이벤트 미재실행을 유지한다.
+
+## 표시 중 언어 변경 (2026-10-24)
+
+- `DialogueManager.RefreshLocalizedPresentation`은 현재 소유 패널의 본문만 갱신한다. PlayNode/노드 이벤트/진행 콜백을 재호출하지 않는다. 선택 순서/선택 인덱스/재생 세대는 유지하며 완료한 문장의 번역은 재타이핑·첫 글자 음성을 반복하지 않는다. 아직 타이핑 중인 문장은 번역문으로 다시 표시한다.
+- 독립 선택창도 `TryStartLocalizedChoicePrompt`로 본문/선택지 키를 보존한다. 번역된 문자열만 복사하고 키를 버리지 않는다. 일반 prompt/이야기 선택지의 기존 X/확정 경계는 유지한다.
+
 ## 중요 연출의 글자 속도 (2026-10-19)
 
 - DialogueStyle.Cinematic 또는 대화 진입 전 GameState.Cutscene이면 DialogueUI의 고정14cps를 사용하고 설정 TextSpeed/2.5배 증폭은 적용하지 않는다. 삽화 내레이션은 Story.NarrationCharactersPerSecond(기본10)를 우선한다. 일반 NPC와 메뉴 prompt는 원래 timing 참조·설정 속도로 복구한다. 선택지 분기도 매 노드 정책을 재적용한다.
@@ -10,6 +26,7 @@
 
 - `DialogueManager.TrySkipRemainingDialogue`는 확정된 선형 구간의 표시만 건너뛴다. 선택지에서 멈추고 임의 분기를 선택하지 않는다. 레거시 RequestName은 이벤트 발행/이름 입력 없이 통과한다. 현재 노드 이벤트는 재호출하지 않고 이후 노드 이벤트를 각 한 번 실행한다. 한 프레임 64노드로 제한하고 재생 세대가 바뀌면 이전 스킵을 중단한다.
 - X는 주 대화를 취소하지 않고 허용된 구간의 스킵을 요청한다. 저장 확인 같은 독립 선택 prompt의 X 취소는 유지한다. 정상 끝까지 진행한 스킵은 성공 완료이고 `CancelDialogue`/실패는 취소 경로다. 이미 확정된 보상을 되돌리거나 성공 콜백을 취소 콜백처럼 사용하지 않는다. 짧은 BattleSpeechBubble 및 ActionSequence/Timeline 전체 건너뛰기는 별개다.
+- 독립 선택 prompt는 일반 대화의 Z/X/C 직접 선택 단축키를 사용하지 않는다. 방향키+Z 확정/X 취소를 분리해 Update 순서와 무관해야 한다. 일반 이야기 선택지의 기존 단축키는 유지한다. 모든 DialogueUI의 예상 밖 Disable/Destroy는 source가 일치하는 재생만 CancelPresentation으로 종료하며 정상 닫기나 다른 패널은 취소하지 않는다.
 - 일반 대화 종료 자체는 자동저장 사유가 아니다. 진행 이벤트는 확정 완료 지점에서 `ProgressSaveTrigger`/`SaveManager.RequestAutoSave`를 호출하고, 씬 시퀀스는 `SceneActionSequenceTrigger`의 성공 완료 정책을 사용한다. 단순 마지막 문장 노출·잡담·확인창에 진행 완료 저장을 연결하지 않는다.
 - 본문 `LocalizationKey`, 선택지 `ChoiceData.LocalizationKey`, 화자 `SpeakerData.DisplayNameLocalizationKey`를 사용한다. KR/EN/JP/CN 키 경로와 기본 문자열 대체는 제공되지만 미작성 본편 대사 번역이 자동 완성되는 것은 아니다.
 - `FlagDialogueRule.RequiredItemId/RequiredItemCount`는 소지품 조건이며 지정한 플래그 조건과 AND로 판정한다. 아이템 조건만 사용할 수도 있다. 대화 선택/조회만으로 아이템을 소비하지 않으며 실제 교환·소비는 확정 이벤트가 소유한다.
@@ -29,7 +46,7 @@
 - Dialogue should set broad game state to Dialogue where appropriate and restore the previous/expected state on completion.
 - Logical completion is distinct from panel fade-out completion. `DialogueManager.IsPresentationVisible` includes the closing panel; shop menu/input resumes only after it becomes false. Do not duplicate the fade duration with a fixed delay. `DialogueUI` owns its unscaled panel Tween and kills it on reopen/hide/disable; forced close uses generation-guarded `HideFinishedPresentation` without touching a newer playback.
 - Confirm during typewriter output should complete typing; confirm after completion should advance.
-- 새 게임은 고정 이름 위젤이다. 이름 입력 호출은 제거했다. 기존 NameInputUI 타입/직렬화 참조와 SaveData.playerName은 옛 저장 호환 목적으로만 유지한다.
+- 새 게임은 WIZZEL/한국어 위젤 고정이다. NameInputUI 타입/메타/전용 오브젝트/직렬화 참조는 제거했다. 옛 RequestName enum/분기는 안전한 건너뛰기, SaveData.playerName은 형식 호환용으로만 유지한다. FromSaveData는 옛 임의 이름을 표시명으로 복원하지 않으며 동료/NPC 이름을 덮어쓰지 않는다(2026-10-23).
 
 ## Work Rules
 

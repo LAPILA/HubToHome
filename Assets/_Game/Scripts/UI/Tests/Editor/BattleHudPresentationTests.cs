@@ -70,6 +70,32 @@ public sealed class BattleHudPresentationTests
         Assert.That(narration.GetComponent<CanvasGroup>().alpha, Is.Zero);
     }
 
+    [TestCase(0f, true)]
+    [TestCase(5f, false)]
+    public void NarrationWait_PollsEveryFrameWithoutMandatoryDelay(float typeInterval, bool awaitingConfirm)
+    {
+        BattleNarrationUI narration = Narration();
+        Set(narration, "_typeInterval", typeInterval);
+        Set(narration, "_lastConfirmFrame", Time.frameCount);
+        var routine = (System.Collections.IEnumerator)typeof(BattleNarrationUI)
+            .GetMethod("ShowMessage", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(narration, new object[] { new BattleNarrationMessage("test message", holdOverride: 5f, requiresConfirm: true) });
+        try
+        {
+            Assert.That(routine.MoveNext(), Is.True);
+            Assert.That(routine.Current, Is.Null, "글자/유지 시간 동안에도 매 프레임 새 확인 입력을 받아야 합니다.");
+            Assert.That(narration.IsAwaitingConfirm, Is.EqualTo(awaitingConfirm));
+            TextMeshProUGUI label = Get<TextMeshProUGUI>(narration, "_messageText");
+            Assert.That(label.maxVisibleCharacters,
+                Is.EqualTo(awaitingConfirm ? label.textInfo.characterCount : 0));
+        }
+        finally
+        {
+            (routine as System.IDisposable)?.Dispose();
+            narration.Clear();
+        }
+    }
+
     [TestCase(true)]
     [TestCase(false)]
     public void ButtonSubmit_RejectsConsumedOrNewlyEnabledFrame(bool consumed)
@@ -111,6 +137,7 @@ public sealed class BattleHudPresentationTests
             if (skill != null) skill.APCost = 0;
             IMenuEntry entry = skill != null ? (IMenuEntry)new SkillMenuEntry(skill) : new ItemMenuEntry(item);
             sub.Preview(action.ToString(), new List<IMenuEntry> { entry }, actor);
+            Set(menu, "_selectedIndex", action == PlayerMenuAction.Skill ? 1 : 2);
             router.OnSelected = () =>
             {
                 Assert.That(menu.CommandsEnabled, Is.False, "입력은 인계 전에 잠그되 이미 수락한 명령은 전달해야 합니다.");
@@ -159,6 +186,94 @@ public sealed class BattleHudPresentationTests
 
             Assert.That(router.SelectionCount, Is.Zero, "입력 잠금과 달리 표시/모달 소유권은 콜백 인계도 차단해야 합니다.");
         });
+    }
+
+    [TestCase(1)]
+    [TestCase(2)]
+    public void MainPointerTab_ChangesListWithoutDispatchingThePreviousEntry(int index)
+    {
+        WithSubMenuRouting((menu, sub, router) =>
+        {
+            PlayerCharacter actor = Player("main-tab-pointer");
+            actor.Skills.Add(Own(ScriptableObject.CreateInstance<SkillData>()));
+            menu.SetActor(actor);
+            Set(menu, "_inputEnabledFrame", Time.frameCount - 1);
+            Get<Button>(menu, index == 1 ? "_actBtn" : "_itemBtn").onClick.Invoke();
+            Assert.That(Get<int>(menu, "_selectedIndex"), Is.EqualTo(index));
+            Assert.That(router.SelectionCount, Is.Zero, "탭 변경이 이전 ATTACK 항목을 스킬/아이템으로 실행하면 안 됩니다.");
+            Assert.That(menu.CommandsEnabled, Is.True);
+            if (index == 1)
+            {
+                sub.TryGetSelectedEntry(out IMenuEntry entry);
+                Assert.That(entry, Is.TypeOf<SkillMenuEntry>());
+            }
+        });
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void LockedSkill_SubmitAndRowClickGiveFeedbackWithoutDispatch(bool pointer)
+    {
+        WithSubMenuRouting((menu, sub, router) =>
+        {
+            PlayerCharacter actor = Player("locked-skill-menu");
+            SkillData skill = Own(ScriptableObject.CreateInstance<SkillData>());
+            skill.APCost = 0;
+            object lockOwner = new object();
+            actor.ReplaceBattleSkillLocks(lockOwner, new[] { skill });
+            menu.SetActor(actor);
+            GameObject container = Own(new GameObject("Rows", typeof(RectTransform)));
+            container.transform.SetParent(sub.transform, false);
+            Set(sub, "_container", (RectTransform)container.transform);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Game/Presentation/UI/Prefabs/Battle/OptionRow.prefab").GetComponent<OptionRowUI>();
+            Set(sub, "_rowPrefab", prefab);
+            var text = Own(new GameObject("Description", typeof(RectTransform), typeof(TextMeshProUGUI)))
+                .GetComponent<TextMeshProUGUI>();
+            Set(sub, "_descriptionText", text);
+            sub.Preview("SKILL", new List<IMenuEntry> { new SkillMenuEntry(skill) }, actor);
+            Set(menu, "_selectedIndex", 1);
+            Set(menu, "_inputEnabledFrame", Time.frameCount - 1);
+            OptionRowUI row = Get<List<OptionRowUI>>(sub, "_spawnedRows")[0];
+            Color grey = row.NameText.color;
+            Assert.That(BattleMenuEntryPresentation.CanUse(new SkillMenuEntry(skill), actor), Is.False);
+            int ap = actor.CurrentAP;
+
+            if (pointer)
+                row.OnPointerClick(new UnityEngine.EventSystems.PointerEventData(null));
+            else Get<Button>(menu, "_actBtn").onClick.Invoke();
+
+            Assert.That(router.SelectionCount, Is.Zero);
+            Assert.That(menu.CommandsEnabled, Is.True);
+            Assert.That(actor.CurrentAP, Is.EqualTo(ap));
+            Assert.That(row.NameText.color.r, Is.GreaterThan(grey.r));
+            Assert.That(text.text, Does.Contain(BattleMenuEntryPresentation.UnavailableReason(new SkillMenuEntry(skill), actor)));
+
+            actor.ReleaseBattleSkillLocks(lockOwner); // 이벤트만으로 기존 행의 회색/거부 표시가 갱신됩니다.
+            Assert.That(BattleMenuEntryPresentation.CanUse(new SkillMenuEntry(skill), actor), Is.True);
+            Assert.That(row.NameText.color, Is.Not.EqualTo(grey));
+            Assert.That(Get<bool>(row, "_deniedActive"), Is.False);
+        });
+    }
+
+    [Test]
+    public void RowDenial_RestoresChildOffsetsAndColorsBeforeReuse()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/_Game/Presentation/UI/Prefabs/Battle/OptionRow.prefab");
+        OptionRowUI row = Own(Object.Instantiate(prefab)).GetComponent<OptionRowUI>();
+        var entry = new BattleCommandPreviewEntry("LOCKED", "");
+        row.SetEntry(entry, true, Color.yellow, Color.white, 1f, false);
+        Vector2 home = row.NameText.rectTransform.anchoredPosition;
+        Color grey = row.NameText.color;
+        row.PlayDeniedFeedback();
+        Invoke(row, "ApplyDeniedFeedback", .1f);
+        row.ClearInteractionFeedback();
+        Assert.That(row.NameText.rectTransform.anchoredPosition, Is.EqualTo(home));
+        Assert.That(row.NameText.color, Is.EqualTo(grey));
+        row.SetEntry(entry, false, Color.yellow, Color.white, 1f, true);
+        Assert.That(row.NameText.color, Is.EqualTo(Color.white));
+        Assert.That(row.NameText.rectTransform.anchoredPosition, Is.EqualTo(home));
     }
 
     private void WithSubMenuRouting(System.Action<BattleMenuUI, BattleSubMenu, SubMenuRouterProbe> verify)
@@ -247,12 +362,111 @@ public sealed class BattleHudPresentationTests
     {
         GameObject root = Own(new GameObject("Narration", typeof(RectTransform), typeof(CanvasGroup)));
         root.SetActive(false);
+        var background = new GameObject("Backg", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
+        background.transform.SetParent(root.transform, false);
         var labelObject = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelObject.transform.SetParent(root.transform, false);
+        labelObject.transform.SetParent(background.transform, false);
+        labelObject.GetComponent<TextMeshProUGUI>().horizontalAlignment = HorizontalAlignmentOptions.Center;
         BattleNarrationUI narration = root.AddComponent<BattleNarrationUI>();
         Set(narration, "_messageText", labelObject.GetComponent<TextMeshProUGUI>());
+        Set(narration, "_bubbleBackground", background.GetComponent<RectTransform>());
         Invoke(narration, "Awake");
         return narration;
+    }
+
+    [Test]
+    public void NarrationWindow_IsFixedAndOnlyRevealsCurrentRichTextLine()
+    {
+        BattleNarrationUI narration = Narration();
+        Set(narration, "_lastConfirmFrame", Time.frameCount);
+        TextMeshProUGUI label = Get<TextMeshProUGUI>(narration, "_messageText");
+        RectTransform background = Get<RectTransform>(narration, "_bubbleBackground");
+        const string message = "<color=#FF6A85>one\ntwo\nthree\nfour\nfive</color>";
+        var routine = (System.Collections.IEnumerator)typeof(BattleNarrationUI)
+            .GetMethod("ShowMessage", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(narration, new object[] { new BattleNarrationMessage(message, requiresConfirm: true, revealImmediately: true) });
+        try
+        {
+            Assert.That(routine.MoveNext(), Is.True);
+            Assert.That(background.sizeDelta, Is.EqualTo(new Vector2(480f, 72f)));
+            Assert.That(label.fontSize, Is.EqualTo(14f));
+            Assert.That(label.enableAutoSizing, Is.False);
+            Assert.That(label.horizontalAlignment, Is.EqualTo(HorizontalAlignmentOptions.Center));
+            Assert.That(label.firstVisibleCharacter, Is.Zero);
+            Assert.That(label.text, Does.Contain("<color=#FF6A85>"));
+            Assert.That(label.text, Does.Contain("five</color>"));
+            Assert.That(label.textInfo.lineCount, Is.GreaterThanOrEqualTo(5));
+            Assert.That(label.maxVisibleCharacters, Is.EqualTo(label.textInfo.lineInfo[0].lastCharacterIndex + 1));
+            Assert.That(label.maxVisibleCharacters, Is.LessThan(label.textInfo.characterCount));
+            Assert.That(background.anchorMax, Is.EqualTo(new Vector2(.5f, 1f)));
+            Assert.That(background.anchoredPosition.y + background.sizeDelta.y * .5f, Is.EqualTo(-56f));
+        }
+        finally { (routine as System.IDisposable)?.Dispose(); narration.Clear(); }
+    }
+
+    [Test]
+    public void NarrationScroll_MovesWholeTextWithoutDiscardingMarkupOrReflowingEarlierLines()
+    {
+        BattleNarrationUI narration = Narration();
+        TextMeshProUGUI label = Get<TextMeshProUGUI>(narration, "_messageText");
+        Invoke(narration, "ConfigureFixedBubble");
+        Invoke(narration, "ResetTextPosition");
+        label.text = "<color=red>one\ntwo\nthree\nfour\nfive</color>";
+        label.maxVisibleCharacters = int.MaxValue;
+        label.ForceMeshUpdate();
+        Invoke(narration, "CaptureLineRanges");
+        string original = label.text;
+        float offset = label.textInfo.lineInfo[0].baseline - label.textInfo.lineInfo[1].baseline;
+        Vector2 home = label.rectTransform.anchoredPosition;
+        Assert.That(Get<int>(narration, "_visibleLineCount"), Is.EqualTo(3));
+        Invoke(narration, "BeginLineScroll", 3);
+        Invoke(narration, "AdvanceLineScroll", .1f);
+        Assert.That(label.rectTransform.anchoredPosition.y - home.y, Is.EqualTo(Mathf.Round(offset)));
+        Assert.That(label.firstVisibleCharacter, Is.Zero);
+        Assert.That(label.text, Is.EqualTo(original));
+        narration.Clear();
+        Assert.That(label.rectTransform.anchoredPosition, Is.EqualTo(home));
+        Assert.That(label.maxVisibleCharacters, Is.Zero);
+        Assert.That(narration.IsBusy, Is.False);
+    }
+
+    [Test]
+    public void SharedNarrationPrefab_UsesThreeLineFixedWindowSettings()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Content/Dialogue/Prefabs/DialogueCanvas.prefab");
+        var settings = new SerializedObject(prefab.GetComponentInChildren<BattleNarrationUI>(true));
+        Assert.That(settings.FindProperty("_fixedBubbleSize").vector2Value, Is.EqualTo(new Vector2(480f, 72f)));
+        Assert.That(settings.FindProperty("_maxRollingLines").intValue, Is.EqualTo(3));
+        Assert.That(settings.FindProperty("_bubbleBackground").objectReferenceValue, Is.Not.Null);
+        Assert.That(settings.FindProperty("_scrollDuration").floatValue, Is.EqualTo(.1f));
+    }
+
+    [TestCase(HorizontalAlignmentOptions.Left)]
+    [TestCase(HorizontalAlignmentOptions.Center)]
+    [TestCase(HorizontalAlignmentOptions.Right)]
+    public void NarrationFixedLayout_PreservesAuthoredHorizontalAlignment(HorizontalAlignmentOptions alignment)
+    {
+        BattleNarrationUI narration = Narration();
+        TextMeshProUGUI label = Get<TextMeshProUGUI>(narration, "_messageText");
+        label.horizontalAlignment = alignment;
+        Invoke(narration, "ConfigureFixedBubble");
+        Assert.That(label.horizontalAlignment, Is.EqualTo(alignment));
+        Assert.That(label.verticalAlignment, Is.EqualTo(VerticalAlignmentOptions.Top));
+    }
+
+    [Test]
+    public void SharedNarrationPrefab_UsesPlainHalfOpaqueBlackRectangleAndCenteredText()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Content/Dialogue/Prefabs/DialogueCanvas.prefab");
+        var settings = new SerializedObject(prefab.GetComponentInChildren<BattleNarrationUI>(true));
+        var background = (RectTransform)settings.FindProperty("_bubbleBackground").objectReferenceValue;
+        Image image = background.GetComponent<Image>();
+        Assert.That(image.sprite, Is.Null);
+        Assert.That(image.type, Is.EqualTo(UnityEngine.UI.Image.Type.Simple));
+        Assert.That(image.color, Is.EqualTo(new Color(0f, 0f, 0f, .5f)));
+        Assert.That(image.raycastTarget, Is.False);
+        var label = (TextMeshProUGUI)settings.FindProperty("_messageText").objectReferenceValue;
+        Assert.That(label.horizontalAlignment, Is.EqualTo(HorizontalAlignmentOptions.Center));
     }
 
     [Test]
@@ -290,6 +504,26 @@ public sealed class BattleHudPresentationTests
         for (int i = _owned.Count - 1; i >= 0; i--)
             if (_owned[i] != null) Object.DestroyImmediate(_owned[i]);
         _owned.Clear();
+    }
+
+    [Test]
+    public void PlayerTurn_ClearsAnnouncementWithoutHidingPartyOrChangingTurnState()
+    {
+        GameObject root = Own(new GameObject("HUD", typeof(RectTransform)));
+        root.SetActive(false);
+        BattleUIController ui = root.AddComponent<BattleUIController>();
+        GameObject labelObject = Own(new GameObject("Turn Label", typeof(RectTransform), typeof(TextMeshProUGUI)));
+        labelObject.transform.SetParent(root.transform, false);
+        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+        label.text = "위젤 턴";
+        Set(ui, "_turnLabel", label);
+        Set(ui, "_enemyTurn", true);
+
+        Invoke(ui, "HandlePlayerTurnStarted", Player("player_001"));
+
+        Assert.That(label.text, Is.Empty);
+        Assert.That(Get<bool>(ui, "_enemyTurn"), Is.False);
+        Assert.That(labelObject.activeSelf, Is.True, "공유 UI 오브젝트를 숨겨 다른 안내까지 없애지 않습니다.");
     }
 
     [Test]

@@ -1,0 +1,669 @@
+{
+  "Version": 1,
+  "Files": [
+    {
+      "Path": "Assets/_Game/Content/Characters/AllyDB/WizzelDB.asset",
+      "Hash": "e41be088d264c6c026c83a19b237c467d57b2c8a91ee3f9fce40c51acf253187"
+    },
+    {
+      "Path": "Assets/_Game/Content/Characters/AllyDB/WizzelDB.asset.meta",
+      "Hash": "6fe1983adbdb31f28f69a4646dc763a5b6d2b68834b7d89840d5c3b29ae308ff"
+    },
+    {
+      "Path": "Assets/_Game/Content/Characters/EnemyDB/Prologue/Enemy_WhiteEntityPart.asset",
+      "Hash": "5686af050b881b5b5092ae3dff7c6e2c34fe883789be038f6aaa66266a1ba9f6"
+    },
+    {
+      "Path": "Assets/_Game/Content/Characters/EnemyDB/Prologue/Enemy_WhiteEntityPart.asset.meta",
+      "Hash": "ff1b9623b71efd57ecda225cd9ff7a782fdde8adbee893749337f54525cd81c5"
+    },
+    {
+      "Path": "Assets/_Game/Content/Characters/Prefabs/Enemy/Prologue_WhiteEntityPart.prefab",
+      "Hash": "895483d03aa68bcc89040b4f43956e0a844472f4a10f5238912748e0d7cbdd70"
+    },
+    {
+      "Path": "Assets/_Game/Content/Characters/Prefabs/Enemy/Prologue_WhiteEntityPart.prefab.meta",
+      "Hash": "7e22dfd4eab00c71eaa407cd6d6a8766fdcf19c0742a2a82addc25f835687759"
+    },
+    {
+      "Path": "Assets/_Game/Content/Items/Consumables/Prologue/Item_EmergencyDressing.asset",
+      "Hash": "479996e8a9df090c4b7cec3b86a37a5575d54e584675bbb490e15eb3ac195079"
+    },
+    {
+      "Path": "Assets/_Game/Content/Items/Consumables/Prologue/Item_EmergencyDressing.asset.meta",
+      "Hash": "e25834dbe656d7dbe6d682d83f1b3dc276b61e50af1432ce25ffbb8f374834af"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Development/Regions/Title/01_IntroScene.unity",
+      "Hash": "f7d6718cdd5b19848c5cd2e66719c7b97cbe838f6ca29b07f18b97d8a6c77a3f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Development/Regions/Title/01_IntroScene.unity.meta",
+      "Hash": "66db0451b7ecad8338088311909023807ce933d61fc2da607f25c3dc9b9792a0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_adjust_valve.asset",
+      "Hash": "da3d6b55bd73735a8d89fd4fb707649956b6ac328e7bc04f6fa13132d3bbe27a"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_adjust_valve.asset.meta",
+      "Hash": "e5690e0c0ea02826951250a08e0146d5cfd63a6bc86e2ed9856896800e61dab1"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_blocked_control.asset",
+      "Hash": "517c090e549a54a546fe5af89bb714432f06cf3ff51e61c52b2bb0195edf664e"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_blocked_control.asset.meta",
+      "Hash": "a0f499bcc60b068bd070abb01667b876a393cf96ce2ef3a6231a8ef894dc1330"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_blocked_rear.asset",
+      "Hash": "439de5bfa77320aeb8df296c0297ddb514c24b90513d2a014669b28ae0f5069e"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_blocked_rear.asset.meta",
+      "Hash": "c221a79382b21774eb6d507e1e2ecac8ca282359b5b0ff04d0500e0f58a5fe42"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_blocked_repair.asset",
+      "Hash": "a48ba7d191b5217b36e2e2b1c814dd39a48633346e0cc8faf8e8681b489cdf20"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_blocked_repair.asset.meta",
+      "Hash": "60375f4ed4054458d83206944c3b39e46f0e4f42c9ae3f021a2950d9138caf24"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_control.asset",
+      "Hash": "da2ffac6a56a28b9cb85d08cb74dab150b88bd3fd363fada421411d2dbcb1b4b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_control.asset.meta",
+      "Hash": "5a1ab354360e80f8eee0104c30a62a62cf5cd87a3fe53ad918f1c1b154261838"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_derail.asset",
+      "Hash": "3d59094a981e33547615dc4e953e771d4a7bf572900042aa812527a923c839db"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_derail.asset.meta",
+      "Hash": "5580ccaf95adc9fabb343f8e4d5db69fa46ea4d06b8c7518e63527a2c5950127"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_dragon.asset",
+      "Hash": "7a13658f4520d5327c02cabe30f6deb1ee23bc0e0526e31f9bb7474747ea41fa"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_dragon.asset.meta",
+      "Hash": "327c3f248513bee2d6896415b497e9df930885fc0fa5511afc186205378c3083"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_ending.asset",
+      "Hash": "beac59e7e87cd1d93468f14a39d472419eb6e24e5c3de6ada83be11aae2d401f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_ending.asset.meta",
+      "Hash": "87f401da5a11de473596d0365be17ee125f29e0c47befda1bf43a679da5273ee"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_forward.asset",
+      "Hash": "fd5970d5c35e1af53d10e456d77cec56287c2cfdcd432d2cfc4c65b618fd2288"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_forward.asset.meta",
+      "Hash": "6e1797d4102249b523e228e18beb759cbfc3cc1c6760bf9669d46b270ce5d82e"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_incident.asset",
+      "Hash": "0cc00675738b60bfc127c9396a815b89408d334d7b987a7b95d144a9c447b05f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_incident.asset.meta",
+      "Hash": "2107ac303790bac48d03c6551dcee210ab63b2a3ebd29a14dab5f09be869d8d7"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_inspect_machine.asset",
+      "Hash": "19ea3de5ca10760b57e35e10892018895942587a59056d5b9cc1bacf7d76d4b8"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_inspect_machine.asset.meta",
+      "Hash": "f901c4ca090b08a6673107743c95896ae6df14be84d3027bea3efb41b794bd21"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_introduction.asset",
+      "Hash": "8184655fe811139de46dfa98175991f2f4277a4d08476636d2f6464256e95a7c"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_introduction.asset.meta",
+      "Hash": "8069703cf59d62f00d51d5be61fa3b048671afea97442111fb549860512e95ce"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_conductor.asset",
+      "Hash": "ddd3e1bd893f786b8cece969341470f5b9b237dad34683be665a0c9b291efcd8"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_conductor.asset.meta",
+      "Hash": "bece6e0741a42e95eb1c575b52995c9873533983cf3284e014e28a709468dbab"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_crew.asset",
+      "Hash": "fa0d4cc7971a23caa03c14c69ed27b00c0708aa055ab8ff09c4d817233b2f70e"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_crew.asset.meta",
+      "Hash": "b1d6d3ddd1afefa0f3ca1dfd0e346883f4446fc4cf1dd869a73c804f07a00ff8"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_deer.asset",
+      "Hash": "ecaa057c7d7fe85179358eb5da728942bf7f36764d29b4cbebc027bf4e8a7747"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_deer.asset.meta",
+      "Hash": "25287316b0ee32c209e545524f5a5bb286994dee3b0b226f665733d0464fefb0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_medic.asset",
+      "Hash": "9d36b1fe3520758c88cf8cbc527dd586e1acbf531a290b50d42d5228b2148d3a"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_optional_medic.asset.meta",
+      "Hash": "90a2c19d5c4e0d0ce45a9f36f92321ddecffd41247bd38259c29cad559e3f6ce"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_pressure.asset",
+      "Hash": "6916565a517d069802a52fe1d852b6c90336a7dec3cf0c25c78dacbadc13e0af"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_pressure.asset.meta",
+      "Hash": "396b6afb01a94e89275adc18959deb0ee12e7ebd14ac1ee704e7a1f82f48a234"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_rear.asset",
+      "Hash": "d24cbb61763b575940ceea149410b2792bfa0cd5c953b96b654b2597b0357048"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_rear.asset.meta",
+      "Hash": "65f542407c218bcec512c570af2f622a5e2053f2a0e0d37c83f6b5ffbd7d6fa2"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_rescue.asset",
+      "Hash": "4c8c6f5c02840f6a549a28f83b2080aa39970e7a0165bfbc51beb1027b9f43b2"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_rescue.asset.meta",
+      "Hash": "b6cea5b363ed1552a72dffbcbdb46b3b1787c4129d6ce526c908f20f0b3ea0da"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_retry.asset",
+      "Hash": "b2023166e82e3305fe07f0f5b6daf4fbbefa8f9d885e002f6accf19544b22fb0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_retry.asset.meta",
+      "Hash": "e7630766280400bb48c4c9a025d7e8b71a0e840875682a1c9e721d4f62ff6edf"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_save_failed.asset",
+      "Hash": "afcf7370a56a5ca279fcb383b78fa3b9da0a4b6196dde18ff81fe2f752f61a21"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_save_failed.asset.meta",
+      "Hash": "02bc033d1684152c45354e475c27fff313ac3735db38330c5b27d750baa457d1"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_seal.asset",
+      "Hash": "8348e01d0b4baac2dcb3fdc26948b48383d2d7ece3f12b494eeda316f7b9ac46"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_seal.asset.meta",
+      "Hash": "cd694cd1720f78dbe3c78f0e00c744810120de3970e0c86f28941ccebe32d047"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_test_machine.asset",
+      "Hash": "531290a253f20bce118b6779fb7cf02d60fec8716e4983576f55db8b09717af3"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_test_machine.asset.meta",
+      "Hash": "9e2545b5c289f0f876d6fb822e7f8643035e0ca369b6bb7e77c2f38d7a0b3e72"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_tutorial_attack.asset",
+      "Hash": "11b40c9c445b94fef39806645480f5ac19e495be66f5b7709cf8a67819dc7267"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_tutorial_attack.asset.meta",
+      "Hash": "2cc56ae18efbdaaba9afee06f377cbf089ea0b986c2027eb64929873270d5ab0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_tutorial_guard.asset",
+      "Hash": "26f325790bc0f654161f7b1bfe7641991f52a3c9242a88721a673b810160837e"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_tutorial_guard.asset.meta",
+      "Hash": "68de3beb243cb76036a0d8f7f8b34580fbfc2e993164319e70b1054f3f43e2c7"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_tutorial_item.asset",
+      "Hash": "33d818fd777b07f16dbce78c03a7f61ddee9dccd167e848542211d76abed4982"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_tutorial_item.asset.meta",
+      "Hash": "62494a5138f6bee362021d6438f046b1865ea16bf2b86313bf7ab2673717615f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_window.asset",
+      "Hash": "debd3f22c95277b89debebed4d6ee81febad7fbcf50382e60bd47473c60e87cd"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Dialogue/Dialogue_window.asset.meta",
+      "Hash": "d41a8dd4f774ce1ad664044f528e590e21646390bcd1b74075f4a7c04bf5eda3"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/PrologueTutorial.asset",
+      "Hash": "baca98ad688eb81f0f54c1a5a463070cd7a33efebad2255a7aa1fb90c84d2608"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/PrologueTutorial.asset.meta",
+      "Hash": "d14eec90d002a58fa1cf2d07f743aec107747dfb367e858b7ed79c38469e4d2f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Common.asset",
+      "Hash": "083ce5727af836c3526a7c0cbf1708faa7847e4128237ec41b980fc770ae09f7"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Common.asset.meta",
+      "Hash": "3bab7f176ec9fbbb8335799d9ffbdcd9d7e0cc5d8bb55c8edde2aed0d3e6be11"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Completed.asset",
+      "Hash": "0accb5bd8ca39f12bd58d32ada6368e3b5de616277668e7e6d693b0cdbd345dc"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Completed.asset.meta",
+      "Hash": "3268cd257ac1836de5c72e003ee36aff02d0c6bfa54cda53d4f2a133de8e871a"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Control.asset",
+      "Hash": "ca08d4e3a3ddd6a7a4fc07ea9ecdc49ec32d8000bcf095333c1f8412b67cfc97"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Control.asset.meta",
+      "Hash": "e27a3b9ff0d55ec03012a6d297636b32783ad3e96ac2913441d803b860942543"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Rear.asset",
+      "Hash": "eaf50377ba56916a48de18a22dc9e2a800062395ef8991ca16451035a49510b3"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Area_Rear.asset.meta",
+      "Hash": "64c913a2cb1f30c528be313f63dd29c70a9eb822e5520bd9b658216f3a8e23d0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Common.asset",
+      "Hash": "52e65f30d92815d50b43a91e6bf5ac6f320607c495a58f9a62692393c90641b7"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Common.asset.meta",
+      "Hash": "577028fa0bd751a9565f21c5a64a61de99715225d0b5bcdeb3fad32e8e7c1e65"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Completed.asset",
+      "Hash": "ebff82bf9700d4d52b9d6e814ff3737b5ea3045bfd81ebd2fe79811ca477fdbd"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Completed.asset.meta",
+      "Hash": "7002f118d854cc17745c82d92098ac4428af0419811ea793d3fd44abbc0abbf6"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Control.asset",
+      "Hash": "868e198ac10a1b4167c45a0422081aa90314dca94a97dacb44471fb70e70cd56"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Control.asset.meta",
+      "Hash": "2c031d5213c8b5b8b4fa509cf2a95e32e0619f1b7eeb25c7da2c3643d06ffbb1"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Rear.asset",
+      "Hash": "40a06168c3c027c1d3345b4517d6ea3819a3fe3e19eaa25938829f35e7bc29d5"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Rooms/Room_Rear.asset.meta",
+      "Hash": "fe036597055c157abcbe294d067de4336d636e550ceb86a0e97eb712c17433bd"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/BattleScenario_WhiteEntity.asset",
+      "Hash": "3f1d742fe741292d33d638e93f658ee1d2197b5536f0c9942bafb7a5630edc37"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/BattleScenario_WhiteEntity.asset.meta",
+      "Hash": "21b7ef03b5519ee26232e1590c40b79c0964aab0a4f0cdf7f762892786605595"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_control.asset",
+      "Hash": "95c61e52d8de49bdf999a6775f020bafd6f78e3ca9c02b33b9c40ce7c398bdec"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_control.asset.meta",
+      "Hash": "93d652af97ba8f34ed34683dd05cdbe3f04b8ba09d2a633b5217f86fa2afca6c"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_derail.asset",
+      "Hash": "7766ca6adaf69e08cd929db7765dee5959242bb357de0ea64c276eb209a094a0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_derail.asset.meta",
+      "Hash": "209955cdd06eeeef4ae2d2e211e9ca563145b9a6e04cdd150bbf2d70e871b32f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_forward.asset",
+      "Hash": "be0f4e80c4fb904ec3f5d2ff4f12e1fe41e6441d6c54c3aedb66780d6709b9ad"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_forward.asset.meta",
+      "Hash": "35ffb5cfc69730d227cfc8d97db656af56747a03934c0ddae2cb403f2952acc0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_incident.asset",
+      "Hash": "3778938d4c56ad5c901235fd5f6542a2339a6932eade1f7e44ccdb891b08ce3d"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_incident.asset.meta",
+      "Hash": "335a33522db59a071162933fb5a2cd6703e7d87e4e986e27642d4313394ebdd1"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_rescue.asset",
+      "Hash": "1a34499e88ce9106bacca041ad9eea0a203631a56aa2437c4d5aa86efa6cf669"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_rescue.asset.meta",
+      "Hash": "9ae75619a1f4897e1d7a0a1d2b391ccfe883482a377bb8839176fe3332a84824"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_seal.asset",
+      "Hash": "5d5eadb51be58d79e1a791be2131de5df70414785697d325a0af934a4ee69adb"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Scenario/Sequence_seal.asset.meta",
+      "Hash": "f7e86aa4b7059df9fdba92a808e98fd8709bd92b321977437740ae13974859fc"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_companion_deer.asset",
+      "Hash": "21e75f67cda396aabb0a2679586413a7fb8b21c83464bdfc5780b1509ab98e97"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_companion_deer.asset.meta",
+      "Hash": "53312f63ddb47f0f53e155f9abbcecb4e5e7ed5a28f94c973b0bda486ffd458f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_companion_dragon.asset",
+      "Hash": "cf2ba91b5b4844f3c339afceb0f7c4bfd058332dba521b3bcf3f42d6a020dcbe"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_companion_dragon.asset.meta",
+      "Hash": "e58ecd6dd5b9aca9b2416f5585204a6c45610205506f0b52d3fc3b77172cb15c"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_companion_medic.asset",
+      "Hash": "bb7832c936684c89319b74bf9b59e644fa9b3fe6f75ffefea5c8ef4fd8d93b9d"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_companion_medic.asset.meta",
+      "Hash": "ffa89cc58e00e2704e314c2c4ee16f806778d9628f3f39881900a05e87bd9ec7"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_conductor.asset",
+      "Hash": "a834dc37b2accce213733d9cf4ddd2a95ca07bb6d48b54c366a15c2f791bd240"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_conductor.asset.meta",
+      "Hash": "e517e3fefeee755e4bacf4614f3983e1c2ad379f5d1c2e8a99e80c8dd7880295"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_crew.asset",
+      "Hash": "80a5506cfe5ad58a0d6ac6e29db06630157592fb885ca65d01f8429aaa09f91b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_crew.asset.meta",
+      "Hash": "2d6088ab3726573526c65a6f8dc6f92dc835826d758f7c92323fcdb630376538"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_protagonist.asset",
+      "Hash": "bf98e8cdd9c42188b0ed8b99ae415620762aaac4f7e138f5e5d2fa0a5e49697a"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_protagonist.asset.meta",
+      "Hash": "2a70275e4588b7df0839e043b25d1727aa034c65d7d57fa8ae820465d0eb9aa2"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_white_entity.asset",
+      "Hash": "4c886de29bd046419b43e8b219182579c54078ae9c4b430da4dfd913a438105a"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Speakers/Speaker_white_entity.asset.meta",
+      "Hash": "0919086e8fd2a78d3c9ad200f77f2609c77df0448d3c517a5be115e965c58ae6"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Story_RearReveal.asset",
+      "Hash": "84c64099ea3de8de9adb7678a82f2100d8519dddddfb0c33b6c29c22d84e92be"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Story_RearReveal.asset.meta",
+      "Hash": "04345f42470bf79d8c4e2d0daa122b308dad7d8cd234ed39f50671fe5ca87d6b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Story_TrainOpening.asset",
+      "Hash": "593e9d69c89cdc8f82052925371b5e6b499007c2be931d4a1616f4fcdd82b467"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Story_TrainOpening.asset.meta",
+      "Hash": "a54a4d65d8bff44cd9ee22eed415aa6ed895b2a048dd7874579ea02531e2afd6"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Animator.controller",
+      "Hash": "3aefff755d73ecd5441d9de0601983c7df5c996e90d219ecf176ece41266a365"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Animator.controller.meta",
+      "Hash": "7a98c3bed070202cd037d0286919dfdb4e7a7a7db7e7f4a9788199b5a459fb8b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Attack.anim",
+      "Hash": "52fc7120e25770125cc1424dacaa75dd218cf615a342b8a23af2ca2827bfa345"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Attack.anim.meta",
+      "Hash": "3fc1f4134983cfc983c3503297521fe4dd79cf00ee99ab816062f49c0df4eab0"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleIdle.anim",
+      "Hash": "dccc3f484d1c93fd81de85c3ed38f6f21907ce4d53306ecaa2dc694c84c9cf4d"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleIdle.anim.meta",
+      "Hash": "e58469333ed58fa2a8e149eed3d27b78c1b5d1e04da0a31cf366c651d9ed6195"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleMove.anim",
+      "Hash": "8bf7d447f41e855a709c45cb6fd2583dccac214a28d3d5a8e76c5a463725607d"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleMove.anim.meta",
+      "Hash": "7949888b1daf0b03189d32ce29b18eb7e7a0b7525306605db6daf48828978f31"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleMoveBack.anim",
+      "Hash": "24d46ce0982210ddb11e8767a27cc4a7203a66a338f0e3588ebb4a2eadb3e8b5"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleMoveBack.anim.meta",
+      "Hash": "411529fb73443b8cd19fbe378645d0293f5e30931354baa6d29b6dee7efbc56e"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleReady.anim",
+      "Hash": "77ee9f491285706b77b30f6962b3501f1d236ebd02630bfe1d2683400372d99a"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_BattleReady.anim.meta",
+      "Hash": "5a9c35b65e433b7530ac67449d60cb7bf5459990b46a921aa1acc7358ea12ca5"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Die.anim",
+      "Hash": "8f70b43ee23f38792aa32b154b42fdd70bc1c30921171877e164ce12a4d3385f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Die.anim.meta",
+      "Hash": "b42a54bdad78eabbe3f4a05d638fe01d9609c2018b92cb85c8032d572fa7a6f2"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Hurt.anim",
+      "Hash": "9e5fabd156907b6c344a8a0edb7888c785cc8c7f0669fe418bd1c0aa4a98d541"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Hurt.anim.meta",
+      "Hash": "161040622798f15ced9c859203c456d939f7c2828a5a3c593cb1662239518173"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Skill.anim",
+      "Hash": "d1a6f8e534215f0b4c2abaa819ddfc9b2ceb378a9661dd0424fa985e736a9617"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Skill.anim.meta",
+      "Hash": "692182c0718abec22286302894727de9cb2e4ebb085b5372eaeca858a40e8b07"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Telegraph.anim",
+      "Hash": "ba53bfcd4071cbc7337b3668953db1536408932e6730ad6c6a4e45ad2bee41ff"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Data/Prologue/Tutorial/Visuals/WhiteEntity_Telegraph.anim.meta",
+      "Hash": "d5ce61272a305bcf0b60ddfa0f03d83a85b4ccf8e73f0185f8edc77ca8270648"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_companion_deer.prefab",
+      "Hash": "64296a25025d5480e9b2dbd7fec6b16653ce2aafcb17588ef97a57bbc11ff2c9"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_companion_deer.prefab.meta",
+      "Hash": "7a08440b41f8cc7483700e059fdeb02979b64fb9d3db4f93ed89250eccec8215"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_companion_dragon.prefab",
+      "Hash": "0459bca8c37e62356f3821a271a2046467eb9e8f5f0701bf4b040f2dc98619ba"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_companion_dragon.prefab.meta",
+      "Hash": "12f29011c1e5a191ae442ce882daf8ae7f3a908b1ad283c7a2e99415a8621689"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_companion_medic.prefab",
+      "Hash": "aea5e586b646e5c0b9de98041e36ae8424081d04eac68d89bb0b6d10bbadadc6"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_companion_medic.prefab.meta",
+      "Hash": "53810a4b089fb9d35097e9d79d7400f5804d08e6eb7128eb64e27fb84560506b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_conductor.prefab",
+      "Hash": "4b38ae65d7dcac888ee88c896c2d4fe84edaac432836a0cb7973c22dd912ad9b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_conductor.prefab.meta",
+      "Hash": "22d3656333e4c7ca3d261c0ba6ab2380c19a6c55380f84257b83dfda8e94dfc8"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_crew.prefab",
+      "Hash": "7f880d66f308fff201f698c5459bfc16a28926d685e579110bd8318248109c3b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_crew.prefab.meta",
+      "Hash": "56599f833cdc40a2bc072de1f8f98c7686c4ec96369895b5e9dbc0925bda655b"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_protagonist.prefab",
+      "Hash": "3ee3a856092dd957a02377b4fd9286501de89e6f4a2b0a5300b87d580c21115d"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_protagonist.prefab.meta",
+      "Hash": "ee73e9cdf3101b717c2466eb7022ac1f52e036913f9bc7e5531a9968ccdcb5a9"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_white_entity.prefab",
+      "Hash": "0dafba85af77ec8b55f729bad50dd29155b735b8e0dc8816625098b429bf0560"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/NPCs/Prologue_white_entity.prefab.meta",
+      "Hash": "37fd532714e1417562b336c41d0538af130517197e6d4b33cbcd0215f07f0d57"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainQ0.prefab",
+      "Hash": "a18afab6f2aa850ac7d633b82bbb6a56a02611079db212628f02cc393b628ffc"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainQ0.prefab.meta",
+      "Hash": "7154a95c9ec646bc15f88f203ab22cdb4f839d107eace69f6723654211dcbbb1"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Common.prefab",
+      "Hash": "573816e6c6f224f7c7432c86529ff9b20de0e92f9774d155f42b42b9c4759a5f"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Common.prefab.meta",
+      "Hash": "fee578f937e8208582351cfcf5746024bc49a8ebc6e499438aad76ddf79a3714"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Completed.prefab",
+      "Hash": "efbc3869eec7e4a8f6bcfdf2022f3861e71850d665d5cbe065168671e2bb0857"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Completed.prefab.meta",
+      "Hash": "796b6a0b8a1a871c4d834139c2330423efd48bdcf75d907c1fd43633fe0139b9"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Control.prefab",
+      "Hash": "962da7fb0d36476e7c5fbcf17c09129af61ba4218e965a4fa4fb8c6e918023cf"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Control.prefab.meta",
+      "Hash": "979f6d105c28c9924514bd645ede330b0e233f4c67c240194a6a987705d0a4f5"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Rear.prefab",
+      "Hash": "cae2d1df13c8ebc8b4e91a9463e0edfc20c5abf8b9ad927eae5cbc640b395bbe"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Prefabs/Rooms/Room_ALL_TrainTutorial_Rear.prefab.meta",
+      "Hash": "3a10c589dc881b960d00c92934ffac3532d6393455fdc79d63719aa179359601"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Scenes/Region_Train.unity",
+      "Hash": "6927c66835b8f7da0bb91953dd9b60d2f045559d3541c08765dfb06d6d4e8677"
+    },
+    {
+      "Path": "Assets/_Game/Content/Maps/Regions/ALL/Scenes/Region_Train.unity.meta",
+      "Hash": "6826fb3b83aedffbc05c1b160016686fce821c64e0e34fc817ccd8d595a9a392"
+    },
+    {
+      "Path": "Assets/_Game/Content/Skills/Enemy/Prologue/Skill_WhiteReach.asset",
+      "Hash": "d8620c52bf68ce9cf61b81a4d0d15adc58343134ebac28b357049794dfd83b1a"
+    },
+    {
+      "Path": "Assets/_Game/Content/Skills/Enemy/Prologue/Skill_WhiteReach.asset.meta",
+      "Hash": "ff89cdde91fe9a022b7d4e2ad7b4c1fc096d894f798badd7df4def8610b79b18"
+    },
+    {
+      "Path": "Assets/_Game/Resources/HubToHome/GameContentCatalog.asset",
+      "Hash": "224ace7941b8da2150922ecebefe9e4fdcd2f41ebcad59a99cb97879d388781c"
+    },
+    {
+      "Path": "Assets/_Game/Resources/HubToHome/GameContentCatalog.asset.meta",
+      "Hash": "55d21d52592ca14fb79840006b6c342abd2437b9cded018475da53efc76b0dcc"
+    },
+    {
+      "Path": "Assets/_Game/Resources/HubToHome/JournalCatalog.asset",
+      "Hash": "d6a4094b9be1d85e6767058f26b53b0f87756ee04211c481db45834be521cd7a"
+    },
+    {
+      "Path": "Assets/_Game/Resources/HubToHome/JournalCatalog.asset.meta",
+      "Hash": "a7f7ea7ad210db1cb61f7b81fcd30f80626c5c0d587a1a3b83e1953923e0b43f"
+    }
+  ]
+}

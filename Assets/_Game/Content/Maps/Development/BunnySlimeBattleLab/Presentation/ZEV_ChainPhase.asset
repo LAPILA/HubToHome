@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2405262d3894c25871a6f19c4385ef0, type: 3}
+  m_Name: ZEV_ChainPhase
+  m_EditorClassIdentifier:
+  ActivationFlag: lab.zev.chain_phase
+  ChainSprite: {fileID: 21300000, guid: 2f2c17a813ab2254d88a8d7de8817800, type: 3}
+  Tint: {r: 1, g: 1, b: 1, a: 0.65}
+  Placement: 1
+  CanvasSortingOrder: -50
+  SpriteScale: 2
+  WidthPixels: 32
+  LengthPixels: 256
+  InsetPixels: 64
+  ScrollPixelsPerSecond: 24
+  BottomLeftMirror: 0
+  TopLeftMirror: 2
+  TopRightMirror: 3
+  BottomRightMirror: 1
+  StartSfx: {fileID: 8300000, guid: fc412acdfe175f5498ddc99d984e011b, type: 3}
+  StartVolume: 0.45
+  SoundFadeSeconds: 1.2

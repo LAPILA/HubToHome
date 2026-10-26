@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_inspect_machine
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_INSPECT_MACHINE_01
+    DefaultText: "\uC9C4\uB3D9\uC740 \uC2EC\uD55C\uB370 \uCD9C\uB825\uC740 \uB0AE\uB124.
+      \uC5B4\uB514\uC11C \uD798\uC774 \uC0C8\uB294 \uAC78\uAE4C?"
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_INSPECT_MACHINE_02
+    DefaultText: "\uC544\uD558. \uC555\uB825 \uBC38\uBE0C\uAC00 \uBC18\uCBE4 \uAC78\uB824
+      \uC788\uC5C8\uAD6C\uB098."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

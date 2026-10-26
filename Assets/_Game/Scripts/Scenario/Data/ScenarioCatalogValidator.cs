@@ -329,6 +329,10 @@ public static class ScenarioCatalogValidator
         {
             ValidateCatalogParameters(action, entry, result, objectId);
 
+            if (OverworldPartyActionContract.Owns(actionId)
+                && !OverworldPartyActionContract.TryRead(action, true, out _, out string partyError))
+                result.AddError("scenario.overworld_party.parameters.invalid", partyError, objectId);
+
             if (actionId == DialogueWaitActionId)
             {
                 ValidateDialogueWaitAction(action, dialogueRegistry, result, objectId);

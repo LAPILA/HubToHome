@@ -156,12 +156,16 @@ public class EnemyCharacter : CharacterBase
 
     private void SetBattleTrigger(int triggerHash)
     {
+        // PlaySkillAnim/ForceBattleIdle also enter here without calling PlayBattleAnim.
+        if (triggerHash != HashHurt) CancelHitFeedback();
         // 이전 피격의 지연 Idle이 새 공격을 끊지 않도록 명령을 교체합니다.
         _returnToIdleTween?.Kill();
         _returnToIdleTween = null;
         if (_lastBattleTrigger != 0)
             _animator.ResetTrigger(_lastBattleTrigger);
         _animator.SetTrigger(triggerHash);
+        if (triggerHash == HashAttack || triggerHash == HashSkill || triggerHash == HashCrossCut)
+            CameraController.Instance?.RequestBattleImpactPreparation();
         _lastBattleTrigger = triggerHash;
     }
 
@@ -225,6 +229,7 @@ public class EnemyCharacter : CharacterBase
         {
             _isBattleMode = true;
             SetBattleTrigger(preferredHash);
+            CameraController.Instance?.RequestBattleImpactPreparation();
             return;
         }
 
@@ -256,21 +261,27 @@ public class EnemyCharacter : CharacterBase
         _returnToIdleTween = null;
 
         bool hadHitReaction = _hitReactionActive;
+        float hitDirection = ResolveHitReactionDirection(1f);
         Vector3 origin = hadHitReaction ? _hitReactionOrigin : transform.position;
         transform.DOKill(false);
         if (!hadHitReaction)
             origin = transform.position;
 
+        if (_spriteRenderer != null) _spriteRenderer.DOKill();
+        float hitPause = BeginHitFeedback(_spriteRenderer, _animator,
+            Mathf.Max(0.02f, _flashDuration * 2f), PlayDamageImpact, damage, PlayDamageContact);
         _hitReactionOrigin = origin;
         _hitReactionActive = IsAlive;
         transform.position = origin;
 
         if (_spriteRenderer != null)
         {
-            _spriteRenderer.DOKill();
             Color restoreColor = _spriteRenderer.color;
-            _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), Mathf.Max(0.01f, _flashDuration))
+            Tween flash = _spriteRenderer.DOColor(ResolveFlashColor(_hurtFlashColor), Mathf.Max(0.01f, _flashDuration))
                 .SetUpdate(true)
+                .SetDelay(hitPause)
+                .SetRecyclable(false)
+                .SetLink(gameObject, LinkBehaviour.KillOnDisable)
                 .SetLoops(2, LoopType.Yoyo)
                 .OnComplete(() =>
                 {
@@ -282,36 +293,47 @@ public class EnemyCharacter : CharacterBase
                     if (_spriteRenderer != null)
                         _spriteRenderer.color = restoreColor;
                 });
+            TrackHitFeedbackTween(flash);
         }
-
-        _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
         if (IsAlive)
         {
-            PlayBattleAnim(HashHurt);
             float popHeight = ResolveHitPopHeight() * ResolveShakeScale();
-            Sequence pop = DOTween.Sequence().SetRecyclable(false).SetUpdate(true);
+            Sequence pop = DOTween.Sequence().SetRecyclable(false).SetUpdate(true)
+                .SetDelay(hitPause).SetLink(gameObject, LinkBehaviour.KillOnDisable);
             pop.SetTarget(transform);
-            pop.Append(transform.DOMoveY(origin.y + popHeight, Mathf.Max(0.01f, _hitPopUpDuration))
+            pop.Append(transform.DOMoveX(origin.x + hitDirection * Mathf.Min(0.1875f, popHeight),
+                    Mathf.Clamp(_hitPopUpDuration, 0.01f, 0.05f)).SetEase(Ease.OutCubic));
+            pop.Append(transform.DOMoveX(origin.x, Mathf.Clamp(_hitPopReturnDuration, 0.01f, 0.12f))
                 .SetEase(Ease.OutQuad));
-            pop.Append(transform.DOMoveY(origin.y, Mathf.Max(0.01f, _hitPopReturnDuration))
-                .SetEase(Ease.InQuad));
             pop.OnComplete(() => CompleteHitReaction(origin));
             pop.OnKill(() => CompleteHitReaction(origin));
+            TrackHitFeedbackTween(pop);
 
-            _returnToIdleTween = DOVirtual.DelayedCall(0.35f, () =>
-            {
-                if (this != null && isActiveAndEnabled && IsAlive)
-                    ForceBattleIdle();
-            }).SetId(this);
         }
         else
         {
             transform.position = origin;
             _hitReactionActive = false;
-            OnDie();
         }
     }
+
+    private void PlayDamageImpact()
+    {
+        if (this == null || !isActiveAndEnabled) return;
+        if (!IsAlive) return;
+        PlayBattleAnim(HashHurt);
+        // SetBattleTrigger cancels the preceding Idle timer, so schedule only after Hurt is accepted.
+        _returnToIdleTween = DOVirtual.DelayedCall(0.35f, () =>
+        {
+            if (this != null && isActiveAndEnabled && IsAlive)
+                ForceBattleIdle();
+        }).SetUpdate(true).SetRecyclable(false)
+            .SetLink(gameObject, LinkBehaviour.KillOnDisable).SetId(this);
+        TrackHitFeedbackTween(_returnToIdleTween);
+    }
+
+    private void PlayDamageContact() => _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
     private void CompleteHitReaction(Vector3 origin)
     {
@@ -330,6 +352,7 @@ public class EnemyCharacter : CharacterBase
     protected override void OnDie()
     {
         KillVisualTweens();
+        BeginDefeatFeedback(_spriteRenderer);
         _isBattleMode = true;
         ResetTriggerIfExists(HashBattleIdle);
         ResetTriggerIfExists(HashBattleMove);
@@ -413,6 +436,7 @@ public class EnemyCharacter : CharacterBase
 
     private void KillVisualTweens()
     {
+        CancelHitFeedback();
         _returnToIdleTween?.Kill();
         _returnToIdleTween = null;
         if (_spriteRenderer != null) _spriteRenderer.DOKill();

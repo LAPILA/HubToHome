@@ -81,13 +81,17 @@ internal static class SkillItemContentRules
             if (item.Type != ItemType.Consumable)
                 continue;
 
-            if (item.ActionType == EffectActionType.None)
+            if (item.ActionType == EffectActionType.None && !item.HasElementalPayload)
             {
                 context.Add(
                     item,
                     "item.consumable.effect.missing",
                     "Consumable item has no effect.");
             }
+            if (item.HasElementalPayload && !item.ElementalPayload.IsValid)
+                context.Add(item, "item.elemental.invalid", "누적 효과의 종류·부여/소비량·소비 피해 수치를 확인하세요.");
+            if (item.HasElementalPayload && item.UsableInOverworld)
+                context.Add(item, "item.elemental.overworld.unsupported", "누적 효과는 전투 전용입니다. 필드 사용을 해제하세요.");
 
             if ((item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage || item.ActionType == EffectActionType.Revive)
                 && item.TargetStat != TargetStatType.HP

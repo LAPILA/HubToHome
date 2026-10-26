@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using System.Text;
 using UnityEngine;
 
@@ -55,12 +57,25 @@ public static class ElementalStatusPresentation
         {
             TryGetEntry(actor.Elements, i, out ElementalStatusKind kind, out int value, out bool frozen);
             builder.Append("<color=#").Append(frozen ? FrozenColorHex : GetColorHex(kind)).Append('>')
-                .Append(frozen ? "빙결" : GetLabel(kind)).Append(' ').Append(value).Append("</color>\n");
+                .Append(frozen ? "빙결" : GetLabel(kind)).Append(' ').Append(value).Append("</color>");
+            if (!frozen && kind != ElementalStatusKind.Chill)
+                builder.Append("\n<size=8>").Append(FormatPotency(actor.Elements, kind)).Append("</size>");
+            builder.Append('\n');
         }
         if (count == 0) builder.Append("누적 상태 없음\n");
         if (actor.ActiveStatusEffects.Count > 0) builder.Append("일반 효과 ").Append(actor.ActiveStatusEffects.Count);
         builder.Append("</size>");
         return builder.ToString();
+    }
+
+    private static string FormatPotency(ElementalStatusState state, ElementalStatusKind kind)
+    {
+        const string fallback = "강도 {0} · 상태 피해 ×{1}";
+        string format = LocalizationManager.Localize("battle.status.potency", fallback);
+        int strength = state.GetPotencyTier(kind) + 1;
+        string multiplier = state.GetPotencyMultiplier(kind).ToString("0.##", CultureInfo.InvariantCulture);
+        try { return string.Format(CultureInfo.InvariantCulture, format, strength, multiplier); }
+        catch (FormatException) { return string.Format(CultureInfo.InvariantCulture, fallback, strength, multiplier); }
     }
 
     public static string GetLabel(ElementalStatusKind kind) => kind switch

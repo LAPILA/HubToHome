@@ -206,6 +206,56 @@ public class MapTransitionServiceTests
         Assert.That(_globalData.SpawnPointId, Is.Empty);
     }
 
+    [Test]
+    public void RoomArrival_SuppressesOnlyActiveDestinationDoorsAtCommittedPosition()
+    {
+        GameObject origin = CreateComponent<SpawnPoint>("OriginSpawn").gameObject;
+        SetPrivateField(origin.GetComponent<SpawnPoint>(), "_spawnPointId", "from_left");
+        origin.SetActive(false);
+        Transform destinationRoot = CreateComponent<RoomInstance>("DestinationRoom").transform;
+        Vector3 arrival = new Vector3(10f, 0f, 0f);
+        SpawnPoint spawn = CreateComponent<SpawnPoint>("DestinationSpawn");
+        spawn.transform.SetParent(destinationRoot, false);
+        spawn.transform.position = arrival;
+        SetPrivateField(spawn, "_spawnPointId", "from_left");
+
+        DoorTransition destination = CreateComponent<DoorTransition>("DestinationDoor");
+        destination.transform.SetParent(destinationRoot, false);
+        destination.transform.position = arrival;
+        AreaConnectionMarker marker = CreateComponent<AreaConnectionMarker>("DestinationMarker");
+        marker.transform.SetParent(destinationRoot, false);
+        marker.transform.position = arrival;
+        DoorTransition foreign = CreateComponent<DoorTransition>("ForeignDoorAtSamePosition");
+        foreign.transform.position = arrival;
+        DoorTransition inactive = CreateComponent<DoorTransition>("InactiveDestinationDoor");
+        inactive.transform.SetParent(destinationRoot, false);
+        inactive.transform.position = arrival;
+        inactive.gameObject.SetActive(false);
+        DoorTransition distant = CreateComponent<DoorTransition>("DistantDestinationDoor");
+        distant.transform.SetParent(destinationRoot, false);
+        distant.transform.position = arrival + Vector3.right * 5f;
+
+        MethodInfo suppress = typeof(MapTransitionService).GetMethod(
+            "SuppressArrivalDoor", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(suppress, Is.Not.Null);
+        suppress.Invoke(_service, new object[] { arrival, destinationRoot });
+
+        Assert.That(WasDoorSuppressed(destination), Is.True);
+        FieldInfo markerUsed = typeof(AreaConnectionMarker).GetField(
+            "_usedWhileInside", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(markerUsed.GetValue(marker), Is.True);
+        Assert.That(WasDoorSuppressed(foreign), Is.False);
+        Assert.That(WasDoorSuppressed(inactive), Is.False);
+        Assert.That(WasDoorSuppressed(distant), Is.False);
+    }
+
+    private static bool WasDoorSuppressed(DoorTransition door)
+    {
+        FieldInfo used = typeof(DoorTransition).GetField(
+            "_usedWhileInside", BindingFlags.Instance | BindingFlags.NonPublic);
+        return (bool)used.GetValue(door);
+    }
+
     [UnityTest]
     public IEnumerator AreaMarkerSublocation_UsesTransitionRollbackOnFailure()
     {

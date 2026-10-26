@@ -40,11 +40,11 @@ public readonly struct PartyVitalsRestoreEvaluation
 public partial class GlobalDataManager : MonoBehaviour
 {
     public static GlobalDataManager Instance { get; private set; }
-    // 기본 주인공은 위젤(WIZZEL). 직접 입력하거나 저장한 이름은 그대로 유지합니다.
+    // 기본 주인공은 위젤(WIZZEL)입니다. 옛 저장의 임의 이름에는 표시 권한이 없습니다.
     public const string DefaultPlayerName = "위젤";
 
     #region [ Runtime Data ]
-    // 🚨 인트로에서 설정한 플레이어의 이름이 저장되는 곳!
+    // 기존 소비자와 런타임 교체를 위한 API입니다. 새 게임/불러오기는 기본 정체성으로 시작합니다.
     public string PlayerName { get; set; } = DefaultPlayerName;
 
     private readonly Dictionary<string, int> _eventFlags = new Dictionary<string, int>();
@@ -1109,7 +1109,7 @@ public partial class GlobalDataManager : MonoBehaviour
     {
         var data = new SaveData
         {
-            playerName       = PlayerName, // 🚨 세이브 데이터에 이름 추가!
+            playerName       = PlayerName, // 옛 저장 스키마와의 호환 필드입니다.
             currentScene     = NormalizeSceneName(SpawnScene),
             currentRoomId    = CurrentRoomId,
             spawnPointId     = SpawnPointId,
@@ -1149,7 +1149,8 @@ public partial class GlobalDataManager : MonoBehaviour
         PendingBattleScenario = null;
         EndOverworldEnemyEncounterContext();
 
-        PlayerName = data.playerName ?? string.Empty;
+        // playerName은 저장 스키마 호환용으로만 읽습니다. 옛 임의 이름을 표시명으로 복원하지 않습니다.
+        PlayerName = DefaultPlayerName;
         SpawnScene = NormalizeSceneName(data.currentScene);
         CurrentRoomId = data.currentRoomId ?? string.Empty;
         SpawnPointId = data.spawnPointId ?? string.Empty;

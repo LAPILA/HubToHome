@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 
-public class PlayerCharacter : CharacterBase
+public partial class PlayerCharacter : CharacterBase
 {
     #region [ Animation Hashes ]
     public static readonly int HashBattleIdle  = Animator.StringToHash("BattleIdle");
@@ -53,6 +53,8 @@ public class PlayerCharacter : CharacterBase
 
     private void OnDisable()
     {
+        ClearBattleSkillLocks();
+        CancelHitFeedback();
         EndRapidAttack();
         _hitReactionActive = false;
         if (_spriteRenderer != null)
@@ -111,10 +113,13 @@ public class PlayerCharacter : CharacterBase
     {
         if (_animator == null || !HasParameter(triggerHash)) return;
         if (!IsAlive && triggerHash != HashDie) return;
+        if (triggerHash != HashHurt) CancelHitFeedback();
         EndRapidAttack();
         if (_lastBattleTrigger != 0)
             _animator.ResetTrigger(_lastBattleTrigger);
         _animator.SetTrigger(triggerHash);
+        if (triggerHash == HashAttack)
+            CameraController.Instance?.RequestBattleImpactPreparation();
         _lastBattleTrigger = triggerHash;
         BattleAnimationVersion++;
     }
@@ -131,6 +136,7 @@ public class PlayerCharacter : CharacterBase
     // 다른 전투 애니메이션(피격/사망 포함)이 요청되면 즉시 원래 속도를 돌려줍니다.
     public void BeginRapidAttack(float cycleDuration)
     {
+        CancelHitFeedback();
         EndRapidAttack();
         if (_animator == null || !_animator.isActiveAndEnabled || !IsAlive
             || !_animator.HasState(0, HashAttackState)) return;
@@ -143,6 +149,7 @@ public class PlayerCharacter : CharacterBase
             / Mathf.Max(0.05f, cycleDuration), 0.1f, 30f);
         _animator.speed = _rapidAttackOwnedSpeed = _rapidAttackCycleSpeed;
         _rapidAttackActive = true;
+        CameraController.Instance?.RequestBattleImpactPreparation();
         BattleAnimationVersion++;
     }
 
@@ -512,22 +519,31 @@ public class PlayerCharacter : CharacterBase
         // 무적이면 이펙트/모션 완전 스킵
         if (IsInvincible) return; 
 
+        EndRapidAttack();
+
         bool hadHitReaction = _hitReactionActive;
+        float hitDirection = ResolveHitReactionDirection(-1f);
         Vector3 origin = hadHitReaction ? _hitReactionOrigin : transform.position;
         transform.DOKill(false);
         if (!hadHitReaction)
             origin = transform.position;
 
+        if (_spriteRenderer != null) _spriteRenderer.DOKill();
+        float hitPause = BeginHitFeedback(_spriteRenderer, _animator, 0.10f, PlayDamageImpact,
+            damage, PlayDamageContact);
+        // Begin replaces the old owned reaction, whose OnKill may restore its origin.
         _hitReactionOrigin = origin;
         _hitReactionActive = IsAlive;
         transform.position = origin;
 
         if (_spriteRenderer != null)
         {
-            _spriteRenderer.DOKill();
             Color restoreColor = BattleSpriteTint;
-            _spriteRenderer.DOColor(ResolveFlashColor(Color.white), 0.05f)
+            Tween flash = _spriteRenderer.DOColor(ResolveFlashColor(Color.white), 0.05f)
                 .SetUpdate(true)
+                .SetDelay(hitPause)
+                .SetRecyclable(false)
+                .SetLink(gameObject, LinkBehaviour.KillOnDisable)
                 .SetLoops(2, LoopType.Yoyo)
                 .OnComplete(() =>
                 {
@@ -539,23 +555,22 @@ public class PlayerCharacter : CharacterBase
                     if (_spriteRenderer != null)
                         _spriteRenderer.color = restoreColor;
                 });
+            TrackHitFeedbackTween(flash);
         }
-
-        _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
         if (IsAlive)
         {
-            PlayBattleAnim(HashHurt);
-
             float popHeight = Mathf.Max(0f, _hitPopHeight) * ResolveShakeScale();
-            Sequence pop = DOTween.Sequence().SetRecyclable(false).SetUpdate(true);
+            Sequence pop = DOTween.Sequence().SetRecyclable(false).SetUpdate(true)
+                .SetDelay(hitPause).SetLink(gameObject, LinkBehaviour.KillOnDisable);
             pop.SetTarget(transform);
-            pop.Append(transform.DOMoveX(origin.x - Mathf.Min(0.1875f, popHeight), Mathf.Max(0.01f, _hitPopUpDuration))
+            pop.Append(transform.DOMoveX(origin.x + hitDirection * Mathf.Min(0.1875f, popHeight),
+                    Mathf.Clamp(_hitPopUpDuration, 0.01f, 0.05f)).SetEase(Ease.OutCubic));
+            pop.Append(transform.DOMoveX(origin.x, Mathf.Clamp(_hitPopReturnDuration, 0.01f, 0.12f))
                 .SetEase(Ease.OutQuad));
-            pop.Append(transform.DOMoveX(origin.x, Mathf.Max(0.01f, _hitPopReturnDuration))
-                .SetEase(Ease.InQuad));
             pop.OnComplete(() => CompleteHitReaction(origin));
             pop.OnKill(() => CompleteHitReaction(origin));
+            TrackHitFeedbackTween(pop);
         }
         else
         {
@@ -563,6 +578,14 @@ public class PlayerCharacter : CharacterBase
             _hitReactionActive = false;
         }
     }
+
+    private void PlayDamageImpact()
+    {
+        if (this == null || !isActiveAndEnabled) return;
+        if (IsAlive) PlayBattleAnim(HashHurt);
+    }
+
+    private void PlayDamageContact() => _vfx?.Play(CharacterVFX.VFXAction.Hit_Effect);
 
     private void CompleteHitReaction(Vector3 origin)
     {
@@ -575,6 +598,7 @@ public class PlayerCharacter : CharacterBase
 
     protected override void OnDie()
     {
+        CancelHitFeedback();
         PlayBattleAnim(HashDie);
     }
 

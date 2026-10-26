@@ -1,0 +1,124 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: "Wizzel_CriticalBreakthrough"
+  m_EditorClassIdentifier: "Assembly-CSharp::SkillData"
+  Icon: {fileID: 0}
+  SkillName: "임계압 돌파"
+  NameLocalizationKey: "skill.showcase.wizzel.critical_breakthrough.name"
+  DescriptionLocalizationKey: "skill.showcase.wizzel.critical_breakthrough.description"
+  SkillID: "lab.showcase.wizzel.critical_breakthrough"
+  Description: "축적한 압력을 날카로운 일섬으로 쏟아낸다."
+  UsageProfile: 1
+  APCost: 32
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications: []
+  StatusProcCoefficient: 1
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 1
+    RequiredStep: 3
+    ConsumeStep: 3
+    DamageMultiplier: 1.5
+    GainOnCompletion: 0
+  ActionTimeline:
+  - rid: 202610250009001
+  - rid: 202610250009002
+  - rid: 202610250009004
+  - rid: 202610250009005
+  - rid: 202610250009008
+  - rid: 202610250009009
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610250009001
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 5
+        Duration: 0.18
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 202610250009002
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "자세와 공격 프레임"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AnimTriggerName: "BattleReady"
+        DelayAfter: 0.16
+    - rid: 202610250009004
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동·공격과 병행하는 아군 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        TimeLimit: 1
+        SuccessMultiplier: 1
+        FailMultiplier: 0.55
+        Nodes:
+          - PosX: 0.18
+            PosY: 0.28
+            TargetKey: "z"
+          - PosX: 0.77
+            PosY: 0.32
+            TargetKey: "x"
+          - PosX: 0.24
+            PosY: 0.69
+            TargetKey: "c"
+    - rid: 202610250009005
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "현재 캐릭터 크기의 실루엣"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Mode: 1
+        Duration: 0.16
+        Strength: 0.5
+        AccentColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610250009008
+      type: {class: Action_ScreenPassSlash, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "화면 좌우 관통 · 통과 순간 명중"
+        Note: "안전 영역 안에서 돌파하고 평범하게 복귀합니다. 피해는 이 블록이 직접 적용합니다."
+        PassCount: 1
+        MoveToEdgeDuration: 0.12
+        PrepareDuration: 0.08
+        DashDuration: 0.14
+        StopDuration: 0.05
+        ReturnDuration: 0.18
+        EdgeMarginPixels: 12
+        DamagePerPass: 2.7
+        Element: 0
+    - rid: 202610250009009
+      type: {class: Action_ScreenSplit, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "피해 뒤 사선 절단 · 색상 외곽선"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        ExpandDuration: 0.12
+        HoldDuration: 0.2
+        Duration: 0.2
+        AngleDegrees: -28
+        SeparationPixels: 15
+        TwistDegrees: 0.6
+        LineWidthPixels: 1.25
+        LineColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        OutlinePulseStrength: 0.45

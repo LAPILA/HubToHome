@@ -4,7 +4,7 @@ primaryMode: battle
 openingModule: turn_qte
 memoryKey: lab.bunny_slime.workshop
 participants:
-  party: [lab.wizzel.front, lab.wizzel.support, lab.wizzel.striker, lab.wizzel.reserve1, lab.wizzel.reserve2, lab.wizzel.reserve3]
+  party: [lab.wizzel.front]
   enemies: [lab.bunny_slime]
 dialogues:
   - id: lab.bunny_slime.opening_a

@@ -22,6 +22,12 @@ public interface IBattleSessionFlagStore
     bool ClearFlag(string flagId);
 }
 
+/// <summary>전투 수명의 표시 관찰용 통지. 저장/분기 판단은 기존 Scenario가 소유합니다.</summary>
+public interface IBattleSessionFlagEvents
+{
+    event Action<string> FlagChanged;
+}
+
 public interface IGameModuleEventSink
 {
     void PublishGameModuleCompleted(
@@ -449,8 +455,9 @@ public sealed class BattleScenarioRuntime
     }
 }
 
-public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleStateStore, IBattleSessionFlagStore
+public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleStateStore, IBattleSessionFlagStore, IBattleSessionFlagEvents
 {
+    public event Action<string> FlagChanged;
     private readonly List<BattleParticipantSnapshot> _participants = new List<BattleParticipantSnapshot>();
     private readonly List<BattleSessionFlagSnapshot> _flags = new List<BattleSessionFlagSnapshot>();
 
@@ -583,12 +590,15 @@ public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleS
             BattleSessionFlagSnapshot flag = _flags[i];
             if (flag != null && string.Equals(flag.FlagId, normalized, StringComparison.Ordinal))
             {
+                if (string.Equals(flag.Value, normalizedValue, StringComparison.Ordinal)) return true;
                 _flags[i] = new BattleSessionFlagSnapshot(normalized, normalizedValue);
+                FlagChanged?.Invoke(normalized);
                 return true;
             }
         }
 
         _flags.Add(new BattleSessionFlagSnapshot(normalized, normalizedValue));
+        FlagChanged?.Invoke(normalized);
         return true;
     }
 
@@ -606,6 +616,7 @@ public sealed class BattleSessionState : IBattleSessionStateReader, IGameModuleS
             if (flag != null && string.Equals(flag.FlagId, normalized, StringComparison.Ordinal))
             {
                 _flags.RemoveAt(i);
+                FlagChanged?.Invoke(normalized);
                 return true;
             }
         }

@@ -19,15 +19,10 @@ MonoBehaviour:
   MemoryKey: lab.bunny_slime.workshop
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    SourceHash: 8ac71ee52155dd8a107d737f5e79f27c8084c2db71bcda90272828b837d47477
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   PartyIds:
   - lab.wizzel.front
-  - lab.wizzel.support
-  - lab.wizzel.striker
-  - lab.wizzel.reserve1
-  - lab.wizzel.reserve2
-  - lab.wizzel.reserve3
   EnemyIds:
   - lab.bunny_slime
   Rules:
@@ -215,7 +210,7 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    SourceHash: 8ac71ee52155dd8a107d737f5e79f27c8084c2db71bcda90272828b837d47477
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
   - BlockId: "b5100000000000000000000000000001"
@@ -352,7 +347,7 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    SourceHash: 8ac71ee52155dd8a107d737f5e79f27c8084c2db71bcda90272828b837d47477
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
   - BlockId: "b5200000000000000000000000000001"
@@ -461,7 +456,7 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    SourceHash: 8ac71ee52155dd8a107d737f5e79f27c8084c2db71bcda90272828b837d47477
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
   - BlockId: "b5300000000000000000000000000001"
@@ -584,7 +579,7 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/bunny_slime_lab.scenario.yaml
-    SourceHash: a5e64b7e51d7273bb1f397a6aa35e26b5d9e9aff86724d63cc65966e3f7f1228
+    SourceHash: 8ac71ee52155dd8a107d737f5e79f27c8084c2db71bcda90272828b837d47477
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
   - BlockId: "b5400000000000000000000000000001"

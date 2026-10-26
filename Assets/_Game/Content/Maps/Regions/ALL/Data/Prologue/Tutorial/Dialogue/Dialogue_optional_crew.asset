@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_optional_crew
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: 72c7023ec4a565f468ba9cbc2dbef6b5, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_OPTIONAL_CREW_01
+    DefaultText: "\uC5F0\uB8CC\uACC4\uAC00 \uC774\uC0C1\uD558\uB124. \uBC29\uAE08
+      \uCC44\uC6E0\uB294\uB370 \uBC8C\uC368 \uC774\uB9CC\uD07C \uC904\uC5C8\uC5B4."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

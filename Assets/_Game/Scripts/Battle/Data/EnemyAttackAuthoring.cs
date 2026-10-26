@@ -330,7 +330,25 @@ public static class EnemyAttackAuthoringAnalyzer
                 pendingDefenseIndex = -1;
             }
 
+            if (block is Action_PresentationAccent && pendingDefenseIndex >= 0)
+                AddError(report, "skill.accent.defense_impact_gap", i,
+                    "강조 연출을 방어 대응과 피해 사이에 넣지 마세요. 명중 점멸 예약은 방어 대응 앞에, 실루엣은 준비 구간에 배치하세요.");
+
             ValidateBlock(block, i, report);
+            if (block is Action_ScreenPassSlash pass)
+            {
+                if (skill.UsageProfile != SkillUsageProfile.PlayerOnly)
+                    AddError(report, "skill.screen_pass.player_only", i, "화면 가로 관통은 아군 전용입니다.");
+                if (!pass.HasValidSettings)
+                    AddError(report, "skill.screen_pass.settings.invalid", i, "관통 횟수1~3, 이동/돌파/복귀 시간은 양수, 준비/정지/여백/피해는0 이상의 유효한 숫자여야 합니다.");
+            }
+            if (block is Action_EnemyAssaultCombo assault)
+            {
+                if (skill.UsageProfile != SkillUsageProfile.EnemyOnly)
+                    AddError(report, "skill.assault.enemy_only", i, "연속 돌파 · 공중 난무는 적 전용 스킬에서 사용하세요.");
+                if (!assault.HasValidSettings)
+                    AddError(report, "skill.assault.settings.invalid", i, "연속 공격 단계의 타수/가속 시간/공중 높이/피해 배율을 확인하세요.");
+            }
             if (block is Action_EnemyWindup windup)
             {
                 if (skill.UsageProfile != SkillUsageProfile.EnemyOnly)
@@ -380,6 +398,15 @@ public static class EnemyAttackAuthoringAnalyzer
         int blockIndex,
         EnemyAttackAuthoringReport report)
     {
+        if (block is Action_PresentationAccent accent)
+        {
+            if (accent.Mode == Action_PresentationAccent.AccentMode.CutIn)
+                AddError(report, "skill.accent.cutin.retired", blockIndex, "컷인은 제거된 연출입니다. 이 블록을 삭제하거나 실루엣/명중 점멸로 바꾸세요.");
+            else if (!accent.HasValidSettings)
+                AddError(report, "skill.accent.settings.invalid", blockIndex,
+                    "강조 시간은0.03~1.5초, 강도/음량은0~1이며 모든 값이 유한해야 합니다.");
+        }
+
         if (block is Action_Wait wait && wait.WaitTime < 0f)
         {
             AddError(report, "skill.timeline.wait.duration.invalid", blockIndex, "대기 시간은 0 이상이어야 합니다.");
@@ -457,18 +484,40 @@ public static class EnemyAttackAuthoringAnalyzer
         bool requiresTelegraphTime = defense.UseTelegraph
             && defense.PatternMode != EnemyDefensePatternMode.ImmediateReaction;
 
-        if (defense.Requirement == DefenseRequirement.Counterable)
+        if (float.IsNaN(defense.MeleeApproachHeight) || float.IsInfinity(defense.MeleeApproachHeight)
+            || defense.MeleeApproachHeight < 0f || defense.MeleeApproachHeight > 8f)
+            AddError(report, "skill.enemy_attack.pass.air_height.invalid", blockIndex, "공중 접근 높이는0~8의 유한한 값이어야 합니다.");
+        if (defense.AttackVfxPrefab != null && (float.IsNaN(defense.AttackVfxScale) || float.IsInfinity(defense.AttackVfxScale)
+            || defense.AttackVfxScale <= 0f || defense.AttackVfxScale > 8f
+            || float.IsNaN(defense.AttackVfxLifetime) || float.IsInfinity(defense.AttackVfxLifetime)
+            || defense.AttackVfxLifetime <= 0f || defense.AttackVfxLifetime > 10f))
+            AddError(report, "skill.enemy_attack.attack_vfx.settings.invalid", blockIndex, "공격 이펙트 배율은0초과~8, 수명은0초과~10초의 유한한 값이어야 합니다.");
+
+        if (defense.MeleePassExtent < EnemyMeleePassExtent.Local || defense.MeleePassExtent > EnemyMeleePassExtent.ScreenWide)
+            AddError(report, "skill.enemy_attack.pass.extent.invalid", blockIndex, "알 수 없는 근접 관통 범위입니다.");
+        if (defense.UseMeleePassThrough && defense.MeleePassExtent == EnemyMeleePassExtent.ScreenWide)
+        {
+            if (float.IsNaN(defense.ScreenPassDuration) || float.IsInfinity(defense.ScreenPassDuration) || defense.ScreenPassDuration <= 0f
+                || float.IsNaN(defense.ScreenEdgeApproachDuration) || float.IsInfinity(defense.ScreenEdgeApproachDuration) || defense.ScreenEdgeApproachDuration <= 0f
+                || float.IsNaN(defense.ScreenEdgeMarginPixels) || float.IsInfinity(defense.ScreenEdgeMarginPixels)
+                || defense.ScreenEdgeMarginPixels < 0f || defense.ScreenEdgeMarginPixels > 64f)
+                AddError(report, "skill.enemy_attack.pass.screen_settings.invalid", blockIndex, "화면 관통/출발 접근 시간은 양수, 여백은0~64픽셀의 유한한 숫자여야 합니다.");
+            if (DefenseJudgementPolicy.IsCounterRequirement(defense.Requirement))
+                AddWarning(report, "skill.enemy_attack.pass.counter_uses_center", blockIndex, "C 특수 반격 공격은 화면 관통 대신 기존 중앙 연출을 사용합니다.");
+        }
+
+        if (DefenseJudgementPolicy.IsCounterRequirement(defense.Requirement))
         {
             if (!defense.UseTelegraph || defense.PatternMode == EnemyDefensePatternMode.ImmediateReaction)
                 AddWarning(report, "skill.enemy_attack.counter.telegraph.recommended", blockIndex,
-                    "연계 반격 공격은 가드할 수 없습니다. 전조 사용과 전조 후 판정 모드를 권장합니다. 별도 블록이 전조를 담당한다면 실제 재생 시 확인하세요.");
+                    "특수 공격은 가드와 회피로 피할 수 없으며 C 반격만 가능합니다. 전조 사용을 권장합니다. 별도 블록이 전조를 담당한다면 실제 재생 시 확인하세요.");
             if (opensWindow && defense.TimeWindow > 0f && defense.TimeWindow < RecommendedCounterReactionWindow)
                 AddWarning(report, "skill.enemy_attack.counter.window.short", blockIndex,
-                    "연계 반격 판정창이 0.35초보다 짧습니다. 입력 안내를 읽고 회피/반격을 선택할 시간을 확인하세요.");
+                    "공격 대응 구간이 0.35초보다 짧습니다. C 반격 전용임을 읽을 수 있는 전조 길이를 확인하세요. 실제 C 성공 구간은 QTEManager 설정을 사용합니다.");
             if (float.IsNaN(defense.CounterDamageMultiplier) || float.IsInfinity(defense.CounterDamageMultiplier)
                 || defense.CounterDamageMultiplier <= 0f)
                 AddError(report, "skill.enemy_attack.counter.damage.invalid", blockIndex,
-                    "연계 반격 피해 배율은 유효한 0 초과 숫자여야 합니다. 전열 생존 아군 각각의 기본 공격에 적용됩니다.");
+                    "연계 반격 피해 배율은 유효한 0 초과 숫자여야 합니다. 공격받은 생존 아군의 기본 공격에 적용됩니다.");
         }
 
         if (opensWindow && defense.TimeWindow <= 0f)
@@ -600,8 +649,8 @@ public static class EnemyAttackTemplateFactory
         movement.DesignerLabel = "전투 중앙으로 이동";
         movement.EnemyHopHeight = 0.45f;
         var defense = (Action_DefenseWindow)blocks[1];
-        defense.DesignerLabel = "특수공격: X 회피 / C 연계 반격";
-        defense.Note = "적은 전투 중앙에서 궁극기를 준비합니다. Z 가드 불가. C 성공은 남은 스킬을 중단하고 공격받은 한 명이 접근 → 패링 → 공격 → 양쪽 원위치 복귀합니다. 전조 Animator Trigger는 적의 실제 Trigger에 맞추세요.";
+        defense.DesignerLabel = "특수공격: C 연계 반격 전용";
+        defense.Note = "적은 전투 중앙에서 궁극기를 준비합니다. Z 가드와 X 회피 불가. C 성공은 남은 스킬을 중단하고 공격받은 한 명이 반격합니다. 전조 Animator Trigger는 적의 실제 Trigger에 맞추세요.";
         defense.Requirement = DefenseRequirement.Counterable;
         defense.CounterDamageMultiplier = 1.5f;
         defense.TelegraphDuration = 0.6f;

@@ -1,0 +1,8 @@
+id: prologue.tutorial.forward
+title: "전방으로 이어지는 압박"
+primaryMode: overworld
+sequences:
+  prologue.tutorial.forward:
+    - dialogue.wait:
+        blockId: dd5624ec3fc445f2b91659c76295858c
+        id: forward

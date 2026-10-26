@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_tutorial_attack
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 0}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_TUTORIAL_ATTACK
+    DefaultText: "\uBA3C\uC800 \uACF5\uACA9\uC73C\uB85C \uAE38\uC744 \uC5F4\uC5B4
+      \uBCF4\uC138\uC694. \uBA54\uB274\uC640 \uB300\uC0C1\uC744 \uC120\uD0DD\uD558\uBA74
+      \uD589\uB3D9\uD569\uB2C8\uB2E4."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

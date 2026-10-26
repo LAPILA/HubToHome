@@ -48,6 +48,7 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
         }
 
         using var damageBatch = _battleManager.DamageBatches.Begin();
+        using var parryRewards = actor is EnemyCharacter ? _battleManager.BeginParryRewardAction() : null;
         var skillContext = new SkillContext
         {
             DamageBatchId = _battleManager.DamageBatches.CurrentId,
@@ -145,6 +146,7 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
             if (!skillContext.CanContinueExecution) yield break;
             // 방어 결과 모션도 피해/상태 소비자 뒤에 끝낸 뒤 포즈를 정리합니다.
             // 소비자가 없는 시네리오 호출에서는 여기서 안전망으로 소비합니다.
+            skillContext.DeferDefenseReactionCompletion = false;
             yield return skillContext.WaitForPendingDefenseReaction();
             // 방어창의 정리 시간은 피해/상태 소비자 뒤에 적용됩니다. 소비자가 없는
             // 시네리오 호출에서도 남은 정리 시간을 버리지 않습니다.
@@ -154,6 +156,7 @@ public sealed class BattleSkillTimelineRunner : ISkillTimelineRunner
         }
         finally
         {
+            skillContext.DeferDefenseReactionCompletion = false;
             if (skillContext.ActiveSkillQte != null && !skillContext.ActiveSkillQte.IsDone)
                 QTEManager.Instance?.Cancel(skillContext.ActiveSkillQte);
             skillContext.CancelPendingDefenseReaction();

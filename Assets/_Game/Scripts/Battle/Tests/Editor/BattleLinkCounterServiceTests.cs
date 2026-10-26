@@ -30,6 +30,7 @@ public sealed class BattleLinkCounterServiceTests
     [TearDown]
     public void TearDown()
     {
+        GameInput.SetConfigModalActive(false);
         for (int i = _routines.Count - 1; i >= 0; i--)
             (_routines[i] as IDisposable)?.Dispose();
         _routines.Clear();
@@ -111,7 +112,7 @@ public sealed class BattleLinkCounterServiceTests
     }
 
     [Test]
-    public void Execute_ParryRecoilsOnlyDefenderThenLungesWithoutEarlyDamage()
+    public void Execute_ParryRecoilsThenWaitsOneSecondBeforeLungingWithoutEarlyDamage()
     {
         PlayerCharacter defender = CreatePlayer("Recoil Defender", 20);
         Vector3 enemyPosition = _enemy.transform.position;
@@ -123,12 +124,89 @@ public sealed class BattleLinkCounterServiceTests
         Assert.That(_enemy.transform.position, Is.EqualTo(enemyPosition));
         Assert.That(_host.DamageSources, Is.Empty);
         Assert.That(routine.MoveNext(), Is.True);
+        Tween focusHold = GetOnlyTween(defender.transform);
+        focusHold.ForceInit();
+        Assert.That(focusHold.IsActive(), Is.True,
+            "실제 DOTween Startup을 통과해야 대기 뒤 접근/공격/돌파가 이어집니다.");
+        Assert.That(focusHold.Duration(), Is.EqualTo(1f).Within(0.001f));
+        focusHold.Goto(0.9f, false);
+        Assert.That(routine.MoveNext(), Is.True);
+        Assert.That(defender.transform.position.x, Is.EqualTo(recoilX));
+        Assert.That(_host.DamageSources, Is.Empty);
+        focusHold.Complete(false);
+        Assert.That(routine.MoveNext(), Is.True);
         GetOnlyTween(defender.transform).Complete(false);
         Assert.That(defender.transform.position.x, Is.GreaterThan(recoilX));
         Assert.That(_enemy.transform.position, Is.EqualTo(enemyPosition));
         Assert.That(_host.DamageSources, Is.Empty);
         Drain(routine);
         Assert.That(_host.DamageSources, Is.EqualTo(new[] { defender }));
+        Assert.That(defender.transform.position, Is.EqualTo(StartPosition));
+    }
+
+    [Test]
+    public void Execute_FocusHoldPausesAndCanBeCancelledWithoutDamage()
+    {
+        PlayerCharacter defender = CreatePlayer("Held Defender", 20);
+        var service = new BattleLinkCounterService(_host);
+        IEnumerator routine = service.Execute(_enemy, defender);
+        _routines.Add(routine);
+        Assert.That(routine.MoveNext(), Is.True);
+        GetOnlyTween(defender.transform).Complete(false);
+        Assert.That(routine.MoveNext(), Is.True);
+        Tween hold = GetOnlyTween(defender.transform);
+        GameInput.SetConfigModalActive(true);
+        Assert.That(routine.MoveNext(), Is.True);
+        Assert.That(hold.IsPlaying(), Is.False);
+        Assert.That(_host.DamageSources, Is.Empty);
+        GameInput.SetConfigModalActive(false);
+        Assert.That(routine.MoveNext(), Is.True);
+        Assert.That(hold.IsPlaying(), Is.True);
+        service.CancelActive();
+        Assert.That(hold.IsActive(), Is.False);
+        Assert.That(routine.MoveNext(), Is.False);
+        Assert.That(defender.transform.position, Is.EqualTo(StartPosition));
+        Assert.That(_host.ForegroundActors, Is.Empty);
+        Assert.That(_host.DamageSources, Is.Empty);
+    }
+
+    [Test]
+    public void Execute_OneImpactPassesBehindEnemyBeforePairedReturn()
+    {
+        PlayerCharacter defender = CreatePlayer("Piercing Defender", 20);
+        IEnumerator routine = Start(defender);
+        for (int phase = 0; phase < 4; phase++)
+        {
+            Assert.That(routine.MoveNext(), Is.True);
+            Assert.That(_host.DamageSources, Is.Empty);
+            GetOnlyTween(defender.transform).Complete(false);
+        }
+        Assert.That(routine.MoveNext(), Is.True, "명중 뒤 돌파 이동이 진행됩니다.");
+        Assert.That(_host.DamageSources, Is.EqualTo(new[] { defender }));
+        GetOnlyTween(defender.transform).Complete(false);
+        Assert.That(defender.transform.position.x, Is.GreaterThan(_enemy.transform.position.x));
+        Assert.That(defender.transform.position.y, Is.EqualTo(StartPosition.y));
+        Drain(routine);
+        Assert.That(_host.DamageSources, Has.Count.EqualTo(1));
+        Assert.That(defender.transform.position, Is.EqualTo(StartPosition));
+    }
+
+    [Test]
+    public void Execute_LethalImpactStillFinishesPassWithoutPlayingEnemyReturnMotion()
+    {
+        PlayerCharacter defender = CreatePlayer("Finishing Defender", 2000);
+        IEnumerator routine = Start(defender);
+        for (int phase = 0; phase < 4; phase++)
+        {
+            Assert.That(routine.MoveNext(), Is.True);
+            GetOnlyTween(defender.transform).Complete(false);
+        }
+        Assert.That(routine.MoveNext(), Is.True);
+        Assert.That(_enemy.IsAlive, Is.False);
+        GetOnlyTween(defender.transform).Complete(false);
+        Assert.That(defender.transform.position.x, Is.GreaterThan(_enemy.transform.position.x));
+        Drain(routine);
+        Assert.That(_host.DamageSources, Has.Count.EqualTo(1));
         Assert.That(defender.transform.position, Is.EqualTo(StartPosition));
     }
 

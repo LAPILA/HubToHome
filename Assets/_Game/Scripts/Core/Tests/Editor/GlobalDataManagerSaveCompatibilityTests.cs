@@ -123,6 +123,27 @@ public class GlobalDataManagerSaveCompatibilityTests
         Assert.That(_global.SpawnScene, Is.EqualTo(originalScene));
     }
 
+    [TestCase("옛 플레이어 이름")]
+    [TestCase("WIZZEL")]
+    [TestCase("")]
+    [TestCase(null)]
+    public void LegacySavedNameCannotOverrideDefaultIdentityOrMutateSource(string legacyName)
+    {
+        var data = new SaveData { playerName = legacyName };
+        data.PartyData.Add(new CharacterSaveData
+        {
+            CharacterDataID = "legacy.companion",
+            CharacterID = "동료의 이름"
+        });
+
+        _global.FromSaveData(data);
+
+        Assert.That(_global.PlayerName, Is.EqualTo(GlobalDataManager.DefaultPlayerName));
+        Assert.That(_global.ToSaveData().playerName, Is.EqualTo(GlobalDataManager.DefaultPlayerName));
+        Assert.That(data.playerName, Is.EqualTo(legacyName), "옛 저장 형식을 파괴하거나 원본을 수정하지 않습니다.");
+        Assert.That(_global.Party[0].CharacterID, Is.EqualTo("동료의 이름"), "다른 동료의 이름은 일괄 치환하지 않습니다.");
+    }
+
     private static void SetInstance(GlobalDataManager instance)
     {
         PropertyInfo property = typeof(GlobalDataManager).GetProperty(

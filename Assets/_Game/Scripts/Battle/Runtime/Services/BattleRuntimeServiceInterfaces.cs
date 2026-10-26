@@ -102,6 +102,17 @@ public interface IBattleTweenCinematicService
         ActionExecutionHandle handle);
 }
 
+public interface IBattleCombatLogHost
+{
+    void BeginCombatLogAction(CharacterBase actor, SkillData skill = null, ItemData item = null);
+}
+
+/// <summary>조건부 적 AI가 읽는 선택적 전투 수명 상태입니다. 기존 호스트는 구현하지 않아도 됩니다.</summary>
+public interface IBattleEnemyPatternHost
+{
+    IBattleSessionStateReader ScenarioSessionState { get; }
+}
+
 public interface IBattleTurnQteHost
 {
     IReadOnlyList<PlayerCharacter> PlayerParty { get; }

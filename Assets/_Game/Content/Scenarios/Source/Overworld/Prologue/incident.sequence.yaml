@@ -1,0 +1,23 @@
+id: prologue.tutorial.incident
+title: "열차의 정적과 이상 징후"
+primaryMode: overworld
+sequences:
+  prologue.tutorial.incident:
+    - screen.fade:
+        blockId: 407392b96e79479da0fe394c39fc879e
+        designerLabel: "조명이 꺼지는 순간"
+        mode: out
+        color: black
+        duration: 0.16
+    - flow.wait:
+        blockId: d166c696772e47d8abeebd9729e45d1a
+        duration: 0.2
+    - screen.fade:
+        blockId: 05243f912f6c48b1b2ee470d184872de
+        designerLabel: "차체를 다시 확인"
+        mode: in
+        color: black
+        duration: 0.3
+    - dialogue.wait:
+        blockId: fb54d98c27574d07b1b271c25b96aa15
+        id: incident

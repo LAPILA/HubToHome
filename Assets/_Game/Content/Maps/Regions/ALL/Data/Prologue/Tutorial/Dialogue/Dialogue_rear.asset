@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_rear
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_REAR_01
+    DefaultText: "\uC5F0\uB8CC\uAC00\u2026 \uC800 \uC548\uC73C\uB85C \uB4E4\uC5B4\uAC00\uACE0
+      \uC788\uC5B4."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_REAR_02
+    DefaultText: "\uAC00\uAE4C\uC774 \uAC00\uC9C0 \uB9D0\uC790. \uC774 \uBB38\uB9CC
+      \uC9C0\uB098\uAC00\uBA74\u2014"
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

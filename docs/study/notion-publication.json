@@ -76,6 +76,128 @@
     },
     "warning": "수정된 최종 ZIP은 로컬 보관용이다. 재가져오기는 중복 생성이며 기존 페이지를 갱신하지 않는다."
   },
+  "overworldPartyFollow": {
+    "date": "2026-10-23",
+    "finalCheckedDate": "2026-10-23",
+    "status": "published",
+    "method": "user_native_zip_import_and_authenticated_browser_readback",
+    "scope": "신규 동료 동행 문서3건만 추가. 기존 2026-10-11/12 게시 자료와 색인 수치는 갱신하지 않음.",
+    "learning": {
+      "root": "https://app.notion.com/p/3f6641f6190180bb8567ff9caf83e5a9",
+      "importWrapper": "https://app.notion.com/p/402641f619018055ad25ec161ec2358c",
+      "guide": {
+        "url": "https://app.notion.com/p/402641f619018190a26cc07ff4fe5062",
+        "localSource": "../overworld-party-follow-guide.md"
+      },
+      "codeStudy": {
+        "url": "https://app.notion.com/p/402641f6190181479788ff8cec06f267",
+        "localSource": "deep/10-overworld-party-follow.md"
+      }
+    },
+    "operations": {
+      "root": "https://app.notion.com/p/3fb641f61901801fab63dfba6386720f",
+      "importWrapper": "https://app.notion.com/p/402641f619018060855eef88ae9022e6",
+      "statusPage": "https://app.notion.com/p/402641f6190181498dbad44c8da0df56",
+      "localSource": "../overworld-party-follow-production-update.md"
+    },
+    "verification": {
+      "rootWrapperAndArticleHierarchyObserved": true,
+      "articleBodiesScrolledToEnd": 3,
+      "headingsTablesChecklistsAndSourcePathsObserved": true,
+      "actualCSharpExcerptsObserved": 4,
+      "yamlExamplesObserved": 3,
+      "partyCommandsInGuideTableObserved": 4,
+      "operationsStatusAndVerificationTablesObserved": true,
+      "unexecutedUnityQaItemsObserved": 8,
+      "externalLinksHrefVerified": [
+        "https://app.notion.com/p/3f6641f6190180bb8567ff9caf83e5a9",
+        "https://app.notion.com/p/3fb641f61901801fab63dfba6386720f",
+        "https://docs.google.com/document/d/1kY_qJeiVUwpHJNuCOCk_ac3LsDe85bAiR0iBLx3Py2E"
+      ],
+      "existingScheduleAndRolesPreserved": true,
+      "allRemoteBlocksComparedByteForByte": false,
+      "existingPagesDeletedOrReplaced": false,
+      "remoteDocumentsEditedOrRenamed": false,
+      "settingsOrAccountChanged": false,
+      "sharingChanged": false,
+      "gameCodeModified": false,
+      "unityRun": false,
+      "engineNUnitRun": false,
+      "deviceRun": false,
+      "commitOrPush": false
+    },
+    "apiAccess": {
+      "status": "unresolved_404",
+      "blocksThisPublication": false,
+      "reloginOrReconnectRequested": false,
+      "furtherUserActionRequiredForThisPublication": false
+    },
+    "visualDesign": {
+      "date": "2026-10-23",
+      "status": "applied_and_browser_verified",
+      "approvedByUser": true,
+      "method": "authenticated_browser_native_notion_block_menus_and_gallery",
+      "note": "게시 이후 승인된 디자인 적용의 후속 이력이다. 기존 verification 필드는 최초 게시 확인 당시 기록으로 보존한다.",
+      "pages": [
+        {
+          "url": "https://app.notion.com/p/402641f619018190a26cc07ff4fe5062",
+          "title": "동료 동행 · 제작 매뉴얼",
+          "cover": "Notion 기본 갤러리 · 아쿠아 낡은 페인트",
+          "icon": { "name": "book open", "color": "green" },
+          "bodyH1TextColor": "green",
+          "introQuoteBackground": "green",
+          "tableOfContentsHeadingLinks": 13,
+          "screenshot": "C:/Users/taehw/.codex/visualizations/2026/07/23/019f8ebc-d983-7903-94f2-0c51e8526cba/notion-follower-style/guide.jpg"
+        },
+        {
+          "url": "https://app.notion.com/p/402641f6190181479788ff8cec06f267",
+          "title": "동료 동행 · 코드 학습",
+          "cover": "Notion 기본 갤러리 · 그라데이션5 보라",
+          "icon": { "name": "angle brackets solidus", "color": "purple" },
+          "bodyH1TextColor": "purple",
+          "introQuoteBackground": "purple",
+          "tableOfContentsHeadingLinks": 12,
+          "screenshot": "C:/Users/taehw/.codex/visualizations/2026/07/23/019f8ebc-d983-7903-94f2-0c51e8526cba/notion-follower-style/code-learning.jpg"
+        },
+        {
+          "url": "https://app.notion.com/p/402641f6190181498dbad44c8da0df56",
+          "title": "동료 동행 · 구현·검증 현황",
+          "cover": "Notion 기본 갤러리 · 무광 에이징 코퍼",
+          "icon": { "name": "clipboard", "color": "yellow" },
+          "bodyH1TextColor": "orange",
+          "introQuoteBackground": "yellow",
+          "tableOfContentsHeadingLinks": 8,
+          "screenshot": "C:/Users/taehw/.codex/visualizations/2026/07/23/019f8ebc-d983-7903-94f2-0c51e8526cba/notion-follower-style/operations.jpg"
+        }
+      ],
+      "verification": {
+        "savedStateObservedAfterReloadAndParentReopen": true,
+        "titlesCoversIconsAndColorsObserved": true,
+        "nativeAutomaticTableOfContentsAdded": 3,
+        "headingLinkCountsIncludeOriginalBodyH1": true,
+        "originalBodyH1DateAndOldTitlePreserved": true,
+        "existingPageIdsHierarchyBodyMeaningCodeTablesAndLinksPreserved": true,
+        "parentWrapperTitlesPreserved": true,
+        "operationsUnexecutedQaItemsRemainUnchecked": 8,
+        "independentReadabilityReviewPassed": true,
+        "allRemoteBlocksComparedByteForByte": false,
+        "fullWidthStatus": "not_verified",
+        "screenshotsSaved": 3
+      },
+      "titleRenameMethod": "부모 가져오기 묶음의 자식 페이지 우클릭 → 이름 바꾸기 → 일반 input fill+Enter",
+      "apiStatus": "unresolved_404",
+      "reimportPerformed": false,
+      "deletionPerformed": false,
+      "settingsAccountOrSharingChanged": false,
+      "gameCodeModified": false,
+      "unityRun": false,
+      "engineNUnitRun": false,
+      "deviceRun": false,
+      "commitOrPush": false,
+      "limitation": "원문 보존을 위해 본문 H1의 옛 제목·날짜와 자동목차 내 해당 항목을 유지했다. 중복 제목과 긴 목차는 독립 검토에서 보존 조건상 허용 가능한 것으로 확인했다."
+    },
+    "warning": "사용자가 ZIP2개를 수동 가져온 뒤 브라우저에서 실제3본문과 계층·서식·링크를 확인했다. 전체 원격 블록의 바이트 동일성 검사는 아니다. 가져오기 묶음의 기본 긴 제목은 유지했다. ZIP 재가져오기는 기존 페이지 갱신이 아니라 중복 생성이다."
+  },
   "featurePages": {
     "core": "https://app.notion.com/p/3f6641f6190181f29a0ae3ae930480ff",
     "battle": "https://app.notion.com/p/3f6641f61901815498c4d1df2336087a",

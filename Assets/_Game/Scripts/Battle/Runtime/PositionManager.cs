@@ -33,14 +33,23 @@ public class PositionManager : MonoBehaviour
 
     [Title("C 반격 연출")]
     [SerializeField, Min(0f), LabelText("패링 후퇴 거리")]
-    private float _counterRecoilDistance = 0.85f;
+    private float _counterRecoilDistance = 1.7f;
     [SerializeField, Min(0.01f), LabelText("패링 후퇴 시간")]
     private float _counterRecoilDuration = 0.13f;
     [SerializeField, Min(0.01f), LabelText("반격 재접근 시간")]
     private float _counterLungeDuration = 0.16f;
+    [SerializeField, Min(0f), LabelText("플레이어 포커스 대기(초)"), Tooltip("후퇴 후 플레이어를 비춘 채 기다리는 시간입니다. 메뉴 일시정지를 따릅니다.")]
+    private float _counterFocusHoldDuration = 1f;
+    [SerializeField, Min(0f), LabelText("명중 후 적 뒤 돌파 거리")]
+    private float _counterPassThroughDistance = 1.2f;
+    [SerializeField, Min(0.01f), LabelText("명중 후 돌파 시간(초)")]
+    private float _counterPassThroughDuration = 0.12f;
     public float CounterRecoilDistance => Mathf.Max(0f, _counterRecoilDistance);
     public float CounterRecoilDuration => Mathf.Max(0.01f, _counterRecoilDuration);
     public float CounterLungeDuration => Mathf.Max(0.01f, _counterLungeDuration);
+    public float CounterFocusHoldDuration => Mathf.Max(0f, _counterFocusHoldDuration);
+    public float CounterPassThroughDistance => Mathf.Max(0f, _counterPassThroughDistance);
+    public float CounterPassThroughDuration => Mathf.Max(0.01f, _counterPassThroughDuration);
 
     [Tooltip("적이 근접 공격(MeleeClose)을 할 때 아군 코앞으로 달려오는 목표 위치")]
     [ListDrawerSettings(ShowIndexLabels = true)]

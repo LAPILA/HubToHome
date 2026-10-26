@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_test_machine
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_TEST_MACHINE_01
+    DefaultText: "\uC88B\uC544. \uC774\uC81C \uC228\uC18C\uB9AC\uAC00 \uC77C\uC815\uD574\uC84C\uB124."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 72c7023ec4a565f468ba9cbc2dbef6b5, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_TEST_MACHINE_02
+    DefaultText: "\uC218\uACE0\uD588\uC5B4. \uACF5\uC6A9\uCE78\uC5D0 \uB530\uB73B\uD55C
+      \uAC8C \uB0A8\uC544 \uC788\uC744 \uAC70\uC57C."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

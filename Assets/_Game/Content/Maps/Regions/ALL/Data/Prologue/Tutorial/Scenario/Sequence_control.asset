@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: Sequence_control
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: prologue.tutorial.control
+  DisplayNameKo:
+  Contract:
+    DescriptionKo:
+    UsageKo:
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/Prologue/control.sequence.yaml
+    SourceHash: 7151151080e9424477acff92efc9c7be2388c0bb5365a0779965d9c8900729f2
+    ImportedAtIso8601: 2026-10-24T04:53:21.1070133Z
+  Actions:
+  - BlockId: 04c8198efced41f99ccf427291f9d66a7
+    DesignerLabel:
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"control"}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: c6450dd011ba4f819442ab19c5c0bed1c
+    DesignerLabel: "\uAC10\uC18D \uD655\uC778"
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.35}'
+    Note:
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

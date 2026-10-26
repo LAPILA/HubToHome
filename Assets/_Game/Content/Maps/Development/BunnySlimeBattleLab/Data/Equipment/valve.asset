@@ -25,8 +25,7 @@ MonoBehaviour:
   ItemName: "\uC608\uBE44 \uC555\uB825 \uBC38\uBE0C"
   ItemID: lab.equipment.valve
   Slot: 1
-  Description: "\uC2E4\uC2B5\uC6A9 \uC218\uCE58 \uC7A5\uBE44. \uACF5\uACA9 +0 / \uBC29\uC5B4
-    +0 / \uCD5C\uB300 AP +20"
+  Description: "최대 AP +20. 아이템 사용에 성공하면 AP를 2 회복한다. 광역 아이템도 한 번만 발동한다."
   AllowedCharacterIDs: []
   StatBonuses:
     MaxHP: 0
@@ -43,3 +42,8 @@ MonoBehaviour:
     OutgoingDamageMultiplier: 0
   PassiveEffectID: 
   EquipReactionDialogueID: 
+  TriggeredEffects:
+  - Trigger: 5
+    Effect: 1
+    Calculation: 0
+    Amount: 2

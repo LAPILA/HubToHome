@@ -31,10 +31,11 @@ MonoBehaviour:
   StatusProfile: {fileID: 11400000, guid: ad0210e1000000000000000000000101, type: 2}
   CharacterID: lab.wizzel.front
   DisplayName: "위젤"
+  DisplayNameLocalizationKey: HTH_PROLOGUE_NAME_WIZZEL
   DisplayNameMode: 0
   BaseStats:
     MaxHP: 220
-    MaxAP: 100
+    MaxAP: 20
     ATK: 28
     DEF: 5
     SPD: 13
@@ -55,11 +56,14 @@ MonoBehaviour:
   DefensePerLevel: 1
   SpeedPerLevel: 0
   DefaultSkills:
-  - {fileID: 11400000, guid: ad0210e1000000000000000000000001, type: 2}
-  - {fileID: 11400000, guid: ad0210e1000000000000000000000002, type: 2}
-  - {fileID: 11400000, guid: ad0210e1000000000000000000000003, type: 2}
-  - {fileID: 11400000, guid: ad0210e1000000000000000000000004, type: 2}
-  - {fileID: 11400000, guid: ad0210e1000000000000000000000005, type: 2}
-  - {fileID: 11400000, guid: ad0210e1000000000000000000000006, type: 2}
-  - {fileID: 11400000, guid: 7e5ad4cba3f04ca6a256a99938abc283, type: 2}
+  - {fileID: 11400000, guid: 451fa70eebcb46939abbe07f115d915e, type: 2}
+  - {fileID: 11400000, guid: 2b66277457c74baca47529f9df47ad0e, type: 2}
+  - {fileID: 11400000, guid: b4b0c04b33964957bb6282baf7106543, type: 2}
+  - {fileID: 11400000, guid: da97eca4d8bb41a6b57b7f60e6fadae3, type: 2}
+  - {fileID: 11400000, guid: 5431379c83cc4a2da331fd8dedaa7f54, type: 2}
+  - {fileID: 11400000, guid: baea60226e5446ffb9a048e69c72932c, type: 2}
+  - {fileID: 11400000, guid: 2001b30c4ace41a586119fd2e42e8c08, type: 2}
+  - {fileID: 11400000, guid: 7c6bd732ee7c4dbfb200c527dd0f4646, type: 2}
+  - {fileID: 11400000, guid: 494e010c89624b05b33d73ddae3e1daf, type: 2}
+  - {fileID: 11400000, guid: 670c682aeb014bb3aca1e86112e11a42, type: 2}
   PowerUnlocks: []

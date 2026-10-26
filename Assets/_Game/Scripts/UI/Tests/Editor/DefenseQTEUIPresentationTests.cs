@@ -92,8 +92,9 @@ public class DefenseQTEUIPresentationTests
         _ui.ShowQTE(CreateActiveRequest(DefenseRequirement.Counterable));
 
         Assert.That(_keyLabel.text, Does.Contain("<color=#929292>Z 가드</color>"));
+        Assert.That(_keyLabel.text, Does.Contain("<color=#929292>X 회피</color>"));
         Assert.That(_keyLabel.text, Does.Contain("<color=#FFE879>C 반격</color>"));
-        Assert.That(_keyLabel.text, Does.Contain("가드 불가 · 연계 반격 기회"));
+        Assert.That(_keyLabel.text, Does.Contain("가드·회피 불가 · C 반격 전용"));
         _ui.UpdateActiveDefense(true, DefenseInput.None);
         Assert.That(_keyLabel.text, Does.Not.Contain("가드 중"));
     }
@@ -215,13 +216,51 @@ public class DefenseQTEUIPresentationTests
     }
 
     [Test]
-    public void SkillResultAppearsNextToPromptRatherThanAuthoredFarOffset()
+    public void SkillSuccess_FlashesExistingPromptWithoutResultWordsAndDisappears()
     {
         _resultLabel.rectTransform.anchoredPosition = new Vector2(340f, 260f);
         _ui.ShowSkillQTE(new Vector2(.2f, .75f), "Z", .5f);
         _ui.ShowSkillResult(true);
-        Assert.That(_resultLabel.rectTransform.anchoredPosition, Is.EqualTo(new Vector2(0f, -38f)));
-        Assert.That(_resultLabel.fontSize, Is.EqualTo(18f));
+        Assert.That(_resultLabel.text, Is.Empty);
+        Assert.That(_resultLabel.alpha, Is.Zero);
+        Assert.That(_keyLabel.text, Is.EqualTo("Z"));
+        Assert.That(_keyLabel.color, Is.EqualTo(Color.white));
+        Assert.That(_resultLabel.rectTransform.anchoredPosition, Is.EqualTo(new Vector2(340f, 260f)));
+        Sequence sequence = GetPrivateField<Sequence>(_ui, "_resultSequence");
+        Assert.That(sequence.Duration(), Is.EqualTo(.1f).Within(.0001f));
+        sequence.Goto(sequence.Duration(), true);
+        Assert.That(_root.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void SkillFailure_TintsPromptRedAndCompletesWithoutResultWords()
+    {
+        _ui.ShowSkillQTE(Vector2.one * .5f, "C", .5f);
+        _ui.ShowSkillResult(false);
+        Assert.That(_resultLabel.text, Is.Empty);
+        Assert.That(_keyLabel.text, Is.EqualTo("C"));
+        Assert.That(_keyLabel.color, Is.EqualTo(new Color(1f, .18f, .18f, 1f)));
+        Sequence sequence = GetPrivateField<Sequence>(_ui, "_resultSequence");
+        Assert.That(sequence.Duration(), Is.EqualTo(.16f).Within(.0001f));
+        sequence.Goto(sequence.Duration(), true);
+        Assert.That(_root.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void NewSkillPrompt_CancelsOldFeedbackAndRejectsStaleHideCallback()
+    {
+        _ui.ShowSkillQTE(Vector2.one * .5f, "Z", .5f);
+        _ui.ShowSkillResult(false);
+        Sequence previous = GetPrivateField<Sequence>(_ui, "_resultSequence");
+        uint previousVersion = GetPrivateField<uint>(_ui, "_skillFeedbackVersion");
+        _ui.ShowSkillQTE(new Vector2(.7f, .65f), "X", .5f);
+        Assert.That(previous.IsActive(), Is.False);
+        typeof(DefenseQTEUI).GetMethod("CompleteSkillFeedback", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(_ui, new object[] { previousVersion });
+        Assert.That(_root.activeSelf, Is.True);
+        Assert.That(_root.GetComponent<CanvasGroup>().alpha, Is.EqualTo(1f));
+        Assert.That(_keyLabel.text, Is.EqualTo("X"));
+        Assert.That(_keyLabel.color, Is.EqualTo(Color.white));
     }
 
     private static DefenseQteResult CreateResult(

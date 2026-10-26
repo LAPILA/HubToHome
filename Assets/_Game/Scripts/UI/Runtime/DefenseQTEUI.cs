@@ -52,6 +52,17 @@ public class DefenseQTEUI : UIPanel
     private string _guardReadyText;
     private string _guardActiveText;
     private string _guardEndedText;
+    private Color _keyBaselineColor;
+    private bool _showingSkillPrompt;
+    private bool _skillFeedbackPlaying;
+    private uint _skillFeedbackVersion;
+    private RectTransform _skillFeedbackRoot;
+    private Vector2 _skillFeedbackRootPosition;
+    public const float SkillSuccessFeedbackDuration = 0.10f;
+    public const float SkillFailureFeedbackDuration = 0.16f;
+
+    public static float SkillFeedbackDuration(bool isHit)
+        => isHit ? SkillSuccessFeedbackDuration : SkillFailureFeedbackDuration;
     #endregion
 
     protected override void Awake()
@@ -133,7 +144,7 @@ public class DefenseQTEUI : UIPanel
         _activeDefenseKeys = (_activeGuardAllowed ? guard : DisabledKey(guard))
             + "   " + (_activeDodgeAllowed ? dodge : DisabledKey(dodge))
             + "   " + (_activeCounterAllowed ? "<color=#FFE879>" + counter + "</color>" : DisabledKey(counter + " 불가"));
-        _activeDefenseHint = _activeCounterAllowed ? "가드 불가 · 연계 반격 기회"
+        _activeDefenseHint = _activeCounterAllowed ? "가드·회피 불가 · C 반격 전용"
             : _activeGuardAllowed ? "누르고 있으면 가드 · 정확히 누르면 저스트 가드"
             : "가드 불가 · 회피로 대응하세요";
 
@@ -262,6 +273,7 @@ public class DefenseQTEUI : UIPanel
         CapturePresentationBaseline();
         ResetState();
         bool isWarmUp = string.IsNullOrEmpty(targetKey) && duration <= 0;
+        _showingSkillPrompt = !isWarmUp;
         ShowImmediate();
         if (isWarmUp)
         {
@@ -318,28 +330,51 @@ public class DefenseQTEUI : UIPanel
 
     public void ShowSkillResult(bool isHit)
     {
-        ResetState();
-        ShowImmediate();
-        if (_resultLabel == null) { Hide(); return; }
-
-        ApplyActiveLabelLayout(_resultLabel, -38f, 28f, 18f);
-        _resultLabel.text = isHit ? "HIT!" : "MISS";
-        _resultLabel.color = isHit ? new Color(0.2f, 1f, 0.4f) : new Color(1f, 0.3f, 0.3f);
-        _resultLabel.alpha = 0f;
-        _resultLabel.transform.localScale = Vector3.one * 0.5f;
-
+        if (!_showingSkillPrompt || !isActiveAndEnabled) return;
+        DOTween.Kill(this, false);
+        if (_skillFeedbackRoot != null) _skillFeedbackRoot.anchoredPosition = _skillFeedbackRootPosition;
+        _barTween = null;
+        _resultSequence = null;
+        uint version = ++_skillFeedbackVersion;
+        _skillFeedbackPlaying = true;
+        if (_resultLabel != null) { _resultLabel.text = ""; _resultLabel.alpha = 0f; }
+        Color tint = isHit ? Color.white : new Color(1f, 0.18f, 0.18f, 1f);
+        if (_targetKeyLabel != null) _targetKeyLabel.color = tint;
+        if (_barFill != null) _barFill.color = tint;
+        _canvasGroup.alpha = 1f;
+        _canvasGroup.interactable = false;
+        _canvasGroup.blocksRaycasts = false;
+        _skillFeedbackRoot = _qteRoot;
+        if (_skillFeedbackRoot != null) _skillFeedbackRootPosition = _skillFeedbackRoot.anchoredPosition;
+        float duration = SkillFeedbackDuration(isHit);
         _resultSequence = DOTween.Sequence()
             .SetId(this)
             .SetUpdate(true)
             .SetRecyclable(false)
-            .Append(_resultLabel.DOFade(1f, 0.08f))
-            .Join(_resultLabel.transform.DOScale(Vector3.one, 0.12f).SetEase(Ease.OutBack))
-            .AppendCallback(() => _resultLabel.transform
-                .DOPunchScale(Vector3.one * 0.3f, 0.2f, 8, 0.5f)
-                .SetId(this)
-                .SetUpdate(true))
-            .AppendInterval(0.35f)
-            .Append(_resultLabel.DOFade(0f, 0.12f));
+            .SetLink(gameObject, LinkBehaviour.KillOnDisable);
+        if (isHit)
+            _resultSequence.AppendInterval(0.02f).Append(_canvasGroup.DOFade(0f, duration - 0.02f));
+        else
+        {
+            _resultSequence.Append(_canvasGroup.DOFade(0f, duration));
+            if (_skillFeedbackRoot != null)
+                _resultSequence.Join(_skillFeedbackRoot.DOShakeAnchorPos(duration, 4f, 14, 0f, true, true));
+        }
+        _resultSequence.OnComplete(() => CompleteSkillFeedback(version));
+    }
+
+    private void CompleteSkillFeedback(uint version)
+    {
+        if (version != _skillFeedbackVersion || !_skillFeedbackPlaying) return;
+        _resultSequence = null;
+        _skillFeedbackPlaying = false;
+        HideImmediate();
+    }
+
+    /// <summary>정상 스킬 종료만 마지막 결과의 짧은 잔여 연출을 허용합니다. 취소는 기존 Hide를 사용합니다.</summary>
+    public void FinishSkillFeedback()
+    {
+        if (!_skillFeedbackPlaying) HideImmediate();
     }
     #endregion
 
@@ -368,9 +403,14 @@ public class DefenseQTEUI : UIPanel
 
     private void ResetState()
     {
+        ++_skillFeedbackVersion;
         DOTween.Kill(this, false);
         _barTween = null;
         _resultSequence = null;
+        _showingSkillPrompt = false;
+        _skillFeedbackPlaying = false;
+        if (_skillFeedbackRoot != null) _skillFeedbackRoot.anchoredPosition = _skillFeedbackRootPosition;
+        _skillFeedbackRoot = null;
         _showingTimedGuard = false;
         _showingActiveDefense = false;
         _activeGuardAllowed = false;
@@ -388,6 +428,7 @@ public class DefenseQTEUI : UIPanel
         if (_targetKeyLabel != null)
         {
             _targetKeyLabel.text = "";
+            if (_baselineKeyLabel == _targetKeyLabel) _targetKeyLabel.color = _keyBaselineColor;
             if (_baselineKeyLabel == _targetKeyLabel)
             {
                 _targetKeyLabel.fontSize = _keyBaselineFontSize;
@@ -421,6 +462,7 @@ public class DefenseQTEUI : UIPanel
         {
             _baselineKeyLabel = _targetKeyLabel;
             _keyBaselineFontSize = _targetKeyLabel.fontSize;
+            _keyBaselineColor = _targetKeyLabel.color;
             _keyBaselineAutoSizing = _targetKeyLabel.enableAutoSizing;
             _keyLayoutBaseline = new LabelLayoutBaseline(_targetKeyLabel);
         }
@@ -527,6 +569,7 @@ public class DefenseQTEUI : UIPanel
             DefenseRequirement.JumpOnly => jump,
             DefenseRequirement.ParryOrDodge => parry + " / " + dodge,
             DefenseRequirement.DodgeOrJump => dodge + " / " + jump,
+            DefenseRequirement.CounterOnly => jump,
             _ => parry + " / " + dodge + " / " + jump
         };
     }

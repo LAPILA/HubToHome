@@ -10,8 +10,6 @@ public class DialogueManager : MonoBehaviour
     [Header("UI 패널 참조")]
     [SerializeField] private DialogueUI _overworldPanel;
     [SerializeField] private DialogueUI _cinematicPanel;
-    // 이전 프리팹의 직렬화 참조와 취소 정리만 보존합니다. 이름 입력은 실행하지 않습니다.
-    [SerializeField, HideInInspector] private NameInputUI _nameInputUI;
 
     private DialogueUI _activeUI;
     private DialogueData _currentDialogue;
@@ -26,6 +24,8 @@ public class DialogueManager : MonoBehaviour
     private int _playbackStartFrame = -1;
     private List<ChoiceData> _promptChoices;
     private Action<int> _promptChoiceCallback;
+    private string _promptLocalizationKey;
+    private string _promptFallbackText;
     private bool _skipRequested;
     private int _skipGeneration;
     private const int MaxSkippedNodesPerFrame = 64;
@@ -101,6 +101,8 @@ public class DialogueManager : MonoBehaviour
         _encounterContext = null;
         _activeUI = _overworldPanel;
         _promptChoiceCallback = onSelected;
+        _promptLocalizationKey = null;
+        _promptFallbackText = prompt;
         _skipRequested = false;
         _playbackGeneration++;
         _playbackStartFrame = Time.frameCount;
@@ -110,7 +112,52 @@ public class DialogueManager : MonoBehaviour
         _activeUI.RebindCanvasCameraImmediate();
         _activeUI.OpenPanel();
         _activeUI.DisplayPrompt(prompt);
-        _activeUI.ShowChoices(_promptChoices, OnPromptChoiceSelected);
+        _activeUI.ShowChoices(_promptChoices, OnPromptChoiceSelected, allowShortcuts: false);
+        return true;
+    }
+
+    /// <summary>확인창도 본문·선택지의 번역 키를 보존해 언어 변경 시 즉시 갱신합니다.</summary>
+    public bool TryStartLocalizedChoicePrompt(
+        string promptKey,
+        string promptFallback,
+        IReadOnlyList<string> choiceKeys,
+        IReadOnlyList<string> choiceFallbacks,
+        Action<int> onSelected,
+        Action onCancelled = null)
+    {
+        if (choiceKeys == null || choiceFallbacks == null || choiceKeys.Count != choiceFallbacks.Count)
+            return false;
+        var labels = new string[choiceKeys.Count];
+        for (int i = 0; i < labels.Length; i++)
+            labels[i] = LocalizationManager.Localize(choiceKeys[i], choiceFallbacks[i]);
+        if (!TryStartChoicePrompt(LocalizationManager.Localize(promptKey, promptFallback),
+            labels, onSelected, onCancelled) || !_isPlaying || _promptChoices == null)
+            return false;
+        _promptLocalizationKey = promptKey;
+        _promptFallbackText = promptFallback;
+        for (int i = 0; i < _promptChoices.Count; i++)
+        {
+            _promptChoices[i].LocalizationKey = choiceKeys[i];
+            _promptChoices[i].ChoiceText = choiceFallbacks[i];
+        }
+        return true;
+    }
+
+    // 표시만 갱신합니다. PlayNode를 재호출하면 대본 이벤트/보상이 중복 실행됩니다.
+    public bool RefreshLocalizedPresentation(DialogueUI panel)
+    {
+        if (!_isPlaying || panel == null || panel != _activeUI || !panel.isActiveAndEnabled)
+            return false;
+        if (_currentDialogue != null && _currentDialogue.Nodes != null
+            && _currentNodeIndex >= 0 && _currentNodeIndex < _currentDialogue.Nodes.Count)
+        {
+            DialogueNode node = _currentDialogue.Nodes[_currentNodeIndex];
+            if (node == null) return false;
+            panel.RefreshLocalizedBody(ResolveNodeText(node));
+            return true;
+        }
+        if (_promptChoices == null) return false;
+        panel.RefreshLocalizedBody(LocalizationManager.Localize(_promptLocalizationKey, _promptFallbackText));
         return true;
     }
 
@@ -191,7 +238,8 @@ public class DialogueManager : MonoBehaviour
         AcquireDialogueState();
         LogDialogueConsole($"StartDialogue started data={GetDialogueName(data)} style={data.Style} nodes={data.Nodes.Count}");
 
-        _activeUI.ConfigureTypingStyle(data.Style, _stateBeforeDialogue == GameState.Cutscene);
+        _activeUI.ConfigureTypingStyle(data.Style, _stateBeforeDialogue == GameState.Cutscene,
+            data.RevealTextImmediately);
         _activeUI.RebindCanvasCameraImmediate();
         _activeUI.OpenPanel();
         PlayNode(_currentDialogue.Nodes[_currentNodeIndex]);
@@ -317,21 +365,25 @@ public class DialogueManager : MonoBehaviour
 
         if (!InvokeNodeEvent(node.EventTriggerID, _playbackGeneration, _currentDialogue, _currentNodeIndex)) return;
 
-        string rawText = (LocalizationManager.Instance != null) ? LocalizationManager.Instance.GetText(node.LocalizationKey, node.DefaultText) : node.DefaultText;
-        string playerName = (GlobalDataManager.Instance != null) ? GlobalDataManager.Instance.PlayerName : GlobalDataManager.DefaultPlayerName;
-        
-        string finalText = rawText;
-        try { finalText = string.Format(rawText, playerName); } catch { finalText = rawText; }
-
         // 선택지가 다른 대본으로 분기해도 같은 패널에 이전 속도를 남기지 않습니다.
-        _activeUI.ConfigureTypingStyle(_currentDialogue.Style, _stateBeforeDialogue == GameState.Cutscene);
-        _activeUI.DisplayNode(node.Speaker, node.Emotion, finalText);
+        _activeUI.ConfigureTypingStyle(_currentDialogue.Style, _stateBeforeDialogue == GameState.Cutscene,
+            _currentDialogue.RevealTextImmediately);
+        _activeUI.DisplayNode(node.Speaker, node.Emotion, ResolveNodeText(node));
 
         if (node.IsChoiceNode && node.Choices != null && node.Choices.Count > 0)
         {
             LogDialogueConsole($"ShowChoices data={GetDialogueName(_currentDialogue)} index={_currentNodeIndex} count={node.Choices.Count}");
             _activeUI.ShowChoices(node.Choices, OnChoiceSelected);
         }
+    }
+
+    private static string ResolveNodeText(DialogueNode node)
+    {
+        string text = LocalizationManager.Localize(node.LocalizationKey, node.DefaultText) ?? string.Empty;
+        string playerName = GlobalDataManager.Instance != null
+            ? GlobalDataManager.Instance.PlayerName : GlobalDataManager.DefaultPlayerName;
+        try { return string.Format(text, playerName); }
+        catch (FormatException) { return text; }
     }
 
     private void OnChoiceSelected(ChoiceData choice)
@@ -491,8 +543,9 @@ public class DialogueManager : MonoBehaviour
         _currentNodeIndex = 0;
         _promptChoices = null;
         _promptChoiceCallback = null;
+        _promptLocalizationKey = null;
+        _promptFallbackText = null;
 
-        _nameInputUI?.CancelImmediate();
         if (_activeUI != null)
         {
             if (completed)

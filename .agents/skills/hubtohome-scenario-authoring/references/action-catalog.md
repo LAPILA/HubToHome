@@ -1,5 +1,7 @@
 # Action Catalog
 
+Combat feedback foundation (2026-10-26): existing `battle.skill.timeline` opens the same per-enemy-action AP reward scope as normal/legacy skills; nesting shares its budget. UI HP markers do not create phase rules. C6/7 both require C, authored cue duration is distinct from the shorter success window, and attack-QTE automatic preference never applies to defense. No catalog ID/grammar additions. See AIAssets/yjlim/feedback/2026-10-26-combat-feedback-foundation.md.
+
 ## Skill-local resource contract (2026-09-27)
 
 `battle.skill.timeline` uses the same `SkillContext.BeginSkillResources` / `CompleteSkillResources` lifecycle as normal turns. Resource conditions, configured consumption, damage bonus and completion gain belong to `SkillData.ResourceEffect`, not new Scenario Source parameters or global actions. Insufficient resource keeps base skill behavior; cancellation grants no completion resource and does not refund a committed cast. Killing the final target counts as normal completion. Preserve QTE-independent `EffectiveDamageMultiplier` for every skill damage path.
@@ -93,7 +95,7 @@ actions:
 - Production category sources live under `Assets/_Game/Content/Scenarios/ActionLibrary/Source/`; the generated official catalog is `Assets/_Game/Content/Scenarios/ActionLibrary/Generated/ActionLibrary.asset`.
 - Rebuild through `ProductionActionLibraryBuildCommand.Rebuild()`. It parses every category, merges them, validates adapter coverage, and then replaces the generated asset. This rebuild is not exposed as a discoverable Unity menu.
 - `BattleScenarioActionRegistryFactory.CreateRegistry()` and `SceneActionSequenceContextFactory.CreateRegistry()` expose production registrations without scene state. `ActionAdapterContractScanner` must report adapter-without-catalog and catalog-without-adapter separately; `flow.parallel` is explicitly Director-owned.
-- The initial production library contains 28 contracts: 27 runtime adapters plus Director-owned `flow.parallel`. Any new registered Action must add its category source and consistency test in the same change.
+- The production library contains 33 contracts (2026-10-23): 32 runtime adapters plus Director-owned `flow.parallel`, including the four `overworld.party.*` entries. Any new registered Action must add its category source and consistency test in the same change.
 - `flow.parallel.parameters.policy` is a segmented enum with `all`, `any`, and `race`. Keep the default `all` for old sources. The Action Library description and generated runtime asset must be rebuilt whenever these completion semantics change.
 - `flow.parallel.parameters.previewWinner` is an optional direct-child Block ID used only by Preparation Run for `any` and `race`. Runtime combat does not use it. Without this explicit preview branch, selected-block Preparation must stop instead of guessing.
 - `preparation: apply_final_state` and `preparation: execute_isolated` are executable safety contracts, not editor labels. Add or update the matching `IActionPreparationAdapter` in the same change. `skip_presentation`, `require_input`, and `unsupported` must keep their documented fail/skip behavior.
@@ -114,6 +116,53 @@ Start with these categories:
 - `flow`: wait, parallel, branch, cancel, marker.
 - `save`: set encounter memory, set flag, record outcome.
 - `cinematic`: scene-local Cinematic Stage preparation, reusable shot playback, and camera handoff.
+- `overworld_party`: visual-only follower mode, visibility, individual explicit movement, and covered-screen gathering. This category never changes saved party membership.
+
+## Overworld Party Entries (2026-10-23)
+
+The production source is `Assets/_Game/Content/Scenarios/ActionLibrary/Source/overworld_party.actions.yaml`. All four entries require `overworld_party_runner`, allow only `overworld`, declare `preview: live_only` and `preparation: unsupported`. Safe Preview never copies the production follower service. Preparation stops at the exact unsupported Block ID, including a selected Live Test whose prefix contains these actions. Full Live Test from the start may execute against the registered scene context.
+
+| Action | Required parameters | Optional parameters | Completion |
+| --- | --- | --- | --- |
+| `overworld.party.mode` | `slot` integer0..5, `mode` follow/hold/detach | none | Controller accepts the complete selection; no partial all-selection mutation |
+| `overworld.party.visibility` | `slot` integer0..5, `visible` bool | none | Changes presentation only; movement mode stays unchanged |
+| `overworld.party.move` | `slot` integer1..5, finite `x`, `y`, nonnegative finite `duration` | `path` intermediate world-XY JSON objects (max128), `rejoin` bool (false) | Waits for owned move; defaults to Hold. `rejoin: true` returns to Follow only if the final real position is on retained trail |
+| `overworld.party.gather` | none | none | Resets real trail and all followers at the leader; next actual movement unfolds the line |
+
+Slot1 is the first follower, never the player. Slot0 means all currently displayed roster members and is forbidden for individual movement. Empty/missing selections fail clearly. Same-character DB IDs do not identify the selected runtime save object; current follower order does. All state is runtime presentation, not recruitment/dismissal or SaveData.
+
+`OverworldPartyActionContract` validates missing, unknown, wrongly typed and non-finite values consistently in `ScenarioCatalogValidator` and runtime adapters. Bindings are accepted during authoring and must be resolved before runtime. Path points are intermediate points; the final `x`/`y` is appended and each follower keeps its Z. Direct or waypoint movement is authored presentation, not pathfinding; the author owns a collision-free route.
+
+```yaml
+- overworld.party.mode:
+    slot: 1
+    mode: hold
+- overworld.party.move:
+    slot: 1
+    x: 4
+    y: 2
+    duration: 1.2
+    path: [{"x": 2, "y": 1}, {"x": 4, "y": 1}]
+    rejoin: false
+- overworld.party.visibility:
+    slot: 0
+    visible: false
+- screen.fade:
+    mode: out
+    duration: 0.25
+- overworld.party.gather:
+- screen.fade:
+    mode: in
+    duration: 0.25
+```
+
+Gather is only for explicit covered-screen/arrival relocation. Normal Follow does not teleport over a missing trail or repair expired history automatically. A field arrival resets modes/visibility to Follow/visible; persistent story absence must use real party/progress policy, not a hidden follower flag. This action layer does not acquire camera ownership; continue to use the existing `CameraController` presentation contracts.
+
+`OverworldPartyActionRunner` caches one same-scene registered controller per context; missing or ambiguous leaders fail closed. It does not call Ensure/spawn or search in Update. Adapters receive only the injected narrow service. A newer move, map reset, battle entry, disabled/destroyed leader or roster replacement ends the old command. A canceled/superseded command fails its waiting Action unless the parent handle was itself canceled. Iterator `finally` and cancellation subscriptions cancel only the owned command, never global `DOKill` or another follower/newer request.
+
+A `SceneActionSequenceTrigger` may run a field-only sequence without a Cinematic Stage or initial shot. `SceneActionSequencePlayer.PrepareForSceneReveal` treats both absent as nothing to prepare; a configured initial shot with a missing Stage still fails. Keep the initial-shot field empty for ordinary party/dialogue actions, and configure stable Stage/Shot IDs only for actual offstage cinematics.
+
+When Unity refresh/reimport is explicitly prohibited, do not call `ProductionActionLibraryBuildCommand.Rebuild()` (it saves/imports assets). A permitted offline mechanical synchronization must use the actual `ActionLibrarySourceParser`/writer/`ResolvedActionLibrary` semantic hash and compare every generated entry field with the resolved model. Preserve existing entries/meta/Unity identity. The 2026-10-23 managed check is under ignored `Library/CodexChecks/PartyFollow/Sequence`; production consistency tests compare source paths, hash, count and full entry JSON. This is not engine serialization/Play validation.
 
 ## Cinematic Stage Entries
 
@@ -659,23 +708,34 @@ runtimeBinding: "`BattleSessionState`의 battle-scoped flag store를 갱신합�
 
 ## Legacy Mapping
 
+- Current override (2026-10-26): all enemy attacks behind `battle.skill.timeline` and normal turns flow without preparation holds, local slow/freeze or contact stops. General melee preserves TimeWindow while moving from clock0; only assault-combo runtime copies use movement-derived impact timing. C/AoE retain central placement and map positive clip playback to the authored impact, not an idle hold. Source grammar, enum values, damage/AP/guard, late input grace, saved state and global `flow.wait` are unchanged. Read the current policy below instead of restoring older opt-in settings.
+
+- `Action_EnemyAssaultCombo` is an EnemyOnly local block behind legacy skill execution, not global Source grammar. Authored stage lists select ground/aerial/mixed, hit count and start/end times. Reuse DefenseWindow→Damage exactly once per hit and the same impact clock; aerial entry lands at Contact and optional guard-through changes motion only. Old height/guard-through defaults stay0/false. Counterable6/CounterOnly7 both accept only C; enum numbers are preserved. The Lab's existing phase flag gates optional AI FollowupPatterns after one completed action, scheduling the next enemy action once without consuming the normal skill index. RecoveryTurns applies only in normal enemy-turn completion, including counter interruption, never on cancellation or as a saved stun. AttackVfxPrefab starts before the counter can stop later blocks; its pooled lease owns cancel/scene/scale/lifetime. No ActionLibrary rebuild or new Scenario Event is needed.
+
 Existing `SkillActionBlock` classes are not the global grammar, but they are useful migration references:
 
-- `Action_Wait` -> `flow.wait`
-- `Action_ScreenSplit` remains a local presentation-only SkillActionBlock, not a global Action ID. It samples the live game-camera color through the lab Renderer2D feature; Overlay UI and damage remain separate. It explicitly opts into `CanRunWithoutLivingTargets` so the immediately preceding final-target kill does not omit the effect. All other blocks default to early finish without living targets; cancellation or a dead caster still stops every block. Turn-QTE execution callbacks also match the owned action scope to invalidate presentation after Abort/Exit even if Unity stops a coroutine without disposal.
-- `Action_EnemyWindup` stays a local EnemyOnly SkillActionBlock; it is not a registered global Action ID. CameraController uses the current battle action token for attacker closeup, then the shared ready pose and a completed zoom-out before the next defense block. Tune ratio/focus/hold/release in SkillData, not scenario parameter JSON or lab mode-index branches.
+- Enemy ScreenWide is a local `Action_DefenseWindow` geometry option, not an enable/disable toggle for flow. Approach while the shared clock runs, show the cue in the actual success window, and consume damage once. Guard/parry also preserve traversal; C remains central. Keep the ordinary copied TimeWindow and player/scene camera ownership.
+- ZEV Lab phase2 uses existing focus/dialogue/pose/return/reset followed by `battle.flag.set {flag: lab.zev.chain_phase, value: "true"}`. `BattleFlagPresentationGate/Scope` observes runtime flag changes and passes an optional profile to corner UI/SFX; no new action grammar or mid-battle save state. `battle.flag.clear` or string false hides it. Keep the flag last so UI starts after camera restoration. Main battle dialogue background leases black; field style restores. Actor focus may frame only the non-default tracked registered actor without changing fixed pixel Lens.
+
+- `Action_Wait` -> `flow.wait` for story/global sequences. Legacy enemy combat timelines skip local Wait/Ready/Windup holds; `ActionDirector` story waits and player timelines are not skipped.
+- `Action_ScreenSplit` remains a local presentation-only SkillActionBlock, not a global Action ID. It samples the live game-camera color through the lab Renderer2D feature; Overlay UI and damage remain separate. It explicitly opts into `CanRunWithoutLivingTargets` so the immediately preceding final-target kill does not omit the effect. Blocks without this opt-in default to early finish without living targets; cancellation or a dead caster still stops every block. Turn-QTE execution callbacks also match the owned action scope to invalidate presentation after Abort/Exit even if Unity stops a coroutine without disposal.
+- `Action_EnemyWindup` is now a compatibility no-op with zero execution time. Keep serialized fields/type identity but do not author new paused closeup/Ready/zoom-out blocks. Explicit story camera actions are separate and remain available.
+- `Action_PresentationAccent` is local, not a Scenario Action ID. CutIn0 is retired/no-op. Silhouette mirrors the real SpriteRenderer; in an enemy combat timeline it runs concurrently through SkillContext, while pure story/player presentation retains its authored duration. Flash arms the next valid direct hit once without waiting. Bounded presentation ownership, scene/cancel cleanup and no-enlargement/extra-camera/RT/global-time rules remain.
+- `Action_ScreenPassSlash` is a PlayerOnly local skill block behind `battle.skill.timeline`, not global Scenario grammar. It snapshots the HUD-safe viewport, owns a temporary framing scope and moves between safe left/right endpoints with DOTween. Apply existing skill damage at the actual target-X crossing fraction once per pass, not at a hardcoded midpoint or after movement. Reuse QTE/resource/status/damage-batch handling and restore only its own home/flip/trail/framing on completion/cancellation. Current examples are SteamThrust/ReverseFlow/CriticalBreakthrough Lab copies. No duplicate Damage block or new ActionLibrary generation.
 - `Action_Move` -> `actor.move`
 - `Action_PlayAnim` -> `actor.animation`
 - `Action_Damage` -> `battle.participant.damage` for scenario-level participant damage; legacy skill timelines may still keep local `Action_Damage` blocks behind `battle.skill.timeline`.
 - `Action_QTE` -> QTE module-specific adapter action
-- `Action_DefenseWindow` -> QTE/defense module adapter action. Realtime enemy defense uses held Z guard (damage multiplier 0.5), fresh Z Just Guard (zero damage/AP reward), X dodge (no reward), and C Link Counter (Counterable only). Actual-time minimum windows after difficulty scaling are Z 0.24s / X 0.34s / C 0.28s; larger authored values remain and short attacks cap them. First valid in-window input commits; early/invalid input leaves a later valid attempt available. Preheld Z remains ordinary guard. Battle-only late grace is 0.06s: hold contact until accepted input/timeout without applying then rolling back damage. Accepted early input still resolves at normal impact. Counterable rejects Z, permits X/C and C interrupts the remaining skill for the injected BattleLinkCounterService (attacked living defender only, approach → Parry → ready → Attack → paired return, default defender ATK × 1.5, no AP/turn/status tick). Preserve enum numbers and legacy jump→dodge mapping. Use passive StartBattleDefenseWindow, never enemy QTE panels/events. Ready precedes the shared clock; AttackAnimationLeadTime schedules the authored hit (0 ≤ lead ≤ TimeWindow; zero preserves legacy clip start at impact). BunnySlime authored single/AoE lead is 0.85s, combo 0.65s. BattleImpactTiming adds local 0.10s at 0.5 speed, usually extending actual impact by 0.05s, without global Time.timeScale. Normal and scenario timelines must call SkillContext.ExecuteBlock so adjacent defense→projectile/sequence-melee pairs share the flight/per-target impact clock. Use runtime copies, not asset mutation. Root cleanup cancels ActiveDefenseWindow and restores owned motion/cues/reactions. Consume DefenseQteResult instead of recomputing grades. No new Scenario Source grammar, grid module, or player-skill QTE change is introduced. Paired return belongs to the counter service; fallback enemy return and turn/phase cleanup remain in surrounding battle flow.
+- `Action_DefenseWindow` -> defense module adapter action. Held Z guard uses multiplier0.35, fresh Just Guard prevents damage and restores AP, X dodges without reward, Counterable6/CounterOnly7 accept only C. Keep the existing visible cue duration separate from success windows Z0.12/X0.22/C0.18s, shared first-attempt/rearm policy and late grace0.03s, but keep moving during grace rather than pinning the contact. All real attacks start their motion/animation without TelegraphDuration/Ready/DefenseOpenDelay/DelayAfter holds. Use passive StartBattleDefenseWindow with a continuous clock, never enemy QTE panels/events. Moving melee retains its authored animation lead; stationary C/AoE starts the animation at clock0 and maps the clip hit frame to impact, while VFX waits until impact minus the original clip lead. No local attack slowdown or impact Animator freeze is added. NextTurnWindow remains warning-only/zero current hit; only its visual wait is removed. Normal and scenario roots execute blocks through SkillContext.ExecuteBlock; deferral discovery skips retired Wait/Ready/Windup and nonblocking accents so a projectile/sequence opens one defense window. Do not skip real movement in this discovery. Lower DeferDefenseReactionCompletion before the final reaction drain in every owner, cancel owned movement/inputs on interruption, and retain paired C return in the counter service. No new Source grammar, action IDs, save state or player-skill QTE rule.
 - Module-local phase booleans -> `battle.flag.set` / `battle.flag.clear` when the fact must survive Game Module switches.
 
-`ImpactCuePrefab` overrides QTEManager's SeamlessBattleHost default Telegraph; `ImpactCuePivotName` defaults to Top. Faint preparation opens at X's wider window, then the pop/ping opens at GetActiveCueWindow (normal Z, dodge-only X, Counterable min(X,C)). Never narrow X to Z's ping. Counterable is cyan/rotated. QTEManager owns pooling and return on impact/cancel, suppresses cues already missed by a severe hitch, and pauses the cue/clock together. ImpactCueLeadTime remains ignored compatibility metadata. BattleTelegraphCue only handles scale/alpha/follow and optional one-shot SFX; warm-up/OnEnable never plays sound. AudioClip is unassigned until the human selects one. Ordinary battle camera is static with Pixel Perfect settings preserved; explicit scenario camera actions remain available.
+`ImpactCuePrefab` overrides the host's default Telegraph; `ImpactCuePivotName` defaults to Center. The visible cue/ping opens only in the actual matching success window while movement or attack animation is already progressing. Never narrow X to Z's ping. Counter cues use the counter style. QTEManager owns pooling/return, suppresses severely missed cues and pauses cue/motion/input clocks together for menus. ImpactCueLeadTime is compatibility metadata. Warm-up/OnEnable must not play the cue sound. Keep Pixel Perfect/HUD/camera ownership unchanged.
 
 Do not rename or move existing serialized action classes during initial migration unless a migration plan exists.
 
 Enemy `battle.skill.timeline` also stages the selected player 1 unit forward before resolving approach/projectile positions. `SkillContext` owns `BattleDefenderPresentationScope`; normal roots must await `ReturnDefender`, and cancellation must call `CancelPendingDefenseReaction`. Sequential melee stages each actual target; AoE uses the representative only. C ultimate templates/samples use legacy `Action_Move.Center` before telegraph, optional enemy-only `EnemyHopHeight`, and pass the original defender position into paired recovery. These are legacy SkillData fields/runtime behavior, not additions to Scenario Source grammar or `actor.move` parameters. Existing assets default to ground movement.
+
+The 2026-10-23 opt-in/guard-stop policy is historical and superseded by global flow. Old serialized enable/hold fields remain only for compatibility; do not restore paused telegraph behavior or add Scene/Prefab overrides to re-enable flow. See `AIAssets/yjlim/feedback/2026-10-26-global-enemy-attack-flow.md` for current editing and validation.
 
 ## Runtime Asset Mapping
 

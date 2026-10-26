@@ -1,0 +1,12 @@
+id: prologue.tutorial.control
+title: "위젤의 긴급 제어"
+primaryMode: overworld
+sequences:
+  prologue.tutorial.control:
+    - dialogue.wait:
+        blockId: 04c8198efced41f99ccf427291f9d66a7
+        id: control
+    - flow.wait:
+        blockId: c6450dd011ba4f819442ab19c5c0bed1c
+        designerLabel: "감속 확인"
+        duration: 0.35

@@ -41,6 +41,30 @@ public sealed class ElementalStatusState
 
     public double GetBuildupRemainder(ElementalStatusKind kind) => _buildupRemainders[Index(kind)];
 
+    public int GetPotencyTier(ElementalStatusKind kind)
+    {
+        int value = GetValue(kind);
+        return kind == ElementalStatusKind.Chill ? 0
+            : Profile != null ? Profile.GetPotencyTier(value) : ElementalStatusPotency.GetTier(value);
+    }
+
+    public float GetPotencyMultiplier(ElementalStatusKind kind)
+    {
+        int value = GetValue(kind);
+        return kind == ElementalStatusKind.Chill ? 1f
+            : Profile != null ? Profile.GetPotencyMultiplier(value)
+                : ElementalStatusPotency.GetMultiplier(ElementalStatusPotency.GetTier(value));
+    }
+
+    /// <summary>부여 가능 여부만 확인합니다. 소수 누적·방전·상태 변경 이벤트를 발생시키지 않습니다.</summary>
+    public bool CanAdd(ElementalStatusKind kind)
+    {
+        int index = Index(kind);
+        return _owner.IsAlive && !(kind == ElementalStatusKind.Chill && IsFrozen)
+            && IsPositiveFinite(_owner.ResolvedStats.GetStatusResistance(ResistanceId(kind)))
+            && _values[index] < GetApplicationLimit(kind);
+    }
+
     public int Add(ElementalStatusKind kind, float amount, float buildupMultiplier = 1f)
     {
         int index = Index(kind);
@@ -49,9 +73,7 @@ public sealed class ElementalStatusState
 
         float resistance = _owner.ResolvedStats.GetStatusResistance(ResistanceId(kind));
         if (!IsPositiveFinite(resistance)) return 0;
-        int limit = GetLimit(kind);
-        if (kind == ElementalStatusKind.Chill && !CanApplyCrowdControl)
-            limit = Mathf.Max(0, FreezeThreshold - 1);
+        int limit = GetApplicationLimit(kind);
 
         int previous = _values[index];
         double total = previous + _buildupRemainders[index] + (double)amount * buildupMultiplier * resistance;
@@ -177,7 +199,7 @@ public sealed class ElementalStatusState
             case ElementalStatusKind.Poison: multiplier = Profile != null ? Profile.PoisonDamageMultiplier : .2f; break;
             default: multiplier = Profile != null ? Profile.ElectricDamageMultiplier : .02f; break;
         }
-        double damage = value * (double)StatusDamageUnit * multiplier;
+        double damage = value * (double)StatusDamageUnit * multiplier * GetPotencyMultiplier(kind);
         int resolved = kind == ElementalStatusKind.Burn || kind == ElementalStatusKind.Bleed
             ? (int)Math.Min(int.MaxValue, Math.Max(0d, Math.Round(damage, MidpointRounding.ToEven)))
             : FloorDamage(damage);
@@ -205,7 +227,9 @@ public sealed class ElementalStatusState
         if (value <= 0) return;
         double coefficient = IsPositiveFinite(statusProcCoefficient) ? statusProcCoefficient : 0d;
         float multiplier = Profile != null ? Profile.ElectricDamageMultiplier : .02f;
-        double total = _electricDamageRemainder + value * (double)StatusDamageUnit * multiplier * coefficient;
+        // 이전 타격의 소수 이월분은 다시 강화하지 않습니다.
+        double total = _electricDamageRemainder + value * (double)StatusDamageUnit * multiplier * coefficient
+            * GetPotencyMultiplier(ElementalStatusKind.Electric);
         int damage = FloorDamage(total);
         _electricDamageRemainder = Math.Max(0d, total - damage);
         _owner.ApplyStatusDamage(damage, ElementalStatusKind.Electric);
@@ -222,6 +246,10 @@ public sealed class ElementalStatusState
         RecoveryLocked = true;
         Changed();
     }
+
+    private int GetApplicationLimit(ElementalStatusKind kind) =>
+        kind == ElementalStatusKind.Chill && !CanApplyCrowdControl
+            ? Mathf.Max(0, FreezeThreshold - 1) : GetLimit(kind);
 
     private int GetLimit(ElementalStatusKind kind)
     {

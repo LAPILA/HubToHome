@@ -64,6 +64,7 @@ public readonly struct DefenseQteRequest
     public bool UseActiveDefense { get; }
     public float DodgeWindow { get; }
     public float CounterWindow { get; }
+    public float CueWindow { get; }
 
     public DefenseQteRequest(
         float duration,
@@ -76,7 +77,8 @@ public readonly struct DefenseQteRequest
         float guardDamageMultiplier = 0.35f,
         bool useActiveDefense = false,
         float dodgeWindow = 0.22f,
-        float counterWindow = 0.18f)
+        float counterWindow = 0.18f,
+        float cueWindow = 0f)
     {
         Duration = Mathf.Max(0.01f, duration);
         DifficultyMultiplier = Mathf.Max(0.01f, difficultyMultiplier);
@@ -89,6 +91,7 @@ public readonly struct DefenseQteRequest
         UseActiveDefense = useActiveDefense;
         DodgeWindow = Mathf.Max(0f, dodgeWindow);
         CounterWindow = Mathf.Max(0f, counterWindow);
+        CueWindow = Mathf.Clamp(cueWindow, 0f, Duration);
     }
 }
 
@@ -108,7 +111,7 @@ public readonly struct DefenseQteResult
         && Input == DefenseInput.Parry && Grade == QTEManager.QTEGrade.Perfect;
     public bool IsJustGuard => IsPerfectParry;
     public bool IsCounterSuccess => PreventsDamage && Outcome == DefenseOutcome.Success
-        && Input == DefenseInput.Counter && Requirement == DefenseRequirement.Counterable;
+        && Input == DefenseInput.Counter && DefenseJudgementPolicy.IsCounterRequirement(Requirement);
 
     public DefenseQteResult(
         DefenseInputReadStatus inputStatus,
@@ -173,9 +176,11 @@ public struct ActiveDefenseAttempt
     public DefenseInputReadStatus InputStatus { get; private set; }
     public DefenseInput Input { get; private set; }
     public float PressedAt { get; private set; }
+    public bool AllowsPrecision { get; private set; }
 
     public bool TryCommit(DefenseInputReadStatus status, DefenseInput input,
-        float pressedAt, float openedAt, float impactAt, bool enforceWindowOpening = false)
+        float pressedAt, float openedAt, float impactAt, bool enforceWindowOpening = false,
+        bool allowsPrecision = true)
     {
         if (HasAttempt || status == DefenseInputReadStatus.None
             || float.IsNaN(pressedAt) || float.IsInfinity(pressedAt)
@@ -194,6 +199,7 @@ public struct ActiveDefenseAttempt
         InputStatus = status;
         Input = status == DefenseInputReadStatus.Valid ? input : DefenseInput.None;
         PressedAt = pressedAt;
+        AllowsPrecision = allowsPrecision;
         return true;
     }
 }
@@ -247,48 +253,52 @@ public struct DefensePresentationGate
 
 public static class DefenseJudgementPolicy
 {
-    public const float BattleLateGrace = 0.06f;
-    // 실시간 적 대응에는 난이도 보정 후에도 확보되는 최소 여유를 둡니다.
+    public static bool IsCounterRequirement(DefenseRequirement requirement)
+        => requirement == DefenseRequirement.Counterable || requirement == DefenseRequirement.CounterOnly;
+    public const float BattleLateGrace = 0.03f;
+    // 기존 경고 길이는 보존하되, 저스트 가드/회피/반격 성공창을 확대하지 않습니다.
     public static DefenseQteRequest WithBattleAssistance(DefenseQteRequest request, float duration,
         bool parryFromPreparation = false)
     {
         float difficulty = request.DifficultyMultiplier;
-        DefenseTimingProfile profile = request.TimingProfile;
-        profile.PerfectWindow = Mathf.Max(profile.PerfectWindow, 0.24f * difficulty);
-        if (parryFromPreparation && MatchesActive(request.Requirement, DefenseInput.Parry))
-        {
-            // 근접은 흐린 준비 전조까지 포함해 보이는 순간부터 Z를 허용합니다.
-            // 더 후한 기존 패링/X 구간은 줄이지 않고 표시·핑도 같은 시작점을 사용합니다.
-            profile.PerfectWindow = Mathf.Max(profile.PerfectWindow,
-                Mathf.Max(0.4f * difficulty, request.DodgeWindow));
-        }
-        profile.GreatWindow = Mathf.Max(profile.GreatWindow, profile.PerfectWindow);
-        profile.GoodWindow = Mathf.Max(profile.GoodWindow, profile.GreatWindow);
-        return new DefenseQteRequest(duration, difficulty, request.Requirement, profile,
+        float cue = request.CueWindow;
+        if (MatchesActive(request.Requirement, DefenseInput.Parry))
+            cue = Mathf.Max(cue, Mathf.Max(request.TimingProfile.PerfectWindow / difficulty,
+                parryFromPreparation ? Mathf.Max(.4f, request.DodgeWindow / difficulty) : .24f));
+        else if (IsCounterRequirement(request.Requirement))
+            cue = Mathf.Max(cue, Mathf.Max(.28f, request.CounterWindow / difficulty));
+        else if (MatchesActive(request.Requirement, DefenseInput.Dodge))
+            cue = Mathf.Max(cue, Mathf.Max(.34f, request.DodgeWindow / difficulty));
+        return new DefenseQteRequest(duration, difficulty, request.Requirement, request.TimingProfile,
             request.AllowNearSuccess, false, request.GuardDuration, request.GuardDamageMultiplier,
-            true, Mathf.Max(request.DodgeWindow, 0.34f * difficulty),
-            Mathf.Max(request.CounterWindow, 0.28f * difficulty));
+            true, request.DodgeWindow, request.CounterWindow, cue);
     }
 
     public static float GetPreparationWindow(DefenseQteRequest request)
     {
-        return Mathf.Max(GetActiveSuccessWindow(request, DefenseInput.Dodge), GetActiveCueWindow(request));
+        float preparation = GetActiveSuccessWindow(request, DefenseInput.Dodge);
+        if (request.CueWindow > 0f && MatchesActive(request.Requirement, DefenseInput.Dodge))
+            preparation = Mathf.Max(preparation, Mathf.Min(.34f, request.Duration));
+        return Mathf.Max(preparation, GetActiveCueWindow(request));
     }
 
     public static bool TryCommitBattleInput(ref ActiveDefenseAttempt attempt, DefenseQteRequest request,
-        DefenseInputReadStatus status, DefenseInput input, float pressedAt, float impactAt)
+        DefenseInputReadStatus status, DefenseInput input, float pressedAt, float impactAt,
+        bool allowsPrecision = true)
     {
-        // 각 키의 성공 구간 밖에서는 실패 시도를 잠그지 않습니다. 유지 Z는 별도로 처리합니다.
-        float window = GetActiveSuccessWindow(request, input);
-        if (status != DefenseInputReadStatus.Valid || window <= 0f) return false;
-        return attempt.TryCommit(status, input, pressedAt, impactAt - window, impactAt + BattleLateGrace, true);
+        // 보이는 전조의 첫 대응은 조기 입력·잘못된 키·동시 입력까지 확정합니다.
+        // 전조 전 입력만 제외하며, 이미 유지 중인 Z의 일반 방어는 별도로 처리합니다.
+        float window = GetActiveCueWindow(request);
+        if (status == DefenseInputReadStatus.None || window <= 0f) return false;
+        return attempt.TryCommit(status, input, pressedAt, impactAt - window, impactAt + BattleLateGrace,
+            true, allowsPrecision);
     }
 
     // 이미 성공 입력이 있으면 원래 타격 시각에 즉시 처리합니다. 없는 타격만 짧게 유예합니다.
     public static bool ShouldResolveBattleImpact(float now, float impactAt, ActiveDefenseAttempt attempt)
         => now >= impactAt && (attempt.HasAttempt || now >= impactAt + BattleLateGrace);
 
-    /// <summary>표시와 판정이 함께 사용하는 실제 성공 구간(난이도/공격 길이 보정 후).</summary>
+    /// <summary>전조 표시와 독립적인 실제 성공 구간(난이도/공격 길이 보정 후).</summary>
     public static float GetActiveSuccessWindow(DefenseQteRequest request, DefenseInput input)
     {
         if (!MatchesActive(request.Requirement, input)) return 0f;
@@ -299,14 +309,18 @@ public static class DefenseJudgementPolicy
         return Mathf.Clamp(window, 0f, request.Duration);
     }
 
-    /// <summary>강조 전조/핑 동안 그 공격에 허용된 모든 대응이 성공하는 공통 구간.</summary>
+    /// <summary>강조 전조/핑 표시 길이. 성공 구간과 구분하며 기존 연출 길이는 유지합니다.</summary>
     public static float GetActiveCueWindow(DefenseQteRequest request)
     {
+        if (request.CueWindow > 0f) return Mathf.Min(request.Duration, request.CueWindow);
         if (MatchesActive(request.Requirement, DefenseInput.Parry))
             return GetActiveSuccessWindow(request, DefenseInput.Parry);
         if (MatchesActive(request.Requirement, DefenseInput.Counter))
-            return Mathf.Min(GetActiveSuccessWindow(request, DefenseInput.Counter),
-                GetActiveSuccessWindow(request, DefenseInput.Dodge));
+        {
+            float counter = GetActiveSuccessWindow(request, DefenseInput.Counter);
+            return MatchesActive(request.Requirement, DefenseInput.Dodge)
+                ? Mathf.Min(counter, GetActiveSuccessWindow(request, DefenseInput.Dodge)) : counter;
+        }
         return GetActiveSuccessWindow(request, DefenseInput.Dodge);
     }
 
@@ -323,7 +337,8 @@ public static class DefenseJudgementPolicy
             case DefenseRequirement.DodgeOrJump:
                 return input == DefenseInput.Dodge;
             case DefenseRequirement.Counterable:
-                return input == DefenseInput.Dodge || input == DefenseInput.Counter;
+            case DefenseRequirement.CounterOnly:
+                return input == DefenseInput.Counter;
             default:
                 return false;
         }
@@ -357,7 +372,7 @@ public static class DefenseJudgementPolicy
 
         float successWindow = GetActiveSuccessWindow(request, input);
         // 같은 시작 시각끼리 비교해야 경계에서 float 뺄셈 오차로 실패하지 않습니다.
-        bool inSuccessWindow = fresh && attempt.PressedAt >= impactAt - successWindow;
+        bool inSuccessWindow = fresh && attempt.AllowsPrecision && attempt.PressedAt >= impactAt - successWindow;
         bool perfect = input == DefenseInput.Parry && inSuccessWindow;
         // X/C를 선택한 타격은 실패해도 유지 중인 Z로 덮지 않습니다.
         bool guarded = input == DefenseInput.Parry && !perfect && guardHeld;
@@ -471,7 +486,8 @@ public static class DefenseJudgementPolicy
             DefenseRequirement.ParryOnly => input == DefenseInput.Parry,
             DefenseRequirement.DodgeOnly => input == DefenseInput.Dodge,
             DefenseRequirement.DodgeOrJump => input == DefenseInput.Dodge || input == DefenseInput.Jump,
-            DefenseRequirement.Counterable => input == DefenseInput.Dodge || input == DefenseInput.Counter,
+            DefenseRequirement.Counterable => input == DefenseInput.Counter,
+            DefenseRequirement.CounterOnly => input == DefenseInput.Counter,
             _ => false
         };
     }

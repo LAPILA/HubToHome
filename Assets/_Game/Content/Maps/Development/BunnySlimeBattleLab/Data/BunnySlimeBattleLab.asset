@@ -14,36 +14,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BunnySlimeBattleLabData
   Encounters:
   - Id: "lab.bunny.integrated"
+    HiddenInMenu: 1
     Title: "토끼 슬라임 · 통합"
-    Summary: "누적 상태 5종 · 소비 · 정화 · 50타"
-    Description: "기본 3명 · 각 6스킬로 상태 실험.\n화상·출혈 / 냉기·중독 / 감전\n역할에 따라 부여·소비를 비교.\n\n적의 타격에 누적 상태가 연결됩니다.\nZ 방어는 절반, 완전 방어는 0.\n대사·BGM·투사체 흐름은 유지."
+    Summary: "위젤 1인 · 스킬 10종 · 대응 연습"
+    Description: "위젤 한 명으로 시작합니다.\n서로 다른 스킬 10종의 연출과\n상태·압력 자원을 확인하세요.\n\nZ 방어 / X 회피 / C 특수 반격\n대사·BGM·투사체 흐름은 유지."
     Enemy: {fileID: 11400000, guid: d43ee5dcadb816945862fc8c05072aff, type: 2}
     Scenario: {fileID: 11400000, guid: fb021001d617a0e48b2783a1552f3d04, type: 2}
+    PhaseOverlay: {fileID: 0}
     WeakenFrontLine: 0
   - Id: "lab.zev.presentation"
-    Title: "ZEV · 연출 전투"
-    Summary: "준비 클로즈업 · 공방 · 대화"
-    Description: "적 확대 → 준비 자세 → 줌아웃\n전조부터 Z 방어 / X 회피.\n\n연참 → 강한 참격(C) → 내려치기\n→ 고속참 → 환영호참 순서.\n기존 ZEV 스킬 5개를 사용합니다.\n전투 중 위젤과 ZEV가 대화합니다."
+    HiddenInMenu: 0
+    Title: "ZEV"
+    Summary: "위젤 1인 · 사슬 2페이즈 · 반복 스킬 잠금"
+    Description: "위젤과 ZEV의 일대일 전투입니다.\n제브 HP 1800 · 절반에서 2페이즈\n좌우 관통·전조·특수 반격은 그대로입니다.\n\n2페이즈부터 무작위 스킬 3개 잠금\n위젤의 행동 2회마다 잠금 대상을 교체합니다.\n토끼 입구는 잠시 숨겨 두었습니다."
     Enemy: {fileID: 11400000, guid: 63475f0e774412d26756a073b7af14d2, type: 2}
     Scenario: {fileID: 11400000, guid: fa7be0677f66a47a694a9ed79ef5dbe5, type: 2}
+    PhaseOverlay: {fileID: 11400000, guid: 706cd12282974c73a8c62d7207f43584, type: 2}
+    SkillLock:
+      ActivationFlag: lab.zev.chain_phase
+      SkillCount: 3
+      RefreshAfterActions: 2
     WeakenFrontLine: 0
-  - Id: "lab.bunny.wave"
-    Title: "3 + 3 · 후열 확인"
-    Summary: "기존 전멸 확인 · 별도 유지"
-    Description: "전열 3명은 HP 1로 시작합니다.\n첫 광역기를 막지 않고\n후열 자동 등장을 확인하세요.\n\n수동 교대는 없습니다.\n종료하면 HP/AP와 아이템이\n복구되고 메뉴로 돌아옵니다."
-    Enemy: {fileID: 11400000, guid: d5020efba7a86cf1e6c0124099b41bbf, type: 2}
-    Scenario: {fileID: 0}
-    WeakenFrontLine: 1
   Enemy: {fileID: 11400000, guid: d43ee5dcadb816945862fc8c05072aff, type: 2}
   Scenario: {fileID: 11400000, guid: fb021001d617a0e48b2783a1552f3d04, type: 2}
   Party:
   - {fileID: 11400000, guid: acd4abb0fb9a006448893686b7b44871, type: 2}
-  - {fileID: 11400000, guid: c1f7b1f4d8cee284cb9bb47ccd70a939, type: 2}
-  - {fileID: 11400000, guid: 736269c5b6646a64f97189b661f53d13, type: 2}
-  - {fileID: 11400000, guid: 553a20be7def88447bc97d8ede168cac, type: 2}
-  - {fileID: 11400000, guid: 4fc4bba24508ae144a56c4a7d0b39f0e, type: 2}
-  - {fileID: 11400000, guid: 5a043534386e4fa40904cd0b3162ca2d, type: 2}
   Items:
+  - {fileID: 11400000, guid: 21ac67eb5eeb46949dd7796f6c0e894a, type: 2}
+  - {fileID: 11400000, guid: 8b1df913c2334199a326ca0836424c05, type: 2}
   - {fileID: 11400000, guid: 0447a03af94e485d9362f10270dd68bb, type: 2}
   - {fileID: 11400000, guid: 32f5ce71f1b647a7aea951b0fad8ab75, type: 2}
   - {fileID: 11400000, guid: 79c7cf7962e74accbfd9aac9bbb524c3, type: 2}
@@ -55,6 +53,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 76100795bbc1c384e90d0f59bd3c7d36, type: 2}
   - {fileID: 11400000, guid: b27e18826c8969f4088adef9f3414ae6, type: 2}
   - {fileID: 11400000, guid: b87f8f3b65230b840a6b236bc8d7b069, type: 2}
+  InitialPartyAP: 20
   GuardSkill: {fileID: 11400000, guid: 188683247c08da84fa7c9849f5b4fba3, type: 2}
   DodgeSkill: {fileID: 11400000, guid: 5223a5b9b500fa649a0b03661843c13b, type: 2}
   CounterSkill: {fileID: 11400000, guid: f3a8e9ee0cbb67d42815953e00825604, type: 2}

@@ -1,0 +1,23 @@
+id: prologue.tutorial.derail
+title: "감속 이후의 탈선"
+primaryMode: overworld
+sequences:
+  prologue.tutorial.derail:
+    - dialogue.wait:
+        blockId: bdb5037b70e54655a52fa30142edc030
+        id: derail
+    - screen.fade:
+        blockId: 826627cf45054117b1f9d393b81988c0
+        designerLabel: "파손의 순간을 암전으로"
+        mode: out
+        color: black
+        duration: 0.12
+    - flow.wait:
+        blockId: b38de85ea762453e8439d9d0df336af9
+        designerLabel: "충격 뒤 정적"
+        duration: 0.75
+    - screen.fade:
+        blockId: 6546e454eddd4bbda9116c9bc2b841ab
+        mode: in
+        color: black
+        duration: 0.55

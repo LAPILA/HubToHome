@@ -54,7 +54,7 @@ public sealed class GameRecoveryFlowTests
             SaveStorageResult saveResult = SaveManager.TrySave(loadedData, 0);
             Assert.That(saveResult.Success, Is.True, saveResult.Message);
 
-            global.PlayerName = "live-before-continue";
+            SetMoneySentinel(global, 7);
             global.SetFlag("recovery.flow.flag", 7);
 
             GameLoadStartResult started = GameLoadCoordinator.LoadSlot(0);
@@ -65,7 +65,8 @@ public sealed class GameRecoveryFlowTests
                 SceneLoadResultUtility.WasDestinationActivated(started.Operation.Result),
                 Is.True,
                 started.Operation.Result.ToString());
-            Assert.That(global.PlayerName, Is.EqualTo("loaded-player"));
+            Assert.That(global.PlayerName, Is.EqualTo(GlobalDataManager.DefaultPlayerName));
+            Assert.That(global.Money, Is.EqualTo(42));
             Assert.That(global.GetFlag("recovery.flow.flag"), Is.EqualTo(42));
             Assert.That(global.GetItemCount("test.item"), Is.EqualTo(3));
             Assert.That(global.Party, Has.Count.EqualTo(1));
@@ -73,11 +74,12 @@ public sealed class GameRecoveryFlowTests
             Assert.That(GameLoadCoordinator.IsLoading, Is.False);
 
             SetPrivateField(loader, "_isLoading", true);
-            global.PlayerName = "busy-request-must-not-apply";
+            SetMoneySentinel(global, 8);
             GameLoadStartResult busy = GameLoadCoordinator.LoadSlot(0);
             Assert.That(busy.Accepted, Is.False);
             Assert.That(busy.Failure, Is.EqualTo(GameLoadStartFailure.Busy));
-            Assert.That(global.PlayerName, Is.EqualTo("busy-request-must-not-apply"));
+            Assert.That(global.Money, Is.EqualTo(8));
+            Assert.That(global.PlayerName, Is.EqualTo(GlobalDataManager.DefaultPlayerName));
             SetPrivateField(loader, "_isLoading", false);
 
             SaveStorageResult rejectedSave = SaveManager.TrySave(
@@ -85,7 +87,7 @@ public sealed class GameRecoveryFlowTests
                 1);
             Assert.That(rejectedSave.Success, Is.True, rejectedSave.Message);
 
-            global.PlayerName = "rollback-source";
+            SetMoneySentinel(global, 11);
             global.SetFlag("recovery.flow.flag", 11);
             Time.timeScale = 0.75f;
             loader.ReturnNullLoadOperation = true;
@@ -93,7 +95,8 @@ public sealed class GameRecoveryFlowTests
             GameLoadStartResult rejected = GameLoadCoordinator.LoadSlot(1);
             Assert.That(rejected.Accepted, Is.False);
             Assert.That(rejected.Failure, Is.EqualTo(GameLoadStartFailure.NoLoadableScene));
-            Assert.That(global.PlayerName, Is.EqualTo("rollback-source"));
+            Assert.That(global.Money, Is.EqualTo(11));
+            Assert.That(global.PlayerName, Is.EqualTo(GlobalDataManager.DefaultPlayerName));
             Assert.That(global.GetFlag("recovery.flow.flag"), Is.EqualTo(11));
             Assert.That(Time.timeScale, Is.EqualTo(0.75f).Within(0.001f));
             Assert.That(GameLoadCoordinator.IsLoading, Is.False);
@@ -186,11 +189,18 @@ public sealed class GameRecoveryFlowTests
         yield return new ExitPlayMode();
     }
 
+    private static void SetMoneySentinel(GlobalDataManager global, int amount)
+    {
+        Assert.That(global.SpendMoney(global.Money), Is.True);
+        global.AddMoney(amount);
+    }
+
     private static SaveData CreateSave(string playerName, string sceneName, int flagValue)
     {
         return new SaveData
         {
             playerName = playerName,
+            Money = flagValue,
             currentScene = sceneName,
             spawnPointId = "qa.testmap.spawn.origin",
             eventFlags = new Dictionary<string, int>

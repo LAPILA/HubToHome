@@ -14,6 +14,10 @@ public static class SceneActionSequenceContextFactory
         registry.Register(new CinematicStagePrepareActionAdapter());
         registry.Register(new CinematicShotPlayActionAdapter());
         registry.Register(new CinematicStageReleaseActionAdapter());
+        registry.Register(new OverworldPartyModeActionAdapter());
+        registry.Register(new OverworldPartyVisibilityActionAdapter());
+        registry.Register(new OverworldPartyMoveActionAdapter());
+        registry.Register(new OverworldPartyGatherActionAdapter());
         registry.Register(new SequenceCallActionAdapter(registry));
         return registry;
     }
@@ -24,7 +28,8 @@ public static class SceneActionSequenceContextFactory
         IScreenTransitionRunner screenTransitionRunner = null,
         IActionClock clock = null,
         IActionSequenceResolver sequenceResolver = null,
-        IDialogueRunner dialogueRunner = null)
+        IDialogueRunner dialogueRunner = null,
+        IOverworldPartyActionRunner overworldPartyRunner = null)
     {
         var context = new ActionExecutionContext(new ActionExecutionHandle("scene_action_sequence"));
         context.ScenarioId = sequence != null ? sequence.SequenceId : string.Empty;
@@ -53,6 +58,9 @@ public static class SceneActionSequenceContextFactory
         {
             context.SetService<IDialogueRunner>(dialogueRunner);
         }
+
+        if (overworldPartyRunner != null)
+            context.SetService<IOverworldPartyActionRunner>(overworldPartyRunner);
 
         return context;
     }

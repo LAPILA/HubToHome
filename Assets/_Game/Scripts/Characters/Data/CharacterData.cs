@@ -35,6 +35,10 @@ public class CharacterData : SerializedScriptableObject
     [Tooltip("Character-specific prefab instantiated in battle. BattleManager fallback is used when empty.")]
     public GameObject BattlePrefab;
 
+    [BoxGroup("Overworld Presentation"), LabelText("필드 표시 원본"), AssetsOnly]
+    [Tooltip("선택 사항입니다. 비워 두면 전투 프리팹의 루트 그림/Animator, 그다음 리더 표시를 사용합니다. 원본은 생성하지 않습니다. 중첩 외형은 OverworldFollowerVisualSource로 표시 전용 계층을 명시하세요.")]
+    public GameObject OverworldVisualPrefab;
+
     [BoxGroup("Battle Presentation")]
     public Color BattleSymbolColor = Color.white;
 
@@ -48,6 +52,7 @@ public class CharacterData : SerializedScriptableObject
 
     [BoxGroup("Identity")] public string CharacterID = "player_001";
     [BoxGroup("Identity")] public string DisplayName = "Player";
+    [BoxGroup("Identity"), LabelText("이름 번역 키")] public string DisplayNameLocalizationKey;
     [BoxGroup("Identity"), LabelText("이름 소스")]
     [Tooltip("주인공처럼 런타임 입력 이름을 써야 하면 GlobalPlayerName으로 설정하세요. 나머지 아군은 StaticData 그대로 두면 됩니다.")]
     public CharacterDisplayNameMode DisplayNameMode = CharacterDisplayNameMode.StaticData;
@@ -96,10 +101,10 @@ public class CharacterData : SerializedScriptableObject
     public string ResolveDisplayName(string runtimePlayerName = null)
     {
         if (DisplayNameMode == CharacterDisplayNameMode.GlobalPlayerName && !string.IsNullOrWhiteSpace(runtimePlayerName))
-            return runtimePlayerName;
+            return LocalizationManager.Localize(DisplayNameLocalizationKey, runtimePlayerName);
 
         if (!string.IsNullOrWhiteSpace(DisplayName))
-            return DisplayName;
+            return LocalizationManager.Localize(DisplayNameLocalizationKey, DisplayName);
 
         return CharacterID;
     }

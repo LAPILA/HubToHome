@@ -60,7 +60,11 @@ MonoBehaviour:
         ShakeOnFail: 0
         DelayAfter: 0
         AttackAnimTriggerName: Attack
-        AttackAnimationLeadTime: 0
+        AttackAnimationLeadTime: 0.12
+        UseMeleePassThrough: 1
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.95
+        MeleeExitDuration: 0.09
         ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
         ImpactCueLeadTime: 0.3
         ImpactCuePivotName: Center

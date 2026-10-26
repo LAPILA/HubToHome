@@ -9,54 +9,117 @@ public sealed class BunnySlimeElementLabContentTests
     private const string DataRoot = "Assets/_Game/Content/Maps/Development/BunnySlimeBattleLab/Data";
 
     [Test]
-    public void Frontline_HasThreeStableIdentitiesAndEighteenCataloguedSkills()
+    public void SoloFrontline_HasOneStableIdentityAndTenCataloguedShowcaseSkills()
     {
         var lab = Load<BunnySlimeBattleLabData>(DataRoot + "/BunnySlimeBattleLab.asset");
         var catalog = Load<GameContentCatalog>("Assets/_Game/Resources/HubToHome/GameContentCatalog.asset");
-        string[] ids = { "lab.wizzel.front", "lab.wizzel.support", "lab.wizzel.striker" };
         var skills = new HashSet<SkillData>();
-        var kinds = new HashSet<ElementalStatusKind>();
-        Assert.That(lab.Party, Has.Length.EqualTo(6));
-        Assert.That(lab.GetPartyCount(false), Is.EqualTo(3));
-        Assert.That(lab.GetPartyCount(true), Is.EqualTo(6));
-        for (int i = 0; i < 3; i++)
+        Assert.That(lab.Party, Has.Length.EqualTo(1));
+        Assert.That(lab.GetPartyCount(false), Is.EqualTo(1));
+        Assert.That(lab.GetPartyCount(true), Is.EqualTo(1));
+        for (int i = 0; i < lab.Party.Length; i++)
         {
             CharacterData member = lab.Party[i];
-            Assert.That(member.CharacterID, Is.EqualTo(ids[i]));
-            Assert.That(member.DefaultSkills, Has.Count.EqualTo(i == 0 ? 7 : 6));
+            Assert.That(member.CharacterID, Is.EqualTo("lab.wizzel.front"));
+            Assert.That(member.DefaultSkills, Has.Count.EqualTo(10));
             Assert.That(member.StatusProfile, Is.Not.Null);
             Assert.That(member.BattlePrefab, Is.Not.Null);
             Assert.That(member.BattlePrefab.GetComponent<PlayerCharacter>(), Is.Not.Null);
             Assert.That(member.BattlePrefab.GetComponent<PlayerController>(), Is.Not.Null);
-            // 원소 샘플 18개는 그대로 검증하고 추가 표시 스킬은 별도 검사합니다.
-            for (int j = 0; j < 6; j++)
+            for (int j = 0; j < member.DefaultSkills.Count; j++)
             {
                 SkillData skill = member.DefaultSkills[j];
                 Assert.That(skill, Is.Not.Null);
-                Assert.That(skills.Add(skill), Is.True, "스킬은 각 역할에 하나씩만 편성합니다.");
+                Assert.That(skills.Add(skill), Is.True, "실험실 스킬은 중복 편성하지 않습니다.");
                 Assert.That(catalog.Skills, Does.Contain(skill));
-                Assert.That(skill.SkillID, Does.StartWith("lab.elements."));
+                Assert.That(skill.SkillID, Does.StartWith("lab.showcase.wizzel."));
                 Assert.That(skill.UsageProfile, Is.EqualTo(SkillUsageProfile.PlayerOnly));
-                foreach (ElementalStatusApplication application in skill.ElementalApplications)
-                    kinds.Add(application.Kind);
-                foreach (SkillActionBlock block in skill.ActionTimeline)
-                    Assert.That(block, Is.Not.InstanceOf<Action_ApplyStatus>(), "새 실험실은 구형 N턴 상태와 혼합하지 않습니다.");
+                Assert.That(skill.ActionTimeline, Is.Not.Empty);
             }
         }
-        Assert.That(skills.Count, Is.EqualTo(18));
-        Assert.That(kinds.Count, Is.EqualTo(5));
+        Assert.That(skills.Count, Is.EqualTo(10));
         Assert.That(lab.Party[0].BattleSpriteTint, Is.EqualTo(Color.white));
-        Assert.That(lab.Party[1].BattleSpriteTint, Is.Not.EqualTo(lab.Party[2].BattleSpriteTint));
     }
 
     [Test]
-    public void ScreenSplitSample_IsSeventhFrontSkillWithSeparateDamageAndPresentation()
+    public void ShowcaseAccents_UseActualSizeSilhouettesAndOneShotPreImpactReservations()
+    {
+        var front = Load<CharacterData>(DataRoot + "/Party/front.asset");
+        var zev = Load<EnemyData>(DataRoot + "/Enemy/ZEV_Lab.asset");
+        var showcase = new List<SkillData>(front.DefaultSkills);
+        showcase.AddRange(zev.SkillList);
+        Assert.That(showcase, Has.Count.EqualTo(15));
+        int silhouettes = 0;
+        int reservations = 0;
+        foreach (SkillData skill in showcase)
+        {
+            bool sawImpact = false;
+            int skillReservations = 0;
+            for (int i = 0; i < skill.ActionTimeline.Count; i++)
+            {
+                SkillActionBlock block = skill.ActionTimeline[i];
+                Assert.That(block, Is.Not.Null, skill.SkillID);
+                if (block is Action_PresentationAccent accent)
+                {
+                    int mode = (int)accent.Mode;
+                    Assert.That(mode, Is.EqualTo(1).Or.EqualTo(2), "폐기된 확대 컷인은 실험실에 남기지 않습니다: " + skill.SkillID);
+                    Assert.That(accent.PortraitSprite, Is.Null, "실루엣은 배우의 현재 그림만 사용합니다: " + skill.SkillID);
+                    if (mode == 1) { silhouettes++; continue; }
+                    reservations++;
+                    skillReservations++;
+                    Assert.That(sawImpact, Is.False, "첫 명중 전에 단발 점멸을 예약합니다: " + skill.SkillID);
+                    Assert.That(accent.Strength, Is.LessThanOrEqualTo(0.25f));
+                    Assert.That(i + 1, Is.LessThan(skill.ActionTimeline.Count));
+                    SkillActionBlock next = skill.ActionTimeline[i + 1];
+                    Assert.That(skill.UsageProfile == SkillUsageProfile.EnemyOnly
+                        ? next is Action_DefenseWindow
+                        : IsShowcaseImpact(next), Is.True, "예약 직후 기존 대응/명중 흐름을 이어갑니다: " + skill.SkillID);
+                }
+                sawImpact |= IsShowcaseImpact(block);
+            }
+            Assert.That(skillReservations, Is.LessThanOrEqualTo(1), "난무의 매 타격마다 화면 점멸을 예약하지 않습니다.");
+        }
+        Assert.That(silhouettes, Is.EqualTo(9));
+        Assert.That(reservations, Is.EqualTo(11));
+    }
+
+    [TestCase("SteamThrust", 1, 1.7f)]
+    [TestCase("ReverseFlow", 2, 1.1f)]
+    [TestCase("CriticalBreakthrough", 1, 2.7f)]
+    public void WidePassShowcase_HasSingleOwnerOfCrossingDamage(string name, int passCount, float damagePerPass)
+    {
+        SkillData skill = Load<SkillData>(BunnySlimeElementLabBuilder.ShowcaseAllyRoot + "/Wizzel_" + name + ".asset");
+        Action_ScreenPassSlash pass = null;
+        foreach (SkillActionBlock block in skill.ActionTimeline)
+        {
+            if (block is Action_ScreenPassSlash candidate)
+            {
+                Assert.That(pass, Is.Null, "관통 구간의 피해 소유자는 하나입니다.");
+                pass = candidate;
+            }
+            else Assert.That(IsShowcaseImpact(block), Is.False, "별도 피해 블록으로 중복 타격하지 않습니다.");
+            if (block is Action_PlayAnim animation)
+                Assert.That(animation.AnimTriggerName, Is.EqualTo("BattleReady"), "관통 전 별도 공격 모션을 먼저 재생하지 않습니다.");
+        }
+        Assert.That(pass, Is.Not.Null);
+        Assert.That(pass.PassCount, Is.EqualTo(passCount));
+        Assert.That(pass.DamagePerPass, Is.EqualTo(damagePerPass).Within(0.00001f));
+        Assert.That(pass.Element, Is.EqualTo(DamageElement.Physical));
+        Assert.That(skill.UsageProfile, Is.EqualTo(SkillUsageProfile.PlayerOnly));
+    }
+
+    private static bool IsShowcaseImpact(SkillActionBlock block)
+        => block is Action_Damage || block is Action_Projectile || block is Action_SequentialMelee
+        || block is Action_RapidStrikes || block is Action_AerialCrossSlash || block is Action_ScreenPassSlash;
+
+    [Test]
+    public void ScreenSplitSample_RemainsReusableWithoutOccupyingTheSoloLoadout()
     {
         SkillData skill = Load<SkillData>(BunnySlimeElementLabBuilder.ScreenSplitSkillPath);
         var front = Load<CharacterData>(DataRoot + "/Party/front.asset");
         var catalog = Load<GameContentCatalog>("Assets/_Game/Resources/HubToHome/GameContentCatalog.asset");
         Assert.That(front.SkillTree, Is.Null);
-        Assert.That(front.DefaultSkills[6], Is.SameAs(skill));
+        CollectionAssert.DoesNotContain(front.DefaultSkills, skill);
         Assert.That(catalog.Skills, Does.Contain(skill));
         Assert.That(skill.SkillID, Is.EqualTo("lab.presentation.diagonal_screen_slash"));
         Assert.That(skill.UsageProfile, Is.EqualTo(SkillUsageProfile.PlayerOnly));
@@ -162,21 +225,20 @@ public sealed class BunnySlimeElementLabContentTests
     }
 
     [Test]
-    public void LabEntries_PreserveStoryAndSeparateSixMemberWipeExercise()
+    public void LabEntries_PreserveBothStoriesWithoutTheReserveExercise()
     {
         var lab = Load<BunnySlimeBattleLabData>(DataRoot + "/BunnySlimeBattleLab.asset");
-        Assert.That(lab.Encounters, Has.Length.EqualTo(3));
+        Assert.That(lab.Encounters, Has.Length.EqualTo(2));
         Assert.That(lab.Encounters[0].Enemy.EnemyId, Is.EqualTo("lab.bunny_slime"));
         Assert.That(lab.Encounters[0].Scenario, Is.Not.Null);
         Assert.That(lab.Encounters[0].WeakenFrontLine, Is.False);
         Assert.That(lab.Encounters[1].Id, Is.EqualTo("lab.zev.presentation"));
         Assert.That(lab.Encounters[1].Scenario, Is.Not.Null);
         Assert.That(lab.Encounters[1].WeakenFrontLine, Is.False);
-        Assert.That(lab.Encounters[2].Id, Is.EqualTo("lab.bunny.wave"));
-        Assert.That(lab.Encounters[2].WeakenFrontLine, Is.True);
         foreach (BattleLabEncounterEntry entry in lab.Encounters)
         {
-            Assert.That(Mathf.Min(3, lab.GetPartyCount(entry.WeakenFrontLine)), Is.EqualTo(3), entry.Id);
+            Assert.That(lab.GetPartyCount(entry.WeakenFrontLine), Is.EqualTo(1), entry.Id);
+            Assert.That(entry.WeakenFrontLine, Is.False, entry.Id);
             Assert.That(entry.Enemy, Is.Not.Null, entry.Id);
             Assert.That(entry.Enemy.Prefab, Is.Not.Null, entry.Id);
             Assert.That(entry.Enemy.Prefab.GetComponentsInChildren<EnemyCharacter>(true), Has.Length.EqualTo(1), entry.Id);

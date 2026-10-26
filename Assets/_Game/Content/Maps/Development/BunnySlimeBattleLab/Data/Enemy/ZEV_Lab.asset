@@ -24,12 +24,15 @@ MonoBehaviour:
   Portrait: {fileID: -3831865716268829567, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
   TurnOrderPortrait: {fileID: -3831865716268829567, guid: 35081c2e4cee8f340abd9d5fecbf4816, type: 3}
   EnemyId: lab.zev
-  EnemyName: ZEV · 극성 계약
+  EnemyName: ZEV
+  ShowHealthProgress: 1
+  HealthProgressMarkers:
+  - 0.5
   BattleBGM: {fileID: 8300000, guid: 715eb49a792787c48b2dcaf68b3512c0, type: 3}
   Prefab: {fileID: 3461299171839533844, guid: a2d397e12384e5f478cb687e5444d2e5, type: 3}
   ReturnMoveTrigger: BattleMove
   BaseStats:
-    MaxHP: 3600
+    MaxHP: 1800
     MaxAP: 100
     ATK: 34
     DEF: 6
@@ -53,12 +56,18 @@ MonoBehaviour:
   HasEnragedPattern: 0
   IsLargeEnemy: 0
   SkillList:
-  - {fileID: 11400000, guid: a4d8f5d1c8b34f2aa19c44d8a0a3b771, type: 2}
-  - {fileID: 11400000, guid: d91f2fcf42c2672489df5cbefd7c1f51, type: 2}
-  - {fileID: 11400000, guid: 57277bc7847637343b5b2fb2c1d54910, type: 2}
-  - {fileID: 11400000, guid: c2f49c6e1b8d45f4a2a9a671ec8db913, type: 2}
-  - {fileID: 11400000, guid: f11cc42b1b06a2f4da055533977747a4, type: 2}
+  - {fileID: 11400000, guid: 0023628bdd624f5eb5d6819e29d47d6c, type: 2}
+  - {fileID: 11400000, guid: 817bd7cad1ca45219b0121fe8e474896, type: 2}
+  - {fileID: 11400000, guid: ee3106009b214021a5b3a79ba572fc59, type: 2}
+  - {fileID: 11400000, guid: 198432f252594830b603b87853618b13, type: 2}
+  - {fileID: 11400000, guid: fd1036f61bec45a38e74c53637ef25ad, type: 2}
   StrongSkillList: []
+  FollowupPatterns:
+  - RequiredBattleFlag: lab.zev.chain_phase
+    RequiredFlagValue: "true"
+    NormalActionsBefore: 1
+    Skill: {fileID: 11400000, guid: 4d29ae4839124b7c96e10bf420bcfd73, type: 2}
+    OncePerBattle: 1
   Drops: []
   DropItemIDs: []
   EXPReward: 30

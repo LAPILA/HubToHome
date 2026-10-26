@@ -2,10 +2,43 @@ using NUnit.Framework;
 
 public class DefenseJudgementPolicyTests
 {
+    [TestCase(DefenseInput.Parry, false)]
+    [TestCase(DefenseInput.Dodge, false)]
+    [TestCase(DefenseInput.Jump, false)]
+    [TestCase(DefenseInput.Counter, true)]
+    public void CounterRequirements_RejectZAndXIncludingLegacyCounterable(DefenseInput input, bool expected)
+    {
+        Assert.That(DefenseJudgementPolicy.MatchesActive(DefenseRequirement.CounterOnly, input), Is.EqualTo(expected));
+        Assert.That(DefenseJudgementPolicy.Matches(DefenseRequirement.CounterOnly, input), Is.EqualTo(expected));
+        Assert.That(DefenseJudgementPolicy.MatchesActive(DefenseRequirement.Counterable, input), Is.EqualTo(expected));
+        Assert.That(DefenseJudgementPolicy.Matches(DefenseRequirement.Counterable, input), Is.EqualTo(expected));
+        Assert.That(DefenseJudgementPolicy.MatchesActive(DefenseRequirement.Counterable, DefenseInput.Counter), Is.True);
+    }
+
+    [Test]
+    public void CounterOnly_HasVisibleCueButWrongInputCommitsFailure()
+    {
+        var request = DefenseJudgementPolicy.WithBattleAssistance(new DefenseQteRequest(1f, 1f,
+            DefenseRequirement.CounterOnly, new DefenseTimingProfile(.12f, .22f, .4f), useActiveDefense: true), 1f);
+        float cue = DefenseJudgementPolicy.GetActiveCueWindow(request);
+        Assert.That(cue, Is.GreaterThanOrEqualTo(.28f));
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Counter), Is.EqualTo(.18f));
+        var attempt = new ActiveDefenseAttempt();
+        Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
+            DefenseInputReadStatus.Valid, DefenseInput.Dodge, 1f - cue, 1f), Is.True);
+        Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
+            DefenseInputReadStatus.Valid, DefenseInput.Counter, .9f, 1f), Is.False);
+        Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, attempt, true, 1f).IsCounterSuccess, Is.False);
+        var heldGuard = DefenseJudgementPolicy.EvaluateActiveDefense(request, default, true, 1f);
+        Assert.That(heldGuard.PreventsDamage, Is.False);
+        Assert.That(heldGuard.IsGuard, Is.False);
+        Assert.That(heldGuard.DamageMultiplier, Is.EqualTo(1f));
+    }
+
     [TestCase(0.5f)]
     [TestCase(1f)]
     [TestCase(2f)]
-    public void MeleeParry_FirstVisibleCueAcceptsFreshZ(float difficulty)
+    public void MeleeParry_FirstVisibleCueAcceptsGuardWithoutWideningPerfect(float difficulty)
     {
         var original = new DefenseQteRequest(1f, difficulty, DefenseRequirement.Any,
             new DefenseTimingProfile(0.12f, 0.22f, 0.4f), useActiveDefense: true);
@@ -13,7 +46,7 @@ public class DefenseJudgementPolicyTests
         float cue = DefenseJudgementPolicy.GetPreparationWindow(request);
         Assert.That(cue, Is.GreaterThanOrEqualTo(0.4f));
         Assert.That(DefenseJudgementPolicy.GetActiveCueWindow(request), Is.EqualTo(cue));
-        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry), Is.EqualTo(cue));
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry), Is.EqualTo(.12f / difficulty));
         foreach (float impact in new[] { 0f, 10f, 1000f })
         {
             var attempt = new ActiveDefenseAttempt();
@@ -21,7 +54,7 @@ public class DefenseJudgementPolicyTests
                 DefenseInputReadStatus.Valid, DefenseInput.Parry, impact - cue - 0.01f, impact), Is.False);
             Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
                 DefenseInputReadStatus.Valid, DefenseInput.Parry, impact - cue, impact), Is.True);
-            Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, attempt, false, impact).IsPerfectParry, Is.True);
+            Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, attempt, true, impact).IsGuard, Is.True);
             Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(impact - 0.01f, impact, attempt), Is.False);
         }
         Assert.That(original.TimingProfile.PerfectWindow, Is.EqualTo(0.12f));
@@ -35,7 +68,8 @@ public class DefenseJudgementPolicyTests
         var original = new DefenseQteRequest(duration, 1f, DefenseRequirement.Any,
             new DefenseTimingProfile(0.12f, 0.22f, 0.4f), useActiveDefense: true, dodgeWindow: dodge);
         var request = DefenseJudgementPolicy.WithBattleAssistance(original, duration, parryFromPreparation: true);
-        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry), Is.EqualTo(expected));
+        Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry), Is.EqualTo(.12f));
+        Assert.That(DefenseJudgementPolicy.GetActiveCueWindow(request), Is.EqualTo(expected));
         Assert.That(DefenseJudgementPolicy.GetPreparationWindow(request), Is.EqualTo(expected));
         Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, default, true, duration).IsGuard, Is.True);
     }
@@ -57,21 +91,21 @@ public class DefenseJudgementPolicyTests
     [TestCase(0.5f)]
     [TestCase(1f)]
     [TestCase(2f)]
-    public void BattleAssistance_ProvidesRealTimeMinimumWindows(float difficulty)
+    public void BattleAssistance_PreservesCuesAndDoesNotEnlargeAuthoredWindows(float difficulty)
     {
         var original = new DefenseQteRequest(1f, difficulty, DefenseRequirement.Any,
             new DefenseTimingProfile(0.12f, 0.22f, 0.4f), useActiveDefense: true);
         DefenseQteRequest request = DefenseJudgementPolicy.WithBattleAssistance(original, 1.05f);
         Assert.That(DefenseJudgementPolicy.GetActiveSuccessWindow(request, DefenseInput.Parry),
-            Is.GreaterThanOrEqualTo(0.24f));
+            Is.EqualTo(.12f / difficulty));
         Assert.That(DefenseJudgementPolicy.GetPreparationWindow(request), Is.GreaterThanOrEqualTo(0.34f));
         Assert.That(original.TimingProfile.PerfectWindow, Is.EqualTo(0.12f), "Authored data must not change.");
     }
 
     [TestCase(DefenseRequirement.Any, DefenseInput.Parry, 0.24f)]
-    [TestCase(DefenseRequirement.Any, DefenseInput.Dodge, 0.34f)]
+    [TestCase(DefenseRequirement.Any, DefenseInput.Dodge, 0.24f)]
     [TestCase(DefenseRequirement.Counterable, DefenseInput.Counter, 0.28f)]
-    public void BattleInput_EarlyPressDoesNotConsumeValidPress(DefenseRequirement requirement,
+    public void BattleInput_PreCuePressIsIgnoredButFirstCuePressCommits(DefenseRequirement requirement,
         DefenseInput input, float window)
     {
         DefenseQteRequest request = DefenseJudgementPolicy.WithBattleAssistance(CreateActiveRequest(requirement), 1f);
@@ -80,19 +114,19 @@ public class DefenseJudgementPolicyTests
             DefenseInputReadStatus.Valid, input, -window - 0.01f, 0f), Is.False);
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
             DefenseInputReadStatus.Valid, input, -window, 0f), Is.True);
-        Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, attempt, false, 0f).PreventsDamage, Is.True);
+        Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, attempt, false, 0f).PreventsDamage, Is.False);
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
             DefenseInputReadStatus.Valid, input, -0.01f, 0f), Is.False, "Accepted input cannot refresh.");
     }
 
     [Test]
-    public void BattleInput_DodgePreparationPrecedesJustGuardPing()
+    public void BattleInput_PreCuePreparationDoesNotConsumeFirstVisibleAttempt()
     {
         DefenseQteRequest request = DefenseJudgementPolicy.WithBattleAssistance(CreateActiveRequest(), 1f);
         var dodge = new ActiveDefenseAttempt();
         var parry = new ActiveDefenseAttempt();
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref dodge, request,
-            DefenseInputReadStatus.Valid, DefenseInput.Dodge, -0.25f, 0f), Is.True);
+            DefenseInputReadStatus.Valid, DefenseInput.Dodge, -0.25f, 0f), Is.False);
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref parry, request,
             DefenseInputReadStatus.Valid, DefenseInput.Parry, -0.25f, 0f), Is.False);
         Assert.That(DefenseJudgementPolicy.EvaluateActiveDefense(request, parry, true, 0f).IsGuard, Is.True);
@@ -105,7 +139,7 @@ public class DefenseJudgementPolicyTests
     {
         var request = DefenseJudgementPolicy.WithBattleAssistance(CreateActiveRequest(requirement), 1f);
         foreach (float impactAt in new[] { 0f, 10f, 1000f })
-        foreach (float offset in new[] { 0f, .01f, .03f, .059f })
+        foreach (float offset in new[] { 0f, .01f, .029f })
         {
             var attempt = new ActiveDefenseAttempt();
             Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
@@ -123,17 +157,17 @@ public class DefenseJudgementPolicyTests
     {
         var request = DefenseJudgementPolicy.WithBattleAssistance(CreateActiveRequest(), 1f);
         var attempt = new ActiveDefenseAttempt();
-        Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(.03f, 0f, attempt), Is.False);
-        Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(.06f, 0f, attempt), Is.True);
+        Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(.029f, 0f, attempt), Is.False);
+        Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(.03f, 0f, attempt), Is.True);
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
             DefenseInputReadStatus.Valid, DefenseInput.Parry, .06f, 0f), Is.False);
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
-            DefenseInputReadStatus.Ambiguous, DefenseInput.None, .01f, 0f), Is.False);
+            DefenseInputReadStatus.Ambiguous, DefenseInput.None, .01f, 0f), Is.True);
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
             DefenseInputReadStatus.Valid, DefenseInput.Counter, .01f, 0f), Is.False);
         Assert.That(attempt.TryCommit(DefenseInputReadStatus.Valid, DefenseInput.Parry, .03f, -1f, 0f), Is.False);
         Assert.That(DefenseJudgementPolicy.TryCommitBattleInput(ref attempt, request,
-            DefenseInputReadStatus.Valid, DefenseInput.Parry, -.01f, 0f), Is.True);
+            DefenseInputReadStatus.Valid, DefenseInput.Parry, -.01f, 0f), Is.False);
         Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(0f, 0f, attempt), Is.True);
         Assert.That(DefenseJudgementPolicy.ShouldResolveBattleImpact(-.001f, 0f, attempt), Is.False);
     }
@@ -204,7 +238,7 @@ public class DefenseJudgementPolicyTests
     [TestCase(DefenseRequirement.DodgeOnly, DefenseInput.Parry, false)]
     [TestCase(DefenseRequirement.DodgeOrJump, DefenseInput.Counter, false)]
     [TestCase(DefenseRequirement.Counterable, DefenseInput.Parry, false)]
-    [TestCase(DefenseRequirement.Counterable, DefenseInput.Dodge, true)]
+    [TestCase(DefenseRequirement.Counterable, DefenseInput.Dodge, false)]
     [TestCase(DefenseRequirement.Counterable, DefenseInput.Counter, true)]
     public void ActiveRequirement_PreservesLegacyAssetsWithoutTurningJumpIntoCounter(
         DefenseRequirement requirement, DefenseInput input, bool expected)
@@ -248,7 +282,8 @@ public class DefenseJudgementPolicyTests
         DefenseInput input, float remaining, bool success)
     {
         DefenseQteResult result = DefenseJudgementPolicy.EvaluateActiveDefense(
-            CreateActiveRequest(DefenseRequirement.Counterable), CreateActiveAttempt(input, remaining), true, 0f);
+            CreateActiveRequest(input == DefenseInput.Dodge ? DefenseRequirement.Any : DefenseRequirement.Counterable),
+            CreateActiveAttempt(input, remaining), true, 0f);
         Assert.That(result.PreventsDamage, Is.EqualTo(success));
         Assert.That(result.IsCounterSuccess, Is.EqualTo(success && input == DefenseInput.Counter));
         Assert.That(result.IsPerfectParry, Is.False);
@@ -338,7 +373,6 @@ public class DefenseJudgementPolicyTests
     [TestCase(DefenseRequirement.Any, DefenseInput.Dodge, 0.12f)]
     [TestCase(DefenseRequirement.DodgeOnly, DefenseInput.Dodge, 0.22f)]
     [TestCase(DefenseRequirement.Counterable, DefenseInput.Counter, 0.18f)]
-    [TestCase(DefenseRequirement.Counterable, DefenseInput.Dodge, 0.18f)]
     public void ActiveCue_EarlyInputDoesNotConsumeFreshPressAtCueOpening(
         DefenseRequirement requirement, DefenseInput input, float expectedWindow)
     {
@@ -387,12 +421,14 @@ public class DefenseJudgementPolicyTests
     [Test]
     public void ActiveWindows_RespectDifficultyAndDoNotGrantDodgePerfectAp()
     {
-        var request = new DefenseQteRequest(1f, 2f, DefenseRequirement.Counterable,
+        var request = new DefenseQteRequest(1f, 2f, DefenseRequirement.Any,
             new DefenseTimingProfile(0.12f, 0.22f, 0.4f), useActiveDefense: true);
         DefenseQteResult dodge = DefenseJudgementPolicy.EvaluateActiveDefense(
             request, CreateActiveAttempt(DefenseInput.Dodge, 0.1f), false, 0f);
         DefenseQteResult counter = DefenseJudgementPolicy.EvaluateActiveDefense(
-            request, CreateActiveAttempt(DefenseInput.Counter, 0.1f), false, 0f);
+            new DefenseQteRequest(1f, 2f, DefenseRequirement.Counterable,
+                new DefenseTimingProfile(.12f, .22f, .4f), useActiveDefense: true),
+            CreateActiveAttempt(DefenseInput.Counter, 0.1f), false, 0f);
         Assert.That(dodge.PreventsDamage, Is.True);
         Assert.That(dodge.IsPerfectParry, Is.False);
         Assert.That(counter.PreventsDamage, Is.False);

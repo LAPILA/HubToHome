@@ -16,7 +16,7 @@ public class ProductionActionLibraryTests
         ResolvedActionLibrary resolved = ResolvedActionLibrary.Build(documents);
 
         Assert.That(resolved.Validation.HasErrors, Is.False, Format(resolved.Validation));
-        Assert.That(resolved.Entries, Has.Count.EqualTo(29));
+        Assert.That(resolved.Entries, Has.Count.EqualTo(33));
 
         var catalog = ScriptableObject.CreateInstance<ActionCatalogAsset>();
         for (int i = 0; i < resolved.Entries.Count; i++)
@@ -44,7 +44,11 @@ public class ProductionActionLibraryTests
 
         Assert.That(asset, Is.Not.Null);
         Assert.That(asset.SourceHash, Is.EqualTo(resolved.SourceHash));
+        Assert.That(asset.SourcePaths, Is.EqualTo(resolved.SourcePaths));
         Assert.That(asset.Entries, Has.Count.EqualTo(resolved.Entries.Count));
+        for (int i = 0; i < resolved.Entries.Count; i++)
+            Assert.That(JsonUtility.ToJson(asset.Entries[i]), Is.EqualTo(JsonUtility.ToJson(resolved.Entries[i])),
+                "Generated contract differs: " + resolved.Entries[i].ActionId);
     }
 
     private static List<ActionLibrarySourceDocument> LoadDocuments()

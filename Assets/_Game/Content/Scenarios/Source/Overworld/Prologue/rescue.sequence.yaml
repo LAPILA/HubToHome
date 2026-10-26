@@ -1,0 +1,9 @@
+id: prologue.tutorial.rescue
+title: "후미 출입구의 구조"
+primaryMode: overworld
+sequences:
+  prologue.tutorial.rescue:
+    - dialogue.wait:
+        blockId: 9c7637f078a94b96b331142e2a907a9d
+        designerLabel: "힘과 기술을 함께 사용"
+        id: rescue

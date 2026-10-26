@@ -35,6 +35,7 @@ public partial class SkillContext
         using var damageContext = BattleManager.Instance != null
             ? BattleManager.Instance.DamageBatches.Activate(DamageBatchId) : default;
         DamageResult result = target.TakeDamage(rawDamage, element, Actor, proc);
+        NotifyAccentImpact(result);
         if (!result.Applied || result.FinalDamage <= 0 || !target.IsAlive || CurrentStatusBuildupMultiplier <= 0f)
             return result;
 

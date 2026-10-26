@@ -1,0 +1,22 @@
+id: prologue.white_entity
+title: "프롤로그 · 후미의 백색체"
+primaryMode: battle
+openingModule: turn_qte
+memoryKey: prologue.white_entity
+participants:
+  party: [player]
+  enemies: [prologue.white_entity.part]
+rules:
+  - id: establish_encounter
+    when:
+      event: battle.started
+      timing: immediate
+      once: battle
+    do:
+      sequence: prologue.white_entity.opening
+sequences:
+  prologue.white_entity.opening:
+    - flow.wait:
+        blockId: c31c577f96164449a5f351017c0959eb
+        designerLabel: "첫 전투의 짧은 호흡"
+        duration: 0.1

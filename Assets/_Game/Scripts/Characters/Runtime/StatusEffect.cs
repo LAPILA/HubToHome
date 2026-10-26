@@ -64,7 +64,7 @@ public class BurnEffect : StatusEffect
     {
         base.OnTick();
         int damage = Mathf.Max(1, (Target.MaxHP / 100) * Stacks);
-        Target.TakePureDamage(damage); 
+        Target.TakeLegacyStatusDamage(damage);
     }
 }
 
@@ -108,7 +108,7 @@ public class BleedEffect : StatusEffect
     private void TakeBleedDamage()
     {
         int damage = Mathf.Max(1, (Target.MaxHP / 100) * Stacks);
-        Target.TakePureDamage(damage);
+        Target.TakeLegacyStatusDamage(damage);
     }
 
     public override void OnRemove()
@@ -125,7 +125,7 @@ public class PoisonEffect : StatusEffect
     public override void OnTick()
     {
         base.OnTick();
-        Target.TakePureDamage(5 * Stacks); 
+        Target.TakeLegacyStatusDamage(5 * Stacks);
     }
 }
 

@@ -25,9 +25,10 @@ MonoBehaviour:
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/dialogue.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/flow.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/module.actions.yaml
+  - Assets/_Game/Content/Scenarios/ActionLibrary/Source/overworld_party.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/screen.actions.yaml
   - Assets/_Game/Content/Scenarios/ActionLibrary/Source/timeline.actions.yaml
-  SourceHash: f27c21aa0c1b628f7918e70b8eb3a7f8269d1cbeaa13f5c037fbad84ad5d61e2
+  SourceHash: 91246d9f9690c3d7ab4a9670a18fe2272205628d22bf1304b99a8825404c4354
   Entries:
   - ActionId: battle.actor.drop_in
     Category: actor
@@ -2353,6 +2354,330 @@ MonoBehaviour:
     ReplacementActionId: 
     IconId: replace
     AccentHex: '#8C78C6'
+    Disabled: 0
+  - ActionId: overworld.party.gather
+    Category: "overworld_party"
+    DisplayNameKo: "동료 재집결"
+    DescriptionKo: "모든 동료를 리더 위치에 즉시 모으고 경로를 초기화합니다. 가상의 뒤쪽 경로는 만들지 않습니다."
+    UsageKo: "명시적 암전·맵 도착 재배치용입니다. 일반 Follow/재합류나 경로 기록 만료를 숨기는 용도로 사용하지 않습니다."
+    SummaryTemplateKo: "리더 위치에 동료 재집결"
+    Subcategory: ""
+    Tags:
+    - "overworld"
+    - "party"
+    - "gather"
+    - "teleport"
+    Aliases:
+    - "동료"
+    - "집결"
+    - "재배치"
+    RuntimeAdapterId: "OverworldPartyGatherActionAdapter"
+    Parameters: []
+    ExampleYaml: "- screen.fade: { mode: out, duration: 0.25 }\n- overworld.party.gather: {}\n- screen.fade: { mode: in, duration: 0.25 }"
+    RequiredContexts:
+    - "overworld_party_runner"
+    AllowedPrimaryModes:
+    - "overworld"
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: ""
+    IconId: "locate"
+    AccentHex: "#76B899"
+    Disabled: 0
+  - ActionId: overworld.party.mode
+    Category: "overworld_party"
+    DisplayNameKo: "동료 추종 상태"
+    DescriptionKo: "동료를 경로 추종, 제자리 대기, 자동 추종 제외 상태로 전환합니다. 표시 여부는 별도입니다."
+    UsageKo: "slot 1은 첫 동료, 0은 전체입니다. 경로 밖이거나 기록이 만료되면 Follow만으로 직선 복귀하지 않습니다."
+    SummaryTemplateKo: "동료 {slot} · {mode}"
+    Subcategory: ""
+    Tags:
+    - "overworld"
+    - "party"
+    - "follow"
+    - "hold"
+    Aliases:
+    - "동료"
+    - "추종"
+    - "대기"
+    - "이탈"
+    RuntimeAdapterId: "OverworldPartyModeActionAdapter"
+    Parameters:
+    - Name: "slot"
+      Type: "integer"
+      DisplayNameKo: "동료 번호"
+      DescriptionKo: "1=첫 동료, 최대5. 0=현재 표시 대상 동료 전체. 없는 개별 동료는 실패합니다."
+      Required: 1
+      DefaultValue: "1"
+      EditorControlId: "number"
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 1
+      Maximum: 5
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    - Name: "mode"
+      Type: "enum"
+      DisplayNameKo: "추종 상태"
+      DescriptionKo: "follow=보관 경로 추종, hold=현재 위치·커서 보관, detach=자동 추종 제외. 실제 탈퇴가 아닙니다."
+      Required: 1
+      DefaultValue: "hold"
+      EditorControlId: "segmented"
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options:
+      - "follow"
+      - "hold"
+      - "detach"
+      PlaceholderKo: ""
+    ExampleYaml: "- overworld.party.mode: { slot: 1, mode: hold }"
+    RequiredContexts:
+    - "overworld_party_runner"
+    AllowedPrimaryModes:
+    - "overworld"
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: ""
+    IconId: "users"
+    AccentHex: "#76B899"
+    Disabled: 0
+  - ActionId: overworld.party.move
+    Category: "overworld_party"
+    DisplayNameKo: "동료 개별 이동"
+    DescriptionKo: "동료 한 명을 명시한 월드 XY 경유점과 최종 목표로 이동시키고 완료까지 기다립니다. 자동 길찾기가 아닙니다."
+    UsageKo: "통로는 연출자가 책임집니다. 완료 기본 상태는 Hold입니다. rejoin은 실제 보관 경로 위에 도착한 경우에만 Follow로 복귀합니다."
+    SummaryTemplateKo: "동료 {slot} → ({x}, {y}) · {duration}초"
+    Subcategory: ""
+    Tags:
+    - "overworld"
+    - "party"
+    - "move"
+    - "path"
+    Aliases:
+    - "동료"
+    - "이동"
+    - "경유점"
+    - "재합류"
+    RuntimeAdapterId: "OverworldPartyMoveActionAdapter"
+    Parameters:
+    - Name: "slot"
+      Type: "integer"
+      DisplayNameKo: "동료 번호"
+      DescriptionKo: "1=첫 동료, 최대5. 0(전체)은 개별 이동에 사용할 수 없습니다."
+      Required: 1
+      DefaultValue: "1"
+      EditorControlId: "number"
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 1
+      HasMaximum: 1
+      Maximum: 5
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    - Name: "x"
+      Type: "number"
+      DisplayNameKo: "목표 X"
+      DescriptionKo: "최종 목표의 유한한 월드 X 좌표입니다. Z는 동료의 기존 값을 보존합니다."
+      Required: 1
+      DefaultValue: "0"
+      EditorControlId: "number"
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    - Name: "y"
+      Type: "number"
+      DisplayNameKo: "목표 Y"
+      DescriptionKo: "최종 목표의 유한한 월드 Y 좌표입니다."
+      Required: 1
+      DefaultValue: "0"
+      EditorControlId: "number"
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    - Name: "duration"
+      Type: "duration"
+      DisplayNameKo: "이동 시간"
+      DescriptionKo: "모든 경유점과 최종 목표까지의 전체 시간입니다. 0은 즉시 배치입니다."
+      Required: 1
+      DefaultValue: "1"
+      EditorControlId: "number"
+      QuickEdit: 0
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: "초"
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    - Name: "path"
+      Type: "json"
+      DisplayNameKo: "중간 경유점"
+      DescriptionKo: "선택적 {x,y} 배열, 최대128개. YAML에서는 JSON 배열로 좌표 키에 큰따옴표를 씁니다. 최종 x/y 목표는 자동으로 마지막에 추가됩니다."
+      Required: 0
+      DefaultValue: "[]"
+      EditorControlId: "json"
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    - Name: "rejoin"
+      Type: "boolean"
+      DisplayNameKo: "도착 후 추종 복귀"
+      DescriptionKo: "기본 false(Hold). true는 도착 위치가 실제 보관 경로 위임이 검증될 때만 Follow입니다. 검증 실패는 Hold와 Action 실패를 남깁니다."
+      Required: 0
+      DefaultValue: "false"
+      EditorControlId: "toggle"
+      QuickEdit: 0
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    ExampleYaml: "- overworld.party.move:\n    slot: 1\n    x: 4\n    y: 2\n    duration: 1.2\n    path: [{\"x\": 2, \"y\": 1}, {\"x\": 4, \"y\": 1}]\n    rejoin: false"
+    RequiredContexts:
+    - "overworld_party_runner"
+    AllowedPrimaryModes:
+    - "overworld"
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: ""
+    IconId: "route"
+    AccentHex: "#76B899"
+    Disabled: 0
+  - ActionId: overworld.party.visibility
+    Category: "overworld_party"
+    DisplayNameKo: "동료 표시"
+    DescriptionKo: "추종 상태와 독립적으로 동료 외형을 보이거나 숨깁니다. 숨겨도 이동 상태는 유지합니다."
+    UsageKo: "연출에서만 사용합니다. 실제 파티 탈퇴·영입·저장 상태를 변경하지 않습니다. 방 도착 시 기본 표시로 초기화됩니다."
+    SummaryTemplateKo: "동료 {slot} · 표시 {visible}"
+    Subcategory: ""
+    Tags:
+    - "overworld"
+    - "party"
+    - "visibility"
+    Aliases:
+    - "동료"
+    - "숨김"
+    - "표시"
+    RuntimeAdapterId: "OverworldPartyVisibilityActionAdapter"
+    Parameters:
+    - Name: "slot"
+      Type: "integer"
+      DisplayNameKo: "동료 번호"
+      DescriptionKo: "1=첫 동료, 최대5. 0=전체. 없는 개별 동료는 실패합니다."
+      Required: 1
+      DefaultValue: "0"
+      EditorControlId: "number"
+      QuickEdit: 1
+      HasMinimum: 1
+      Minimum: 0
+      HasMaximum: 1
+      Maximum: 5
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    - Name: "visible"
+      Type: "boolean"
+      DisplayNameKo: "표시 여부"
+      DescriptionKo: "true는 표시, false는 숨김입니다. Follow/Hold/Detached 상태는 변경하지 않습니다."
+      Required: 1
+      DefaultValue: "true"
+      EditorControlId: "toggle"
+      QuickEdit: 1
+      HasMinimum: 0
+      Minimum: 0
+      HasMaximum: 0
+      Maximum: 0
+      UnitKo: ""
+      ValueSources:
+      - "literal"
+      - "input"
+      - "event"
+      - "context"
+      Options: []
+      PlaceholderKo: ""
+    ExampleYaml: "- overworld.party.visibility: { slot: 0, visible: false }"
+    RequiredContexts:
+    - "overworld_party_runner"
+    AllowedPrimaryModes:
+    - "overworld"
+    PreviewSupport: 2
+    PreparationPolicy: 0
+    Deprecated: 0
+    ReplacementActionId: ""
+    IconId: "eye"
+    AccentHex: "#76B899"
     Disabled: 0
   - ActionId: screen.fade
     Category: screen

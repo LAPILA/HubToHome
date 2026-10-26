@@ -4,7 +4,7 @@ primaryMode: battle
 openingModule: turn_qte
 memoryKey: lab.zev.contract
 participants:
-  party: [lab.wizzel.front, lab.wizzel.support, lab.wizzel.striker, lab.wizzel.reserve1, lab.wizzel.reserve2, lab.wizzel.reserve3]
+  party: [lab.wizzel.front]
   enemies: [lab.zev]
 dialogues:
   - id: lab.zev.opening
@@ -24,7 +24,7 @@ rules:
     do:
       sequence: lab.zev.opening
   - id: lab.zev.phase2
-    name: "HP 65% · 대화"
+    name: "HP 50% · 사슬 2페이즈"
     when:
       eventId: participant.hp_changed
       timing: after_current_action
@@ -41,7 +41,7 @@ rules:
             params:
               previousPath: event.previousRatio
               currentPath: event.currentRatio
-              threshold: 0.65
+              threshold: 0.5
           - id: lab.zev.phase2.alive
             condition: number.compare
             params:
@@ -50,33 +50,6 @@ rules:
               value: 0
     do:
       sequence: lab.zev.phase2
-  - id: lab.zev.phase3
-    name: "HP 30% · 대화"
-    when:
-      eventId: participant.hp_changed
-      timing: after_current_action
-      once: session
-      conditions:
-        id: lab.zev.phase3.root
-        all:
-          - id: lab.zev.phase3.subject
-            condition: event.participant
-            params:
-              participant: lab.zev
-          - id: lab.zev.phase3.threshold
-            condition: number.crossed_below
-            params:
-              previousPath: event.previousRatio
-              currentPath: event.currentRatio
-              threshold: 0.3
-          - id: lab.zev.phase3.alive
-            condition: number.compare
-            params:
-              path: event.currentRatio
-              operator: greater
-              value: 0
-    do:
-      sequence: lab.zev.phase3
   - id: lab.zev.ending
     when:
       eventId: participant.defeated
@@ -117,8 +90,8 @@ sequences:
         duration: 0.18
         style: gameplay_safe
   lab.zev.phase2:
-    title: "두 번째 칼끝"
-    description: "행동 종료 뒤 잠시 대화하고 전투를 재개합니다."
+    title: "사슬의 조항"
+    description: "행동 종료 뒤 제브를 비추고 대화와 공격 자세를 보여 준 뒤 전투 구도와 사슬 표시를 이어갑니다."
     status: ready
     allowedPrimaryModes: [battle]
     - battle.camera.focus:
@@ -130,18 +103,23 @@ sequences:
     - dialogue.wait:
         blockId: zev.phase2.dialogue
         id: lab.zev.phase2
+    - battle.actor.pose:
+        blockId: zev.phase2.attack
+        actor: lab.zev
+        pose: attack
+        duration: 0.3
+        impact: 0
+    - battle.actor.return_slots:
+        blockId: zev.phase2.slots
+        duration: 0.2
     - battle.camera.reset:
         blockId: zev.phase2.reset
         duration: 0.18
         style: gameplay_safe
-  lab.zev.phase3:
-    title: "마지막 조항"
-    description: "저체력 생존 시 한 번만 대화. 피해 처리와 방어창 도중에는 끼어들지 않습니다."
-    status: ready
-    allowedPrimaryModes: [battle]
-    - dialogue.wait:
-        blockId: zev.phase3.dialogue
-        id: lab.zev.phase3
+    - battle.flag.set:
+        blockId: zev.phase2.chains
+        flag: lab.zev.chain_phase
+        value: "true"
   lab.zev.ending:
     title: "교육 목적이었다고"
     description: "전투 결과 화면 전에 대화. 쓰러진 적의 포즈나 카메라 포커스를 요구하지 않습니다."

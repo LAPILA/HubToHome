@@ -79,6 +79,7 @@ Do not leave important decisions only in chat.
 
 ## Unity Asset Safety
 
+- New or edited `.meta` GUIDs must be exactly 32 lowercase hexadecimal characters and unique. Verify programmatically; checking file existence or a successful C# CLI compile does not validate Unity import metadata. For missing types whose source exists, inspect Editor.log and the actual Unity compiler response file before changing code or assemblies.
 - Treat scenes, prefabs, ScriptableObjects, materials, and input assets as high-risk files.
 - Before changing a scene/prefab/ScriptableObject, document why the serialized change is needed.
 - After serialized asset edits, describe the affected Inspector references in the update note.

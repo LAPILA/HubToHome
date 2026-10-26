@@ -25,6 +25,10 @@ public class PartySlotUI
     public BattleStatusIconStrip StatusIcons;
     [Tooltip("텍스처 틴트 없이 대표색을 그대로 사용합니다. 막대 RectTransform의 왼쪽 피벗을 유지하세요.")]
     public bool SolidColorBars;
+    [FoldoutGroup("피격 HP 표시"), LabelText("감소 구간 잔여 표시")] public bool ShowDamageTrail = true;
+    [FoldoutGroup("피격 HP 표시"), LabelText("잔여 표시 색")] public Color DamageTrailColor = new Color(1f, 0.68f, 0.35f, 0.85f);
+    [FoldoutGroup("피격 HP 표시"), LabelText("유지 시간"), MinValue(0f)] public float DamageTrailDelay = 0.12f;
+    [FoldoutGroup("피격 HP 표시"), LabelText("감소 시간"), MinValue(0.01f)] public float DamageTrailDuration = 0.28f;
 
     private PlayerCharacter _player;
     private BattleStatusIconDefinition[] _statusDefinitions;
@@ -35,15 +39,14 @@ public class PartySlotUI
     private bool _hasHighlight;
     private bool _highlighted;
     private Tween _portraitTween;
-    private Tween _hpFillTween;
     private Tween _hpColorTween;
-    private Tween _hpTextTween;
     private Tween _apFillTween;
     private Tween _apColorTween;
     private Tween _apTextTween;
     private Tween _feedbackTween;
     private Tween _targetTween;
     private bool _targeted;
+    private BattleHealthTrailView _hpTrail;
 
     public void Init(PlayerCharacter player)
     {
@@ -119,9 +122,8 @@ public class PartySlotUI
     public void ReleaseTweens()
     {
         Kill(ref _portraitTween);
-        Kill(ref _hpFillTween);
         Kill(ref _hpColorTween);
-        Kill(ref _hpTextTween);
+        if (_hpTrail != null) _hpTrail.Clear();
         Kill(ref _apFillTween);
         Kill(ref _apColorTween);
         Kill(ref _apTextTween);
@@ -165,13 +167,24 @@ public class PartySlotUI
         if (duration > 0f && _hasHP && current == _targetHP && max == _maxHP) return;
         bool changed = _hasHP && current != _targetHP;
         bool lostHealth = _hasHP && current < _targetHP;
+        float previousRatio = _maxHP > 0 ? Mathf.Clamp01((float)_targetHP / _maxHP) : 0f;
+        float ratio = max > 0 ? Mathf.Clamp01((float)current / max) : 0f;
+        bool animateLoss = lostHealth && _maxHP == max && ShowDamageTrail
+            && Application.isPlaying && CanAnimate(HPFill, duration) && BattleUIController.JuiceIntensity > 0f;
         _targetHP = current; _maxHP = max; _hasHP = true;
-        Kill(ref _hpFillTween);
         Kill(ref _hpColorTween);
-        Kill(ref _hpTextTween);
         bool decreased = current < _displayHP;
         bool increased = current > _displayHP;
-        _hpFillTween = RefreshFill(HPFill, current, max, duration, ease);
+        if (animateLoss)
+        {
+            if (_hpTrail == null) _hpTrail = HPFill.GetComponent<BattleHealthTrailView>()
+                ?? HPFill.gameObject.AddComponent<BattleHealthTrailView>();
+            _hpTrail.ShowLoss(HPFill, SolidColorBars, previousRatio, ratio, DamageTrailColor,
+                DamageTrailDelay, DamageTrailDuration * BattleUIController.JuiceDurationScale);
+        }
+        else if (_hpTrail != null) _hpTrail.Clear();
+        // 실제 HP와 숫자는 판정과 같은 프레임에 반영합니다. 잃은 구간만 별도로 뒤따릅니다.
+        if (HPFill != null) SetFill(HPFill, ratio);
         if (RowBackground != null && changed && Application.isPlaying && CanAnimate(HPFill, duration))
         {
             _hpColorTween = PulseColor(HPFill,
@@ -188,19 +201,8 @@ public class PartySlotUI
             Punch(decreased ? new Vector3(10f, 0f, 0f) : new Vector3(0.05f, 0.05f, 0f),
                 !decreased, 0.3f, decreased ? 15 : 5, 1f);
         }
-        TextMeshProUGUI text = HPText;
-        if (!CanAnimate(text, duration))
-        {
-            _displayHP = current;
-            if (text != null) text.SetText("HP {0}/{1}", current, max);
-            return;
-        }
-        _hpTextTween = DOTween.To(() => _displayHP, value =>
-        {
-            _displayHP = value;
-            if (text != null) text.SetText("HP {0}/{1}", value, max);
-        }, current, duration).SetEase(ease).SetTarget(text).SetRecyclable(false)
-            .SetLink(text.gameObject, LinkBehaviour.KillOnDisable);
+        _displayHP = current;
+        if (HPText != null) HPText.SetText("HP {0}/{1}", current, max);
     }
 
     public void RefreshAP(int current, int max, float duration, Ease ease)
