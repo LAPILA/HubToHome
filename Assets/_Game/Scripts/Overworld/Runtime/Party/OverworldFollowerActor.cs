@@ -48,6 +48,7 @@ public sealed class OverworldFollowerActor : MonoBehaviour
     private bool _battleHidden;
     private bool _ownerHidden;
     private bool _hasCursor;
+    private bool _followInProgress;
     private Vector3 _lastMovePosition;
 
     public int Slot { get; internal set; }
@@ -280,21 +281,41 @@ public sealed class OverworldFollowerActor : MonoBehaviour
             TrailDistance = followDistance;
             TrailEpoch = trail.Epoch;
             _hasCursor = true;
+            // 명시 재합류는 자연 정지 뒤 재출발이 아닙니다. 작은 잔여 경로도 마저 소진합니다.
+            _followInProgress = true;
         }
         SetMotion(FacingDirection, false);
     }
 
     internal void TickFollow(OverworldFollowerTrail trail, float targetDistance, float speedBudget, float tolerance)
+        => TickFollowStaggered(trail, targetDistance, speedBudget, tolerance, 0f);
+
+    internal void TickFollowStaggered(OverworldFollowerTrail trail, float targetDistance,
+        float speedBudget, float tolerance, float restartDistance)
     {
         if (Mode != OverworldFollowerMode.Follow || IsScriptedMoving) return;
         if (!TryResolveFollow(trail, tolerance, out float current, out _))
-        { Mode = OverworldFollowerMode.Hold; SetMotion(FacingDirection, false); return; }
-        float next = Mathf.Max(current, Mathf.Min(targetDistance, current + Mathf.Max(0f, speedBudget)));
+        { Mode = OverworldFollowerMode.Hold; _followInProgress = false; SetMotion(FacingDirection, false); return; }
+        if (!_followInProgress && targetDistance - current < restartDistance)
+        { SetMotion(FacingDirection, false); return; }
+        float budget = Mathf.Max(0f, speedBudget);
+        float next = Mathf.Max(current, Mathf.Min(targetDistance, current + budget));
+        // 속도×dt를 누적한 커서와 실제 리더 경로의 float 오차가 쌓이면
+        // 정수 픽셀 간격도 1픽셀씩 흔들립니다. 이동 중 수치 오차만 닫고,
+        // 정지/대기에서는 커서를 전진시키거나 월드 좌표를 보간하지 않습니다.
+        // 긴 탐색의 float 정밀도도 반영하되 원본 1픽셀보다 큰 보정은 허용하지 않습니다.
+        float roundingTolerance = Mathf.Min(1f / GameConfigPolicy.WorldPixelsPerUnit,
+            Mathf.Max(0.0001f, Mathf.Abs(targetDistance) * 0.00000024f));
+        if (budget > 0f && targetDistance >= current && targetDistance - next <= roundingTolerance)
+            next = targetDistance;
         if (!trail.TrySample(next, TrailEpoch, out OverworldFollowerPose pose))
-        { Mode = OverworldFollowerMode.Hold; SetMotion(FacingDirection, false); return; }
+        { Mode = OverworldFollowerMode.Hold; _followInProgress = false; SetMotion(FacingDirection, false); return; }
         bool moving = next - current > 0.00001f;
         transform.position = pose.Position;
         TrailDistance = next;
+        // 일시 정지/0 delta는 기존 추종 의도를 지우지 않습니다. 실제 목표에서
+        // 멈춘 프레임만 다음 출발을 기다리게 하여 메뉴/대화 복귀가 정체되지 않게 합니다.
+        if (budget > 0f) _followInProgress = moving;
         SetMotion(moving ? pose.FacingDirection : FacingDirection, moving);
     }
 
@@ -411,6 +432,7 @@ public sealed class OverworldFollowerActor : MonoBehaviour
 
     internal void CancelMove()
     {
+        _followInProgress = false;
         ++_commandGeneration;
         Tween tween = _moveTween;
         _moveTween = null;

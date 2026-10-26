@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 기존 저장 호출을 원자 저장소에 연결하는 런타임 Facade입니다.
+/// Unity 상태와 코루틴을 다루므로 메인 스레드에서 사용합니다. 저장소의 lock은 이 계약을 대체하지 않습니다.
 /// </summary>
 public static class SaveManager
 {
@@ -13,6 +14,7 @@ public static class SaveManager
     public const int AutoSlotIndex = 99;
 
     private static readonly object StorageGate = new object();
+    private static readonly ProgressWriteBlockRegistry ProgressWriteBlocks = new ProgressWriteBlockRegistry();
     private static AtomicSaveStorage _storage;
     private static int _autoSaveGeneration;
     private static bool _autoSavePending;
@@ -22,7 +24,8 @@ public static class SaveManager
     public static event Action<int, SaveStorageResult> AutoSaveCompletedWithVersion;
 
     public static string SaveDirectoryPath => Storage.RootDirectory;
-    public static bool CanSaveCurrentProgress => !GameLoadCoordinator.IsLoading
+    public static bool AreProgressWritesBlocked => ProgressWriteBlocks.IsBlocked;
+    public static bool CanSaveCurrentProgress => !AreProgressWritesBlocked && !GameLoadCoordinator.IsLoading
         && (SceneLoader.Instance == null || !SceneLoader.Instance.IsLoading)
         && (GameStateManager.Instance == null || GameStateManager.Instance.CurrentState != GameState.Battle)
         && (BattleManager.Instance == null || !BattleManager.Instance.IsBattleSessionActive);
@@ -31,15 +34,35 @@ public static class SaveManager
     private static void ResetPendingState()
     {
         CancelPendingAutoSave();
+        ProgressWriteBlocks.Reset();
         AutoSaveCompleted = null;
         AutoSaveCompletedWithVersion = null;
     }
 
     public static bool IsManualSlot(int slotIndex) => slotIndex >= 0 && slotIndex < ManualSlotCount;
 
+    /// <summary>
+    /// 소유자가 복구를 끝낼 때까지 진행 저장/삭제를 차단합니다. 메인 스레드에서 획득합니다.
+    /// 이전 자동저장 예약도 폐기하여 차단 해제 후 임시 세션 데이터가 늦게 저장되지 않게 합니다.
+    /// 읽기 전용 슬롯 조회와 설정 저장은 차단하지 않습니다.
+    /// </summary>
+    public static IDisposable AcquireProgressWriteBlock()
+    {
+        IDisposable lease = ProgressWriteBlocks.Acquire();
+        if (_autoSavePending) CancelPendingAutoSave();
+        return lease;
+    }
+
+    private static SaveStorageResult ProgressWriteBlockedResult()
+    {
+        return SaveStorageResult.Failed(SaveStorageFailure.NotAllowed,
+            "임시 세션의 진행 저장 차단 중에는 저장하거나 삭제할 수 없습니다.");
+    }
+
     /// <summary>필드 좌표를 복사본에 반영합니다. 임시 전투 좌표나 이전 입구 ID를 저장하지 않습니다.</summary>
     public static SaveStorageResult TrySaveProgress(int slotIndex, PlayerController player)
     {
+        if (AreProgressWritesBlocked) return ProgressWriteBlockedResult();
         if (!IsManualSlot(slotIndex) && slotIndex != AutoSlotIndex)
             return SaveStorageResult.Failed(SaveStorageFailure.InvalidArgument, "올바르지 않은 저장 슬롯입니다.");
         GlobalDataManager global = GlobalDataManager.Instance;
@@ -117,6 +140,7 @@ public static class SaveManager
     /// <summary>승리/컷씬 완료 콜백에서 요청. 중복 요청은 합치고 안전한 필드 복귀 뒤 자동 칸에만 씁니다.</summary>
     public static bool RequestAutoSave()
     {
+        if (AreProgressWritesBlocked) return false;
         GlobalDataManager global = GlobalDataManager.Instance;
         if (global == null || GameLoadCoordinator.IsLoading) return false;
         if (_autoSavePending) return true;
@@ -212,6 +236,7 @@ public static class SaveManager
         SaveData data,
         int slotIndex)
     {
+        if (AreProgressWritesBlocked) return ProgressWriteBlockedResult();
         if (data != null && slotIndex >= 0 && !CanSaveCurrentProgress)
             return SaveStorageResult.Failed(SaveStorageFailure.NotAllowed,
                 "전투·후열 선택·저장 복구 중에는 진행 상황을 저장할 수 없습니다.");
@@ -286,6 +311,7 @@ public static class SaveManager
 
     public static SaveStorageResult TryDelete(int slotIndex)
     {
+        if (AreProgressWritesBlocked) return ProgressWriteBlockedResult();
         return Storage.Delete(slotIndex);
     }
 

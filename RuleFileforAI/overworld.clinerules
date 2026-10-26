@@ -1,5 +1,17 @@
 # Overworld 규칙
 
+- 동료 기본 경로 간격은1.5(48px), 재출발 여유는0.5(16px)다. 기존 직렬화 간격은 보존한다. 같은 경로 세대의 앞 Follow 동료 커서를 기준으로 순차 출발하며, 선행자가 Hold/Detached/개별 이동이면 리더 기반 목표를 쓴다. 자연 정지의 출발 대기와 Animator 표시를 분리하고, 메뉴/0예산 정지·명시 Follow 복귀에서 작은 잔여 이동을 잃지 않는다.
+- FollowerLab 전시실 출발 영역은 양쪽 기본 입구를 포함한다. 관람 성공은 Holding만으로 판정하지 않고 최종 경유점 좌표·빈 LastError·상호작용 위치를 함께 확인한다. 경로 충돌 검사를 끄거나 모든 영역 좌표가 안전하다고 가정하지 않는다.
+
+- 동료 추종 간격은 `GameConfigPolicy.WorldPixelsPerUnit`의 정수 픽셀 단위로 적용한다. 실제 경로/Transform을 반올림하거나 카메라를 동료 쪽으로 바꾸지 않는다. 거리 커서의 float 누적 오차만 이동 예산이 있는 경우 제한 보정하며, 예산0/역주행/경로 밖 복귀는 허용하지 않는다. 장시간 이동·픽셀 반올림 모델의 한계는 `AIAssets/2026-10-27-update.md` 참조.
+
+## 동행 실험실·관람 소유권 (2026-10-26)
+
+- `OverworldFollowerLabDefinition`의 리더 1명/동료 0~5명 목록은 독립 개발 씬의 새 Play에서만 임시 파티로 사용한다. 본편 새 게임/영입 정책은 바꾸지 않으며 없는 관람 슬롯은 해당 관람만 건너뛴다.
+- `OverworldFollowerLabSession`은 저장 차단과 빈 상태 복구를 소유하고, 실행 세대·Global 인스턴스·파티 목록/각 멤버의 참조 동일성으로 복구 권한을 확인한다. 다른 로드/새 게임으로 소유권을 잃으면 PartyChanged 또는 다음 Update에서 종료하며 과거 스냅샷으로 덮지 않는다. 공용 GlobalDataManager의 동작은 변경하지 않는다.
+- `OverworldFollowerObservation`은 작성된 출발/복귀 경로를 리더 몸체 크기로 검사하고 기존 추종 명령을 사용한다. 대화 세대와 자기 DOTween/이동 명령만 취소하며 다른 대화·상태·동료 명령을 전역 종료하지 않는다. 관람은 실제 파티 탈퇴나 자동 길찾기가 아니다.
+- 자산은 `Content/Maps/Development/Regions/FollowerLab`에 모은다. 생성기는 기존 경로를 덮지 않고 신규 자산만 저장한 뒤 카탈로그에 신규 동료 5개 참조만 등록한다. 본편/BattleLab/열린 dirty Scene/Build Settings는 보존한다. 사용법과 검증 경계는 `docs/overworld-follower-lab-guide.md`, `AIAssets/yjlim/feedback/2026-10-26-overworld-follower-lab.md`를 따른다.
+
 ## 동료 동행 표시 (2026-10-23 승인)
 
 - 새 게임은 주인공1명이다. 실제 파티 합류 후 기본 리더+동료2명, 설정으로 최대6명을 표시한다. 과거 ‘위젤만 필드 표시’ 규칙은 이 승인으로 대체한다. 영입/탈퇴·저장·전투 파티는 기존 서비스가 소유한다.

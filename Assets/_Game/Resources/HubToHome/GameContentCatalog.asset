@@ -20,6 +20,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 553a20be7def88447bc97d8ede168cac, type: 2}
   - {fileID: 11400000, guid: 4fc4bba24508ae144a56c4a7d0b39f0e, type: 2}
   - {fileID: 11400000, guid: 5a043534386e4fa40904cd0b3162ca2d, type: 2}
+  - {fileID: 11400000, guid: 5abbf7190ed13c54589b8fa881de8e37, type: 2}
+  - {fileID: 11400000, guid: cff246e7b0832d74790d869a1b2b5275, type: 2}
+  - {fileID: 11400000, guid: 127a3eda1510fc04d829bc34dd8abe55, type: 2}
+  - {fileID: 11400000, guid: 531e67dc8218df14c81038b4ed5fb935, type: 2}
+  - {fileID: 11400000, guid: 5b0b007020b92e842a48d18ad476349f, type: 2}
   Enemies:
   - {fileID: 11400000, guid: 63475f0e774412d26756a073b7af14d2, type: 2}
   - {fileID: 11400000, guid: d5020efba7a86cf1e6c0124099b41bbf, type: 2}

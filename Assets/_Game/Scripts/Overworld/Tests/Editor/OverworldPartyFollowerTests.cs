@@ -98,7 +98,7 @@ public sealed class OverworldPartyFollowerTests
     {
         MoveLeader(new Vector3(2f, 0f), 0f);
         MoveLeader(new Vector3(2f, 2f), 0f);
-        Tick(0.3f);
+        Tick(0.4f);
         _controller.TryGetFollower(1, out var follower);
         Assert.That(follower.transform.position.x, Is.EqualTo(2f).Within(0.0001f));
         Assert.That(follower.transform.position.y, Is.GreaterThan(0f));

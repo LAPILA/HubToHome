@@ -1,5 +1,11 @@
 # 다음 세션 브리핑
 
+2026-10-27 최신 동료 감각: 기본 간격1.5(48px), 자연 정지 후 재출발0.5(16px). 앞 Follow 동료의 경로 커서를 따라 순차 출발하며 Hold/Detached 선행자는 리더 기준으로 우회한다. 메뉴 정지·명시 Follow의 잔여 이동은 보존한다. 전시실 관람 출발 영역은 양쪽 입구를 포함하고 최종 도착 좌표/LastError까지 검사한다. [당일 후속 기록](2026-10-27-update.md#넓은-간격순차-출발전시실-관람-후속). 아래 과거 Native42/42는 이번 변경의 Play 검증 결과가 아니다.
+
+2026-10-27 동료만 미세 떨림 후속: [검증 기록](2026-10-27-update.md). 추종 간격을32PPU 정수 픽셀로 정규화(기존0.9→29/32)하고 거리 커서 누적 float 오차를 제한 보정했다. 실제 경로·카메라·리더 이동·세이브/관람은 보존한다. 전체컴파일0, 직선/긴거리 관리형 검사 통과. 실제GPU 체감은 별도 확인해야 한다.
+
+동행 실험실(2026-10-26): [사용법](../docs/overworld-follower-lab-guide.md) · [구현·검증](yjlim/feedback/2026-10-26-overworld-follower-lab.md). FollowerLab Scene/Room 3개/동료 데이터 5개 생성과 카탈로그 등록을 Unity 배치 종료 코드 0으로 확인했다. 새 단독 Play의 임시 파티만 허용하며, 저장 차단과 파티 참조 소유권은 Session, 관람·자기 대화/이동 취소는 Observation이 맡는다. 공용 GlobalDataManager/저장 스키마는 변경하지 않았다. `Library/CodexChecks/FollowerLab-native.xml`의 Native 통합 검사 2/2가 통과했다. 최종 관람 수정이 포함된 실제 Play에서 6인 추종→Room 2의 동료 둘 관람→각 재합류→Room 3 이동→세션 disable 시 복구·저장 차단 해제를 확인했다. GPU 화면·수동 Z/X 전체 대화·모바일 FPS는 미검증이다.
+
 최신 공통 전투(2026-10-26): [방어·AP·QTE 감상·누적 강화·아이템·보스 HP](yjlim/feedback/2026-10-26-combat-feedback-foundation.md). Z/X/C 성공창 .12/.22/.18초·유예 .03초, 공통 재준비·첫 시도 확정, C6/7 전용, 홀드 방어 입력 충돌 수정이다. AP 턴+2/저스트+2/적행동 아군별6, Lab만 최대40/시작20. 평타·스킬6개 구성·전조 말풍선은 보류했으며 임의로 추가하지 않는다. 아래 과거 .24/.40초 강제 하한/XC 혼용 설명보다 최신 문서를 우선한다. 보스 HP는 표시만 하며 Phase/저장·Source는 유지한다.
 
 최신 샘플(2026-10-26): [ZEV 단독 표시·반복3스킬 잠금·C 포커스 돌파](yjlim/feedback/2026-10-26-zev-sample-seal-counter.md). 토끼 UI는 HiddenInMenu로만 숨김. 기존 lab.zev.chain_phase부터 본인행동2회마다무작위3개교체/종료해제이며 Skills/저장불변이다. C성공만정수2배/1초대기후돌파하고일반전투Lens고정/무정지대응은유지한다.

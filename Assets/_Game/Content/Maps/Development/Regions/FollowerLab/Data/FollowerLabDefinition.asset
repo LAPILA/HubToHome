@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9aefa46c608f4d4ab8abbbc77f338e65, type: 3}
+  m_Name: FollowerLabDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::OverworldFollowerLabDefinition
+  Leader: {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
+  Companions:
+  - {fileID: 11400000, guid: 5abbf7190ed13c54589b8fa881de8e37, type: 2}
+  - {fileID: 11400000, guid: cff246e7b0832d74790d869a1b2b5275, type: 2}
+  - {fileID: 11400000, guid: 127a3eda1510fc04d829bc34dd8abe55, type: 2}
+  - {fileID: 11400000, guid: 531e67dc8218df14c81038b4ed5fb935, type: 2}
+  - {fileID: 11400000, guid: 5b0b007020b92e842a48d18ad476349f, type: 2}
+  InitialRoom: {fileID: 11400000, guid: 8d46ec81b58fc3844866e7f9258bf032, type: 2}
+  InitialArea: {fileID: 11400000, guid: f62de0f5618bbf248afeeb39caa02ec6, type: 2}
+  InitialSpawnPointId: default
+  InitialFacing: 3

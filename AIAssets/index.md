@@ -1,5 +1,11 @@
 # AIAssets Index
 
+동료 간격·관람 후속(2026-10-27): [48픽셀 간격·16픽셀 재출발·전시실 입장 관람 검증](2026-10-27-update.md#넓은-간격순차-출발전시실-관람-후속). 기존 실제 경로와 수동 설정을 보존한다. 전체 컴파일·관리형 검사 통과, 변경 후 실제 Play/GPU는 미검증이다.
+
+동료 미세 떨림(2026-10-27): [원인 분리·정수 픽셀 간격·float 오차 보정·검증 한계](2026-10-27-update.md). 카메라/리더/경로 구조는 유지하며 직선 상대 픽셀 교대를 수치 모델에서 제거했다. GPU 체감 확인은 남아 있다.
+
+동행 실험실(2026-10-26): [실행·인원 편집·관람/합류 사용법](../docs/overworld-follower-lab-guide.md) · [구현과 검증 기록](yjlim/feedback/2026-10-26-overworld-follower-lab.md). 독립 FollowerLab Scene 1개·Room 3개·동료 CharacterData 5개를 실제 생성하고 카탈로그에 등록했다(Unity 배치 생성 종료 코드 0). 기본 위젤 포함 6명이며 임시 파티의 진행 저장을 차단한다. Native 통합 검사 2/2 통과로 자산 연결과 실제 Play의 추종·관람·재합류·방 이동·세션 복구를 확인했다. GPU 화면·수동 Z/X 전체 대화·모바일 FPS는 미검증이다.
+
 전투 공통 피드백(2026-10-26): [판정·연타 억제·지속 방어·AP 예산·공격 QTE 자동·누적 강화·아이템 연계·보스 HP](yjlim/feedback/2026-10-26-combat-feedback-foundation.md). 특정 적 분기 없이 적용하며 평타/스킬 구성/전조 말풍선은 보류했습니다. 본편 저장·성장·원본 스킬은 보존합니다. [실험실 사용법](../docs/bunny-slime-battle-lab.md).
 
 C 반격 후속 수정(2026-10-26): [후퇴·대기 뒤 끝나던 오류](yjlim/feedback/2026-10-26-zev-sample-seal-counter.md). 실제 DOTween.dll에서 콜백 없는 Interval 전용 Sequence의 Startup실패를 재현했고, 대기만 floatTween으로교체했다. 기존대체모델보강후4실패→0실패/10사례108단언,전체CLI오류0. UnityPlay는미검증이다.

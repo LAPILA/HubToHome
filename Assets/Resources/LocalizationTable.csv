@@ -359,3 +359,17 @@ item.lab.spark_flask.name,축전병,Spark Flask,蓄電瓶,蓄电瓶
 item.lab.spark_flask.description,적 한 명에게 <color=#FFD95A>감전</color> 4를 쌓는다.,Adds 4 <color=#FFD95A>Shock</color> to one enemy.,敵1体に<color=#FFD95A>感電</color>を4蓄積する。,对一名敌人施加4层<color=#FFD95A>感电</color>。
 item.lab.overload_charge.name,방전탄,Discharge Charge,放電弾,放电弹
 item.lab.overload_charge.description,"적 한 명의 <color=#FFD95A>감전</color>을 최대 6 소비해, 소비량당 18의 피해를 준다.","Consumes up to 6 <color=#FFD95A>Shock</color> from one enemy, dealing 18 damage per stack consumed.",敵1体の<color=#FFD95A>感電</color>を最大6消費し、消費量1につき18ダメージを与える。,消耗一名敌人最多6层<color=#FFD95A>感电</color>，每层造成18点伤害。
+follower_lab.member.1,위젤 · 청록,WIZZEL · Teal,ウィゼル・青緑,威泽尔·青绿
+follower_lab.member.2,위젤 · 보라,WIZZEL · Violet,ウィゼル・紫,威泽尔·紫色
+follower_lab.member.3,위젤 · 주황,WIZZEL · Orange,ウィゼル・橙,威泽尔·橙色
+follower_lab.member.4,위젤 · 파랑,WIZZEL · Blue,ウィゼル・青,威泽尔·蓝色
+follower_lab.member.5,위젤 · 분홍,WIZZEL · Pink,ウィゼル・桃色,威泽尔·粉色
+follower_lab.sign.warehouse,창고 통로입니다. 위아래로 돌아가며 달리거나 급히 방향을 바꿔 보세요. 동료는 지나간 길을 따라옵니다.,Warehouse course. Run around the shelves and reverse direction. Companions follow the path you walked.,倉庫の通路です。棚を回り込んで走ったり急に引き返してみましょう。仲間は通った道を追いかけます。,这里是仓库通道。绕过货架奔跑或突然折返吧。伙伴会沿着你走过的路径跟随。
+follower_lab.sign.exhibition,전시 공간입니다. 파랑·분홍 동료는 입장하면 전시품을 구경하러 갑니다. 도착한 동료에게 다가가 대화한 뒤 함께 가기를 선택해 보세요.,Exhibition hall. Blue and Pink go to inspect exhibits when you enter. Approach them after they arrive and choose to leave together.,展示室です。青と桃色の仲間は入室すると展示品を見学しに行きます。到着した仲間に近づいて話しかけ、一緒に行くを選んでみましょう。,这里是展览室。进入后蓝色和粉色伙伴会前往参观展品。等他们到达后靠近交谈并选择一起走吧。
+follower_lab.sign.detour,우회로입니다. 중앙 섬을 한 바퀴 돌거나 막다른 통로에서 되돌아가 보세요. 좌우 출구로 세 방을 순환할 수 있습니다.,Detour course. Circle the island or turn back from a dead end. The side exits connect all three rooms in a loop.,迂回路です。中央の島を一周したり行き止まりから引き返してみましょう。左右の出口で三つの部屋を巡回できます。,这里是迂回路线。绕中央岛一圈或在死胡同折返吧。左右出口连接三个房间形成循环。
+follower_lab.observe.blue,이 장치의 톱니가 신기한데요. 조금만 더 구경하고 갈까요?,These gears are fascinating. Can we stay a little longer?,この装置の歯車は面白いですね。もう少し見ていきませんか？,这个装置的齿轮真有意思。再看一会儿好吗？
+follower_lab.observe.pink,상자 안에 무엇이 들었는지 궁금하네요. 먼저 다녀오셔도 괜찮아요.,I wonder what is inside this chest. You can go on ahead.,箱の中身が気になります。先に行っても大丈夫ですよ。,真想知道箱子里装着什么。你可以先走。
+follower_lab.observe.prompt,동료와 함께 이동할까요?,Leave together?,仲間と一緒に行きますか？,要和伙伴一起走吗？
+follower_lab.observe.join,함께 가기,Leave together,一緒に行く,一起走
+follower_lab.observe.stay,조금 더 구경해,Keep looking,もう少し見ていて,再看一会儿
+follower_lab.observe.blocked,지금은 돌아갈 길이 막혀 있어요. 통로 쪽에서 다시 불러 주세요.,The return path is blocked. Please call me again from the corridor.,戻る道が塞がれています。通路からもう一度呼んでください。,返回路线被挡住了。请在通道处再叫我。

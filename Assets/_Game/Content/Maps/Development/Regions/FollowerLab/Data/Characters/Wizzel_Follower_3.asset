@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 046aa2ce4ab6bf44482c3e48f2ba8799, type: 3}
+  m_Name: Wizzel_Follower_3
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  Portrait: {fileID: 21300000, guid: e5e360a1b0e1a2446922682844e871aa, type: 3}
+  TurnOrderPortrait: {fileID: 21300000, guid: 343abe3010bbb3e4c9836410a452ea1e, type: 3}
+  BattleLargePortrait: {fileID: 21300000, guid: e5e360a1b0e1a2446922682844e871aa, type: 3}
+  BattleResource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+  BattlePrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
+  OverworldVisualPrefab: {fileID: 3767812405821268843, guid: bf688147dfe257346a1034e182e3497b, type: 3}
+  BattleSymbolColor: {r: 1, g: 0.72, b: 0.4, a: 1}
+  BattleSpriteTint: {r: 1, g: 0.72, b: 0.4, a: 1}
+  StatusProfile: {fileID: 0}
+  CharacterID: lab.follower.3
+  DisplayName: "\uC704\uC824 \xB7 \uC8FC\uD669"
+  DisplayNameLocalizationKey: follower_lab.member.3
+  DisplayNameMode: 0
+  BaseStats:
+    MaxHP: 300
+    MaxAP: 50
+    ATK: 10
+    DEF: 5
+    SPD: 10
+    PhysicalResistance: 1
+    FireResistance: 1
+    IceResistance: 1
+    ElectricResistance: 1
+    CorrosionResistance: 1
+    IncomingDamageMultiplier: 1
+    OutgoingDamageMultiplier: 1
+  GrowthProfile: {fileID: 11400000, guid: a81c41c95f2847a1aebc9ef15c0b0d7b, type: 2}
+  SkillTree: {fileID: 11400000, guid: df2b9c79cf134c849180c6f871650165, type: 2}
+  MaxLevel: 99
+  BaseExperienceToLevel: 100
+  ExperienceGrowth: 1.18
+  MaxHpPerLevel: 5
+  AttackPerLevel: 1
+  DefensePerLevel: 1
+  SpeedPerLevel: 0
+  DefaultSkills:
+  - {fileID: 11400000, guid: 7a0a9be218079fa41b6cb564594af5e9, type: 2}
+  AllowLegacyLevelUnlocks: 0
+  PowerUnlocks: []

@@ -13,7 +13,11 @@ public sealed class OverworldPartyFollowerController : MonoBehaviour
     [Tooltip("기본 2명(리더 포함 전열 3명), 최대 5명(전체 6명)입니다. 실제 저장 파티만 표시합니다.")]
     private int _maxFollowers = 2;
     [SerializeField, Min(0.05f), LabelText("동료 간 경로 간격")]
-    private float _spacing = 0.9f;
+    [Tooltip("원본 픽셀 단위로 맞춥니다. 기본 1.5는 32 PPU에서 48픽셀 간격입니다.")]
+    private float _spacing = 1.5f;
+    [SerializeField, Min(0f), LabelText("재출발 여유 거리")]
+    [Tooltip("자연스럽게 멈춘 뒤 앞 동료가 이 거리만큼 더 가면 출발합니다. 기본 0.5는 16픽셀이며 0이면 즉시 출발합니다.")]
+    private float _restartDistance = 0.5f;
     [SerializeField, Range(1f, 3f), LabelText("따라잡기 속도 상한 배율")]
     private float _catchupMultiplier = 1.5f;
     [SerializeField, Min(0.001f), LabelText("경로 복귀 위치 허용 오차")]
@@ -44,6 +48,25 @@ public sealed class OverworldPartyFollowerController : MonoBehaviour
     public PlayerController Leader => _leader;
     public int FollowerCount => _followerCount;
     public int MaxFollowers => _maxFollowers;
+    // 좌표 자체를 반올림하면 모서리에서 경로를 벗어납니다. 간격만 격자에 맞춥니다.
+    public float EffectiveSpacing
+    {
+        get
+        {
+            const int ppu = GameConfigPolicy.WorldPixelsPerUnit;
+            double spacing = Finite(_spacing) ? Math.Max(0.05d, _spacing) : 1.5d;
+            return (float)(Math.Round(spacing * ppu) / ppu);
+        }
+    }
+    public float EffectiveRestartDistance
+    {
+        get
+        {
+            const int ppu = GameConfigPolicy.WorldPixelsPerUnit;
+            double distance = Finite(_restartDistance) ? Math.Max(0d, _restartDistance) : 0.5d;
+            return Mathf.Min(EffectiveSpacing, (float)(Math.Round(distance * ppu) / ppu));
+        }
+    }
     public uint TrailEpoch => _trail.Epoch;
     public bool IsBattleHidden => _battleHidden;
 
@@ -129,13 +152,25 @@ public sealed class OverworldPartyFollowerController : MonoBehaviour
 
         float delta = Finite(deltaTime) ? Mathf.Max(0f, deltaTime) : 0f;
         float speed = Mathf.Max(0f, _leader.CurrentOverworldMoveSpeed);
+        float spacing = EffectiveSpacing;
+        float restartDistance = EffectiveRestartDistance;
+        float catchup = Finite(_catchupMultiplier) ? Mathf.Min(3f, Mathf.Max(1f, _catchupMultiplier)) : 1.5f;
         for (int i = 0; i < _followerCount; i++)
         {
             OverworldFollowerActor actor = _actors[i];
             if (actor == null) continue;
-            float target = Mathf.Max(_trail.OldestDistance, _trail.HeadDistance - _spacing * (i + 1));
-            float multiplier = target - actor.TrailDistance > _spacing * 0.5f ? _catchupMultiplier : 1f;
-            actor.TickFollow(_trail, target, speed * multiplier * delta, _rejoinTolerance);
+            // 정상 행렬은 앞 동료의 실제 커서를 따릅니다. 관람/이탈한 동료가
+            // 뒤 행렬을 막지 않도록 그 경우에만 기존 리더 기준 슬롯 목표를 씁니다.
+            float target = _trail.HeadDistance - spacing * (i + 1);
+            OverworldFollowerActor previous = i > 0 ? _actors[i - 1] : null;
+            if (previous != null && previous.Mode == OverworldFollowerMode.Follow
+                && !previous.IsScriptedMoving && previous.HasTrailCursor && previous.TrailEpoch == _trail.Epoch)
+                target = previous.TrailDistance - spacing;
+            target = Mathf.Max(_trail.OldestDistance, target);
+            float budget = speed * delta;
+            float excess = Mathf.Max(0f, target - actor.TrailDistance - budget);
+            float multiplier = 1f + (catchup - 1f) * Mathf.Min(1f, excess / spacing);
+            actor.TickFollowStaggered(_trail, target, budget * multiplier, _rejoinTolerance, restartDistance);
         }
     }
 
