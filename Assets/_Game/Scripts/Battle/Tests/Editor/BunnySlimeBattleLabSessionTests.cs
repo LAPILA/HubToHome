@@ -48,7 +48,7 @@ public sealed class BunnySlimeBattleLabSessionTests
         _data.Enemy = MakeAsset<EnemyData>();
         _data.Enemy.Prefab = MakeObject("Lab Tests Enemy Prefab");
         _data.Enemy.Prefab.AddComponent<BunnySlimeShowcaseEnemy>().Data = _data.Enemy;
-        _data.Party = new CharacterData[6];
+        _data.Party = new CharacterData[1];
         for (int i = 0; i < _data.Party.Length; i++)
         {
             CharacterData data = MakeAsset<CharacterData>();
@@ -108,7 +108,7 @@ public sealed class BunnySlimeBattleLabSessionTests
         _data.Encounters[0].Enemy = null;
         Assert.That(Validate(), Is.False);
         _data.Encounters[0].Enemy = enemy;
-        _data.Party = new CharacterData[5];
+        _data.Party = new CharacterData[2];
         Assert.That(Validate(), Is.False);
         Assert.That(_global.Party, Is.Empty);
     }
@@ -123,14 +123,14 @@ public sealed class BunnySlimeBattleLabSessionTests
     }
 
     [Test]
-    public void Validation_RejectsDuplicateOrUnregisteredPartyIds()
+    public void Validation_RejectsMissingOrUnregisteredSoloIdentity()
     {
         Assert.That(Validate(), Is.True);
-        _catalog.Characters.RemoveAt(5);
+        _catalog.Characters.RemoveAt(0);
         CharacterDatabase.InvalidateCache();
         Assert.That(Validate(), Is.False);
-        _catalog.Characters.Add(_data.Party[5]);
-        _data.Party[5].CharacterID = _data.Party[0].CharacterID;
+        _catalog.Characters.Add(_data.Party[0]);
+        _data.Party[0].CharacterID = string.Empty;
         CharacterDatabase.InvalidateCache();
         Assert.That(Validate(), Is.False);
     }
@@ -151,39 +151,103 @@ public sealed class BunnySlimeBattleLabSessionTests
     }
 
     [Test]
-    public void WavePreparation_UsesStableRuntimeIdsAndOnlyWeakensFrontLine()
+    public void Validation_RejectsTheRetiredReserveExercise()
     {
-        Invoke("PrepareParty", true);
-        Assert.That(_global.Party, Has.Count.EqualTo(6));
-        for (int i = 0; i < 6; i++)
-        {
-            Assert.That(_global.Party[i].CharacterDataID, Is.EqualTo(_data.Party[i].CharacterID));
-            Assert.That(_global.Party[i].HP, Is.EqualTo(i < 3 ? 1 : 120));
-        }
+        _data.Encounters[0].WeakenFrontLine = true;
+        Assert.That(Validate(), Is.False);
+        Assert.That(_global.Party, Is.Empty);
+    }
+
+    [Test]
+    public void VisibleEntries_HideWithoutDeletingOrReorderingTheSource()
+    {
+        BattleLabEncounterEntry bunny = _data.Encounters[0];
+        bunny.HiddenInMenu = true;
+        var zev = new BattleLabEncounterEntry { Id = "lab.zev.test", Title = "ZEV", Enemy = bunny.Enemy };
+        _data.Encounters = new[] { bunny, zev };
+        CollectionAssert.AreEqual(new[] { 1 }, _data.GetVisibleEncounterIndices());
+        Assert.That(Validate(), Is.True);
+        Assert.That(_data.Encounters[0], Is.SameAs(bunny));
+        bunny.HiddenInMenu = false;
+        CollectionAssert.AreEqual(new[] { 0, 1 }, _data.GetVisibleEncounterIndices());
+        _data.Encounters = new[] { bunny, null, zev };
+        CollectionAssert.AreEqual(new[] { 0, 2 }, _data.GetVisibleEncounterIndices());
+        _data.Encounters = null;
+        Assert.That(_data.GetVisibleEncounterIndices(), Is.Empty);
+    }
+
+    [Test]
+    public void Validation_RejectsAllHiddenEntriesWithoutTouchingParty()
+    {
+        _data.Encounters[0].HiddenInMenu = true;
+        Assert.That(Validate(), Is.False);
+        Assert.That(_global.Party, Is.Empty);
+    }
+
+    [Test]
+    public void Menu_SelectsVisibleZevRatherThanHiddenFirstEntry()
+    {
+        BattleLabEncounterEntry bunny = _data.Encounters[0];
+        bunny.HiddenInMenu = true;
+        var zev = new BattleLabEncounterEntry { Id = "lab.zev.test", Title = "ZEV", Enemy = bunny.Enemy, Description = "ZEV sample" };
+        _data.Encounters = new[] { bunny, zev };
+        Invoke("BuildView");
+        Invoke("RefreshSelection");
+        Assert.That(GetField<int[]>("_menuEncounterIndices"), Is.EqualTo(new[] { 1 }));
+        object[] args = { null };
+        Assert.That((bool)typeof(BunnySlimeBattleLabSession).GetMethod("TryGetSelectedEncounter", PrivateInstance).Invoke(_session, args), Is.True);
+        Assert.That(args[0], Is.SameAs(zev));
+        Assert.That(GetField<TMPro.TMP_Text>("_description").text, Is.EqualTo("ZEV sample"));
+        Assert.That(GetField<TMPro.TMP_Text[]>("_choiceTitles"), Has.Length.EqualTo(1));
+        Assert.That(GetField<TMPro.TMP_Text[]>("_choiceTitles")[0].text, Does.Contain("ZEV"));
+        zev.HiddenInMenu = true;
+        Assert.That((bool)typeof(BunnySlimeBattleLabSession).GetMethod("TryGetSelectedEncounter", PrivateInstance).Invoke(_session, args), Is.False);
+    }
+
+    [Test]
+    public void Preparation_PreservesTheExplicitSoloSkillLoadout()
+    {
+        SkillData first = MakeAsset<SkillData>();
+        SkillData second = MakeAsset<SkillData>();
+        first.SkillID = "lab.test.first";
+        second.SkillID = "lab.test.second";
+        _catalog.Skills.Add(first);
+        _catalog.Skills.Add(second);
+        SkillDatabase.InvalidateCache();
+        _data.Party[0].DefaultSkills = new List<SkillData> { first, second };
+        Invoke("PrepareParty");
+        Assert.That(_global.Party, Has.Count.EqualTo(1));
+        Assert.That(_global.Party[0].EquippedSkillIDs, Is.EqualTo(new[] { first.SkillID, second.SkillID }));
+        Assert.That(_player.Skills, Is.EqualTo(new[] { first, second }));
+    }
+
+    [Test]
+    public void LegacyWaveFlagCannotCreateExtraMembersOrWeakening()
+    {
+        Assert.That(_data.GetPartyCount(true), Is.EqualTo(1));
+        Assert.That(_data.GetPartyCount(false), Is.EqualTo(1));
+        Invoke("PrepareParty");
+        Assert.That(_global.Party, Has.Count.EqualTo(1));
+        Assert.That(_global.Party[0].CharacterDataID, Is.EqualTo(_data.Party[0].CharacterID));
         Assert.That(_player.CharacterID, Is.EqualTo("lab.test.member.0"));
         Assert.That(_player.DisplayName, Is.EqualTo("Sample 0"));
-        Invoke("PrepareParty", false);
         Assert.That(_global.Party[0].HP, Is.EqualTo(120));
-        Assert.That(_global.Party, Has.Count.EqualTo(3));
         Assert.That(_global.Party[0].AP, Is.EqualTo(60));
     }
 
     [Test]
-    public void NormalPreparation_UsesOnlyTheThreeFrontlineMembers()
+    public void NormalPreparation_UsesOnlyTheConfiguredSoloMember()
     {
-        Invoke("PrepareParty", false);
-        Assert.That(_global.Party, Has.Count.EqualTo(3));
-        for (int i = 0; i < 3; i++)
-            Assert.That(_global.Party[i].CharacterDataID, Is.EqualTo(_data.Party[i].CharacterID));
+        Invoke("PrepareParty");
+        Assert.That(_global.Party, Has.Count.EqualTo(1));
+        Assert.That(_global.Party[0].CharacterDataID, Is.EqualTo(_data.Party[0].CharacterID));
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public void SpawnedParty_AwakeRegistrationAndDelayedStartKeepThreeDistinctFrontliners(bool waveExercise)
+    [Test]
+    public void SpawnedParty_AwakeRegistrationAndDelayedStartKeepTheSoloFrontliner()
     {
-        _data.Party[1].BattleSpriteTint = Color.cyan;
-        _data.Party[2].BattleSpriteTint = Color.magenta;
-        Invoke("PrepareParty", waveExercise);
+        _data.Party[0].BattleSpriteTint = Color.white;
+        Invoke("PrepareParty");
         BattleManager battle = GetField<BattleManager>("_battle");
         MethodInfo register = typeof(BattleManager).GetMethod("RegisterPreparedPartyMember", PrivateInstance);
         var interactions = new List<InteractionSystem>();
@@ -208,18 +272,13 @@ public sealed class BunnySlimeBattleLabSessionTests
             interactions.Add(interaction);
         }
 
-        Assert.That(battle._playerParty, Has.Count.EqualTo(3));
+        Assert.That(battle._playerParty, Has.Count.EqualTo(1));
         Assert.That(InteractionSystem.Instance, Is.SameAs(interactions[0]));
         for (int i = 0; i < players.Count; i++)
         {
             PlayerCharacter player = players[i];
             Assert.That(player != null, Is.True, "중복 InteractionSystem이 동료 GameObject를 삭제하면 안 됩니다.");
             Assert.That(interactions[i].enabled, Is.EqualTo(i == 0));
-            if (i >= 3)
-            {
-                Assert.That(player.gameObject.activeSelf, Is.False);
-                continue;
-            }
             Vector3 slot = player.transform.position;
             PlayerController controller = player.GetComponent<PlayerController>();
             typeof(PlayerController).GetMethod("Start", PrivateInstance).Invoke(controller, null);
@@ -231,17 +290,14 @@ public sealed class BunnySlimeBattleLabSessionTests
             Assert.That(player.gameObject.activeSelf, Is.True);
             if (i > 0) Assert.That(slot, Is.Not.EqualTo(players[i - 1].transform.position));
         }
-        Object.DestroyImmediate(players[1].gameObject);
-        Assert.That(InteractionSystem.Instance, Is.SameAs(interactions[0]), "동료 정리가 필드 상호작용 소유권을 해제하면 안 됩니다.");
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public void Destroy_RestoresOwnedSessionForBothRosterSizes(bool waveExercise)
+    [Test]
+    public void Destroy_RestoresTheOwnedSoloSession()
     {
         SetField("_ownsSession", true);
         SetField("_emptySession", new SaveData());
-        Invoke("PrepareParty", waveExercise);
+        Invoke("PrepareParty");
         Invoke("OnDestroy");
         Assert.That(_global.Party, Is.Empty);
     }
@@ -251,16 +307,16 @@ public sealed class BunnySlimeBattleLabSessionTests
     {
         SetField("_ownsSession", true);
         SetField("_emptySession", new SaveData());
-        Invoke("PrepareParty", false);
-        _global.Party.Add(new CharacterSaveData { CharacterDataID = _data.Party[3].CharacterID });
+        Invoke("PrepareParty");
+        _global.Party.Add(new CharacterSaveData { CharacterDataID = "unexpected.member" });
         Invoke("OnDestroy");
-        Assert.That(_global.Party, Has.Count.EqualTo(4));
+        Assert.That(_global.Party, Has.Count.EqualTo(2));
     }
 
     [Test]
     public void ReturnToMenu_WaitsForHostCleanupBeforeResettingParty()
     {
-        Invoke("PrepareParty", false);
+        Invoke("PrepareParty");
         _global.Party[0].HP = 7;
         IEnumerator routine = (IEnumerator)Invoke("ReturnToMenu", "Finished");
         Assert.That(routine.MoveNext(), Is.True);
@@ -275,7 +331,7 @@ public sealed class BunnySlimeBattleLabSessionTests
     {
         SetField("_ownsSession", true);
         SetField("_emptySession", new SaveData());
-        Invoke("PrepareParty", false);
+        Invoke("PrepareParty");
         var replacement = new CharacterSaveData { CharacterDataID = "loaded.hero", HP = 79 };
         _global.Party.Clear();
         _global.Party.Add(replacement);
@@ -284,44 +340,47 @@ public sealed class BunnySlimeBattleLabSessionTests
     }
 
     [Test]
-    public void MenuPreview_ShowsTwoTintedCompanionsWithoutCreatingBattleActors()
+    public void Destroy_DoesNotRestoreOverANewPartyWithTheSameCharacterId()
+    {
+        SetField("_ownsSession", true);
+        SetField("_emptySession", new SaveData());
+        Invoke("PrepareParty");
+        var replacement = new CharacterSaveData { CharacterDataID = _data.Party[0].CharacterID, HP = 79 };
+        _global.Party.Clear();
+        _global.Party.Add(replacement);
+        Invoke("OnDestroy");
+        Assert.That(_global.Party[0], Is.SameAs(replacement));
+        Assert.That(_global.Party[0].HP, Is.EqualTo(79));
+    }
+
+    [Test]
+    public void Menu_ShowsTheExistingSoloActorWithoutCreatingCompanions()
     {
         _player.gameObject.AddComponent<SpriteRenderer>();
-        _data.Party[1].BattleSpriteTint = Color.cyan;
-        _data.Party[2].BattleSpriteTint = Color.magenta;
-        Invoke("PrepareParty", false);
+        Invoke("PrepareParty");
         SetField("_ownsSession", true);
         Invoke("BuildView");
         Invoke("SetMenuVisible", true);
 
-        GameObject preview = GetField<GameObject>("_partyPreviewRoot");
-        Assert.That(preview.activeSelf, Is.True);
-        SpriteRenderer[] companions = preview.GetComponentsInChildren<SpriteRenderer>(true);
-        Assert.That(companions, Has.Length.EqualTo(2));
-        Assert.That(companions[0].color, Is.EqualTo(Color.cyan));
-        Assert.That(companions[1].color, Is.EqualTo(Color.magenta));
-        Assert.That(companions[0].transform.position, Is.Not.EqualTo(_player.transform.position));
-        Assert.That(companions[1].transform.position, Is.Not.EqualTo(companions[0].transform.position));
-        Assert.That(preview.GetComponentsInChildren<PlayerCharacter>(true), Is.Empty);
-        Assert.That(preview.GetComponentsInChildren<PlayerController>(true), Is.Empty);
-        Assert.That(preview.GetComponentsInChildren<Collider2D>(true), Is.Empty);
-        Assert.That(_global.Party, Has.Count.EqualTo(3));
+        Assert.That(_session.GetComponentsInChildren<SpriteRenderer>(true), Is.Empty);
+        Assert.That(_session.GetComponentsInChildren<PlayerCharacter>(true), Is.Empty);
+        Assert.That(_session.GetComponentsInChildren<PlayerController>(true), Is.Empty);
+        Assert.That(_session.GetComponentsInChildren<Collider2D>(true), Is.Empty);
+        Assert.That(_global.Party, Has.Count.EqualTo(1));
 
         Invoke("SetMenuVisible", false);
-        Assert.That(preview.activeSelf, Is.False);
         Invoke("SetMenuVisible", true);
-        Assert.That(GetField<GameObject>("_partyPreviewRoot"), Is.SameAs(preview));
-        Assert.That(preview.GetComponentsInChildren<SpriteRenderer>(true), Has.Length.EqualTo(2));
-        Assert.That(_global.Party, Has.Count.EqualTo(3));
+        Assert.That(_session.GetComponentsInChildren<SpriteRenderer>(true), Is.Empty);
+        Assert.That(_global.Party, Has.Count.EqualTo(1));
     }
 
     [Test]
-    public void MenuPreview_DoesNotCreateCompanionsForAnUnownedSession()
+    public void Menu_DoesNotCreateActorsForAnUnownedSession()
     {
         _player.gameObject.AddComponent<SpriteRenderer>();
         Invoke("BuildView");
         Invoke("SetMenuVisible", true);
-        Assert.That(GetField<GameObject>("_partyPreviewRoot"), Is.Null);
+        Assert.That(_session.GetComponentsInChildren<SpriteRenderer>(true), Is.Empty);
         Assert.That(_global.Party, Is.Empty);
     }
 
@@ -337,7 +396,7 @@ public sealed class BunnySlimeBattleLabSessionTests
         foreach (Graphic graphic in _session.GetComponentsInChildren<Graphic>(true))
             Assert.That(graphic.raycastTarget, Is.False);
         Assert.That(scaler.transform.Find("Backdrop"), Is.Null,
-            "시작 메뉴가 월드의 파티 미리보기를 전체 화면으로 가리면 안 됩니다.");
+            "시작 메뉴가 월드의 주인공을 전체 화면으로 가리면 안 됩니다.");
         Transform content = scaler.transform.Find("640x480 Safe Content");
         var header = content.Find("Header Background").GetComponent<RectTransform>();
         var controls = content.Find("Controls Background").GetComponent<RectTransform>();

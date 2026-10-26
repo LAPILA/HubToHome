@@ -7,6 +7,8 @@ public class IntroManager : MonoBehaviour
 {
     [TitleGroup("프롤로그"), SerializeField, LabelText("삽화와 대본")]
     private IllustratedStoryAsset _openingStory;
+    [TitleGroup("프롤로그"), SerializeField, LabelText("교체형 튜토리얼 설정")]
+    private PrologueTutorialDefinition _tutorialDefinition;
     [TitleGroup("열차 음향"), SerializeField, LabelText("음향 프로필")]
     private PrologueTrainAudioProfile _trainAudioProfile;
     [TitleGroup("열차 음향"), SerializeField, Min(0), LabelText("주행음 시작 페이지"), Tooltip("0부터 셉니다. 창가 반복 장면에서 시작합니다.")]
@@ -30,7 +32,13 @@ public class IntroManager : MonoBehaviour
     {
         GlobalDataManager global = GlobalDataManager.Instance;
         SceneLoader loader = SceneLoader.Instance;
-        if (_openingStory == null || global == null || loader == null || DialogueManager.Instance == null)
+        IllustratedStoryAsset opening = _tutorialDefinition != null && _tutorialDefinition.OpeningStory != null
+            ? _tutorialDefinition.OpeningStory : _openingStory;
+        PrologueTrainAudioProfile audio = _tutorialDefinition != null && _tutorialDefinition.TrainAudio != null
+            ? _tutorialDefinition.TrainAudio : _trainAudioProfile;
+        PrologueTutorialRoomBinding startRoom = _tutorialDefinition != null
+            ? _tutorialDefinition.GetRoomBinding(PrologueTutorialRoom.Repair) : null;
+        if (opening == null || global == null || loader == null || DialogueManager.Instance == null)
         {
             Debug.LogError("[IntroManager] 프롤로그 데이터 또는 GameBootstrap 연결이 없습니다.", this);
             yield break;
@@ -50,9 +58,9 @@ public class IntroManager : MonoBehaviour
         global.PlayerName = GlobalDataManager.DefaultPlayerName;
         _storyPlayer = GetComponent<IllustratedStoryPlayer>();
         if (_storyPlayer == null) _storyPlayer = gameObject.AddComponent<IllustratedStoryPlayer>();
-        _trainAudioSession = PrologueTrainAudioSession.GetOrCreate(AudioManager.Instance, _trainAudioProfile, _nextSceneName);
+        _trainAudioSession = PrologueTrainAudioSession.GetOrCreate(AudioManager.Instance, audio, _nextSceneName);
         _storyPlayer.PageStarted += HandleOpeningPageStarted;
-        yield return _storyPlayer.Play(_openingStory);
+        yield return _storyPlayer.Play(opening);
         if (_storyPlayer != null) _storyPlayer.PageStarted -= HandleOpeningPageStarted;
         if (_storyPlayer == null || !_storyPlayer.Succeeded)
         {
@@ -68,8 +76,10 @@ public class IntroManager : MonoBehaviour
         int previousDirection = global.LookingDir;
         int previousFlag = global.GetFlag("prologue.opening.completed", 0);
         global.SpawnScene = _nextSceneName;
-        global.CurrentRoomId = _nextRoomId;
-        global.SpawnPointId = _nextSpawnPointId;
+        global.CurrentRoomId = startRoom != null && startRoom.Definition != null
+            ? startRoom.Definition.RoomId : _nextRoomId;
+        global.SpawnPointId = startRoom != null && !string.IsNullOrWhiteSpace(startRoom.SpawnPointId)
+            ? startRoom.SpawnPointId : _nextSpawnPointId;
         global.SpawnFallbackAllowed = false;
         global.LookingDir = 0;
         global.SetFlag("prologue.opening.completed", 1);

@@ -19,15 +19,10 @@ MonoBehaviour:
   MemoryKey: lab.zev.contract
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
-    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    SourceHash: 0f54764021249c9c5efabb9a3635903535eb2d9652189add5f5d63146f82b736
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   PartyIds:
   - lab.wizzel.front
-  - lab.wizzel.support
-  - lab.wizzel.striker
-  - lab.wizzel.reserve1
-  - lab.wizzel.reserve2
-  - lab.wizzel.reserve3
   EnemyIds:
   - lab.zev
   Rules: []
@@ -50,7 +45,7 @@ MonoBehaviour:
     SequenceId: lab.zev.opening
     TargetInputsJson: "{}"
   - RuleId: lab.zev.phase2
-    DisplayNameKo: "HP 65% · 대화"
+    DisplayNameKo: "HP 50% · 사슬 2페이즈"
     EventId: participant.hp_changed
     Timing: 1
     CheckpointId: ""
@@ -68,26 +63,6 @@ MonoBehaviour:
       - rid: 60001
       - rid: 60002
     SequenceId: lab.zev.phase2
-    TargetInputsJson: "{}"
-  - RuleId: lab.zev.phase3
-    DisplayNameKo: "HP 30% · 대화"
-    EventId: participant.hp_changed
-    Timing: 1
-    CheckpointId: ""
-    Once: 1
-    Disabled: 0
-    Conditions:
-      NodeId: "lab.zev.phase3.root"
-      Kind: 1
-      GroupMode: 0
-      ConditionId: ""
-      ParametersJson: "{}"
-      Negate: 0
-      Children:
-      - rid: 60003
-      - rid: 60004
-      - rid: 60005
-    SequenceId: lab.zev.phase3
     TargetInputsJson: "{}"
   - RuleId: lab.zev.ending
     DisplayNameKo: ""
@@ -109,7 +84,6 @@ MonoBehaviour:
   Sequences:
   - {fileID: 11500001}
   - {fileID: 11500002}
-  - {fileID: 11500003}
   - {fileID: 11500004}
   Dialogues:
   - DialogueId: lab.zev.opening
@@ -146,43 +120,13 @@ MonoBehaviour:
         Kind: 0
         GroupMode: 0
         ConditionId: "number.crossed_below"
-        ParametersJson: "{\"previousPath\":\"event.previousRatio\",\"currentPath\":\"event.currentRatio\",\"threshold\":0.65}"
+        ParametersJson: "{\"previousPath\":\"event.previousRatio\",\"currentPath\":\"event.currentRatio\",\"threshold\":0.5}"
         Negate: 0
         Children: []
     - rid: 60002
       type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
       data:
         NodeId: "lab.zev.phase2.alive"
-        Kind: 0
-        GroupMode: 0
-        ConditionId: "number.compare"
-        ParametersJson: "{\"path\":\"event.currentRatio\",\"operator\":\"greater\",\"value\":0}"
-        Negate: 0
-        Children: []
-    - rid: 60003
-      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
-      data:
-        NodeId: "lab.zev.phase3.subject"
-        Kind: 0
-        GroupMode: 0
-        ConditionId: "event.participant"
-        ParametersJson: "{\"participant\":\"lab.zev\"}"
-        Negate: 0
-        Children: []
-    - rid: 60004
-      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
-      data:
-        NodeId: "lab.zev.phase3.threshold"
-        Kind: 0
-        GroupMode: 0
-        ConditionId: "number.crossed_below"
-        ParametersJson: "{\"previousPath\":\"event.previousRatio\",\"currentPath\":\"event.currentRatio\",\"threshold\":0.3}"
-        Negate: 0
-        Children: []
-    - rid: 60005
-      type: {class: ScenarioTriggerConditionNodeData, ns: , asm: Assembly-CSharp}
-      data:
-        NodeId: "lab.zev.phase3.alive"
         Kind: 0
         GroupMode: 0
         ConditionId: "number.compare"
@@ -213,7 +157,7 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
-    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    SourceHash: 0f54764021249c9c5efabb9a3635903535eb2d9652189add5f5d63146f82b736
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
   - BlockId: "zev.opening.focus"
@@ -267,9 +211,9 @@ MonoBehaviour:
   m_Name: lab.zev.phase2
   m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
   SequenceId: lab.zev.phase2
-  DisplayNameKo: "두 번째 칼끝"
+  DisplayNameKo: "사슬의 조항"
   Contract:
-    DescriptionKo: "행동 종료 뒤 잠시 대화하고 전투를 재개합니다."
+    DescriptionKo: "행동 종료 뒤 제브를 비추고 대화와 공격 자세를 보여 준 뒤 전투 구도와 사슬 표시를 이어갑니다."
     UsageKo: ""
     Lifecycle: 1
     Tags: []
@@ -278,7 +222,7 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
-    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    SourceHash: 0f54764021249c9c5efabb9a3635903535eb2d9652189add5f5d63146f82b736
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
   - BlockId: "zev.phase2.focus"
@@ -295,6 +239,20 @@ MonoBehaviour:
     Note: ""
     Disabled: 0
     Children: []
+  - BlockId: "zev.phase2.attack"
+    DesignerLabel: ""
+    ActionId: battle.actor.pose
+    ParametersJson: "{\"actor\":\"lab.zev\",\"pose\":\"attack\",\"duration\":0.3,\"impact\":0}"
+    Note: ""
+    Disabled: 0
+    Children: []
+  - BlockId: "zev.phase2.slots"
+    DesignerLabel: ""
+    ActionId: battle.actor.return_slots
+    ParametersJson: "{\"duration\":0.2}"
+    Note: ""
+    Disabled: 0
+    Children: []
   - BlockId: "zev.phase2.reset"
     DesignerLabel: ""
     ActionId: battle.camera.reset
@@ -302,40 +260,10 @@ MonoBehaviour:
     Note: ""
     Disabled: 0
     Children: []
-  references:
-    version: 2
-    RefIds: []
---- !u!114 &11500003
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
-  m_Name: lab.zev.phase3
-  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
-  SequenceId: lab.zev.phase3
-  DisplayNameKo: "마지막 조항"
-  Contract:
-    DescriptionKo: "저체력 생존 시 한 번만 대화. 피해 처리와 방어창 도중에는 끼어들지 않습니다."
-    UsageKo: ""
-    Lifecycle: 1
-    Tags: []
-    AllowedPrimaryModes:
-    - "battle"
-    Inputs: []
-  Source:
-    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
-    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
-    ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
-  Actions:
-  - BlockId: "zev.phase3.dialogue"
+  - BlockId: "zev.phase2.chains"
     DesignerLabel: ""
-    ActionId: dialogue.wait
-    ParametersJson: "{\"id\":\"lab.zev.phase3\"}"
+    ActionId: battle.flag.set
+    ParametersJson: "{\"flag\":\"lab.zev.chain_phase\",\"value\":\"true\"}"
     Note: ""
     Disabled: 0
     Children: []
@@ -366,7 +294,7 @@ MonoBehaviour:
     Inputs: []
   Source:
     SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/BunnySlimeBattleLab/zev_lab.scenario.yaml
-    SourceHash: e0fb7af8ebd73a20bcf9a592f61c67acf35dd0e07533f940dad56adf0917e2c9
+    SourceHash: 0f54764021249c9c5efabb9a3635903535eb2d9652189add5f5d63146f82b736
     ImportedAtIso8601: 2026-09-27T00:00:00.0000000Z
   Actions:
   - BlockId: "zev.ending.dialogue"

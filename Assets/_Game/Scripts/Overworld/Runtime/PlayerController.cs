@@ -11,7 +11,7 @@ using Sirenix.OdinInspector;
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Animator))]
-public class PlayerController : MonoBehaviour, ITimedGuardInputSource
+public class PlayerController : MonoBehaviour, IActiveDefenseAttemptSource
 {
     // ── 플레이어 상태 ─────────────────────────────────────────
     public enum PlayerState { Idle, Moving, Interacting, InMenu, InBattle }
@@ -68,12 +68,17 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     private bool _hasSortingBase;
     private Tween _defenseVisualTween;
     private DefenseInput _bufferedDefenseInput = DefenseInput.None;
+    private DefenseInputReadStatus _bufferedDefenseStatus;
+    private bool _bufferedDefenseAllowsPrecision;
     private float _bufferedDefenseInputTime = -999f;
     private const float DefenseInputBufferWindow = 1.25f;
     private DefenseInput _lastPreviewedDefenseInput = DefenseInput.None;
     private DefensePresentationGate _defensePresentationGate;
     private float _lastPreviewedDefenseInputTime = float.NegativeInfinity;
     private const float DefensePreviewDuplicateWindow = 0.05f;
+    private ParryRearmState _parryRearm;
+    private float _parryRearmInterval = ParryRearmState.DefaultInterval;
+    private BattleParryRearmIndicator _parryRearmIndicator;
     private Vector3 _hurtReactionOrigin;
     private bool _hurtReactionActive;
     private bool _preemptiveAttackInProgress;
@@ -109,6 +114,9 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     private int  _lastHorizontal;
     private int  _lastVertical;
     private Vector2 _moveInput;
+    private UnityEngine.Object _overworldPresentationOwner;
+    private uint _overworldPresentationVersion;
+    private bool _overworldPresentationMoving;
 
     // ── Animator 파라미터 해시 ────────────────────────────────
     private static readonly int HashMoveX    = Animator.StringToHash("MoveX");
@@ -177,6 +185,16 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
             return;
         }
 
+        // 연출의 표시 이동은 입력/물리 이동과 분리합니다. 일반 Idle이 걷기 포즈를 덮지 않습니다.
+        if (_overworldPresentationOwner != null)
+        {
+            _moveInput = Vector2.zero;
+            bool paused = GameInput.IsConfigModalActive
+                || (GameStateManager.Instance != null && GameStateManager.Instance.CurrentState == GameState.Paused);
+            UpdateAnimator(_overworldPresentationMoving && !paused);
+            return;
+        }
+
         // 대화 중이거나 UI가 열려있을 때 오버월드 입력을 완전히 차단합니다.
         if (GameStateManager.Instance != null && !GameStateManager.Instance.CanPlayerMove)
         {
@@ -208,6 +226,10 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void OnDisable()
     {
+        ResetParryRearm();
+        _parryRearmIndicator?.Dispose();
+        _parryRearmIndicator = null;
+        InvalidateOverworldPresentation();
         CancelPreemptiveAttack(true);
         OverworldPartyFollowerController.For(this)?.NotifyLeaderDisabled();
         IsBattleEntryHeld = false;
@@ -226,8 +248,16 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     private void HandleBattleDefenseInput()
     {
+        if (GameInput.IsDefenseInputBlocked || BattleDelay.IsPaused)
+        {
+            ResetParryRearm();
+            _bufferedDefenseInput = DefenseInput.None;
+            _bufferedDefenseInputTime = -999f;
+            return;
+        }
         if (!CanUseBattleDefense)
         {
+            ResetParryRearm();
             _bufferedDefenseInput = DefenseInput.None;
             _bufferedDefenseInputTime = -999f;
             return;
@@ -242,25 +272,56 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
             return;
 
         if (!BattleManager.Instance.CanAcceptRealtimeDefenseInput)
+        {
+            ResetParryRearm();
             return;
+        }
+
+        float remaining = _parryRearm.Remaining(Time.realtimeSinceStartup, _parryRearmInterval);
+        if (remaining > 0f) _parryRearmIndicator ??= new BattleParryRearmIndicator();
+        _parryRearmIndicator?.Refresh(transform, _spriteRenderer, remaining, _parryRearmInterval);
 
         // 적의 접근·전조·공격·정리 구간 전체에서 입력을 받아 둡니다.
         // 실제 성공/실패는 QTEManager가 충돌 시각에만 판정하므로, 이 버퍼는
         // 조작 유실을 막을 뿐 판정 시간을 앞당기지 않습니다.
         // 적 공격 대응에서는 C를 점프가 아니라 연계 반격으로 보존합니다.
         // 플레이어 스킬 QTE는 위에서 분리했으므로 이 경로는 방어 전용입니다.
-        if (GameInput.ReadActiveDefenseInputThisFrame(out DefenseInput input)
-            == DefenseInputReadStatus.Valid)
-            AttemptDefenseInput(input);
+        DefenseInputReadStatus status = GameInput.ReadActiveDefenseInputThisFrame(out DefenseInput input);
+        if (status != DefenseInputReadStatus.None)
+            AttemptDefenseInput(status, input);
     }
 
-    private void AttemptDefenseInput(DefenseInput input)
+    private void AttemptDefenseInput(DefenseInputReadStatus status, DefenseInput input)
     {
         if (!CanUseBattleDefense) return;
         float now = GameInput.GetDefensePressTime(input);
-        _bufferedDefenseInput = input;
-        _bufferedDefenseInputTime = now;
-        PreviewDefenseInputInternal(input, now);
+        _parryRearm.ObservePress(now);
+        bool allowsPrecision = _parryRearm.IsPressRearmed(now, _parryRearmInterval);
+        // 첫 입력을 다음 Update의 새 키로 교체하지 않습니다. 모든 press는 재준비에 기록합니다.
+        if (_bufferedDefenseInputTime < 0f
+            || Time.realtimeSinceStartup > _bufferedDefenseInputTime + DefenseInputBufferWindow)
+        {
+            _bufferedDefenseStatus = status;
+            _bufferedDefenseInput = input;
+            _bufferedDefenseInputTime = now;
+            _bufferedDefenseAllowsPrecision = allowsPrecision;
+        }
+        if (status == DefenseInputReadStatus.Valid && allowsPrecision)
+            PreviewDefenseInputInternal(input, now);
+    }
+
+    public void ConfigureParryRearm(float interval) => _parryRearmInterval = Mathf.Max(0f, interval);
+
+    public bool TryAcceptPerfectGuardPress(float inputTime)
+    {
+        _parryRearm.ObservePress(inputTime); // Update 순서와 버퍼 직접 공급 모두 같은 press를 한 번만 기록합니다.
+        return _parryRearm.IsPressRearmed(inputTime, _parryRearmInterval);
+    }
+
+    private void ResetParryRearm()
+    {
+        _parryRearm.Reset();
+        _parryRearmIndicator?.Hide();
     }
 
     public bool TryConsumeBufferedDefenseInput(out DefenseInput input)
@@ -270,8 +331,17 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
 
     public bool TryConsumeBufferedDefenseInput(out DefenseInput input, out float inputTime)
     {
+        return TryConsumeBufferedDefenseAttempt(out DefenseInputReadStatus status, out input, out inputTime, out _)
+            && status == DefenseInputReadStatus.Valid;
+    }
+
+    public bool TryConsumeBufferedDefenseAttempt(out DefenseInputReadStatus status, out DefenseInput input,
+        out float inputTime, out bool allowsPrecision)
+    {
+        status = DefenseInputReadStatus.None;
         input = DefenseInput.None;
         inputTime = -999f;
+        allowsPrecision = false;
 
         if (!CanUseBattleDefense)
         {
@@ -280,7 +350,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
             return false;
         }
 
-        if (_bufferedDefenseInput == DefenseInput.None)
+        if (_bufferedDefenseInputTime < 0f)
             return false;
 
         if (Time.realtimeSinceStartup > _bufferedDefenseInputTime + DefenseInputBufferWindow)
@@ -291,6 +361,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         }
 
         input = _bufferedDefenseInput;
+        status = _bufferedDefenseStatus;
+        allowsPrecision = _bufferedDefenseAllowsPrecision;
         inputTime = _bufferedDefenseInputTime;
         _bufferedDefenseInput = DefenseInput.None;
         _bufferedDefenseInputTime = -999f;
@@ -302,9 +374,14 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         PreviewDefenseInputInternal(input, Time.realtimeSinceStartup);
     }
 
-    public void CommitDefenseAttempt(DefenseInput input, bool acceptedParryFeedback = false)
+    public void CommitDefenseAttempt(DefenseInput input, bool acceptedParryFeedback = false, bool allowPreview = true)
     {
         if (!CanUseBattleDefense) return;
+        if (!allowPreview)
+        {
+            _defensePresentationGate.Commit();
+            return;
+        }
         // Update 순서와 관계없이 한 번만 미리보기. 버퍼는 이후에도 수집하지만 모션은 잠급니다.
         bool hurtBusy = _hurtReactionActive || (_battleCharacter != null
             && (!_battleCharacter.IsAlive || _battleCharacter.IsHitReactionActive));
@@ -529,6 +606,52 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
         UpdateAnimator(false);
         if (State != PlayerState.InBattle)
             State = PlayerState.Idle;
+    }
+
+    /// <summary>Scene 연출자가 기존 필드 배우의 이동 표시만 잠시 소유합니다.</summary>
+    public bool TryBeginOverworldPresentation(UnityEngine.Object owner, out uint version)
+    {
+        version = 0;
+        if (owner == null || !isActiveAndEnabled || State == PlayerState.InBattle || IsBattleEntryHeld
+            || _overworldPresentationOwner != null) return false;
+        StopOverworldMovement();
+        unchecked { _overworldPresentationVersion++; }
+        _overworldPresentationOwner = owner;
+        _overworldPresentationMoving = false;
+        version = _overworldPresentationVersion;
+        return true;
+    }
+
+    public bool OwnsOverworldPresentation(UnityEngine.Object owner, uint version)
+        => owner != null && isActiveAndEnabled && State != PlayerState.InBattle && !IsBattleEntryHeld
+            && ReferenceEquals(_overworldPresentationOwner, owner) && _overworldPresentationVersion == version;
+
+    public bool TrySetOverworldPresentationMotion(UnityEngine.Object owner, uint version, Vector2 direction, bool moving)
+    {
+        if (!OwnsOverworldPresentation(owner, version)
+            || float.IsNaN(direction.x) || float.IsNaN(direction.y)
+            || float.IsInfinity(direction.x) || float.IsInfinity(direction.y)) return false;
+        if (direction.sqrMagnitude > 0.0001f)
+            SetFacingDirection(Mathf.Abs(direction.x) >= Mathf.Abs(direction.y)
+                ? direction.x > 0f ? 3 : 2 : direction.y > 0f ? 1 : 0);
+        _overworldPresentationMoving = moving;
+        UpdateAnimator(moving);
+        return true;
+    }
+
+    public bool EndOverworldPresentation(UnityEngine.Object owner, uint version)
+    {
+        if (!OwnsOverworldPresentation(owner, version)) return false;
+        InvalidateOverworldPresentation();
+        StopOverworldMovement();
+        return true;
+    }
+
+    private void InvalidateOverworldPresentation()
+    {
+        _overworldPresentationOwner = null;
+        _overworldPresentationMoving = false;
+        unchecked { _overworldPresentationVersion++; }
     }
 
     public bool TryStartPreemptiveAttack()
@@ -779,6 +902,7 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     /// <summary>암전 전에는 필드 모습/구도를 유지하고 이동·입력만 잠급니다.</summary>
     public void HoldForBattleEntry()
     {
+        InvalidateOverworldPresentation();
         CancelPreemptiveAttack(false);
         IsBattleEntryHeld = true;
         CloseDefenseInputWindow();
@@ -789,6 +913,8 @@ public class PlayerController : MonoBehaviour, ITimedGuardInputSource
     /// <summary>전투 씬에서 이동/상호작용 입력을 완전히 잠급니다.</summary>
     public void SetBattleMode(bool active)
     {
+        ResetParryRearm();
+        InvalidateOverworldPresentation();
         CancelPreemptiveAttack(false);
         IsBattleEntryHeld = false;
         if (_rb == null) _rb = GetComponent<Rigidbody2D>();

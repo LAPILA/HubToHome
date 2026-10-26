@@ -148,6 +148,10 @@ public sealed class BattleDialoguePresentationTests
         panel.sizeDelta = new Vector2(-64f, 144f);
         Vector2 position = panel.anchoredPosition, size = panel.sizeDelta;
         RectTransform background = Rect("Blue background", panel);
+        Image backgroundImage = background.gameObject.AddComponent<Image>();
+        Color originalBackground = new Color(0f, .1f, 1f, .57f);
+        backgroundImage.color = originalBackground;
+        backgroundImage.enabled = false;
         TextMeshProUGUI body = Text("Body", background);
         TextMeshProUGUI speaker = Text("Speaker", background);
         body.fontSize = 22f;
@@ -158,7 +162,7 @@ public sealed class BattleDialoguePresentationTests
         var group = choices.gameObject.AddComponent<VerticalLayoutGroup>();
         choices.gameObject.SetActive(false);
         _menu.BeginDialoguePresentation();
-        _layout = new BattleDialogueLayout(_menu, panel, portrait, speaker, body, choices, null);
+        _layout = new BattleDialogueLayout(_menu, panel, portrait, speaker, body, choices, null, backgroundImage);
         _layout.Refresh(null, 0);
 
         var expected = new Vector3[4];
@@ -172,6 +176,9 @@ public sealed class BattleDialoguePresentationTests
         Assert.That(body.overflowMode, Is.EqualTo(TextOverflowModes.Page));
         Assert.That(group.enabled, Is.False);
         Assert.That(portrait.preserveAspect, Is.True);
+        Assert.That(backgroundImage.color, Is.EqualTo(Color.black));
+        Assert.That(backgroundImage.enabled, Is.True);
+        Assert.That(portrait.color, Is.EqualTo(Color.white));
 
         _layout.Dispose();
         _layout.Dispose();
@@ -183,7 +190,44 @@ public sealed class BattleDialoguePresentationTests
         Assert.That(body.overflowMode, Is.EqualTo(TextOverflowModes.Overflow));
         Assert.That(group.enabled, Is.True);
         Assert.That(portrait.preserveAspect, Is.False);
+        Assert.That(backgroundImage.color, Is.EqualTo(originalBackground));
+        Assert.That(backgroundImage.enabled, Is.False);
         Assert.That(_menu.IsDialoguePresentationActive, Is.False);
+    }
+
+    [Test]
+    public void BattleBackground_ResolvesFromTextAncestorsWithoutChangingTheFieldPrefab()
+    {
+        RectTransform panel = Rect("Dialogue", _root);
+        Image background = Rect("Any designer name", panel).gameObject.AddComponent<Image>();
+        background.color = Color.blue;
+        TextMeshProUGUI body = Text("Body", background.transform);
+        Image portrait = Rect("Portrait", background.transform).gameObject.AddComponent<Image>();
+        var ui = panel.gameObject.AddComponent<DialogueUI>();
+        Set(ui, "_dialogueText", body);
+        Set(ui, "_portraitImage", portrait);
+        var resolve = typeof(DialogueUI).GetMethod("ResolveBattleBackgroundImage", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(resolve, Is.Not.Null);
+        Assert.That(resolve.Invoke(ui, new object[] { panel }), Is.SameAs(background));
+        Assert.That(background.color, Is.EqualTo(Color.blue), "찾기만 해서는 필드 색상을 바꾸지 않습니다.");
+        Set(ui, "_battleBackgroundImage", portrait);
+        Assert.That(resolve.Invoke(ui, new object[] { panel }), Is.SameAs(background), "초상을 배경으로 취급하지 않습니다.");
+        Image explicitBackground = Rect("Optional explicit background", panel).gameObject.AddComponent<Image>();
+        Set(ui, "_battleBackgroundImage", explicitBackground);
+        Assert.That(resolve.Invoke(ui, new object[] { panel }), Is.SameAs(explicitBackground));
+    }
+
+    [Test]
+    public void BattleBackground_DestroyedBeforeLayoutReleaseIsSafe()
+    {
+        RectTransform panel = Rect("Dialogue", _root);
+        Image background = Rect("Background", panel).gameObject.AddComponent<Image>();
+        TextMeshProUGUI body = Text("Body", panel);
+        _menu.BeginDialoguePresentation();
+        _layout = new BattleDialogueLayout(_menu, panel, null, null, body, null, null, background);
+        Object.DestroyImmediate(background.gameObject);
+        Assert.DoesNotThrow(() => _layout.Dispose());
+        Assert.DoesNotThrow(() => _layout.Dispose());
     }
 
     [Test]

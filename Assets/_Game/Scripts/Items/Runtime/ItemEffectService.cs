@@ -31,7 +31,14 @@ public static class ItemEffectService
             return false;
         }
 
-        if (item.ActionType == EffectActionType.None || !System.Enum.IsDefined(typeof(EffectActionType), item.ActionType))
+        if (item.HasElementalPayload && (!inBattle || !item.ElementalPayload.IsValid))
+        {
+            error = !inBattle ? "누적 효과 아이템은 전투에서만 사용할 수 있습니다." : "누적 효과의 종류와 수치를 확인하세요.";
+            return false;
+        }
+
+        if (!System.Enum.IsDefined(typeof(EffectActionType), item.ActionType)
+            || item.ActionType == EffectActionType.None && !(item.HasElementalPayload && item.ElementalPayload.CanApply(target)))
         {
             error = "The item has no effect.";
             return false;
@@ -63,6 +70,11 @@ public static class ItemEffectService
                 error = "이미 최대치여서 회복할 수 없습니다.";
                 return false;
             }
+            if (item.ActionType == EffectActionType.Damage && item.TargetStat == TargetStatType.AP && target.CurrentAP <= 0)
+            {
+                error = "감소시킬 AP가 없습니다.";
+                return false;
+            }
         }
 
         if (item.ActionType == EffectActionType.Cleanse && !ItemCleanseService.CanCleanse(item, target))
@@ -83,10 +95,18 @@ public static class ItemEffectService
     }
 
     public static bool TryApply(ItemData item, CharacterBase target, bool inBattle, out string error)
+        => TryApply(item, target, inBattle, out error, out _);
+
+    /// <summary>일반 HP 변화만 별도로 반환합니다. 누적 소비 피해는 자체 상태 피해 이벤트를 사용합니다.</summary>
+    public static bool TryApply(ItemData item, CharacterBase target, bool inBattle, out string error, out int mainHpDelta)
     {
+        mainHpDelta = 0;
         if (!CanApply(item, target, inBattle, out error))
             return false;
 
+        int previousHp = target.CurrentHP;
+        int previousAp = target.CurrentAP;
+        bool mainApplied = item.ActionType != EffectActionType.None;
         int value = CalculateValue(item, target);
         switch (item.ActionType)
         {
@@ -111,7 +131,7 @@ public static class ItemEffectService
                     error = $"Unknown status effect: {item.StatusEffectID}";
                     return false;
                 }
-                target.TryApplyStatusEffect(effect);
+                mainApplied = target.TryApplyStatusEffect(effect).Applied;
                 break;
 
             case EffectActionType.Cleanse:
@@ -125,6 +145,15 @@ public static class ItemEffectService
                 break;
         }
 
+        mainHpDelta = previousHp - target.CurrentHP;
+        if (item.ActionType == EffectActionType.Heal || item.ActionType == EffectActionType.Damage || item.ActionType == EffectActionType.Revive)
+            mainApplied = mainHpDelta != 0 || previousAp != target.CurrentAP;
+        bool payloadApplied = item.HasElementalPayload && item.ElementalPayload.TryApply(target);
+        if (!mainApplied && !payloadApplied)
+        {
+            error = "적용할 수 있는 효과가 없습니다.";
+            return false;
+        }
         error = string.Empty;
         return true;
     }

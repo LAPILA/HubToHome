@@ -13,6 +13,7 @@ public sealed class BattleDialogueLayoutSettings
     [LabelText("본문 크기"), Range(10f, 20f)] public float FontSize = 14f;
     [LabelText("화자 이름 크기"), Range(10f, 20f)] public float NameFontSize = 14f;
     [LabelText("선택지 행 높이"), Range(16f, 24f)] public float ChoiceRowHeight = 18f;
+    [LabelText("전투 배경 색")] public Color BackgroundColor = Color.black;
 }
 
 /// <summary>
@@ -25,6 +26,9 @@ public sealed class BattleDialogueLayout : IDisposable
     private readonly RectTransform _panel, _content, _body, _portrait, _name, _choices;
     private readonly TextMeshProUGUI _bodyText, _nameText;
     private readonly Image _portraitImage;
+    private readonly Image _backgroundImage;
+    private readonly Color _backgroundColor;
+    private readonly bool _backgroundEnabled;
     private readonly bool _portraitPreserveAspect;
     private readonly BattleDialogueLayoutSettings _settings;
     private readonly List<RectState> _rects = new List<RectState>(6);
@@ -45,7 +49,7 @@ public sealed class BattleDialogueLayout : IDisposable
 
     public BattleDialogueLayout(BattleMenuUI menu, RectTransform panel, Image portrait,
         TextMeshProUGUI speaker, TextMeshProUGUI body, RectTransform choices,
-        BattleDialogueLayoutSettings settings)
+        BattleDialogueLayoutSettings settings, Image background = null)
     {
         _menu = menu;
         _panel = panel;
@@ -60,6 +64,15 @@ public sealed class BattleDialogueLayout : IDisposable
         _name = speaker != null ? speaker.rectTransform : null;
         _choices = choices;
         _settings = settings ?? new BattleDialogueLayoutSettings();
+        // 표시 범위를 빌리는 동안만 변경합니다. 필드 대화의 프리팹/재질/그림은 보존합니다.
+        _backgroundImage = background;
+        _backgroundColor = background != null ? background.color : Color.clear;
+        _backgroundEnabled = background != null && background.enabled;
+        if (background != null)
+        {
+            background.color = _settings.BackgroundColor;
+            background.enabled = true;
+        }
         _bodyState = new TextState(body);
         _nameState = new TextState(speaker);
         _targetCanvas = menu.SubMenuRoot.GetComponentInParent<Canvas>(true);
@@ -192,6 +205,11 @@ public sealed class BattleDialogueLayout : IDisposable
         _disposed = true;
         for (int i = _rects.Count - 1; i >= 0; i--) _rects[i].Restore();
         _bodyState.Restore(_bodyText); _nameState.Restore(_nameText);
+        if (_backgroundImage != null)
+        {
+            _backgroundImage.color = _backgroundColor;
+            _backgroundImage.enabled = _backgroundEnabled;
+        }
         if (_portraitImage != null) _portraitImage.preserveAspect = _portraitPreserveAspect;
         if (_choiceGroup != null) _choiceGroup.enabled = _choiceGroupEnabled;
         if (_menu != null) _menu.EndDialoguePresentation();

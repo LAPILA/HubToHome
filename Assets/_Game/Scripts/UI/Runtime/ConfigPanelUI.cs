@@ -40,7 +40,8 @@ public class ConfigPanelUI : UIPanel
         Key_Cancel,
         Key_Run,
         Key_Menu,
-        ControlsResetDefault
+        ControlsResetDefault,
+        AutoSkillQte
     }
 
     [Serializable] private class CategoryLabel { public Category category; public TextMeshProUGUI text; }
@@ -419,13 +420,14 @@ public class ConfigPanelUI : UIPanel
         return type == RowType.MasterVolume || type == RowType.BgmVolume || type == RowType.SfxVolume
             || type == RowType.Language || type == RowType.TextSpeed || type == RowType.AutoAdvance
             || type == RowType.ScreenShake || type == RowType.FlashIntensity
-            || type == RowType.Fullscreen || type == RowType.WindowScale;
+            || type == RowType.Fullscreen || type == RowType.WindowScale || type == RowType.AutoSkillQte;
     }
 
     private static bool IsSubmitRow(RowType type)
     {
         return IsKeyRow(type) || type == RowType.Language || type == RowType.AutoAdvance
-            || type == RowType.Fullscreen || type == RowType.ResetDefault || type == RowType.ControlsResetDefault;
+            || type == RowType.Fullscreen || type == RowType.ResetDefault || type == RowType.ControlsResetDefault
+            || type == RowType.AutoSkillQte;
     }
 
     private void Move(int dir)
@@ -480,6 +482,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
             case RowType.Language: CycleLanguage(1); break;
             case RowType.AutoAdvance: Config.SetAutoAdvance(!Config.AutoAdvance); break;
+            case RowType.AutoSkillQte: Config.SetAutoSkillQte(!Config.AutoSkillQte); break;
             case RowType.ResetDefault: Config.ResetDefaults(); break;
             case RowType.ControlsResetDefault: Config.ResetControlsDefaults(); break;
         }
@@ -501,6 +504,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.Language: CycleLanguage(dir); break;
             case RowType.TextSpeed: Config.SetTextSpeed(Config.TextSpeed + dir * 0.1f); break;
             case RowType.AutoAdvance: Config.SetAutoAdvance(!Config.AutoAdvance); break;
+            case RowType.AutoSkillQte: Config.SetAutoSkillQte(!Config.AutoSkillQte); break;
             case RowType.ScreenShake: Config.SetScreenShake(Config.ScreenShake + dir * 0.1f); break;
             case RowType.FlashIntensity: Config.SetFlashIntensity(Config.FlashIntensity + dir * 0.1f); break;
             case RowType.Fullscreen: Config.SetFullscreen(!Config.IsFullscreen); break;
@@ -983,6 +987,7 @@ public class ConfigPanelUI : UIPanel
             case RowType.Language: SetRow(r, L("config.language", "Language"), LanguageDisplayName(Config.Language)); break;
             case RowType.TextSpeed: SetRow(r, L("config.text_speed", "Text Speed"), string.Format("{0:0.0}x", Config.TextSpeed)); break;
             case RowType.AutoAdvance: SetRow(r, L("config.auto_advance", "Auto Advance"), Config.AutoAdvance ? L("common.on", "ON") : L("common.off", "OFF")); break;
+            case RowType.AutoSkillQte: SetRow(r, L("config.auto_skill_qte", "공격 QTE 자동 입력"), Config.AutoSkillQte ? L("common.on", "ON") : L("common.off", "OFF")); break;
             case RowType.ScreenShake: SetRow(r, L("config.screen_shake", "Screen Shake"), ToPercent(Config.ScreenShake)); break;
             case RowType.FlashIntensity: SetRow(r, L("config.flash_intensity", "Flash Intensity"), ToPercent(Config.FlashIntensity)); break;
             case RowType.Fullscreen: SetRow(r, L("config.fullscreen", "Fullscreen"), Config.IsFullscreen ? L("common.on", "ON") : L("common.off", "OFF")); break;
@@ -1232,7 +1237,7 @@ public class ConfigPanelUI : UIPanel
     private static List<RowType> GetRowsForCategory(Category c)
     {
         if (c == Category.Audio) return new List<RowType> { RowType.MasterVolume, RowType.BgmVolume, RowType.SfxVolume };
-        if (c == Category.Gameplay) return new List<RowType> { RowType.Language, RowType.TextSpeed, RowType.AutoAdvance, RowType.ScreenShake, RowType.FlashIntensity };
+        if (c == Category.Gameplay) return new List<RowType> { RowType.Language, RowType.TextSpeed, RowType.AutoAdvance, RowType.AutoSkillQte, RowType.ScreenShake, RowType.FlashIntensity };
         if (c == Category.Controls) return new List<RowType> { RowType.Key_Up, RowType.Key_Down, RowType.Key_Left, RowType.Key_Right, RowType.Key_Confirm, RowType.Key_Cancel, RowType.Key_Run, RowType.Key_Menu, RowType.ControlsResetDefault };
         return new List<RowType> { RowType.Fullscreen, RowType.WindowScale, RowType.ResetDefault };
     }

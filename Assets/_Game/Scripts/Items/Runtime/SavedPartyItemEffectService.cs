@@ -7,6 +7,8 @@ internal static class SavedPartyItemEffectService
     {
         if (item == null || target == null || item.Type != ItemType.Consumable || !item.UsableInOverworld)
             return Fail("필드에서 사용할 수 없는 아이템입니다.", out error);
+        if (item.HasElementalPayload)
+            return Fail("누적 효과 아이템은 전투에서만 사용할 수 있습니다.", out error);
         if (item.TargetType == TargetAreaType.EnemyOnly)
             return Fail("아군에게 사용할 수 없습니다.", out error);
         if (item.ActionType != EffectActionType.Heal && item.ActionType != EffectActionType.Damage && item.ActionType != EffectActionType.Revive)

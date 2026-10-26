@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: Sequence_derail
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: prologue.tutorial.derail
+  DisplayNameKo:
+  Contract:
+    DescriptionKo:
+    UsageKo:
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/Prologue/derail.sequence.yaml
+    SourceHash: 007012a2874324af0ed6fc9ff3dafa2c8c446b2c133d0579a19e08f887e0d966
+    ImportedAtIso8601: 2026-10-24T04:53:21.2059353Z
+  Actions:
+  - BlockId: bdb5037b70e54655a52fa30142edc030
+    DesignerLabel:
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"derail"}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: 826627cf45054117b1f9d393b81988c0
+    DesignerLabel: "\uD30C\uC190\uC758 \uC21C\uAC04\uC744 \uC554\uC804\uC73C\uB85C"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"black","duration":0.12}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: b38de85ea762453e8439d9d0df336af9
+    DesignerLabel: "\uCDA9\uACA9 \uB4A4 \uC815\uC801"
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.75}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: 6546e454eddd4bbda9116c9bc2b841ab
+    DesignerLabel:
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"black","duration":0.55}'
+    Note:
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

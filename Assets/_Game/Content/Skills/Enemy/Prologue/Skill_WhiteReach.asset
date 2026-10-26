@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: Skill_WhiteReach
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  Icon: {fileID: 0}
+  SkillName: "\uB354\uB4EC\uB294 \uC190\uAE38"
+  NameLocalizationKey: HTH_PROLOGUE_SKILL_NAME
+  DescriptionLocalizationKey: HTH_PROLOGUE_SKILL_DESCRIPTION
+  SkillID: prologue.tutorial.white_reach
+  Description: "\uAE38\uC744 \uB9C9\uC544\uC120 \uB300\uC0C1\uC744 \uAC70\uCE60\uAC8C
+    \uBC00\uC5B4\uBD99\uC778\uB2E4."
+  UsageProfile: 2
+  APCost: 0
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications: []
+  StatusProcCoefficient: 1
+  ResourceEffect:
+    Resource: {fileID: 0}
+    EnableBoost: 0
+    RequiredStep: 1
+    ConsumeStep: 1
+    DamageMultiplier: 1.5
+    GainOnCompletion: 0
+  ActionTimeline:
+  - rid: 7170423847294337024
+  - rid: 7170423847294337025
+  - rid: 7170423847294337026
+  - rid: 7170423847294337027
+  - rid: 7170423847294337028
+  references:
+    version: 2
+    RefIds:
+    - rid: 7170423847294337024
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "\uC785\uAD6C\uC5D0\uC11C \uB300\uC0C1 \uC55E\uC73C\uB85C"
+        Note:
+        Destination: 5
+        Duration: 0.35
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 7170423847294337025
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "\uCCAB \uD559\uC2B5 \xB7 \uB2E8\uC77C \uADFC\uC811 \uC804\uC870"
+        Note:
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.5
+        UseTelegraph: 0
+        TelegraphVisualMode: 1
+        WarningVfxPrefab: {fileID: 0}
+        WarningSprite: {fileID: 0}
+        TelegraphAnimatorTriggerName: BattleReady
+        TelegraphAttachPivotName: Back
+        TelegraphDuration: 0.6
+        DefenseOpenDelay: 0
+        TimeWindow: 0.7
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 1
+        TimingProfile:
+          PerfectWindow: 0.16
+          GreatWindow: 0.25
+          GoodWindow: 0.38
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        FailShakeIntensity: 0.35
+        FailShakeDuration: 0.2
+        FailShakeSafety: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: Attack
+        AttackAnimationLeadTime: 0.7
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: Center
+        AttackReadyDuration: 0.08
+        UseMeleePassThrough: 0
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.95
+        MeleeExitDuration: 0.09
+        AttackAnimDelay: 0
+    - rid: 7170423847294337026
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "\uC2E4\uC81C \uB2E8\uC77C \uD53C\uD574"
+        Note:
+        SkillMultiplier: 1
+        Element: 0
+        ShakeCamera: 0
+    - rid: 7170423847294337027
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel:
+        Note:
+        WaitTime: 0.2
+    - rid: 7170423847294337028
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "\uAE30\uBCF8 \uC704\uCE58\uB85C \uBCF5\uADC0"
+        Note:
+        Destination: 4
+        Duration: 0.3
+        MoveEase: 6
+        EnemyHopHeight: 0

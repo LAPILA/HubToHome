@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_optional_deer
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: 3750f1daab5fce14ea1ba7f3835d5d98, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_OPTIONAL_DEER_01
+    DefaultText: "\uC120\uB85C \uC18C\uB9AC \uC0AC\uC774\uC5D0 \uD558\uB098\uAC00
+      \uB354 \uC11E\uC5EC \uC788\uC5B4. \uBC14\uD034\uB791 \uBC15\uC790\uAC00 \uC548
+      \uB9DE\uC544."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

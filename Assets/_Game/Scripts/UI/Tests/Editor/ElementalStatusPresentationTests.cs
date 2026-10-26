@@ -55,6 +55,49 @@ public sealed class ElementalStatusPresentationTests
     }
 
     [Test]
+    public void PotencyDetailsDoNotExpandCompactHudOrChangeState()
+    {
+        EnemyCharacter actor = Enemy();
+        actor.Elements.Add(ElementalStatusKind.Burn, 25);
+        actor.Elements.Add(ElementalStatusKind.Chill, 9);
+        int hp = actor.CurrentHP;
+        string details = ElementalStatusPresentation.FormatDetails(actor);
+        Assert.That(details, Does.Contain("화상 25").And.Contain("1.5"));
+        string compact = ElementalStatusPresentation.FormatCompact(actor.Elements);
+        Assert.That(compact, Does.Contain("화25").And.Contain("냉9"));
+        Assert.That(compact, Does.Not.Contain("1.5").And.Not.Contain("강도"));
+        Assert.That(actor.CurrentHP, Is.EqualTo(hp));
+        Assert.That(actor.Elements.GetValue(ElementalStatusKind.Chill), Is.EqualTo(9));
+    }
+
+    [Test]
+    public void PotencyTransitionEmphasizesOnlyThresholdRisesAndNeverInitialBindingOrDecay()
+    {
+        EnemyCharacter actor = Enemy();
+        var tracker = new BattleStatusTransitionTracker();
+        actor.Elements.Add(ElementalStatusKind.Burn, 9);
+        tracker.Capture(actor.Elements);
+        Assert.That(tracker.HasPotencyIncreased, Is.False);
+        actor.Elements.Add(ElementalStatusKind.Burn, 1);
+        tracker.Capture(actor.Elements);
+        Assert.That(tracker.IsPotencyIncreased(ElementalStatusKind.Burn), Is.True);
+        Assert.That(tracker.HasPotencyIncreased, Is.True);
+        Assert.That(tracker.HasAdded || tracker.HasRemoved, Is.False);
+        tracker.Capture(actor.Elements);
+        Assert.That(tracker.HasPotencyIncreased, Is.False);
+        actor.Elements.Add(ElementalStatusKind.Burn, 1);
+        tracker.Capture(actor.Elements);
+        Assert.That(tracker.HasPotencyIncreased, Is.False);
+        actor.Elements.Consume(ElementalStatusKind.Burn, 2);
+        tracker.Capture(actor.Elements);
+        Assert.That(tracker.HasPotencyIncreased, Is.False);
+        tracker.Reset();
+        actor.Elements.Add(ElementalStatusKind.Burn, 50);
+        tracker.Capture(actor.Elements);
+        Assert.That(tracker.HasPotencyIncreased, Is.False);
+    }
+
+    [Test]
     public void CompactStripReusesExistingObjectsAndRetainsLegacySlot()
     {
         EnemyCharacter actor = Enemy();

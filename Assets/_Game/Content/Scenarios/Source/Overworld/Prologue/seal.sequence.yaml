@@ -1,0 +1,12 @@
+id: prologue.tutorial.seal
+title: "후미 잠금 고정"
+primaryMode: overworld
+sequences:
+  prologue.tutorial.seal:
+    - dialogue.wait:
+        blockId: c31f6f212aa1423d9d4f095a7e89b96d
+        id: seal
+    - flow.wait:
+        blockId: 6bc90e37e02844bfacc6f81d9558d129
+        designerLabel: "잠금 확인의 호흡"
+        duration: 0.25

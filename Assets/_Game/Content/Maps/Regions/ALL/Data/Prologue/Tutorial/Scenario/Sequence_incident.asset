@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: Sequence_incident
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: prologue.tutorial.incident
+  DisplayNameKo:
+  Contract:
+    DescriptionKo:
+    UsageKo:
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/Prologue/incident.sequence.yaml
+    SourceHash: b65447789202121eddfc89e1e6dc5c06ece372edca8eb94c881836ad20b2d2bd
+    ImportedAtIso8601: 2026-10-24T04:53:20.6700700Z
+  Actions:
+  - BlockId: 407392b96e79479da0fe394c39fc879e
+    DesignerLabel: "\uC870\uBA85\uC774 \uAEBC\uC9C0\uB294 \uC21C\uAC04"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"out","color":"black","duration":0.16}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: d166c696772e47d8abeebd9729e45d1a
+    DesignerLabel:
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.2}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: 05243f912f6c48b1b2ee470d184872de
+    DesignerLabel: "\uCC28\uCCB4\uB97C \uB2E4\uC2DC \uD655\uC778"
+    ActionId: screen.fade
+    ParametersJson: '{"mode":"in","color":"black","duration":0.3}'
+    Note:
+    Disabled: 0
+    Children: []
+  - BlockId: fb54d98c27574d07b1b271c25b96aa15
+    DesignerLabel:
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"incident"}'
+    Note:
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

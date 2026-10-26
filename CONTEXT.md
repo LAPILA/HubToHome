@@ -1,5 +1,55 @@
 # HubToHome
 
+## 전투 공통 피드백 기반 (2026-10-26 최신)
+
+평타·스킬 구성·전조 말풍선 기획은 보류한다. 공통 판정은 Z0.12/X0.22/C0.18초와 늦은 유예0.03초이며 기존 긴 전조 표시 시계와 분리한다. 예고 구간 첫 대응을 확정하고 Z/X/C 공통 재준비0.18초(짧은 공격 길이 절반 이하)를 사용한다. 홀드 Z는 여러 타격에도65%감소이며 비모달 기록창이 대응 Z를 소비하지 않는다. Counterable6/CounterOnly7 모두 C전용이다. 아래 과거의 성공창 .24/.40초·X/C 혼용·빠른 키 교체 허용 설명보다 이 정책이 우선한다.
+
+기본 AP는 턴+2/저스트+2/적행동당 아군별 최대+6이다. `BattleManager.BeginParryRewardAction`의 중첩/세대 scope를 일반·구형·시나리오 경로가 공유한다. Lab만 최대40/시작20이고 본편 성장·장비·저장은 유지한다. 누적10/25/50에 상태 피해×1.25/1.5/2, 선택적 아이템 누적 부여/소비와 ItemUsed5 장비 발동을 제공한다. 공격 QTE 자동 옵션은 기본false/기존시계/방어제외다. `BattleBossProgressPresenter`는 보스/선택적 적 HP만 관찰하며 페이즈는 기존 Scenario가 소유한다. Source 문법/Action ID/SkillData를 변경하지 않는다. [설정·코드·검증](AIAssets/yjlim/feedback/2026-10-26-combat-feedback-foundation.md).
+
+## ZEV 단독 샘플 · 임시 반복 잠금 · C 성공 포커스 (2026-10-26)
+
+Lab토끼입구는삭제아닌HiddenInMenu로숨기고표시index를분리한다. ZEVEntry.SkillLock는기존phaseflag부터본인정상행동2회마다최대3스킬을중복없이교체한다. BattleSkillLockScope/Cycle/PlayerCharacter의소유자별집합이임시상태를소유하며원본Skills/SkillData/저장은바꾸지않는다. 메뉴CanUse와실행3경계가같은잠금을검사한다. 행포인터도기존대상선택/입력소비로전달하며거부는비모달빨강흔들림이다. 다른메인탭클릭은목록전환만하며이전entry를확정하지않는다.
+
+C성공은큰후퇴→정수2배위젤포커스1초→접근명중1회→적뒤돌파→양측복귀다. CameraController의명시scope가viewport/최종출력에같은배율을제공하며일반sessionLens/HUD/PP를변경하지않는다. 적공격의무정지대응정책은유지한다. [설정·수명·검증](AIAssets/yjlim/feedback/2026-10-26-zev-sample-seal-counter.md).
+
+## 전체 적 공격 기본 정책 — 이동 중 실시간 대응 (2026-10-26)
+
+이 정책이 아래의 이전 opt-in/준비·가드 접점 정지 설명을 대체한다. 실제 적 공격은 접근/비행/모션 진행 중 대응 창과 전조가 뜬다. 일반은 기존 TimeWindow를 보존해 접근 전체에 쓰며 Combo 런타임 복사본만 이동 기준 접점을 계산한다. C·광역은 중앙 배치와 명중 시각을 유지하며 창 시작부터 클립을 양수 속도로 재매핑한다. 해당 VFX는 원래 impact lead에1회다. 공격 감속/impact freeze/Ready·전조·끝 대기·중간 방어자 반응 완료 대기는 없다.
+
+적 전투의 Wait/Ready/Windup/중복 지상 앞 접근은 생략하고 실루엣도 병행한다. 이야기·아군 대기, 명시 특수 이동, 모달 pause, C 반격/복귀와 예약 턴은 유지한다. 무시되는 준비 블록은 동기화 탐색에서도 건너뛰어 Projectile/Sequence 방어창을 중복하지 않는다. 모듈·기존·시나리오 root는 최종 반응 소비 전 Defer=false로 내린다. [제작·코드·검증](AIAssets/yjlim/feedback/2026-10-26-global-enemy-attack-flow.md).
+
+## 제브 사슬 광란 · 로컬 AI 후속 (2026-10-26)
+
+Lab난무는 `Action_EnemyAssaultCombo.ContinuousMotion` 선택 모드를 사용한다. 매타 Ready·접근 전 정지·공격자 감속/접점 고정은 생략하고 이동 접점에서 판정한다. 늦은 입력 유예 중 관통은 계속하며 방어자 반응 완료/정리만 전체 난무 끝으로 미룬다. 목표는 진행 중 회피 좌표가 아닌 방어 배치다. 마지막C와 기본 false인 다른 공격은 기존 경로를 유지한다.
+
+최신 조정: 관통 기준 `.60→.34→.30→.24초`로 반응 시간을 늘렸고 이름은 ZEV다. 상단 ‘누구의 턴’ 글자만 제거하고 턴/탈진은 유지한다. 아군QTE는 결과 글자 없이 흰색 성공/빨강 흔들림 실패로 표시한다. 실루엣은 Hide/OnDisable에서 재부모하지 않고 다음 Bind에서만 연결한다. [최신 수명·검증 계약](AIAssets/yjlim/feedback/2026-10-26-battle-feedback-polish.md).
+
+Lab새스킬 `lab.showcase.zev.chain_frenzy`는2페이즈flag뒤정상공격1회완료→다음자기행동1회로연결된다. `EnemyData.FollowupPatterns`/`BattleEnemyActionPatternState`가행동시작flag스냅샷·정상완료·다음선택을소유하고phase전환은기존Scenario가유지한다. Source/Runtimehash/ActionId문법·저장은변하지않는다.
+
+새EnemyOnly `Action_EnemyAssaultCombo`의단계목록이왕복10/공중2/혼합8을기존DefenseWindow→Damage로한번씩실행한다. 공중높이/가드관통은선택적이며기존default0/false는보존한다. 최종`CounterOnly=7`만C전용이고기존6은X/C다. 공격시작검격VFX는세대lease/풀수명으로C성공/취소를처리한다. `SkillData.RecoveryTurns=1`은정상/C중단완료뒤다음자기턴1회휴식이며기절저항과독립/전투수명내만유지한다. [실행·설정·검증](AIAssets/yjlim/feedback/2026-10-26-zev-chain-frenzy.md).
+
+## 사슬·제브 이동·전투 기록 후속 (2026-10-26)
+
+최신 정책은 [후속 기록](AIAssets/yjlim/feedback/2026-10-26-battle-chain-rolling-followup.md)을 따른다. Lab 사슬은 배율2/폭32/길이256/반복주기192·코너별 대칭·시작음0.45/1.2초 감쇠다. 제브 일반4종7방어창이ScreenWide이며 중복AttackStaging4개/대기1개를 데이터에서 제거했다. C중앙·가드접점정지·피격아군전진은 유지한다.
+
+상단 기록의 이전 즉시전체표시/내용별자동크기는 폐기했다. BattleNarrationUI가 고정480×72/14px/최대3줄·줄별타이핑·Z현재줄완성/다음줄진행·자동진행을 소유한다. TMP전체rich text와firstVisibleCharacter0을 유지하고 최초lineInfo의문자범위/기준선을 캐시해본문을 마스크안에서 올린다. CombatLogPresenter의 실제HP/AP/상태집계는 그대로이며3대상씩페이지분할하지않는다. UI의모달/입력소비/종료정리를 유지한다. 본편원본DB/스킬/Scene/저장은 이번 수정에 포함하지 않는다.
+
+## 위젤 단독 연출 실험실
+
+현재 BunnySlimeBattleLab은 흰 기본 위젤1명/토끼·제브 두 입구다. 본편3+3와 저장은 유지하며, Lab Session만 자기 임시 파티를 준비/복구한다. 원본 위젤10·제브5스킬은 보존하고 Lab 전용15사본을 연결한다. 컷인은 전부 제거했으며 enum0은 저장 호환용 no-op이다. `Action_PresentationAccent`의 실루엣은 실제 배우 Renderer를 동일 크기로 복제하고, Flash는 SkillContext의 다음 실제 유효 명중1회에 비차단 예약한다. `Action_ScreenPassSlash`는 아군 전용 화면 좌우 관통/교차 시점 피해/자기 카메라 구도·위치 복원을 소유한다. Lab3스킬에 연결했다. 엄격 픽셀 Lens/Dutch0과 기존 피해/QTE는 유지한다. 반복 Z만 기본0.18초 재준비(짧은 공격은 길이 절반 이하), 홀드 가드와 X/C는 유지하며 배우 옆 회색→노랑 표시가 준비 상태를 알린다. Source/Runtime party와 SkillID/GUID는 유지한다. [실행·재사용·검증 한계](docs/bunny-slime-battle-lab.md).
+
+## 제브 사슬2페이즈 · 명시 카메라 포커스 (2026-10-26)
+
+Lab 제브만HP1800/50%교차1회 전환으로 바꿨다. Source는 제브 포커스→대사→표시용 Attack→자리/카메라 복원→`battle.flag.set`으로`lab.zev.chain_phase="true"`를 켠다.30%추가대화는 실행하지 않고 원본 대화 자산은 보존한다. 기존5스킬 중빙섬/잔뢰이연/뇌광순회는 기존 DefenseWindow 시계의 ScreenWide 경로다. 피해는 기존 소비자만 계산하며 guard/parry는접촉정지, dodge/실패는끝까지관통, C는중앙연출이다.
+
+`IBattleSessionFlagEvents`는 실제 플래그 변경을 통지한다. `BattleFlagPresentationGate/Scope`가 선택적 LabEntry.PhaseOverlay를 연결하고 `BattlePhaseOverlayPresentation`은4개모서리UI/단일SFX만 소유한다. HP/저장/분기는 판단하지 않는다. 프로필은 그림·속도·색·음량·감쇠를 편집한다. BGM은변경하지않고 전투끝/F8/비활성/씬이탈에정리한다. 전투 주대화 BackgroundColor는black이며 lease해제시원래Image상태를복원해필드는보존한다.
+
+명시적 단일 배우 추적 중에는 전투 viewport가 해당 배우만 기준으로 삼는다. 기본대상/일반battleShot/Timeline/소실된대상은기존전체기준이다. Lens고정/PP/Dutch0은유지한다. [설정·검증·미확인사항](AIAssets/yjlim/feedback/2026-10-26-zev-chain-phase.md).
+
+## 전투 행동 결과 기록 (2026-10-25)
+
+`BattleCombatLogPresenter`는 기존 `DamageBatches`와 CharacterBase의 실제 HP/AP·상태 이벤트를 관찰해 대상별 결과를 행동 종료에 요약한다. 손실/회복은 별도 합산하고 기존 Damage/Elemental 숫자를 중복 가산하지 않는다. 반격 하위 결과는 현재 행동 배치에 모으며, 종료·모듈 중단·상태 일괄 정리 전에 구독과 대기 결과를 버린다. `BattleCombatLogFormatter`의4언어 문구를 기존 중앙 BattleNarrationUI에 즉시 표시·짧은 자동 종료로 보낸다. 새 `RevealImmediately`는 기본false이며 기존 타이핑/Z확인은 유지한다. 피격/저체력 자동 말풍선만 제거했고 이야기·스킬/턴 말풍선·전투 계산은 보존한다. 새 스턴은 없으며 기존 상태 전환과 행동 불가 이유만 안내한다. [사용법·검증 한계](AIAssets/yjlim/feedback/2026-10-25-battle-combat-log.md).
+
 ## 고정 전투 배율 · 엄격 픽셀 출력 (2026-10-23 최종 후속)
 
 앞선 HUD 보정의 매 프레임 자동 Lens 확대·축소와 연속 줌 우회를 제거했다. `CameraController.BattleViewport`는 전투 시작에 안전영역을 계산한 뒤 한 session의 Lens를 고정하고 중심만 제한한다. PPU32/640×480에서 허용값은7.5/n(정수n≥1), 기본 전투는 원본1배/7.5, 최소 요청값은3.75다. 수용 범위를 넘는 배치는 경고하고 자동 줌으로 숨기지 않는다. 하단162px/상단48px+각8px 예약·몸체 캐시·방어 Hold·Timeline lease는 유지한다.
@@ -42,7 +92,21 @@ BeforePP에서 같은 크기 R8 Point 허용마스크(Background white→상위 
 
 대상이 모두 사망하면 기본 블록은 기존처럼 중단하되 `CanRunWithoutLivingTargets`를 명시한 표시 블록만 실행한다. 현재 opt-in은 ScreenSplit뿐이며 취소/시전자 사망을 우회하지 않는다. Turn QTE 스킬의 실행 콜백은 현재 action scope와도 연결되어 강제중단 후 렌더 조회가 잔여효과를 제거한다. 시나리오 `battle.skill.timeline`도 동일한 마지막 대상 정책을 따르고 Source 문법/Action ID는 유지한다. [사용법·성능 한계](AIAssets/yjlim/feedback/2026-10-19-diagonal-screen-slash.md).
 
-## 임시 프롤로그 (2026-10-19)
+## 교체형 프롤로그 튜토리얼 (2026-10-24)
+
+`PrologueTutorialDefinition`은 역할·대사·Room·전투·삽화·오디오·시퀀스 참조를 소유한다. Scene 수명의 `PrologueTutorialController`는 기존 서비스를 연결하고 `PrologueTutorialProgress`는 완료 플래그에서 단계를 읽는 순수 투영이다. Q0의 `PrologueTrainSequence`는 같은 Scene의 새 제어기가 있는 경우에만 옛 3초 사건/후미 자동 진입을 양보한다. 다른 기존 Scene은 그대로다.
+
+진행은 창가 루프·원래3줄 대사→기관사·위젤의 자동 접근/마주보기 대화→직접 수리3조작→선택 탐색/드래곤 대화 완료→이상 발생→후미 공개→학습 전투→압박/구조1회→문 잠금→전방 침입→위젤 단독 감속→파손/탈선→저장 가능한 완료 Room이다. NPC/샘플 그림/문구는 데이터 교체 대상이며 드래곤은 실제 파티에 합류하지 않는다. 완료 사실만 기존 GlobalDataManager 플래그에 저장하고 실행 중 코루틴/전투는 저장하지 않는다.
+
+기관사 도입의 로컬 위치·시간·역할/대사 ID는 Definition.Introduction에서 작성한다. PlayerController의 세대별 표시 이동 lease는 일반 Idle 갱신이 연출의 걷기를 덮지 못하게 하며, Room·세대·lease가 일치할 때만 취소 좌표를 복구한다. 객차 문은 접촉으로 이동하고 복수 Collider의 완전 Exit 이후 재무장한다. 도착 겹침은 시간이 지나도 Exit 전까지 재진입하지 않는다. 기존 수리 완료 저장에서는 새 도입을 강제로 반복하지 않는다.
+
+최신 동선 수정: 첫 Q0 수리칸의 왼쪽에서 시작해 Repair→Common→Rear→Control을 모두 오른쪽으로 진행한다. 봉쇄 후 Repair 강제 복귀를 제거하고 Rear에 남는다. 저장 재개도 같은 순방향 Spawn을 사용한다. 기존 Room ID/enum/완료 플래그는 보존한다. `DialogueData.RevealTextImmediately`는 기본 false이며 전용 프롤로그27개만 true로 작성한다. 즉시 본문 표시 후 Z1회에 페이지/문장1단계씩 넘기고 선택지·첫프레임 입력 방어는 유지한다.
+
+`BattleEncounterOutcome.StoryWithdrawn=4`는 opt-in 이야기 후퇴이며 Abort/도주/전멸이 아니다. 조기 처치도 이 정책에서만 후퇴로 변환한다. 보상·적 처치 기록·GameOver를 발생시키지 않고 기존 심리스 종료/복구를 사용한다. `IEncounterRosterPolicy`는 CharacterData ID의 부분집합만 임시 참가시키며 저장 파티를 재편하지 않는다. `OnPlayerActionCompleted`는 실제 행동/아이템 효과 완료 경계이고 방어 학습은 기존 DefenseQteResult를 소비한다.
+
+끝은 `all.train.prologue_end/default`에서 자기 잠금을 해제한 후 자동저장 요청 버전의 완료를 기다리고 완료 선택창을 연다. 완료 저장을 다시 불러오면 탈선/최종 저장을 반복하지 않는다. SaveManager는 기존 완료 이벤트와 함께 버전을 포함한 알림을 제공한다. 진행 목표는 기존 JournalCatalog에 투영한다. [제작/검수 안내](AIAssets/yjlim/feedback/2026-10-24-prologue-tutorial.md), [승인 설계](docs/superpowers/specs/2026-10-24-prologue-tutorial-design.md)를 먼저 본다.
+
+## 이전 임시 프롤로그 (2026-10-19, 위 튜토리얼 Scene에서는 대체됨)
 
 2026-10-23 개정: 국가 설명4컷과 '그리고 현재' 자막을 Opening에서 제거했다. 새 게임은 창가 위젤 반복 장면 한 페이지부터 시작한다. Two empire BGM 재생 코드/프로필 필드는 제거했지만 원본 그림·음원·옛 대본과 범용 StoryPlayer는 보존했다. 새 기계 수리 장면/대본은 아직 만들지 않았다. 일반 DialogueUI의 Cinematic/Cutscene14cps 분리와 공유 Text Animator 자산을 직접 수정하지 않는 정책은 유지한다.
 
@@ -323,7 +387,7 @@ The migrated Game Module for the existing QTE/turn battle. `turn_qte` starts thr
 _Avoid_: adding new QTE state/input/action branches directly to battle setup or bypassing the controller when switching modules.
 
 **Defense Judgement Pipeline**:
-The shared defense contract. Default realtime combat uses persistent Z hold guard (damage multiplier 0.35), fresh Z Just Guard (zero damage and configured AP reward), X dodge (zero damage without a default AP reward), and C Link Counter (Counterable only). `WithBattleAssistance` preserves generous authored values while imposing actual-time minimum windows after difficulty scaling: Z 0.24s, X 0.34s, C 0.28s, capped by total attack duration. Counterable permits X/C and rejects Z; legacy jump-only maps to dodge-only. `DefenseJudgementPolicy` owns outcomes; `QTEManager.StartBattleDefenseWindow` owns passive realtime execution without enemy QTE panels/events. `PlayerController` reads defense during EnemyAction and enemy ActionExecute, yielding the keys to active player skill QTEs. InputAction event timestamps, not processing-frame timestamps, determine success. First valid input inside its own window commits; early/wrong/ambiguous presses do not lock out a later valid attempt. Accepted input cannot refresh or satisfy another impact. Preheld Z is ordinary guard. Battle-only late grace holds contact for at most 0.06s when no input is committed, before applying damage; accepted early input resolves at the original impact. DefensePresentationGate separates input collection from selected-target previews and locks restart during busy/committed reactions. Basic attacks start animation before the hit using EnemyCharacter.BasicAttackImpactLeadTime (default 0.12s); authored skill clips use AttackAnimationLeadTime. Ready completes before the shared clock. Zero authored lead retains legacy immediate animation. AoE shares one defense window and one AP reward. Reaction completion follows damage before global Idle cleanup. Old raw timing defaults/nonbattle legacy modes and attack-skill QTE input remain unchanged.
+The shared defense contract. Realtime combat uses persistent Z guard (damage multiplier0.35), fresh Z Just Guard (zero damage and base AP2), X dodge (zero damage without default reward), and C Link Counter. Counterable6 and CounterOnly7 both require C; serialized enum values are preserved. Success windows default Z0.12/X0.22/C0.18s and late grace0.03s, separate from the preserved authored cue duration. The first cue-period attempt commits even when early, wrong, ambiguous or not rearmed; later key switching cannot replace it. Z/X/C share actor-owned0.18s rearm, capped to half short-attack duration. A held Z remains ordinary guard across impacts, while consumed menu-confirm holds remain blocked. Input event timestamps determine precision. Enemy motion/animation continues during defense and grace; damage has one consumer. QTEManager owns execution, PlayerController owns actor input, and DefenseJudgementPolicy owns results. Normal/legacy/scenario enemy action roots share one nested, generation-safe AP budget (base maximum6 per ally per enemy action); equipment/resource rewards remain separate. Attack QTE auto preference affects offense only. Reactions drain after final impact, C successful choreography and paired return remain separately owned.
 _Avoid_: recomputing defense success from raw input and grade inside basic attacks, skill blocks, UI, or character controllers.
 
 Melee assistance (2026-09-26, cue policy updated 2026-10-07): `WithBattleAssistance(..., parryFromPreparation: true)` raises allowed Z to max(authored perfect, authored dodge/preparation, 0.40s after difficulty scaling). START/ping and fresh-Z acceptance begin together. X is at least as wide as Z. `StartBattleDefenseWindow.useMeleeParryAssistance` defaults true; projectiles/ranged fallback opt out of the wider melee Z window, not the common cue contract. Counterable/dodge-only restrictions remain. Accepted melee Z briefly tints the defender; actual parry animation/VFX/reward still resolve once at impact. Preheld Z remains ordinary guard.

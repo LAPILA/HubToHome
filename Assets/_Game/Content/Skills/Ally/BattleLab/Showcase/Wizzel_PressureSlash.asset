@@ -1,0 +1,126 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: "Wizzel_PressureSlash"
+  m_EditorClassIdentifier: "Assembly-CSharp::SkillData"
+  Icon: {fileID: 0}
+  SkillName: "압력 베기"
+  NameLocalizationKey: "skill.showcase.wizzel.pressure_slash.name"
+  DescriptionLocalizationKey: "skill.showcase.wizzel.pressure_slash.description"
+  SkillID: "lab.showcase.wizzel.pressure_slash"
+  Description: "증기압을 실은 검으로 적을 베어낸다."
+  UsageProfile: 1
+  APCost: 8
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications: []
+  StatusProcCoefficient: 1
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 0
+    RequiredStep: 0
+    ConsumeStep: 0
+    DamageMultiplier: 1
+    GainOnCompletion: 1
+  ActionTimeline:
+  - rid: 202610250001001
+  - rid: 202610250001002
+  - rid: 202610250001003
+  - rid: 202610250001004
+  - rid: 202610250001005
+  - rid: 202610250001007
+  - rid: 202610250001006
+  - rid: 202610250001008
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610250001001
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 5
+        Duration: 0.16
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 202610250001002
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "자세와 공격 프레임"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AnimTriggerName: "BattleReady"
+        DelayAfter: 0.08
+    - rid: 202610250001003
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동·공격과 병행하는 아군 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        TimeLimit: 0.7
+        SuccessMultiplier: 1
+        FailMultiplier: 0.55
+        Nodes:
+          - PosX: 0.18
+            PosY: 0.28
+            TargetKey: "z"
+    - rid: 202610250001004
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "자세와 공격 프레임"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AnimTriggerName: "Attack"
+        DelayAfter: 0
+    - rid: 202610250001005
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "소유 효과 프리팹"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        VfxPrefab: {fileID: 4748681987041982144, guid: 389d534cbbbcee443bc83df66acb5c97, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 202610250001007
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "다음 유효 명중에 점멸 1회 예약"
+        Note: "피해·방어·복귀를 기다리지 않는 단발 예약입니다. 명중 전 취소되면 표시하지 않습니다."
+        Mode: 2
+        Duration: 0.08
+        Strength: 0.12
+        AccentColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610250001006
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "확정된 명중 피해"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        SkillMultiplier: 1.3
+        Element: 0
+        ShakeCamera: 0
+    - rid: 202610250001008
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 4
+        Duration: 0.18
+        MoveEase: 6
+        EnemyHopHeight: 0

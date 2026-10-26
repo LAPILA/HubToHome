@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_forward
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_FORWARD_01
+    DefaultText: "\uCC9C\uC7A5 \uC704\uC5D0\uC11C\uB3C4 \uC18C\uB9AC\uAC00 \uB098\uC694.
+      \uBC29\uAE08 \uADF8 \uB140\uC11D\u2026 \uC774\uC5B4\uC838 \uC788\uB098 \uBD10."
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: 72c7023ec4a565f468ba9cbc2dbef6b5, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_FORWARD_02
+    DefaultText: "\uB4A4\uB294 \uC6B0\uB9AC\uAC00 \uB9C9\uC744\uAC8C. \uC55E\uB9CC
+      \uBCF4\uACE0 \uAC00!"
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

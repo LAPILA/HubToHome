@@ -13,7 +13,7 @@ using Sirenix.OdinInspector;
 /// 전투의 전체 흐름을 제어하는 중앙 매니저 (Singleton & State Machine 기반).
 /// 옵저버(Observer) 패턴을 활용하여 UI와의 결합도를 낮췄습니다.
 /// </summary>
-public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost, IActionSequenceLiveContextSource, IBattleDamagePresentationHost
+public partial class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipantCommandHost, IBattleCinematicHost, IBattleTurnQteHost, IActionSequenceLiveContextSource, IBattleDamagePresentationHost, IBattlePlayerActionCompletionHost, IBattleCombatLogHost, IBattleEnemyPatternHost
 {
     public static BattleManager Instance { get; private set; }
     public BattleDamageBatchTracker DamageBatches { get; } = new BattleDamageBatchTracker();
@@ -39,6 +39,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public event Action<BattleRewardResult>         OnBattleRewardsGranted;
     public event Action<PlayerMenuAction>           OnTargetSelectionStarted;
     public event Action<BattleNarrationMessage>     OnBattleNarrationRequested;
+    public event Action<CharacterBase, SkillData, ItemData> OnCombatLogActionStarted;
+    public event Action OnCombatLogReset;
     public event Action<List<BattleScenarioTrigger>> OnBattleScenarioTriggersReady;
     #endregion
 
@@ -57,12 +59,15 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [FormerlySerializedAs("_mpPerTurn")]
     [BoxGroup("System Rules"), LabelWidth(140)]
     [Tooltip("턴 시작 시 회복되는 AP입니다.")]
-    public int _apPerTurn = 5;
+    public int _apPerTurn = 2;
 
     [FormerlySerializedAs("_mpOnParryPerfect")]
     [BoxGroup("System Rules"), LabelWidth(140)]
     [Tooltip("퍼펙트 패링 성공 시 회복되는 AP입니다.")]
-    public int _apOnParryPerfect = 20;
+    public int _apOnParryPerfect = 2;
+    [BoxGroup("System Rules"), LabelText("적 행동당 저스트 AP 상한"), Min(0)]
+    [Tooltip("아군 한 명이 적의 한 행동 전체에서 얻는 기본 저스트 AP 상한입니다. 장비 효과는 별도입니다.")]
+    [SerializeField] private int _apParryCapPerEnemyAction = BattleParryRewardBudget<PlayerCharacter>.DefaultCap;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("미리 계산할 턴 수. 표시 수 이상으로 자동 보정하며 실제 턴 빈도에는 영향을 주지 않습니다.")]
     [SerializeField] private int _maxTurnQueueSize = 8;
     [BoxGroup("System Rules"), LabelWidth(140)] [Tooltip("실제로 UI에 노출할 턴 대기열 아이콘 수")]
@@ -100,18 +105,15 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     [SerializeField] private Vector3 _meleePullbackOffset = new Vector3(-0.5f, 0, 0);
 
     [Header("Enemy Action Timing")]
-    [Tooltip("적이 공격 애니메이션을 시작한 뒤 실제 방어 QTE 판정이 유지되는 시간")]
+    [Tooltip("기본 적 공격이 접근/공격을 시작해 명중하기까지의 대응 시간입니다. 전조를 기다리며 정지하지 않습니다.")]
     [SerializeField] private float _enemyDefenseQTEWindow = 0.8f;
-    [Tooltip("적이 공격하기 전 준비 자세를 유지하는 시간. 이때도 Z/X/C 방어 입력을 받습니다.")]
-    [SerializeField] private float _enemyAttackVisualDuration = 0.18f;
+    [HideInInspector, SerializeField] private float _enemyAttackVisualDuration = 0.18f; // 저장/host 호환용, 정지 준비 미사용
     [Tooltip("플레이어 기본공격이 실제 데미지를 적용하기까지의 시간")]
     [SerializeField] private float _playerAttackHitDelay = 0.03f;
     [Tooltip("플레이어 기본공격 히트 후 복귀 시작까지의 시간")]
     [SerializeField] private float _playerAttackRecoverDelay = 0.14f;
-    [Tooltip("적 공격 판정 후 적이 복귀를 시작하기까지의 시간")]
-    [SerializeField] private float _enemyPostHitDelay = 0.18f;
-    [Tooltip("광역 공격의 판정 전 준비 시간")]
-    [SerializeField] private float _enemyAoEWindup = 0.35f;
+    [HideInInspector, SerializeField] private float _enemyPostHitDelay = 0.18f; // 저장/host 호환용, 고정 후딜 미사용
+    [HideInInspector, SerializeField] private float _enemyAoEWindup = 0.35f; // 저장/host 호환용, 광역 준비 대기 미사용
     [Tooltip("적 단일공격이 시작되기 전에 화면 중앙으로 이동하는 시간")]
     [SerializeField] private float _enemyCenterAdvanceDuration = 0.18f;
     [Header("Narration")]
@@ -157,6 +159,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     public bool IsAwaitingReserveChoice => _partyWaveChoice != null && _partyWaveChoice.IsVisible;
     public bool IsBattleSessionActive => _isBattleActive || _isBattleEnding || _isPartyWaveTransitioning
         || (_isDedicatedBattleScene && CurrentState != BattleState.Init);
+    public IBattleSessionStateReader ScenarioSessionState => _battleScenarioRuntime?.SessionState;
     private int _partyWaveTransitionVersion;
     private bool _rewardCommitted;
     private bool _playerPreemptiveAttackAvailable;
@@ -315,6 +318,11 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             return;
 
         OnBattleNarrationRequested?.Invoke(message);
+    }
+
+    void IBattleCombatLogHost.BeginCombatLogAction(CharacterBase actor, SkillData skill, ItemData item)
+    {
+        if (!_isBattleEnding) OnCombatLogActionStarted?.Invoke(actor, skill, item);
     }
 
     private void TryRequestFlavorNarration()
@@ -665,12 +673,18 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void OnDisable()
     {
+        ResetParryRewardAction();
         // GameObject 비활성화는 코루틴만 멈추므로, 외부에서 갱신되는 DOTween도 소유자가 정리합니다.
         CancelPartyWaveTransition();
+        if (_activeEncounterSource is IEncounterStoryWithdrawalPolicy)
+            AbortSeamlessBattle();
+        _storyWithdrawal.Reset();
     }
 
     private void OnDestroy()
     {
+        OnCombatLogReset?.Invoke();
+        ResetEncounterPolicies();
         DamageBatches.Clear();
         _seamlessEntryPresentation?.Cancel();
         (_turnQteModuleController as System.IDisposable)?.Dispose();
@@ -902,6 +916,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         if (!CanStartSeamlessBattle(encounterEnemies, playerCtrl, out error))
             return false;
 
+        if (!TryValidateEncounterRoster(GlobalDataManager.Instance, playerCtrl, encounterSource,
+                out HashSet<string> rosterIds, out error)) return false;
+
         CaptureSeamlessBgm();
         CameraController cameraController = CameraController.Instance;
         _seamlessCameraDefaultTarget = cameraController != null
@@ -910,6 +927,10 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _isBattleActive = true;
         _activeEncounterSource = encounterSource;
         _activeEncounterPlayer = playerCtrl;
+        _encounterRosterIds = rosterIds;
+        IEncounterStoryWithdrawalPolicy withdrawalPolicy = encounterSource as IEncounterStoryWithdrawalPolicy;
+        _storyWithdrawal.Configure(encounterSource, withdrawalPolicy != null && withdrawalPolicy.AllowStoryWithdrawal,
+            withdrawalPolicy != null && withdrawalPolicy.WithdrawOnEarlyVictory);
         StartCoroutine(StartSeamlessBattleRoutine(new List<EnemyData>(encounterEnemies), playerCtrl, playEntryPresentation));
         return true;
     }
@@ -973,9 +994,9 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         if (playerChar != null)
         {
             GlobalDataManager global = GlobalDataManager.Instance;
-            scenePlayerSaveData = global != null
+            scenePlayerSaveData = global == null ? null : _encounterRosterIds == null
                 ? global.InitializePartyFromScene(playerChar)
-                : null;
+                : FindUniquePartySave(global.Party, playerChar.CharacterID);
             if (scenePlayerSaveData != null)
                 playerChar.LoadDataFromGlobal(scenePlayerSaveData);
 
@@ -997,10 +1018,12 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
                     this);
             }
 
-            int sourceCount = Mathf.Min(globalData.Party.Count, BattleRosterLimit);
+            int sourceCount = _encounterRosterIds == null
+                ? Mathf.Min(globalData.Party.Count, BattleRosterLimit) : globalData.Party.Count;
             for (int i = 0; i < sourceCount && _battlePartyRoster.Count < BattleRosterLimit; i++)
             {
                 CharacterSaveData saveData = globalData.Party[i];
+                if (saveData == null || !IsEncounterRosterMember(saveData.CharacterDataID)) continue;
                 bool representsScenePlayer = scenePlayerSaveData != null
                     ? ReferenceEquals(saveData, scenePlayerSaveData)
                     : i == 0;
@@ -1328,7 +1351,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         PositionManager positionManager,
         bool activateImmediately)
     {
-        if (player == null || _battlePartyRoster.Count >= BattleRosterLimit)
+        if (player == null || _battlePartyRoster.Count >= BattleRosterLimit
+            || !IsEncounterRosterMember(player.CharacterID))
             return false;
 
         _battlePartyRoster.Add(player);
@@ -1476,6 +1500,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
         if (targets.Count == 0) yield break;
 
+        using var parryRewards = BeginParryRewardAction();
         SkillContext context = new SkillContext
         {
             DamageBatchId = DamageBatches.CurrentId,
@@ -1501,6 +1526,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
             if (context.StopTimelineExecution || !IsTurnQteCombatInputActive())
                 yield break;
+            context.DeferDefenseReactionCompletion = false;
             yield return context.WaitForPendingDefenseReaction();
             yield return context.WaitForPendingDefensePostImpactDelay();
             yield return context.ReturnDefender();
@@ -1516,9 +1542,11 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
             if (enemy != null && enemy.IsAlive)
                 enemy.PlayBattleAnim(EnemyCharacter.HashBattleIdle);
+            context.CompletePresentationAccent();
         }
         finally
         {
+            context.DeferDefenseReactionCompletion = false;
             context.CancelPendingDefenseReaction();
         }
     }
@@ -1988,15 +2016,23 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private IEnumerator BattleEndRoutine()
     {
+        if (_isBattleEnding) yield break;
         CancelPartyWaveTransition();
         bool victory = !_partyWaveAbandoned && CheckVictory();
-        BattleEncounterOutcome outcome = victory
+        bool storyWithdrawal = !_isDedicatedBattleScene && IsEncounterSourceAlive(_activeEncounterSource)
+            && _storyWithdrawal.TryBeginEnding(victory, CheckDefeat());
+        BattleEncounterOutcome outcome = storyWithdrawal ? BattleEncounterOutcome.StoryWithdrawn : victory
             ? BattleEncounterOutcome.Victory
             : BattleEncounterOutcome.PartyDefeated;
         _isBattleEnding = true;
         _linkCounterService?.CancelActive();
         _turnQteModuleController?.CancelActiveCameraPresentation();
         QTEManager.Instance?.ForceStop();
+        if (storyWithdrawal)
+        {
+            yield return StartCoroutine(BattleOutroRoutine(outcome));
+            yield break;
+        }
         CommitOverworldEncounterResult(outcome);
         RequestNarration(victory
             ? new BattleNarrationMessage("전투에서 승리했다!", BattleNarrationStyle.System, BattleNarrationPriority.Critical, 0.8f, true)
@@ -2212,7 +2248,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
             : _playerParty;
         foreach (var player in playersToSave)
         {
-            if (player != null)
+            if (player != null && IsEncounterRosterMember(player.CharacterID))
                 player.SaveDataToGlobal();
         }
 
@@ -2294,6 +2330,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         _isAbortCleanupInProgress = true;
         try
         {
+            OnCombatLogReset?.Invoke();
             _seamlessEntryVersion++;
             _seamlessEntryPresentation?.Cancel();
             _linkCounterService?.CancelActive();
@@ -2310,7 +2347,8 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void NotifyEncounterAbortedIfSupported(PlayerController encounterPlayer)
     {
-        if (!(_activeEncounterSource is IEncounterAbortSource abortSource))
+        if (!IsEncounterSourceAlive(_activeEncounterSource)
+            || !(_activeEncounterSource is IEncounterAbortSource abortSource))
             return;
 
         try
@@ -2329,6 +2367,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         if (_isDedicatedBattleScene)
             return;
 
+        OnCombatLogReset?.Invoke();
         DamageBatches.Clear();
         _seamlessEntryPresentation?.Cancel();
         _seamlessEntryPresentation = null;
@@ -2402,6 +2441,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void ClearBattleParticipantStatusEffects()
     {
+        OnCombatLogReset?.Invoke();
         List<PlayerCharacter> players = _battlePartyRoster.Count > 0
             ? _battlePartyRoster
             : _playerParty;
@@ -2479,7 +2519,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
         IEncounterSource source = _activeEncounterSource;
         _activeEncounterSource = null;
         _activeEncounterPlayer = null;
-        if (!shouldNotify || source == null)
+        if (!shouldNotify || !IsEncounterSourceAlive(source))
             return;
 
         try
@@ -2527,6 +2567,7 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
 
     private void ResetSeamlessBattleState()
     {
+        ResetEncounterPolicies();
         CancelPartyWaveTransition();
         BattleScenarioSubjectResolver.ClearRegistry(_battleParticipantIdRegistry);
         _battleParticipantIdRegistry = null;
@@ -2578,22 +2619,27 @@ public class BattleManager : MonoBehaviour, ISceneRevealGate, IBattleParticipant
     #region [ Static Utilities & Event Bridges ]
     public static void ExecuteItemEffect(CharacterBase target, ItemData item)
     {
-        if (target == null || item == null) return;
+        TryExecuteItemEffect(target, item);
+    }
+
+    public static bool TryExecuteItemEffect(CharacterBase target, ItemData item)
+    {
+        if (target == null || item == null) return false;
 
         int previousHp = target.CurrentHP;
         int previousAp = target.CurrentAP;
-        if (!ItemEffectService.TryApply(item, target, true, out string error))
+        if (!ItemEffectService.TryApply(item, target, true, out string error, out int hpDelta))
         {
             Debug.LogWarning($"[BattleManager] Item effect failed: {error}");
-            return;
+            return false;
         }
 
-        if (Instance == null) return;
-        int hpDelta = previousHp - target.CurrentHP;
+        if (Instance == null) return true;
         if (hpDelta != 0)
             Instance.InvokeDamageEvent(target, hpDelta, false, previousHp);
         if (target is PlayerCharacter player && player.CurrentAP != previousAp)
             Instance.InvokeAPChangedEvent(player, player.CurrentAP);
+        return true;
     }
 
 

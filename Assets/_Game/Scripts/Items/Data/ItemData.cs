@@ -16,7 +16,12 @@ public class ItemData : ScriptableObject
 
     [BoxGroup("Identity")] public string ItemID = "item_001";
     [BoxGroup("Identity")] public string ItemName = "Item";
+    [BoxGroup("Identity"), LabelText("이름 번역 키")] public string NameLocalizationKey;
+    [BoxGroup("Identity"), LabelText("설명 번역 키")] public string DescriptionLocalizationKey;
     [BoxGroup("Identity"), TextArea(2, 4)] public string Description = "";
+
+    public string LocalizedName => LocalizationManager.Localize(NameLocalizationKey, ItemName);
+    public string LocalizedDescription => LocalizationManager.Localize(DescriptionLocalizationKey, Description);
 
     [BoxGroup("Type & Target")]
     [HorizontalGroup("Type & Target/Row1", LabelWidth = 70)] public ItemType Type = ItemType.Consumable;
@@ -65,6 +70,12 @@ public class ItemData : ScriptableObject
 
     [BoxGroup("정화"), ShowIf("@ActionType == EffectActionType.Cleanse && !CleanseAllHarmful"), LabelText("정화할 누적 상태")]
     public ElementalStatusKind CleanseElement;
+
+    [BoxGroup("전투 누적 효과"), LabelText("추가 누적 효과"), InlineProperty, HideReferenceObjectPicker]
+    [Tooltip("비우거나 효과 없음을 선택하면 기존 아이템 그대로입니다. 부여/소비 효과가 있는 아이템은 전투에서만 사용할 수 있습니다.")]
+    public ElementalItemPayload ElementalPayload;
+
+    public bool HasElementalPayload => ElementalPayload != null && ElementalPayload.IsConfigured;
 
     [BoxGroup("Stack")]
     [HorizontalGroup("Stack/Row1", LabelWidth = 80)] public bool IsStackable = true;

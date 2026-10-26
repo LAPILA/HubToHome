@@ -9,6 +9,46 @@ using UnityEngine;
 
 public class BattleTurnQteModuleControllerServiceTests
 {
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    public void LockedSkillSelectionTargetAndExecutionNeverSpendApOrTurn(int entryPoint)
+    {
+        using (var fixture = new TurnQteFixture())
+        using (var service = new BattleTurnQteModuleControllerService(fixture.Host))
+        {
+            SkillData skill = ScriptableObject.CreateInstance<SkillData>();
+            try
+            {
+                skill.APCost = 1;
+                int originalAp = fixture.Player.CurrentAP;
+                int originalHp = fixture.Enemy.CurrentHP;
+                fixture.Player.ReplaceBattleSkillLocks(this, new[] { skill });
+                fixture.Host.PendingActor = fixture.Player;
+                fixture.Host.PendingAction = PlayerMenuAction.Skill;
+                fixture.Host.PendingSkill = skill;
+                fixture.Host.ChangeBattleState(BattleState.PlayerActionSelect);
+                if (entryPoint == 0)
+                    service.SelectSubMenuAction(fixture.Player, PlayerMenuAction.Skill, skill, null);
+                else if (entryPoint == 1)
+                    service.ConfirmTargetAndExecute(0);
+                else
+                {
+                    MethodInfo execute = typeof(BattleTurnQteModuleControllerService).GetMethod("ExecuteSkill",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    RunToCompletion((IEnumerator)execute.Invoke(service, new object[] { fixture.Player, 0, skill }));
+                }
+                Assert.That(fixture.Host.CurrentBattleState, Is.EqualTo(BattleState.PlayerActionSelect));
+                Assert.That(fixture.Host.PendingSkill, Is.Null);
+                Assert.That(fixture.Player.CurrentAP, Is.EqualTo(originalAp));
+                Assert.That(fixture.Enemy.CurrentHP, Is.EqualTo(originalHp));
+                Assert.That(fixture.Host.ApNotifications, Is.Zero);
+                Assert.That(fixture.Host.NarrationRequests, Is.EqualTo(1));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(skill); }
+        }
+    }
+
     [Test]
     public void EnemyTargetPolicy_IsNotFixedOrderAndWeightsWoundedWithoutStarvingOthers()
     {
@@ -495,7 +535,7 @@ public class BattleTurnQteModuleControllerServiceTests
             InvokePrivateApplyEnemyDefenseDamage(service, fixture.Enemy, fixture.Player, result, true);
             typeof(BattleTurnQteModuleControllerService)
                 .GetMethod("ApplyPerfectParryReward", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(service, new object[] { fixture.Player, null, result });
+                .Invoke(service, new object[] { fixture.Player, result });
             Assert.That(fixture.Player.CurrentHP, Is.EqualTo(hp));
             Assert.That(fixture.Player.CurrentAP, Is.Zero);
             Assert.That(fixture.Host.ApNotifications, Is.Zero);
@@ -1020,7 +1060,7 @@ public class BattleTurnQteModuleControllerServiceTests
 
     [TestCase(DefenseOutcome.Failure, 50, 0, 1)]
     [TestCase(DefenseOutcome.Guarded, 25, 0, 1)]
-    [TestCase(DefenseOutcome.Success, 0, 20, 0)]
+    [TestCase(DefenseOutcome.Success, 0, 2, 0)]
     public void EnemyDefenseResult_OnlyPerfectPreventsAllDamageAndRewardsAp(
         DefenseOutcome outcome,
         int expectedDamage,
@@ -1053,7 +1093,7 @@ public class BattleTurnQteModuleControllerServiceTests
             MethodInfo rewardMethod = typeof(BattleTurnQteModuleControllerService).GetMethod(
                 "ApplyPerfectParryReward", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(rewardMethod, Is.Not.Null);
-            rewardMethod.Invoke(service, new object[] { fixture.Player, null, result });
+            rewardMethod.Invoke(service, new object[] { fixture.Player, result });
 
             Assert.That(fixture.Player.CurrentHP, Is.EqualTo(previousHp - expectedDamage));
             Assert.That(fixture.Player.CurrentAP, Is.EqualTo(expectedAp));
@@ -1429,7 +1469,7 @@ public class BattleTurnQteModuleControllerServiceTests
         public WaitForSeconds WaitShort => _waitShort;
         public int MaxTurnQueueSize => 8;
         public int ApPerTurn => 5;
-        public int ApOnParryPerfect => 20;
+        public int ApOnParryPerfect => 2;
         public float EnemyDefenseQteWindow => 0.8f;
         public float EnemyAttackVisualDuration => 0f;
         public float EnemyPostHitDelay => 0f;

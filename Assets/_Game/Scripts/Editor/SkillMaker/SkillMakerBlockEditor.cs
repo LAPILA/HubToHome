@@ -18,8 +18,8 @@ namespace HubToHome.EditorTools.SkillMaker
             typeof(Action_Wait), typeof(Action_Move), typeof(Action_PlayAnim),
             typeof(Action_Damage), typeof(Action_ApplyStatus), typeof(Action_QTE),
             typeof(Action_VFX), typeof(Action_DefenseWindow), typeof(Action_Projectile),
-            typeof(Action_SequentialMelee), typeof(Action_RapidStrikes), typeof(Action_AerialCrossSlash),
-            typeof(Action_EnemyWindup), typeof(Action_ElementalUtility), typeof(Action_ScreenSplit)
+            typeof(Action_SequentialMelee), typeof(Action_RapidStrikes), typeof(Action_AerialCrossSlash), typeof(Action_ScreenPassSlash),
+            typeof(Action_EnemyWindup), typeof(Action_EnemyAssaultCombo), typeof(Action_ElementalUtility), typeof(Action_ScreenSplit), typeof(Action_PresentationAccent)
         };
 
         private static readonly IReadOnlyList<Type> CachedBlockTypes = DiscoverBlockTypes();
@@ -239,7 +239,10 @@ namespace HubToHome.EditorTools.SkillMaker
             if (typeof(Action_RapidStrikes).IsAssignableFrom(type)) return "고속 연격 · 독립 QTE";
             if (typeof(Action_AerialCrossSlash).IsAssignableFrom(type)) return "공중 회전 · 교차 베기";
             if (typeof(Action_ScreenSplit).IsAssignableFrom(type)) return "사선 화면 절단";
-            if (typeof(Action_EnemyWindup).IsAssignableFrom(type)) return "적 공격 준비 · 클로즈업";
+            if (typeof(Action_PresentationAccent).IsAssignableFrom(type)) return "실루엣 · 명중 점멸";
+            if (typeof(Action_ScreenPassSlash).IsAssignableFrom(type)) return "화면 가로 관통";
+            if (typeof(Action_EnemyWindup).IsAssignableFrom(type)) return "구형 적 공격 준비 · 미사용";
+            if (typeof(Action_EnemyAssaultCombo).IsAssignableFrom(type)) return "적 연속 돌파 · 공중 강하";
             return type.Name.Replace("Action_", string.Empty);
         }
 
@@ -247,9 +250,11 @@ namespace HubToHome.EditorTools.SkillMaker
         {
             string category = typeof(Action_QTE).IsAssignableFrom(type)
                 || typeof(Action_RapidStrikes).IsAssignableFrom(type)
-                || typeof(Action_AerialCrossSlash).IsAssignableFrom(type) ? "아군 전용"
+                || typeof(Action_AerialCrossSlash).IsAssignableFrom(type)
+                || typeof(Action_ScreenPassSlash).IsAssignableFrom(type) ? "아군 전용"
                 : typeof(Action_DefenseWindow).IsAssignableFrom(type)
-                    || typeof(Action_EnemyWindup).IsAssignableFrom(type) ? "적 공격"
+                    || typeof(Action_EnemyWindup).IsAssignableFrom(type)
+                    || typeof(Action_EnemyAssaultCombo).IsAssignableFrom(type) ? "적 공격"
                 : typeof(Action_Damage).IsAssignableFrom(type) || typeof(Action_ApplyStatus).IsAssignableFrom(type)
                     || typeof(Action_ElementalUtility).IsAssignableFrom(type)
                     || typeof(Action_Projectile).IsAssignableFrom(type) || typeof(Action_SequentialMelee).IsAssignableFrom(type)
@@ -257,6 +262,7 @@ namespace HubToHome.EditorTools.SkillMaker
                 : typeof(Action_Wait).IsAssignableFrom(type) || typeof(Action_Move).IsAssignableFrom(type)
                     || typeof(Action_PlayAnim).IsAssignableFrom(type) || typeof(Action_VFX).IsAssignableFrom(type)
                     || typeof(Action_ScreenSplit).IsAssignableFrom(type)
+                    || typeof(Action_PresentationAccent).IsAssignableFrom(type)
                     ? "공통 · 흐름과 연출" : "사용자 정의";
             return category + "/" + GetBlockName(type);
         }
@@ -272,27 +278,32 @@ namespace HubToHome.EditorTools.SkillMaker
             if (typeof(Action_QTE).IsAssignableFrom(type)) return "아군 전용 · 입력을 시작한 뒤 이동·애니메이션과 동시에 진행합니다. 피해 블록이 결과를 기다립니다. 적의 Z/X/C 대응은 이 블록이 아닌 ‘방어 대응’입니다.";
             if (typeof(Action_VFX).IsAssignableFrom(type)) return "공통 · 지정 위치에 이펙트 프리팹을 재생합니다. 피해는 발생시키지 않습니다. 적 타격 직전 전조는 ‘방어 대응’의 전조 프리팹으로 지정하세요.";
             if (typeof(Action_ScreenSplit).IsAssignableFrom(type)) return "공통 · 게임 화면만 사선으로 갈라 비틀고 복원합니다. 피해는 별도이며 ‘피해 적용’ 바로 뒤에 배치합니다. HUD·QTE는 유지하고 카메라 Renderer의 ScreenSplitRendererFeature가 있는 곳에서만 표시합니다. 폭과 선 두께는 기준 픽셀 단위입니다.";
-            if (typeof(Action_DefenseWindow).IsAssignableFrom(type)) return "적 공격 · Z/X/C 방어 입력과 타격 시점을 연결합니다. 바로 뒤에 피해·투사체·연쇄 근접 중 하나를 배치하세요.";
-            if (typeof(Action_Projectile).IsAssignableFrom(type)) return "공통 · 투사체 이동과 충돌 피해를 함께 처리합니다. 같은 타격의 ‘피해 적용’을 중복 추가하지 마세요. 적은 앞에 ‘방어 대응’을 배치합니다.";
-            if (typeof(Action_SequentialMelee).IsAssignableFrom(type)) return "공통 · 대상을 섞어 한 명씩 접근하고 피해를 줍니다. 적은 바로 앞에 ‘방어 대응’을 배치합니다. ‘적: 각 대상 앞으로 직접 접근’을 켜면 중앙 집결 대신 각 아군 앞으로 돌진하며 매 대상에 별도 방어창이 열립니다. 타격 후 간격은 초 단위입니다.";
+            if (typeof(Action_PresentationAccent).IsAssignableFrom(type)) return "공통 · 실루엣은 실제 캐릭터의 위치·크기·현재 그림을 따릅니다. 적 전투 공격에서는 표시와 공격을 병행하며 기다리지 않고, 아군·스토리는 기존 표시 시간 대기를 유지합니다. 명중 점멸은 다음 유효 피해1회에 예약합니다. 적은 방어 대응 앞에 배치하고 대응과 피해 사이에는 넣지 마세요. 폐기된 컷인은 재생하지 않습니다.";
+            if (typeof(Action_ScreenPassSlash).IsAssignableFrom(type)) return "아군 전용 · 화면 좌우 안전 끝점 사이를 관통하며 실제 대상 통과 순간에 피해를 줍니다. QTE 결과·속성·자원 강화를 사용합니다. 피해 블록을 중복 추가하지 마세요. 왕복은 횟수2, 이동 중에만 잔상이 나오며 자기 카메라 구도와 원래 위치를 복구합니다.";
+            if (typeof(Action_DefenseWindow).IsAssignableFrom(type)) return "적 공격 · Z/X/C 대응과 실제 타격을 연결합니다. 멈춰 전조를 기다리지 않고 이동·공격 중 전조와 판정을 함께 진행합니다. 일반 공격의 판정 시간은 보존하며 바로 뒤에 피해·투사체·연쇄 근접 중 하나를 배치하세요. 근접은 가드·패링 뒤에도 관통하고 C는 기존 중앙 반격 규칙을 유지합니다. 다음 턴 예약은 준비 정지와 별개의 전투 규칙입니다.";
+            if (typeof(Action_Projectile).IsAssignableFrom(type)) return "공통 · 투사체 비행과 전조·방어 판정을 같은 시계로 진행하고 충돌 피해를 처리합니다. 적은 앞에 ‘방어 대응’을 배치합니다. 멈춰 전조를 기다리거나 같은 타격의 ‘피해 적용’을 중복 추가하지 마세요.";
+            if (typeof(Action_SequentialMelee).IsAssignableFrom(type)) return "공통 · 대상을 섞어 한 명씩 공격합니다. 적은 바로 앞에 ‘방어 대응’을 두고 이동과 각 대상의 방어창을 함께 진행합니다. ‘적: 각 대상 앞으로 직접 접근’은 중앙 집결 대신 각 아군을 향한 돌진이며, 도착 후 멈춰 전조를 기다리는 단계가 아닙니다. 아군의 기존 이동·타격 순서는 유지합니다.";
             if (typeof(Action_RapidStrikes).IsAssignableFrom(type)) return "아군 전용 · 타격 간격마다 공격하며 QTE는 별도 주기로 진행합니다. 이동·입력·피해가 포함되어 같은 타격을 중복 추가할 필요가 없습니다.";
             if (typeof(Action_AerialCrossSlash).IsAssignableFrom(type)) return "아군 전용 · 접근 → 상승 → 카메라 360도 회전 → QTE → 교차 베기 → 복귀를 처리합니다. 캐릭터 자체를 회전시키는 블록이 아닙니다.";
-            if (typeof(Action_EnemyWindup).IsAssignableFrom(type)) return "적 전용 · 적을 확대하고 준비 자세를 보여준 뒤 공격 구도로 돌아옵니다. 다음에 ‘방어 대응 → 피해’를 배치하세요. 이 블록은 피해를 주지 않습니다.";
+            if (typeof(Action_EnemyWindup).IsAssignableFrom(type)) return "구형 호환 · 사용 중단된 공격 전 클로즈업/준비 정지 블록입니다. 기존 에셋 참조만 보존하며 카메라·준비 모션·대기를 실행하지 않습니다. 새 공격은 ‘방어 대응 → 피해/투사체/연쇄 근접’으로 바로 작성하세요.";
+            if (typeof(Action_EnemyAssaultCombo).IsAssignableFrom(type)) return "적 전용 · 지상 왕복/공중 강하/혼합 단계를 목록으로 제작합니다. 일반 모드는 기존 판정 시간을 보존하고 이동·전조를 함께 진행합니다. 난무의 연속 이동 옵션은 보간한 이동 시간의 접점으로 판정 시각을 정합니다. 매 타격은 전조·방어·피해를 한 번씩 처리하므로 피해 블록을 중복 추가하지 마세요. 마지막 C는 뒤에 별도 ‘방어 대응 → 피해’로 작성하고 정지 준비 블록을 넣지 않습니다.";
             return "사용자 정의 블록 · 아래 설정과 해당 블록의 제작 규칙을 확인하세요. 저장 전 ‘검사’ 탭에서 결과를 확인하세요.";
         }
 
         internal static string GetDefenseAuthoringHelp(DefenseRequirement requirement)
         {
             const string timing = "\n판정 시간은 입력 시작부터 타격까지의 시간입니다. 저스트 구간은 공통 설정 또는 개별 판정 구간의 첫 값, 회피/반격 구간은 QTEManager 공통 설정을 사용합니다. 모든 구간은 난도 배율을 적용합니다.";
+            if (requirement == DefenseRequirement.CounterOnly)
+                return "특수 반격 전용: Z 가드와 X 회피로 피할 수 없고 C 반격만 가능합니다. 전조와 강공격 동작을 함께 진행하며 성공하면 기존 한 명 반격을 실행하고 남은 타임라인을 생략합니다." + timing;
             if (requirement == DefenseRequirement.Counterable)
-                return "연계 반격 공격: Z 가드 불가 / X 회피 / C 연계 반격. 반격 피해 배율은 공격받은 아군 한 명의 ATK에 적용됩니다. 다른 전열과 후열은 참여하지 않습니다."
+                return "연계 반격 공격: Z 가드 불가 / X 회피 불가 / C 연계 반격 전용. 반격 피해 배율은 공격받은 아군 한 명의 ATK에 적용됩니다. 다른 전열과 후열은 참여하지 않습니다."
                     + "\n접근 → 전조 포함 방어 대응 → 피해 → 원위치 복귀 순서로 배치하세요. C 성공 시 남은 타임라인을 생략하고 공격받은 한 명이 접근 → 패링 → 공격한 뒤 양쪽 복귀합니다. 다른 아군은 이동하지 않습니다."
                     + "\n전조와 충분한 판정 시간을 제공하세요. 일반 강공격이 자동으로 반격 공격이 되지는 않습니다." + timing;
             if (requirement == DefenseRequirement.DodgeOnly || requirement == DefenseRequirement.JumpOnly
                 || requirement == DefenseRequirement.DodgeOrJump)
                 return "현재 방어 모드에서는 X 회피 전용입니다. Z 가드와 C 반격은 불가합니다. 기존 점프 요구 값은 자산 호환을 위해 유지됩니다." + timing;
             return "일반 공격: Z를 누르고 있으면 가드, 타격 직전 새로 누르면 저스트 가드 / X 회피 / C 반격 불가."
-                + "\nC 반격 기회를 만들려면 공격 대응 방식에서 ‘반격 가능 특수공격 (회피 / 연계 반격)’을 선택하세요. 기존 BAD/Great/Good 설정은 구형 방어 모드용입니다." + timing;
+                + "\nC 반격 기회를 만들려면 ‘반격 가능 특수공격’ 또는 ‘특수 반격 전용’을 선택하세요. 공중 접근 높이와 가드 후 관통은 이동 연출만 바꾸며 판정 결과를 바꾸지 않습니다. 기존 BAD/Great/Good 설정은 구형 방어 모드용입니다." + timing;
         }
 
         private int Count => _skill != null && _skill.ActionTimeline != null ? _skill.ActionTimeline.Count : 0;

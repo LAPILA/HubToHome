@@ -1,5 +1,10 @@
 # Core Rules
 
+## 자동저장 결과 소유권 (2026-10-24)
+
+- 최종 완료 화면처럼 특정 요청의 저장을 기다릴 때는 `AutoSaveRequestVersion`과 `AutoSaveCompletedWithVersion`을 사용한다. 뒤 요청이 생겼더라도 완료 알림은 끝난 요청의 원래 버전을 전달한다. 기존 AutoSaveCompleted는 호환 유지한다.
+- 완료 선택창은 안정 탐색 저장을 막으므로 최종 자동저장을 끝낸 뒤 연다. 실패를 성공으로 표시하지 않고, 저장 도중 소유자가 사라지면 자기 버전의 구독/대기만 정리한다.
+
 ## 챕터 1 저장·성장 경계 (2026-10-16)
 
 - 공용 EXP는 `GlobalDataManager.GrantPartyExperience`에서 보상당 한 번 지급한다. 개인별 반복 지급이나 저장된 개인 EXP 합산은 금지한다. `PartyProgressionService`의 공용 레벨/EXP와 캐릭터별 투자·구매 소유권을 구분한다.

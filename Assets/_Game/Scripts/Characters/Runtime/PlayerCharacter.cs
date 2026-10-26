@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 
-public class PlayerCharacter : CharacterBase
+public partial class PlayerCharacter : CharacterBase
 {
     #region [ Animation Hashes ]
     public static readonly int HashBattleIdle  = Animator.StringToHash("BattleIdle");
@@ -53,6 +53,7 @@ public class PlayerCharacter : CharacterBase
 
     private void OnDisable()
     {
+        ClearBattleSkillLocks();
         CancelHitFeedback();
         EndRapidAttack();
         _hitReactionActive = false;

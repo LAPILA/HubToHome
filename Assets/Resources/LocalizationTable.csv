@@ -17,8 +17,10 @@ config.language.jp,日本語,日本語,日本語,日本語
 config.language.cn,简体中文,简体中文,简体中文,简体中文
 config.text_speed,대사 속도,Text Speed,文字速度,文字速度
 config.auto_advance,자동 진행,Auto Advance,自動送り,自动播放
+config.auto_skill_qte,공격 QTE 자동 입력,Automatic attack QTE,攻撃QTE自動入力,攻击QTE自动输入
 config.screen_shake,화면 흔들림,Screen Shake,画面揺れ,屏幕震动
 config.flash_intensity,점멸 강도,Flash Intensity,点滅の強さ,闪烁强度
+battle.status.potency,강도 {0} · 상태 피해 ×{1},Potency {0} · Status damage ×{1},強度 {0} · 状態ダメージ ×{1},强度 {0} · 状态伤害 ×{1}
 config.fullscreen,전체화면,Fullscreen,全画面,全屏
 config.window_size,창 크기,Window Size,ウィンドウサイズ,窗口大小
 config.vsync,수직동기화,VSync,垂直同期,垂直同步
@@ -194,3 +196,166 @@ field_menu.pad_target_hint,방향키 동료 · {0} 사용 · {1} 취소,Arrows A
 field_menu.pad_reading_hint,↑↓ 읽기 · {1} 목록,↑↓ Read · {1} List,↑↓ 読む · {1} 一覧,↑↓ 阅读 · {1} 列表
 field_menu.pad_growth_hint,방향키 이동 · {0} 편집/선택 · {1} 상위 메뉴,Arrows Move · {0} Edit/Select · {1} Back,方向キー 移動 · {0} 編集/選択 · {1} 戻る,方向键 移动 · {0} 编辑/选择 · {1} 返回
 field_menu.pad_menu_hint,방향키 이동 · {0} 선택 · {1} 뒤로,Arrows Move · {0} Select · {1} Back,方向キー 移動 · {0} 選択 · {1} 戻る,方向键 移动 · {0} 选择 · {1} 返回
+HTH_PROLOGUE_NAME_WIZZEL,위젤,WIZZEL,ウィゼル,威泽尔
+HTH_PROLOGUE_NAME_DRAGON,원정대의 드래곤,Expedition Dragon,遠征隊のドラゴン,远征队的龙
+HTH_PROLOGUE_NAME_DEER,귀 밝은 대원,Sharp-eared Scout,耳のいい隊員,听觉敏锐的队员
+HTH_PROLOGUE_NAME_MEDIC,까칠한 의무대원,Brusque Medic,無愛想な衛生兵,严厉的医务员
+HTH_PROLOGUE_NAME_CREW,열차 승무원,Train Crew,列車の乗務員,列车乘务员
+HTH_PROLOGUE_NAME_WHITE_ENTITY,백색체 · 뻗어 나온 부위,White Entity · Reaching Limb,白色体・伸びた部位,白色体·伸出的肢体
+HTH_PROLOGUE_ITEM_NAME,응급 붕대,Emergency Dressing,応急包帯,急救绷带
+HTH_PROLOGUE_ITEM_DESCRIPTION,동료 한 명의 HP를 회복한다. 전투 중에만 사용할 수 있다.,Restores one ally's HP. For use in battle only.,味方一人のHPを回復する。戦闘中のみ使用可能。,恢复一名队友的HP。仅限战斗中使用。
+HTH_PROLOGUE_SKILL_NAME,더듬는 손길,Searching Reach,探る手,试探之触
+HTH_PROLOGUE_SKILL_DESCRIPTION,길을 막아선 대상을 거칠게 밀어붙인다.,Violently pushes against whatever blocks its way.,行く手を阻む相手を乱暴に押しのける。,猛烈推开挡路的目标。
+HTH_PROLOGUE_OBJECTIVE_REPAIR,수리대에서 보조 동력 장치를 확인하기,Inspect the auxiliary engine at the workbench,作業台で補助動力装置を確認する,在工作台检查辅助动力装置
+HTH_PROLOGUE_OBJECTIVE_VALVE,밸브를 조정해 압력을 안정시키기,Adjust the valve to stabilize pressure,弁を調整して圧力を安定させる,调整阀门以稳定压力
+HTH_PROLOGUE_OBJECTIVE_TEST,장치의 작동을 확인하기,Test the repaired machine,装置の動作を確認する,确认装置运行正常
+HTH_PROLOGUE_OBJECTIVE_REST,공용칸에서 잠시 쉬기,Take a break in the common carriage,共用車両でひと休みする,去公共车厢稍作休息
+HTH_PROLOGUE_OBJECTIVE_REAR,후미 창고의 이상한 소리 확인하기,Investigate the noise in the rear storage car,後部倉庫の妙な音を確かめる,查看后部储物车厢的异响
+HTH_PROLOGUE_OBJECTIVE_BATTLE,막아선 백색체에 대응하기,Hold off the White Entity,立ちはだかる白色体に対処する,应对挡路的白色体
+HTH_PROLOGUE_OBJECTIVE_SEAL,후미 출입문의 잠금을 고정하기,Secure the rear door's locking mechanism,後部扉の錠を固定する,固定后部车门的锁扣
+HTH_PROLOGUE_OBJECTIVE_CONTROL,전방 기관실의 긴급 제어대 찾기,Reach the emergency controls in the engine car,前方機関室の緊急制御盤へ向かう,前往前方动力车厢的紧急控制台
+HTH_PROLOGUE_OBJECTIVE_COMPLETE,프롤로그 완료,Prologue complete,プロローグ完了,序章完成
+HTH_PROLOGUE_TUTORIAL_ATTACK,먼저 공격으로 길을 열어 보세요. 메뉴와 대상을 선택하면 행동합니다.,Try attacking to make an opening. Choose an action and its target.,まず攻撃で隙を作りましょう。メニューと対象を選ぶと行動します。,先尝试攻击来寻找突破口。选择行动和目标后即可行动。
+HTH_PROLOGUE_TUTORIAL_GUARD,전조가 보이면 방어를 유지해 피해를 줄일 수 있습니다. 회피는 조금 더 여유롭게 피합니다.,Hold Guard when the warning appears to reduce damage. Dodge offers a more forgiving escape.,予兆が見えたら防御を保つと被害を減らせます。回避はより余裕をもって避けられます。,看到预兆时保持防御可以减少伤害。闪避的判定更宽松。
+HTH_PROLOGUE_TUTORIAL_JUST_GUARD,전조에 맞춰 새로 방어하면 피해 없이 받아치고 AP를 얻습니다.,A fresh Guard timed to the warning prevents damage and restores AP.,予兆に合わせて新たに防御すると被害を防ぎAPを得られます。,配合预兆重新按下防御可免受伤害并获得AP。
+HTH_PROLOGUE_TUTORIAL_ITEM,아이템에서 응급 붕대를 골라 위젤에게 사용해 보세요.,Select Emergency Dressing under Items and use it on WIZZEL.,アイテムから応急包帯を選んでウィゼルに使いましょう。,在物品中选择急救绷带并对威泽尔使用。
+HTH_PROLOGUE_RETRY_PROMPT,다시 자세를 가다듬고 맞서겠습니까?,Regroup and try again?,態勢を整えてもう一度挑みますか？,要重整旗鼓再试一次吗？
+HTH_PROLOGUE_RETRY,다시 도전,Try again,再挑戦,重试
+HTH_PROLOGUE_RETURN_TITLE,타이틀로 돌아가기,Return to title,タイトルへ戻る,返回标题
+HTH_PROLOGUE_ENDING,프롤로그가 끝났습니다. 이 여정은 계속됩니다.,The prologue is complete. The journey will continue.,プロローグが終わりました。旅はまだ続きます。,序章已结束。旅途仍将继续。
+HTH_PROLOGUE_SAVE_FAILED,진행을 저장하지 못했습니다. 저장을 다시 시도하거나 저장 없이 타이틀로 돌아갈 수 있습니다.,Progress could not be saved. Retry saving or return to title without saving.,進行を保存できませんでした。再試行するか保存せずタイトルに戻れます。,未能保存进度。可以重试保存或不保存返回标题。
+HTH_PROLOGUE_SAVE_RETRY,저장 다시 시도,Retry saving,保存を再試行,重试保存
+HTH_PROLOGUE_RETURN_WITHOUT_SAVE,저장하지 않고 타이틀로,Return without saving,保存せずタイトルへ,不保存并返回标题
+HTH_PROLOGUE_ERROR_GENERIC,진행에 필요한 연결을 확인하지 못했습니다. 저장된 진행은 변경하지 않았습니다.,A required connection could not be verified. Saved progress has not been changed.,進行に必要な接続を確認できませんでした。保存済みの進行は変更されていません。,未能确认推进剧情所需的连接。已保存的进度未被更改。
+HTH_PROLOGUE_BLOCKED_REPAIR,먼저 수리부터 마무리하자.,I should finish the repair first.,先に修理を終わらせよう。,先把修理完成吧。
+HTH_PROLOGUE_BLOCKED_REAR,아직은 조용하다. 공용칸에서 좀 쉬자.,All quiet for now. Time for a break in the common car.,今は静かだ。共用車両で休もう。,现在还很安静。去公共车厢休息吧。
+HTH_PROLOGUE_BLOCKED_CONTROL,후미 문을 고정하기 전에는 자리를 비울 수 없다.,I can't leave until the rear door is secured.,後部扉を固定するまで離れられない。,固定后部车门之前还不能离开。
+HTH_PROLOGUE_DLG_INSPECT_MACHINE_01,진동은 심한데 출력은 낮네. 어디서 힘이 새는 걸까?,Lots of vibration but barely any power. Where's it all leaking?,振動ばかりで出力が低いな。どこから力が逃げてるんだろう。,震动这么大却没什么输出。动力到底漏到哪里去了？
+HTH_PROLOGUE_DLG_INSPECT_MACHINE_02,아하. 압력 밸브가 반쯤 걸려 있었구나.,There it is. The pressure valve is stuck halfway.,ああ。圧力弁が途中で引っかかってたんだ。,原来如此。压力阀卡在半途了。
+HTH_PROLOGUE_DLG_ADJUST_VALVE_01,조금만… 됐다. 힘으로 돌리면 더 망가져.,Easy now… there. Forcing it would only make things worse.,少しだけ…よし。力任せだと余計に壊れる。,慢慢来……好了。硬拧只会弄得更糟。
+HTH_PROLOGUE_DLG_TEST_MACHINE_01,좋아. 이제 숨소리가 일정해졌네.,Good. Now it's breathing steadily.,よし。やっと呼吸が揃った。,好。现在呼吸总算平稳了。
+HTH_PROLOGUE_DLG_TEST_MACHINE_02,수고했어. 공용칸에 따뜻한 게 남아 있을 거야.,Nice work. There should still be something warm in the common car.,お疲れ。共用車両に温かいものが残ってるはずだよ。,辛苦了。公共车厢应该还有热的东西。
+HTH_PROLOGUE_DLG_DRAGON_01,수리 끝났어? 네 몫은 남겨 뒀다.,Finished fixing it? Saved your share.,修理は終わったか？ お前の分は残してある。,修好了？给你留了一份。
+HTH_PROLOGUE_DLG_DRAGON_02,고마워요. 여긴 기계도 밥을 먹나 봐요. 연료가 이렇게 줄어드니.,Thanks. The machinery must be hungry too. Look at all that missing fuel.,ありがとう。ここの機械もお腹が空くみたいですね。こんなに燃料が減るなんて。,谢谢。这儿的机器也会饿吗？燃料少得这么快。
+HTH_PROLOGUE_DLG_DRAGON_03,……줄었다고?,…Missing fuel?,……減ってるのか？,……燃料少了？
+HTH_PROLOGUE_DLG_INCIDENT_01,방금… 바퀴 소리가 아니었어요.,That… wasn't the wheels.,今の…車輪の音じゃありませんでした。,刚才……不是车轮的声音。
+HTH_PROLOGUE_DLG_INCIDENT_02,뒤쪽이다. 문 안쪽까지만 확인해. 이상하면 바로 돌아와.,It came from the rear. Check from the doorway. Come straight back if anything's wrong.,後ろだ。入口から確かめるだけにしろ。妙ならすぐ戻れ。,是后面。只在门口确认一下。不对劲就马上回来。
+HTH_PROLOGUE_DLG_REAR_01,연료가… 저 안으로 들어가고 있어.,The fuel… it's going inside that thing.,燃料が…あいつの中に入ってる。,燃料……正流进那个东西里面。
+HTH_PROLOGUE_DLG_REAR_02,가까이 가지 말자. 이 문만 지나가면—,Stay back. Just get through this door—,近づかないでおこう。この扉さえ抜ければ—,别靠近。只要穿过这扇门——
+HTH_PROLOGUE_DLG_RESCUE_01,위젤! 이쪽으로!,WIZZEL! This way!,ウィゼル！ こっちだ！,威泽尔！这边！
+HTH_PROLOGUE_DLG_RESCUE_02,문이 안 닫혀요… 아래쪽이 휘었어!,The door won't close… the bottom's bent!,扉が閉まらない…下が曲がってる！,门关不上……下面变形了！
+HTH_PROLOGUE_DLG_RESCUE_03,내가 버틴다. 잠금을 고정해!,I'll hold it. Secure the lock!,俺が押さえる。錠を固定しろ！,我来顶住。把锁扣固定好！
+HTH_PROLOGUE_DLG_SEAL_01,여기만 맞물리면… 됐어!,If these teeth line up… got it!,ここを噛み合わせれば…よし！,只要让这里咬合……好了！
+HTH_PROLOGUE_DLG_SEAL_02,오래는 못 버틴다. 기관실로 가. 속도를 줄여야 해.,It won't hold for long. Get to the engine car. We need to slow down.,長くはもたない。機関室へ行け。速度を落とすんだ。,撑不了多久。去动力车厢。必须减速。
+HTH_PROLOGUE_DLG_FORWARD_01,천장 위에서도 소리가 나요. 방금 그 녀석… 이어져 있나 봐.,I hear it above us too. That thing… it must stretch all the way up.,天井からも音がする。さっきのやつ…上まで続いてるみたい。,天花板上也有声音。刚才那东西……好像一直延伸到上面。
+HTH_PROLOGUE_DLG_FORWARD_02,뒤는 우리가 막을게. 앞만 보고 가!,We'll keep it back. Keep moving forward!,後ろは任せろ。前だけ見て進め！,后面交给我们。只管往前！
+HTH_PROLOGUE_DLG_CONTROL_01,긴급 제어는 살아 있어. 제발… 조금만 더 버텨 줘.,The emergency controls still work. Please… hold together a little longer.,緊急制御は生きてる。お願い…もう少しだけもって。,紧急控制还能用。拜托……再撑一会儿。
+HTH_PROLOGUE_DLG_CONTROL_02,감속은 됐어. 그런데 아래쪽에서—,We're slowing down. But underneath us—,減速できた。でも下から—,速度降下来了。可是下面——
+HTH_PROLOGUE_DLG_DERAIL_01,차체가… 뜨고 있어!,The carriage… it's lifting!,車体が…浮いてる！,车厢……正在抬起来！
+HTH_PROLOGUE_DLG_OPTIONAL_DEER_01,선로 소리 사이에 하나가 더 섞여 있어. 바퀴랑 박자가 안 맞아.,There's another sound beneath the rails. It doesn't match the wheels.,線路の音に別の音が混ざってる。車輪と拍子が合わない。,铁轨声里混进了另一种声音。和车轮的节奏对不上。
+HTH_PROLOGUE_DLG_OPTIONAL_MEDIC_01,손 줘. …기름 묻은 장갑으로 상처 만지지 마.,Your hand. …Don't touch a cut with an oily glove.,手を出して。…油のついた手袋で傷を触らないで。,把手伸过来。……别用沾着油的手套碰伤口。
+HTH_PROLOGUE_DLG_OPTIONAL_MEDIC_02,아직 안 다쳤는데요?,But I'm not hurt yet?,まだ怪我してませんけど？,可我还没受伤啊？
+HTH_PROLOGUE_DLG_OPTIONAL_MEDIC_03,그러니까 지금 닦아.,That's why you're cleaning it now.,だから今拭くの。,所以现在就擦干净。
+HTH_PROLOGUE_DLG_OPTIONAL_CREW_01,연료계가 이상하네. 방금 채웠는데 벌써 이만큼 줄었어.,The fuel gauge is acting up. We just filled it and it's already this low.,燃料計がおかしいな。さっき入れたのにもうこんなに減ってる。,燃料表不太对。刚加满就已经少了这么多。
+HTH_PROLOGUE_BATTLE_AP_INSUFFICIENT, · AP 부족, · Not enough AP, · AP不足, · AP不足
+HTH_PROLOGUE_BATTLE_ITEM_COUNT,보유 {0}개,Owned: {0},所持数 {0},持有 {0}
+HTH_PROLOGUE_BATTLE_TARGET_EVERYONE,전체 대상,Everyone,全員,全体目标
+HTH_PROLOGUE_BATTLE_TARGET_ALL_ALLIES,아군 전체,All allies,味方全員,全体队友
+HTH_PROLOGUE_BATTLE_TARGET_ALLY,아군 1명,One ally,味方一人,一名队友
+HTH_PROLOGUE_BATTLE_TARGET_ALL_ENEMIES,적 전체,All enemies,敵全員,全体敌人
+HTH_PROLOGUE_BATTLE_TARGET_ENEMY,적 1명,One enemy,敵一体,一名敌人
+HTH_PROLOGUE_BATTLE_TARGET_ALL_BOTH,아군 / 적 전체,All allies and enemies,敵味方全員,全体敌我目标
+HTH_PROLOGUE_BATTLE_TARGET_BOTH,아군 / 적 1명,One ally or enemy,敵か味方一人,一名敌方或己方目标
+HTH_PROLOGUE_DLG_PRESSURE_01,이건… 문밖까지 이어져 있어. 방금 상대하던 건 일부였어!,It stretches… beyond the doorway. We only faced a part of it!,扉の外まで…続いてる。相手にしてたのは一部だったんだ！,它一直……延伸到门外。刚才对付的只是其中一部分！
+HTH_PROLOGUE_DLG_PRESSURE_02,여기서 버티면 갇히겠어. 문까지 물러나자!,I'll be trapped if I stay. Back to the door!,ここで粘ったら閉じ込められる。扉まで下がろう！,继续留在这里会被困住。先退到门口！
+HTH_PROLOGUE_NAME_CONDUCTOR,기관사,Train Driver,機関士,列车司机
+HTH_PROLOGUE_WINDOW_01,밖이 하나도 안 보이네.,I can't see anything outside.,外が何も見えないな。,外面什么也看不见。
+HTH_PROLOGUE_WINDOW_02,첫 원정대도\n여길 지나갔겠지.,The first expedition must have\npassed this way too.,最初の遠征隊も\nここを通ったんだろうな。,第一支远征队\n也经过这里吧。
+HTH_PROLOGUE_WINDOW_03,다들 무사해야 할 텐데.,I hope they're all safe.,みんな無事だといいけど。,希望大家都平安无事。
+HTH_PROLOGUE_DLG_INTRODUCTION_01,위젤. 잠깐 괜찮겠나? 밖이 이래서 앞이 영 안 보이는군.,WIZZEL. Have a moment? I can barely see the tracks in this weather.,ウィゼル。少しいいか？ この天気じゃ前がろくに見えなくてね。,威泽尔。有空吗？这天气连前面的铁轨都看不清。
+HTH_PROLOGUE_DLG_INTRODUCTION_02,네. 기계 쪽은 괜찮아요?,Sure. Is the machinery all right?,はい。機械のほうは大丈夫ですか？,有。机器还好吗？
+HTH_PROLOGUE_DLG_INTRODUCTION_03,보조 동력 장치가 자꾸 떨려. 운전석을 비울 수 없어서… 네가 봐 주겠나?,The auxiliary engine keeps rattling. I can't leave the controls… Could you take a look?,補助動力装置がやけに震えるんだ。運転席を離れられなくてね…見てくれるか？,辅助动力装置一直在震。我不能离开驾驶台……你能去看看吗？
+HTH_PROLOGUE_DLG_INTRODUCTION_04,확인해 볼게요. 압력부터 살펴보면 되겠네요.,I'll check it. Let's start with the pressure.,見てみます。まず圧力を調べればよさそうですね。,我去检查一下。先看看压力就行了吧。
+HTH_PROLOGUE_DLG_INTRODUCTION_05,고맙다. 끝나면 오른쪽 공용칸에서 쉬어. 난 기관실로 돌아가겠네.,Thanks. Take a break in the common car to the right afterward. I'll head back to the engine car.,ありがとう。終わったら右の共用車両で休むといい。私は機関室に戻るよ。,谢谢。修好后去右边的公共车厢休息吧。我先回动力车厢了。
+HTH_PROLOGUE_DLG_OPTIONAL_CONDUCTOR_01,수리대에서 장치를 확인해 줘. 끝나면 오른쪽 문으로 가면 공용칸이야.,Check the machine at the workbench. The right door leads to the common car when you're done.,作業台で装置を見てくれ。終わったら右の扉から共用車両へ行ける。,去工作台检查一下装置吧。修好后右边的门通往公共车厢。
+battle.log.action.attack,{0} — 공격,{0} — Attack,{0} — 攻撃,{0} — 攻击
+battle.log.action.skill,{0} — {1},{0} — {1},{0} — {1},{0} — {1}
+battle.log.action.item,{0} — 아이템: {1},{0} — Item: {1},{0} — アイテム：{1},{0} — 物品：{1}
+battle.log.actor.unknown,대상,Target,対象,目标
+battle.log.skill.unknown,스킬,Skill,スキル,技能
+battle.log.item.unknown,아이템,Item,アイテム,物品
+battle.log.result.row,{0}: {1},{0}: {1},{0}：{1},{0}：{1}
+battle.log.result.hp_lost,HP {0} 손실,Lost {0} HP,HP {0}減少,失去{0} HP
+battle.log.result.hp_gained,HP {0} 회복,Recovered {0} HP,HP {0}回復,恢复{0} HP
+battle.log.result.ap_lost,AP {0} 손실,Lost {0} AP,AP {0}減少,失去{0} AP
+battle.log.result.ap_gained,AP {0} 회복,Recovered {0} AP,AP {0}回復,恢复{0} AP
+battle.log.status.added,{0} 부여,{0} applied,{0}付与,附加{0}
+battle.log.status.removed,{0} 해제,{0} removed,{0}解除,解除{0}
+battle.log.status.burn,화상,Burn,火傷,灼烧
+battle.log.status.chill,냉기,Chill,冷気,寒冷
+battle.log.status.electric,감전,Shock,感電,感电
+battle.log.status.bleed,출혈,Bleed,出血,流血
+battle.log.status.poison,중독,Poison,毒,中毒
+battle.log.status.frozen,빙결,Frozen,凍結,冻结
+battle.log.status.legacy.freeze,냉각,Chilled,冷却,冷却
+battle.log.status.bind,속박,Bind,束縛,束缚
+battle.log.status.stun,기절,Stun,気絶,眩晕
+battle.log.status.berserk,광폭,Berserk,暴走,狂暴
+battle.log.status.ice_shield,얼음 방패,Ice Shield,氷の盾,冰盾
+battle.log.status.wet,젖음,Wet,濡れ,湿润
+battle.log.status.haste,가속,Haste,加速,加速
+battle.log.status.unknown,상태,Status,状態,状态
+battle.log.cannot.frozen,{0}: 빙결로 행동 불가,{0}: Cannot act while frozen,{0}：凍結して動けない,{0}：冻结时无法行动
+battle.log.cannot.stunned,{0}: 기절로 행동 불가,{0}: Cannot act while stunned,{0}：気絶して動けない,{0}：眩晕时无法行动
+battle.log.cannot.other,{0}: 행동할 수 없다,{0}: Cannot act,{0}：行動できない,{0}：无法行动
+skill.showcase.wizzel.pressure_slash.name,압력 베기,Pressure Slash,圧力斬り,压力斩
+skill.showcase.wizzel.pressure_slash.description,증기압을 실은 검으로 적을 베어낸다.,Cut through a foe with a steam-powered blade.,蒸気圧を乗せた剣で敵を斬る。,以蒸汽加压的剑斩击敌人。
+skill.showcase.wizzel.twin_pressure.name,쌍압 절단,Twin Pressure,双圧断,双压切断
+skill.showcase.wizzel.twin_pressure.description,서로 다른 압력의 참격으로 적을 몰아붙인다.,Drive a foe back with contrasting pressure cuts.,異なる圧力の斬撃で敵を追い詰める。,用不同压力的斩击逼退敌人。
+skill.showcase.wizzel.steam_thrust.name,증기 찌르기,Steam Thrust,蒸気突き,蒸汽突刺
+skill.showcase.wizzel.steam_thrust.description,응축한 증기로 적의 방어를 꿰뚫는다.,Pierce a foe with a thrust of condensed steam.,凝縮した蒸気の突きで敵を貫く。,以凝聚蒸汽的突刺贯穿敌人。
+skill.showcase.wizzel.reverse_flow.name,역류 참격,Reverse Flow,逆流斬り,逆流斩
+skill.showcase.wizzel.reverse_flow.description,증기를 역류시켜 빈틈을 다시 베어낸다.,Reverse the steam flow to cut into an opening.,蒸気を逆流させて隙を斬り込む。,逆转蒸汽流向斩入敌人的破绽。
+skill.showcase.wizzel.turbine_rush.name,터빈 연격,Turbine Flurry,タービン連撃,涡轮连斩
+skill.showcase.wizzel.turbine_rush.description,가속한 검의 터빈으로 적을 거세게 몰아붙인다.,Overwhelm a foe with a turbine-driven flurry.,加速した剣のタービンで敵を圧倒する。,以高速运转的剑刃涡轮压制敌人。
+skill.showcase.wizzel.steam_traverse.name,증기 횡단,Steam Cross,蒸気横断,蒸汽横断
+skill.showcase.wizzel.steam_traverse.description,증기 추진으로 적의 빈틈을 가로지른다.,Cross an enemy opening with steam propulsion.,蒸気の推進力で敵の隙を横切る。,借助蒸汽推进穿越敌人的破绽。
+skill.showcase.wizzel.overheat_dive.name,과열 강하,Overheat Dive,過熱急降下,过热俯冲
+skill.showcase.wizzel.overheat_dive.description,상공에서 압축한 열기를 내려찍어 <color=#FF6A45>화상</color>을 남긴다.,Descend with compressed heat and inflict <color=#FF6A45>Burn</color>.,上空から圧縮した熱を叩きつけ<color=#FF6A45>火傷</color>を与える。,从空中释放压缩热量并施加<color=#FF6A45>灼烧</color>。
+skill.showcase.wizzel.boiler_burst.name,보일러 파열,Boiler Burst,ボイラー破裂,锅炉爆裂
+skill.showcase.wizzel.boiler_burst.description,압축 증기를 발사해 적에게 <color=#FF6A45>화상</color>을 남긴다.,Fire compressed steam to inflict <color=#FF6A45>Burn</color>.,圧縮蒸気を放ち<color=#FF6A45>火傷</color>を与える。,发射压缩蒸汽并施加<color=#FF6A45>灼烧</color>。
+skill.showcase.wizzel.critical_breakthrough.name,임계압 돌파,Critical Breakthrough,臨界圧突破,临界压突破
+skill.showcase.wizzel.critical_breakthrough.description,축적한 압력을 날카로운 일섬으로 쏟아낸다.,Release stored pressure in a razor-sharp flash.,蓄えた圧力を鋭い一閃に放つ。,将积蓄的压力化作锐利的一闪。
+skill.showcase.wizzel.pressure_release.name,압력 해방,Pressure Release,圧力解放,压力释放
+skill.showcase.wizzel.pressure_release.description,축적한 증기압을 해방해 적에게 거대한 충격을 준다.,Release stored steam pressure in a massive impact.,蓄えた蒸気圧を解放して敵に大きな衝撃を与える。,释放积蓄的蒸汽压力对敌人造成巨大冲击。
+skill.showcase.zev.blink_slash.name,빙섬,Frost Flash,氷閃,冰闪
+skill.showcase.zev.blink_slash.description,빠르게 적을 베어 <color=#72D5FF>냉기</color>를 남긴다.,A swift slash that applies <color=#72D5FF>Chill</color>.,素早い斬撃で<color=#72D5FF>冷気</color>を残す。,迅速斩击并施加<color=#72D5FF>寒冷</color>。
+skill.showcase.zev.phantom_arc.name,잔뢰 이연,Residual Thunder,残雷二連,残雷二连
+skill.showcase.zev.phantom_arc.description,엇박자의 참격으로 <color=#FFE566>감전</color>을 남긴다.,Offbeat slashes leave <color=#FFE566>Electric</color> buildup.,緩急のある斬撃で<color=#FFE566>感電</color>を残す。,以错拍的斩击施加<color=#FFE566>感电</color>。
+skill.showcase.zev.crash.name,동결 낙인,Frozen Brand,凍結の刻印,冻结烙印
+skill.showcase.zev.crash.description,차가운 검을 내려찍어 <color=#72D5FF>냉기</color>를 남긴다.,Slam a cold blade down and apply <color=#72D5FF>Chill</color>.,冷たい剣を叩きつけ<color=#72D5FF>冷気</color>を残す。,挥落寒刃并施加<color=#72D5FF>寒冷</color>。
+skill.showcase.zev.combo_slash.name,뇌광 순회,Thunder Circuit,雷光巡回,雷光巡回
+skill.showcase.zev.combo_slash.description,번개를 두른 검으로 적을 몰아붙여 <color=#FFE566>감전</color>을 남긴다.,Pressure a foe with a lightning blade and apply <color=#FFE566>Electric</color>.,雷をまとった剣で敵を追い詰め<color=#FFE566>感電</color>を残す。,用雷电缠绕的剑压制敌人并施加<color=#FFE566>感电</color>。
+skill.showcase.zev.polar_judgment.name,극성 단죄,Polar Judgment,極性断罪,极性断罪
+skill.showcase.zev.polar_judgment.description,냉기와 번개가 교차하는 강력한 참격을 날린다.,Unleash a powerful slash of intersecting frost and lightning.,冷気と雷が交差する強烈な斬撃を放つ。,挥出寒冷与雷电交错的强力斩击。
+lab.zev.opening.00,"전투 실험 계약, 진행하겠습니다.","We will now proceed with the combat trial contract.","戦闘実験の契約を履行します。","现在开始执行战斗实验契约。"
+lab.zev.opening.01,"제가 이길 듯요. ㅎ","Pretty sure I am winning this. Heh.","僕が勝ちそうですね。へへ。","感觉我会赢呢，嘿嘿。"
+lab.zev.phase2.00,"2페이즈에 돌입해야겠군요.","It is time to enter phase two.","第2フェーズに移るとしましょう。","看来该进入第二阶段了。"
+lab.zev.phase2.01,"패시브로 당분간 일부 스킬은 못 쓸 겁니다.","My passive will lock some of your skills for a while.","パッシブ効果で、しばらく一部のスキルが使えなくなります。","我的被动效果会暂时封锁你的部分技能。"
+lab.zev.phase2.02,"아오, 귀찮아.","Ugh, what a pain.","ああ、面倒くさい。","啧，真麻烦。"
+battle.skill_locked,"사용 불가 · 잠긴 스킬입니다.","Unavailable · This skill is locked.","使用不可・スキルが封じられています。","无法使用 · 该技能已被封锁。"
+lab.zev.phase3.00,"이제 마지막 조항입니다. 크게 받아칠 틈을 드리죠.","Now for the final clause. I will give you an opening to strike back.","では、最後の条項です。大きく反撃する隙を差し上げましょう。","现在是最后一项条款。我会给你一个反击的机会。"
+lab.zev.phase3.01,"계약서 끝에 제일 위험한 걸 쓰는 버릇 있으시죠?","You always save the most dangerous part for the fine print, do you not?","一番危ないことを契約書の最後に書く癖、ありますよね？","你是不是习惯把最危险的条款写在契约最后？"
+lab.zev.phase3.02,"자신이 없다면 피하셔도 됩니다. 무리한 방어는 금물입니다.","Dodge if you are unsure. Do not force a guard you cannot manage.","自信がなければ避けても構いません。無理に防いではいけませんよ。","没把握的话也可以躲开。不要勉强格挡。"
+lab.zev.phase3.03,"이번에는 제가 앞으로 나가 볼게요.","This time, I will take the lead.","今度は僕が前に出てみます。","这次就让我站到前面吧。"
+lab.zev.ending.00,"여기까지 하죠. 실습은 충분합니다.","That will do. We have practiced enough.","ここまでにしましょう。訓練は十分です。","就到这里吧。练习已经足够了。"
+lab.zev.ending.01,"이 정도면 못 찾은 척 넘어가 주셔도 되지 않나요?","After all that, could you not just say you never found me?","これなら、見つからなかったことにしてくれてもいいんじゃないですか？","都这样了，就不能当作没找到我吗？"
+lab.zev.ending.02,"…이번 의뢰는 교육 목적이었다고 보고하겠습니다.","...I will report that this commission was for training purposes.","…今回の依頼は教育目的だったと報告しておきます。","……我会报告说，这次委托是出于教学目的。"
+lab.zev.ending.03,"그 말, 지금 대화 기록에 남겼습니다.","I am keeping that on the record.","その言葉、今の会話の記録に残しましたからね。","你这句话，我已经记下来了。"
+skill.showcase.zev.chain_frenzy.name,사슬 광란,Chain Frenzy,鎖の狂乱,锁链狂袭
+skill.showcase.zev.chain_frenzy.description,사슬을 넘나들며 맹렬한 참격을 쏟아낸다.,Cross the chains and unleash a storm of slashes.,鎖を縫って駆け抜け、激しい斬撃を浴びせる。,穿梭于锁链之间，倾泻猛烈的斩击。
+battle.log.cannot.recovery,{0}: 탈진으로 한 턴 휴식,{0}: Exhausted - rests for one turn,{0}：消耗により1ターン休息,{0}：力竭，休息一回合
+item.lab.spark_flask.name,축전병,Spark Flask,蓄電瓶,蓄电瓶
+item.lab.spark_flask.description,적 한 명에게 <color=#FFD95A>감전</color> 4를 쌓는다.,Adds 4 <color=#FFD95A>Shock</color> to one enemy.,敵1体に<color=#FFD95A>感電</color>を4蓄積する。,对一名敌人施加4层<color=#FFD95A>感电</color>。
+item.lab.overload_charge.name,방전탄,Discharge Charge,放電弾,放电弹
+item.lab.overload_charge.description,"적 한 명의 <color=#FFD95A>감전</color>을 최대 6 소비해, 소비량당 18의 피해를 준다.","Consumes up to 6 <color=#FFD95A>Shock</color> from one enemy, dealing 18 damage per stack consumed.",敵1体の<color=#FFD95A>感電</color>を最大6消費し、消費量1につき18ダメージを与える。,消耗一名敌人最多6层<color=#FFD95A>感电</color>，每层造成18点伤害。

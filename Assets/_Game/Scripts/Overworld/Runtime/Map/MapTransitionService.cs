@@ -88,6 +88,15 @@ public class MapTransitionService : MonoBehaviour
         return TryRequestTransition(request, player, null);
     }
 
+    /// <summary>발행한 요청 객체가 일치하는 Room 전환만 취소합니다. 다른 소유자의 전환은 건드리지 않습니다.</summary>
+    public bool TryCancelRoomTransition(MapTransitionRequest request)
+    {
+        if (request == null || _activeRoomTransition == null || _activeRoomTransition.Completed
+            || !ReferenceEquals(_activeRoomTransition.Request, request)) return false;
+        CancelRoomTransition(IsExternalSceneTransitionPending());
+        return true;
+    }
+
     public bool TryRequestTransition(
         MapTransitionRequest request,
         PlayerController player,
@@ -642,6 +651,14 @@ public class MapTransitionService : MonoBehaviour
             {
                 doors[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
             }
+        }
+
+        PrologueTutorialDoor[] tutorialDoors = roomRoot.GetComponentsInChildren<PrologueTutorialDoor>(false);
+        for (int i = 0; i < tutorialDoors.Length; i++)
+        {
+            if (tutorialDoors[i] != null
+                && Vector2.Distance(tutorialDoors[i].transform.position, arrivalPosition) <= 1.5f)
+                tutorialDoors[i].SuppressForSeconds(_arrivalDoorSuppressSeconds);
         }
 
         AreaConnectionMarker[] markers = roomRoot.GetComponentsInChildren<AreaConnectionMarker>(false);

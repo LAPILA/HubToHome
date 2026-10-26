@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name: Sequence_rescue
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: prologue.tutorial.rescue
+  DisplayNameKo:
+  Contract:
+    DescriptionKo:
+    UsageKo:
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Overworld/Prologue/rescue.sequence.yaml
+    SourceHash: dc67a3faf374824f938ece3e201de58683c03304d3d1c57eec581936f32bd697
+    ImportedAtIso8601: 2026-10-24T04:53:20.7802393Z
+  Actions:
+  - BlockId: 9c7637f078a94b96b331142e2a907a9d
+    DesignerLabel: "\uD798\uACFC \uAE30\uC220\uC744 \uD568\uAED8 \uC0AC\uC6A9"
+    ActionId: dialogue.wait
+    ParametersJson: '{"id":"rescue"}'
+    Note:
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

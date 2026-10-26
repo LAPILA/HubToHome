@@ -885,15 +885,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_Color: {r: 0, g: 0, b: 0, a: 0.5}
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 9b925958cb28fc944ae2f11e6bf7737c, type: 3}
-  m_Type: 1
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -901,7 +901,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 0.25
+  m_PixelsPerUnitMultiplier: 1
 --- !u!114 &907979750702041907
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1337,15 +1337,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleNarrationUI
   _messageText: {fileID: 3215776237098217772}
-  _bubbleBackground: {fileID: 0}
-  _bubblePadding: {x: 32, y: 20}
+  _bubbleBackground: {fileID: 8769901704150417609}
+  _fixedBubbleSize: {x: 480, y: 72}
+  _bubblePadding: {x: 24, y: 12}
+  _topInset: 56
+  _fontSize: 14
   _minBubbleSize: {x: 160, y: 64}
   _maxBubbleWidthRatio: 0.5
   _maxBubbleHeightRatio: 0.35
   _typeInterval: 0.015
-  _defaultHoldDuration: 1
+  _defaultHoldDuration: 0.5
+  _scrollDuration: 0.1
   _maxQueueCount: 8
-  _maxRollingLines: 8
+  _maxRollingLines: 3
 --- !u!1 &9103392865196062853
 GameObject:
   m_ObjectHideFlags: 0

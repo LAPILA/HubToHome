@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_retry
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 0}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_RETRY_PROMPT
+    DefaultText: "\uB2E4\uC2DC \uC790\uC138\uB97C \uAC00\uB2E4\uB4EC\uACE0 \uB9DE\uC11C\uACA0\uC2B5\uB2C8\uAE4C?"
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

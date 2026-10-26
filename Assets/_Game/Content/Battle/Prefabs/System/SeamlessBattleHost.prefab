@@ -11252,8 +11252,9 @@ MonoBehaviour:
   _enemies: []
   _impulseSource: {fileID: 2548836064680235689}
   _hitImpulse: 0.15
-  _apPerTurn: 5
-  _apOnParryPerfect: 20
+  _apPerTurn: 2
+  _apOnParryPerfect: 2
+  _apParryCapPerEnemyAction: 6
   _maxTurnQueueSize: 8
   _visibleTurnQueueSize: 6
   _runSuccessChance: 0.6

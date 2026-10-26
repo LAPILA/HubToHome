@@ -39,7 +39,7 @@ public partial class QTEManager : MonoBehaviour
     public enum QTEGrade { Miss, Bad, Good, Great, Perfect }
 
     [BoxGroup("기본 판정 구간"), LabelText("저스트 가드 (초)"), LabelWidth(160)]
-    [InfoBox("적 공격은 매 타격의 성공 구간에 전조/핑을 표시합니다. 실시간 보정 하한: 근접 Z 0.40초, 기타 Z 0.24초, X 0.34초, C 0.28초. 실제 공격 길이보다 길어지지 않으며 X는 Z보다 좁아지지 않습니다. Great/Good는 구형 방어용입니다.")]
+    [InfoBox("전조 표시는 기존 길이를 유지하고 성공 판정과 분리합니다. 기본 저스트 가드 0.12초, 회피 0.22초, 특수 반격 0.18초이며 늦은 입력은 최대 0.03초만 허용합니다. 일반 홀드 방어는 타격마다 계속 적용됩니다. Great/Good는 구형 방어용입니다.")]
     [SerializeField, Range(0f, 0.3f)] private float _perfectWindow = 0.12f;
 
     [BoxGroup("기본 판정 구간"), LabelText("구형 Great (초)"), LabelWidth(160)]
@@ -56,6 +56,12 @@ public partial class QTEManager : MonoBehaviour
 
     [BoxGroup("Z / X / C 방어"), LabelText("연계 반격 판정 (초)")]
     [SerializeField, Min(0.01f)] private float _counterWindow = 0.18f;
+
+    [BoxGroup("Z / X / C 방어"), LabelText("Z/X/C 공통 재준비 (초)")]
+    [Tooltip("어느 방어 키든 빠르게 바꿔 누르면 정밀 대응이 재준비됩니다. 일반 홀드 방어는 유지하며 짧은 공격에서는 공격 길이의 절반 이하로 제한합니다.")]
+    [SerializeField, Range(0f, 0.3f)] private float _parryRearmSeconds = ParryRearmState.DefaultInterval;
+    private ParryRearmState _fallbackParryRearm;
+    private IDefenseInputSource _fallbackParryRearmOwner;
 
     [BoxGroup("이전 방어 방식"), LabelText("시간제 Z 방어 사용"), HideIf(nameof(_useActiveDefense))]
     [SerializeField] private bool _useTimedGuard = true;
@@ -180,8 +186,8 @@ public partial class QTEManager : MonoBehaviour
     /// 일반 방어 QTE와 같은 판정 정책을 사용하지만 QTE 패널/결과 표시와
     /// DefenseWindow 이벤트를 발생시키지 않습니다. Z/X/C 입력은 PlayerController가
     /// 적 행동 페이즈 동안 직접 버퍼링하고, 이 실행이 충돌 시점에 결과를 확정합니다.
-    /// 전조 시점은 실제 성공 구간에서 계산합니다. impactCueLeadTime은 호출 호환용이며 사용하지 않습니다.
-    /// 근접은 첫 표시부터 Z를 허용합니다. 투사체/원거리 호환 호출은 useMeleeParryAssistance를 끕니다.
+    /// 기존 전조 길이와 정밀 성공 구간을 분리합니다. impactCueLeadTime은 호출 호환용이며 사용하지 않습니다.
+    /// 전조의 첫 입력을 확정하므로 조기 입력이나 잘못된 키를 이후 입력으로 바꾸지 못합니다.
     /// </summary>
     public QteExecution StartBattleDefenseWindow(
         DefenseQteRequest request,
@@ -195,7 +201,9 @@ public partial class QTEManager : MonoBehaviour
         GameObject cuePrefab = null,
         string cuePivot = CharacterPivotId.Center,
         Action<float> onAttackProgress = null,
-        bool useMeleeParryAssistance = true)
+        bool useMeleeParryAssistance = true,
+        bool continuousAttackMotion = true,
+        bool animateFromWindowStart = false)
     {
         return StartDefenseExecution(
             request,
@@ -207,7 +215,9 @@ public partial class QTEManager : MonoBehaviour
             onAttackAnimationStart,
             attackAnimationLeadTime,
             onImpactCue, attacker, cuePrefab, cuePivot, onAttackProgress,
-            parryFromPreparation: useMeleeParryAssistance);
+            parryFromPreparation: useMeleeParryAssistance,
+            continuousAttackMotion: continuousAttackMotion,
+            animateFromWindowStart: animateFromWindowStart);
     }
 
     private QteExecution StartDefenseExecution(
@@ -224,7 +234,9 @@ public partial class QTEManager : MonoBehaviour
         GameObject cuePrefab = null,
         string cuePivot = CharacterPivotId.Center,
         Action<float> onAttackProgress = null,
-        bool parryFromPreparation = false)
+        bool parryFromPreparation = false,
+        bool continuousAttackMotion = false,
+        bool animateFromWindowStart = false)
     {
         uint version = ++_executionVersion;
         CancelCurrentExecution();
@@ -250,7 +262,8 @@ public partial class QTEManager : MonoBehaviour
                 guardDamageMultiplier: 0.35f, // 본편 일반 방어: 최종 피해 65% 감소. 구형 프리팹 값과 무관.
                 useActiveDefense: true,
                 dodgeWindow: request.DodgeWindow,
-                counterWindow: request.CounterWindow)
+                counterWindow: request.CounterWindow,
+                cueWindow: request.CueWindow)
             : new DefenseQteRequest(
                 request.Duration,
                 request.DifficultyMultiplier,
@@ -266,7 +279,7 @@ public partial class QTEManager : MonoBehaviour
         if (forceRealtimeBattleDefense)
             request = DefenseJudgementPolicy.WithBattleAssistance(request, request.Duration, parryFromPreparation);
         var impactTiming = new BattleImpactTiming(request.Duration,
-            DefenseJudgementPolicy.GetActiveCueWindow(request), forceRealtimeBattleDefense);
+            DefenseJudgementPolicy.GetActiveCueWindow(request), forceRealtimeBattleDefense && !continuousAttackMotion);
         if (forceRealtimeBattleDefense)
             request = DefenseJudgementPolicy.WithBattleAssistance(request, impactTiming.Duration, parryFromPreparation);
         _activeExecution = execution;
@@ -296,7 +309,7 @@ public partial class QTEManager : MonoBehaviour
             attackAnimationLeadTime,
             onImpactCue, impactTiming, forceRealtimeBattleDefense, attacker,
             cuePrefab != null ? cuePrefab : _battleImpactCuePrefab, cuePivot, onAttackProgress,
-            parryFromPreparation));
+            parryFromPreparation, continuousAttackMotion, animateFromWindowStart));
         if (ReferenceEquals(execution, _activeExecution) && !execution.IsDone)
             _activeCoroutine = coroutine;
 
@@ -319,14 +332,19 @@ public partial class QTEManager : MonoBehaviour
         GameObject cuePrefab,
         string cuePivot,
         Action<float> onAttackProgress,
-        bool parryFromPreparation)
+        bool parryFromPreparation,
+        bool continuousAttackMotion,
+        bool animateFromWindowStart)
     {
         IsActive = true;
         float startedAt = Time.realtimeSinceStartup;
         float impactAt = startedAt + request.Duration;
-        float animationLead = float.IsNaN(attackAnimationLeadTime) || float.IsInfinity(attackAnimationLeadTime)
-            ? 0f : Mathf.Clamp(attackAnimationLeadTime, 0f, request.Duration);
-        float animationStartsAt = impactTiming.AuthoredDuration - animationLead;
+        float clipImpactLead = float.IsNaN(attackAnimationLeadTime) || float.IsInfinity(attackAnimationLeadTime)
+            ? 0f : Mathf.Max(0f, attackAnimationLeadTime);
+        float animationLead = Mathf.Min(clipImpactLead, request.Duration);
+        float animationStartsAt = animateFromWindowStart ? 0f : impactTiming.AuthoredDuration - animationLead;
+        float windowAnimationRate = animateFromWindowStart
+            ? BattleImpactTiming.AnimationRateToImpact(clipImpactLead, impactTiming.AuthoredDuration) : 1f;
         bool animationStarted = false;
         // 독립적인 표시 시간이 아니라, 실제로 모든 허용 입력이 성공하는 구간입니다.
         float cueLead = DefenseJudgementPolicy.GetActiveCueWindow(request);
@@ -344,6 +362,14 @@ public partial class QTEManager : MonoBehaviour
         float lastRealtime = startedAt;
         float pausedDuration = 0f;
         IDefenseInputSource controller = inputSource ?? ResolveDefenseInputSource();
+        float parryRearmInterval = ParryRearmState.IntervalFor(request.Duration, _parryRearmSeconds);
+        if (battleDefense && controller is IParryRearmInputSource rearmSource)
+            rearmSource.ConfigureParryRearm(parryRearmInterval);
+        if (!ReferenceEquals(_fallbackParryRearmOwner, controller))
+        {
+            _fallbackParryRearmOwner = controller;
+            _fallbackParryRearm.Reset();
+        }
         _activeDefenseController = controller as PlayerController;
         if (_activeDefenseController != null) _activeDefenseController.PrepareDefenseWindow();
 
@@ -408,11 +434,10 @@ public partial class QTEManager : MonoBehaviour
             // 일시정지 뒤 창이 영원히 끝나지 않거나 입력 시각이 거부될 수 있었습니다.
             float now = startedAt + Mathf.Max(0f, realtime - startedAt - pausedDuration);
             float elapsed = now - startedAt;
-            _activeAttackMotion?.SetRate(battleDefense && now >= impactAt
-                ? 0f : impactTiming.RateAt(elapsed));
             if (onAttackProgress != null)
             {
-                try { onAttackProgress(impactTiming.AttackTimeAt(elapsed)); }
+                // 연속 난무는 늦은 입력 유예에도 화면을 통과합니다. 판정 유예는 그대로 유지합니다.
+                try { onAttackProgress(continuousAttackMotion ? elapsed : impactTiming.AttackTimeAt(elapsed)); }
                 catch (Exception exception) { Debug.LogException(exception, this); Cancel(execution); }
                 if (execution.IsDone) yield break;
             }
@@ -422,8 +447,7 @@ public partial class QTEManager : MonoBehaviour
                 if (CameraController.Instance != null)
                     _activeCameraStability = CameraController.Instance.StabilizeBattleDefense();
             }
-            // 카메라는 넓은 회피 구간부터 안정화하되, 타격 신호는 모든 허용 대응이
-            // 성공하는 구간에만 표시합니다. 먼저 뜬 흐린 전조를 실패 신호로 만들지 않습니다.
+            // 기존 경고 연출 길이는 보존합니다. 정밀 성공 구간은 별도 정책에서 판단합니다.
             if (!cueStarted && now >= impactAt - cueLead)
             {
                 cueStarted = true;
@@ -433,7 +457,7 @@ public partial class QTEManager : MonoBehaviour
                     if (battleDefense && attacker != null && cuePrefab != null)
                         _activeBattleCue = BattleTelegraphCue.Spawn(cuePrefab,
                             attacker.GetPivot(cuePivot), impactAt - now,
-                            prepareOnly: false, counterable: request.Requirement == DefenseRequirement.Counterable);
+                            prepareOnly: false, counterable: DefenseJudgementPolicy.IsCounterRequirement(request.Requirement));
                     try { onImpactCue?.Invoke(impactAt - now); }
                     catch (Exception exception) { Debug.LogException(exception, this); }
                     if (execution.IsDone) yield break;
@@ -459,6 +483,9 @@ public partial class QTEManager : MonoBehaviour
                 if (execution.IsDone)
                     yield break;
             }
+            // 모션 시작 콜백 뒤 적용해야 이전 피격의 속도 복원이 새 공격 속도를 덮지 않습니다.
+            _activeAttackMotion?.SetRate(animateFromWindowStart && now < impactAt ? windowAnimationRate
+                : battleDefense && !continuousAttackMotion && now >= impactAt ? 0f : impactTiming.RateAt(elapsed));
             // Frozen rejects buffered and legacy raw input without pausing the enemy attack clock.
             if (controller is PlayerController frozenController && !frozenController.CanUseBattleDefense)
             {
@@ -478,14 +505,18 @@ public partial class QTEManager : MonoBehaviour
                 {
                     DefenseInputReadStatus readStatus = DefenseInputReadStatus.None;
                     float pressedAt = realtime;
-                    bool buffered = controller != null
-                        && controller.TryConsumeBufferedDefenseInput(out input, out pressedAt);
+                    bool bufferedAllowsPrecision = true;
+                    bool ownsAttemptStatus = controller is IActiveDefenseAttemptSource;
+                    bool buffered = controller is IActiveDefenseAttemptSource attemptSource
+                        ? attemptSource.TryConsumeBufferedDefenseAttempt(out readStatus, out input,
+                            out pressedAt, out bufferedAllowsPrecision)
+                        : controller != null && controller.TryConsumeBufferedDefenseInput(out input, out pressedAt);
                     if (buffered)
                     {
                         // 기존 입력 공급자의 C 값도 방어에서만 새 반격 값으로 해석합니다.
                         if (input == DefenseInput.Jump)
                             input = DefenseInput.Counter;
-                        readStatus = DefenseInputReadStatus.Valid;
+                        if (!ownsAttemptStatus) readStatus = DefenseInputReadStatus.Valid;
                     }
                     else if (controller == null && _lastActiveDefensePressFrame != Time.frameCount)
                     {
@@ -501,19 +532,34 @@ public partial class QTEManager : MonoBehaviour
                         // 같은 프레임에 열린 다음 타격으로 넘어가지 않아야 합니다.
                         _lastActiveDefensePressFrame = Time.frameCount;
                         _lastActiveDefenseInputTime = pressedAt;
+                        bool defenseRearmed = bufferedAllowsPrecision;
+                        if (battleDefense && !ownsAttemptStatus)
+                        {
+                            if (controller is IParryRearmInputSource rearmInput)
+                                defenseRearmed = rearmInput.TryAcceptPerfectGuardPress(pressedAt);
+                            else
+                            {
+                                _fallbackParryRearm.ObservePress(pressedAt);
+                                defenseRearmed = _fallbackParryRearm.IsPressRearmed(pressedAt, parryRearmInterval);
+                            }
+                        }
                         bool committed = battleDefense
                             ? DefenseJudgementPolicy.TryCommitBattleInput(ref activeAttempt, request,
-                                readStatus, input, pressedAt - pausedDuration, impactAt)
+                                readStatus, input, pressedAt - pausedDuration, impactAt, defenseRearmed)
                             : activeAttempt.TryCommit(readStatus, input,
                                 pressedAt - pausedDuration, startedAt, impactAt);
-                        if (committed && readStatus == DefenseInputReadStatus.Valid)
+                        if (committed)
                         {
-                            if (input == DefenseInput.Parry)
+                            bool previewAllowed = readStatus == DefenseInputReadStatus.Valid && defenseRearmed;
+                            if (input == DefenseInput.Parry && previewAllowed)
                                 guardHeld = sampledHeld;
                             if (controller is PlayerController playerController)
                                 playerController.CommitDefenseAttempt(input,
-                                    acceptedParryFeedback: battleDefense && parryFromPreparation);
-                            else
+                                    acceptedParryFeedback: previewAllowed && battleDefense && input == DefenseInput.Parry
+                                        && pressedAt - pausedDuration >= impactAt
+                                            - DefenseJudgementPolicy.GetActiveSuccessWindow(request, input),
+                                    allowPreview: previewAllowed);
+                            else if (previewAllowed)
                                 controller?.PreviewDefenseInput(input);
                         }
                     }
@@ -693,8 +739,13 @@ public partial class QTEManager : MonoBehaviour
     {
         IsActive = true;
         int successCount = 0;
-        Canvas.ForceUpdateCanvases();
-        BattleUIController.Instance?.ShowSkillQTE(Vector2.zero, "", 0f);
+        bool automatic = GameConfigManager.Instance != null && GameConfigManager.Instance.AutoSkillQte;
+        if (automatic) BattleUIController.Instance?.HideSkillQTE();
+        else
+        {
+            Canvas.ForceUpdateCanvases();
+            BattleUIController.Instance?.ShowSkillQTE(Vector2.zero, "", 0f);
+        }
 
         yield return null;
         yield return null;
@@ -707,7 +758,7 @@ public partial class QTEManager : MonoBehaviour
             SkillQTENode node = nodes[i];
 
             Vector2 relativePos = new Vector2(node.PosX, node.PosY);
-            BattleUIController.Instance?.ShowSkillQTE(relativePos, node.TargetKey, timeLimit);
+            if (!automatic) BattleUIController.Instance?.ShowSkillQTE(relativePos, node.TargetKey, timeLimit);
 
             float elapsed = 0f;
             bool answered = false;
@@ -722,7 +773,7 @@ public partial class QTEManager : MonoBehaviour
                     continue;
                 }
                 elapsed += Time.unscaledDeltaTime;
-                if (GameInput.TryReadDefenseInputThisFrame(out DefenseInput sequenceInput))
+                if (!automatic && GameInput.TryReadDefenseInputThisFrame(out DefenseInput sequenceInput))
                 {
                     answered = true;
                     string key = (node.TargetKey ?? string.Empty).ToLowerInvariant();
@@ -738,9 +789,10 @@ public partial class QTEManager : MonoBehaviour
             if (execution.IsDone)
                 yield break;
 
-            BattleUIController.Instance?.ShowSkillQTEResult(hit);
+            if (automatic) { hit = true; successCount++; }
+            else BattleUIController.Instance?.ShowSkillQTEResult(hit);
             float resultElapsed = 0f;
-            while (resultElapsed < 0.35f && !execution.IsDone)
+            while (resultElapsed < DefenseQTEUI.SkillFeedbackDuration(hit) && !execution.IsDone)
             {
                 yield return null;
                 if (!GameInput.IsDefenseInputBlocked && Time.timeScale > 0f)
@@ -751,6 +803,9 @@ public partial class QTEManager : MonoBehaviour
         if (execution.IsDone)
             yield break;
 
+        while (!execution.IsDone && (GameInput.IsDefenseInputBlocked || Time.timeScale <= 0f))
+            yield return null;
+        if (execution.IsDone) yield break;
         BattleUIController.Instance?.HideSkillQTE();
         CompleteExecution(execution, QteTermination.Completed);
         onComplete?.Invoke(successCount, nodes.Count);

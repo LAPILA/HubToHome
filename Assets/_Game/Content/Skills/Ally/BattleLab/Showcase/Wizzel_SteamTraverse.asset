@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: "Wizzel_SteamTraverse"
+  m_EditorClassIdentifier: "Assembly-CSharp::SkillData"
+  Icon: {fileID: 0}
+  SkillName: "증기 횡단"
+  NameLocalizationKey: "skill.showcase.wizzel.steam_traverse.name"
+  DescriptionLocalizationKey: "skill.showcase.wizzel.steam_traverse.description"
+  SkillID: "lab.showcase.wizzel.steam_traverse"
+  Description: "증기 추진으로 적의 빈틈을 가로지른다."
+  UsageProfile: 1
+  APCost: 20
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications: []
+  StatusProcCoefficient: 1
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 1
+    RequiredStep: 3
+    ConsumeStep: 3
+    DamageMultiplier: 1.35
+    GainOnCompletion: 0
+  ActionTimeline:
+  - rid: 202610250006003
+  - rid: 202610250006002
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610250006003
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "다음 유효 명중에 점멸 1회 예약"
+        Note: "피해·방어·복귀를 기다리지 않는 단발 예약입니다. 명중 전 취소되면 표시하지 않습니다."
+        Mode: 2
+        Duration: 0.08
+        Strength: 0.12
+        AccentColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610250006002
+      type: {class: Action_AerialCrossSlash, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "상승 후 전후 교차 · 카메라 규칙 유지"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Height: 1.1
+        CrossingDistance: 0.85
+        ApproachDuration: 0.16
+        RiseDuration: 0.2
+        SpinDuration: 0.14
+        QteDuration: 0.65
+        InputWindow: 0.45
+        DashDuration: 0.12
+        ReturnDuration: 0.2
+        DamagePerStrike: 0.8
+        SuccessMultiplier: 1
+        FailureMultiplier: 0.55
+        Element: 0

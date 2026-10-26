@@ -108,6 +108,24 @@ public sealed class DialogueTypingTimingTests
         Assert.That(_typewriter.TimingSettings, Is.SameAs(_originalTimings));
     }
 
+    [Test]
+    public void ImmediateText_IsOptInAndDoesNotLeakIntoTheNextDialogueStyle()
+    {
+        _panel.ConfigureTypingStyle(DialogueStyle.Cinematic, isCutscene: true, revealTextImmediately: true);
+        Assert.That(GetField("_revealTextImmediately"), Is.True);
+
+        _panel.ConfigureTypingStyle(DialogueStyle.Overworld);
+        Assert.That(GetField("_revealTextImmediately"), Is.False);
+    }
+
+    [Test]
+    public void ExistingDialogueData_KeepsTypewriterByDefault()
+    {
+        DialogueData data = ScriptableObject.CreateInstance<DialogueData>();
+        try { Assert.That(data.RevealTextImmediately, Is.False); }
+        finally { Object.DestroyImmediate(data); }
+    }
+
     private bool ApplyFixedTiming() => (bool)InvokePrivate("ApplyFixedTypingTiming");
 
     private object InvokePrivate(string methodName)
@@ -122,5 +140,12 @@ public sealed class DialogueTypingTimingTests
         FieldInfo field = typeof(DialogueUI).GetField(fieldName, PrivateInstance);
         Assert.That(field, Is.Not.Null, fieldName);
         field.SetValue(_panel, value);
+    }
+
+    private object GetField(string fieldName)
+    {
+        FieldInfo field = typeof(DialogueUI).GetField(fieldName, PrivateInstance);
+        Assert.That(field, Is.Not.Null, fieldName);
+        return field.GetValue(_panel);
     }
 }

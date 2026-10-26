@@ -118,9 +118,10 @@ public class BattleMenuUI : UIPanel
                 _buttonLabels[i] = _buttons[i].GetComponentInChildren<TMPro.TMP_Text>(true);
                 // 이동/확정은 GameInput이 단독 소유합니다. EventSystem 중복 확정을 차단합니다.
                 _buttons[i].navigation = new Navigation { mode = Navigation.Mode.None };
-                _buttons[i].onClick.AddListener(() => Confirm(index));
+                _buttons[i].onClick.AddListener(() => HandleMainPointerClick(index));
             }
         }
+        _subMenu?.SetPreviewPointerInput(CanAcceptSubMenuPointer, ConfirmSubMenuPointer);
     }
     #endregion
 
@@ -151,6 +152,7 @@ public class BattleMenuUI : UIPanel
 
     protected override void OnDestroy()
     {
+        _subMenu?.SetPreviewPointerInput(null, null);
         StopOwnedAnimations();
         base.OnDestroy();
     }
@@ -470,7 +472,10 @@ public class BattleMenuUI : UIPanel
         IMenuEntry entry = null;
         if ((action == PlayerMenuAction.Skill || action == PlayerMenuAction.Item)
             && (_subMenu == null || !_subMenu.TryGetSelectedEntry(out entry)))
+        {
+            _subMenu?.PlayDeniedFeedback();
             return;
+        }
         if (_subMenu != null) _selectionByMenu[index] = _subMenu.SelectedIndex;
         _inputEnabled = false;
         PlayConfirmSfx();
@@ -487,6 +492,23 @@ public class BattleMenuUI : UIPanel
             OnItemSelected(entry);
         else
             ExecuteDirectAction(index, action);
+    }
+
+    private void HandleMainPointerClick(int index)
+    {
+        if (!CanAcceptSubMenuPointer() || _buttons == null || index < 0 || index >= _buttons.Length
+            || _buttons[index] == null || !_buttons[index].interactable) return;
+        if (index != _selectedIndex)
+        {
+            // 다른 탭의 이전 상세 항목을 새 명령으로 잘못 확정하지 않습니다.
+            GameInput.ConsumeBattleUIInput();
+            _selectedIndex = index;
+            HighlightButton(index);
+            RefreshPreview();
+            PlayMoveSfx();
+            return;
+        }
+        Confirm(index);
     }
     #endregion
 
@@ -576,6 +598,13 @@ public class BattleMenuUI : UIPanel
     private bool CanReceiveSubMenuCallback() => this != null && isActiveAndEnabled
         && !_isExternallySuspended && !_dialogueMode && _dialogueMotion == null
         && !GameInput.IsBattleInputBlocked;
+
+    private bool CanAcceptSubMenuPointer() => CommandsEnabled && isActiveAndEnabled && IsVisible
+        && Time.frameCount > _inputEnabledFrame && !GameInput.IsBattleInputBlocked
+        && !GameInput.BattleUIInputConsumed
+        && (BattleUIController.Instance == null || !BattleUIController.Instance.IsNarrationBlockingInput());
+
+    private void ConfirmSubMenuPointer() => Confirm(_selectedIndex);
 
     private void ResumeInputAfterSlide()
     {

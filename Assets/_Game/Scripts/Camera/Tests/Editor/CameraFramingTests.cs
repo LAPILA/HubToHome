@@ -298,6 +298,27 @@ public sealed class CameraFramingTests
     }
 
     [Test]
+    public void ExplicitActorFocusFiltersViewportOnlyWhileItIsNotTheDefaultOrABattleShot()
+    {
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        EnemyCharacter enemy = _rightObject.AddComponent<EnemyCharacter>();
+        MethodInfo cache = typeof(CameraController).GetMethod("CacheBattleViewportActor", flags);
+        MethodInfo resolve = typeof(CameraController).GetMethod("ResolveBattleViewportFocus", flags);
+        cache.Invoke(_controller, new object[] { enemy.transform, enemy, 1 });
+        Assert.That(_controller.TryFocus(enemy.transform, 4.5f, CameraShotStyle.GameplaySafe,
+            0f, CameraControlLease.None, out _, out string error), Is.True, error);
+        Assert.That(resolve.Invoke(_controller, null), Is.SameAs(enemy.transform));
+        typeof(CameraController).GetField("_battleShotActive", flags).SetValue(_controller, true);
+        Assert.That(resolve.Invoke(_controller, null), Is.Null, "일반 전투 샷은 전체 참가자를 보존합니다.");
+        typeof(CameraController).GetField("_battleShotActive", flags).SetValue(_controller, false);
+        _controller.SetDefaultTarget(enemy.transform, true);
+        Assert.That(resolve.Invoke(_controller, null), Is.Null, "기본 Follow 배우는 명시 포커스가 아닙니다.");
+        _controller.SetDefaultTarget(_centerObject.transform, true);
+        _rightObject.SetActive(false);
+        Assert.That(resolve.Invoke(_controller, null), Is.Null, "비활성 배우의 필터를 남기지 않습니다.");
+    }
+
+    [Test]
     public void BattleViewportKeepsSessionPixelSizeWithoutMembersOrVisibleHudAndAfterPresentationRelease()
     {
         WithPixelPerfectOutput((output, pixel, extension) =>
@@ -527,6 +548,71 @@ public sealed class CameraFramingTests
                 Is.EqualTo(pixel.CorrectCinemachineOrthoSize(fractionalLens)).Within(0.0001f));
             Assert.That(extension.enabled, Is.True);
         });
+    }
+
+    [Test]
+    public void CounterFocusUsesIntegerDoubleSizeAndRestoresWithoutChangingSessionLens()
+    {
+        WithPixelPerfectOutput((output, pixel, extension) =>
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var defender = _leftObject.AddComponent<PlayerCharacter>();
+            Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+                out var token, out string error), Is.True, error);
+            typeof(CameraController).GetField("_battleViewportActive", flags).SetValue(_controller, true);
+            typeof(CameraController).GetField("_battlePixelLockedSize", flags).SetValue(_controller, 7.5f);
+            typeof(CameraController).GetField("_battlePixelLockedIsStrict", flags).SetValue(_controller, true);
+            var presentation = _cameraObject.GetComponent<CinemachineContinuousPixelZoom>();
+            presentation.SetBattleViewportOwner(_controller);
+            var focus = _controller.BeginBattleCounterFocus(defender);
+            Assert.That(focus, Is.Not.Null);
+            _virtualCamera.UpdateCameraState(Vector3.up, -1f);
+            Assert.That(_virtualCamera.State.Lens.OrthographicSize, Is.EqualTo(3.75f).Within(0.001f));
+            Assert.That((float)typeof(CameraController).GetField("_battlePixelLockedSize", flags)
+                .GetValue(_controller), Is.EqualTo(7.5f), "일반 전투의 잠금 크기는 바꾸지 않습니다.");
+            Assert.That(_controller.IsCurrent(token), Is.True);
+            Assert.That(extension.enabled && pixel.enabled, Is.True);
+            focus.Dispose();
+            _virtualCamera.UpdateCameraState(Vector3.up, -1f);
+            Assert.That(_virtualCamera.State.Lens.OrthographicSize, Is.EqualTo(7.5f).Within(0.001f));
+            focus.Dispose();
+        });
+    }
+
+    [Test]
+    public void CounterFocusDisabledViewportSafetyDoesNotClaimAnEffectiveCameraScope()
+    {
+        var defender = _leftObject.AddComponent<PlayerCharacter>();
+        Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+            out _, out string error), Is.True, error);
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        typeof(CameraController).GetField("_useBattleViewportSafety", flags).SetValue(_controller, false);
+        typeof(CameraController).GetField("_battleViewportActive", flags).SetValue(_controller, true);
+        Assert.That(_controller.BeginBattleCounterFocus(defender), Is.Null,
+            "최종 화면 보정이 꺼져 있으면 확대 scope를 지원하는 것처럼 반환하지 않습니다.");
+        _virtualCamera.UpdateCameraState(Vector3.up, -1f);
+        CameraState state = _virtualCamera.State;
+        float before = state.Lens.OrthographicSize;
+        Vector3 position = state.GetFinalPosition();
+        _controller.ConstrainBattleViewport(ref state);
+        Assert.That(state.Lens.OrthographicSize, Is.EqualTo(before));
+        Assert.That(state.GetFinalPosition(), Is.EqualTo(position));
+    }
+
+    [Test]
+    public void CounterFocusStaleDisposalCannotChangeANewerCameraCommand()
+    {
+        var defender = _leftObject.AddComponent<PlayerCharacter>();
+        Assert.That(_controller.TryStartBattleShot(new[] { _leftObject.transform, _rightObject.transform },
+            out _, out string error), Is.True, error);
+        var focus = _controller.BeginBattleCounterFocus(defender);
+        Assert.That(focus, Is.Not.Null);
+        Assert.That(_controller.TryFocus(_rightObject.transform, 6f, CameraShotStyle.GameplaySafe,
+            0f, CameraControlLease.None, out var newer, out error), Is.True, error);
+        focus.Dispose();
+        Assert.That(_controller.IsCurrent(newer), Is.True);
+        Assert.That(_virtualCamera.Follow, Is.SameAs(_rightObject.transform));
+        Assert.That(_virtualCamera.Lens.OrthographicSize, Is.EqualTo(6f));
     }
 
     private void WithPixelPerfectOutput(System.Action<Camera, PixelPerfectCamera, CinemachinePixelPerfect> verify)

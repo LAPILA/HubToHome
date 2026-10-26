@@ -30,8 +30,16 @@ public class BattleSubMenu : MonoBehaviour
     private GridLayoutGroup _grid;
     private CharacterBase _statusPreviewActor;
     private bool _presentationInputBlocked;
+    private Func<bool> _previewPointerEnabled;
+    private Action _previewPointerConfirm;
     public bool IsActive { get; private set; }
     public int SelectedIndex => _currentIndex;
+
+    public void SetPreviewPointerInput(Func<bool> enabled, Action confirm)
+    {
+        _previewPointerEnabled = enabled;
+        _previewPointerConfirm = confirm;
+    }
 
     public void SetPresentationInputBlocked(bool blocked)
     {
@@ -81,7 +89,7 @@ public class BattleSubMenu : MonoBehaviour
         _statusPreviewActor = null;
         IsActive = false;
         ClearCallbacks();
-        _actor = actor;
+        BindActor(actor);
         _entries.Clear();
         if (entries != null) _entries.AddRange(entries);
         _currentIndex = 0;
@@ -117,20 +125,71 @@ public class BattleSubMenu : MonoBehaviour
     {
         IsActive = false;
         ClearCallbacks();
+        for (int i = 0; i < _spawnedRows.Count; i++)
+            if (_spawnedRows[i] != null) _spawnedRows[i].ClearInteractionFeedback();
     }
 
-    private void OnDisable() => ForceCloseImmediate();
+    private void OnEnable()
+    {
+        if (_actor != null) _actor.OnBattleSkillAvailabilityChanged += RefreshRows;
+        RefreshRows();
+    }
+
+    private void OnDisable()
+    {
+        if (_actor != null) _actor.OnBattleSkillAvailabilityChanged -= RefreshRows;
+        ForceCloseImmediate();
+    }
+
+    private void BindActor(PlayerCharacter actor)
+    {
+        if (_actor != null) _actor.OnBattleSkillAvailabilityChanged -= RefreshRows;
+        _actor = actor;
+        if (_actor != null && isActiveAndEnabled)
+            _actor.OnBattleSkillAvailabilityChanged += RefreshRows;
+    }
 
     private void ConfirmSelection()
     {
         if (!IsActive || _entries.Count == 0) return;
         GameInput.ConsumeBattleUIInput();
         IMenuEntry selected = _entries[_currentIndex];
-        if (!BattleMenuEntryPresentation.CanUse(selected, _actor)) return;
+        if (!BattleMenuEntryPresentation.CanUse(selected, _actor))
+        {
+            PlayDeniedFeedback();
+            return;
+        }
         IsActive = false;
         var callback = _onConfirmCallback;
         ClearCallbacks();
         callback?.Invoke(selected);
+    }
+
+    public void PlayDeniedFeedback()
+    {
+        if (_entries.Count == 0 || _currentIndex < 0 || _currentIndex >= _entries.Count) return;
+        if (_currentIndex < _spawnedRows.Count && _spawnedRows[_currentIndex] != null)
+            _spawnedRows[_currentIndex].PlayDeniedFeedback();
+        string reason = BattleMenuEntryPresentation.UnavailableReason(_entries[_currentIndex], _actor);
+        if (_descriptionText != null && !string.IsNullOrEmpty(reason))
+        {
+            string description = BattleMenuEntryPresentation.Describe(_entries[_currentIndex], _actor);
+            // 잠금 설명은 Describe 자체가 표시합니다. AP 등의 다른 거부 사유만 덧붙입니다.
+            _descriptionText.text = description.Contains(reason) ? description
+                : "<color=#FF7373>" + reason + "</color>\n\n" + description;
+        }
+    }
+
+    private void HandleRowPointerClick(int index)
+    {
+        if (!isActiveAndEnabled || _presentationInputBlocked || Time.frameCount <= _openedFrame
+            || GameInput.IsBattleInputBlocked || GameInput.BattleUIInputConsumed
+            || index < 0 || index >= _entries.Count) return;
+        if (BattleUIController.Instance != null && BattleUIController.Instance.IsNarrationBlockingInput()) return;
+        if (!IsActive && (_previewPointerEnabled == null || !_previewPointerEnabled())) return;
+        SelectIndex(index);
+        if (IsActive) ConfirmSelection();
+        else _previewPointerConfirm?.Invoke(); // 메인 메뉴와 같은 대상 선택·입력 소비 경로입니다.
     }
 
     private void ClearCallbacks()
@@ -146,9 +205,15 @@ public class BattleSubMenu : MonoBehaviour
             _spawnedRows.Add(Instantiate(_rowPrefab, _container));
         for (int i = 0; i < _spawnedRows.Count; i++)
         {
-            if (i >= _entries.Count) _spawnedRows[i].SetEmpty();
-            else _spawnedRows[i].SetEntry(_entries[i], i == _currentIndex,
-                _selectedColor, _normalColor, 1f, BattleMenuEntryPresentation.CanUse(_entries[i], _actor));
+            OptionRowUI row = _spawnedRows[i];
+            if (row == null) continue;
+            if (i >= _entries.Count) row.SetEmpty();
+            else
+            {
+                row.SetPointerAction(i, HandleRowPointerClick);
+                row.SetEntry(_entries[i], i == _currentIndex,
+                    _selectedColor, _normalColor, 1f, BattleMenuEntryPresentation.CanUse(_entries[i], _actor));
+            }
         }
         float step = RowStep;
         float height = _entries.Count * step - (_grid != null && _entries.Count > 0 ? _grid.spacing.y : 0f);

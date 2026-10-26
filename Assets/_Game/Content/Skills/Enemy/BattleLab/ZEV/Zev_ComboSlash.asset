@@ -1,0 +1,207 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: "Zev_ComboSlash"
+  m_EditorClassIdentifier: "Assembly-CSharp::SkillData"
+  Icon: {fileID: 0}
+  SkillName: "뇌광 순회"
+  NameLocalizationKey: "skill.showcase.zev.combo_slash.name"
+  DescriptionLocalizationKey: "skill.showcase.zev.combo_slash.description"
+  SkillID: "lab.showcase.zev.combo_slash"
+  Description: "번개를 두른 검으로 적을 몰아붙여 <color=#FFE566>감전</color>을 남긴다."
+  UsageProfile: 2
+  APCost: 0
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications:
+    - Kind: 2
+      Amount: 10
+      Mode: 0
+  StatusProcCoefficient: 1
+  ActionTimeline:
+  - rid: 202610250014001
+  - rid: 202610250014003
+  - rid: 202610250014004
+  - rid: 202610250014005
+  - rid: 202610250014006
+  - rid: 202610250014007
+  - rid: 202610250014008
+  - rid: 202610250014009
+  - rid: 202610250014010
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610250014001
+      type: {class: Action_EnemyWindup, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "적 준비 · 대응창 전에 종료"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        ZoomRatio: 0.78
+        FocusDuration: 0.08
+        HoldDuration: 0.12
+        ReleaseDuration: 0.1
+    - rid: 202610250014003
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "전조가 열릴 때 새 대응 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
+        TelegraphVisualMode: 2
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.46
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: "CrossCutAttack"
+        AttackAnimationLeadTime: 0.12
+        UseMeleePassThrough: 1
+        MeleePassExtent: 1
+        ScreenPassDuration: 0.22
+        ScreenEdgeApproachDuration: 0.1
+        ScreenEdgeMarginPixels: 12
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.75
+        MeleeExitDuration: 0.09
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: "Center"
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
+    - rid: 202610250014004
+      type: {class: Action_SequentialMelee, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "단독 대상 연쇄 첫 접근"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AttackAnimTrigger: "Attack"
+        DamageMultiplier: 0.6
+        Element: 3
+        DashSpeed: 0.1
+        HitVfxPrefab: {fileID: 4748681987041982144, guid: 1257dbe7305b9d946b65521f35f0e17a, type: 3}
+        ApproachEachTarget: 0
+        RecoveryDelay: 0.06
+    - rid: 202610250014005
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "박자 간격"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        WaitTime: 0.08
+    - rid: 202610250014006
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "전조가 열릴 때 새 대응 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
+        TelegraphVisualMode: 2
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.48
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: "CrossCutAttack"
+        AttackAnimationLeadTime: 0.12
+        UseMeleePassThrough: 1
+        MeleePassExtent: 1
+        ScreenPassDuration: 0.22
+        ScreenEdgeApproachDuration: 0.1
+        ScreenEdgeMarginPixels: 12
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.75
+        MeleeExitDuration: 0.09
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: "Center"
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
+    - rid: 202610250014007
+      type: {class: Action_SequentialMelee, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "단독 대상 두 번째 돌파"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AttackAnimTrigger: "CrossCutAttack"
+        DamageMultiplier: 0.65
+        Element: 3
+        DashSpeed: 0.09
+        HitVfxPrefab: {fileID: 4748681987041982144, guid: 3ff9ac3abf5e96848b6b1d3f52f12a13, type: 3}
+        ApproachEachTarget: 0
+        RecoveryDelay: 0.06
+    - rid: 202610250014008
+      type: {class: Action_Wait, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "박자 간격"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        WaitTime: 0.17
+    - rid: 202610250014009
+      type: {class: Action_DefenseWindow, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "전조가 열릴 때 새 대응 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        PatternMode: 1
+        Requirement: 2
+        CounterDamageMultiplier: 1.8
+        UseTelegraph: 0
+        TelegraphVisualMode: 2
+        TelegraphDuration: 0
+        DefenseOpenDelay: 0
+        TimeWindow: 0.54
+        AllowNearSuccess: 1
+        OverrideTimingProfile: 0
+        FailDamageMultiplier: 1
+        ShakeOnFail: 0
+        DelayAfter: 0
+        AttackAnimTriggerName: "CrossCutAttack"
+        AttackAnimationLeadTime: 0.12
+        UseMeleePassThrough: 1
+        MeleePassExtent: 1
+        ScreenPassDuration: 0.22
+        ScreenEdgeApproachDuration: 0.1
+        ScreenEdgeMarginPixels: 12
+        MeleeDashDuration: 0.12
+        MeleePassDistance: 0.75
+        MeleeExitDuration: 0.09
+        ImpactCuePrefab: {fileID: 3780640615873706099, guid: 93b4536dca483ad4aa9774a4c7265dad, type: 3}
+        ImpactCueLeadTime: 0.3
+        ImpactCuePivotName: "Center"
+        AttackReadyDuration: 0.08
+        AttackAnimDelay: 0
+    - rid: 202610250014010
+      type: {class: Action_SequentialMelee, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "단독 대상 마지막 돌파"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AttackAnimTrigger: "Attack"
+        DamageMultiplier: 0.7
+        Element: 3
+        DashSpeed: 0.08
+        HitVfxPrefab: {fileID: 4748681987041982144, guid: c6d8472fd2a44b24c90abc54bb1ee63f, type: 3}
+        ApproachEachTarget: 0
+        RecoveryDelay: 0.08

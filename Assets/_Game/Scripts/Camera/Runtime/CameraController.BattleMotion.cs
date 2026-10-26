@@ -162,6 +162,7 @@ public partial class CameraController
     private void UpdateBattleMotion()
     {
         if (!_battleShotActive || _battleShotVersion != _commandVersion || _vCam == null) return;
+        if (UpdateBattleCounterFocus()) return;
         if (_battleShotActor == null || !_battleShotActor.gameObject.activeInHierarchy)
         {
             ResetCamera(0.3f);
@@ -403,6 +404,9 @@ public partial class CameraController
 
     private void StopBattleMotion(bool releasePixelZoom = true)
     {
+        BattleCounterFocusScope counterFocus = _battleCounterFocus;
+        _battleCounterFocus = null;
+        counterFocus?.Dispose();
         StopEnemyMeleeCamera(false);
         StopBattleImpactBeat();
         _nextBattleImpactAt = 0f;

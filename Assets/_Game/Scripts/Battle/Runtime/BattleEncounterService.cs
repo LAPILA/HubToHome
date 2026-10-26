@@ -174,6 +174,18 @@ public static class BattleEncounterService
         BattleManager seamlessManager = useDedicatedBattleScene ? null : BattleManager.Instance;
         bool useSeamlessBattle = seamlessManager != null;
 
+        if ((encounterSource is IEncounterRosterPolicy || encounterSource is IEncounterStoryWithdrawalPolicy)
+            && !useSeamlessBattle)
+        {
+            Debug.LogWarning("[BattleEncounterService] 임시 참가자/이야기 후퇴 정책은 심리스 조우에서만 사용할 수 있습니다.");
+            return false;
+        }
+        if (!BattleManager.TryValidateEncounterRoster(global, player, encounterSource, out _, out string rosterError))
+        {
+            Debug.LogWarning("[BattleEncounterService] 조우 참가자 구성 오류: " + rosterError);
+            return false;
+        }
+
         if (useSeamlessBattle && !seamlessManager.CanStartSeamlessBattle(encounterEnemies, player, out string seamlessError))
         {
             Debug.LogWarning($"[BattleEncounterService] 심리스 전투 구성이 올바르지 않습니다: {seamlessError}", seamlessManager);

@@ -312,10 +312,10 @@ public class QTEManagerDefensePipelineTests
     }
 
     [Test]
-    public void RangedPreparation_DoesNotSpawnCueBeforeSharedSuccessWindow()
+    public void RangedPreparation_DoesNotSpawnCueBeforePreservedCueWindow()
     {
         // 0.28초 + 공격 국소 감속 0.05초: X 준비 구간은 이미 열렸지만
-        // 공통 Z 성공 구간(0.24초)은 아직 열리지 않은 시작 프레임입니다.
+        // 기존 전조 구간(0.24초)은 아직 열리지 않은 시작 프레임입니다.
         var actorObject = new GameObject("CueTimingEnemy");
         EnemyCharacter actor = actorObject.AddComponent<EnemyCharacter>();
         typeof(CharacterBase).GetField("_currentHP", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -328,7 +328,7 @@ public class QTEManagerDefensePipelineTests
                 cuePrefab: AssetDatabase.LoadAssetAtPath<GameObject>(TelegraphPath), useMeleeParryAssistance: false);
             Assert.That(execution.IsDone, Is.False);
             Assert.That(typeof(QTEManager).GetField("_activeBattleCue", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(_manager), Is.Null, "아직 패링할 수 없는 구간에 타격 신호를 표시하지 않습니다.");
+                .GetValue(_manager), Is.Null, "기존 전조 시작 시각 이전에는 타격 신호를 표시하지 않습니다.");
         }
         finally
         {

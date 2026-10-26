@@ -89,7 +89,8 @@ public partial class CameraController
 
     internal bool TryGetBattlePixelLockedSize(out float size)
     {
-        size = _battlePixelLockedSize;
+        size = _battleCounterFocus != null && _battleCounterFocus.IsActive
+            ? _battleCounterFocus.Size : _battlePixelLockedSize;
         return isActiveAndEnabled && _useBattleViewportSafety && IsStrictBattlePixelView
             && _battlePixelLockedIsStrict && !_timelineLease.IsValid && size > 0f
             && BattleManager.Instance != null && BattleManager.Instance.IsBattleSessionActive;
@@ -131,14 +132,31 @@ public partial class CameraController
         });
     }
 
+    private Transform ResolveBattleViewportFocus()
+    {
+        if (_battleShotActive || _timelineLease.IsValid || _vCam == null) return null;
+        Transform tracked = _vCam.Target.TrackingTarget;
+        if (tracked == null || !tracked.gameObject.activeInHierarchy) return null;
+        // Reset의 기본 Follow가 배우인 구성도 명시 포커스로 오인하지 않습니다.
+        // ResolveDefaultTarget과 같은 우선순위지만 런타임 fallback 오브젝트를 새로 만들지 않습니다.
+        Transform defaultTarget = _centerTarget != null ? _centerTarget
+            : _startupTarget != null ? _startupTarget : _fallbackTarget;
+        if (tracked == defaultTarget) return null;
+        for (int i = 0; i < _battleViewportMembers.Count; i++)
+            if (_battleViewportMembers[i].Root == tracked) return tracked;
+        return null;
+    }
+
     /// <summary>현재 명령이 만든 최종 화면만 보정합니다. 원래 Tween·월드 위치·HUD는 건드리지 않습니다.</summary>
     public void ConstrainBattleViewport(ref CameraState state)
     {
         if (!isActiveAndEnabled || !_battleViewportActive || !_useBattleViewportSafety || _timelineLease.IsValid
             || !state.Lens.Orthographic) return;
+        if (TryConstrainBattleCounterFocus(ref state)) return;
         // UI가 잠시 없거나 비활성이어도 복귀 명령의 원본 Lens가 드러나지 않게 합니다.
         if (_battlePixelLockedSize > 0f && _battlePixelLockedIsStrict == IsStrictBattlePixelView)
             state.Lens.OrthographicSize = _battlePixelLockedSize;
+        if (TryConstrainScreenPassFrame(ref state)) return;
         if (_battleViewportMembers.Count == 0) return;
         BattleUIController ui = BattleUIController.Instance;
         if (ui == null || !ui.IsHudChromeVisible
@@ -159,10 +177,12 @@ public partial class CameraController
         Vector2 max = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
         bool any = false;
         float margin = Mathf.Clamp(_battleBodyMargin, 0f, 0.8f);
+        Transform focus = ResolveBattleViewportFocus();
         for (int i = 0; i < _battleViewportMembers.Count; i++)
         {
             BattleViewportMember member = _battleViewportMembers[i];
             if (member.Root == null || !member.Root.gameObject.activeInHierarchy) continue;
+            if (focus != null && member.Root != focus) continue;
             Vector3 center = member.Root.position + member.CenterOffset;
             Vector3 extents = member.Extents + new Vector3(margin, margin, 0f);
             if (member.IsPlayer)

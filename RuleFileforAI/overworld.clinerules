@@ -61,6 +61,9 @@
 
 ## 작업 규칙
 
+- 프롤로그 튜토리얼은 `PrologueTutorialDefinition`/Scene 수명의 `PrologueTutorialController`가 소유한다. NPC 이름·Prefab 이름으로 단계나 역할을 판정하지 않는다. 완료 사실은 기존 플래그, 현재 목표는 JournalCatalog를 사용한다. 새 대본/그림은 작성 데이터에서 교체하고 옛 Q0 임시 타이머를 동시에 실행하지 않는다.
+- 제어기 중단 시 자신이 발행한 `MapTransitionRequest` 객체에 대해서만 `TryCancelRoomTransition`을 호출한다. 다른 소유자의 Room/Scene 전환을 전역 취소하지 않는다. 이미 목적 방이 commit되면 출발 상태로 돌리지 않는 기존 규칙을 유지한다.
+
 - 플레이어 기본/탐색 Order는 3 고정이다. Y좌표를 Order에 곱하지 않는다. 같은 Characters/order3은 renderer CustomAxisY로 정렬하며 플레이어 Pivot/소품 바닥 루트 SortingGroup을 기준으로 한다. 일반 Y정렬을 위해 매프레임 새 Order 스크립트를 플레이어에 중복 부착하지 않는다. 기존 전투 foreground boost/복원은 유지한다. 배경/타일/기존 적/샘플 Y베이크를 일괄 변경하지 않는다.
 
 - 아이템 상자는 `ItemPickupMarker.keepVisibleAfterPickup`과 기존 완료 플래그를 사용한다. 기본 바닥 아이템 숨김은 유지한다. 지급 전 등록·전체 소지 여유를 확인하고 지급 성공 즉시 완료/열림을 확정하며 대사 완료 콜백에 보상을 묶지 않는다. 열린 상자는 FlagChanged로 저장 복원 시 외형·상호작용을 동기화한다. 복제 배치는 고유 markerId/해당RoomId를 설정하며 개봉 자체에 새 자동저장을 추가하지 않는다.
@@ -82,6 +85,7 @@
 - 런타임 코드/기존 생성기는 `Assets/_Game/Scripts/Overworld`, 통합 제작창은 `Assets/_Game/Scripts/Editor/ContentMaker`에 둔다. 개발 템플릿은 `Content/Maps/Development/Templates`에 두고 본편 자산과 구분한다.
 - 콘텐츠 메이커는 신규 경로만 생성하고 공유 원본을 덮어쓰지 않는다. Room 배치는 선택한 Room의 Prefab Stage에서만 실행한다. 복제는 개체 ID를 새로 발급하되 공유 대화/적 데이터와 조건/완료 플래그는 유지하고 검토를 안내한다.
 - 제작창의 Scene 생성/등록은 명시적 대상과 사용자 버튼으로만 실행하며 dirty Scene/다른 Prefab을 저장하지 않는다. Build Settings를 자동 변경하지 않는다.
+- Scene 파일을 `AssetDatabase.LoadAllAssetsAtPath`로 읽거나 서브에셋 dirty 순회에 포함하지 않는다. 열린 Scene의 dirty/구성은 SceneManager·EditorSceneManager, 저장된 파일의 변경은 manifest 해시로 검사한다. 좁은 콘텐츠 패치는 값이 실제로 달라진 자산만 저장하며 검사 경고를 성공 로그로 덮어 판단하지 않는다.
 - 방 생성은 콘텐츠 메이커의 `방 만들기` 하나로 제공한다. 마을·던전·실내·쇼케이스별 생성 메뉴를 추가하지 않는다. 동일한 Room 구조의 지형/콘텐츠로 구분한다.
 - 메이커의 챕터는 `Regions/<지역>` 폴더를 뜻한다. 챕터·Room은 목록으로 선택하고 추가·삭제 및 설정/복제/씬 관리 화면을 전환한다. 새로운 챕터 런타임 데이터나 장소별 생성기를 만들지 않는다.
 - 메이커의 삭제는 명시적 미리보기와 확인 후 휴지통 이동으로만 구현한다. 대상 경계/외부 참조/편집 상태/빌드 등록을 검사하고 실행 직전 재검증한다. 방 삭제에 공유 대화·아트는 포함하지 않으며 외부 연결 자동 해제나 강제 삭제는 금지한다.
@@ -93,6 +97,8 @@
 - 첫 방문 1회 연출은 성공 시에만 `GlobalDataManager.eventFlags`에 완료 사실을 기록한다. `SceneActionSequenceTrigger._autoSaveOnComplete`는 기본 true이며 정상 완료 뒤 자동저장을 예약한다. 실제 기록은 안정된 탐색 경계에서 수행하고 취소/실패에는 예약하지 않는다. 진행과 무관한 반복 연출은 해당 옵션을 끈다. 전투 세션/진행 중 액션 상태를 저장하지 않는다.
 - `Cinematic Stage`의 대상/샷은 안정적인 `stage`/`shot`/`subject` ID로 연결한다. 씬 오브젝트 이름을 YAML 계약으로 직접 사용하지 않는다.
 - Room과 Map의 플레이어 Follow·Confiner 설정은 `OverworldCameraBinding`을 사용한다. 이 바인더는 `CameraController.VirtualCamera`만 변경한다.
+- 프롤로그 기관사 도입은 `PrologueTutorialDefinition.Introduction`의 Room-local 두 배우 위치/시간을 사용한다. 일반 PlayerController의 Animator 갱신을 꺼버리지 말고 소유자·세대가 일치하는 표시 이동 lease를 사용한다. 복구는 같은 Room/세대/lease에서만 수행하며 전투/다른 장면의 새 제어권을 덮지 않는다.
+- `PrologueTutorialDoor`는 기본 접촉 진입이다. 동일 플레이어의 복수 Collider를 체류1회로 처리하고 마지막 Exit 뒤 재무장한다. 도착 겹침은 시간 만료만으로 다시 전환시키지 않는다. 일반 필드 문 정책은 바꾸지 않는다.
 - 게임플레이 카메라를 `FindFirstObjectByType<CinemachineCamera>()`로 찾거나 Follow를 직접 쓰지 않는다. 같은 Scene에 시네마틱용 카메라가 있을 수 있다.
 
 - 게임플레이 맵과 전투 씬에 실제 Camera 또는 `CameraController` 계층을 복제하지 말고 공용 리그 프리팹 인스턴스를 둔다.

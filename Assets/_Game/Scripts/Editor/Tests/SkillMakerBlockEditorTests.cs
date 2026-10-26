@@ -59,7 +59,7 @@ public sealed class SkillMakerBlockEditorTests
     public void DefenseAuthoringHelpDescribesCounterAndLegacyEvadeRoles()
     {
         string counter = SkillMakerBlockEditor.GetDefenseAuthoringHelp(DefenseRequirement.Counterable);
-        Assert.That(counter, Does.Contain("Z 가드 불가 / X 회피 / C 연계 반격"));
+        Assert.That(counter, Does.Contain("Z 가드 불가 / X 회피 불가 / C 연계 반격 전용"));
         Assert.That(counter, Does.Contain("후열은 참여하지 않습니다"));
         Assert.That(counter, Does.Contain("공격받은 아군 한 명의 ATK"));
         Assert.That(counter, Does.Not.Contain("생존 아군 각각"));

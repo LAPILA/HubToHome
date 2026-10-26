@@ -245,7 +245,9 @@ public sealed class BattleEnemyStatusPresenter : MonoBehaviour
                 int key = frozen ? -1 : (int)kind + 1;
                 if (_displayedKeys[i] != key) StopPulse(i);
                 _displayedKeys[i] = key;
-                if (_transitions.IsNewElement(kind, frozen) && _owner._animateStatusChanges
+                bool emphasized = _transitions.IsNewElement(kind, frozen)
+                    || (!frozen && _transitions.IsPotencyIncreased(kind));
+                if (emphasized && _owner._animateStatusChanges
                     && Application.isPlaying && _owner.isActiveAndEnabled && BattleUIController.JuiceIntensity > 0f)
                     PulseCell(i);
             }

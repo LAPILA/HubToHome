@@ -140,6 +140,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private List<EnemyCharacter>  _enemies;
     private readonly List<PlayerCharacter> _displayParty = new List<PlayerCharacter>(3);
     private BattleTurnQueueView _turnQueueView;
+    private BattleCombatLogPresenter _combatLog;
     private PlayerCharacter _portraitActor;
     private BattleResourceView _resourceView;
     private int _targetingStartedFrame = -1;
@@ -161,6 +162,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private readonly List<Rect> _skillPromptExclusions = new List<Rect>(8);
     private CharacterBase _statusPreviewActor;
     private BattleEnemyStatusPresenter _enemyStatusPresenter;
+    private BattleBossProgressPresenter _bossProgress;
     #endregion
 
     #region [ Initialization & Lifecycle ]
@@ -251,6 +253,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         BindBattleEvents();
         if (_party != null) BindPartySlots(_party);
         if (_party != null && !_isBattleEnding) BindElementalActors();
+        if (_enemies != null && !_isBattleEnding) BindBossProgress();
+        if (_party != null && !_isBattleEnding && _acceptsTurnQteInput) _combatLog?.BindActors(_party, _enemies);
         if (_portraitActor != null) SetPortraitActor(_portraitActor);
     }
 
@@ -271,6 +275,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         UnbindBattleEvents();
         _subscribedBattleManager = bm;
         _damagePopupPresenter?.BindBatches(bm.DamageBatches);
+        ResumeCombatLog();
 
         // Observer 구독
         bm.OnBattleStarted          += HandleBattleStarted;
@@ -285,6 +290,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         bm.OnBattleEnded            += HandleBattleEnded;
         bm.OnTargetSelectionStarted += HandleTargetSelectionStarted;
         bm.OnBattleNarrationRequested += HandleBattleNarrationRequested;
+        bm.OnCombatLogActionStarted += HandleCombatActionStarted;
+        bm.OnCombatLogReset += ResetCombatLog;
     }
 
     private void OnDestroy()
@@ -336,6 +343,9 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void UnbindBattleEvents()
     {
+        _bossProgress?.Clear();
+        _combatLog?.Dispose();
+        _combatLog = null;
         UnbindElementalActors();
         BattleManager bm = _subscribedBattleManager;
         _subscribedBattleManager = null;
@@ -355,6 +365,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         bm.OnBattleEnded            -= HandleBattleEnded;
         bm.OnTargetSelectionStarted -= HandleTargetSelectionStarted;
         bm.OnBattleNarrationRequested -= HandleBattleNarrationRequested;
+        bm.OnCombatLogActionStarted -= HandleCombatActionStarted;
+        bm.OnCombatLogReset -= ResetCombatLog;
     }
 
     private void ReleasePresentationTweens()
@@ -576,6 +588,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
         if (targetChar != null)
         {
+            if (targetChar is EnemyCharacter selectedEnemy) _bossProgress?.Prefer(selectedEnemy);
             if (!_isAllyTargeting && _enemyTopPivots.TryGetValue(targetChar as EnemyCharacter, out Transform savedPivot)) {
                 targetTf = savedPivot;
             } else {
@@ -680,6 +693,16 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
             if (enemy != null) _enemyTopPivots[enemy] = enemy.GetPivot(CharacterPivotId.Top);
         }
         BindElementalActors();
+        ResetCombatLog();
+        ResumeCombatLog();
+        BindBossProgress();
+    }
+
+    private void BindBossProgress()
+    {
+        if (_bossProgress == null) _bossProgress = GetComponent<BattleBossProgressPresenter>();
+        if (_bossProgress == null) _bossProgress = gameObject.AddComponent<BattleBossProgressPresenter>();
+        _bossProgress.Bind(transform as RectTransform, _enemies, _turnLabel != null ? _turnLabel.font : null);
     }
 
     private void HandlePlayerPartyChanged(List<PlayerCharacter> party)
@@ -692,6 +715,28 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         SetPortraitActor(_displayParty.Count > 0 ? _displayParty[0] : null);
         _battleMenuUI?.SetActor(_portraitActor);
         BindElementalActors();
+        _combatLog?.BindActors(_party, _enemies);
+    }
+
+    private void HandleCombatActionStarted(CharacterBase actor, SkillData skill, ItemData item)
+    {
+        if (_isBattleEnding || !_acceptsTurnQteInput) return;
+        if (actor is EnemyCharacter enemy) _bossProgress?.Prefer(enemy);
+        ResumeCombatLog();
+        _combatLog?.BeginAction(actor, skill, item);
+    }
+
+    private void ResetCombatLog()
+    {
+        _combatLog?.Dispose();
+        _combatLog = null;
+    }
+
+    private void ResumeCombatLog()
+    {
+        if (_combatLog != null || _isBattleEnding || !_acceptsTurnQteInput || _subscribedBattleManager == null) return;
+        _combatLog = new BattleCombatLogPresenter(_subscribedBattleManager.DamageBatches, HandleBattleNarrationRequested);
+        _combatLog.BindActors(_party, _enemies);
     }
 
     private void BindElementalActors()
@@ -780,6 +825,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         if (state == BattleState.BattleEnd)
         {
+            _combatLog?.Dispose();
+            _combatLog = null;
             _battleMenuUI?.HideImmediate();
             _battleMenuUI?.SetDetailsVisible(false);
             if (_hudDecoration != null) _hudDecoration.SetActive(false);
@@ -1020,29 +1067,12 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         if (_isBattleEnding) return;
 
-        // 포켓몬식 로그 정책: 데미지 수치/공격명 로그는 비표시, 회복 수치만 표시
-        if (damage < 0)
-            HandleBattleNarrationRequested(BattleNarrationFormatter.Heal(target, -damage));
-
+        // 결과 기록은 실제 HP/AP 이벤트 관찰기가 한 번만 수집합니다.
         if (target is PlayerCharacter pc)
         {
             int idx = _displayParty.IndexOf(pc);
             if (_partySlots != null && idx >= 0 && idx < _partySlots.Length)
                 _partySlots[idx].RefreshHP(pc.CurrentHP, pc.MaxHP, _barTweenDuration, Ease.OutQuad);
-
-            if (pc.MaxHP > 0 && pc.CurrentHP > 0 && (float)pc.CurrentHP / pc.MaxHP <= 0.25f)
-            {
-                if (!pc.TryShowBattleSpeech(BattleSpeechTrigger.LowHp, null, null, 0, 1.8f))
-                    pc.TryShowBattleSpeech(BattleSpeechTrigger.DamageTaken, null, null, 0, 1.4f);
-            }
-            else
-            {
-                pc.TryShowBattleSpeech(BattleSpeechTrigger.DamageTaken, null, null, 0, 1.4f);
-            }
-        }
-        else if (target != null)
-        {
-            target.TryShowBattleSpeech(BattleSpeechTrigger.DamageTaken, null, null, 0, 1.4f);
         }
     }
 
@@ -1078,7 +1108,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     private void HandlePlayerTurnStarted(PlayerCharacter player)
     {
         _enemyTurn = false;
-        SetTurnLabel($"{player.DisplayName} 턴");
+        // 현재 행동자는 파티 행/턴 큐로 표시합니다. 반복되는 "누구의 턴" 안내는 띄우지 않습니다.
+        SetTurnLabel(string.Empty);
         SetPortraitActor(player);
         _battleMenuUI?.SetActor(player);
         _battleMenuUI?.SetRunEnabled(BattleManager.Instance == null || BattleManager.Instance.AllowEscape);
@@ -1126,6 +1157,9 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
 
     private void HandleBattleEnded(bool victory)
     {
+        _bossProgress?.Clear();
+        _combatLog?.Dispose();
+        _combatLog = null;
         UnbindElementalActors();
         _turnQueueView?.Clear();
         _isBattleEnding = true;
@@ -1161,6 +1195,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     #region [ Public QTE API & Utilities ]
     public void SuspendBattleModuleInput()
     {
+        ResetCombatLog();
         ExitTargetingMode();
         _acceptsTurnQteInput = false;
         _battleMenuUI?.SuspendForModuleSwitch();
@@ -1172,6 +1207,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         _activeGameModuleId = BattleTurnQteGameModuleRuntime.Id;
         _acceptsTurnQteInput = true;
+        ResumeCombatLog();
         _battleMenuUI?.ResumeAfterModuleSwitch();
         if (BattleManager.Instance != null) HandleStateChanged(BattleManager.Instance.CurrentState);
         NormalizeForCurrentResolution();
@@ -1181,6 +1217,8 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     {
         _activeGameModuleId = string.IsNullOrWhiteSpace(moduleId) ? string.Empty : moduleId.Trim();
         _acceptsTurnQteInput = acceptsTurnQteInput;
+        if (acceptsTurnQteInput) ResumeCombatLog();
+        else ResetCombatLog();
 
         ExitTargetingMode();
         _defenseQTEUI?.HideImmediate();
@@ -1357,14 +1395,10 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     public void SetDefenseQTEPaused(bool paused) => _defenseQTEUI?.SetDefenseQTEPaused(paused);
     public void ShowDefenseQTEResult(DefenseQteResult result) => _defenseQTEUI?.ShowResult(result);
     public void HideDefenseQTE() => _defenseQTEUI?.Hide();
-    // 연출 난수가 적 패턴/드롭 등 UnityEngine.Random의 게임 규칙에 영향을 주지 않게 분리합니다.
-    private readonly System.Random _skillPromptRandom = new System.Random();
-    private Vector2? _previousSkillPromptPosition;
-
     public void ShowRandomSkillQTE(string targetKey, float duration)
     {
-        ShowSkillQTE(new Vector2((float)_skillPromptRandom.NextDouble(), (float)_skillPromptRandom.NextDouble()),
-            targetKey, duration);
+        // 기존 호출 API는 유지하되 공격 QTE를 찾느라 시선이 계속 이동하지 않게 합니다.
+        ShowSkillQTE(new Vector2(.5f, .08f), targetKey, duration);
     }
 
     private Rect GetSkillPromptArea()
@@ -1398,8 +1432,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
         }
         BuildSkillPromptExclusions();
         Vector2 position = BattleOverlayLayout.SelectSkillPrompt(GetSkillPromptArea(),
-            _previousSkillPromptPosition, screenPos, _skillPromptExclusions);
-        _previousSkillPromptPosition = position;
+            null, new Vector2(.5f, .08f), _skillPromptExclusions);
         _defenseQTEUI?.ShowSkillQTE(position, targetKey, duration);
     }
 
@@ -1438,6 +1471,7 @@ public class BattleUIController : MonoBehaviour, IBattleGameModulePresentationCo
     public void ShowSkillQTEResult(bool isHit) => _defenseQTEUI?.ShowSkillResult(isHit);
     public void SetSkillQTEProgress(float remaining) => _defenseQTEUI?.SetSkillProgress(remaining);
     public void HideSkillQTE() => _defenseQTEUI?.Hide();
+    public void FinishSkillQTEFeedback() => _defenseQTEUI?.FinishSkillFeedback();
     public bool IsNarrationBlockingInput() => _narrationUI != null && _narrationUI.IsBusy;
     public void ClearNarrationLog() => _narrationUI?.Clear();
     public void NormalizeForCurrentResolution()

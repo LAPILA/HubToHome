@@ -14,8 +14,8 @@ public class SkillMenuEntry : IMenuEntry
 {
     public SkillData Data { get; }
     public bool IsAoE { get; }
-    public string DisplayName => Data?.SkillName ?? "???";
-    public string Description => Data != null ? $"AP {Data.APCost}  {Data.Description}" : "";
+    public string DisplayName => Data != null ? Data.LocalizedName : "???";
+    public string Description => Data != null ? $"AP {Data.APCost}  {Data.LocalizedDescription}" : "";
     public Sprite Icon => Data?.Icon;
 
     public SkillMenuEntry(SkillData data, bool isAoE = false)
@@ -30,8 +30,8 @@ public class ItemMenuEntry : IMenuEntry
     public ItemData Data { get; }
     public int Count { get; }
 
-    public string DisplayName => Data != null ? (Count > 1 ? $"{Data.ItemName}  x{Count}" : Data.ItemName) : "???";
-    public string Description => Data?.Description ?? "";
+    public string DisplayName => Data != null ? (Count > 1 ? $"{Data.LocalizedName}  x{Count}" : Data.LocalizedName) : "???";
+    public string Description => Data != null ? Data.LocalizedDescription : "";
     public Sprite Icon => Data?.Icon;
 
     public TargetAreaType TargetType => Data?.TargetType ?? TargetAreaType.AllyOnly;

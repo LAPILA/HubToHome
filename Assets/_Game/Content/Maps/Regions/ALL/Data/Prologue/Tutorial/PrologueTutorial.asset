@@ -1,0 +1,202 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b80bf19ac33f441e96b8c5f39a51c282, type: 3}
+  m_Name: PrologueTutorial
+  m_EditorClassIdentifier: Assembly-CSharp::PrologueTutorialDefinition
+  Protagonist: {fileID: 11400000, guid: cc6e87014d0c1be49a5de79fa6a6a27a, type: 2}
+  Enemy: {fileID: 11400000, guid: 0488b9a6bbdd26042958fc67f45bf0e5, type: 2}
+  HealingItem: {fileID: 11400000, guid: 7eec0b5e7189cca4bb99bdfd619e1dc1, type: 2}
+  BattleScenario: {fileID: 11400000, guid: a4e627a88c8e06f48b66c035558082fe, type: 2}
+  Roles:
+  - RoleId: protagonist
+    Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    VisualPrefab: {fileID: 716462928081577720, guid: b6e430cab7f60fc46b4f57956bcb1911, type: 3}
+    Sprite: {fileID: -6064768988411908953, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+    Animator: {fileID: 9100000, guid: b1969cea8af85644ca01d5b1fc2626d7, type: 2}
+    Tint: {r: 1, g: 1, b: 1, a: 1}
+  - RoleId: companion_dragon
+    Speaker: {fileID: 11400000, guid: 35d189ff2a92b484084c49767056c063, type: 2}
+    VisualPrefab: {fileID: 3516265570663218942, guid: 20e0f9477cbefef458f8866e025db344, type: 3}
+    Sprite: {fileID: -6064768988411908953, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+    Animator: {fileID: 9100000, guid: b1969cea8af85644ca01d5b1fc2626d7, type: 2}
+    Tint: {r: 0.85, g: 0.57, b: 0.33, a: 1}
+  - RoleId: companion_deer
+    Speaker: {fileID: 11400000, guid: 3750f1daab5fce14ea1ba7f3835d5d98, type: 2}
+    VisualPrefab: {fileID: 1091351588878376531, guid: e675ab3c8d3c243459be688d2ed96109, type: 3}
+    Sprite: {fileID: -6064768988411908953, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+    Animator: {fileID: 9100000, guid: b1969cea8af85644ca01d5b1fc2626d7, type: 2}
+    Tint: {r: 0.64, g: 0.79, b: 0.62, a: 1}
+  - RoleId: companion_medic
+    Speaker: {fileID: 11400000, guid: 773d3b2f3dc59874fb4447cc5e77c38c, type: 2}
+    VisualPrefab: {fileID: 6640911814333871605, guid: ee0562e312ae8384c944955b21bb8ec0, type: 3}
+    Sprite: {fileID: -6064768988411908953, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+    Animator: {fileID: 9100000, guid: b1969cea8af85644ca01d5b1fc2626d7, type: 2}
+    Tint: {r: 0.8, g: 0.77, b: 0.94, a: 1}
+  - RoleId: crew
+    Speaker: {fileID: 11400000, guid: 72c7023ec4a565f468ba9cbc2dbef6b5, type: 2}
+    VisualPrefab: {fileID: 6718623219209489347, guid: 190590cee307047448d0677af039056e, type: 3}
+    Sprite: {fileID: -6064768988411908953, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+    Animator: {fileID: 9100000, guid: b1969cea8af85644ca01d5b1fc2626d7, type: 2}
+    Tint: {r: 0.61, g: 0.72, b: 0.88, a: 1}
+  - RoleId: white_entity
+    Speaker: {fileID: 11400000, guid: 8ac0e9001faf7c94e831f7729b73a250, type: 2}
+    VisualPrefab: {fileID: 5811234762875806862, guid: b12700238265ee4469232fce1b0d1e3d, type: 3}
+    Sprite: {fileID: 21300000, guid: fafda599b73c23346bd24072131eef2a, type: 3}
+    Animator: {fileID: 0}
+    Tint: {r: 1, g: 1, b: 1, a: 1}
+  - RoleId: conductor
+    Speaker: {fileID: 11400000, guid: 2adb13736db938843b32db138de9621b, type: 2}
+    VisualPrefab: {fileID: 6313113012741818388, guid: 381b6df492a8e3a49a3acc21bf7bcc22, type: 3}
+    Sprite: {fileID: -6064768988411908953, guid: cfc4040a9ca510b43b2351c025132eb9, type: 3}
+    Animator: {fileID: 9100000, guid: b1969cea8af85644ca01d5b1fc2626d7, type: 2}
+    Tint: {r: 0.61, g: 0.72, b: 0.88, a: 1}
+  Dialogues:
+  - Id: inspect_machine
+    Dialogue: {fileID: 11400000, guid: df4ab726281fdbc4099ce16abd5cc0ad, type: 2}
+  - Id: adjust_valve
+    Dialogue: {fileID: 11400000, guid: 5695c4ebb920e4f4abb921c7d74e10fc, type: 2}
+  - Id: test_machine
+    Dialogue: {fileID: 11400000, guid: 66929c28470cf3d438459c252f042d1e, type: 2}
+  - Id: dragon
+    Dialogue: {fileID: 11400000, guid: f447805508ba0af4894e617fbd830f9b, type: 2}
+  - Id: incident
+    Dialogue: {fileID: 11400000, guid: 557922932d5359e4e9d165d9dd3ed7ea, type: 2}
+  - Id: rear
+    Dialogue: {fileID: 11400000, guid: 7b6e34163652d5a478b38b969110229c, type: 2}
+  - Id: pressure
+    Dialogue: {fileID: 11400000, guid: dda7b3679baf83b48a5efb1a248a9cbe, type: 2}
+  - Id: rescue
+    Dialogue: {fileID: 11400000, guid: 53981ef48405f23409f2e571b43de51f, type: 2}
+  - Id: seal
+    Dialogue: {fileID: 11400000, guid: 486627d93fe8d9741aebe23d015bb8df, type: 2}
+  - Id: forward
+    Dialogue: {fileID: 11400000, guid: 14c6976533a5f1b45a181c0d2d104153, type: 2}
+  - Id: control
+    Dialogue: {fileID: 11400000, guid: 203d3ea23a49cb54abfa88815909e54a, type: 2}
+  - Id: derail
+    Dialogue: {fileID: 11400000, guid: 343b8472daacf8d47ac1d517968884cb, type: 2}
+  - Id: optional_deer
+    Dialogue: {fileID: 11400000, guid: 6c11d1b89434b63439d1d894b3aa8b9b, type: 2}
+  - Id: optional_medic
+    Dialogue: {fileID: 11400000, guid: 60ba976274cf639449603d1260c85b6b, type: 2}
+  - Id: optional_crew
+    Dialogue: {fileID: 11400000, guid: bcef33f138116f34c8c6b36c380e6e1b, type: 2}
+  - Id: tutorial_attack
+    Dialogue: {fileID: 11400000, guid: 0eb44abc755cc9f4ca01897c5b520d68, type: 2}
+  - Id: tutorial_guard
+    Dialogue: {fileID: 11400000, guid: 37ad702f36ae24342b429f7a851ef2cc, type: 2}
+  - Id: tutorial_item
+    Dialogue: {fileID: 11400000, guid: d271ae608ee80bd4498d243871047729, type: 2}
+  - Id: retry
+    Dialogue: {fileID: 11400000, guid: ff296f3cfa0cd6a428c8967c238f0a6a, type: 2}
+  - Id: ending
+    Dialogue: {fileID: 11400000, guid: f048d82aaf5b8f74e98d32b4f67d8ad2, type: 2}
+  - Id: save_failed
+    Dialogue: {fileID: 11400000, guid: f969be24d0a4dd94e89f1d8a3bb1141b, type: 2}
+  - Id: blocked_repair
+    Dialogue: {fileID: 11400000, guid: 7dc0c7e3d74e5934eb3e3a3bac1a0951, type: 2}
+  - Id: blocked_rear
+    Dialogue: {fileID: 11400000, guid: 445cbb4239c696740b366b7f3536b4fb, type: 2}
+  - Id: blocked_control
+    Dialogue: {fileID: 11400000, guid: fa20e205a36cf0743a36e8eb33c2a0ae, type: 2}
+  - Id: window
+    Dialogue: {fileID: 11400000, guid: a8d2d4524e99fd343ab82a676ae99cb5, type: 2}
+  - Id: introduction
+    Dialogue: {fileID: 11400000, guid: 88777e76cbb60684d91c34877fd1a0ae, type: 2}
+  - Id: optional_conductor
+    Dialogue: {fileID: 11400000, guid: 15b772acea9d04c42972ea5b2c3131ce, type: 2}
+  OpeningStory: {fileID: 11400000, guid: 2c3c1793e64055f409035fab76cace96, type: 2}
+  Introduction:
+    RoleId: conductor
+    DialogueId: introduction
+    PlayerMeetingPosition: {x: -2.5, y: -0.75}
+    PartnerMeetingPosition: {x: -4, y: -0.75}
+    EntranceDuration: 0.6
+    SettleDuration: 0.15
+    ReturnToStart: 1
+    ReturnDuration: 0.45
+  RearRevealStory: {fileID: 11400000, guid: c597aef61e88d1a4c8b39ad2250bffcd, type: 2}
+  TrainAudio: {fileID: 11400000, guid: 45ce4e91976b4cefbc1e31539d4cef99, type: 2}
+  Sequences:
+  - Id: incident
+    Sequence: {fileID: 11400000, guid: bda28745ced7f2f4585e1bae35f1e843, type: 2}
+  - Id: rescue
+    Sequence: {fileID: 11400000, guid: 600ab46e045d6704c83bcbb8250d5f63, type: 2}
+  - Id: seal
+    Sequence: {fileID: 11400000, guid: caa2443f3f1ff4843aa3a35c7a1b8d1c, type: 2}
+  - Id: forward
+    Sequence: {fileID: 11400000, guid: 75748a33d68b94b4aa89f2b22f9ee777, type: 2}
+  - Id: control
+    Sequence: {fileID: 11400000, guid: ab1a0149c03770e4d9df594db7fb8bae, type: 2}
+  - Id: derail
+    Sequence: {fileID: 11400000, guid: 6c2c28ba2eae0a744b0eb3f33c20b21d, type: 2}
+  Rooms:
+  - Room: 0
+    Definition: {fileID: 11400000, guid: bbafe5a46e2c3a6439faa6340429ad2c, type: 2}
+    SpawnPointId: tutorial_repair
+  - Room: 1
+    Definition: {fileID: 11400000, guid: 0fae7f176f489714bb2089bf20d5d710, type: 2}
+    SpawnPointId: default
+  - Room: 2
+    Definition: {fileID: 11400000, guid: 9008c104a30610c4a91226da663216d8, type: 2}
+    SpawnPointId: default
+  - Room: 3
+    Definition: {fileID: 11400000, guid: 98de3ffd7605e9141bcf6ec9d02732c2, type: 2}
+    SpawnPointId: default
+  - Room: 4
+    Definition: {fileID: 11400000, guid: 29f7b996d991055418e8a98daf2655c1, type: 2}
+    SpawnPointId: default
+  ResumePoints:
+  - CompletedFlag:
+    Room: 0
+    SpawnPointId: tutorial_repair
+  - CompletedFlag: prologue.tutorial.repair.inspected
+    Room: 0
+    SpawnPointId: tutorial_repair
+  - CompletedFlag: prologue.tutorial.repair.valve
+    Room: 0
+    SpawnPointId: tutorial_repair
+  - CompletedFlag: prologue.tutorial.repair.completed
+    Room: 0
+    SpawnPointId: tutorial_rest
+  - CompletedFlag: prologue.tutorial.incident.completed
+    Room: 1
+    SpawnPointId: after_incident
+  - CompletedFlag: prologue.tutorial.rear.completed
+    Room: 2
+    SpawnPointId: default
+  - CompletedFlag: prologue.tutorial.withdrawal.completed
+    Room: 2
+    SpawnPointId: after_withdrawal
+  - CompletedFlag: prologue.tutorial.rescue.completed
+    Room: 2
+    SpawnPointId: after_withdrawal
+  - CompletedFlag: prologue.tutorial.seal.completed
+    Room: 2
+    SpawnPointId: after_withdrawal
+  - CompletedFlag: prologue.tutorial.forward.completed
+    Room: 3
+    SpawnPointId: default
+  - CompletedFlag: prologue.tutorial.control.completed
+    Room: 3
+    SpawnPointId: after_control
+  - CompletedFlag: prologue.tutorial.completed
+    Room: 4
+    SpawnPointId: default
+  TitleSceneName: 00_TitleScene
+  RoomFadeDuration: 0.25
+  IncidentQuietDuration: 0.4
+  IncidentDuration: 0.85
+  RescueEntranceDuration: 0.45
+  RescueEntranceOffset: {x: -5, y: 0}
+  MaxDefenseAttempts: 3
+  MaxItemPracticeActions: 3

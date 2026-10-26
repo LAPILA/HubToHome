@@ -69,11 +69,15 @@ public static class BunnySlimeLabContentBuilder
         SkillData wet = StatusSkill(enemySkills, "enemy_wet", "분무기 오작동", StatusEffectIds.Wet, false, true, ice, SkillUsageProfile.EnemyOnly);
         SkillData poison = StatusSkill(enemySkills, "enemy_poison", "시약 누출 주의", StatusEffectIds.Poison, false, false, sparks, SkillUsageProfile.EnemyOnly);
 
-        var status = new SkillData[StatusEffectFactory.KnownIds.Count];
+        // 이 생성기가 실제로 작성하는 구형 샘플만 명시합니다. 전역 KnownIds 증가와 이름 배열을 섞지 않습니다.
+        string[] statusIds = { StatusEffectIds.Burn, StatusEffectIds.Freeze, StatusEffectIds.Bleed,
+            StatusEffectIds.Poison, StatusEffectIds.Bind, StatusEffectIds.Stun, StatusEffectIds.Berserk,
+            StatusEffectIds.IceShield, StatusEffectIds.Wet };
+        var status = new SkillData[statusIds.Length];
         string[] statusNames = { "불씨 실험", "냉각 실험", "날붙이 실험", "부식 시약", "고정 장치", "충격 시험", "과출력 시동", "냉각 보호막", "분무 노즐" };
         for (int i = 0; i < status.Length; i++)
         {
-            string id = StatusEffectFactory.KnownIds[i];
+            string id = statusIds[i];
             bool friendly = id == StatusEffectIds.IceShield || id == StatusEffectIds.Berserk;
             status[i] = StatusSkill(allySkills, "status_" + id.ToLowerInvariant(), statusNames[i], id,
                 friendly, false, friendly ? ice : sparks, SkillUsageProfile.PlayerOnly);
@@ -113,42 +117,28 @@ public static class BunnySlimeLabContentBuilder
         }
         BunnySlimeLabVisualBuilder.ValidateCombatPrefab(enemy.Prefab, enemy);
 
-        // 같은 원본 외형을 쓰되 식별자와 전투 역할/색은 분리합니다. 신규 동료 디자인으로 간주하지 않습니다.
-        string[] ids = { "front", "support", "striker", "reserve1", "reserve2", "reserve3" };
-        string[] names = { "위젤", "위젤 · 지원", "위젤 · 돌격", "위젤 · 열기", "위젤 · 냉각", "위젤 · 방전" };
-        Color[] colors = { new Color(.95f,.72f,.3f), new Color(.3f,.8f,.68f), new Color(.88f,.5f,.56f),
-            new Color(.98f,.46f,.27f), new Color(.45f,.75f,1f), new Color(.75f,.58f,1f) };
-        SkillData[][] loadouts =
+        // 본편 DB는 읽기만 하고, 기존 시나리오 Actor ID를 가진 실험실 위젤 한 명만 준비합니다.
+        var showcaseSkills = new List<SkillData>(originalNames.Length);
+        for (int i = 0; i < originalNames.Length; i++)
+            showcaseSkills.Add(Require<SkillData>(BunnySlimeElementLabBuilder.ShowcaseAllyRoot + "/Wizzel_" + originalNames[i] + ".asset"));
+        var party = new CharacterData[1];
+        party[0] = Asset<CharacterData>(root + "/Data/Party/front.asset", value =>
         {
-            new[] { originals[0], originals[1], originals[2], originals[3], rapid, aerial },
-            new[] { status[7], status[8], status[6], originals[5] },
-            new[] { originals[4], originals[6], originals[7], originals[8] },
-            new[] { fireShot, status[0], status[2], originals[9] },
-            new[] { iceShot, status[1], status[4], status[5] },
-            new[] { electric, corrosion, status[3], originals[0] }
-        };
-        var party = new CharacterData[6];
-        for (int i = 0; i < party.Length; i++)
-        {
-            int index = i;
-            string id = "lab.wizzel." + ids[i];
-            party[i] = Asset<CharacterData>(root + "/Data/Party/" + ids[i] + ".asset", value =>
-            {
-                value.CharacterID = id;
-                value.DisplayName = names[index];
-                value.DisplayNameMode = CharacterDisplayNameMode.StaticData;
-                value.Portrait = player.Portrait;
-                value.TurnOrderPortrait = player.TurnOrderPortrait;
-                value.BattleLargePortrait = player.BattleLargePortrait;
-                value.BattleResource = player.BattleResource;
-                value.BattlePrefab = player.BattlePrefab;
-                value.BattleSymbolColor = colors[index];
-                value.GrowthProfile = player.GrowthProfile;
-                value.BaseStats = new StatBlock { MaxHP = 220, MaxAP = 100, ATK = index == 1 ? 20 : 28, DEF = 5, SPD = 13 - index };
-                value.DefaultSkills = new List<SkillData>(loadouts[index]);
-            });
-            EnsureId(party[i].CharacterID, id, party[i]);
-        }
+            value.CharacterID = "lab.wizzel.front";
+            value.DisplayName = "위젤";
+            value.DisplayNameMode = CharacterDisplayNameMode.StaticData;
+            value.Portrait = player.Portrait;
+            value.TurnOrderPortrait = player.TurnOrderPortrait;
+            value.BattleLargePortrait = player.BattleLargePortrait;
+            value.BattleResource = player.BattleResource;
+            value.BattlePrefab = player.BattlePrefab;
+            value.BattleSpriteTint = Color.white;
+            value.BattleSymbolColor = new Color(.95f, .72f, .3f);
+            value.GrowthProfile = player.GrowthProfile;
+            value.BaseStats = new StatBlock { MaxHP = 220, MaxAP = 100, ATK = 28, DEF = 5, SPD = 13 };
+            value.DefaultSkills = new List<SkillData>(showcaseSkills);
+        });
+        EnsureId(party[0].CharacterID, "lab.wizzel.front", party[0]);
 
         EquipmentData weapon = Equipment(root, "pressure_blade", "실습용 압력검", EquipmentSlot.Weapon, 4, 0, 0);
         EquipmentData armor = Equipment(root, "apron", "말랑 작업복", EquipmentSlot.Body, 0, 2, 0);

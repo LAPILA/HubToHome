@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afe46c950e4801d44beb311b827ea6c0, type: 3}
+  m_Name: Dialogue_pressure
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  Style: 0
+  RevealTextImmediately: 1
+  Nodes:
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_PRESSURE_01
+    DefaultText: "\uC774\uAC74\u2026 \uBB38\uBC16\uAE4C\uC9C0 \uC774\uC5B4\uC838
+      \uC788\uC5B4. \uBC29\uAE08 \uC0C1\uB300\uD558\uB358 \uAC74 \uC77C\uBD80\uC600\uC5B4!"
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []
+  - Speaker: {fileID: 11400000, guid: e9039ccba49340b40ae6acf24f03d6cd, type: 2}
+    Emotion: 1
+    LocalizationKey: HTH_PROLOGUE_DLG_PRESSURE_02
+    DefaultText: "\uC5EC\uAE30\uC11C \uBC84\uD2F0\uBA74 \uAC07\uD788\uACA0\uC5B4.
+      \uBB38\uAE4C\uC9C0 \uBB3C\uB7EC\uB098\uC790!"
+    EventTriggerID:
+    IsChoiceNode: 0
+    Choices: []

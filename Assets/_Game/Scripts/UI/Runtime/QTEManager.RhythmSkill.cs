@@ -45,6 +45,8 @@ public partial class QTEManager
         int promptIndex = firstKey, openedFrame = -1;
         bool shown = false, answered = false;
         DefenseInput expected = DefenseInput.None;
+        bool automatic = GameConfigManager.Instance != null && GameConfigManager.Instance.AutoSkillQte;
+        if (automatic) BattleUIController.Instance?.HideSkillQTE();
         try
         {
             // 메뉴 확정 프레임의 입력은 첫 QTE로 넘기지 않습니다.
@@ -57,7 +59,7 @@ public partial class QTEManager
 
                 if (shown && elapsed >= closesAt)
                 {
-                    if (!answered && !ResolveStreamPrompt(false, onResult, execution)) yield break;
+                    if (!answered && !ResolveStreamPrompt(automatic, onResult, execution, !automatic)) yield break;
                     shown = false;
                 }
                 if (!shown && elapsed >= nextPrompt && duration - elapsed >= Mathf.Min(window, 0.2f) - 0.001f)
@@ -69,30 +71,43 @@ public partial class QTEManager
                     openedFrame = Time.frameCount;
                     nextPrompt = elapsed + interval;
                     shown = true; answered = false;
-                    BattleUIController.Instance?.ShowRandomSkillQTE(key, 0f);
+                    if (!automatic) BattleUIController.Instance?.ShowRandomSkillQTE(key, 0f);
                 }
-                if (shown && !answered)
+                if (shown && !answered && !automatic)
                 {
                     BattleUIController.Instance?.SetSkillQTEProgress((closesAt - elapsed) / Mathf.Max(0.01f, closesAt - openedAt));
                     if (Time.frameCount > openedFrame
-                        && GameInput.TryReadDefenseInputThisFrame(out DefenseInput input) && input == expected)
+                        && GameInput.TryReadDefenseInputThisFrame(out DefenseInput input))
                     {
                         answered = true;
-                        if (!ResolveStreamPrompt(true, onResult, execution)) yield break;
+                        if (!ResolveStreamPrompt(input == expected, onResult, execution)) yield break;
                     }
                 }
                 elapsed = Mathf.Min(duration, elapsed + Time.deltaTime);
                 execution.ElapsedSeconds = elapsed;
                 yield return null;
             }
+            // 마지막 입력 창의 끝 프레임에도 메뉴/소유자 취소가 먼저입니다.
+            // 위 루프의 마지막 yield 직후 시간이 정지될 수 있습니다.
+            while (!execution.IsDone && (GameInput.IsDefenseInputBlocked || Time.timeScale <= 0f))
+            {
+                if (!StreamCanContinue(canContinue, execution)) yield break;
+                yield return null;
+            }
+            if (!StreamCanContinue(canContinue, execution)) yield break;
             if (shown && !answered && !execution.IsDone
-                && !ResolveStreamPrompt(false, onResult, execution)) yield break;
+                && !ResolveStreamPrompt(automatic, onResult, execution, !automatic)) yield break;
             if (!execution.IsDone) CompleteExecution(execution, QteTermination.Completed);
         }
         finally
         {
             if (ReferenceEquals(execution, _activeExecution) || _activeExecution == null)
-                BattleUIController.Instance?.HideSkillQTE();
+            {
+                if (execution.Termination == QteTermination.Completed)
+                    BattleUIController.Instance?.FinishSkillQTEFeedback();
+                else
+                    BattleUIController.Instance?.HideSkillQTE();
+            }
             if (!execution.IsDone) CompleteExecution(execution, QteTermination.Cancelled);
         }
     }
@@ -109,11 +124,11 @@ public partial class QTEManager
         }
     }
 
-    private bool ResolveStreamPrompt(bool hit, Action<bool> callback, QteExecution execution)
+    private bool ResolveStreamPrompt(bool hit, Action<bool> callback, QteExecution execution, bool showFeedback = true)
     {
         try
         {
-            BattleUIController.Instance?.ShowSkillQTEResult(hit);
+            if (showFeedback) BattleUIController.Instance?.ShowSkillQTEResult(hit);
             callback?.Invoke(hit);
             return !execution.IsDone;
         }

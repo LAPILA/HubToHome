@@ -180,7 +180,8 @@ public sealed class BattleStatusIconStrip : MonoBehaviour
         bool added = _transitions.HasAdded;
         bool removed = _transitions.HasRemoved;
         // 표시 범위 밖의 부여/해제도 +N에만 한 번 반응합니다. 마지막 상태 해제는 즉시 사라집니다.
-        if (_canAnimateChanges && (added || removed) && _overflow != null && !string.IsNullOrEmpty(_overflow.text))
+        if (_canAnimateChanges && (added || removed || _transitions.HasPotencyIncreased)
+            && _overflow != null && !string.IsNullOrEmpty(_overflow.text))
             PulseRect(_overflow.rectTransform, removed && !added ? 0.94f : _changeScale);
     }
 
@@ -252,7 +253,8 @@ public sealed class BattleStatusIconStrip : MonoBehaviour
         public static StatusKey Legacy(string id) => new StatusKey(0, id ?? string.Empty);
         public bool IsNew(BattleStatusTransitionTracker tracker) => _element == 0
             ? tracker.IsNewLegacy(_legacy)
-            : tracker.IsNewElement((ElementalStatusKind)(_element - 1), _element < 0);
+            : tracker.IsNewElement((ElementalStatusKind)(_element - 1), _element < 0)
+                || (_element > 0 && tracker.IsPotencyIncreased((ElementalStatusKind)(_element - 1)));
         public bool Equals(StatusKey other) => _element == other._element
             && string.Equals(_legacy, other._legacy, StringComparison.OrdinalIgnoreCase);
         public override bool Equals(object obj) => obj is StatusKey other && Equals(other);

@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18de9e20d427627418d7201e43ca5d52, type: 3}
+  m_Name: Item_SparkFlask
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  Icon: {fileID: 0}
+  ItemID: lab.item.spark_flask
+  ItemName: "축전병"
+  NameLocalizationKey: item.lab.spark_flask.name
+  DescriptionLocalizationKey: item.lab.spark_flask.description
+  Description: "적 한 명에게 <color=#FFD95A>감전</color> 4를 쌓는다."
+  Type: 0
+  TargetType: 1
+  IsAoE: 0
+  UsableInOverworld: 0
+  UsableInBattle: 1
+  IsSellable: 0
+  Price: 0
+  ActionType: 0
+  TargetStat: 0
+  CalcType: 0
+  EffectValue: 0
+  StatusEffectID: 
+  StatusDurationTurns: 0
+  ElementalPayload:
+    Operation: 1
+    Kind: 2
+    Amount: 4
+    DamagePerStack: 1
+  IsStackable: 1
+  MaxStackSize: 99

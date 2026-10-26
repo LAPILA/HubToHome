@@ -37,6 +37,80 @@ public sealed class ElementalStatusStateTests
         Assert.That(_target.Elements.GetValue(kind), Is.EqualTo(maximum), "Configuration must not reset a live battle.");
     }
 
+    [TestCase(0, 0, 1f)]
+    [TestCase(9, 0, 1f)]
+    [TestCase(10, 1, 1.25f)]
+    [TestCase(24, 1, 1.25f)]
+    [TestCase(25, 2, 1.5f)]
+    [TestCase(49, 2, 1.5f)]
+    [TestCase(50, 3, 2f)]
+    [TestCase(999, 3, 2f)]
+    public void PotencyThresholdsAndProfileDefaultsMatch(int buildup, int tier, float multiplier)
+    {
+        Assert.That(ElementalStatusPotency.GetTier(buildup), Is.EqualTo(tier));
+        Assert.That(ElementalStatusPotency.GetMultiplier(tier), Is.EqualTo(multiplier));
+        Assert.That(_profile.GetPotencyTier(buildup), Is.EqualTo(tier));
+        Assert.That(_profile.GetPotencyMultiplier(buildup), Is.EqualTo(multiplier));
+    }
+
+    [TestCase(ElementalStatusKind.Burn, 38)]
+    [TestCase(ElementalStatusKind.Bleed, 45)]
+    [TestCase(ElementalStatusKind.Poison, 7)]
+    public void PotencyScalesOnlyActualStatusDamageWithoutConsumingBuildup(ElementalStatusKind kind, int expected)
+    {
+        _target.Elements.Add(kind, 10);
+        Assert.That(_target.Elements.Trigger(kind), Is.EqualTo(expected));
+        Assert.That(_target.Elements.GetValue(kind), Is.EqualTo(10));
+    }
+
+    [Test]
+    public void ProfileCanDisableOrCapStrengthWithoutChangingLiveBuildup()
+    {
+        _target.Elements.Add(ElementalStatusKind.Burn, 50);
+        typeof(ElementalStatusProfile).GetField("_maximumPotencyMultiplier",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(_profile, 1.6f);
+        _target.ConfigureElementalStatus(_profile);
+        Assert.That(_target.Elements.GetPotencyMultiplier(ElementalStatusKind.Burn), Is.EqualTo(1.6f));
+        typeof(ElementalStatusProfile).GetField("_disablePotencyScaling",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(_profile, true);
+        Assert.That(_target.Elements.GetPotencyTier(ElementalStatusKind.Burn), Is.Zero);
+        Assert.That(_target.Elements.Trigger(ElementalStatusKind.Burn), Is.EqualTo(150));
+        Assert.That(_target.Elements.GetValue(ElementalStatusKind.Burn), Is.EqualTo(50));
+        Assert.That(ElementalStatusPotency.GetMultiplier(3, float.NaN, float.PositiveInfinity, 99f), Is.EqualTo(2f));
+    }
+
+    [Test]
+    public void ElectricTierCrossingDoesNotMultiplyCarriedDamageAgain()
+    {
+        _target.Elements.Add(ElementalStatusKind.Electric, 49);
+        _target.Elements.ReactToDirectHit(.2f); // 0.882, 남은 누적 48
+        _target.Elements.Add(ElementalStatusKind.Electric, 2); // 50, 강도 4
+        _target.Elements.ReactToDirectHit(.02f); // 추가 0.12, 총 1.002
+        Assert.That(_target.ElementalDamageTotal, Is.EqualTo(1));
+        Assert.That(_target.Elements.GetValue(ElementalStatusKind.Electric), Is.EqualTo(49));
+    }
+
+    [Test]
+    public void CanAddIsReadOnlyAndRejectsImmunityCapsFrozenAndRecoveryCeiling()
+    {
+        int changes = 0;
+        _target.OnStatusEffectsChanged += _ => changes++;
+        Assert.That(_target.Elements.CanAdd(ElementalStatusKind.Burn), Is.True);
+        Assert.That(changes, Is.Zero);
+        SetResistance("Burn", 0f);
+        Assert.That(_target.Elements.CanAdd(ElementalStatusKind.Burn), Is.False);
+        _target.Elements.Add(ElementalStatusKind.Poison, 999);
+        Assert.That(_target.Elements.CanAdd(ElementalStatusKind.Poison), Is.False);
+        _target.Elements.Add(ElementalStatusKind.Chill, 10);
+        Assert.That(_target.Elements.CanAdd(ElementalStatusKind.Chill), Is.False);
+        _target.Elements.BeginTurn();
+        Assert.That(_target.Elements.CanAdd(ElementalStatusKind.Chill), Is.True);
+        _target.Elements.Add(ElementalStatusKind.Chill, 9);
+        Assert.That(_target.Elements.CanAdd(ElementalStatusKind.Chill), Is.False);
+        _target.SetHP(0);
+        Assert.That(_target.Elements.CanAdd(ElementalStatusKind.Electric), Is.False);
+    }
+
     [Test]
     public void ResistanceAndGuardMultiplierAccumulateFractionsInsteadOfRollingChance()
     {
@@ -101,7 +175,7 @@ public sealed class ElementalStatusStateTests
     public void PoisonDetonationDoesNotGrowOrConsumePoison()
     {
         _target.Elements.Add(ElementalStatusKind.Poison, 10);
-        Assert.That(_target.Elements.Trigger(ElementalStatusKind.Poison), Is.EqualTo(6));
+        Assert.That(_target.Elements.Trigger(ElementalStatusKind.Poison), Is.EqualTo(7));
         Assert.That(_target.Elements.GetValue(ElementalStatusKind.Poison), Is.EqualTo(10));
     }
 
@@ -215,7 +289,7 @@ public sealed class ElementalStatusStateTests
         double expectedDamage = 0d;
         for (int hit = 0; hit < 50; hit++)
         {
-            expectedDamage += expectedValue * 3d * .02d * .1d;
+            expectedDamage += expectedValue * 3d * .02d * .1d * 2d;
             expectedValue -= (int)System.Math.Ceiling(expectedValue * .01d);
             _target.TakeDamage(1, DamageElement.Physical, null, .1f);
         }

@@ -244,7 +244,9 @@ public static partial class GameInput
     {
         EnsureInitialized();
         double timestamp = input == DefenseInput.Parry ? _qteZPressedAt
-            : input == DefenseInput.Dodge ? _qteXPressedAt : _qteCPressedAt;
+            : input == DefenseInput.Dodge ? _qteXPressedAt
+            : input == DefenseInput.None ? System.Math.Max(_qteZPressedAt, System.Math.Max(_qteXPressedAt, _qteCPressedAt))
+            : _qteCPressedAt;
         return timestamp >= 0d ? (float)timestamp : Time.realtimeSinceStartup;
     }
 

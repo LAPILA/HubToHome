@@ -1,0 +1,195 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3db0a2cf9f717814ba0c89942081b250, type: 3}
+  m_Name: "Wizzel_PressureRelease"
+  m_EditorClassIdentifier: "Assembly-CSharp::SkillData"
+  Icon: {fileID: 0}
+  SkillName: "압력 해방"
+  NameLocalizationKey: "skill.showcase.wizzel.pressure_release.name"
+  DescriptionLocalizationKey: "skill.showcase.wizzel.pressure_release.description"
+  SkillID: "lab.showcase.wizzel.pressure_release"
+  Description: "축적한 증기압을 해방해 적에게 거대한 충격을 준다."
+  UsageProfile: 1
+  APCost: 40
+  TargetType: 1
+  IsAoE: 0
+  ElementalApplications: []
+  StatusProcCoefficient: 1
+  ResourceEffect:
+    Resource: {fileID: 11400000, guid: 9447e7cd79db4879958d8fd5d9215e76, type: 2}
+    EnableBoost: 1
+    RequiredStep: 4
+    ConsumeStep: 4
+    DamageMultiplier: 1.65
+    GainOnCompletion: 0
+  ActionTimeline:
+  - rid: 202610250010001
+  - rid: 202610250010002
+  - rid: 202610250010004
+  - rid: 202610250010005
+  - rid: 202610250010006
+  - rid: 202610250010007
+  - rid: 202610250010008
+  - rid: 202610250010009
+  - rid: 202610250010010
+  - rid: 202610250010013
+  - rid: 202610250010011
+  - rid: 202610250010012
+  - rid: 202610250010014
+  references:
+    version: 2
+    RefIds:
+    - rid: 202610250010001
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 3
+        Duration: 0.18
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 202610250010002
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "자세와 공격 프레임"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AnimTriggerName: "BattleReady"
+        DelayAfter: 0.18
+    - rid: 202610250010004
+      type: {class: Action_QTE, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동·공격과 병행하는 아군 입력"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        TimeLimit: 1.1
+        SuccessMultiplier: 1
+        FailMultiplier: 0.55
+        Nodes:
+          - PosX: 0.18
+            PosY: 0.28
+            TargetKey: "z"
+          - PosX: 0.77
+            PosY: 0.32
+            TargetKey: "x"
+          - PosX: 0.24
+            PosY: 0.69
+            TargetKey: "c"
+    - rid: 202610250010005
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 2
+        Duration: 0.23
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 202610250010006
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "현재 캐릭터 크기의 실루엣"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Mode: 1
+        Duration: 0.18
+        Strength: 0.55
+        AccentColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610250010007
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 5
+        Duration: 0.09
+        MoveEase: 6
+        EnemyHopHeight: 0
+    - rid: 202610250010008
+      type: {class: Action_PlayAnim, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "자세와 공격 프레임"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        AnimTriggerName: "Attack"
+        DelayAfter: 0
+    - rid: 202610250010009
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "소유 효과 프리팹"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        VfxPrefab: {fileID: 4748681987041982144, guid: 3ff9ac3abf5e96848b6b1d3f52f12a13, type: 3}
+        Pivot: 2
+        UseActorRotation: 0
+    - rid: 202610250010010
+      type: {class: Action_VFX, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "소유 효과 프리팹"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        VfxPrefab: {fileID: 4748681987041982144, guid: a92d3e7dae3e14040994a16acae887e0, type: 3}
+        Pivot: 3
+        UseActorRotation: 0
+    - rid: 202610250010013
+      type: {class: Action_PresentationAccent, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "다음 유효 명중에 점멸 1회 예약"
+        Note: "피해·방어·복귀를 기다리지 않는 단발 예약입니다. 명중 전 취소되면 표시하지 않습니다."
+        Mode: 2
+        Duration: 0.12
+        Strength: 0.22
+        AccentColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        PortraitSprite: {fileID: 0}
+        Sfx: {fileID: 0}
+        SfxVolume: 0.25
+        SlidePixels: 24
+    - rid: 202610250010011
+      type: {class: Action_Damage, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "확정된 명중 피해"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        SkillMultiplier: 3.6
+        Element: 0
+        ShakeCamera: 0
+    - rid: 202610250010012
+      type: {class: Action_ScreenSplit, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "피해 뒤 사선 절단 · 색상 외곽선"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        ExpandDuration: 0.12
+        HoldDuration: 0.38
+        Duration: 0.2
+        AngleDegrees: -38
+        SeparationPixels: 24
+        TwistDegrees: 0.6
+        LineWidthPixels: 1.25
+        LineColor: {r: 1, g: 0.63, b: 0.2, a: 1}
+        OutlinePulseStrength: 0.45
+    - rid: 202610250010014
+      type: {class: Action_Move, ns: , asm: Assembly-CSharp}
+      data:
+        Disabled: 0
+        DesignerLabel: "이동 구간만 잔상"
+        Note: "실험실 사본 · 수치와 표시는 독립 블록으로 조합합니다."
+        Destination: 4
+        Duration: 0.26
+        MoveEase: 6
+        EnemyHopHeight: 0

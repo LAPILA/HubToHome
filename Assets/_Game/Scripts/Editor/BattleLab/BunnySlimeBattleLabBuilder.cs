@@ -33,7 +33,7 @@ public static class BunnySlimeBattleLabBuilder
             string path = BunnySlimeLabSceneBuilder.Build(Root, data);
             EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
             Selection.activeObject = data;
-            Debug.Log("전투 실험실 준비 완료. Play → ↑↓ 선택 → Z 시작. 전투 목록/적/스킬/대사는 데이터에서 편집합니다.", data);
+            Debug.Log("위젤 1인 전투 실험실 준비 완료. Play → ↑↓ 선택 → Z 시작. 전투 목록/적/스킬/대사는 데이터에서 편집합니다.", data);
         }
         catch (Exception exception)
         {

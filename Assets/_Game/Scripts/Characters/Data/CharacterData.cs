@@ -52,6 +52,7 @@ public class CharacterData : SerializedScriptableObject
 
     [BoxGroup("Identity")] public string CharacterID = "player_001";
     [BoxGroup("Identity")] public string DisplayName = "Player";
+    [BoxGroup("Identity"), LabelText("이름 번역 키")] public string DisplayNameLocalizationKey;
     [BoxGroup("Identity"), LabelText("이름 소스")]
     [Tooltip("주인공처럼 런타임 입력 이름을 써야 하면 GlobalPlayerName으로 설정하세요. 나머지 아군은 StaticData 그대로 두면 됩니다.")]
     public CharacterDisplayNameMode DisplayNameMode = CharacterDisplayNameMode.StaticData;
@@ -100,10 +101,10 @@ public class CharacterData : SerializedScriptableObject
     public string ResolveDisplayName(string runtimePlayerName = null)
     {
         if (DisplayNameMode == CharacterDisplayNameMode.GlobalPlayerName && !string.IsNullOrWhiteSpace(runtimePlayerName))
-            return runtimePlayerName;
+            return LocalizationManager.Localize(DisplayNameLocalizationKey, runtimePlayerName);
 
         if (!string.IsNullOrWhiteSpace(DisplayName))
-            return DisplayName;
+            return LocalizationManager.Localize(DisplayNameLocalizationKey, DisplayName);
 
         return CharacterID;
     }

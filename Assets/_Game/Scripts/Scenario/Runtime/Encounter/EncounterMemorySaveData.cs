@@ -6,7 +6,8 @@ public enum BattleEncounterOutcome
     Unknown = 0,
     Victory = 1,
     Escaped = 2,
-    PartyDefeated = 3
+    PartyDefeated = 3,
+    StoryWithdrawn = 4
 }
 
 [Serializable]

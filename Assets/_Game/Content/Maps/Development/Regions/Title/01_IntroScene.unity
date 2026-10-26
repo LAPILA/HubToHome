@@ -146,7 +146,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 180ecf9b41d478f468eb3e9083753217, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineImpulseSource
   ImpulseDefinition:
     ImpulseChannel: 1
@@ -252,7 +252,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 72ece51f2901e7445ab60da3685d6b5f, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineBrain
   ShowDebugText: 0
   ShowCameraFrustum: 1
@@ -284,7 +284,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
   m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
@@ -328,7 +328,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c88f5cead0c0b2a4eb05b5900433f8d1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.2D.Runtime::UnityEngine.Rendering.Universal.PixelPerfectCamera
   m_ComponentVersion: 1
   m_AssetsPPU: 32
@@ -448,7 +448,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f453f694addf4275988fac205bc91968, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineConfiner2D
   BoundingShape2D: {fileID: 0}
   Damping: 0.5
@@ -468,7 +468,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 00b2d199b96b516448144ab30fb26aed, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineImpulseListener
   ApplyAfter: 2
   ChannelMask: 1
@@ -492,16 +492,54 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2d687537154440a3913a9a3c7977978c, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
+  _actionZoomRatio: 1
+  _actionActorWeight: 0.62
+  _actionCameraSmoothTime: 0.16
+  _actionCameraDrift: 0
+  _actionZoomBreathing: 0
+  _actionReframeDistance: 0.75
+  _actionImpactZoom: 0.025
+  _useBattleImpactCuts: 1
+  _actionImpactPreparation: 0.05
+  _actionImpactOffset: 0.1
+  _actionImpactCutIn: 0.025
+  _actionImpactHold: 0.025
+  _actionImpactReturn: 0.075
+  _actionImpactMinInterval: 0.12
+  _skillRollScale: 1
+  _actionHeightOffset: -0.45
+  _defenseCameraHold: 0.12
+  _useBattleViewportSafety: 1
+  _battleMinimumLens: 3.75
+  _battlePixelArtScale: 1
+  _battleDodgeReserve: 1.6
+  _battleBodyMargin: 0.25
   _vCam: {fileID: 672597510}
   _impulseSource: {fileID: 45048976}
   _centerTarget: {fileID: 0}
   _defaultLensSize: 4
   _battleZoomSize: 3.5
+  _staticBattlePresentation: 0
+  _duelZoomRatio: 0.82
+  _duelZoomDuration: 0.34
   _staticProfile: {fileID: 0}
   _dynamicProfile: {fileID: 0}
   _gameplaySafeProfile: {fileID: 0}
+  _useEnemyMeleeCamera: 1
+  _enemyMeleeFocusDuration: 0.06
+  _enemyMeleeActorWeight: 0.68
+  _enemyMeleeImpactPan: 0.35
+  _enemyMeleeImpactZoom: 0.04
+  _battleFramingSettings:
+    MinOrthographicSize: 3.5
+    MaxOrthographicSize: 9
+    FramingSize: 0.72
+    Damping: 0.22
+    TargetRadius: 0.65
+    CenterOffset: {x: 0, y: 0}
+    Style: 2
 --- !u!114 &672597508
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -512,7 +550,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1a8a05de0ac134f4f9d01bef6b9da077, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachinePixelPerfect
 --- !u!114 &672597509
 MonoBehaviour:
@@ -524,7 +562,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b617507da6d07e749b7efdb34e1173e1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineFollow
   TrackerSettings:
     BindingMode: 3
@@ -543,7 +581,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
   Priority:
     Enabled: 0
@@ -619,9 +657,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 97e62211d6fdaf243b45850be64114ef, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::IntroManager
   _openingStory: {fileID: 11400000, guid: e7493822dbc44df4abac65779127c25d, type: 2}
+  _tutorialDefinition: {fileID: 11400000, guid: c7487adedc7355e46ad527f7605539b5, type: 2}
   _trainAudioProfile: {fileID: 11400000, guid: 45ce4e91976b4cefbc1e31539d4cef99, type: 2}
   _trainAudioStartPage: 0
   _nextSceneName: Region_Train
@@ -638,11 +677,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c92989d3a40b9d94da998f07a07185de, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::MapSettings
   _mapBGM: {fileID: 0}
   _defaultBattleBGM: {fileID: 0}
   _bgmFadeDuration: 1.5
+  _ambienceLoop: {fileID: 0}
+  _ambienceVolume: 1
+  _ambienceFadeDuration: 0.75
   _cameraBounds: {fileID: 0}
 --- !u!1001 &1983300001
 PrefabInstance:

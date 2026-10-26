@@ -38,16 +38,16 @@ public sealed partial class BunnySlimeBattleLabSession
         contentRect.anchorMin = contentRect.anchorMax = new Vector2(0.5f, 0.5f);
         contentRect.sizeDelta = new Vector2(640f, 480f);
 
-        // 중앙 112~272px는 월드에 있는 주인공과 두 동료가 보이는 영역입니다.
+        // 중앙 112~272px는 월드에 있는 위젤 한 명이 보이는 영역입니다.
         Rect(CreateImage(content.transform, "Header Background", Ink).rectTransform, 0f, 0f, 640f, 112f);
         Rect(CreateImage(content.transform, "Controls Background", Ink).rectTransform, 0f, 272f, 640f, 208f);
         Rect(CreateImage(content.transform, "Top Rule", Mint).rectTransform, 28f, 14f, 44f, 3f);
         Text(content.transform, "Eyebrow", "HUB TO HOME  /  COMBAT FIELD NOTES", 28f, 22f, 560f, 20f, 13f, Muted);
         Text(content.transform, "Title", "전투 실험실", 26f, 43f, 540f, 38f, 28f, Color.white);
-        Text(content.transform, "Subtitle", "전열 3명 · 각 6스킬 · 누적 상태 5종", 28f, 83f, 584f, 24f, 15f, Mint);
+        Text(content.transform, "Subtitle", "위젤 1인 · 스킬 연출 · Z / X / C 대응", 28f, 83f, 584f, 24f, 15f, Mint);
 
         // 월드 미리보기 아래의 이름표입니다. 실제 전투 참가자는 기존 진입 경로가 생성합니다.
-        for (int i = 0; i < (_data != null ? _data.GetPartyCount(false) : 0); i++)
+        for (int i = 0; i < (_data != null ? _data.GetPartyCount() : 0); i++)
         {
             CharacterData member = _data.Party[i];
             Color color = member != null ? member.BattleSymbolColor : Color.white;
@@ -55,10 +55,12 @@ public sealed partial class BunnySlimeBattleLabSession
             Rect(CreateImage(content.transform, "Roster Card " + i, Panel).rectTransform, x, 277f, 188f, 25f);
             Rect(CreateImage(content.transform, "Roster Color " + i, color).rectTransform, x + 5f, 283f, 5f, 13f);
             string name = member != null ? member.ResolveDisplayName("위젤") : "참조 없음";
-            Text(content.transform, "Roster Member " + i, name + " · 6스킬", x + 16f, 280f, 168f, 21f, 14f, color);
+            int skillCount = member != null && member.DefaultSkills != null ? member.DefaultSkills.Count : 0;
+            Text(content.transform, "Roster Member " + i, name + " · " + skillCount + "스킬", x + 16f, 280f, 168f, 21f, 14f, color);
         }
 
-        int count = _data != null && _data.Encounters != null ? _data.Encounters.Length : 0;
+        _menuEncounterIndices = _data != null ? _data.GetVisibleEncounterIndices() : System.Array.Empty<int>();
+        int count = _menuEncounterIndices.Length;
         _choiceBackgrounds = new Image[count];
         _choiceTitles = new TMP_Text[count];
         _choiceDetails = new TMP_Text[count];
@@ -68,7 +70,7 @@ public sealed partial class BunnySlimeBattleLabSession
             _choiceBackgrounds[i] = CreateImage(content.transform, "Mode " + i, Panel);
             Rect(_choiceBackgrounds[i].rectTransform, 28f, y, 268f, 32f);
             _choiceTitles[i] = Text(content.transform, "Mode Title " + i, "", 39f, y + 1f, 249f, 18f, 16f, Color.white);
-            _choiceDetails[i] = Text(content.transform, "Mode Detail " + i, _data.Encounters[i]?.Summary ?? "", 41f, y + 19f, 247f, 13f, 10f, Muted);
+            _choiceDetails[i] = Text(content.transform, "Mode Detail " + i, _data.Encounters[_menuEncounterIndices[i]].Summary ?? "", 41f, y + 19f, 247f, 13f, 10f, Muted);
         }
         Rect(CreateImage(content.transform, "Description Background", Panel).rectTransform, 309f, 310f, 303f, 102f);
         _description = Text(content.transform, "Description", "", 320f, 315f, 281f, 92f, 13f, new Color(0.84f, 0.89f, 0.91f));
@@ -87,6 +89,7 @@ public sealed partial class BunnySlimeBattleLabSession
     {
         GameStateManager.Instance?.ChangeState(GameState.Cutscene);
         _status.text = status;
+        _selected = Mathf.Clamp(_selected, 0, Mathf.Max(0, _menuEncounterIndices.Length - 1));
         RefreshSelection();
         SetMenuVisible(true);
         _inputAfterFrame = Time.frameCount + 1;
@@ -110,16 +113,15 @@ public sealed partial class BunnySlimeBattleLabSession
             _choiceBackgrounds[i].color = selected ? Mint : Panel;
             _choiceTitles[i].color = selected ? Ink : Color.white;
             _choiceDetails[i].color = selected ? new Color(0.12f, 0.29f, 0.29f) : Muted;
-            _choiceTitles[i].text = (selected ? "> " : "  ") + (i + 1).ToString("00") + "  " + _data.Encounters[i].Title;
+            _choiceTitles[i].text = (selected ? "> " : "  ") + (i + 1).ToString("00") + "  " + _data.Encounters[_menuEncounterIndices[i]].Title;
         }
-        _description.text = _data.Encounters[_selected].Description;
+        _description.text = TryGetSelectedEncounter(out BattleLabEncounterEntry entry) ? entry.Description : "선택 가능한 전투가 없습니다.";
     }
 
     private void SetMenuVisible(bool visible)
     {
         _menuVisible = visible;
         _menuRoot.SetActive(visible);
-        SetPartyPreviewVisible(visible);
     }
 
     private static Image CreateImage(Transform parent, string name, Color color)

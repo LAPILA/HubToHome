@@ -11,6 +11,10 @@ public class DialogueData : ScriptableObject
     [Tooltip("이 대화를 띄울 패널의 스타일을 결정합니다.")]
     public DialogueStyle Style = DialogueStyle.Overworld;
 
+    [BoxGroup("기본 설정"), LabelText("본문 즉시 표시")]
+    [Tooltip("본문을 한 번에 표시하여 확인 키 한 번으로 다음 문장으로 진행합니다. 선택지와 페이지는 기존 입력 규칙을 유지합니다.")]
+    public bool RevealTextImmediately;
+
     [ListDrawerSettings(ShowIndexLabels = true)]
     public List<DialogueNode> Nodes = new List<DialogueNode>();
 }

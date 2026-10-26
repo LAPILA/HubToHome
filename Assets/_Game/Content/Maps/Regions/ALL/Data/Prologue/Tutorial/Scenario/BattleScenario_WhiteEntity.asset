@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba44383cc5d14901b9bfb684b07e47c8, type: 3}
+  m_Name: BattleScenario_WhiteEntity
+  m_EditorClassIdentifier: Assembly-CSharp::BattleScenarioData
+  ScenarioId: prologue.white_entity
+  TitleKo: "\uD504\uB864\uB85C\uADF8 \xB7 \uD6C4\uBBF8\uC758 \uBC31\uC0C9\uCCB4"
+  PrimaryMode: battle
+  OpeningModule: turn_qte
+  MemoryKey: prologue.white_entity
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/Prologue/prologue_white_entity.scenario.yaml
+    SourceHash: e73b3ce7fec3224b185525b0a59a1985b54cb54ad413c8adc8e11b06a703add6
+    ImportedAtIso8601: 2026-10-24T04:53:20.3977530Z
+  PartyIds:
+  - player
+  EnemyIds:
+  - prologue.white_entity.part
+  Rules:
+  - RuleId: establish_encounter
+    EventType: 5
+    Timing: 0
+    Once: 1
+    SubjectId:
+    OutcomeId:
+    ThresholdRatio: 0.5
+    SequenceId: prologue.white_entity.opening
+    Disabled: 0
+  TriggerRules: []
+  Sequences:
+  - {fileID: 8620436186895329954}
+  Dialogues: []
+  AudioClips: []
+  TimelineCutsceneCatalog: {fileID: 0}
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &8620436186895329954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e488cfc769489c841db266aaf4bd28, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ActionSequenceAsset
+  SequenceId: prologue.white_entity.opening
+  DisplayNameKo:
+  Contract:
+    DescriptionKo:
+    UsageKo:
+    Lifecycle: 0
+    Tags: []
+    AllowedPrimaryModes: []
+    Inputs: []
+  Source:
+    SourcePath: Assets/_Game/Content/Scenarios/Source/Battle/Prologue/prologue_white_entity.scenario.yaml
+    SourceHash: e73b3ce7fec3224b185525b0a59a1985b54cb54ad413c8adc8e11b06a703add6
+    ImportedAtIso8601: 2026-10-24T04:53:20.3977530Z
+  Actions:
+  - BlockId: c31c577f96164449a5f351017c0959eb
+    DesignerLabel: "\uCCAB \uC804\uD22C\uC758 \uC9E7\uC740 \uD638\uD761"
+    ActionId: flow.wait
+    ParametersJson: '{"duration":0.1}'
+    Note:
+    Disabled: 0
+    Children: []
+  references:
+    version: 2
+    RefIds: []

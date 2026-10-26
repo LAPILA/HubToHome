@@ -1,5 +1,21 @@
 # Dialogue Rules
 
+## 전투 주 대화 배경 (2026-10-26)
+
+- `BattleDialogueLayout` 수명에서만 명시적 배경 Image의 color/enabled를 캡처해 검정으로 바꾸고 Dispose에서 복원한다. 필드·일반 시네마틱 원본 프리팹/그림/재질은 바꾸지 않는다.
+- `DialogueUI`의 선택적 `_battleBackgroundImage`가 없으면 본문 TMP의 조상 Image를 한 번 해석한다. 초상이나 임의 첫 자식 Image를 배경으로 추측하지 않는다. 향후 도트창 교체는 sprite/material을 그대로 보존한다.
+- 제브 Lab의17대사 키는 한·영·일·중 실제 CSV에 연결한다. 별도 `BattleSpeechBubble`는 변경하지 않는다.
+
+## 프롤로그 즉시 확인 (2026-10-24 후속)
+
+- `DialogueData.RevealTextImmediately`는 기본 false다. 전용 프롤로그 대사27개에는 true를 적용해 글자 대기 없이 표시하고 기존 확인 입력으로 한 단계씩 진행한다. 일반 NPC의 타이핑/고정 시네마틱 속도는 기본 유지한다.
+- 즉시 표시에는 TextAnimator.SetText/SetVisibilityEntireText를 사용한다. ShowText 직후 SkipTypewriter로 글자별 음성/명령을 한꺼번에 실행하지 않는다. 입력 처리를 별도로 추가하지 않으며 선택지/페이지/첫 프레임 소비 방어와 언어 변경 시 이벤트 미재실행을 유지한다.
+
+## 표시 중 언어 변경 (2026-10-24)
+
+- `DialogueManager.RefreshLocalizedPresentation`은 현재 소유 패널의 본문만 갱신한다. PlayNode/노드 이벤트/진행 콜백을 재호출하지 않는다. 선택 순서/선택 인덱스/재생 세대는 유지하며 완료한 문장의 번역은 재타이핑·첫 글자 음성을 반복하지 않는다. 아직 타이핑 중인 문장은 번역문으로 다시 표시한다.
+- 독립 선택창도 `TryStartLocalizedChoicePrompt`로 본문/선택지 키를 보존한다. 번역된 문자열만 복사하고 키를 버리지 않는다. 일반 prompt/이야기 선택지의 기존 X/확정 경계는 유지한다.
+
 ## 중요 연출의 글자 속도 (2026-10-19)
 
 - DialogueStyle.Cinematic 또는 대화 진입 전 GameState.Cutscene이면 DialogueUI의 고정14cps를 사용하고 설정 TextSpeed/2.5배 증폭은 적용하지 않는다. 삽화 내레이션은 Story.NarrationCharactersPerSecond(기본10)를 우선한다. 일반 NPC와 메뉴 prompt는 원래 timing 참조·설정 속도로 복구한다. 선택지 분기도 매 노드 정책을 재적용한다.

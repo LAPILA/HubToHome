@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 새 Play 세션에서만 사용하는 개발용 조우 진입점입니다.
-/// 전투 규칙을 복제하지 않고 기존 조우 서비스와 일반 3명/후열 실습 6명을 사용합니다.
+/// 전투 규칙을 복제하지 않고 기존 조우 서비스에 위젤 한 명을 전달합니다.
 /// </summary>
 [DefaultExecutionOrder(-11000)]
 [DisallowMultipleComponent]
@@ -24,6 +24,7 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
     private bool _freshSession;
     private bool _ownsSession;
     private int _ownedPartyCount;
+    private CharacterSaveData _ownedPartyMember;
     private bool _starting;
     private bool _inBattle;
     private bool _returning;
@@ -35,8 +36,10 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
     private int _justGuardCount;
     private int _dodgeCount;
     private int _counterCount;
-    private bool _reserveArrived;
     private string _startupError;
+    private BattleFlagPresentationScope _phasePresentation;
+    private BattleSkillLockScope _skillLockScope;
+    private int[] _menuEncounterIndices = Array.Empty<int>();
 
     public bool ReturnToExplorationOnDefeat => true;
 
@@ -77,10 +80,9 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
 
         _emptySession = _global.ToSaveData();
         _ownsSession = true;
-        PrepareParty(false);
+        PrepareParty();
         GameStateManager.Instance?.ChangeState(GameState.Cutscene);
         yield return null;
-        _battle.OnPlayerPartyChanged += HandlePartyChanged;
         if (_qte != null)
             _qte.BattleDefenseResolved += HandleDefenseResolved;
         OverworldCameraBinding.TryApply(_player, null, this);
@@ -102,14 +104,16 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
             return false;
         }
         var encounterIds = new HashSet<string>(StringComparer.Ordinal);
+        bool hasVisibleEncounter = false;
         foreach (BattleLabEncounterEntry entry in _data.Encounters)
         {
             if (entry == null || string.IsNullOrWhiteSpace(entry.Id) || !encounterIds.Add(entry.Id)
-                || entry.Enemy == null || entry.Enemy.Prefab == null)
+                || entry.Enemy == null || entry.Enemy.Prefab == null || entry.WeakenFrontLine)
             {
-                error = "전투 목록의 조우 ID가 비어 있거나 중복되었고, 또는 적/프리팹 참조가 누락되었습니다.";
+                error = "전투 목록의 조우 ID/적 참조를 확인해 주세요. 이전 후열 실습 항목은 1인 실험실에서 사용하지 않습니다.";
                 return false;
             }
+            hasVisibleEncounter |= !entry.HiddenInMenu;
             EnemyCharacter[] components = entry.Enemy.Prefab.GetComponents<EnemyCharacter>();
             if (components.Length != 1 || components[0] is BunnySlimeCharacter)
             {
@@ -117,9 +121,14 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
                 return false;
             }
         }
-        if (_data.Party == null || _data.Party.Length != 6 || _global.Party.Count != 0)
+        if (!hasVisibleEncounter)
         {
-            error = "빈 신규 세션과 샘플 파티 6명이 필요합니다. 기존 파티를 덮어쓰지 않았습니다.";
+            error = "선택 가능한 전투가 없습니다. 전투 목록의 '목록에서 임시 숨김' 설정을 확인해 주세요.";
+            return false;
+        }
+        if (_data.Party == null || _data.Party.Length != 1 || _global.Party.Count != 0)
+        {
+            error = "빈 신규 세션과 실험실 위젤 한 명이 필요합니다. 기존 파티를 덮어쓰지 않았습니다.";
             return false;
         }
         var ids = new HashSet<string>(StringComparer.Ordinal);
@@ -149,17 +158,17 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
                 _abortRequested = false;
             return;
         }
-        if (!_menuVisible || !_ownsSession || _starting || _returning
+        if (!_menuVisible || !_ownsSession || _starting || _returning || _menuEncounterIndices.Length == 0
             || Time.frameCount <= _inputAfterFrame)
             return;
         if (GameInput.UIUpPressed)
         {
-            _selected = (_selected + _data.Encounters.Length - 1) % _data.Encounters.Length;
+            _selected = (_selected + _menuEncounterIndices.Length - 1) % _menuEncounterIndices.Length;
             RefreshSelection();
         }
         else if (GameInput.UIDownPressed)
         {
-            _selected = (_selected + 1) % _data.Encounters.Length;
+            _selected = (_selected + 1) % _menuEncounterIndices.Length;
             RefreshSelection();
         }
         else if (GameInput.UICancelPressed)
@@ -177,19 +186,27 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
 
     private IEnumerator BeginBattle()
     {
-        if (_inBattle || _starting || _battle == null || _battle.IsSeamlessBattleActive)
+        if (_inBattle || _starting || _battle == null || _battle.IsSeamlessBattleActive
+            || !TryGetSelectedEncounter(out BattleLabEncounterEntry entry))
             yield break;
         _starting = true;
         _abortRequested = false;
         SetMenuVisible(false);
-        BattleLabEncounterEntry entry = _data.Encounters[_selected];
-        PrepareParty(entry.WeakenFrontLine);
+        ReleaseEncounterScopes();
+        _phasePresentation = entry.PhaseOverlay != null
+            ? new BattleFlagPresentationScope(_battle, this, entry.PhaseOverlay) : null;
+        _skillLockScope = entry.SkillLock != null
+            ? new BattleSkillLockScope(_battle, entry.SkillLock) : null;
+        PrepareParty();
         _guardCount = _justGuardCount = _dodgeCount = _counterCount = 0;
-        _reserveArrived = false;
         // 선택 확인 키가 전투 시작/대사/QTE에 재사용되지 않게 프레임을 분리합니다.
         yield return null;
         if (_leaving || !isActiveAndEnabled)
+        {
+            ReleaseEncounterScopes();
+            _starting = false;
             yield break;
+        }
         _inBattle = BattleEncounterService.StartEncounter(
             _player, new List<EnemyData> { entry.Enemy },
             encounterId: entry.Id,
@@ -199,11 +216,12 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
         _starting = false;
         if (!_inBattle)
         {
+            ReleaseEncounterScopes();
             ShowMenu("전투 진입에 실패했습니다. Console의 구체적인 오류를 확인해 주세요.");
         }
     }
 
-    private void PrepareParty(bool waveExercise)
+    private void PrepareParty()
     {
         var seed = new SaveData
         {
@@ -214,7 +232,7 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
             lookingDirection = 3,
             Money = 500
         };
-        int partyCount = _data.GetPartyCount(waveExercise);
+        int partyCount = _data.GetPartyCount();
         for (int i = 0; i < partyCount; i++)
         {
             CharacterData data = _data.Party[i];
@@ -224,7 +242,7 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
                 CharacterDataID = data.CharacterID,
                 CharacterID = data.ResolveDisplayName(seed.playerName),
                 MaxHP = Mathf.Max(1, stats.MaxHP),
-                HP = waveExercise && i < 3 ? 1 : Mathf.Max(1, stats.MaxHP),
+                HP = Mathf.Max(1, stats.MaxHP),
                 MaxAP = Mathf.Max(0, stats.MaxAP),
                 AP = Mathf.Max(0, stats.MaxAP),
                 ATK = stats.ATK, DEF = stats.DEF, SPD = stats.SPD,
@@ -250,11 +268,12 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
         if (_data.Equipment != null)
             for (int i = 0; i < _data.Equipment.Length; i++)
                 if (_data.Equipment[i] != null)
-                    seed.EquipmentInventoryDict[_data.Equipment[i].ItemID] = 6;
+                    seed.EquipmentInventoryDict[_data.Equipment[i].ItemID] = 1;
 
         // 실험 씬의 빈 세션만 교체합니다. SaveManager/파일 저장을 사용하지 않습니다.
         _global.FromSaveData(seed);
         _ownedPartyCount = partyCount;
+        _ownedPartyMember = _global.Party.Count == 1 ? _global.Party[0] : null;
         if (_data.Equipment != null)
         {
             for (int i = 0; i < _global.Party.Count; i++)
@@ -269,8 +288,8 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
         {
             CharacterSaveData member = _global.Party[i];
             CharacterStatsProjectionService.ResolveResourceCaps(member, _data.Party[i], out int maxHp, out int maxAp);
-            member.HP = waveExercise && i < 3 ? 1 : maxHp;
-            member.AP = maxAp;
+            member.HP = maxHp;
+            member.AP = _data.ResolveInitialPartyAP(maxAp);
         }
         PlayerCharacter playerCharacter = _player.GetComponent<PlayerCharacter>();
         playerCharacter.SetCharacterData(_data.Party[0]);
@@ -285,15 +304,6 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
         else if (result.IsJustGuard) _justGuardCount++;
         else if (result.IsGuard) _guardCount++;
         else if (result.PreventsDamage && result.Input == DefenseInput.Dodge) _dodgeCount++;
-    }
-
-    private void HandlePartyChanged(List<PlayerCharacter> party)
-    {
-        if (!_inBattle || party == null || _data.Party == null) return;
-        for (int i = 0; i < party.Count; i++)
-            for (int j = 3; j < _data.Party.Length; j++)
-                if (party[i] != null && party[i].CharacterID == _data.Party[j].CharacterID)
-                    _reserveArrived = true;
     }
 
     public void OnEncounterResolved(bool victory, PlayerController player)
@@ -315,6 +325,7 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
 
     private IEnumerator ReturnToMenu(string title)
     {
+        ReleaseEncounterScopes();
         _returning = true;
         _inBattle = false;
         yield return null; // Host의 포즈/카메라/조우 정리를 먼저 끝냅니다.
@@ -326,20 +337,23 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
             _returning = false;
             yield break;
         }
-        PrepareParty(false);
+        PrepareParty();
         ShowMenu(title + "\n가드 " + _guardCount + "  ·  저스트 " + _justGuardCount
-            + "  ·  회피 " + _dodgeCount + "  ·  반격 " + _counterCount
-            + "  ·  후열 " + (_reserveArrived ? "등장 확인" : "미등장"));
+            + "  ·  회피 " + _dodgeCount + "  ·  반격 " + _counterCount);
         _returning = false;
+    }
+
+    private void OnDisable()
+    {
+        ReleaseEncounterScopes();
     }
 
     private void OnDestroy()
     {
+        ReleaseEncounterScopes();
         _leaving = true;
-        SetPartyPreviewVisible(false);
         if (_battle != null)
         {
-            _battle.OnPlayerPartyChanged -= HandlePartyChanged;
             if (_inBattle || _starting)
                 _battle.AbortSeamlessBattle();
         }
@@ -349,11 +363,31 @@ public sealed partial class BunnySlimeBattleLabSession : MonoBehaviour,
             _global.FromSaveData(_emptySession);
     }
 
+    private void ReleaseEncounterScopes()
+    {
+        _phasePresentation?.Dispose();
+        _phasePresentation = null;
+        _skillLockScope?.Dispose();
+        _skillLockScope = null;
+    }
+
+    private bool TryGetSelectedEncounter(out BattleLabEncounterEntry entry)
+    {
+        entry = null;
+        if (_data == null || _data.Encounters == null || _selected < 0
+            || _selected >= _menuEncounterIndices.Length) return false;
+        int index = _menuEncounterIndices[_selected];
+        if (index < 0 || index >= _data.Encounters.Length) return false;
+        entry = _data.Encounters[index];
+        return entry != null && !entry.HiddenInMenu;
+    }
+
     private bool IsLabPartyStillOwned()
     {
         if (_data == null || _data.Party == null || _global == null
-            || (_ownedPartyCount != 3 && _ownedPartyCount != 6)
-            || _global.Party.Count != _ownedPartyCount || _data.Party.Length < _ownedPartyCount)
+            || _ownedPartyCount != 1
+            || _global.Party.Count != _ownedPartyCount || _data.Party.Length < _ownedPartyCount
+            || !ReferenceEquals(_global.Party[0], _ownedPartyMember))
             return false;
         for (int i = 0; i < _ownedPartyCount; i++)
             if (_global.Party[i] == null || _data.Party[i] == null

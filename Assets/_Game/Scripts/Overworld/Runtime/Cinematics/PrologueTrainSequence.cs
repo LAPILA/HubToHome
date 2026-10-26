@@ -52,6 +52,7 @@ public sealed class PrologueTrainSequence : MonoBehaviour
     private float _incidentWait;
     private float _rearRetryAfter;
     private int _generation;
+    private bool _tutorialOwnsScene;
 
     private void OnEnable()
     {
@@ -60,6 +61,16 @@ public sealed class PrologueTrainSequence : MonoBehaviour
 
     private void Start()
     {
+        PrologueTutorialController[] tutorials = FindObjectsByType<PrologueTutorialController>(FindObjectsSortMode.None);
+        for (int i = 0; i < tutorials.Length; i++)
+        {
+            if (tutorials[i].gameObject.scene != gameObject.scene || tutorials[i].Definition == null) continue;
+            // 같은 Scene의 새 튜토리얼이 타이머·후미·열차 음향을 함께 소유합니다.
+            _tutorialOwnsScene = true;
+            if (_subscribedLoader != null) _subscribedLoader.SceneRevealCompleted -= HandleSceneRevealed;
+            _subscribedLoader = null;
+            return;
+        }
         SubscribeSceneLoader();
         // RegionEntryCoordinator가 방을 준비한 뒤 한 번만 플레이어를 찾습니다.
         PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
@@ -86,7 +97,7 @@ public sealed class PrologueTrainSequence : MonoBehaviour
 
     private void Update()
     {
-        if (_busy || !_sceneRevealed || _player == null || !CanExplore())
+        if (_tutorialOwnsScene || _busy || !_sceneRevealed || _player == null || !CanExplore())
             return;
 
         GlobalDataManager global = GlobalDataManager.Instance;

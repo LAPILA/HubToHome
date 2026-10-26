@@ -14,38 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
   Style: 0
   Nodes:
-  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
+  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
     Emotion: 1
     LocalizationKey: lab.zev.opening.00
-    DefaultText: "실습이라면서요. 의뢰서까지 써야 하나요?"
+    DefaultText: "전투 실험 계약, 진행하겠습니다."
     EventTriggerID:
     IsChoiceNode: 0
     Choices: []
-  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
+  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
     Emotion: 1
     LocalizationKey: lab.zev.opening.01
-    DefaultText: "구두 계약도 계약입니다. 준비는 되셨습니까?"
-    EventTriggerID:
-    IsChoiceNode: 0
-    Choices: []
-  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
-    Emotion: 1
-    LocalizationKey: lab.zev.opening.02
-    DefaultText: "준비됐다는 말은 안 했는데요."
-    EventTriggerID:
-    IsChoiceNode: 0
-    Choices: []
-  - Speaker: {fileID: 11400000, guid: f339d0df707e4bdd9c7c5a0e8f9f2ca2, type: 2}
-    Emotion: 1
-    LocalizationKey: lab.zev.opening.03
-    DefaultText: "그럼 자세부터 보여 드리겠습니다. 빛나는 순간을 보십시오."
-    EventTriggerID:
-    IsChoiceNode: 0
-    Choices: []
-  - Speaker: {fileID: 11400000, guid: 2e43b565b4b937d42bd80c85eb983cae, type: 2}
-    Emotion: 1
-    LocalizationKey: lab.zev.opening.04
-    DefaultText: "좋아요. 대신 치료비는 실습비에 포함입니다."
+    DefaultText: "제가 이길 듯요. ㅎ"
     EventTriggerID:
     IsChoiceNode: 0
     Choices: []

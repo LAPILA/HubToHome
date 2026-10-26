@@ -12,7 +12,7 @@ public static class BattleNarrationFormatter
         return actor switch
         {
             PlayerCharacter player => player.DisplayName,
-            EnemyCharacter enemy => enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.EnemyName) ? enemy.Data.EnemyName : enemy.name,
+            EnemyCharacter enemy => enemy.Data != null && !string.IsNullOrWhiteSpace(enemy.Data.LocalizedName) ? enemy.Data.LocalizedName : enemy.name,
             _ => actor != null ? actor.name : "???"
         };
     }
@@ -92,6 +92,6 @@ public static class BattleNarrationFormatter
         }
     }
 
-    private static string SafeSkillName(SkillData skill) => skill != null && !string.IsNullOrWhiteSpace(skill.SkillName) ? skill.SkillName : "스킬";
-    private static string SafeItemName(ItemData item) => item != null && !string.IsNullOrWhiteSpace(item.ItemName) ? item.ItemName : "아이템";
+    private static string SafeSkillName(SkillData skill) => skill != null && !string.IsNullOrWhiteSpace(skill.LocalizedName) ? skill.LocalizedName : "스킬";
+    private static string SafeItemName(ItemData item) => item != null && !string.IsNullOrWhiteSpace(item.LocalizedName) ? item.LocalizedName : "아이템";
 }

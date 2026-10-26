@@ -17,7 +17,9 @@ public static class SaveManager
     private static int _autoSaveGeneration;
     private static bool _autoSavePending;
     public static bool HasPendingAutoSave => _autoSavePending;
+    public static int AutoSaveRequestVersion => _autoSaveGeneration;
     public static event Action<SaveStorageResult> AutoSaveCompleted;
+    public static event Action<int, SaveStorageResult> AutoSaveCompletedWithVersion;
 
     public static string SaveDirectoryPath => Storage.RootDirectory;
     public static bool CanSaveCurrentProgress => !GameLoadCoordinator.IsLoading
@@ -30,6 +32,7 @@ public static class SaveManager
     {
         CancelPendingAutoSave();
         AutoSaveCompleted = null;
+        AutoSaveCompletedWithVersion = null;
     }
 
     public static bool IsManualSlot(int slotIndex) => slotIndex >= 0 && slotIndex < ManualSlotCount;
@@ -146,8 +149,30 @@ public static class SaveManager
             SaveStorageResult result = TrySaveProgress(AutoSlotIndex, player);
             _autoSavePending = false;
             if (!result.Success) Debug.LogWarning("[SaveManager] 자동 저장 실패: " + result.Message);
-            AutoSaveCompleted?.Invoke(result);
+            NotifyAutoSaveCompleted(generation, result);
             yield break;
+        }
+    }
+
+    private static void NotifyAutoSaveCompleted(int version, SaveStorageResult result)
+    {
+        // 콜백이 새 저장을 예약하더라도 끝난 요청의 버전을 전달합니다.
+        // 잘못된 표시 구독자가 다른 종료 화면/기존 저장 구독을 막지 않게 격리합니다.
+        Action<int, SaveStorageResult> versioned = AutoSaveCompletedWithVersion;
+        if (versioned != null)
+        {
+            foreach (Action<int, SaveStorageResult> callback in versioned.GetInvocationList())
+            {
+                try { callback(version, result); }
+                catch (Exception exception) { Debug.LogException(exception); }
+            }
+        }
+        Action<SaveStorageResult> legacy = AutoSaveCompleted;
+        if (legacy == null) return;
+        foreach (Action<SaveStorageResult> callback in legacy.GetInvocationList())
+        {
+            try { callback(result); }
+            catch (Exception exception) { Debug.LogException(exception); }
         }
     }
 
